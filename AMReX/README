@@ -30,3 +30,14 @@ make -j12 install
 
 
 3. Visualizing output
+
+This uses yt:
+
+%matplotlib inline
+import yt
+ds = yt.load("wavetoy/phi000010")
+ds.field_list
+(error, phi, phi1, phi2) = ds.field_list
+slc = yt.SlicePlot(ds, "z", error, center=[0.0, 0.0, 0.0])
+slc.set_log(error, False);
+slc.show()
