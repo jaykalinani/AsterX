@@ -11,7 +11,6 @@ using namespace amrex;
 #include <cctk.h>
 
 #include <memory>
-#include <vector>
 
 namespace AMReX {
 using namespace std;
@@ -34,12 +33,11 @@ struct GHExt {
   BoxArray ba;
   Geometry geom;
   MultiFab mfab;
+
+  // TODO: use StateData
 };
 
 extern unique_ptr<GHExt> ghext;
-
-// This needs to go away again!
-extern vector<MFIter *> mfis;
 
 } // namespace AMReX
 

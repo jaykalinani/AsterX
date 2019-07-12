@@ -11,9 +11,10 @@ USES INCLUDE HEADER: AMReX.hxx
 #   phi
 # } "Scalar potential for wave equation"
 
-# CCTK_REAL phi TYPE=gf
-# {
-#   phi
-#   phi_p
-#   phi_p_p
-# } "Scalar potential for wave equation"
+CCTK_REAL phi TYPE=gf
+{
+  phi
+  phi_p
+  phi_p_p
+  err
+} "Scalar potential for wave equation"

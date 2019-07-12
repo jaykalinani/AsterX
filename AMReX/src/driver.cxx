@@ -26,8 +26,6 @@ int ghext_handle = -1;
 amrex::AMReX *restrict pamrex = nullptr;
 unique_ptr<GHExt> ghext;
 
-vector<MFIter *> mfis;
-
 // Registered functions
 
 void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH);

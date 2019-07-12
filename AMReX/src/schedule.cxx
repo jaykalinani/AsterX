@@ -84,21 +84,28 @@ void enter_level_mode(cGH *restrict cctkGH) {
 void leave_level_mode(cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = undefined;
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_levfac[d] = undefined;
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_levoff[d] = undefined;
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_levoffdenom[d] = 0;
 }
 
 // Set cctkGH entries for local mode
 void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi) {
-  const Box &fbx = mfi.fabbox();   // allocated array
-  const Box &vbx = mfi.validbox(); // interior region (without ghosts)
-  const Box &bx = mfi.tilebox();   // current region (without ghosts)
+  const Box &fbx = mfi.fabbox(); // allocated array
+  // const Box &vbx = mfi.validbox();     // interior region (without ghosts)
+  const Box &bx = mfi.tilebox();       // current region (without ghosts)
+  const Box &gbx = mfi.growntilebox(); // current region (with ghosts)
 
   // Local shape
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)];
+    cctkGH->cctk_lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
 
   // Allocated shape
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)];
+    cctkGH->cctk_ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
 
   // Local extent
   for (int d = 0; d < dim; ++d)
@@ -109,13 +116,29 @@ void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi) {
   // Boundaries
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      cctkGH->cctk_bbox[2 * d + f] = bx[orient(d, f)] == vbx[orient(d, f)];
+      cctkGH->cctk_bbox[2 * d + f] = bx[orient(d, f)] != gbx[orient(d, f)];
+
+  // Grid function pointers
+  const Dim3 imin = lbound(bx);
+  const Array4<CCTK_REAL> &vars = ghext->mfab.array(mfi);
+  for (int vi = 0; vi < 4; ++vi)
+    cctkGH->data[vi][0] = vars.ptr(imin.x, imin.y, imin.z, vi);
 }
 void leave_local_mode(cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_ash[d] = undefined;
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_lbnd[d] = undefined;
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_ubnd[d] = undefined;
+  for (int d = 0; d < dim; ++d)
+    for (int f = 0; f < 2; ++f)
+      cctkGH->cctk_bbox[2 * d + f] = undefined;
+  int nvars = CCTK_NumVars();
+  for (int vi = 0; vi < nvars; ++vi)
+    cctkGH->data[vi][0] = nullptr;
 }
 
 enum class mode_t { unknown, local, level, global, meta };
@@ -155,23 +178,30 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   switch (mode) {
   case mode_t::local: {
     // Call function once per tile
-    mfis.resize(omp_get_max_threads(), nullptr);
 #pragma omp parallel
     for (MFIter mfi(ghext->mfab, MFItInfo().SetDynamic(true).EnableTiling(
                                      {1024000, 16, 32}));
          mfi.isValid(); ++mfi) {
-      mfis.at(omp_get_thread_num()) = &mfi;
       enter_local_mode(cctkGH, mfi);
+      // CCTK_VINFO("gsh=[%d,%d,%d]", cctkGH->cctk_gsh[0], cctkGH->cctk_gsh[1],
+      //            cctkGH->cctk_gsh[2]);
+      // CCTK_VINFO("ash=[%d,%d,%d]", cctkGH->cctk_ash[0], cctkGH->cctk_ash[1],
+      //            cctkGH->cctk_ash[2]);
+      // CCTK_VINFO("lbnd=[%d,%d,%d]", cctkGH->cctk_lbnd[0], cctkGH->cctk_lbnd[1],
+      //            cctkGH->cctk_lbnd[2]);
+      // CCTK_VINFO("lsh=[%d,%d,%d]", cctkGH->cctk_lsh[0], cctkGH->cctk_lsh[1],
+      //            cctkGH->cctk_lsh[2]);
+      // CCTK_VINFO("nghostzones=[%d,%d,%d]", cctkGH->cctk_nghostzones[0],
+      //            cctkGH->cctk_nghostzones[1], cctkGH->cctk_nghostzones[2]);
       CCTK_CallFunction(function, attribute, data);
     }
-    mfis.clear();
     leave_local_mode(cctkGH);
     break;
   }
   case mode_t::level:
   case mode_t::global:
   case mode_t::meta: {
-    // Call function once
+    // Call function just once
     // Note: meta mode scheduling must continue to work even after we
     // shut down ourselves!
     CCTK_CallFunction(function, attribute, data);
