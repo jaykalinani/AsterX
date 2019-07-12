@@ -16,6 +16,12 @@ using namespace amrex;
 namespace AMReX {
 using namespace std;
 
+constexpr int dim = 3;
+
+static_assert(
+    AMREX_SPACEDIM == dim,
+    "AMReX's number of dimensions must be the same as Cactus's cctk_dim");
+
 static_assert(is_same<Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 

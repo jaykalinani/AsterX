@@ -1,11 +1,12 @@
 #include <AMReX.hxx>
-
-#include <AMReX.H>
+#include <schedule.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 #include <cctk_Schedule.h>
+
+#include <AMReX.H>
 
 #include <omp.h>
 #include <mpi.h>
@@ -15,6 +16,7 @@
 #include <utility>
 
 namespace AMReX {
+using namespace amrex;
 using namespace std;
 
 // Global variables
@@ -60,7 +62,7 @@ extern "C" int AMReX_Startup() {
 }
 
 // Set up GH extension
-void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH) {
+void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
   CCTK_VINFO("SetupGH");
 
   assert(fc);
@@ -77,7 +79,7 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH) {
 }
 
 // Initialize GH extension
-int InitGH(cGH *cctkGH) {
+int InitGH(cGH *restrict cctkGH) {
   CCTK_VINFO("InitGH");
 
   assert(cctkGH);
@@ -114,11 +116,15 @@ int InitGH(cGH *cctkGH) {
   // Allocate grid hierarchy
   ghext->mfab = MultiFab(ghext->ba, dm, nvars, ghext->nghostzones);
 
+  setup_cctkGH(cctkGH);
+  enter_global_mode(cctkGH);
+  enter_level_mode(cctkGH);
+
   return 0; // unused
 }
 
 // Traverse schedule
-int ScheduleTraverseGH(cGH *cctkGH, const char *where) {
+int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
   CCTK_VINFO("ScheduleTraverseGH [%d] %s", cctkGH->cctk_iteration, where);
 
   int ierr = CCTK_ScheduleTraverse(where, cctkGH, CallFunction);
@@ -127,77 +133,11 @@ int ScheduleTraverseGH(cGH *cctkGH, const char *where) {
   return 0; // unused
 }
 
-namespace {
-
-enum class mode_t { unknown, local, level, global, meta };
-
-mode_t decode_mode(const cFunctionData *attribute) {
-  bool local_mode = attribute->local;
-  bool level_mode = attribute->level;
-  bool global_mode = attribute->global;
-  bool meta_mode = attribute->meta;
-  assert(int(local_mode) + int(level_mode) + int(global_mode) +
-             int(meta_mode) <=
-         1);
-  if (attribute->local)
-    return mode_t::local;
-  if (attribute->level)
-    return mode_t::level;
-  if (attribute->global)
-    return mode_t::global;
-  if (attribute->meta)
-    return mode_t::meta;
-  return mode_t::local; // default
-}
-} // namespace
-
-// Call a scheduled function
-int CallFunction(void *function, cFunctionData *attribute, void *data) {
-  assert(function);
-  assert(attribute);
-  assert(data);
-
-  cGH *restrict const cctkGH = static_cast<cGH *>(data);
-
-  CCTK_VINFO("CallFunction [%d] %s: %s::%s", cctkGH->cctk_iteration,
-             attribute->where, attribute->thorn, attribute->routine);
-
-  const mode_t mode = decode_mode(attribute);
-  switch (mode) {
-  case mode_t::local: {
-    // Call function once per tile
-    mfis.resize(omp_get_max_threads(), nullptr);
-#pragma omp parallel
-    for (MFIter mfi(ghext->mfab, MFItInfo().SetDynamic(true).EnableTiling(
-                                     {1024000, 16, 32}));
-         mfi.isValid(); ++mfi) {
-      mfis.at(omp_get_thread_num()) = &mfi;
-      CCTK_CallFunction(function, attribute, data);
-    }
-    mfis.clear();
-    break;
-  }
-  case mode_t::level:
-  case mode_t::global:
-  case mode_t::meta: {
-    // Call function once
-    CCTK_CallFunction(function, attribute, data);
-    break;
-  }
-  default:
-    assert(0);
-  }
-
-  int didsync = 1;
-  return didsync;
-}
-
 // Shut down driver
 extern "C" int AMReX_Shutdown() {
   CCTK_VINFO("Shutdown");
 
   int iret = CCTK_UnregisterGHExtension("AMReX");
-  CCTK_VINFO("iret=%d", iret);
   assert(iret == 0);
 
   // Deallocate grid hierarchy
