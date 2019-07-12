@@ -5,6 +5,7 @@
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+#include <cctk_Schedule.h>
 
 #include <mpi.h>
 
@@ -15,18 +16,66 @@
 namespace AMReX {
 using namespace std;
 
+// Global variables
+
+int ghext_handle = -1;
+
 amrex::AMReX *pamrex = nullptr;
 unique_ptr<GHExt> ghext;
 
+// Registered functions
+
+void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH);
+int InitGH(cGH *cctkGH);
+int ScheduleTraverseGH(cGH *cctkGH, const char *where);
+
+int CallFunction(void *function, cFunctionData *attribute, void *data);
+
+// Start driver
 extern "C" int AMReX_Startup() {
+  CCTK_VINFO("Startup");
+
+  // Output a startup message
   string banner = "AMR driver provided by AMReX " + amrex::Version();
-  CCTK_RegisterBanner(banner.c_str());
+  int ierr = CCTK_RegisterBanner(banner.c_str());
+  assert(!ierr);
+
+  // Register a GH extension
+  ghext_handle = CCTK_RegisterGHExtension("AMReX");
+  assert(ghext_handle >= 0);
+  int iret = CCTK_RegisterGHExtensionSetupGH(ghext_handle, SetupGH);
+  assert(iret);
+  iret = CCTK_RegisterGHExtensionInitGH(ghext_handle, InitGH);
+  assert(iret);
+  iret = CCTK_RegisterGHExtensionScheduleTraverseGH(ghext_handle,
+                                                    ScheduleTraverseGH);
+  assert(iret);
+
+  return 0;
+}
+
+// Set up GH extension
+void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH) {
+  CCTK_VINFO("SetupGH");
+
+  assert(fc);
+  assert(convLevel == 0);
+  assert(cctkGH);
 
   // Initialize AMReX
   pamrex = amrex::Initialize(MPI_COMM_WORLD);
 
   // Create grid structure
   ghext = make_unique<GHExt>();
+
+  return ghext.get();
+}
+
+// Initialize GH extension
+int InitGH(cGH *cctkGH) {
+  CCTK_VINFO("InitGH");
+
+  assert(cctkGH);
 
   // Define box array
   IntVect dom_lo(AMREX_D_DECL(0, 0, 0));
@@ -57,10 +106,34 @@ extern "C" int AMReX_Startup() {
   // Allocate grid hierarchy
   ghext->mfab = MultiFab(ghext->ba, dm, nvars, ghext->nghostzones);
 
-  return 0;
+  return 0; // unused
 }
 
+// Traverse schedule
+int ScheduleTraverseGH(cGH *cctkGH, const char *where) {
+  CCTK_VINFO("ScheduleTraverseGH");
+
+  int ierr = CCTK_ScheduleTraverse(where, cctkGH, CallFunction);
+  assert(!ierr);
+
+  return 0; // unused
+}
+
+// Call a scheduled function
+int CallFunction(void *function, cFunctionData *attribute, void *data) {
+  CCTK_VINFO("CallFunction");
+
+  int didsync = CCTK_CallFunction(function, attribute, data);
+  return didsync;
+}
+
+// Shut down driver
 extern "C" int AMReX_Shutdown() {
+  CCTK_VINFO("Shutdown");
+
+  int iret = CCTK_UnregisterGHExtension("AMReX");
+  assert(iret == 0);
+
   // Deallocate grid hierarchy
   ghext = nullptr;
 
