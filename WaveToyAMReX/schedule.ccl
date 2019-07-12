@@ -1,0 +1,26 @@
+# Schedule definitions for thorn WaveToyAMReX
+
+SCHEDULE WaveToyAMReX_Check AT basegrid
+{
+  LANG: C
+} "Check looping constructs"
+
+SCHEDULE WaveToyAMReX_Initialize AT initial
+{
+  LANG: C
+} "Set up initial conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_Evolve AT evol
+{
+  LANG: C
+} "Evolve the wave equation"
+
+SCHEDULE WaveToyAMReX_Error AT analysis BEFORE WaveToyAMReX_Output
+{
+  LANG: C
+} "Calculate error for the wave equation"
+
+SCHEDULE WaveToyAMReX_Output AT analysis
+{
+  LANG: C
+} "Output wave equation state"

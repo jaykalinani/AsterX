@@ -1,0 +1,5 @@
+# Interface definition for thorn WaveToyAMReX
+
+IMPLEMENTS: WaveToyAMReX
+
+USES INCLUDE HEADER: AMReX.hxx

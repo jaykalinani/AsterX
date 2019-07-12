@@ -1,0 +1,11 @@
+# Schedule definitions for thorn AMReX
+
+SCHEDULE AMReX_Startup AT startup AS Driver_Startup
+{
+  LANG: C
+} "Start up the driver"
+
+SCHEDULE AMReX_Shutdown AT shutdown AS zzz_AMReX_Shutdown
+{
+  LANG: C
+} "Shut down the driver"

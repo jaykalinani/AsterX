@@ -1,0 +1,5 @@
+# Interface definition for thorn AMReX
+
+IMPLEMENTS: AMReX
+
+INCLUDES HEADER: AMReX.hxx IN AMReX.hxx

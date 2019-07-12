@@ -1,0 +1,10 @@
+# Configuration definitions for thorn AMReX
+
+PROVIDES AMReX
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS AMREX_DIR
+}
+
+REQUIRES AMReX MPI
