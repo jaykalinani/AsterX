@@ -1,0 +1,5 @@
+# Interface definition for thorn AMReXTest
+
+IMPLEMENTS: AMReXTest
+
+USES INCLUDE HEADER: AMReX.hxx

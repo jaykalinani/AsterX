@@ -1,10 +1,5 @@
 # Schedule definitions for thorn WaveToyAMReX
 
-SCHEDULE WaveToyAMReX_Check AT basegrid
-{
-  LANG: C
-} "Check looping constructs"
-
 SCHEDULE WaveToyAMReX_Initialize AT initial
 {
   LANG: C

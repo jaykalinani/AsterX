@@ -1,0 +1,7 @@
+# Main make.code.defn file for thorn AMReXTest
+
+# Source files in this directory
+SRCS = check_loops.cxx
+
+# Subdirectories containing source files
+SUBDIRS = 
