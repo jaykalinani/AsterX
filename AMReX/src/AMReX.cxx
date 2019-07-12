@@ -31,6 +31,8 @@ int ScheduleTraverseGH(cGH *cctkGH, const char *where);
 
 int CallFunction(void *function, cFunctionData *attribute, void *data);
 
+////////////////////////////////////////////////////////////////////////////////
+
 // Start driver
 extern "C" int AMReX_Startup() {
   CCTK_VINFO("Startup");
@@ -111,7 +113,7 @@ int InitGH(cGH *cctkGH) {
 
 // Traverse schedule
 int ScheduleTraverseGH(cGH *cctkGH, const char *where) {
-  CCTK_VINFO("ScheduleTraverseGH");
+  CCTK_VINFO("ScheduleTraverseGH [%d] %s", cctkGH->cctk_iteration, where);
 
   int ierr = CCTK_ScheduleTraverse(where, cctkGH, CallFunction);
   assert(!ierr);
@@ -121,9 +123,57 @@ int ScheduleTraverseGH(cGH *cctkGH, const char *where) {
 
 // Call a scheduled function
 int CallFunction(void *function, cFunctionData *attribute, void *data) {
-  CCTK_VINFO("CallFunction");
+  assert(function);
+  assert(attribute);
+  assert(data);
 
-  int didsync = CCTK_CallFunction(function, attribute, data);
+  cGH *restrict const cctkGH = static_cast<cGH *>(data);
+
+  CCTK_VINFO("CallFunction [%d] %s: %s::%s", cctkGH->cctk_iteration,
+             attribute->where, attribute->thorn, attribute->routine);
+
+  // Decode mode
+  enum class mode_t { unknown, local, level, global, meta };
+  const auto decode_mode = [&]() {
+    bool local_mode = attribute->local;
+    bool level_mode = attribute->level;
+    bool global_mode = attribute->global;
+    bool meta_mode = attribute->meta;
+    assert(int(local_mode) + int(level_mode) + int(global_mode) +
+               int(meta_mode) <=
+           1);
+    if (attribute->local)
+      return mode_t::local;
+    if (attribute->level)
+      return mode_t::level;
+    if (attribute->global)
+      return mode_t::global;
+    if (attribute->meta)
+      return mode_t::meta;
+    return mode_t::local; // default
+  };
+  const mode_t mode = decode_mode();
+
+  switch (mode) {
+  case mode_t::local: {
+    // Call function once per tile
+    CCTK_CallFunction(function, attribute, data);
+    break;
+  }
+  case mode_t::level:
+  case mode_t::global:
+  case mode_t::meta: {
+    // Call function once
+#warning "not yet implemented"
+    assert(0);
+    CCTK_CallFunction(function, attribute, data);
+    break;
+  }
+  default:
+    assert(0);
+  }
+
+  int didsync = 1;
   return didsync;
 }
 
