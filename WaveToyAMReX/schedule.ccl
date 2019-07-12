@@ -1,14 +1,32 @@
 # Schedule definitions for thorn WaveToyAMReX
 
+SCHEDULE WaveToyAMReX_Setup AT basegrid
+{
+  LANG: C
+  OPTIONS: level
+} "Set up time"
+
 SCHEDULE WaveToyAMReX_Initialize AT initial
 {
   LANG: C
 } "Set up initial conditions for the wave equation"
 
+SCHEDULE WaveToyAMReX_Cycle AT prestep
+{
+  LANG: C
+  OPTIONS: level
+} "Advance time"
+
 SCHEDULE WaveToyAMReX_Evolve AT evol
 {
   LANG: C
 } "Evolve the wave equation"
+
+SCHEDULE WaveToyAMReX_Sync AT poststep
+{
+  LANG: C
+  OPTIONS: level
+} "Synchronize wave equation state"
 
 SCHEDULE WaveToyAMReX_Error AT analysis BEFORE WaveToyAMReX_Output
 {
@@ -18,4 +36,5 @@ SCHEDULE WaveToyAMReX_Error AT analysis BEFORE WaveToyAMReX_Output
 SCHEDULE WaveToyAMReX_Output AT analysis
 {
   LANG: C
+  OPTIONS: level
 } "Output wave equation state"

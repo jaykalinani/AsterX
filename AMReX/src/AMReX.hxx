@@ -11,6 +11,7 @@ using namespace amrex;
 #include <cctk.h>
 
 #include <memory>
+#include <vector>
 
 namespace AMReX {
 using namespace std;
@@ -19,17 +20,20 @@ static_assert(is_same<Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
 struct GHExt {
+  // Parameters that should not be here
   const int ncells = 100;    // grid size
   const int nghostzones = 1; // number of ghost zones
 
-  CCTK_REAL time, delta_time;
-
+  // AMReX grid structure
   BoxArray ba;
   Geometry geom;
   MultiFab mfab;
 };
 
 extern unique_ptr<GHExt> ghext;
+
+// This needs to go away again!
+extern vector<MFIter *> mfis;
 
 } // namespace AMReX
 

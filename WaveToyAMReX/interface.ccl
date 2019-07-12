@@ -3,3 +3,17 @@
 IMPLEMENTS: WaveToyAMReX
 
 USES INCLUDE HEADER: AMReX.hxx
+
+
+
+# CCTK_REAL phi TYPE=gf TIMELEVELS=3
+# {
+#   phi
+# } "Scalar potential for wave equation"
+
+# CCTK_REAL phi TYPE=gf
+# {
+#   phi
+#   phi_p
+#   phi_p_p
+# } "Scalar potential for wave equation"

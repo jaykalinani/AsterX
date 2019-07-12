@@ -8,4 +8,5 @@ SCHEDULE AMReX_Startup AT startup AS Driver_Startup
 SCHEDULE AMReX_Shutdown AT shutdown AS zzz_AMReX_Shutdown
 {
   LANG: C
+  OPTIONS: meta
 } "Shut down the driver"

@@ -78,7 +78,7 @@ extern "C" void AMReXTest_CheckLoops(CCTK_ARGUMENTS) {
           const int idx = i * di + j * dj + k * dk;
           // phi[idx] += 1.0;
           CCTK_REAL expected = 0.0;
-          bool success = phi[idx].compare_exchange_strong(expected, 1.0);
+          /*bool success = */ phi[idx].compare_exchange_strong(expected, 1.0);
           // assert(success);
         }
   }

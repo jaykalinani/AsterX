@@ -7,6 +7,7 @@
 #include <cctk_Parameters.h>
 #include <cctk_Schedule.h>
 
+#include <omp.h>
 #include <mpi.h>
 
 #include <string>
@@ -20,8 +21,10 @@ using namespace std;
 
 int ghext_handle = -1;
 
-amrex::AMReX *pamrex = nullptr;
+amrex::AMReX *restrict pamrex = nullptr;
 unique_ptr<GHExt> ghext;
+
+vector<MFIter *> mfis;
 
 // Registered functions
 
@@ -100,6 +103,9 @@ int InitGH(cGH *cctkGH) {
   ghext->geom.define(domain, &real_box, CoordSys::cartesian,
                      is_periodic.data());
 
+  CCTK_VINFO("Groups: %d", CCTK_NumGroups());
+  CCTK_VINFO("Variables: %d", CCTK_NumVars());
+
   const int nvars = 4; // number of grid functions
 
   // Distributed boxes
@@ -121,6 +127,30 @@ int ScheduleTraverseGH(cGH *cctkGH, const char *where) {
   return 0; // unused
 }
 
+namespace {
+
+enum class mode_t { unknown, local, level, global, meta };
+
+mode_t decode_mode(const cFunctionData *attribute) {
+  bool local_mode = attribute->local;
+  bool level_mode = attribute->level;
+  bool global_mode = attribute->global;
+  bool meta_mode = attribute->meta;
+  assert(int(local_mode) + int(level_mode) + int(global_mode) +
+             int(meta_mode) <=
+         1);
+  if (attribute->local)
+    return mode_t::local;
+  if (attribute->level)
+    return mode_t::level;
+  if (attribute->global)
+    return mode_t::global;
+  if (attribute->meta)
+    return mode_t::meta;
+  return mode_t::local; // default
+}
+} // namespace
+
 // Call a scheduled function
 int CallFunction(void *function, cFunctionData *attribute, void *data) {
   assert(function);
@@ -132,40 +162,25 @@ int CallFunction(void *function, cFunctionData *attribute, void *data) {
   CCTK_VINFO("CallFunction [%d] %s: %s::%s", cctkGH->cctk_iteration,
              attribute->where, attribute->thorn, attribute->routine);
 
-  // Decode mode
-  enum class mode_t { unknown, local, level, global, meta };
-  const auto decode_mode = [&]() {
-    bool local_mode = attribute->local;
-    bool level_mode = attribute->level;
-    bool global_mode = attribute->global;
-    bool meta_mode = attribute->meta;
-    assert(int(local_mode) + int(level_mode) + int(global_mode) +
-               int(meta_mode) <=
-           1);
-    if (attribute->local)
-      return mode_t::local;
-    if (attribute->level)
-      return mode_t::level;
-    if (attribute->global)
-      return mode_t::global;
-    if (attribute->meta)
-      return mode_t::meta;
-    return mode_t::local; // default
-  };
-  const mode_t mode = decode_mode();
-
+  const mode_t mode = decode_mode(attribute);
   switch (mode) {
   case mode_t::local: {
     // Call function once per tile
-    CCTK_CallFunction(function, attribute, data);
+    mfis.resize(omp_get_max_threads(), nullptr);
+#pragma omp parallel
+    for (MFIter mfi(ghext->mfab, MFItInfo().SetDynamic(true).EnableTiling(
+                                     {1024000, 16, 32}));
+         mfi.isValid(); ++mfi) {
+      mfis.at(omp_get_thread_num()) = &mfi;
+      CCTK_CallFunction(function, attribute, data);
+    }
+    mfis.clear();
     break;
   }
   case mode_t::level:
   case mode_t::global:
   case mode_t::meta: {
     // Call function once
-#warning "not yet implemented"
-    assert(0);
     CCTK_CallFunction(function, attribute, data);
     break;
   }
@@ -182,6 +197,7 @@ extern "C" int AMReX_Shutdown() {
   CCTK_VINFO("Shutdown");
 
   int iret = CCTK_UnregisterGHExtension("AMReX");
+  CCTK_VINFO("iret=%d", iret);
   assert(iret == 0);
 
   // Deallocate grid hierarchy
