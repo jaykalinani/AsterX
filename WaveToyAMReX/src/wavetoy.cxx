@@ -40,32 +40,6 @@ template <typename T> T standing(T t, T x, T y, T z) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void WaveToyAMReX_Setup(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  const CCTK_REAL *restrict const x0 = ghext->geom.ProbLo();
-  const CCTK_REAL *restrict const x1 = ghext->geom.ProbHi();
-  for (int d = 0; d < dim; ++d) {
-    CCTK_REAL dx = (x1[d] - x0[d]) / ghext->ncells;
-    cctkGH->cctk_origin_space[d] = x0[d] + 0.5 * dx;
-    cctkGH->cctk_delta_space[d] = dx;
-  }
-  CCTK_VINFO("x0=[%g,%g,%g]", cctkGH->cctk_origin_space[0],
-             cctkGH->cctk_origin_space[1], cctkGH->cctk_origin_space[2]);
-  CCTK_VINFO("dx=[%g,%g,%g]", cctkGH->cctk_delta_space[0],
-             cctkGH->cctk_delta_space[1], cctkGH->cctk_delta_space[2]);
-
-  CCTK_REAL mindx = 1.0 / 0.0;
-  for (int d = 0; d < dim; ++d)
-    mindx = fmin(mindx, cctkGH->cctk_delta_space[d]);
-
-  cctkGH->cctk_time = 0.0;
-  cctkGH->cctk_delta_time = 0.5 * mindx;
-  CCTK_VINFO("t=%g", cctkGH->cctk_time);
-  CCTK_VINFO("dt=%g", cctkGH->cctk_delta_time);
-}
-
 extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;

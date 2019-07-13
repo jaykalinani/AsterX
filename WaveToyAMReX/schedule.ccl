@@ -1,11 +1,5 @@
 # Schedule definitions for thorn WaveToyAMReX
 
-SCHEDULE WaveToyAMReX_Setup AT basegrid
-{
-  LANG: C
-  OPTIONS: level
-} "Set up time"
-
 SCHEDULE WaveToyAMReX_Initialize AT initial
 {
   LANG: C

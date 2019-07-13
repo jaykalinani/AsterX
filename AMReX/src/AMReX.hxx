@@ -26,10 +26,6 @@ static_assert(is_same<Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
 struct GHExt {
-  // Parameters that should not be here
-  const int ncells = 100;    // grid size
-  const int nghostzones = 1; // number of ghost zones
-
   // AMReX grid structure
   BoxArray ba;
   Geometry geom;

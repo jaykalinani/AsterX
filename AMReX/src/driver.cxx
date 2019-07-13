@@ -82,14 +82,14 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
 
 // Initialize GH extension
 int InitGH(cGH *restrict cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
   CCTK_VINFO("InitGH");
 
   assert(cctkGH);
 
   // Define box array
   IntVect dom_lo(AMREX_D_DECL(0, 0, 0));
-  IntVect dom_hi(
-      AMREX_D_DECL(ghext->ncells - 1, ghext->ncells - 1, ghext->ncells - 1));
+  IntVect dom_hi(AMREX_D_DECL(ncells_x - 1, ncells_y - 1, ncells_z - 1));
   Box domain(dom_lo, dom_hi);
   ghext->ba.define(domain);
 
@@ -99,8 +99,8 @@ int InitGH(cGH *restrict cctkGH) {
   ghext->ba.maxSize(max_grid_size);
 
   // Define physical box
-  RealBox real_box({AMREX_D_DECL(-1.0, -1.0, -1.0)},
-                   {AMREX_D_DECL(1.0, 1.0, 1.0)});
+  RealBox real_box({AMREX_D_DECL(xmin, ymin, zmin)},
+                   {AMREX_D_DECL(xmax, ymax, zmax)});
 
   // Define geometry
   Vector<int> is_periodic(AMREX_SPACEDIM, 1); // periodic in all directions
@@ -127,9 +127,8 @@ int InitGH(cGH *restrict cctkGH) {
     groupdata.numtimelevels = group.numtimelevels;
 
     // Allocate grid hierarchy
-    groupdata.mfab =
-        MultiFab(ghext->ba, dm, groupdata.numvars * groupdata.numtimelevels,
-                 ghext->nghostzones);
+    groupdata.mfab = MultiFab(
+        ghext->ba, dm, groupdata.numvars * groupdata.numtimelevels, ghost_size);
   }
 
   return 0; // unused

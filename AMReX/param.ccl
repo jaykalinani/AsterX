@@ -1,5 +1,70 @@
 # Parameter definitions for thorn AMReX
 
+PRIVATE:
+
+CCTK_REAL xmin "Domain size"
+{
+  *:* :: ""
+} -1.0
+
+CCTK_REAL xmax "Domain size"
+{
+  *:* :: ""
+} 1.0
+
+CCTK_REAL ymin "Domain size"
+{
+  *:* :: ""
+} -1.0
+
+CCTK_REAL ymax "Domain size"
+{
+  *:* :: ""
+} 1.0
+
+CCTK_REAL zmin "Domain size"
+{
+  *:* :: ""
+} -1.0
+
+CCTK_REAL zmax "Domain size"
+{
+  *:* :: ""
+} 1.0
+
+
+
+CCTK_INT ncells_x "Number of grid cells"
+{
+  1:*
+} 100
+
+CCTK_INT ncells_y "Number of grid cells"
+{
+  1:*
+} 100
+
+CCTK_INT ncells_z "Number of grid cells"
+{
+  1:*
+} 100
+
+
+
+CCTK_INT ghost_size "Number of ghost zones"
+{
+  0:* :: ""
+} 1
+
+
+
+CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
+{
+  *:* :: ""
+} 0.5 
+
+
+
 SHARES: Cactus
 
 USES BOOLEAN terminate_next

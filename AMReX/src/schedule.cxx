@@ -68,6 +68,8 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 
 // Initialize cctkGH entries
 void setup_cctkGH(cGH *restrict cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
   // Grid function alignment
   // TODO: Check whether AMReX guarantees a particular alignment
   cctkGH->cctk_alignment = 1;
@@ -80,12 +82,30 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   cctkGH->cctk_convlevel = 0; // no convergence tests
 
   // Initialize grid spacing
+  int ncells[dim] = {ncells_x, ncells_y, ncells_z};
+  CCTK_REAL x0[dim] = {xmin, ymin, zmin};
+  CCTK_REAL x1[dim] = {xmax, ymax, zmax};
+  CCTK_REAL dx[dim];
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_origin_space[d] = 0.0;
+    dx[d] = (x1[d] - x0[d]) / ncells[d];
+  CCTK_REAL mindx = 1.0 / 0.0;
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_delta_space[d] = 1.0;
+    mindx = fmin(mindx, dx[d]);
+
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_origin_space[d] = x0[d];
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_delta_space[d] = dx[d];
+  CCTK_VINFO("x0=[%g,%g,%g]", cctkGH->cctk_origin_space[0],
+             cctkGH->cctk_origin_space[1], cctkGH->cctk_origin_space[2]);
+  CCTK_VINFO("dx=[%g,%g,%g]", cctkGH->cctk_delta_space[0],
+             cctkGH->cctk_delta_space[1], cctkGH->cctk_delta_space[2]);
+
+  // Initialize time stepping
   cctkGH->cctk_time = 0.0;
-  cctkGH->cctk_delta_time = 0.0;
+  cctkGH->cctk_delta_time = dtfac * mindx;
+  CCTK_VINFO("t=%g", cctkGH->cctk_time);
+  CCTK_VINFO("dt=%g", cctkGH->cctk_delta_time);
 }
 
 // Update fields that carry state and change over time
@@ -101,9 +121,12 @@ void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 
 // Set cctkGH entries for global mode
 void enter_global_mode(cGH *restrict cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
   // The number of ghostzones in each direction
+  // TODO: Get this from mfab
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_nghostzones[d] = ghext->nghostzones;
+    cctkGH->cctk_nghostzones[d] = ghost_size;
 }
 void leave_global_mode(cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
@@ -112,9 +135,13 @@ void leave_global_mode(cGH *restrict cctkGH) {
 
 // Set cctkGH entries for local mode
 void enter_level_mode(cGH *restrict cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
   // Global shape
+  // TODO: Get this from mfab
+  int ncells[dim] = {ncells_x, ncells_y, ncells_z};
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_gsh[d] = ghext->ncells;
+    cctkGH->cctk_gsh[d] = ncells[d];
 
   // The refinement factor over the top level (coarsest) grid
   for (int d = 0; d < dim; ++d)
@@ -319,14 +346,17 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
 }
 
 void CycleTimelevels(cGH *restrict const cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
 
+  // TODO: Get ghost_size from mfab
   for (auto &restrict groupdata : ghext->groupdata) {
     for (int tl = groupdata.numtimelevels - 1; tl > 0; --tl)
       MultiFab::Copy(groupdata.mfab, groupdata.mfab,
                      (tl - 1) * groupdata.numvars, tl * groupdata.numvars,
-                     groupdata.numvars, ghext->nghostzones);
+                     groupdata.numvars, ghost_size);
   }
 }
 
