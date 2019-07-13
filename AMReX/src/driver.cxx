@@ -56,6 +56,10 @@ extern "C" int AMReX_Startup() {
                                                     ScheduleTraverseGH);
   assert(iret);
 
+  CCTK_OverloadInitialise(Initialise);
+  CCTK_OverloadEvolve(Evolve);
+  CCTK_OverloadShutdown(Shutdown);
+
   return 0;
 }
 
@@ -103,16 +107,30 @@ int InitGH(cGH *restrict cctkGH) {
   ghext->geom.define(domain, &real_box, CoordSys::cartesian,
                      is_periodic.data());
 
-  CCTK_VINFO("Groups: %d", CCTK_NumGroups());
-  CCTK_VINFO("Variables: %d", CCTK_NumVars());
-
-  const int nvars = 4; // number of grid functions
-
   // Distributed boxes
   DistributionMapping dm(ghext->ba);
 
-  // Allocate grid hierarchy
-  ghext->mfab = MultiFab(ghext->ba, dm, nvars, ghext->nghostzones);
+  const int numgroups = CCTK_NumGroups();
+  ghext->groupdata.resize(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+    assert(group.grouptype == CCTK_GF);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
+    assert(group.dim == dim);
+
+    GHExt::GroupData &groupdata = ghext->groupdata.at(gi);
+    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    groupdata.numvars = group.numvars;
+    groupdata.numtimelevels = group.numtimelevels;
+
+    // Allocate grid hierarchy
+    groupdata.mfab =
+        MultiFab(ghext->ba, dm, groupdata.numvars * groupdata.numtimelevels,
+                 ghext->nghostzones);
+  }
 
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);

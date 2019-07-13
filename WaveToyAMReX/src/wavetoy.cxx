@@ -10,7 +10,12 @@ using namespace amrex;
 
 #include <omp.h>
 
+#include <cctype>
 #include <cmath>
+#include <memory>
+#include <regex>
+#include <sstream>
+#include <string>
 using namespace std;
 
 namespace WaveToyAMReX {
@@ -83,19 +88,6 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
       }
 }
 
-extern "C" void WaveToyAMReX_Cycle(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  // Cycle time levels
-  MultiFab::Copy(ghext->mfab, ghext->mfab, 1, 2, 1, ghext->nghostzones);
-  MultiFab::Copy(ghext->mfab, ghext->mfab, 0, 1, 1, ghext->nghostzones);
-
-  // Step time
-  // cctkGH->cctk_time += cctkGH->cctk_delta_time;
-  CCTK_VINFO("t=%g", cctkGH->cctk_time);
-}
-
 extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -128,7 +120,8 @@ extern "C" void WaveToyAMReX_Sync(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // Synchronize
-  ghext->mfab.FillBoundary(ghext->geom.periodicity());
+  for (auto &restrict groupdata : ghext->groupdata)
+    groupdata.mfab.FillBoundary(ghext->geom.periodicity());
 }
 
 extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
@@ -156,10 +149,33 @@ extern "C" void WaveToyAMReX_Output(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // Output phi
-  string filename = amrex::Concatenate("wavetoy/phi", cctk_iteration, 6);
-  WriteSingleLevelPlotfile(filename, ghext->mfab,
-                           {"phi", "phi_p", "phi_p_p", "err"}, ghext->geom,
-                           cctk_time, cctk_iteration);
+  const int numgroups = CCTK_NumGroups();
+  for (int gi = 0; gi < numgroups; ++gi) {
+    auto &restrict groupdata = ghext->groupdata.at(gi);
+
+    string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
+    groupname = regex_replace(groupname, regex("::"), "-");
+    for (auto &c : groupname)
+      c = tolower(c);
+    ostringstream buf;
+    buf << "wavetoy/" << groupname << "." << setw(6) << setfill('0')
+        << cctk_iteration;
+    string filename = buf.str();
+
+    Vector<string> varnames(groupdata.numvars * groupdata.numtimelevels);
+    for (int tl = 0; tl < groupdata.numtimelevels; ++tl) {
+      for (int n = 0; n < groupdata.numvars; ++n) {
+        ostringstream buf;
+        buf << CCTK_VarName(groupdata.firstvarindex + n);
+        for (int i = 0; i < tl; ++i)
+          buf << "_p";
+        varnames.at(tl * groupdata.numvars + n) = buf.str();
+      }
+    }
+
+    WriteSingleLevelPlotfile(filename, groupdata.mfab, varnames, ghext->geom,
+                             cctk_time, cctk_iteration);
+  }
 }
 
 } // namespace WaveToyAMReX

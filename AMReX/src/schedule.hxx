@@ -14,6 +14,10 @@ void leave_level_mode(cGH *restrict cctkGH);
 void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi);
 void leave_local_mode(cGH *restrict cctkGH);
 
+int Initialise(tFleshConfig *config);
+int Evolve(tFleshConfig *config);
+int Shutdown(tFleshConfig *config);
+
 int CallFunction(void *function, cFunctionData *attribute, void *data);
 } // namespace AMReX
 

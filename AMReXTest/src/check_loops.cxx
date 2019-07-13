@@ -33,13 +33,13 @@ extern "C" void AMReXTest_CheckLoops(CCTK_ARGUMENTS) {
       const int dk = dj * (amax.y - amin.y + 1);
 
       const Array4<CCTK_REAL> &vars = ghext->mfab.array(mfi);
-      CCTK_REAL *restrict const phi = vars.ptr(0, 0, 0, 0);
+      CCTK_REAL *restrict const check = vars.ptr(0, 0, 0, 0);
 
       for (int k = imin.z; k <= imax.z; ++k)
         for (int j = imin.y; j <= imax.y; ++j)
           for (int i = imin.x; i <= imax.x; ++i) {
             const int idx = i * di + j * dj + k * dk;
-            phi[idx] = 0;
+            check[idx] = 0;
             ++count;
           }
     }
@@ -68,7 +68,7 @@ extern "C" void AMReXTest_CheckLoops(CCTK_ARGUMENTS) {
     const int dk = dj * (amax.y - amin.y + 1);
 
     const Array4<CCTK_REAL> &vars = ghext->mfab.array(mfi);
-    atomic<CCTK_REAL> *restrict const phi =
+    atomic<CCTK_REAL> *restrict const check =
         (atomic<CCTK_REAL> *)vars.ptr(0, 0, 0, 0);
 
     for (int k = imin.z; k <= imax.z; ++k)
@@ -76,9 +76,9 @@ extern "C" void AMReXTest_CheckLoops(CCTK_ARGUMENTS) {
 #pragma omp simd
         for (int i = imin.x; i <= imax.x; ++i) {
           const int idx = i * di + j * dj + k * dk;
-          // phi[idx] += 1.0;
+          // check[idx] += 1.0;
           CCTK_REAL expected = 0.0;
-          /*bool success = */ phi[idx].compare_exchange_strong(expected, 1.0);
+          /*bool success = */ check[idx].compare_exchange_strong(expected, 1.0);
           // assert(success);
         }
   }
@@ -98,13 +98,13 @@ extern "C" void AMReXTest_CheckLoops(CCTK_ARGUMENTS) {
     const int dk = dj * (amax.y - amin.y + 1);
 
     const Array4<CCTK_REAL> &vars = ghext->mfab.array(mfi);
-    CCTK_REAL *restrict const phi = vars.ptr(0, 0, 0, 0);
+    CCTK_REAL *restrict const check = vars.ptr(0, 0, 0, 0);
 
     for (int k = imin.z; k <= imax.z; ++k)
       for (int j = imin.y; j <= imax.y; ++j)
         for (int i = imin.x; i <= imax.x; ++i) {
           const int idx = i * di + j * dj + k * dk;
-          assert(phi[idx] == 1);
+          assert(check[idx] == 1);
         }
   }
 }

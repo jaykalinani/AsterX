@@ -11,12 +11,6 @@ SCHEDULE WaveToyAMReX_Initialize AT initial
   LANG: C
 } "Set up initial conditions for the wave equation"
 
-SCHEDULE WaveToyAMReX_Cycle AT prestep
-{
-  LANG: C
-  OPTIONS: level
-} "Advance time"
-
 SCHEDULE WaveToyAMReX_Evolve AT evol
 {
   LANG: C

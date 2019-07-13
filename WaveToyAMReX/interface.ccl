@@ -6,15 +6,12 @@ USES INCLUDE HEADER: AMReX.hxx
 
 
 
-# CCTK_REAL phi TYPE=gf TIMELEVELS=3
-# {
-#   phi
-# } "Scalar potential for wave equation"
-
-CCTK_REAL phi TYPE=gf
+CCTK_REAL phi TYPE=gf TIMELEVELS=3
 {
   phi
-  phi_p
-  phi_p_p
-  err
 } "Scalar potential for wave equation"
+
+CCTK_REAL err TYPE=gf
+{
+  err
+} "Error in scalar potential for wave equation"

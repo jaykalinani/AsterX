@@ -5,12 +5,17 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 #include <cctk_Schedule.h>
+#include <cctki_GHExtensions.h>
+#include <cctki_ScheduleBindings.h>
+#include <cctki_WarnLevel.h>
 
 #include <AMReX.H>
 #include <AMReX_Orientation.H>
 
 #include <omp.h>
 #include <mpi.h>
+
+#include <sys/time.h>
 
 #include <string>
 #include <type_traits>
@@ -120,9 +125,13 @@ void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi) {
 
   // Grid function pointers
   const Dim3 imin = lbound(bx);
-  const Array4<CCTK_REAL> &vars = ghext->mfab.array(mfi);
-  for (int vi = 0; vi < 4; ++vi)
-    cctkGH->data[vi][0] = vars.ptr(imin.x, imin.y, imin.z, vi);
+  for (auto &restrict groupdata : ghext->groupdata) {
+    const Array4<CCTK_REAL> &vars = groupdata.mfab.array(mfi);
+    for (int tl = 0; tl < groupdata.numtimelevels; ++tl)
+      for (int n = 0; n < groupdata.numvars; ++n)
+        cctkGH->data[groupdata.firstvarindex + n][tl] =
+            vars.ptr(imin.x, imin.y, imin.z, tl * groupdata.numvars + n);
+  }
 }
 void leave_local_mode(cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
@@ -136,9 +145,11 @@ void leave_local_mode(cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = undefined;
-  int nvars = CCTK_NumVars();
-  for (int vi = 0; vi < nvars; ++vi)
-    cctkGH->data[vi][0] = nullptr;
+  for (auto &restrict groupdata : ghext->groupdata) {
+    for (int tl = 0; tl < groupdata.numtimelevels; ++tl)
+      for (int n = 0; n < groupdata.numvars; ++n)
+        cctkGH->data[groupdata.firstvarindex + n][tl] = nullptr;
+  }
 }
 
 enum class mode_t { unknown, local, level, global, meta };
@@ -162,6 +173,143 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
   return mode_t::local; // default
 }
 
+// Schedule initialisation
+int Initialise(tFleshConfig *config) {
+  cGH *restrict const cctkGH = CCTK_SetupGH(config, 0);
+  CCTKi_AddGH(config, 0, cctkGH);
+
+  // Initialise iteration and time
+  cctkGH->cctk_iteration = 0;
+  cctkGH->cctk_time = *static_cast<const CCTK_REAL *>(
+      CCTK_ParameterGet("cctk_initial_time", "Cactus", nullptr));
+
+  // Initialise schedule
+  CCTKi_ScheduleGHInit(cctkGH);
+
+  // Initialise all grid extensions
+  CCTKi_InitGHExtensions(cctkGH);
+
+  CCTK_Traverse(cctkGH, "CCTK_WRAGH");
+  CCTK_Traverse(cctkGH, "CCTK_PARAMCHECK");
+  CCTKi_FinaliseParamWarn();
+
+  CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+
+  const char *recovery_mode = *static_cast<const char *const *>(
+      CCTK_ParameterGet("recovery_mode", "Cactus", nullptr));
+  if (!config->recovered || !CCTK_Equals(recovery_mode, "strict")) {
+    // Set up initial conditions
+    CCTK_Traverse(cctkGH, "CCTK_INITIAL");
+    CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
+    CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
+    CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
+  }
+
+  if (config->recovered) {
+    // Recover
+    CCTK_Traverse(cctkGH, "CCTK_RECOVER_VARIABLES");
+    CCTK_Traverse(cctkGH, "CCTK_POST_RECOVER_VARIABLES");
+  }
+
+  // Checkpoint, analysis, output
+  CCTK_Traverse(cctkGH, "CCTK_CPINITIAL");
+  CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
+  CCTK_OutputGH(cctkGH);
+
+  return 0;
+}
+
+bool EvolutionIsDone(cGH *restrict const cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
+  static timeval starttime = {0, 0};
+  // On the first time through, get the start time
+  if (starttime.tv_sec == 0 && starttime.tv_usec == 0)
+    gettimeofday(&starttime, nullptr);
+
+  if (terminate_next || CCTK_TerminationReached(cctkGH))
+    return true;
+
+  if (CCTK_Equals(terminate, "never"))
+    return false;
+
+  bool max_iteration_reached = cctkGH->cctk_iteration >= cctk_itlast;
+
+  bool max_simulation_time_reached = cctk_initial_time < cctk_final_time
+                                         ? cctkGH->cctk_time >= cctk_final_time
+                                         : cctkGH->cctk_time <= cctk_final_time;
+
+  // Get the elapsed runtime in minutes and compare with max_runtime
+  timeval currenttime;
+  gettimeofday(&currenttime, NULL);
+  bool max_runtime_reached =
+      CCTK_REAL(currenttime.tv_sec - starttime.tv_sec) / 60 >= max_runtime;
+
+  if (CCTK_Equals(terminate, "iteration"))
+    return max_iteration_reached;
+  if (CCTK_Equals(terminate, "time"))
+    return max_simulation_time_reached;
+  if (CCTK_Equals(terminate, "runtime"))
+    return max_runtime_reached;
+  if (CCTK_Equals(terminate, "any"))
+    return max_iteration_reached || max_simulation_time_reached ||
+           max_runtime_reached;
+  if (CCTK_Equals(terminate, "all"))
+    return max_iteration_reached && max_simulation_time_reached &&
+           max_runtime_reached;
+  if (CCTK_Equals(terminate, "either"))
+    return max_iteration_reached || max_simulation_time_reached;
+  if (CCTK_Equals(terminate, "both"))
+    return max_iteration_reached && max_simulation_time_reached;
+
+  assert(0);
+}
+
+void CycleTimelevels(cGH *restrict const cctkGH) {
+  for (auto &restrict groupdata : ghext->groupdata) {
+    for (int tl = groupdata.numtimelevels - 1; tl > 0; --tl)
+      MultiFab::Copy(groupdata.mfab, groupdata.mfab,
+                     (tl - 1) * groupdata.numvars, tl * groupdata.numvars,
+                     groupdata.numvars, ghext->nghostzones);
+  }
+}
+
+// Schedule evolution
+int Evolve(tFleshConfig *config) {
+  assert(config);
+  cGH *restrict const cctkGH = config->GH[0];
+  assert(cctkGH);
+
+  while (!EvolutionIsDone(cctkGH)) {
+
+    cctkGH->cctk_iteration += 1;
+    cctkGH->cctk_time += cctkGH->cctk_delta_time;
+    CycleTimelevels(cctkGH);
+
+    CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
+    CCTK_Traverse(cctkGH, "CCTK_EVOL");
+    CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
+
+    CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
+    CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
+    CCTK_OutputGH(cctkGH);
+  }
+
+  return 0;
+}
+
+// Schedule shutdown
+int Shutdown(tFleshConfig *config) {
+  assert(config);
+  cGH *restrict const cctkGH = config->GH[0];
+  assert(cctkGH);
+
+  CCTK_Traverse(cctkGH, "CCTK_TERMINATE");
+  CCTK_Traverse(cctkGH, "CCTK_SHUTDOWN");
+
+  return 0;
+}
+
 // Call a scheduled function
 int CallFunction(void *function, cFunctionData *restrict attribute,
                  void *data) {
@@ -178,21 +326,12 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   switch (mode) {
   case mode_t::local: {
     // Call function once per tile
+    assert(!ghext->groupdata.empty());
+    MultiFab &mfab = ghext->groupdata.at(0).mfab;
+    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
 #pragma omp parallel
-    for (MFIter mfi(ghext->mfab, MFItInfo().SetDynamic(true).EnableTiling(
-                                     {1024000, 16, 32}));
-         mfi.isValid(); ++mfi) {
+    for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
       enter_local_mode(cctkGH, mfi);
-      // CCTK_VINFO("gsh=[%d,%d,%d]", cctkGH->cctk_gsh[0], cctkGH->cctk_gsh[1],
-      //            cctkGH->cctk_gsh[2]);
-      // CCTK_VINFO("ash=[%d,%d,%d]", cctkGH->cctk_ash[0], cctkGH->cctk_ash[1],
-      //            cctkGH->cctk_ash[2]);
-      // CCTK_VINFO("lbnd=[%d,%d,%d]", cctkGH->cctk_lbnd[0], cctkGH->cctk_lbnd[1],
-      //            cctkGH->cctk_lbnd[2]);
-      // CCTK_VINFO("lsh=[%d,%d,%d]", cctkGH->cctk_lsh[0], cctkGH->cctk_lsh[1],
-      //            cctkGH->cctk_lsh[2]);
-      // CCTK_VINFO("nghostzones=[%d,%d,%d]", cctkGH->cctk_nghostzones[0],
-      //            cctkGH->cctk_nghostzones[1], cctkGH->cctk_nghostzones[2]);
       CCTK_CallFunction(function, attribute, data);
     }
     leave_local_mode(cctkGH);
