@@ -1,19 +1,18 @@
 #include <AMReX.hxx>
+#include <io.hxx>
 #include <schedule.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
-#include <cctk_Schedule.h>
 
 #include <AMReX.H>
 
 #include <omp.h>
 #include <mpi.h>
 
+#include <memory>
 #include <string>
-#include <type_traits>
-#include <utility>
 
 namespace AMReX {
 using namespace amrex;
@@ -57,6 +56,7 @@ extern "C" int AMReX_Startup() {
   CCTK_OverloadInitialise(Initialise);
   CCTK_OverloadEvolve(Evolve);
   CCTK_OverloadShutdown(Shutdown);
+  CCTK_OverloadOutputGH(OutputGH);
 
   CCTK_OverloadSyncGroupsByDirI(SyncGroupsByDirI);
 

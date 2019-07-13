@@ -11,6 +11,7 @@ using namespace amrex;
 #include <cctk.h>
 
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 namespace AMReX {

@@ -12,13 +12,7 @@ SCHEDULE WaveToyAMReX_Evolve AT evol
   SYNC: phi
 } "Evolve the wave equation"
 
-SCHEDULE WaveToyAMReX_Error AT analysis BEFORE WaveToyAMReX_Output
+SCHEDULE WaveToyAMReX_Error AT analysis
 {
   LANG: C
 } "Calculate error for the wave equation"
-
-SCHEDULE WaveToyAMReX_Output AT analysis
-{
-  LANG: C
-  OPTIONS: level
-} "Output wave equation state"
