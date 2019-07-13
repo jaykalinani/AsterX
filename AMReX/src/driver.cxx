@@ -132,10 +132,6 @@ int InitGH(cGH *restrict cctkGH) {
                  ghext->nghostzones);
   }
 
-  setup_cctkGH(cctkGH);
-  enter_global_mode(cctkGH);
-  enter_level_mode(cctkGH);
-
   return 0; // unused
 }
 

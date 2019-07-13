@@ -6,14 +6,6 @@
 
 namespace AMReX {
 
-void setup_cctkGH(cGH *restrict cctkGH);
-void enter_global_mode(cGH *restrict cctkGH);
-void leave_global_mode(cGH *restrict cctkGH);
-void enter_level_mode(cGH *restrict cctkGH);
-void leave_level_mode(cGH *restrict cctkGH);
-void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi);
-void leave_local_mode(cGH *restrict cctkGH);
-
 int Initialise(tFleshConfig *config);
 int Evolve(tFleshConfig *config);
 int Shutdown(tFleshConfig *config);

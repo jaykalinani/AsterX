@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace AMReX {
 using namespace amrex;
@@ -35,6 +36,34 @@ constexpr int undefined = 666;
 // Convert a (direction, face) pair to an AMReX Orientation
 Orientation orient(int d, int f) {
   return Orientation(d, Orientation::Side(f));
+}
+
+vector<cGH> thread_local_cctkGH;
+
+// Create a new cGH, copying those data that are set by the flesh, and
+// allocating space for these data that are set per thread by the driver
+void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
+  // Copy all fields by default
+  *cctkGH = *sourceGH;
+  // Allocate most fields anew
+  cctkGH->cctk_gsh = new int[dim];
+  cctkGH->cctk_lsh = new int[dim];
+  cctkGH->cctk_lbnd = new int[dim];
+  cctkGH->cctk_ubnd = new int[dim];
+  cctkGH->cctk_ash = new int[dim];
+  cctkGH->cctk_to = new int[dim];
+  cctkGH->cctk_from = new int[dim];
+  cctkGH->cctk_delta_space = new CCTK_REAL[dim];
+  cctkGH->cctk_origin_space = new CCTK_REAL[dim];
+  cctkGH->cctk_bbox = new int[2 * dim];
+  cctkGH->cctk_levfac = new int[dim];
+  cctkGH->cctk_levoff = new int[dim];
+  cctkGH->cctk_levoffdenom = new int[dim];
+  cctkGH->cctk_nghostzones = new int[dim];
+  const int numvars = CCTK_NumVars();
+  cctkGH->data = new void **[numvars];
+  for (int vi = 0; vi < numvars; ++vi)
+    cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
 }
 
 // Initialize cctkGH entries
@@ -57,6 +86,17 @@ void setup_cctkGH(cGH *restrict cctkGH) {
     cctkGH->cctk_delta_space[d] = 1.0;
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = 0.0;
+}
+
+// Update fields that carry state and change over time
+void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
+  cctkGH->cctk_iteration = sourceGH->cctk_iteration;
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_origin_space[d] = sourceGH->cctk_origin_space[d];
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_delta_space[d] = sourceGH->cctk_delta_space[d];
+  cctkGH->cctk_time = sourceGH->cctk_time;
+  cctkGH->cctk_delta_time = sourceGH->cctk_delta_time;
 }
 
 // Set cctkGH entries for global mode
@@ -189,6 +229,19 @@ int Initialise(tFleshConfig *config) {
   // Initialise all grid extensions
   CCTKi_InitGHExtensions(cctkGH);
 
+  setup_cctkGH(cctkGH);
+  enter_global_mode(cctkGH);
+  enter_level_mode(cctkGH);
+  int max_threads = omp_get_max_threads();
+  thread_local_cctkGH.resize(max_threads);
+  for (int n = 0; n < max_threads; ++n) {
+    cGH *restrict threadGH = &thread_local_cctkGH.at(n);
+    clone_cctkGH(threadGH, cctkGH);
+    setup_cctkGH(threadGH);
+    enter_global_mode(threadGH);
+    enter_level_mode(threadGH);
+  }
+
   CCTK_Traverse(cctkGH, "CCTK_WRAGH");
   CCTK_Traverse(cctkGH, "CCTK_PARAMCHECK");
   CCTKi_FinaliseParamWarn();
@@ -266,6 +319,9 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
 }
 
 void CycleTimelevels(cGH *restrict const cctkGH) {
+  cctkGH->cctk_iteration += 1;
+  cctkGH->cctk_time += cctkGH->cctk_delta_time;
+
   for (auto &restrict groupdata : ghext->groupdata) {
     for (int tl = groupdata.numtimelevels - 1; tl > 0; --tl)
       MultiFab::Copy(groupdata.mfab, groupdata.mfab,
@@ -281,9 +337,6 @@ int Evolve(tFleshConfig *config) {
   assert(cctkGH);
 
   while (!EvolutionIsDone(cctkGH)) {
-
-    cctkGH->cctk_iteration += 1;
-    cctkGH->cctk_time += cctkGH->cctk_delta_time;
     CycleTimelevels(cctkGH);
 
     CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
@@ -330,11 +383,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     MultiFab &mfab = ghext->groupdata.at(0).mfab;
     auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
 #pragma omp parallel
-    for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
-      enter_local_mode(cctkGH, mfi);
-      CCTK_CallFunction(function, attribute, data);
+    {
+      cGH *restrict threadGH = &thread_local_cctkGH.at(omp_get_thread_num());
+      update_cctkGH(threadGH, cctkGH);
+      for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+        enter_local_mode(threadGH, mfi);
+        CCTK_CallFunction(function, attribute, threadGH);
+      }
     }
-    leave_local_mode(cctkGH);
     break;
   }
   case mode_t::level:
@@ -343,7 +399,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     // Call function just once
     // Note: meta mode scheduling must continue to work even after we
     // shut down ourselves!
-    CCTK_CallFunction(function, attribute, data);
+    CCTK_CallFunction(function, attribute, cctkGH);
     break;
   }
   default:
