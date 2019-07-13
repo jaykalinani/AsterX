@@ -3,18 +3,14 @@
 SCHEDULE WaveToyAMReX_Initialize AT initial
 {
   LANG: C
+  SYNC: phi
 } "Set up initial conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_Evolve AT evol
 {
   LANG: C
+  SYNC: phi
 } "Evolve the wave equation"
-
-SCHEDULE WaveToyAMReX_Sync AT poststep
-{
-  LANG: C
-  OPTIONS: level
-} "Synchronize wave equation state"
 
 SCHEDULE WaveToyAMReX_Error AT analysis BEFORE WaveToyAMReX_Output
 {

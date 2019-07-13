@@ -436,8 +436,26 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     assert(0);
   }
 
-  int didsync = 1;
+  int didsync = 0;
   return didsync;
+}
+
+int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
+                     const int *groups, const int *directions) {
+  assert(cctkGH);
+  assert(numgroups >= 0);
+  assert(groups);
+
+  // TODO: Synchronize only current time level. This probably requires
+  // setting up different mfabs for each time level.
+  for (int n = 0; n < numgroups; ++n) {
+    int gi = groups[n];
+    auto &restrict groupdata = ghext->groupdata.at(gi);
+    // we always sync all directions
+    groupdata.mfab.FillBoundary(ghext->geom.periodicity());
+  }
+
+  return numgroups; // number of groups synchronized
 }
 
 } // namespace AMReX

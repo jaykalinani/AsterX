@@ -32,8 +32,6 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH);
 int InitGH(cGH *cctkGH);
 int ScheduleTraverseGH(cGH *cctkGH, const char *where);
 
-int CallFunction(void *function, cFunctionData *attribute, void *data);
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // Start driver
@@ -59,6 +57,8 @@ extern "C" int AMReX_Startup() {
   CCTK_OverloadInitialise(Initialise);
   CCTK_OverloadEvolve(Evolve);
   CCTK_OverloadShutdown(Shutdown);
+
+  CCTK_OverloadSyncGroupsByDirI(SyncGroupsByDirI);
 
   return 0;
 }

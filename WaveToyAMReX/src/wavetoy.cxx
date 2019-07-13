@@ -89,15 +89,6 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
       }
 }
 
-extern "C" void WaveToyAMReX_Sync(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  // Synchronize
-  for (auto &restrict groupdata : ghext->groupdata)
-    groupdata.mfab.FillBoundary(ghext->geom.periodicity());
-}
-
 extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
