@@ -9,5 +9,4 @@ intended for the [Einstein Toolkit](https://einsteintoolkit.org/).
   code repository
 * [Azure
   Pipelines](https://dev.azure.com/schnetter/CactusAMReX/_build):
-  Build Status [![Build
-  Status](https://dev.azure.com/schnetter/CactusAMReX/_apis/build/status/eschnett.ringal?branchName=master)](https://dev.azure.com/schnetter/CactusAMReX/_build/latest?definitionId=1&branchName=master)
+  Buildf Status [![Build Status](https://dev.azure.com/schnetter/CactusAMReX/_apis/build/status/CactusAMReX-CI?branchName=master)](https://dev.azure.com/schnetter/CactusAMReX/_build/latest?definitionId=6&branchName=master)
