@@ -31,4 +31,5 @@ COPY amrex.th /cactus/amrex.th
 COPY Dockerfile /Dockerfile
 
 # Create user
-RUN sudo useradd -u 1001 -G sudo -m -s /bin/bash -d /vsts vsts
+RUN sudo groupadd azure_pipelines_sudo
+RUN sudo useradd -u 1001 -G sudo,azure_pipelines_sudo -m -s /bin/bash -d /vsts vsts
