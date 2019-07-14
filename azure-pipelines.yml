@@ -1,0 +1,34 @@
+# Choose an agent virtual image
+pool:
+  vmImage: ubuntu-16.04
+
+steps:
+- script: |
+    wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz
+    tar xzf 19.07.tar.gz
+    cd amrex-19.07
+    mkdir build
+    cd build
+    which gcc
+    which g++
+    which gfortran
+    gcc --version
+    g++ --version
+    gfortran --version
+    cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_Fortran_COMPILER=gfortran -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=$HOME/amrex ..
+    make -j2
+    make -j2 install
+  displayName: Install AMReX
+# - script: |
+#     export PATH=$HOME/.local/bin:$PATH
+#     stack --no-terminal --install-ghc test --only-dependencies
+#   displayName: Build Dependencies
+# - script: |
+#     export PATH=$HOME/.local/bin:$PATH
+#     # Build the package, its tests, and its docs and run the tests
+#     stack test
+#     stack run
+#     stack bench
+#     stack haddock --no-haddock-deps
+#     stack install
+#   displayName: Test Package
