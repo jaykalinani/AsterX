@@ -11,7 +11,7 @@ steps:
     build=5
     wget https://cmake.org/files/v$version/cmake-$version.$build-Linux-x86_64.sh 
     echo y | sudo sh cmake-$version.$build-Linux-x86_64.sh --prefix=$HOME
-    sudo ln -fs /opt/cmake/bin/cmake $HOME/cmake-$version.$build-Linux-x86_64/bin/cmake
+    sudo ln -fs $HOME/cmake-$version.$build-Linux-x86_64/bin/cmake /usr/local/bin/cmake
   displayName: Install cmake
 - script: |
     wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz
