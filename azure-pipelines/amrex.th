@@ -94,6 +94,9 @@ ExternalLibraries/MPI
 
 
 # AMReX thorns
+!TARGET   = $ARR
+!TYPE     = ignore
+!CHECKOUT =
 AMReX/AMReX
 # AMReX/AMReXTest
 AMReX/WaveToyAMReX
