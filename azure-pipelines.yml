@@ -4,16 +4,25 @@ pool:
 
 steps:
 - script: |
+    set -euxo pipefail
     sudo apt install gfortran libopenmpi-dev
+    gcc --version
+    g++ --version
+    gfortran --version
+    mpirun --version
   displayName: Install system packages
 - script: |
+    set -euxo pipefail
     version=3.14
     build=5
-    wget https://cmake.org/files/v$version/cmake-$version.$build-Linux-x86_64.sh 
+    wget https://cmake.org/files/v$version/cmake-$version.$build-Linux-x86_64.sh
     sudo sh cmake-$version.$build-Linux-x86_64.sh --prefix=$HOME/cmake --exclude-subdir --skip-license
+    mkdir $HOME/cmake
     sudo ln -fs $HOME/cmake/bin/cmake /usr/local/bin/cmake
+    cmake --version
   displayName: Install cmake
 - script: |
+    set -euxo pipefail
     wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz
     tar xzf 19.07.tar.gz
     cd amrex-19.07
