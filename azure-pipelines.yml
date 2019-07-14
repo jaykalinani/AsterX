@@ -16,7 +16,7 @@ steps:
     version=3.14
     build=5
     wget https://cmake.org/files/v$version/cmake-$version.$build-Linux-x86_64.sh
-    sudo sh cmake-$version.$build-Linux-x86_64.sh --prefix=$HOME/cmake --exclude-subdir --skip-license
+    sh cmake-$version.$build-Linux-x86_64.sh --prefix=$HOME/cmake --exclude-subdir --skip-license
     mkdir $HOME/cmake
     sudo ln -fs $HOME/cmake/bin/cmake /usr/local/bin/cmake
     cmake --version
