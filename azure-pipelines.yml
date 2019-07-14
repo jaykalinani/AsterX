@@ -25,11 +25,12 @@ steps:
     export AMREX_DIR=$HOME/amrex
   displayName: Install AMReX
 - script: |
+    set -euxo pipefail
     wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
     chmod a+x GetComponents
-    ./GetComponents --parallel ../cactusamrex/amrex.th
+    ./GetComponents --parallel cactusamrex/amrex.th
     cd Cactus
-    echo 'ubuntu >$HOME/.hostname
+    echo 'ubuntu' >$HOME/.hostname
     cp cactusamrex/defs.local.ini simfactory/etc/defs.local.ini
     cp cactusamrex/ubuntu.ini simfactory/mdb/machines/ubuntu.ini
     cp cactusamrex/ubuntu.cfg simfactory/mdb/optionlists/ubuntu.cfg
