@@ -58,6 +58,14 @@ CCTK_INT ghost_size "Number of ghost zones"
 
 
 
+CCTK_INT out_every "How often to output" STEERABLE=always
+{
+  0 :: "no output"
+  1:* :: "every that many iterations"
+} 1
+
+
+
 CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 {
   *:* :: ""

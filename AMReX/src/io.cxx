@@ -25,6 +25,9 @@ int OutputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
+  if (out_every <= 0 || cctk_iteration % out_every != 0)
+    return 0;
+
   int count_vars = 0;
 
   const int numgroups = CCTK_NumGroups();
