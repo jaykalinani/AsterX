@@ -29,3 +29,6 @@ COPY amrex.th /cactus/amrex.th
 
 # As documentation
 COPY Dockerfile /Dockerfile
+
+# Create user
+RUN sudo useradd -u 1001 -G sudo -m -s /bin/bash -d /vsts vsts
