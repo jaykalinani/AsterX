@@ -16,6 +16,10 @@ steps:
     wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz
     tar xzf cmake-3.14.5-Linux-x86_64.tar.gz
     sudo ln -fs cmake-3.14.5-Linux-x86_64/bin/cmake /usr/local/bin/cmake
+    whereis cmake || true
+    which cmake || true
+    ls -l /usr/bin/cmake || true
+    ls -l /usr/local/bin/cmake || true
     cmake --version
   displayName: Install cmake
 - script: |
