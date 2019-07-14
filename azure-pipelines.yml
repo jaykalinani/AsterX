@@ -1,7 +1,8 @@
 # Choose an agent virtual image
 pool:
   vmImage: ubuntu-16.04
-container: eschnett/cactus-amrex
+container:
+  image: eschnett/cactus-amrex
 
 steps:
 - script: |
