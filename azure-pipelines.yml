@@ -13,12 +13,9 @@ steps:
   displayName: Install system packages
 - script: |
     set -euxo pipefail
-    version=3.14
-    build=5
-    wget https://cmake.org/files/v$version/cmake-$version.$build-Linux-x86_64.sh
-    sh cmake-$version.$build-Linux-x86_64.sh --prefix=$HOME/cmake --exclude-subdir --skip-license
-    mkdir $HOME/cmake
-    sudo ln -fs $HOME/cmake/bin/cmake /usr/local/bin/cmake
+    wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz
+    tar xzf cmake-3.14.5-Linux-x86_64.tar.gz
+    sudo ln -fs cmake-3.14.5-Linux-x86_64/bin/cmake /usr/local/bin/cmake
     cmake --version
   displayName: Install cmake
 - script: |
