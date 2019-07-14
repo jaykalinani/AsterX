@@ -4,52 +4,19 @@ pool:
 container: eschnett/cactus-amrex
 
 steps:
-# - script: |
-#     set -euxo pipefail
-#     sudo apt install gfortran libopenmpi-dev
-#     gcc --version
-#     g++ --version
-#     gfortran --version
-#     mpirun --version
-#   displayName: Install system packages
-# - script: |
-#     set -euxo pipefail
-#     wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz
-#     tar xzf cmake-3.14.5-Linux-x86_64.tar.gz
-#     export PATH="$(pwd)/cmake-3.14.5-Linux-x86_64/bin:$PATH"
-#     cmake --version
-#   displayName: Install cmake
-# - script: |
-#     set -euxo pipefail
-#     export PATH="$(pwd)/cmake-3.14.5-Linux-x86_64/bin:$PATH"
-#     wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz
-#     tar xzf 19.07.tar.gz
-#     cd amrex-19.07
-#     mkdir build
-#     cd build
-#     cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_Fortran_COMPILER=gfortran -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=$HOME/amrex ..
-#     make -j2
-#     make -j2 install
-#     export AMREX_DIR=$HOME/amrex
-#   displayName: Install AMReX
 - script: |
     set -euxo pipefail
-    export PATH="$(pwd)/cmake-3.14.5-Linux-x86_64/bin:$PATH"
-    export AMREX_DIR=$HOME/amrex
     wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
     chmod a+x GetComponents
-    pwd
-    ls -l .
-    ls -l ..
-    ls -l ../..
-    ls -l $HOME
-    ./GetComponents --parallel cactusamrex/amrex.th
+    ./GetComponents --parallel amrex.th
+    cp defs.local.init Cactus/simfactory/etc
+    cp docker.ini Cactus/simfactory/mdb/machines
+    cp ubuntu.cfg Cactus/simfactory/mdb/optionlists
+    cp docker.sub Cactus/simfactory/mdb/submitscripts
+    cp docker.run Cactus/simfactory/mdb/runscripts
+  displayName: Download Cactus
+- script: |
+    set -euxo pipefail
     cd Cactus
-    echo 'ubuntu' >$HOME/.hostname
-    cp cactusamrex/defs.local.ini simfactory/etc/defs.local.ini
-    cp cactusamrex/ubuntu.ini simfactory/mdb/machines/ubuntu.ini
-    cp cactusamrex/ubuntu.cfg simfactory/mdb/optionlists/ubuntu.cfg
-    cp cactusamrex/ubuntu.sub simfactory/mdb/submitscripts/ubuntu.sub
-    cp cactusamrex/ubuntu.run simfactory/mdb/runscripts/ubuntu.run
-    ./simfactory/bin/sim build -j2 --thornlist=$HOME/cactusamrex/amrex.th
+    ./simfactory/bin/sim build -j2 --thornlist=$HOME/amrex.th
   displayName: Build Cactus
