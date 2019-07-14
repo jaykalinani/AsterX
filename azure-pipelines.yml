@@ -4,6 +4,9 @@ pool:
 
 steps:
 - script: |
+    sudo apt install gfortran
+  displayName: Install system packages
+- script: |
     wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz
     tar xzf 19.07.tar.gz
     cd amrex-19.07
