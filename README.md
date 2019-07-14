@@ -1,7 +1,9 @@
 # [CactusAMReX](https://bitbucket.org/eschnett/cactusamrex)
 
-Experiment with Semiringal and Ringal type classes, extending
-Semigroupal and Monoidal.
+Provide a [Cactus](https://cactuscode.org/) driver based on
+[AMReX](https://amrex-codes.github.io), a software framework for
+block-structured AMR (adaptive mesh refinement). This driver is
+intended for the [Einstein Toolkit](https://einsteintoolkit.org/).
 
 * [Bitbucket](https://bitbucket.org/eschnett/cactusamrex): Source
   code repository
