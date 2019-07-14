@@ -4,7 +4,7 @@ pool:
 
 steps:
 - script: |
-    sudo apt install gfortran
+    sudo apt install gfortran openmpi-dev
   displayName: Install system packages
 - script: |
     version=3.14
