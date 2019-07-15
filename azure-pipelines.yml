@@ -10,7 +10,7 @@ steps:
     wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
     chmod a+x GetComponents
     ./GetComponents --parallel /cactus/amrex.th
-    cp /cactus/defs.local.init Cactus/simfactory/etc
+    cp /cactus/defs.local.ini Cactus/simfactory/etc
     cp /cactus/docker.ini Cactus/simfactory/mdb/machines
     cp /cactus/ubuntu.cfg Cactus/simfactory/mdb/optionlists
     cp /cactus/docker.sub Cactus/simfactory/mdb/submitscripts
