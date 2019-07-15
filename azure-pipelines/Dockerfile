@@ -6,7 +6,7 @@ WORKDIR /cactus
 
 # Install system packages
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install apt-utils build-essential ca-certificates g++ git gfortran libopenmpi-dev perl pkg-config python subversion wget && \
+    apt-get -y --no-install-recommends install apt-utils build-essential ca-certificates g++ git gfortran libopenmpi-dev perl pkg-config python rsync subversion wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Install cmake
@@ -26,10 +26,6 @@ RUN wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz && \
     make -j2 install && \
     cd ../.. && \
     rm -rf amrex-19.07
-
-RUN apt-get update && \
-    apt-get -y --no-install-recommends install rsync && \
-    rm -rf /var/lib/apt/lists/*
 
 # As documentation
 COPY Dockerfile /Dockerfile
