@@ -24,3 +24,5 @@ COPY amrex.th /cactus/amrex.th
 
 # As documentation
 COPY Dockerfile /Dockerfile
+
+RUN apt-get update && apt-get -y install git && rm -rf /var/lib/apt/lists/*
