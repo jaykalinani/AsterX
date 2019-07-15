@@ -9,6 +9,11 @@ steps:
     set -euxo pipefail
     wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
     chmod a+x GetComponents
+    pwd
+    ls -l || echo true
+    ls -l cactusamrex || echo true
+    ls -l .. || echo true
+    ls -l ../.. || echo true
     ./GetComponents --parallel cactusamrex/azure-pipelines/amrex.th
     echo 'docker' >$HOME/.hostname
     cp cactusamrex/azure-pipelines/defs.local.ini Cactus/simfactory/etc
