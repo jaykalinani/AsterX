@@ -128,26 +128,32 @@ void leave_global_mode(cGH *restrict cctkGH) {
 }
 
 // Set cctkGH entries for local mode
-void enter_level_mode(cGH *restrict cctkGH) {
+void enter_level_mode(cGH *restrict cctkGH,
+                      const GHExt::Level &restrict level) {
   DECLARE_CCTK_PARAMETERS;
 
   // Global shape
   // TODO: Get this from mfab
+#warning "TODO"
   int ncells[dim] = {ncells_x, ncells_y, ncells_z};
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = ncells[d];
 
-  // The refinement factor over the top level (coarsest) grid
+    // The refinement factor over the top level (coarsest) grid
+#warning "TODO"
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levfac[d] = 1; // TODO
 
-  // Offset between this level's and the coarsest level's origin
+    // Offset between this level's and the coarsest level's origin
+#warning "TODO"
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levoff[d] = 0; // TODO
+#warning "TODO"
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levoffdenom[d] = 0; // TODO
 }
-void leave_level_mode(cGH *restrict cctkGH) {
+void leave_level_mode(cGH *restrict cctkGH,
+                      const GHExt::Level &restrict level) {
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
@@ -159,7 +165,8 @@ void leave_level_mode(cGH *restrict cctkGH) {
 }
 
 // Set cctkGH entries for local mode
-void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi) {
+void enter_local_mode(cGH *restrict cctkGH, GHExt::Level &restrict level,
+                      const MFIter &mfi) {
   const Box &fbx = mfi.fabbox(); // allocated array
   // const Box &vbx = mfi.validbox();     // interior region (without ghosts)
   const Box &bx = mfi.tilebox();       // current region (without ghosts)
@@ -186,7 +193,7 @@ void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi) {
 
   // Grid function pointers
   const Dim3 imin = lbound(bx);
-  for (auto &restrict groupdata : ghext->groupdata) {
+  for (auto &restrict groupdata : level.groupdata) {
     const Array4<CCTK_REAL> &vars = groupdata.mfab.array(mfi);
     for (int tl = 0; tl < groupdata.numtimelevels; ++tl)
       for (int n = 0; n < groupdata.numvars; ++n)
@@ -194,7 +201,8 @@ void enter_local_mode(cGH *restrict cctkGH, const MFIter &mfi) {
             vars.ptr(imin.x, imin.y, imin.z, tl * groupdata.numvars + n);
   }
 }
-void leave_local_mode(cGH *restrict cctkGH) {
+void leave_local_mode(cGH *restrict cctkGH, const GHExt::Level &restrict level,
+                      const MFIter &mfi) {
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
@@ -206,7 +214,7 @@ void leave_local_mode(cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = undefined;
-  for (auto &restrict groupdata : ghext->groupdata) {
+  for (auto &restrict groupdata : level.groupdata) {
     for (int tl = 0; tl < groupdata.numtimelevels; ++tl)
       for (int n = 0; n < groupdata.numvars; ++n)
         cctkGH->data[groupdata.firstvarindex + n][tl] = nullptr;
@@ -253,7 +261,7 @@ int Initialise(tFleshConfig *config) {
   // Set up cctkGH
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
-  enter_level_mode(cctkGH);
+  // enter_level_mode(cctkGH);
   int max_threads = omp_get_max_threads();
   thread_local_cctkGH.resize(max_threads);
   for (int n = 0; n < max_threads; ++n) {
@@ -261,7 +269,7 @@ int Initialise(tFleshConfig *config) {
     clone_cctkGH(threadGH, cctkGH);
     setup_cctkGH(threadGH);
     enter_global_mode(threadGH);
-    enter_level_mode(threadGH);
+    // enter_level_mode(threadGH);
   }
 
   // Output domain information
@@ -370,12 +378,13 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
 
   // TODO: Get ghost_size from mfab
-  for (auto &restrict groupdata : ghext->groupdata) {
-    for (int tl = groupdata.numtimelevels - 1; tl > 0; --tl)
-      MultiFab::Copy(groupdata.mfab, groupdata.mfab,
-                     (tl - 1) * groupdata.numvars, tl * groupdata.numvars,
-                     groupdata.numvars, ghost_size);
-  }
+  for (auto &restrict level : ghext->levels)
+    for (auto &restrict groupdata : level.groupdata) {
+      for (int tl = groupdata.numtimelevels - 1; tl > 0; --tl)
+        MultiFab::Copy(groupdata.mfab, groupdata.mfab,
+                       (tl - 1) * groupdata.numvars, tl * groupdata.numvars,
+                       groupdata.numvars, ghost_size);
+    }
 }
 
 // Schedule evolution
@@ -427,29 +436,35 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   switch (mode) {
   case mode_t::local: {
     // Call function once per tile
-    assert(!ghext->groupdata.empty());
-    MultiFab &mfab = ghext->groupdata.at(0).mfab;
-    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
 #pragma omp parallel
     {
       cGH *restrict threadGH = &thread_local_cctkGH.at(omp_get_thread_num());
       update_cctkGH(threadGH, cctkGH);
-      for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
-        enter_local_mode(threadGH, mfi);
-        CCTK_CallFunction(function, attribute, threadGH);
+      for (auto &restrict level : ghext->levels) {
+        MultiFab &mfab = level.groupdata.at(0).mfab;
+        enter_level_mode(threadGH, level);
+        auto mfitinfo =
+            MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
+        for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+          enter_local_mode(threadGH, level, mfi);
+          CCTK_CallFunction(function, attribute, threadGH);
+          leave_local_mode(threadGH, level, mfi);
+        }
+        leave_level_mode(threadGH, level);
       }
     }
     break;
   }
-  case mode_t::level:
+  case mode_t::meta:
   case mode_t::global:
-  case mode_t::meta: {
+  case mode_t::level: {
     // Call function just once
     // Note: meta mode scheduling must continue to work even after we
     // shut down ourselves!
     CCTK_CallFunction(function, attribute, cctkGH);
     break;
   }
+
   default:
     assert(0);
   }
@@ -466,12 +481,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   // TODO: Synchronize only current time level. This probably requires
   // setting up different mfabs for each time level.
-  for (int n = 0; n < numgroups; ++n) {
-    int gi = groups[n];
-    auto &restrict groupdata = ghext->groupdata.at(gi);
-    // we always sync all directions
-    groupdata.mfab.FillBoundary(ghext->geom.periodicity());
-  }
+  for (auto &restrict level : ghext->levels)
+    for (int n = 0; n < numgroups; ++n) {
+      int gi = groups[n];
+      auto &restrict groupdata = level.groupdata.at(gi);
+      // we always sync all directions
+      groupdata.mfab.FillBoundary(level.geom.periodicity());
+    }
 
   return numgroups; // number of groups synchronized
 }

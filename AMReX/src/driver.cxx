@@ -99,16 +99,22 @@ int InitGH(cGH *restrict cctkGH) {
 
   assert(cctkGH);
 
+  const int nlevels = 1;
+  ghext->levels.resize(nlevels);
+  const int lev = 0;
+  GHExt::Level &level = ghext->levels.at(lev);
+  level.level = lev;
+
   // Define box array
   IntVect dom_lo(AMREX_D_DECL(0, 0, 0));
   IntVect dom_hi(AMREX_D_DECL(ncells_x - 1, ncells_y - 1, ncells_z - 1));
   Box domain(dom_lo, dom_hi);
-  ghext->ba.define(domain);
+  level.grids.define(domain);
 
   // Break up box array into chunks no larger than max_grid_size along
   // each direction
   const int max_grid_size = 32;
-  ghext->ba.maxSize(max_grid_size);
+  level.grids.maxSize(max_grid_size);
 
   // Define physical box
   RealBox real_box({AMREX_D_DECL(xmin, ymin, zmin)},
@@ -116,14 +122,13 @@ int InitGH(cGH *restrict cctkGH) {
 
   // Define geometry
   Vector<int> is_periodic(AMREX_SPACEDIM, 1); // periodic in all directions
-  ghext->geom.define(domain, &real_box, CoordSys::cartesian,
-                     is_periodic.data());
+  level.geom.define(domain, &real_box, CoordSys::cartesian, is_periodic.data());
 
   // Distributed boxes
-  DistributionMapping dm(ghext->ba);
+  level.dmap = DistributionMapping(level.grids);
 
   const int numgroups = CCTK_NumGroups();
-  ghext->groupdata.resize(numgroups);
+  level.groupdata.resize(numgroups);
   for (int gi = 0; gi < numgroups; ++gi) {
     cGroup group;
     int ierr = CCTK_GroupData(gi, &group);
@@ -133,14 +138,15 @@ int InitGH(cGH *restrict cctkGH) {
     assert(group.disttype == CCTK_DISTRIB_DEFAULT);
     assert(group.dim == dim);
 
-    GHExt::GroupData &groupdata = ghext->groupdata.at(gi);
+    GHExt::Level::GroupData &groupdata = level.groupdata.at(gi);
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
     groupdata.numtimelevels = group.numtimelevels;
 
     // Allocate grid hierarchy
-    groupdata.mfab = MultiFab(
-        ghext->ba, dm, groupdata.numvars * groupdata.numtimelevels, ghost_size);
+    groupdata.mfab =
+        MultiFab(level.grids, level.dmap,
+                 groupdata.numvars * groupdata.numtimelevels, ghost_size);
   }
 
   return 0; // unused

@@ -27,17 +27,24 @@ static_assert(is_same<Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
 struct GHExt {
-  // AMReX grid structure
-  BoxArray ba;
-  Geometry geom;
 
-  struct GroupData {
-    int firstvarindex;
-    int numvars;
-    int numtimelevels;
-    MultiFab mfab;
+  struct Level {
+    int level;
+
+    // AMReX grid structure
+    BoxArray grids;
+    Geometry geom;
+    DistributionMapping dmap;
+
+    struct GroupData {
+      int firstvarindex;
+      int numvars;
+      int numtimelevels;
+      MultiFab mfab;
+    };
+    vector<GroupData> groupdata;
   };
-  vector<GroupData> groupdata;
+  vector<Level> levels;
 };
 
 extern unique_ptr<GHExt> ghext;
