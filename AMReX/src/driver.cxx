@@ -31,6 +31,12 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *cctkGH);
 int InitGH(cGH *cctkGH);
 int ScheduleTraverseGH(cGH *cctkGH, const char *where);
 
+int MyProc(const cGH *cctkGH);
+int nProcs(const cGH *cctkGH);
+int Exit(cGH *cctkGH, int retval);
+int Abort(cGH *cctkGH, int retval);
+int Barrier(const cGH *cctkGHa);
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Start driver
@@ -57,6 +63,12 @@ extern "C" int AMReX_Startup() {
   CCTK_OverloadEvolve(Evolve);
   CCTK_OverloadShutdown(Shutdown);
   CCTK_OverloadOutputGH(OutputGH);
+
+  CCTK_OverloadMyProc(MyProc);
+  CCTK_OverloadnProcs(nProcs);
+  CCTK_OverloadExit(Exit);
+  CCTK_OverloadAbort(Abort);
+  CCTK_OverloadBarrier(Barrier);
 
   CCTK_OverloadSyncGroupsByDirI(SyncGroupsByDirI);
 
@@ -158,6 +170,27 @@ extern "C" int AMReX_Shutdown() {
   amrex::Finalize(pamrex);
   pamrex = nullptr;
 
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int MyProc(const cGH *restrict cctkGH) { return ParallelDescriptor::MyProc(); }
+
+int nProcs(const cGH *restrict cctkGH) { return ParallelDescriptor::NProcs(); }
+
+int Exit(cGH *cctkGH, int retval) {
+  ParallelDescriptor::Abort(retval);
+  return 0; // unreachable
+}
+
+int Abort(cGH *cctkGH, int retval) {
+  ParallelDescriptor::Abort(retval);
+  return 0; // unreachable
+}
+
+int Barrier(const cGH *restrict cctkGH) {
+  ParallelDescriptor::Barrier();
   return 0;
 }
 

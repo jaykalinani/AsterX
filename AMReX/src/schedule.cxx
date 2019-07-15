@@ -93,19 +93,13 @@ void setup_cctkGH(cGH *restrict cctkGH) {
     mindx = fmin(mindx, dx[d]);
 
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_origin_space[d] = x0[d];
+    cctkGH->cctk_origin_space[d] = x0[d] + 0.5 * dx[d];
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_delta_space[d] = dx[d];
-  CCTK_VINFO("x0=[%g,%g,%g]", cctkGH->cctk_origin_space[0],
-             cctkGH->cctk_origin_space[1], cctkGH->cctk_origin_space[2]);
-  CCTK_VINFO("dx=[%g,%g,%g]", cctkGH->cctk_delta_space[0],
-             cctkGH->cctk_delta_space[1], cctkGH->cctk_delta_space[2]);
 
   // Initialize time stepping
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
-  CCTK_VINFO("t=%g", cctkGH->cctk_time);
-  CCTK_VINFO("dt=%g", cctkGH->cctk_delta_time);
 }
 
 // Update fields that carry state and change over time
@@ -256,6 +250,7 @@ int Initialise(tFleshConfig *config) {
   // Initialise all grid extensions
   CCTKi_InitGHExtensions(cctkGH);
 
+  // Set up cctkGH
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
   enter_level_mode(cctkGH);
@@ -267,6 +262,29 @@ int Initialise(tFleshConfig *config) {
     setup_cctkGH(threadGH);
     enter_global_mode(threadGH);
     enter_level_mode(threadGH);
+  }
+
+  // Output domain information
+  if (CCTK_MyProc(nullptr) == 0) {
+    int ncells[dim];
+    for (int d = 0; d < dim; ++d)
+      ncells[d] = cctkGH->cctk_gsh[d];
+    CCTK_REAL x0[dim], x1[dim], dx[dim];
+    for (int d = 0; d < dim; ++d)
+      dx[d] = cctkGH->cctk_delta_space[d];
+    for (int d = 0; d < dim; ++d)
+      x0[d] = cctkGH->cctk_origin_space[d] - 0.5 * dx[d];
+    for (int d = 0; d < dim; ++d)
+      x1[d] = x0[d] + ncells[d] * dx[d];
+    CCTK_VINFO("Grid extent:");
+    CCTK_VINFO("  gsh=[%d,%d,%d]", ncells[0], ncells[1], ncells[2]);
+    CCTK_VINFO("Domain extent:");
+    CCTK_VINFO("  xmin=[%g,%g,%g]", x0[0], x0[1], x0[2]);
+    CCTK_VINFO("  xmax=[%g,%g,%g]", x1[0], x1[1], x1[2]);
+    CCTK_VINFO("  dx=[%g,%g,%g]", dx[0], dx[1], dx[2]);
+    CCTK_VINFO("Time stepping:");
+    CCTK_VINFO("  t0=%g", cctkGH->cctk_time);
+    CCTK_VINFO("  dt=%g", cctkGH->cctk_delta_time);
   }
 
   CCTK_Traverse(cctkGH, "CCTK_WRAGH");
