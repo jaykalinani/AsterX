@@ -32,6 +32,10 @@ steps:
 - script: |
     set -euxo pipefail
     cd Cactus
+    env
+    pwd
+    ls -l
+    ls -l ..
     ./simfactory/bin/sim submit sim-test --test --procs=1 --num-threads=2
     ./simfactory/bin/sim submit sim-test --test --procs=2 --num-threads=1
   displayName: Run tests
