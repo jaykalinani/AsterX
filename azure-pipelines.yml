@@ -38,6 +38,7 @@ steps:
     ls -l ..
     ls -ld /__w/simulations
     ls -l /__w/simulations
+    ./simfactory/bin/sim whoami
     ./simfactory/bin/sim submit sim-test --test --procs=1 --num-threads=2
     ./simfactory/bin/sim submit sim-test --test --procs=2 --num-threads=1
   displayName: Run tests
