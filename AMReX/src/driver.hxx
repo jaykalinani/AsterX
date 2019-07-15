@@ -28,7 +28,7 @@ static_assert(is_same<Real, CCTK_REAL>::value,
 
 struct GHExt {
 
-  struct Level {
+  struct LevelData {
     int level;
 
     // AMReX grid structure
@@ -43,7 +43,7 @@ struct GHExt {
     };
     vector<GroupData> groupdata;
   };
-  vector<Level> levels;
+  vector<LevelData> leveldata;
 };
 
 extern unique_ptr<GHExt> ghext;

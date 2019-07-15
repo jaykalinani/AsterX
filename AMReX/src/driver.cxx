@@ -99,56 +99,59 @@ int InitGH(cGH *restrict cctkGH) {
 
   assert(cctkGH);
 
-  const int nlevels = 1;
-  ghext->levels.resize(nlevels);
-  const int lev = 0;
-  GHExt::Level &level = ghext->levels.at(lev);
-  level.level = lev;
+  const int nlevels = 2;
+  ghext->leveldata.resize(nlevels);
+  for (int level = 0; level < nlevels; ++level) {
+    GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+    leveldata.level = level;
 
-  // Define box array
-  IntVect dom_lo(AMREX_D_DECL(0, 0, 0));
-  IntVect dom_hi(AMREX_D_DECL(ncells_x - 1, ncells_y - 1, ncells_z - 1));
-  Box domain(dom_lo, dom_hi);
-  level.grids.define(domain);
+    // Define box array
+    IntVect box_lo(AMREX_D_DECL(0, 0, 0));
+    IntVect box_hi(AMREX_D_DECL(ncells_x - 1, ncells_y - 1, ncells_z - 1));
+    Box box(box_lo, box_hi);
+    leveldata.grids.define(box);
 
-  // Break up box array into chunks no larger than max_grid_size along
-  // each direction
-  const int max_grid_size = 32;
-  level.grids.maxSize(max_grid_size);
+    // Break up box array into chunks no larger than max_grid_size along
+    // each direction
+    const int max_grid_size = 32;
+    leveldata.grids.maxSize(max_grid_size);
 
-  // Define physical box
-  RealBox real_box({AMREX_D_DECL(xmin, ymin, zmin)},
+    // Define physical box
+    RealBox domain({AMREX_D_DECL(xmin, ymin, zmin)},
                    {AMREX_D_DECL(xmax, ymax, zmax)});
 
-  // Define geometry
-  Vector<int> is_periodic(AMREX_SPACEDIM, 1); // periodic in all directions
-  level.geom.define(domain, &real_box, CoordSys::cartesian, is_periodic.data());
+    // Define geometry
+    Vector<int> is_periodic(AMREX_SPACEDIM, 1); // periodic in all directions
+    leveldata.geom.define(box, &domain, CoordSys::cartesian,
+                          is_periodic.data());
 
-  // Distributed boxes
-  level.dmap = DistributionMapping(level.grids);
+    // Distributed boxes
+    leveldata.dmap = DistributionMapping(leveldata.grids);
 
-  const int numgroups = CCTK_NumGroups();
-  level.groupdata.resize(numgroups);
-  for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
-    assert(group.grouptype == CCTK_GF);
-    assert(group.vartype == CCTK_VARIABLE_REAL);
-    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
-    assert(group.dim == dim);
+    const int numgroups = CCTK_NumGroups();
+    leveldata.groupdata.resize(numgroups);
+    for (int gi = 0; gi < numgroups; ++gi) {
+      cGroup group;
+      int ierr = CCTK_GroupData(gi, &group);
+      assert(!ierr);
+      assert(group.grouptype == CCTK_GF);
+      assert(group.vartype == CCTK_VARIABLE_REAL);
+      assert(group.disttype == CCTK_DISTRIB_DEFAULT);
+      assert(group.dim == dim);
 
-    GHExt::Level::GroupData &groupdata = level.groupdata.at(gi);
-    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-    groupdata.numvars = group.numvars;
+      GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
+      groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+      groupdata.numvars = group.numvars;
 
-    // Allocate grid hierarchies
-    groupdata.mfab.resize(group.numtimelevels);
-    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      groupdata.mfab.at(tl) = make_unique<MultiFab>(
-          level.grids, level.dmap, groupdata.numvars, ghost_size);
+      // Allocate grid hierarchies
+      groupdata.mfab.resize(group.numtimelevels);
+      for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+        groupdata.mfab.at(tl) = make_unique<MultiFab>(
+            leveldata.grids, leveldata.dmap, groupdata.numvars, ghost_size);
+      }
     }
-  }
+
+  } // for level
 
   return 0; // unused
 }

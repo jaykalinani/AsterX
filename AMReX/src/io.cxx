@@ -32,8 +32,8 @@ int OutputGH(const cGH *restrict cctkGH) {
 
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
-    for (const auto &restrict level : ghext->levels) {
-      auto &restrict groupdata = level.groupdata.at(gi);
+    for (const auto &restrict leveldata : ghext->leveldata) {
+      auto &restrict groupdata = leveldata.groupdata.at(gi);
       if (groupdata.mfab.size() > 0) {
         const int tl = 0;
 
@@ -43,7 +43,7 @@ int OutputGH(const cGH *restrict cctkGH) {
           c = tolower(c);
         ostringstream buf;
         buf << "wavetoy/" << groupname;
-        buf << ".rl" << setw(2) << setfill('0') << level.level;
+        buf << ".rl" << setw(2) << setfill('0') << leveldata.level;
         buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
         string filename = buf.str();
 
@@ -59,7 +59,7 @@ int OutputGH(const cGH *restrict cctkGH) {
         // TODO: Output all levels into a single file
         // TODO: Output all groups into a single file
         WriteSingleLevelPlotfile(filename, *groupdata.mfab.at(tl), varnames,
-                                 level.geom, cctk_time, cctk_iteration);
+                                 leveldata.geom, cctk_time, cctk_iteration);
       }
 
       count_vars += groupdata.numvars;
