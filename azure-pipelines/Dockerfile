@@ -27,5 +27,9 @@ RUN wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz && \
     cd ../.. && \
     rm -rf amrex-19.07
 
+RUN apt-get update && \
+    apt-get -y --no-install-recommends install rsync && \
+    rm -rf /var/lib/apt/lists/*
+
 # As documentation
 COPY Dockerfile /Dockerfile
