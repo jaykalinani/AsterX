@@ -14,16 +14,16 @@ steps:
     ls -l cactusamrex || echo true
     ls -l .. || echo true
     ls -l ../.. || echo true
-    ./GetComponents --parallel cactusamrex/azure-pipelines/amrex.th
+    ./GetComponents --parallel azure-pipelines/amrex.th
     echo 'docker' >$HOME/.hostname
-    cp cactusamrex/azure-pipelines/defs.local.ini Cactus/simfactory/etc
-    cp cactusamrex/azure-pipelines/docker.ini Cactus/simfactory/mdb/machines
-    cp cactusamrex/azure-pipelines/ubuntu.cfg Cactus/simfactory/mdb/optionlists
-    cp cactusamrex/azure-pipelines/docker.sub Cactus/simfactory/mdb/submitscripts
-    cp cactusamrex/azure-pipelines/docker.run Cactus/simfactory/mdb/runscripts
+    cp azure-pipelines/defs.local.ini Cactus/simfactory/etc
+    cp azure-pipelines/docker.ini Cactus/simfactory/mdb/machines
+    cp azure-pipelines/ubuntu.cfg Cactus/simfactory/mdb/optionlists
+    cp azure-pipelines/docker.sub Cactus/simfactory/mdb/submitscripts
+    cp azure-pipelines/docker.run Cactus/simfactory/mdb/runscripts
   displayName: Download Cactus
 - script: |
     set -euxo pipefail
     cd Cactus
-    ./simfactory/bin/sim build -j2 --thornlist=../cactusamrex/azure-pipelines/amrex.th
+    ./simfactory/bin/sim build -j2 --thornlist=../azure-pipelines/amrex.th
   displayName: Build Cactus
