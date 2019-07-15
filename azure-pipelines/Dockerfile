@@ -26,3 +26,4 @@ COPY amrex.th /cactus/amrex.th
 COPY Dockerfile /Dockerfile
 
 RUN apt-get update && apt-get -y install git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get -y install subversion && rm -rf /var/lib/apt/lists/*
