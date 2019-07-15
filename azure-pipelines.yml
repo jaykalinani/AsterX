@@ -10,14 +10,14 @@ steps:
     wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
     chmod a+x GetComponents
     ./GetComponents --parallel amrex.th
-    cp defs.local.init Cactus/simfactory/etc
-    cp docker.ini Cactus/simfactory/mdb/machines
-    cp ubuntu.cfg Cactus/simfactory/mdb/optionlists
-    cp docker.sub Cactus/simfactory/mdb/submitscripts
-    cp docker.run Cactus/simfactory/mdb/runscripts
+    cp /cactus/defs.local.init Cactus/simfactory/etc
+    cp /cactus/docker.ini Cactus/simfactory/mdb/machines
+    cp /cactus/ubuntu.cfg Cactus/simfactory/mdb/optionlists
+    cp /cactus/docker.sub Cactus/simfactory/mdb/submitscripts
+    cp /cactus/docker.run Cactus/simfactory/mdb/runscripts
   displayName: Download Cactus
 - script: |
     set -euxo pipefail
     cd Cactus
-    ./simfactory/bin/sim build -j2 --thornlist=$HOME/amrex.th
+    ./simfactory/bin/sim build -j2 --thornlist=/cactus/amrex.th
   displayName: Build Cactus
