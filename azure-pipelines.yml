@@ -32,5 +32,5 @@ steps:
 - script: |
     set -euxo pipefail
     cd Cactus
-    make sim-test
+    make sim-testsuite
   displayName: Run tests
