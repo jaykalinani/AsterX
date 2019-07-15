@@ -36,8 +36,8 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
   const CCTK_REAL *restrict const x0 = cctk_origin_space;
   const CCTK_REAL *restrict const dx = cctk_delta_space;
 
-  for (int k = 0; k < cctk_lsh[2]; ++k)
-    for (int j = 0; j < cctk_lsh[1]; ++j)
+  for (int k = 0; k < cctk_lsh[2]; ++k) {
+    for (int j = 0; j < cctk_lsh[1]; ++j) {
 #pragma omp simd
       for (int i = 0; i < cctk_lsh[0]; ++i) {
         const int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
@@ -47,6 +47,8 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
         phi[idx] = standing(t, x, y, z);
         phi_p[idx] = standing(t - dt, x, y, z);
       }
+    }
+  }
 }
 
 extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
@@ -60,8 +62,8 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
   const int dj = di * cctk_ash[0];
   const int dk = dj * cctk_ash[1];
 
-  for (int k = 0; k < cctk_lsh[2]; ++k)
-    for (int j = 0; j < cctk_lsh[1]; ++j)
+  for (int k = 0; k < cctk_lsh[2]; ++k) {
+    for (int j = 0; j < cctk_lsh[1]; ++j) {
 #pragma omp simd
       for (int i = 0; i < cctk_lsh[0]; ++i) {
         const int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
@@ -74,6 +76,8 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
         phi[idx] = -phi_p_p[idx] + 2 * phi_p[idx] +
                    sqr(dt) * (ddx_phi + ddy_phi + ddz_phi);
       }
+    }
+  }
 }
 
 extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
@@ -84,8 +88,8 @@ extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
   const CCTK_REAL *restrict const x0 = cctk_origin_space;
   const CCTK_REAL *restrict const dx = cctk_delta_space;
 
-  for (int k = 0; k < cctk_lsh[2]; ++k)
-    for (int j = 0; j < cctk_lsh[1]; ++j)
+  for (int k = 0; k < cctk_lsh[2]; ++k) {
+    for (int j = 0; j < cctk_lsh[1]; ++j) {
 #pragma omp simd
       for (int i = 0; i < cctk_lsh[0]; ++i) {
         const int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
@@ -94,6 +98,8 @@ extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
         CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
         err[idx] = phi[idx] - standing(t, x, y, z);
       }
+    }
+  }
 }
 
 } // namespace WaveToyAMReX

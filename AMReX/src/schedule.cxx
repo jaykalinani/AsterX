@@ -1,4 +1,4 @@
-#include <AMReX.hxx>
+#include <driver.hxx>
 #include <schedule.hxx>
 
 #include <cctk.h>
@@ -17,6 +17,7 @@
 
 #include <sys/time.h>
 
+#include <algorithm>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -194,11 +195,13 @@ void enter_local_mode(cGH *restrict cctkGH, GHExt::Level &restrict level,
   // Grid function pointers
   const Dim3 imin = lbound(bx);
   for (auto &restrict groupdata : level.groupdata) {
-    const Array4<CCTK_REAL> &vars = groupdata.mfab.array(mfi);
-    for (int tl = 0; tl < groupdata.numtimelevels; ++tl)
-      for (int n = 0; n < groupdata.numvars; ++n)
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+      const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+      for (int n = 0; n < groupdata.numvars; ++n) {
         cctkGH->data[groupdata.firstvarindex + n][tl] =
-            vars.ptr(imin.x, imin.y, imin.z, tl * groupdata.numvars + n);
+            vars.ptr(imin.x, imin.y, imin.z, n);
+      }
+    }
   }
 }
 void leave_local_mode(cGH *restrict cctkGH, const GHExt::Level &restrict level,
@@ -215,9 +218,10 @@ void leave_local_mode(cGH *restrict cctkGH, const GHExt::Level &restrict level,
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = undefined;
   for (auto &restrict groupdata : level.groupdata) {
-    for (int tl = 0; tl < groupdata.numtimelevels; ++tl)
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       for (int n = 0; n < groupdata.numvars; ++n)
         cctkGH->data[groupdata.firstvarindex + n][tl] = nullptr;
+    }
   }
 }
 
@@ -378,13 +382,17 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
 
   // TODO: Get ghost_size from mfab
-  for (auto &restrict level : ghext->levels)
+  for (auto &restrict level : ghext->levels) {
     for (auto &restrict groupdata : level.groupdata) {
-      for (int tl = groupdata.numtimelevels - 1; tl > 0; --tl)
-        MultiFab::Copy(groupdata.mfab, groupdata.mfab,
-                       (tl - 1) * groupdata.numvars, tl * groupdata.numvars,
-                       groupdata.numvars, ghost_size);
+      const int ntls = groupdata.mfab.size();
+      if (ntls > 1) {
+        unique_ptr<MultiFab> tmp = move(groupdata.mfab.at(ntls - 1));
+        for (int tl = ntls - 1; tl > 0; --tl)
+          groupdata.mfab.at(tl) = move(groupdata.mfab.at(tl - 1));
+        groupdata.mfab.at(0) = move(tmp);
+      }
     }
+  }
 }
 
 // Schedule evolution
@@ -441,7 +449,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       cGH *restrict threadGH = &thread_local_cctkGH.at(omp_get_thread_num());
       update_cctkGH(threadGH, cctkGH);
       for (auto &restrict level : ghext->levels) {
-        MultiFab &mfab = level.groupdata.at(0).mfab;
+        MultiFab &mfab = *level.groupdata.at(0).mfab.at(0);
         enter_level_mode(threadGH, level);
         auto mfitinfo =
             MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
@@ -481,13 +489,19 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   // TODO: Synchronize only current time level. This probably requires
   // setting up different mfabs for each time level.
-  for (auto &restrict level : ghext->levels)
+  for (auto &restrict level : ghext->levels) {
     for (int n = 0; n < numgroups; ++n) {
       int gi = groups[n];
       auto &restrict groupdata = level.groupdata.at(gi);
-      // we always sync all directions
-      groupdata.mfab.FillBoundary(level.geom.periodicity());
+      // We always sync all directions.
+      // If there is more than one time level, then we don't sync the
+      // oldest.
+      int ntls = groupdata.mfab.size();
+      int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+      for (int tl = 0; tl < sync_tl; ++tl)
+        groupdata.mfab.at(tl)->FillBoundary(level.geom.periodicity());
     }
+  }
 
   return numgroups; // number of groups synchronized
 }

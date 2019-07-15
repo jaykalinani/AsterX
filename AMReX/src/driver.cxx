@@ -1,4 +1,4 @@
-#include <AMReX.hxx>
+#include <driver.hxx>
 #include <io.hxx>
 #include <schedule.hxx>
 
@@ -141,12 +141,13 @@ int InitGH(cGH *restrict cctkGH) {
     GHExt::Level::GroupData &groupdata = level.groupdata.at(gi);
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
-    groupdata.numtimelevels = group.numtimelevels;
 
-    // Allocate grid hierarchy
-    groupdata.mfab =
-        MultiFab(level.grids, level.dmap,
-                 groupdata.numvars * groupdata.numtimelevels, ghost_size);
+    // Allocate grid hierarchies
+    groupdata.mfab.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+      groupdata.mfab.at(tl) = make_unique<MultiFab>(
+          level.grids, level.dmap, groupdata.numvars, ghost_size);
+    }
   }
 
   return 0; // unused

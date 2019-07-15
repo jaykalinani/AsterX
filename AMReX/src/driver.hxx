@@ -1,5 +1,5 @@
-#ifndef AMREX_HXX
-#define AMREX_HXX
+#ifndef DRIVER_HXX
+#define DRIVER_HXX
 
 #include <AMReX.H>
 #include <AMReX_BoxArray.H>
@@ -39,8 +39,7 @@ struct GHExt {
     struct GroupData {
       int firstvarindex;
       int numvars;
-      int numtimelevels;
-      MultiFab mfab;
+      vector<unique_ptr<MultiFab> > mfab; // [time level]
     };
     vector<GroupData> groupdata;
   };
@@ -51,4 +50,4 @@ extern unique_ptr<GHExt> ghext;
 
 } // namespace AMReX
 
-#endif // #ifndef AMREX_HXX
+#endif // #ifndef DRIVER_HXX

@@ -1,4 +1,4 @@
-#include <AMReX.hxx>
+#include <driver.hxx>
 #include <io.hxx>
 
 #include <cctk.h>
@@ -31,40 +31,40 @@ int OutputGH(const cGH *restrict cctkGH) {
   int count_vars = 0;
 
   const int numgroups = CCTK_NumGroups();
-  for (int gi = 0; gi < numgroups; ++gi)
+  for (int gi = 0; gi < numgroups; ++gi) {
     for (const auto &restrict level : ghext->levels) {
       auto &restrict groupdata = level.groupdata.at(gi);
+      if (groupdata.mfab.size() > 0) {
+        const int tl = 0;
 
-      string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
-      groupname = regex_replace(groupname, regex("::"), "-");
-      for (auto &c : groupname)
-        c = tolower(c);
-      ostringstream buf;
-      buf << "wavetoy/" << groupname;
-      buf << ".rl" << setw(2) << setfill('0') << level.level;
-      buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
-      string filename = buf.str();
+        string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
+        groupname = regex_replace(groupname, regex("::"), "-");
+        for (auto &c : groupname)
+          c = tolower(c);
+        ostringstream buf;
+        buf << "wavetoy/" << groupname;
+        buf << ".rl" << setw(2) << setfill('0') << level.level;
+        buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
+        string filename = buf.str();
 
-      Vector<string> varnames(groupdata.numvars * groupdata.numtimelevels);
-      for (int tl = 0; tl < groupdata.numtimelevels; ++tl) {
+        Vector<string> varnames(groupdata.numvars);
         for (int n = 0; n < groupdata.numvars; ++n) {
           ostringstream buf;
           buf << CCTK_VarName(groupdata.firstvarindex + n);
           for (int i = 0; i < tl; ++i)
             buf << "_p";
-          varnames.at(tl * groupdata.numvars + n) = buf.str();
+          varnames.at(n) = buf.str();
         }
-      }
 
-      // TODO: Output only current time level. This might require having one
-      // mfab per time level
-      // TODO: Output all levels into a single file
-      // TODO: Output everything into a single file
-      WriteSingleLevelPlotfile(filename, groupdata.mfab, varnames, level.geom,
-                               cctk_time, cctk_iteration);
+        // TODO: Output all levels into a single file
+        // TODO: Output all groups into a single file
+        WriteSingleLevelPlotfile(filename, *groupdata.mfab.at(tl), varnames,
+                                 level.geom, cctk_time, cctk_iteration);
+      }
 
       count_vars += groupdata.numvars;
     }
+  }
 
   return count_vars;
 }
