@@ -34,11 +34,20 @@ steps:
     cd Cactus
     env
     pwd
-    ls -l
-    ls -l ..
-    ls -ld /__w/simulations
-    ls -l /__w/simulations
-    ./simfactory/bin/sim whoami
+    echo a
+    ls -l || echo true
+    echo b
+    ls -l .. || echo true
+    echo c
+    ls -ld /__w/simulations || echo true
+    echo d
+    ls -l /__w/simulations || echo true
+    echo e
+    ls -l /home/vsts_azpcontainer/simulations || echo true
+    echo f
+    ls -l /home/vsts_azpcontainer || echo true
+    echo g
+    ./simfactory/bin/sim whoami || echo true
     ./simfactory/bin/sim submit sim-test --test --procs=1 --num-threads=2
     ./simfactory/bin/sim submit sim-test --test --procs=2 --num-threads=1
   displayName: Run tests
