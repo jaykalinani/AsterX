@@ -1,5 +1,6 @@
 #include <driver.hxx>
 #include <io.hxx>
+#include <reduction.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -29,7 +30,6 @@ int OutputGH(const cGH *restrict cctkGH) {
     return 0;
 
   int count_vars = 0;
-
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
     for (const auto &restrict leveldata : ghext->leveldata) {
@@ -48,12 +48,12 @@ int OutputGH(const cGH *restrict cctkGH) {
         string filename = buf.str();
 
         Vector<string> varnames(groupdata.numvars);
-        for (int n = 0; n < groupdata.numvars; ++n) {
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
           ostringstream buf;
-          buf << CCTK_VarName(groupdata.firstvarindex + n);
+          buf << CCTK_VarName(groupdata.firstvarindex + vi);
           for (int i = 0; i < tl; ++i)
             buf << "_p";
-          varnames.at(n) = buf.str();
+          varnames.at(vi) = buf.str();
         }
 
         // TODO: Output all levels into a single file
@@ -61,8 +61,21 @@ int OutputGH(const cGH *restrict cctkGH) {
         WriteSingleLevelPlotfile(filename, *groupdata.mfab.at(tl), varnames,
                                  leveldata.geom, cctk_time, cctk_iteration);
       }
+    }
+    count_vars += ghext->leveldata.at(0).groupdata.at(gi).numvars;
+  }
 
-      count_vars += groupdata.numvars;
+  for (int gi = 0; gi < numgroups; ++gi) {
+    const int level = 0;
+    const GHExt::LevelData &restrict leveldata = ghext->leveldata.at(level);
+    const GHExt::LevelData::GroupData &restrict groupdata =
+        leveldata.groupdata.at(gi);
+    const int numvars = groupdata.numvars;
+    for (int vi = 0; vi < numvars; ++vi) {
+      const int tl = 0;
+      reduction<CCTK_REAL> red = reduce(gi, vi, tl);
+      CCTK_VINFO("maxabs(%s)=%g", CCTK_VarName(groupdata.firstvarindex + vi),
+                 red.maxabs);
     }
   }
 

@@ -6,7 +6,6 @@
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_MultiFab.H>
-using namespace amrex;
 
 #include <cctk.h>
 
@@ -15,6 +14,7 @@ using namespace amrex;
 #include <vector>
 
 namespace AMReX {
+using namespace amrex;
 using namespace std;
 
 constexpr int dim = 3;

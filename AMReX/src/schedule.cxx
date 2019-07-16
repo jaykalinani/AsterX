@@ -32,14 +32,16 @@ using namespace std;
 // positive values often lead to segfault, exposing bugs.
 constexpr int undefined = 666;
 
-////////////////////////////////////////////////////////////////////////////////
+vector<cGH> thread_local_cctkGH;
 
+namespace {
 // Convert a (direction, face) pair to an AMReX Orientation
 Orientation orient(int d, int f) {
   return Orientation(d, Orientation::Side(f));
 }
+} // namespace
 
-vector<cGH> thread_local_cctkGH;
+////////////////////////////////////////////////////////////////////////////////
 
 // Create a new cGH, copying those data that are set by the flesh, and
 // allocating space for these data that are set per thread by the driver
@@ -197,9 +199,9 @@ void enter_local_mode(cGH *restrict cctkGH,
   for (auto &restrict groupdata : leveldata.groupdata) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-      for (int n = 0; n < groupdata.numvars; ++n) {
-        cctkGH->data[groupdata.firstvarindex + n][tl] =
-            vars.ptr(imin.x, imin.y, imin.z, n);
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
+        cctkGH->data[groupdata.firstvarindex + vi][tl] =
+            vars.ptr(imin.x, imin.y, imin.z, vi);
       }
     }
   }
@@ -220,8 +222,8 @@ void leave_local_mode(cGH *restrict cctkGH,
       cctkGH->cctk_bbox[2 * d + f] = undefined;
   for (auto &restrict groupdata : leveldata.groupdata) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      for (int n = 0; n < groupdata.numvars; ++n)
-        cctkGH->data[groupdata.firstvarindex + n][tl] = nullptr;
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        cctkGH->data[groupdata.firstvarindex + vi][tl] = nullptr;
     }
   }
 }
