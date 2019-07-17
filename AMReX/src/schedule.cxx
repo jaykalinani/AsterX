@@ -85,22 +85,24 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   cctkGH->cctk_convlevel = 0; // no convergence tests
 
   // Initialize grid spacing
-  int ncells[dim] = {ncells_x, ncells_y, ncells_z};
-  CCTK_REAL x0[dim] = {xmin, ymin, zmin};
-  CCTK_REAL x1[dim] = {xmax, ymax, zmax};
-  CCTK_REAL dx[dim];
-  for (int d = 0; d < dim; ++d)
-    dx[d] = (x1[d] - x0[d]) / ncells[d];
-  CCTK_REAL mindx = 1.0 / 0.0;
-  for (int d = 0; d < dim; ++d)
-    mindx = fmin(mindx, dx[d]);
+  const Geometry &geom = ghext->amrmesh->Geom(0);
+  const CCTK_REAL *restrict x0 = geom.ProbLo();
+  const CCTK_REAL *restrict dx = geom.CellSize();
 
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_origin_space[d] = x0[d] + 0.5 * dx[d];
+    cctkGH->cctk_origin_space[d] = x0[d] + 0.0 * dx[d];
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_delta_space[d] = dx[d];
 
   // Initialize time stepping
+  CCTK_REAL mindx = 1.0 / 0.0;
+  const int numlevels = ghext->amrmesh->finestLevel() + 1;
+  for (int level = 0; level <numlevels; ++level) {
+    const Geometry &geom = ghext->amrmesh->Geom(level);
+    const CCTK_REAL *restrict dx = geom.CellSize();
+    for (int d = 0; d < dim; ++d)
+      mindx = fmin(mindx, dx[d]);
+  }
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
 }
@@ -136,24 +138,19 @@ void enter_level_mode(cGH *restrict cctkGH,
   DECLARE_CCTK_PARAMETERS;
 
   // Global shape
-  // TODO: Get this from mfab
-#warning "TODO"
-  int ncells[dim] = {ncells_x, ncells_y, ncells_z};
+  const Box &domain = ghext->amrmesh->Geom(leveldata.level).Domain();
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_gsh[d] = ncells[d];
+    cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1;
 
-    // The refinement factor over the top level (coarsest) grid
-#warning "TODO"
+  // The refinement factor over the top level (coarsest) grid
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_levfac[d] = 1; // TODO
+    cctkGH->cctk_levfac[d] = 1 << leveldata.level;
 
-    // Offset between this level's and the coarsest level's origin
-#warning "TODO"
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_levoff[d] = 0; // TODO
-#warning "TODO"
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_levoffdenom[d] = 0; // TODO
+  // Offset between this level's and the coarsest level's origin
+  for (int d = 0; d < dim; ++d) {
+    cctkGH->cctk_levoff[d] = 1;
+    cctkGH->cctk_levoffdenom[d] = 2;
+  }
 }
 void leave_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata) {
@@ -281,18 +278,17 @@ int Initialise(tFleshConfig *config) {
 
   // Output domain information
   if (CCTK_MyProc(nullptr) == 0) {
-    int ncells[dim];
-    for (int d = 0; d < dim; ++d)
-      ncells[d] = cctkGH->cctk_gsh[d];
+    enter_level_mode(cctkGH, ghext->leveldata.at(0));
+    const int *restrict gsh = cctkGH->cctk_gsh;
     CCTK_REAL x0[dim], x1[dim], dx[dim];
     for (int d = 0; d < dim; ++d)
       dx[d] = cctkGH->cctk_delta_space[d];
     for (int d = 0; d < dim; ++d)
-      x0[d] = cctkGH->cctk_origin_space[d] - 0.5 * dx[d];
+      x0[d] = cctkGH->cctk_origin_space[d] - 0.0 * dx[d];
     for (int d = 0; d < dim; ++d)
-      x1[d] = x0[d] + ncells[d] * dx[d];
+      x1[d] = x0[d] + gsh[d] * dx[d];
     CCTK_VINFO("Grid extent:");
-    CCTK_VINFO("  gsh=[%d,%d,%d]", ncells[0], ncells[1], ncells[2]);
+    CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
     CCTK_VINFO("Domain extent:");
     CCTK_VINFO("  xmin=[%g,%g,%g]", x0[0], x0[1], x0[2]);
     CCTK_VINFO("  xmax=[%g,%g,%g]", x1[0], x1[1], x1[2]);
@@ -300,6 +296,7 @@ int Initialise(tFleshConfig *config) {
     CCTK_VINFO("Time stepping:");
     CCTK_VINFO("  t0=%g", cctkGH->cctk_time);
     CCTK_VINFO("  dt=%g", cctkGH->cctk_delta_time);
+    leave_level_mode(cctkGH, ghext->leveldata.at(0));
   }
 
   CCTK_Traverse(cctkGH, "CCTK_WRAGH");

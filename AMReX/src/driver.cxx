@@ -42,6 +42,40 @@ int Barrier(const cGH *cctkGHa);
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// AmrCore functions
+
+CactusAmrMesh::CactusAmrMesh() {}
+CactusAmrMesh::CactusAmrMesh(const RealBox *rb, int max_level_in,
+                             const Vector<int> &n_cell_in, int coord,
+                             Vector<IntVect> ref_ratios, const int *is_per)
+    : AmrMesh(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
+CactusAmrMesh::CactusAmrMesh(const RealBox &rb, int max_level_in,
+                             const Vector<int> &n_cell_in, int coord,
+                             Vector<IntVect> const &ref_ratios,
+                             Array<int, AMREX_SPACEDIM> const &is_per)
+    : AmrMesh(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
+
+CactusAmrMesh::~CactusAmrMesh() {}
+
+void CactusAmrMesh::ErrorEst(int lev, TagBoxArray &tags, Real time, int ngrow) {
+  // // refine everywhere
+  // tags.setVal(boxArray(lev), TagBox::SET);
+
+  // refine centre
+  const BoxArray &ba = boxArray(lev);
+  const Box &bx = ba.minimalBox();
+  Box nbx;
+  for (int d = 0; d < dim; ++d) {
+    int sz = bx.bigEnd(d) - bx.smallEnd(d) + 1;
+    nbx.setSmall(d, bx.smallEnd(d) + sz / 4 + 1);
+    nbx.setBig(d, bx.bigEnd(d) - sz / 4 - 1);
+  }
+  cout << "nbx: " << nbx << "\n";
+  tags.setVal(intersect(ba, nbx), TagBox::SET);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // Start driver
 extern "C" int AMReX_Startup() {
   CCTK_VINFO("Startup");
@@ -103,11 +137,10 @@ int InitGH(cGH *restrict cctkGH) {
   assert(cctkGH);
 
   // Domain
-  const RealBox domain({AMREX_D_DECL(xmin, ymin, zmin)},
-                       {AMREX_D_DECL(xmax, ymax, zmax)});
+  const RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
 
   // Maximum number of levels
-  const int maxlevels = 1;
+  const int maxnumlevels = 2;
 
   // Number of coarse grid cells
   const Vector<int> ncells{ncells_x, ncells_y, ncells_z};
@@ -120,24 +153,44 @@ int InitGH(cGH *restrict cctkGH) {
   // Periodic in all directions
   const Array<int, dim> periodic{1, 1, 1};
 
-  ghext->amrmesh = make_unique<AmrMesh>(domain, maxlevels, ncells, coord,
-                                        reffacts, periodic);
+  ghext->amrmesh = make_unique<CactusAmrMesh>(domain, maxnumlevels - 1, ncells,
+                                              coord, reffacts, periodic);
+#warning "TODO: increase blocking factor"
+  // const int blocking_factor = 8;
+  const int blocking_factor = 1;
+  ghext->amrmesh->SetBlockingFactor(blocking_factor);
   const int max_grid_size = 32;
   ghext->amrmesh->SetMaxGridSize(max_grid_size);
-  ghext->amrmesh->MakeNewGrids(0.0);
 
-  CCTK_VINFO("Geometry:");
-  cout << ghext->amrmesh->Geom(0) << "\n";
-  CCTK_VINFO("BoxArray:");
-  cout << ghext->amrmesh->boxArray(0) << "\n";
-  CCTK_VINFO("DistributionMap:");
-  cout << ghext->amrmesh->DistributionMap(0) << "\n";
+  for (int level = 0; level < maxnumlevels; ++level) {
+    CCTK_VINFO("Geometry level %d:", level);
+    cout << ghext->amrmesh->Geom(level) << "\n";
+  }
 
-  const int nlevels = 1;
-  ghext->leveldata.resize(nlevels);
-  for (int level = 0; level < nlevels; ++level) {
+  const int numlevels = maxnumlevels;
+  ghext->leveldata.resize(numlevels);
+  for (int level = 0; level < numlevels; ++level) {
     GHExt::LevelData &leveldata = ghext->leveldata.at(level);
     leveldata.level = level;
+
+    CCTK_REAL time = 0.0; // dummy time
+
+    // Create grid structure
+    if (level == 0) {
+      // Create coarse grid
+      ghext->amrmesh->MakeNewGrids(time);
+    } else {
+      // Create refined grid
+      int new_finest = -999;
+      Vector<BoxArray> new_grids;
+      ghext->amrmesh->MakeNewGrids(0, time, new_finest, new_grids);
+      assert(new_finest == level);
+    }
+
+    // CCTK_VINFO("BoxArray level %d:", level);
+    // cout << ghext->amrmesh->boxArray(level) << "\n";
+    // CCTK_VINFO("DistributionMap level %d:", level);
+    // cout << ghext->amrmesh->DistributionMap(level) << "\n";
 
     const int numgroups = CCTK_NumGroups();
     leveldata.groupdata.resize(numgroups);
@@ -167,7 +220,7 @@ int InitGH(cGH *restrict cctkGH) {
   } // for level
 
   return 0; // unused
-}
+} // namespace AMReX
 
 // Traverse schedule
 int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {

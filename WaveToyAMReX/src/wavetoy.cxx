@@ -32,9 +32,12 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
-  const CCTK_REAL dt = cctk_delta_time;
-  const CCTK_REAL *restrict const x0 = cctk_origin_space;
-  const CCTK_REAL *restrict const dx = cctk_delta_space;
+  const CCTK_REAL dt = CCTK_DELTA_TIME;
+  CCTK_REAL x0[dim], dx[dim];
+  for (int d = 0; d < dim; ++d) {
+    x0[d] = CCTK_ORIGIN_SPACE(d);
+    dx[d] = CCTK_DELTA_SPACE(d);
+  }
 
   for (int k = 0; k < cctk_lsh[2]; ++k) {
     for (int j = 0; j < cctk_lsh[1]; ++j) {
@@ -55,8 +58,11 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  const CCTK_REAL *restrict const dx = cctk_delta_space;
-  const CCTK_REAL dt = cctk_delta_time;
+  const CCTK_REAL dt = CCTK_DELTA_TIME;
+  CCTK_REAL dx[dim];
+  for (int d = 0; d < dim; ++d) {
+    dx[d] = CCTK_DELTA_SPACE(d);
+  }
 
   constexpr int di = 1;
   const int dj = di * cctk_ash[0];
@@ -85,8 +91,11 @@ extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
-  const CCTK_REAL *restrict const x0 = cctk_origin_space;
-  const CCTK_REAL *restrict const dx = cctk_delta_space;
+  CCTK_REAL x0[dim], dx[dim];
+  for (int d = 0; d < dim; ++d) {
+    x0[d] = CCTK_ORIGIN_SPACE(d);
+    dx[d] = CCTK_DELTA_SPACE(d);
+  }
 
   for (int k = 0; k < cctk_lsh[2]; ++k) {
     for (int j = 0; j < cctk_lsh[1]; ++j) {

@@ -15,8 +15,12 @@ Orientation orient(int d, int f) {
 } // namespace
 
 template <typename T>
-reduction<T> reduce_array(const T *restrict var, const int *restrict ash,
-                          const int *restrict lsh) {
+reduction<T> reduce_array(const Geometry &geom, const T *restrict var,
+                          const int *restrict ash, const int *restrict lsh) {
+  const CCTK_REAL *restrict dx = geom.CellSize();
+  CCTK_REAL dV = 1.0;
+  for (int d = 0; d < dim; ++d)
+    dV *= dx[d];
   reduction<T> red;
   constexpr int di = 1;
   const int dj = di * ash[0];
@@ -26,7 +30,7 @@ reduction<T> reduce_array(const T *restrict var, const int *restrict ash,
 #pragma omp simd
       for (int i = 0; i < lsh[0]; ++i) {
         int idx = di * i + dj * j + dk * k;
-        red = reduction<T>(red, reduction<T>(var[idx]));
+        red = reduction<T>(red, reduction<T>(dV, var[idx]));
       }
     }
   }
@@ -38,6 +42,7 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
 #pragma omp parallel reduction(reduction : red)
   {
     for (auto &restrict leveldata : ghext->leveldata) {
+      const auto &restrict geom = ghext->amrmesh->Geom(leveldata.level);
       auto &restrict groupdata = leveldata.groupdata.at(gi);
       MultiFab &mfab = *groupdata.mfab.at(tl);
       auto mfitinfo =
@@ -56,7 +61,7 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
         const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
         const CCTK_REAL *restrict var = vars.ptr(imin.x, imin.y, imin.z, vi);
 
-        red += reduce_array(var, ash, lsh);
+        red += reduce_array(geom, var, ash, lsh);
       }
     }
   }
