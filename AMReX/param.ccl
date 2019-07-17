@@ -37,17 +37,17 @@ CCTK_REAL zmax "Domain size"
 CCTK_INT ncells_x "Number of grid cells"
 {
   1:*
-} 100
+} 128
 
 CCTK_INT ncells_y "Number of grid cells"
 {
   1:*
-} 100
+} 128
 
 CCTK_INT ncells_z "Number of grid cells"
 {
   1:*
-} 100
+} 128
 
 
 

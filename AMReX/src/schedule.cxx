@@ -184,10 +184,10 @@ void enter_local_mode(cGH *restrict cctkGH,
     cctkGH->cctk_ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
 
   // Local extent
-  for (int d = 0; d < dim; ++d)
+  for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_lbnd[d] = bx[orient(d, 0)];
-  for (int d = 0; d < dim; ++d)
     cctkGH->cctk_ubnd[d] = bx[orient(d, 1)];
+  }
 
   // Boundaries
   for (int d = 0; d < dim; ++d)
@@ -213,10 +213,10 @@ void leave_local_mode(cGH *restrict cctkGH,
     cctkGH->cctk_lsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_ash[d] = undefined;
-  for (int d = 0; d < dim; ++d)
+  for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_lbnd[d] = undefined;
-  for (int d = 0; d < dim; ++d)
     cctkGH->cctk_ubnd[d] = undefined;
+  }
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = undefined;
@@ -502,7 +502,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       int ntls = groupdata.mfab.size();
       int sync_tl = ntls > 1 ? ntls - 1 : ntls;
       for (int tl = 0; tl < sync_tl; ++tl)
-        groupdata.mfab.at(tl)->FillBoundary(leveldata.geom.periodicity());
+        groupdata.mfab.at(tl)->FillBoundary(
+            ghext->amrmesh->Geom(leveldata.level).periodicity());
     }
   }
 

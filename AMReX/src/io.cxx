@@ -59,7 +59,8 @@ int OutputGH(const cGH *restrict cctkGH) {
         // TODO: Output all levels into a single file
         // TODO: Output all groups into a single file
         WriteSingleLevelPlotfile(filename, *groupdata.mfab.at(tl), varnames,
-                                 leveldata.geom, cctk_time, cctk_iteration);
+                                 ghext->amrmesh->Geom(leveldata.level),
+                                 cctk_time, cctk_iteration);
       }
     }
     count_vars += ghext->leveldata.at(0).groupdata.at(gi).numvars;

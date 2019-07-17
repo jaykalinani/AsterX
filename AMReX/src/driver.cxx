@@ -7,10 +7,13 @@
 #include <cctk_Parameters.h>
 
 #include <AMReX.H>
+#include <AMReX_BCRec.H>
 
 #include <omp.h>
 #include <mpi.h>
 
+#include <cmath>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -99,34 +102,42 @@ int InitGH(cGH *restrict cctkGH) {
 
   assert(cctkGH);
 
-  const int nlevels = 2;
+  // Domain
+  const RealBox domain({AMREX_D_DECL(xmin, ymin, zmin)},
+                       {AMREX_D_DECL(xmax, ymax, zmax)});
+
+  // Maximum number of levels
+  const int maxlevels = 1;
+
+  // Number of coarse grid cells
+  const Vector<int> ncells{ncells_x, ncells_y, ncells_z};
+
+  const int coord = -1; // undefined?
+
+  // Refinement ratios
+  const Vector<IntVect> reffacts; // empty
+
+  // Periodic in all directions
+  const Array<int, dim> periodic{1, 1, 1};
+
+  ghext->amrmesh = make_unique<AmrMesh>(domain, maxlevels, ncells, coord,
+                                        reffacts, periodic);
+  const int max_grid_size = 32;
+  ghext->amrmesh->SetMaxGridSize(max_grid_size);
+  ghext->amrmesh->MakeNewGrids(0.0);
+
+  CCTK_VINFO("Geometry:");
+  cout << ghext->amrmesh->Geom(0) << "\n";
+  CCTK_VINFO("BoxArray:");
+  cout << ghext->amrmesh->boxArray(0) << "\n";
+  CCTK_VINFO("DistributionMap:");
+  cout << ghext->amrmesh->DistributionMap(0) << "\n";
+
+  const int nlevels = 1;
   ghext->leveldata.resize(nlevels);
   for (int level = 0; level < nlevels; ++level) {
     GHExt::LevelData &leveldata = ghext->leveldata.at(level);
     leveldata.level = level;
-
-    // Define box array
-    IntVect box_lo(AMREX_D_DECL(0, 0, 0));
-    IntVect box_hi(AMREX_D_DECL(ncells_x - 1, ncells_y - 1, ncells_z - 1));
-    Box box(box_lo, box_hi);
-    leveldata.grids.define(box);
-
-    // Break up box array into chunks no larger than max_grid_size along
-    // each direction
-    const int max_grid_size = 32;
-    leveldata.grids.maxSize(max_grid_size);
-
-    // Define physical box
-    RealBox domain({AMREX_D_DECL(xmin, ymin, zmin)},
-                   {AMREX_D_DECL(xmax, ymax, zmax)});
-
-    // Define geometry
-    Vector<int> is_periodic(AMREX_SPACEDIM, 1); // periodic in all directions
-    leveldata.geom.define(box, &domain, CoordSys::cartesian,
-                          is_periodic.data());
-
-    // Distributed boxes
-    leveldata.dmap = DistributionMapping(leveldata.grids);
 
     const int numgroups = CCTK_NumGroups();
     leveldata.groupdata.resize(numgroups);
@@ -147,7 +158,9 @@ int InitGH(cGH *restrict cctkGH) {
       groupdata.mfab.resize(group.numtimelevels);
       for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
         groupdata.mfab.at(tl) = make_unique<MultiFab>(
-            leveldata.grids, leveldata.dmap, groupdata.numvars, ghost_size);
+            ghext->amrmesh->boxArray(leveldata.level),
+            ghext->amrmesh->DistributionMap(leveldata.level), groupdata.numvars,
+            ghost_size);
       }
     }
 
