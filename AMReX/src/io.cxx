@@ -77,6 +77,13 @@ int OutputGH(const cGH *restrict cctkGH) {
       reduction<CCTK_REAL> red = reduce(gi, vi, tl);
       CCTK_VINFO("maxabs(%s)=%g", CCTK_VarName(groupdata.firstvarindex + vi),
                  red.maxabs);
+      // CCTK_REAL maxabs = 0.0;
+      // for (auto &restrict leveldata : ghext->leveldata) {
+      //   auto &restrict groupdata = leveldata.groupdata.at(gi);
+      //   MultiFab &mfab = *groupdata.mfab.at(tl);
+      //   maxabs = fmax(maxabs, mfab.norminf(vi));
+      // }
+      // CCTK_VINFO("            %g", maxabs);
     }
   }
 

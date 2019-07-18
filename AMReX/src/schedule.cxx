@@ -10,7 +10,10 @@
 #include <cctki_WarnLevel.h>
 
 #include <AMReX.H>
+#include <AMReX_FillPatchUtil.H>
+#include <AMReX_Interpolater.H>
 #include <AMReX_Orientation.H>
+#include <AMReX_PhysBCFunct.H>
 
 #include <omp.h>
 #include <mpi.h>
@@ -97,7 +100,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   // Initialize time stepping
   CCTK_REAL mindx = 1.0 / 0.0;
   const int numlevels = ghext->amrmesh->finestLevel() + 1;
-  for (int level = 0; level <numlevels; ++level) {
+  for (int level = 0; level < numlevels; ++level) {
     const Geometry &geom = ghext->amrmesh->Geom(level);
     const CCTK_REAL *restrict dx = geom.CellSize();
     for (int d = 0; d < dim; ++d)
@@ -487,8 +490,6 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   assert(numgroups >= 0);
   assert(groups);
 
-  // TODO: Synchronize only current time level. This probably requires
-  // setting up different mfabs for each time level.
   for (auto &restrict leveldata : ghext->leveldata) {
     for (int n = 0; n < numgroups; ++n) {
       int gi = groups[n];
@@ -498,9 +499,37 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       // oldest.
       int ntls = groupdata.mfab.size();
       int sync_tl = ntls > 1 ? ntls - 1 : ntls;
-      for (int tl = 0; tl < sync_tl; ++tl)
-        groupdata.mfab.at(tl)->FillBoundary(
-            ghext->amrmesh->Geom(leveldata.level).periodicity());
+
+      if (leveldata.level == 0) {
+        // Coarsest level: Copy from adjacent boxes on same level
+
+        for (int tl = 0; tl < sync_tl; ++tl)
+          groupdata.mfab.at(tl)->FillBoundary(
+              ghext->amrmesh->Geom(leveldata.level).periodicity());
+
+      } else {
+        // Refined level: Prolongate from next coarser level, and then
+        // copy from adjacent boxes on same level
+
+        const int level = leveldata.level;
+        auto &restrict coarsegroupdata =
+            ghext->leveldata.at(level - 1).groupdata.at(gi);
+        assert(coarsegroupdata.numvars == groupdata.numvars);
+        PhysBCFunctNoOp cphysbc;
+        PhysBCFunctNoOp fphysbc;
+        const IntVect reffact{2, 2, 2};
+        CellBilinear interp;
+        // periodic boundaries
+        const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
+                          BCType::int_dir, BCType::int_dir, BCType::int_dir);
+        const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+        for (int tl = 0; tl < sync_tl; ++tl)
+          InterpFromCoarseLevel(
+              *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
+              groupdata.numvars, ghext->amrmesh->Geom(level - 1),
+              ghext->amrmesh->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
+              &interp, bcs, 0);
+      }
     }
   }
 
