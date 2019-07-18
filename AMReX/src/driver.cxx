@@ -62,15 +62,17 @@ void CactusAmrMesh::ErrorEst(int lev, TagBoxArray &tags, Real time, int ngrow) {
   // tags.setVal(boxArray(lev), TagBox::SET);
 
   // refine centre
-  const BoxArray &ba = boxArray(lev);
-  const Box &bx = ba.minimalBox();
+  const Box &dom = Geom(lev).Domain();
   Box nbx;
   for (int d = 0; d < dim; ++d) {
-    int sz = bx.bigEnd(d) - bx.smallEnd(d) + 1;
-    nbx.setSmall(d, bx.smallEnd(d) + sz / 4 + 1);
-    nbx.setBig(d, bx.bigEnd(d) - sz / 4 - 1);
+    int md = (dom.bigEnd(d) + dom.smallEnd(d) + 1) / 2;
+    int rd = (dom.bigEnd(d) - dom.smallEnd(d) + 1) / 2;
+    nbx.setSmall(d, md - rd / (1 << (lev + 1)));
+    nbx.setBig(d, md + rd / (1 << (lev + 1)) - 1);
   }
+  cout << "lev: " << lev << "\n";
   cout << "nbx: " << nbx << "\n";
+  const BoxArray &ba = boxArray(lev);
   tags.setVal(intersect(ba, nbx), TagBox::SET);
 }
 
@@ -140,7 +142,7 @@ int InitGH(cGH *restrict cctkGH) {
   const RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
 
   // Maximum number of levels
-  const int maxnumlevels = 2;
+  const int maxnumlevels = 3;
 
   // Number of coarse grid cells
   const Vector<int> ncells{ncells_x, ncells_y, ncells_z};
@@ -184,7 +186,8 @@ int InitGH(cGH *restrict cctkGH) {
       int new_finest = -999;
       Vector<BoxArray> new_grids;
       ghext->amrmesh->MakeNewGrids(0, time, new_finest, new_grids);
-      assert(new_finest == level);
+      // cout << "level=" << level << " new_finest=" << new_finest << "\n";
+      // assert(new_finest == level);
     }
 
     // CCTK_VINFO("BoxArray level %d:", level);
