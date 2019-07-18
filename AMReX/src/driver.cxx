@@ -67,8 +67,9 @@ void CactusAmrMesh::ErrorEst(int lev, TagBoxArray &tags, Real time, int ngrow) {
   for (int d = 0; d < dim; ++d) {
     int md = (dom.bigEnd(d) + dom.smallEnd(d) + 1) / 2;
     int rd = (dom.bigEnd(d) - dom.smallEnd(d) + 1) / 2;
-    nbx.setSmall(d, md - rd / (1 << (lev + 1)));
-    nbx.setBig(d, md + rd / (1 << (lev + 1)) - 1);
+    // mark one fewer cells; AMReX seems to add one cell
+    nbx.setSmall(d, md - rd / (1 << (lev + 1)) + 1);
+    nbx.setBig(d, md + rd / (1 << (lev + 1)) - 2);
   }
   cout << "lev: " << lev << "\n";
   cout << "nbx: " << nbx << "\n";

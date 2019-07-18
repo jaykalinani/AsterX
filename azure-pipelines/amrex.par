@@ -5,8 +5,10 @@ ActiveThorns = "
 
 Cactus::cctk_show_schedule = no
 
-AMReX::ncells_x = 128
-AMReX::ncells_y = 128
-AMReX::ncells_z = 128
+AMReX::ncells_x = 16 # 128
+AMReX::ncells_y = 16 # 128
+AMReX::ncells_z = 16 # 128
 
-Cactus::cctk_itlast = 10
+Cactus::cctk_itlast = 32
+
+AMReX::out_every = 16

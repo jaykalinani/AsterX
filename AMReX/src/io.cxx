@@ -32,38 +32,45 @@ int OutputGH(const cGH *restrict cctkGH) {
   int count_vars = 0;
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
-    for (const auto &restrict leveldata : ghext->leveldata) {
-      auto &restrict groupdata = leveldata.groupdata.at(gi);
-      if (groupdata.mfab.size() > 0) {
-        const int tl = 0;
+    auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
+    if (groupdata0.mfab.size() > 0) {
+      const int tl = 0;
 
-        string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
-        groupname = regex_replace(groupname, regex("::"), "-");
-        for (auto &c : groupname)
-          c = tolower(c);
+      string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
+      groupname = regex_replace(groupname, regex("::"), "-");
+      for (auto &c : groupname)
+        c = tolower(c);
+      ostringstream buf;
+      buf << "wavetoy/" << groupname;
+      buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
+      string filename = buf.str();
+
+      Vector<string> varnames(groupdata0.numvars);
+      for (int vi = 0; vi < groupdata0.numvars; ++vi) {
         ostringstream buf;
-        buf << "wavetoy/" << groupname;
-        buf << ".rl" << setw(2) << setfill('0') << leveldata.level;
-        buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
-        string filename = buf.str();
-
-        Vector<string> varnames(groupdata.numvars);
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          ostringstream buf;
-          buf << CCTK_VarName(groupdata.firstvarindex + vi);
-          for (int i = 0; i < tl; ++i)
-            buf << "_p";
-          varnames.at(vi) = buf.str();
-        }
-
-        // TODO: Output all levels into a single file
-        // TODO: Output all groups into a single file
-        WriteSingleLevelPlotfile(filename, *groupdata.mfab.at(tl), varnames,
-                                 ghext->amrmesh->Geom(leveldata.level),
-                                 cctk_time, cctk_iteration);
+        buf << CCTK_VarName(groupdata0.firstvarindex + vi);
+        for (int i = 0; i < tl; ++i)
+          buf << "_p";
+        varnames.at(vi) = buf.str();
       }
+
+      Vector<const MultiFab *> mfabs(ghext->leveldata.size());
+      Vector<Geometry> geoms(ghext->leveldata.size());
+      Vector<int> iters(ghext->leveldata.size());
+      Vector<IntVect> reffacts(ghext->leveldata.size());
+      for (const auto &restrict leveldata : ghext->leveldata) {
+        mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi).mfab.at(tl);
+        geoms.at(leveldata.level) = ghext->amrmesh->Geom(leveldata.level);
+        iters.at(leveldata.level) = cctk_iteration;
+        reffacts.at(leveldata.level) = IntVect{2, 2, 2};
+      }
+
+      // TODO: Output all groups into a single file
+      WriteMultiLevelPlotfile(filename, mfabs.size(), mfabs, varnames, geoms,
+                              cctk_time, iters, reffacts);
+
+      count_vars += ghext->leveldata.at(0).groupdata.at(gi).numvars;
     }
-    count_vars += ghext->leveldata.at(0).groupdata.at(gi).numvars;
   }
 
   for (int gi = 0; gi < numgroups; ++gi) {
