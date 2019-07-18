@@ -71,6 +71,8 @@ struct GHExt {
 
 extern unique_ptr<GHExt> ghext;
 
+void CreateRefinedGrid(int level);
+
 } // namespace AMReX
 
 #endif // #ifndef DRIVER_HXX

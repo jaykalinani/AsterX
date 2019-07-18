@@ -1,3 +1,12 @@
 # Interface definition for thorn AMReX
 
 IMPLEMENTS: AMReX
+
+
+
+PUBLIC:
+
+CCTK_REAL regrid_tag TYPE=gf
+{
+  tag
+} "Regridding tags"

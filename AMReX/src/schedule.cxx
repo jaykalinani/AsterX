@@ -37,6 +37,10 @@ constexpr int undefined = 666;
 
 vector<cGH> thread_local_cctkGH;
 
+// During initialization, the schedule should traverse only a single
+// level. At all other times, all levels should be traversed.
+int current_level = -1;
+
 namespace {
 // Convert a (direction, face) pair to an AMReX Orientation
 Orientation orient(int d, int f) {
@@ -306,25 +310,56 @@ int Initialise(tFleshConfig *config) {
   CCTK_Traverse(cctkGH, "CCTK_PARAMCHECK");
   CCTKi_FinaliseParamWarn();
 
-  CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
-
-  const char *recovery_mode = *static_cast<const char *const *>(
-      CCTK_ParameterGet("recovery_mode", "Cactus", nullptr));
-  if (!config->recovered || !CCTK_Equals(recovery_mode, "strict")) {
-    // Set up initial conditions
-    CCTK_Traverse(cctkGH, "CCTK_INITIAL");
-    CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
-    CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
-    CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
-  }
-
   if (config->recovered) {
+    // Recover
+
+    const char *recovery_mode = *static_cast<const char *const *>(
+        CCTK_ParameterGet("recovery_mode", "Cactus", nullptr));
+
+    CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+
+    if (!CCTK_Equals(recovery_mode, "strict")) {
+      // Set up initial conditions
+      CCTK_Traverse(cctkGH, "CCTK_INITIAL");
+      CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
+      CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
+    }
+
     // Recover
     CCTK_Traverse(cctkGH, "CCTK_RECOVER_VARIABLES");
     CCTK_Traverse(cctkGH, "CCTK_POST_RECOVER_VARIABLES");
+
+  } else {
+    // Set up initial conditions
+
+    for (;;) {
+      current_level = ghext->amrmesh->finestLevel();
+
+      CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+      CCTK_Traverse(cctkGH, "CCTK_INITIAL");
+      CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
+      CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
+
+      const int old_numlevels = ghext->amrmesh->finestLevel() + 1;
+      CreateRefinedGrid(current_level + 1);
+      const int new_numlevels = ghext->amrmesh->finestLevel() + 1;
+      assert(new_numlevels == old_numlevels ||
+             new_numlevels == old_numlevels + 1);
+      cout << "old_numlevels=" << old_numlevels << "\n";
+      cout << "new_numlevels=" << new_numlevels << "\n";
+      cout << "max_numlevels=" << int(ghext->amrmesh->maxLevel() + 1) << "\n";
+      // Did we create a new level?
+      if (new_numlevels == old_numlevels)
+        break;
+      // Did we create all possible levels?
+      if (new_numlevels == int(ghext->amrmesh->maxLevel() + 1))
+        break;
+    }
+    current_level = -1;
   }
 
   // Checkpoint, analysis, output
+  CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
   CCTK_Traverse(cctkGH, "CCTK_CPINITIAL");
   CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
   CCTK_OutputGH(cctkGH);
@@ -451,7 +486,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     {
       cGH *restrict threadGH = &thread_local_cctkGH.at(omp_get_thread_num());
       update_cctkGH(threadGH, cctkGH);
-      for (auto &restrict leveldata : ghext->leveldata) {
+
+      auto callfunc = [&](auto &restrict leveldata) {
         MultiFab &mfab = *leveldata.groupdata.at(0).mfab.at(0);
         enter_level_mode(threadGH, leveldata);
         auto mfitinfo =
@@ -462,6 +498,17 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           leave_local_mode(threadGH, leveldata, mfi);
         }
         leave_level_mode(threadGH, leveldata);
+      };
+
+      if (current_level < 0) {
+        // Loop over all levels
+        // TODO: parallelize this loop
+        for (auto &restrict leveldata : ghext->leveldata)
+          callfunc(leveldata);
+      } else {
+        // Loop over a single level
+        auto &restrict leveldata = ghext->leveldata.at(current_level);
+        callfunc(leveldata);
       }
     }
     break;

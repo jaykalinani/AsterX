@@ -6,6 +6,11 @@ SCHEDULE WaveToyAMReX_Initialize AT initial
   SYNC: phi
 } "Set up initial conditions for the wave equation"
 
+SCHEDULE WaveToyAMReX_Tag AT postinitial
+{
+  LANG: C
+} "Tag to-be-refined regions"
+
 SCHEDULE WaveToyAMReX_Evolve AT evol
 {
   LANG: C

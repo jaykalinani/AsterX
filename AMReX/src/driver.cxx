@@ -42,6 +42,13 @@ int Barrier(const cGH *cctkGHa);
 
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace {
+// Convert a (direction, face) pair to an AMReX Orientation
+Orientation orient(int d, int f) {
+  return Orientation(d, Orientation::Side(f));
+}
+} // namespace
+
 // AmrCore functions
 
 CactusAmrMesh::CactusAmrMesh() {}
@@ -57,27 +64,77 @@ CactusAmrMesh::CactusAmrMesh(const RealBox &rb, int max_level_in,
 
 CactusAmrMesh::~CactusAmrMesh() {}
 
-void CactusAmrMesh::ErrorEst(int lev, TagBoxArray &tags, Real time, int ngrow) {
+void CactusAmrMesh::ErrorEst(const int level, TagBoxArray &tags, Real time,
+                             int ngrow) {
+  // Don't regrid before Cactus is ready to
+  if (level >= int(ghext->leveldata.size()))
+    return;
+
+  CCTK_VINFO("ErrorEst level %d", level);
+
   // // refine everywhere
-  // tags.setVal(boxArray(lev), TagBox::SET);
+  // tags.setVal(boxArray(level), TagBox::SET);
 
   // refine centre
-  const Box &dom = Geom(lev).Domain();
+  const Box &dom = Geom(level).Domain();
   Box nbx;
   for (int d = 0; d < dim; ++d) {
     int md = (dom.bigEnd(d) + dom.smallEnd(d) + 1) / 2;
     int rd = (dom.bigEnd(d) - dom.smallEnd(d) + 1) / 2;
     // mark one fewer cells; AMReX seems to add one cell
-    nbx.setSmall(d, md - rd / (1 << (lev + 1)) + 1);
-    nbx.setBig(d, md + rd / (1 << (lev + 1)) - 2);
+    nbx.setSmall(d, md - rd / (1 << (level + 1)) + 1);
+    nbx.setBig(d, md + rd / (1 << (level + 1)) - 2);
   }
-  cout << "lev: " << lev << "\n";
   cout << "nbx: " << nbx << "\n";
-  const BoxArray &ba = boxArray(lev);
+  const BoxArray &ba = boxArray(level);
   tags.setVal(intersect(ba, nbx), TagBox::SET);
+  return;
+
+  const int gi = CCTK_GroupIndex("AMReX::regrid_tag");
+  assert(gi >= 0);
+  const int vi = 0;
+  const int tl = 0;
+
+  auto &restrict leveldata = ghext->leveldata.at(level);
+  auto &restrict groupdata = leveldata.groupdata.at(gi);
+  MultiFab &mfab = *groupdata.mfab.at(tl);
+  auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
+#pragma omp parallel
+  for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+    const Box &fbx = mfi.fabbox();
+    const Box &bx = mfi.tilebox();
+
+    const Dim3 imin = lbound(bx);
+    int ash[3], lsh[3];
+    for (int d = 0; d < dim; ++d)
+      ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+    for (int d = 0; d < dim; ++d)
+      lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
+
+    const Array4<CCTK_REAL> &ctagarr = groupdata.mfab.at(tl)->array(mfi);
+    const CCTK_REAL *restrict ctags = ctagarr.ptr(imin.x, imin.y, imin.z, vi);
+    const Array4<char> &atagarr = tags.array(mfi);
+    char *restrict atags = atagarr.ptr(imin.x, imin.y, imin.z, vi);
+
+    constexpr int di = 1;
+    const int dj = di * ash[0];
+    const int dk = dj * ash[1];
+    for (int k = 0; k < lsh[2]; ++k) {
+      for (int j = 0; j < lsh[1]; ++j) {
+#pragma omp simd
+        for (int i = 0; i < lsh[0]; ++i) {
+          int idx = di * i + dj * j + dk * k;
+
+          atags[idx] = ctags[idx] == 0.0 ? TagBox::CLEAR : TagBox::SET;
+        }
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void SetupLevel(int level);
 
 // Start driver
 extern "C" int AMReX_Startup() {
@@ -170,61 +227,73 @@ int InitGH(cGH *restrict cctkGH) {
     cout << ghext->amrmesh->Geom(level) << "\n";
   }
 
-  const int numlevels = maxnumlevels;
-  ghext->leveldata.resize(numlevels);
-  for (int level = 0; level < numlevels; ++level) {
-    GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-    leveldata.level = level;
+  // Create coarse grid
+  const int level = 0;
+  CCTK_REAL time = 0.0; // dummy time
+  ghext->amrmesh->MakeNewGrids(time);
+  SetupLevel(level);
 
-    CCTK_REAL time = 0.0; // dummy time
-
-    // Create grid structure
-    if (level == 0) {
-      // Create coarse grid
-      ghext->amrmesh->MakeNewGrids(time);
-    } else {
-      // Create refined grid
-      int new_finest = -999;
-      Vector<BoxArray> new_grids;
-      ghext->amrmesh->MakeNewGrids(0, time, new_finest, new_grids);
-      // cout << "level=" << level << " new_finest=" << new_finest << "\n";
-      // assert(new_finest == level);
-    }
-
-    // CCTK_VINFO("BoxArray level %d:", level);
-    // cout << ghext->amrmesh->boxArray(level) << "\n";
-    // CCTK_VINFO("DistributionMap level %d:", level);
-    // cout << ghext->amrmesh->DistributionMap(level) << "\n";
-
-    const int numgroups = CCTK_NumGroups();
-    leveldata.groupdata.resize(numgroups);
-    for (int gi = 0; gi < numgroups; ++gi) {
-      cGroup group;
-      int ierr = CCTK_GroupData(gi, &group);
-      assert(!ierr);
-      assert(group.grouptype == CCTK_GF);
-      assert(group.vartype == CCTK_VARIABLE_REAL);
-      assert(group.disttype == CCTK_DISTRIB_DEFAULT);
-      assert(group.dim == dim);
-
-      GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
-      groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-      groupdata.numvars = group.numvars;
-
-      // Allocate grid hierarchies
-      groupdata.mfab.resize(group.numtimelevels);
-      for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-        groupdata.mfab.at(tl) = make_unique<MultiFab>(
-            ghext->amrmesh->boxArray(leveldata.level),
-            ghext->amrmesh->DistributionMap(leveldata.level), groupdata.numvars,
-            ghost_size);
-      }
-    }
-
-  } // for level
+  // CCTK_VINFO("BoxArray level %d:", level);
+  // cout << ghext->amrmesh->boxArray(level) << "\n";
+  // CCTK_VINFO("DistributionMap level %d:", level);
+  // cout << ghext->amrmesh->DistributionMap(level) << "\n";
 
   return 0; // unused
 } // namespace AMReX
+
+void CreateRefinedGrid(int level) {
+  CCTK_VINFO("CreateRefinedGrid level %d", level);
+
+  // Create refined grid
+  CCTK_REAL time = 0.0; // dummy time
+  int new_finest = -999;
+  Vector<BoxArray> new_grids;
+  ghext->amrmesh->MakeNewGrids(0, time, new_finest, new_grids);
+  cout << "level=" << level << "\n";
+  cout << "new_finest=" << new_finest << "\n";
+  assert(new_finest == level - 1 || new_finest == level);
+  ghext->amrmesh->SetFinestLevel(new_finest);
+  ghext->amrMesh->SetBoxArray(level, new_grids.at(level));
+  ghext->amrMesh->SetDistributionMap(...);
+
+  if (new_finest == level)
+    SetupLevel(level);
+}
+
+void SetupLevel(int level) {
+  DECLARE_CCTK_PARAMETERS;
+  CCTK_VINFO("SetupLevel level %d", level);
+
+  assert(level == int(ghext->leveldata.size()));
+  ghext->leveldata.resize(level + 1);
+  GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+  leveldata.level = level;
+
+  const int numgroups = CCTK_NumGroups();
+  leveldata.groupdata.resize(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+    assert(group.grouptype == CCTK_GF);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
+    assert(group.dim == dim);
+
+    GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
+    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    groupdata.numvars = group.numvars;
+
+    // Allocate grid hierarchies
+    groupdata.mfab.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+      groupdata.mfab.at(tl) = make_unique<MultiFab>(
+          ghext->amrmesh->boxArray(leveldata.level),
+          ghext->amrmesh->DistributionMap(leveldata.level), groupdata.numvars,
+          ghost_size);
+    }
+  }
+}
 
 // Traverse schedule
 int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {

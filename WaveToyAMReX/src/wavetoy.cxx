@@ -54,6 +54,31 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
   }
 }
 
+extern "C" void WaveToyAMReX_Tag(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  CCTK_REAL x0[dim], dx[dim];
+  for (int d = 0; d < dim; ++d) {
+    x0[d] = CCTK_ORIGIN_SPACE(d);
+    dx[d] = CCTK_DELTA_SPACE(d);
+  }
+
+  for (int k = 0; k < cctk_lsh[2]; ++k) {
+    for (int j = 0; j < cctk_lsh[1]; ++j) {
+#pragma omp simd
+      for (int i = 0; i < cctk_lsh[0]; ++i) {
+        const int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
+        CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
+        CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
+        CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
+        CCTK_REAL r = sqrt(sqr(x) + sqr(y) + sqr(z));
+        tag[idx] = r <= 0.5;
+      }
+    }
+  }
+}
+
 extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
