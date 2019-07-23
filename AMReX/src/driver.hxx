@@ -50,9 +50,11 @@ public:
   virtual void ClearLevel(int lev) override;
 };
 
+// Cactus grid hierarchy extension
 struct GHExt {
 
   // AMReX grid structure
+  // TODO: Remove unique_ptr once AmrCore has move constructors
   unique_ptr<CactusAmrCore> amrcore;
 
   struct LevelData {

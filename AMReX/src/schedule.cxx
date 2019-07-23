@@ -12,6 +12,7 @@
 #include <AMReX.H>
 #include <AMReX_FillPatchUtil.H>
 #include <AMReX_Interpolater.H>
+#include <AMReX_MultiFabUtil.H>
 #include <AMReX_Orientation.H>
 #include <AMReX_PhysBCFunct.H>
 
@@ -40,6 +41,8 @@ vector<cGH> thread_local_cctkGH;
 // During initialization, the schedule should traverse only a single
 // level. At all other times, all levels should be traversed.
 int current_level = -1;
+
+void Restrict(int level);
 
 namespace {
 // Convert a (direction, face) pair to an AMReX Orientation
@@ -355,6 +358,10 @@ int Initialise(tFleshConfig *config) {
     current_level = -1;
   }
 
+  // Restrict
+  for (int level = (ghext->leveldata.size()) - 2; level >= 0; --level)
+    Restrict(level);
+
   // Checkpoint, analysis, output
   CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
   CCTK_Traverse(cctkGH, "CCTK_CPINITIAL");
@@ -441,8 +448,12 @@ int Evolve(tFleshConfig *config) {
 
     CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
     CCTK_Traverse(cctkGH, "CCTK_EVOL");
-    CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
 
+    // Restrict
+    for (int level = (ghext->leveldata.size()) - 2; level >= 0; --level)
+      Restrict(level);
+
+    CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
     CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
     CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
     CCTK_OutputGH(cctkGH);
@@ -578,6 +589,26 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   }
 
   return numgroups; // number of groups synchronized
+}
+
+void Restrict(int level) {
+  auto &leveldata = ghext->leveldata.at(level);
+  const auto &fineleveldata = ghext->leveldata.at(level + 1);
+  for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
+    auto &groupdata = leveldata.groupdata.at(gi);
+    const auto &finegroupdata = fineleveldata.groupdata.at(gi);
+    // If there is more than one time level, then we don't restrict
+    // the oldest.
+    int ntls = groupdata.mfab.size();
+    int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
+    const IntVect reffact{2, 2, 2};
+    for (int tl = 0; tl < restrict_tl; ++tl) {
+      amrex::average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                          ghext->amrcore->Geom(level + 1),
+                          ghext->amrcore->Geom(level), 0, groupdata.numvars,
+                          reffact);
+    }
+  }
 }
 
 } // namespace AMReX
