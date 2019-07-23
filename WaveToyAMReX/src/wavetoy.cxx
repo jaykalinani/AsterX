@@ -73,7 +73,7 @@ extern "C" void WaveToyAMReX_Tag(CCTK_ARGUMENTS) {
         CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
         CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
         CCTK_REAL r = sqrt(sqr(x) + sqr(y) + sqr(z));
-        tag[idx] = r <= 0.5;
+        tag[idx] = r <= 0.5 / cctk_levfac[0];
       }
     }
   }

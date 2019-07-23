@@ -92,7 +92,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   cctkGH->cctk_convlevel = 0; // no convergence tests
 
   // Initialize grid spacing
-  const Geometry &geom = ghext->amrmesh->Geom(0);
+  const Geometry &geom = ghext->amrcore->Geom(0);
   const CCTK_REAL *restrict x0 = geom.ProbLo();
   const CCTK_REAL *restrict dx = geom.CellSize();
 
@@ -103,9 +103,9 @@ void setup_cctkGH(cGH *restrict cctkGH) {
 
   // Initialize time stepping
   CCTK_REAL mindx = 1.0 / 0.0;
-  const int numlevels = ghext->amrmesh->finestLevel() + 1;
+  const int numlevels = ghext->amrcore->finestLevel() + 1;
   for (int level = 0; level < numlevels; ++level) {
-    const Geometry &geom = ghext->amrmesh->Geom(level);
+    const Geometry &geom = ghext->amrcore->Geom(level);
     const CCTK_REAL *restrict dx = geom.CellSize();
     for (int d = 0; d < dim; ++d)
       mindx = fmin(mindx, dx[d]);
@@ -145,7 +145,7 @@ void enter_level_mode(cGH *restrict cctkGH,
   DECLARE_CCTK_PARAMETERS;
 
   // Global shape
-  const Box &domain = ghext->amrmesh->Geom(leveldata.level).Domain();
+  const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1;
 
@@ -333,26 +333,23 @@ int Initialise(tFleshConfig *config) {
     // Set up initial conditions
 
     for (;;) {
-      current_level = ghext->amrmesh->finestLevel();
+      current_level = ghext->amrcore->finestLevel();
 
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
       CCTK_Traverse(cctkGH, "CCTK_INITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
 
-      const int old_numlevels = ghext->amrmesh->finestLevel() + 1;
+      const int old_numlevels = ghext->amrcore->finestLevel() + 1;
       CreateRefinedGrid(current_level + 1);
-      const int new_numlevels = ghext->amrmesh->finestLevel() + 1;
+      const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
-      cout << "old_numlevels=" << old_numlevels << "\n";
-      cout << "new_numlevels=" << new_numlevels << "\n";
-      cout << "max_numlevels=" << int(ghext->amrmesh->maxLevel() + 1) << "\n";
+      cout << "I old_numlevels=" << old_numlevels << "\n";
+      cout << "I new_numlevels=" << new_numlevels << "\n";
+      cout << "I max_numlevels=" << int(ghext->amrcore->maxLevel() + 1) << "\n";
       // Did we create a new level?
-      if (new_numlevels == old_numlevels)
-        break;
-      // Did we create all possible levels?
-      if (new_numlevels == int(ghext->amrmesh->maxLevel() + 1))
+      if (new_numlevels <= old_numlevels)
         break;
     }
     current_level = -1;
@@ -552,7 +549,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         for (int tl = 0; tl < sync_tl; ++tl)
           groupdata.mfab.at(tl)->FillBoundary(
-              ghext->amrmesh->Geom(leveldata.level).periodicity());
+              ghext->amrcore->Geom(leveldata.level).periodicity());
 
       } else {
         // Refined level: Prolongate from next coarser level, and then
@@ -573,8 +570,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int tl = 0; tl < sync_tl; ++tl)
           InterpFromCoarseLevel(
               *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
-              groupdata.numvars, ghext->amrmesh->Geom(level - 1),
-              ghext->amrmesh->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
+              groupdata.numvars, ghext->amrcore->Geom(level - 1),
+              ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
               &interp, bcs, 0);
       }
     }

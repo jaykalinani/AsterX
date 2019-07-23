@@ -2,7 +2,7 @@
 #define DRIVER_HXX
 
 #include <AMReX.H>
-#include <AMReX_AmrMesh.H>
+#include <AMReX_AmrCore.H>
 #include <AMReX_MultiFab.H>
 
 #include <cctk.h>
@@ -23,37 +23,37 @@ static_assert(AMREX_SPACEDIM == dim,
 static_assert(is_same<Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
-class CactusAmrMesh : public AmrMesh {
+class CactusAmrCore : public AmrCore {
 public:
-  CactusAmrMesh();
-  CactusAmrMesh(const RealBox *rb, int max_level_in,
+  CactusAmrCore();
+  CactusAmrCore(const RealBox *rb, int max_level_in,
                 const Vector<int> &n_cell_in, int coord = -1,
                 Vector<IntVect> ref_ratios = Vector<IntVect>(),
                 const int *is_per = nullptr);
-  CactusAmrMesh(const RealBox &rb, int max_level_in,
+  CactusAmrCore(const RealBox &rb, int max_level_in,
                 const Vector<int> &n_cell_in, int coord,
                 Vector<IntVect> const &ref_ratios,
                 Array<int, AMREX_SPACEDIM> const &is_per);
-  CactusAmrMesh(const AmrMesh &rhs) = delete;
-  CactusAmrMesh &operator=(const AmrMesh &rhs) = delete;
+  CactusAmrCore(const AmrCore &rhs) = delete;
+  CactusAmrCore &operator=(const AmrCore &rhs) = delete;
 
-  virtual ~CactusAmrMesh();
+  virtual ~CactusAmrCore();
 
-  // virtual void MakeNewLevelFromScratch(int lev, Real time, const BoxArray
-  // &ba,
-  //                                      const DistributionMapping &dm)
-  //                                      override;
   virtual void ErrorEst(int lev, TagBoxArray &tags, Real time,
                         int ngrow) override;
-  // virtual void ManualTagsPlacement(int lev, TagBoxArray &tags,
-  //                                  const Vector<IntVect> &bf_lev) override;
-  // virtual BoxArray GetAreaNotToTag(int lev) override;
+  virtual void MakeNewLevelFromScratch(int lev, Real time, const BoxArray &ba,
+                                       const DistributionMapping &dm) override;
+  virtual void MakeNewLevelFromCoarse(int lev, Real time, const BoxArray &ba,
+                                      const DistributionMapping &dm) override;
+  virtual void RemakeLevel(int lev, Real time, const BoxArray &ba,
+                           const DistributionMapping &dm) override;
+  virtual void ClearLevel(int lev) override;
 };
 
 struct GHExt {
 
   // AMReX grid structure
-  unique_ptr<CactusAmrMesh> amrmesh;
+  unique_ptr<CactusAmrCore> amrcore;
 
   struct LevelData {
     int level;

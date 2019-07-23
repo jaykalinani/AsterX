@@ -42,7 +42,7 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
 #pragma omp parallel reduction(reduction : red)
   {
     for (auto &restrict leveldata : ghext->leveldata) {
-      const auto &restrict geom = ghext->amrmesh->Geom(leveldata.level);
+      const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
       auto &restrict groupdata = leveldata.groupdata.at(gi);
       MultiFab &mfab = *groupdata.mfab.at(tl);
       auto mfitinfo =

@@ -5,6 +5,11 @@ SCHEDULE AMReX_Startup AT startup AS Driver_Startup
   LANG: C
 } "Start up the driver"
 
+SCHEDULE AMReX_SetLevel AT basegrid
+{
+  LANG: C
+} "Set refinemenet level grid function"
+
 SCHEDULE AMReX_Shutdown AT shutdown AS Driver_Shutdown
 {
   LANG: C

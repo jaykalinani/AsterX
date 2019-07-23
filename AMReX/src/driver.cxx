@@ -51,20 +51,20 @@ Orientation orient(int d, int f) {
 
 // AmrCore functions
 
-CactusAmrMesh::CactusAmrMesh() {}
-CactusAmrMesh::CactusAmrMesh(const RealBox *rb, int max_level_in,
+CactusAmrCore::CactusAmrCore() {}
+CactusAmrCore::CactusAmrCore(const RealBox *rb, int max_level_in,
                              const Vector<int> &n_cell_in, int coord,
                              Vector<IntVect> ref_ratios, const int *is_per)
-    : AmrMesh(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
-CactusAmrMesh::CactusAmrMesh(const RealBox &rb, int max_level_in,
+    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
+CactusAmrCore::CactusAmrCore(const RealBox &rb, int max_level_in,
                              const Vector<int> &n_cell_in, int coord,
                              Vector<IntVect> const &ref_ratios,
                              Array<int, AMREX_SPACEDIM> const &is_per)
-    : AmrMesh(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
+    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
 
-CactusAmrMesh::~CactusAmrMesh() {}
+CactusAmrCore::~CactusAmrCore() {}
 
-void CactusAmrMesh::ErrorEst(const int level, TagBoxArray &tags, Real time,
+void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
                              int ngrow) {
   // Don't regrid before Cactus is ready to
   if (level >= int(ghext->leveldata.size()))
@@ -75,20 +75,19 @@ void CactusAmrMesh::ErrorEst(const int level, TagBoxArray &tags, Real time,
   // // refine everywhere
   // tags.setVal(boxArray(level), TagBox::SET);
 
-  // refine centre
-  const Box &dom = Geom(level).Domain();
-  Box nbx;
-  for (int d = 0; d < dim; ++d) {
-    int md = (dom.bigEnd(d) + dom.smallEnd(d) + 1) / 2;
-    int rd = (dom.bigEnd(d) - dom.smallEnd(d) + 1) / 2;
-    // mark one fewer cells; AMReX seems to add one cell
-    nbx.setSmall(d, md - rd / (1 << (level + 1)) + 1);
-    nbx.setBig(d, md + rd / (1 << (level + 1)) - 2);
-  }
-  cout << "nbx: " << nbx << "\n";
-  const BoxArray &ba = boxArray(level);
-  tags.setVal(intersect(ba, nbx), TagBox::SET);
-  return;
+  // // refine centre
+  // const Box &dom = Geom(level).Domain();
+  // Box nbx;
+  // for (int d = 0; d < dim; ++d) {
+  //   int md = (dom.bigEnd(d) + dom.smallEnd(d) + 1) / 2;
+  //   int rd = (dom.bigEnd(d) - dom.smallEnd(d) + 1) / 2;
+  //   // mark one fewer cells; AMReX seems to add one cell
+  //   nbx.setSmall(d, md - rd / (1 << (level + 1)) + 1);
+  //   nbx.setBig(d, md + rd / (1 << (level + 1)) - 2);
+  // }
+  // cout << "EE nbx: " << nbx << "\n";
+  // const BoxArray &ba = boxArray(level);
+  // tags.setVal(intersect(ba, nbx), TagBox::SET);
 
   const int gi = CCTK_GroupIndex("AMReX::regrid_tag");
   assert(gi >= 0);
@@ -130,6 +129,27 @@ void CactusAmrMesh::ErrorEst(const int level, TagBoxArray &tags, Real time,
       }
     }
   }
+}
+
+void CactusAmrCore::MakeNewLevelFromScratch(int lev, Real time,
+                                            const BoxArray &ba,
+                                            const DistributionMapping &dm) {
+  CCTK_VINFO("MakeNewLevelFromScratch level %d", lev);
+}
+
+void CactusAmrCore::MakeNewLevelFromCoarse(int lev, Real time,
+                                           const BoxArray &ba,
+                                           const DistributionMapping &dm) {
+  CCTK_VINFO("MakeNewLevelFromCoarse level %d", lev);
+}
+
+void CactusAmrCore::RemakeLevel(int lev, Real time, const BoxArray &ba,
+                                const DistributionMapping &dm) {
+  CCTK_VINFO("RemakeLevel level %d", lev);
+}
+
+void CactusAmrCore::ClearLevel(int lev) {
+  CCTK_VINFO("ClearLevel level %d", lev);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,9 +219,6 @@ int InitGH(cGH *restrict cctkGH) {
   // Domain
   const RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
 
-  // Maximum number of levels
-  const int maxnumlevels = 3;
-
   // Number of coarse grid cells
   const Vector<int> ncells{ncells_x, ncells_y, ncells_z};
 
@@ -213,30 +230,31 @@ int InitGH(cGH *restrict cctkGH) {
   // Periodic in all directions
   const Array<int, dim> periodic{1, 1, 1};
 
-  ghext->amrmesh = make_unique<CactusAmrMesh>(domain, maxnumlevels - 1, ncells,
-                                              coord, reffacts, periodic);
+  ghext->amrcore = make_unique<CactusAmrCore>(
+      domain, max_num_levels - 1, ncells, coord, reffacts, periodic);
 #warning "TODO: increase blocking factor"
-  // const int blocking_factor = 8;
-  const int blocking_factor = 1;
-  ghext->amrmesh->SetBlockingFactor(blocking_factor);
+  const int blocking_factor = 8;
+  // const int blocking_factor = 1;
+  ghext->amrcore->SetBlockingFactor(blocking_factor);
   const int max_grid_size = 32;
-  ghext->amrmesh->SetMaxGridSize(max_grid_size);
+  ghext->amrcore->SetMaxGridSize(max_grid_size);
 
+  int maxnumlevels = ghext->amrcore->maxLevel() + 1;
   for (int level = 0; level < maxnumlevels; ++level) {
     CCTK_VINFO("Geometry level %d:", level);
-    cout << ghext->amrmesh->Geom(level) << "\n";
+    cout << ghext->amrcore->Geom(level) << "\n";
   }
 
   // Create coarse grid
   const int level = 0;
   CCTK_REAL time = 0.0; // dummy time
-  ghext->amrmesh->MakeNewGrids(time);
+  ghext->amrcore->MakeNewGrids(time);
   SetupLevel(level);
 
   // CCTK_VINFO("BoxArray level %d:", level);
-  // cout << ghext->amrmesh->boxArray(level) << "\n";
+  // cout << ghext->amrcore->boxArray(level) << "\n";
   // CCTK_VINFO("DistributionMap level %d:", level);
-  // cout << ghext->amrmesh->DistributionMap(level) << "\n";
+  // cout << ghext->amrcore->DistributionMap(level) << "\n";
 
   return 0; // unused
 } // namespace AMReX
@@ -244,19 +262,20 @@ int InitGH(cGH *restrict cctkGH) {
 void CreateRefinedGrid(int level) {
   CCTK_VINFO("CreateRefinedGrid level %d", level);
 
+  if (level > ghext->amrcore->maxLevel())
+    return;
+
   // Create refined grid
   CCTK_REAL time = 0.0; // dummy time
-  int new_finest = -999;
-  Vector<BoxArray> new_grids;
-  ghext->amrmesh->MakeNewGrids(0, time, new_finest, new_grids);
-  cout << "level=" << level << "\n";
-  cout << "new_finest=" << new_finest << "\n";
-  assert(new_finest == level - 1 || new_finest == level);
-  ghext->amrmesh->SetFinestLevel(new_finest);
-  ghext->amrMesh->SetBoxArray(level, new_grids.at(level));
-  ghext->amrMesh->SetDistributionMap(...);
+  ghext->amrcore->regrid(0, time);
+  int numlevels = ghext->amrcore->finestLevel() + 1;
+  int maxnumlevels = ghext->amrcore->maxLevel() + 1;
+  cout << "CRG numlevels=" << numlevels << "\n";
+  cout << "CRG maxnumlevels=" << maxnumlevels << "\n";
+  assert(numlevels >= 0 && numlevels <= maxnumlevels);
+  assert(numlevels <= level + 1);
 
-  if (new_finest == level)
+  if (numlevels == level + 1)
     SetupLevel(level);
 }
 
@@ -288,8 +307,8 @@ void SetupLevel(int level) {
     groupdata.mfab.resize(group.numtimelevels);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) = make_unique<MultiFab>(
-          ghext->amrmesh->boxArray(leveldata.level),
-          ghext->amrmesh->DistributionMap(leveldata.level), groupdata.numvars,
+          ghext->amrcore->boxArray(leveldata.level),
+          ghext->amrcore->DistributionMap(leveldata.level), groupdata.numvars,
           ghost_size);
     }
   }

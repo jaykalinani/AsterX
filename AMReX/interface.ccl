@@ -10,3 +10,8 @@ CCTK_REAL regrid_tag TYPE=gf
 {
   tag
 } "Regridding tags"
+
+CCTK_REAL refinement_level TYPE=gf
+{
+  refinement_level
+} "Refinement level"

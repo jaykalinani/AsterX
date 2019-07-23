@@ -60,7 +60,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       Vector<IntVect> reffacts(ghext->leveldata.size());
       for (const auto &restrict leveldata : ghext->leveldata) {
         mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi).mfab.at(tl);
-        geoms.at(leveldata.level) = ghext->amrmesh->Geom(leveldata.level);
+        geoms.at(leveldata.level) = ghext->amrcore->Geom(leveldata.level);
         iters.at(leveldata.level) = cctk_iteration;
         reffacts.at(leveldata.level) = IntVect{2, 2, 2};
       }
