@@ -1,16 +1,23 @@
 ActiveThorns = "
     AMReX
+    IOUtil
     WaveToyAMReX
 "
+ 
+$nlevels = 3
+$ncells = 128
 
 Cactus::cctk_show_schedule = no
 
-AMReX::ncells_x = 128
-AMReX::ncells_y = 128
-AMReX::ncells_z = 128
+Cactus::cctk_itlast = $ncells * 2 ** ($nlevels - 1) * 2
 
-AMReX::max_num_levels = 3
+AMReX::ncells_x = $ncells
+AMReX::ncells_y = $ncells
+AMReX::ncells_z = $ncells
 
-Cactus::cctk_itlast = 128
+AMReX::max_num_levels = $nlevels
 
-AMReX::out_every = 128
+AMReX::dtfac = 0.5
+
+IO::out_dir = "wavetoy"
+IO::out_every = $ncells * 2 ** ($nlevels - 1) / 2

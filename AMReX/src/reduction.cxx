@@ -1,6 +1,8 @@
 #include <driver.hxx>
 #include <reduction.hxx>
 
+#include <cctk_Parameters.h>
+
 #include <AMReX_Orientation.H>
 
 namespace AMReX {
@@ -15,7 +17,7 @@ Orientation orient(int d, int f) {
 } // namespace
 
 template <typename T>
-reduction<T> reduce_array(const Geometry &geom, const T *restrict var,
+reduction<T> reduce_array(const Geometry &geom, const T *restrict ptr,
                           const int *restrict ash, const int *restrict lsh) {
   const CCTK_REAL *restrict dx = geom.CellSize();
   CCTK_REAL dV = 1.0;
@@ -30,7 +32,7 @@ reduction<T> reduce_array(const Geometry &geom, const T *restrict var,
 #pragma omp simd
       for (int i = 0; i < lsh[0]; ++i) {
         int idx = di * i + dj * j + dk * k;
-        red = reduction<T>(red, reduction<T>(dV, var[idx]));
+        red = reduction<T>(red, reduction<T>(dV, ptr[idx]));
       }
     }
   }
@@ -38,6 +40,8 @@ reduction<T> reduce_array(const Geometry &geom, const T *restrict var,
 }
 
 reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
+  DECLARE_CCTK_PARAMETERS;
+
   reduction<CCTK_REAL> red;
 #pragma omp parallel reduction(reduction : red)
   {
@@ -45,8 +49,8 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
       const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
       auto &restrict groupdata = leveldata.groupdata.at(gi);
       MultiFab &mfab = *groupdata.mfab.at(tl);
-      auto mfitinfo =
-          MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
+      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
       for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
         const Box &fbx = mfi.fabbox();
         const Box &bx = mfi.tilebox();
@@ -55,13 +59,15 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
         int ash[3], lsh[3];
         for (int d = 0; d < dim; ++d)
           ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+        // Note: This excludes ghosts, it's not the proper Cactus lsh
         for (int d = 0; d < dim; ++d)
           lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
 
         const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-        const CCTK_REAL *restrict var = vars.ptr(imin.x, imin.y, imin.z, vi);
+        const CCTK_REAL *restrict ptr = vars.ptr(imin.x, imin.y, imin.z, vi);
 
-        red += reduce_array(geom, var, ash, lsh);
+#warning "TODO: Skip refined regions"
+        red += reduce_array(geom, ptr, ash, lsh);
       }
     }
   }

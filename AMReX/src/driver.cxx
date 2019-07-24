@@ -8,6 +8,7 @@
 
 #include <AMReX.H>
 #include <AMReX_BCRec.H>
+#include <AMReX_ParmParse.H>
 
 #include <omp.h>
 #include <mpi.h>
@@ -66,11 +67,14 @@ CactusAmrCore::~CactusAmrCore() {}
 
 void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
                              int ngrow) {
+  DECLARE_CCTK_PARAMETERS;
+
   // Don't regrid before Cactus is ready to
   if (level >= int(ghext->leveldata.size()))
     return;
 
-  CCTK_VINFO("ErrorEst level %d", level);
+  if (verbose)
+    CCTK_VINFO("ErrorEst level %d", level);
 
   // // refine everywhere
   // tags.setVal(boxArray(level), TagBox::SET);
@@ -97,7 +101,8 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
   auto &restrict leveldata = ghext->leveldata.at(level);
   auto &restrict groupdata = leveldata.groupdata.at(gi);
   MultiFab &mfab = *groupdata.mfab.at(tl);
-  auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
+  auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
   for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
     const Box &fbx = mfi.fabbox();
@@ -107,24 +112,25 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
     int ash[3], lsh[3];
     for (int d = 0; d < dim; ++d)
       ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+    // Note: This excludes ghosts, it's not the proper Cactus lsh
     for (int d = 0; d < dim; ++d)
       lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
 
-    const Array4<CCTK_REAL> &ctagarr = groupdata.mfab.at(tl)->array(mfi);
-    const CCTK_REAL *restrict ctags = ctagarr.ptr(imin.x, imin.y, imin.z, vi);
-    const Array4<char> &atagarr = tags.array(mfi);
-    char *restrict atags = atagarr.ptr(imin.x, imin.y, imin.z, vi);
+    const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+    const CCTK_REAL *restrict ptr = vars.ptr(imin.x, imin.y, imin.z, vi);
+    const Array4<char> &tagarr = tags.array(mfi);
 
     constexpr int di = 1;
     const int dj = di * ash[0];
     const int dk = dj * ash[1];
+
     for (int k = 0; k < lsh[2]; ++k) {
       for (int j = 0; j < lsh[1]; ++j) {
 #pragma omp simd
         for (int i = 0; i < lsh[0]; ++i) {
           int idx = di * i + dj * j + dk * k;
-
-          atags[idx] = ctags[idx] == 0.0 ? TagBox::CLEAR : TagBox::SET;
+          tagarr(imin.x + i, imin.y + j, imin.z + k) =
+              ptr[idx] == 0.0 ? TagBox::CLEAR : TagBox::SET;
         }
       }
     }
@@ -134,22 +140,30 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
 void CactusAmrCore::MakeNewLevelFromScratch(int lev, Real time,
                                             const BoxArray &ba,
                                             const DistributionMapping &dm) {
-  CCTK_VINFO("MakeNewLevelFromScratch level %d", lev);
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("MakeNewLevelFromScratch level %d", lev);
 }
 
 void CactusAmrCore::MakeNewLevelFromCoarse(int lev, Real time,
                                            const BoxArray &ba,
                                            const DistributionMapping &dm) {
-  CCTK_VINFO("MakeNewLevelFromCoarse level %d", lev);
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("MakeNewLevelFromCoarse level %d", lev);
 }
 
 void CactusAmrCore::RemakeLevel(int lev, Real time, const BoxArray &ba,
                                 const DistributionMapping &dm) {
-  CCTK_VINFO("RemakeLevel level %d", lev);
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("RemakeLevel level %d", lev);
 }
 
 void CactusAmrCore::ClearLevel(int lev) {
-  CCTK_VINFO("ClearLevel level %d", lev);
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("ClearLevel level %d", lev);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +172,9 @@ void SetupLevel(int level);
 
 // Start driver
 extern "C" int AMReX_Startup() {
-  CCTK_VINFO("Startup");
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("Startup");
 
   // Output a startup message
   string banner = "AMR driver provided by AMReX " + amrex::Version();
@@ -194,7 +210,9 @@ extern "C" int AMReX_Startup() {
 
 // Set up GH extension
 void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
-  CCTK_VINFO("SetupGH");
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("SetupGH");
 
   assert(fc);
   assert(convLevel == 0);
@@ -212,7 +230,8 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
 // Initialize GH extension
 int InitGH(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
-  CCTK_VINFO("InitGH");
+  if (verbose)
+    CCTK_VINFO("InitGH");
 
   assert(cctkGH);
 
@@ -230,19 +249,26 @@ int InitGH(cGH *restrict cctkGH) {
   // Periodic in all directions
   const Array<int, dim> periodic{1, 1, 1};
 
+  // Set blocking factors via parameter table since AmrMesh needs to
+  // know them when its constructor is running, but there are no
+  // constructor arguments for them
+  ParmParse pp;
+  pp.add("amr.blocking_factor_x", blocking_factor_x);
+  pp.add("amr.blocking_factor_y", blocking_factor_y);
+  pp.add("amr.blocking_factor_z", blocking_factor_z);
+  pp.add("amr.max_grid_size_x", max_grid_size_x);
+  pp.add("amr.max_grid_size_y", max_grid_size_y);
+  pp.add("amr.max_grid_size_z", max_grid_size_z);
+
   ghext->amrcore = make_unique<CactusAmrCore>(
       domain, max_num_levels - 1, ncells, coord, reffacts, periodic);
-#warning "TODO: increase blocking factor"
-  const int blocking_factor = 8;
-  // const int blocking_factor = 1;
-  ghext->amrcore->SetBlockingFactor(blocking_factor);
-  const int max_grid_size = 32;
-  ghext->amrcore->SetMaxGridSize(max_grid_size);
 
-  int maxnumlevels = ghext->amrcore->maxLevel() + 1;
-  for (int level = 0; level < maxnumlevels; ++level) {
-    CCTK_VINFO("Geometry level %d:", level);
-    cout << ghext->amrcore->Geom(level) << "\n";
+  if (verbose) {
+    int maxnumlevels = ghext->amrcore->maxLevel() + 1;
+    for (int level = 0; level < maxnumlevels; ++level) {
+      CCTK_VINFO("Geometry level %d:", level);
+      cout << ghext->amrcore->Geom(level) << "\n";
+    }
   }
 
   // Create coarse grid
@@ -260,7 +286,9 @@ int InitGH(cGH *restrict cctkGH) {
 } // namespace AMReX
 
 void CreateRefinedGrid(int level) {
-  CCTK_VINFO("CreateRefinedGrid level %d", level);
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("CreateRefinedGrid level %d", level);
 
   if (level > ghext->amrcore->maxLevel())
     return;
@@ -270,8 +298,6 @@ void CreateRefinedGrid(int level) {
   ghext->amrcore->regrid(0, time);
   int numlevels = ghext->amrcore->finestLevel() + 1;
   int maxnumlevels = ghext->amrcore->maxLevel() + 1;
-  cout << "CRG numlevels=" << numlevels << "\n";
-  cout << "CRG maxnumlevels=" << maxnumlevels << "\n";
   assert(numlevels >= 0 && numlevels <= maxnumlevels);
   assert(numlevels <= level + 1);
 
@@ -281,7 +307,8 @@ void CreateRefinedGrid(int level) {
 
 void SetupLevel(int level) {
   DECLARE_CCTK_PARAMETERS;
-  CCTK_VINFO("SetupLevel level %d", level);
+  if (verbose)
+    CCTK_VINFO("SetupLevel level %d", level);
 
   assert(level == int(ghext->leveldata.size()));
   ghext->leveldata.resize(level + 1);
@@ -316,7 +343,9 @@ void SetupLevel(int level) {
 
 // Traverse schedule
 int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
-  CCTK_VINFO("ScheduleTraverseGH [%d] %s", cctkGH->cctk_iteration, where);
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("ScheduleTraverseGH [%d] %s", cctkGH->cctk_iteration, where);
 
   int ierr = CCTK_ScheduleTraverse(where, cctkGH, CallFunction);
   assert(!ierr);
@@ -326,7 +355,9 @@ int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
 
 // Shut down driver
 extern "C" int AMReX_Shutdown() {
-  CCTK_VINFO("Shutdown");
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("Shutdown");
 
   int iret = CCTK_UnregisterGHExtension("AMReX");
   assert(iret == 0);

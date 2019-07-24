@@ -2,6 +2,12 @@
 
 PRIVATE:
 
+BOOLEAN verbose "Verbose output"
+{
+} "no"
+
+
+
 CCTK_REAL xmin "Domain size"
 {
   *:* :: ""
@@ -36,18 +42,63 @@ CCTK_REAL zmax "Domain size"
 
 CCTK_INT ncells_x "Number of grid cells"
 {
-  1:* :: ""
+  1:* :: "must be a multiple of the blocking factor"
 } 128
 
 CCTK_INT ncells_y "Number of grid cells"
 {
-  1:* :: ""
+  1:* :: "must be a multiple of the blocking factor"
 } 128
 
 CCTK_INT ncells_z "Number of grid cells"
 {
-  1:* :: ""
+  1:* :: "must be a multiple of the blocking factor"
 } 128
+
+CCTK_INT blocking_factor_x "Blocking factor"
+{
+  1:* :: ""
+} 8
+
+CCTK_INT blocking_factor_y "Blocking factor"
+{
+  1:* :: ""
+} 8
+
+CCTK_INT blocking_factor_z "Blocking factor"
+{
+  1:* :: "must be a power of 2"
+} 8
+
+CCTK_INT max_grid_size_x "Maximum grid size"
+{
+  1:* :: "must be a multiple of the blocking factor"
+} 32
+
+CCTK_INT max_grid_size_y "Maximum grid size"
+{
+  1:* :: "must be a multiple of the blocking factor"
+} 32
+
+CCTK_INT max_grid_size_z "Maximum grid size"
+{
+  1:* :: "must be a multiple of the blocking factor"
+} 32
+
+CCTK_INT max_tile_size_x "Maximum tile size"
+{
+  1:* :: ""
+} 1024000
+
+CCTK_INT max_tile_size_y "Maximum tile size"
+{
+  1:* :: ""
+} 16
+
+CCTK_INT max_tile_size_z "Maximum tile size"
+{
+  1:* :: ""
+} 32
 
 
 
@@ -57,17 +108,10 @@ CCTK_INT max_num_levels "Maximum number of refinement levels"
 } 1
 
 
+
 CCTK_INT ghost_size "Number of ghost zones"
 {
   0:* :: ""
-} 1
-
-
-
-CCTK_INT out_every "How often to output" STEERABLE=always
-{
-  0 :: "no output"
-  1:* :: "every that many iterations"
 } 1
 
 
@@ -79,6 +123,12 @@ CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 
 
 
+BOOLEAN out_tsv "Output in TSV (tab-separated values) format?" STEERABLE=always
+{
+} no
+
+
+
 SHARES: Cactus
 
 USES BOOLEAN terminate_next
@@ -87,3 +137,8 @@ USES CCTK_INT cctk_itlast
 USES CCTK_REAL cctk_initial_time
 USES CCTK_REAL cctk_final_time
 USES CCTK_REAL max_runtime 
+
+SHARES: IO
+
+USES STRING out_dir
+USES CCTK_INT out_every

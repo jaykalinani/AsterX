@@ -7,9 +7,11 @@
 #include <cctk_Parameters.h>
 
 #include <AMReX.H>
+#include <AMReX_Orientation.H>
 #include <AMReX_PlotFileUtil.H>
 
 #include <cctype>
+#include <fstream>
 #include <memory>
 #include <regex>
 #include <sstream>
@@ -22,9 +24,147 @@ namespace AMReX {
 using namespace amrex;
 using namespace std;
 
+namespace {
+// Convert a (direction, face) pair to an AMReX Orientation
+Orientation orient(int d, int f) {
+  return Orientation(d, Orientation::Side(f));
+}
+} // namespace
+
+template <typename T>
+void write_arrays(ostream &os, const cGH *restrict cctkGH, int level,
+                  int component, const vector<const T *> ptrs,
+                  const int *restrict ash, const int *restrict lbnd,
+                  const int *restrict lsh, const int *restrict bbox,
+                  const int *restrict nghostzones) {
+  DECLARE_CCTK_ARGUMENTS;
+
+  const int levfac = 1 << level;
+  CCTK_REAL x0[dim], dx[dim];
+  for (int d = 0; d < dim; ++d) {
+    dx[d] = cctk_delta_space[d] / levfac;
+    x0[d] = cctk_origin_space[d] + 0.5 * dx[d];
+  }
+
+  int imin[dim], imax[dim];
+  for (int d = 0; d < dim; ++d) {
+    imin[d] = cctk_bbox[2 * d] ? 0 : cctk_nghostzones[d];
+    imax[d] = cctk_lsh[d] - (cctk_bbox[2 * d + 1] ? 0 : cctk_nghostzones[d]);
+  }
+
+  constexpr int di = 1;
+  const int dj = di * ash[0];
+  const int dk = dj * ash[1];
+
+  for (int k = 0; k < lsh[2]; ++k) {
+    for (int j = 0; j < lsh[1]; ++j) {
+      for (int i = 0; i < lsh[0]; ++i) {
+        const int idx = di * i + dj * j + dk * k;
+        const int isghost = !(i >= imin[0] && i < imax[0] && j >= imin[1] &&
+                              j < imax[1] && k >= imin[2] && k < imax[2]);
+        T x = x0[0] + (lbnd[0] + i) * dx[0];
+        T y = x0[1] + (lbnd[1] + j) * dx[1];
+        T z = x0[2] + (lbnd[2] + k) * dx[2];
+        os << cctk_iteration << "\t" << cctk_time << "\t" << level << "\t"
+           << component << "\t" << isghost << "\t" << (lbnd[0] + i) << "\t"
+           << (lbnd[1] + j) << "\t" << (lbnd[2] + k) << "\t" << x << "\t" << y
+           << "\t" << z;
+        for (const auto &ptr : ptrs)
+          os << "\t" << ptr[idx];
+        os << "\n";
+      }
+    }
+  }
+}
+
+void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
+                const vector<string> &varnames) {
+  ostringstream buf;
+  buf << filename << ".tsv";
+  ofstream file(buf.str());
+
+  // Output header
+  file << "#"
+       << "\t"
+       << "time"
+       << "\t"
+       << "level"
+       << "\t"
+       << "component"
+       << "\t"
+       << "isghost"
+       << "\t"
+       << "i"
+       << "\t"
+       << "j"
+       << "\t"
+       << "k"
+       << "\t"
+       << "x"
+       << "\t"
+       << "y"
+       << "\t"
+       << "z";
+  for (const auto &varname : varnames)
+    file << "\t" << varname;
+  file << "\n";
+
+  for (const auto &leveldata : ghext->leveldata) {
+    const auto &groupdata = leveldata.groupdata.at(gi);
+    const int tl = 0;
+    const MultiFab &mfab = *groupdata.mfab.at(tl);
+    for (MFIter mfi(mfab); mfi.isValid(); ++mfi) {
+      const Box &fbx = mfi.fabbox();       // allocated array
+      const Box &bx = mfi.tilebox();       // current region (without ghosts)
+      const Box &gbx = mfi.growntilebox(); // current region (with ghosts)
+
+      const Dim3 imin = lbound(gbx);
+
+      // Local shape
+      int lsh[dim];
+      for (int d = 0; d < dim; ++d)
+        lsh[d] = gbx[orient(d, 1)] - gbx[orient(d, 0)] + 1;
+
+      // Allocated shape
+      int ash[dim];
+      for (int d = 0; d < dim; ++d)
+        ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+
+      // Local extent
+      int lbnd[dim];
+      for (int d = 0; d < dim; ++d)
+        lbnd[d] = gbx[orient(d, 0)];
+
+      // Boundaries
+      int bbox[2 * dim];
+      for (int d = 0; d < dim; ++d)
+        for (int f = 0; f < 2; ++f)
+          bbox[2 * d + f] = bx[orient(d, f)] == gbx[orient(d, f)];
+
+      // Number of ghost zones
+      int nghostzones[dim];
+      for (int d = 0; d < dim; ++d)
+        nghostzones[d] = mfab.fb_nghost[d];
+
+      const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+      vector<const CCTK_REAL *> ptrs(groupdata.numvars);
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        ptrs.at(vi) = vars.ptr(imin.x, imin.y, imin.z, vi);
+      write_arrays(file, cctkGH, leveldata.level, mfi.index(), ptrs, ash, lbnd,
+                   lsh, bbox, nghostzones);
+    }
+  }
+  file.close();
+}
+
 int OutputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
+
+  const bool is_root = CCTK_MyProc(nullptr) == 0;
+  if (is_root)
+    cout << "OutputGH: iteration " << cctk_iteration << ", time " << cctk_time
+         << ", run time " << CCTK_RunTime() << " s\n";
 
   if (out_every <= 0 || cctk_iteration % out_every != 0)
     return 0;
@@ -41,7 +181,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       for (auto &c : groupname)
         c = tolower(c);
       ostringstream buf;
-      buf << "wavetoy/" << groupname;
+      buf << out_dir << "/" << groupname;
       buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
       string filename = buf.str();
 
@@ -69,6 +209,16 @@ int OutputGH(const cGH *restrict cctkGH) {
       WriteMultiLevelPlotfile(filename, mfabs.size(), mfabs, varnames, geoms,
                               cctk_time, iters, reffacts);
 
+      if (out_tsv) {
+        ostringstream procbuf;
+        procbuf << out_dir << "/" << groupname;
+        procbuf << ".it" << setw(6) << setfill('0') << cctk_iteration;
+        procbuf << ".p" << setw(4) << setfill('0') << CCTK_MyProc(nullptr);
+        string procfilename = procbuf.str();
+
+        WriteASCII(cctkGH, procfilename, gi, varnames);
+      }
+
       count_vars += ghext->leveldata.at(0).groupdata.at(gi).numvars;
     }
   }
@@ -82,8 +232,11 @@ int OutputGH(const cGH *restrict cctkGH) {
     for (int vi = 0; vi < numvars; ++vi) {
       const int tl = 0;
       reduction<CCTK_REAL> red = reduce(gi, vi, tl);
-      CCTK_VINFO("maxabs(%s)=%g", CCTK_VarName(groupdata.firstvarindex + vi),
-                 red.maxabs);
+      if (is_root)
+        cout << "  "
+             << unique_ptr<char>(CCTK_FullName(groupdata.firstvarindex + vi))
+                    .get()
+             << ": maxabs=" << red.maxabs << "\n";
       // CCTK_REAL maxabs = 0.0;
       // for (auto &restrict leveldata : ghext->leveldata) {
       //   auto &restrict groupdata = leveldata.groupdata.at(gi);

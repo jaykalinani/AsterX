@@ -17,6 +17,12 @@ SCHEDULE WaveToyAMReX_Evolve AT evol
   SYNC: phi
 } "Evolve the wave equation"
 
+SCHEDULE WaveToyAMReX_Energy AT analysis
+{
+  LANG: C
+  SYNC: energy
+} "Calculate energy density for the wave equation"
+
 SCHEDULE WaveToyAMReX_Error AT analysis
 {
   LANG: C

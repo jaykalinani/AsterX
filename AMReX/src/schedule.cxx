@@ -99,20 +99,24 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   const CCTK_REAL *restrict x0 = geom.ProbLo();
   const CCTK_REAL *restrict dx = geom.CellSize();
 
-  for (int d = 0; d < dim; ++d)
+  for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_origin_space[d] = x0[d] + 0.0 * dx[d];
-  for (int d = 0; d < dim; ++d)
     cctkGH->cctk_delta_space[d] = dx[d];
+  }
 
   // Initialize time stepping
+  // CCTK_REAL mindx = 1.0 / 0.0;
+  // const int numlevels = ghext->amrcore->finestLevel() + 1;
+  // for (int level = 0; level < numlevels; ++level) {
+  //   const Geometry &geom = ghext->amrcore->Geom(level);
+  //   const CCTK_REAL *restrict dx = geom.CellSize();
+  //   for (int d = 0; d < dim; ++d)
+  //     mindx = fmin(mindx, dx[d]);
+  // }
   CCTK_REAL mindx = 1.0 / 0.0;
-  const int numlevels = ghext->amrcore->finestLevel() + 1;
-  for (int level = 0; level < numlevels; ++level) {
-    const Geometry &geom = ghext->amrcore->Geom(level);
-    const CCTK_REAL *restrict dx = geom.CellSize();
-    for (int d = 0; d < dim; ++d)
-      mindx = fmin(mindx, dx[d]);
-  }
+  for (int d = 0; d < dim; ++d)
+    mindx = fmin(mindx, dx[d]);
+  mindx = mindx / (1 << (max_num_levels - 1));
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
 }
@@ -133,7 +137,7 @@ void enter_global_mode(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
   // The number of ghostzones in each direction
-  // TODO: Get this from mfab
+  // TODO: Get this from mfab (mfab.fb_ghosts)
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_nghostzones[d] = ghost_size;
 }
@@ -156,7 +160,8 @@ void enter_level_mode(cGH *restrict cctkGH,
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levfac[d] = 1 << leveldata.level;
 
-  // Offset between this level's and the coarsest level's origin
+  // Offset between this level's and the coarsest level's origin as multiple of
+  // the grid spacing
   for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_levoff[d] = 1;
     cctkGH->cctk_levoffdenom[d] = 2;
@@ -184,7 +189,7 @@ void enter_local_mode(cGH *restrict cctkGH,
 
   // Local shape
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
+    cctkGH->cctk_lsh[d] = gbx[orient(d, 1)] - gbx[orient(d, 0)] + 1;
 
   // Allocated shape
   for (int d = 0; d < dim; ++d)
@@ -192,17 +197,17 @@ void enter_local_mode(cGH *restrict cctkGH,
 
   // Local extent
   for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_lbnd[d] = bx[orient(d, 0)];
-    cctkGH->cctk_ubnd[d] = bx[orient(d, 1)];
+    cctkGH->cctk_lbnd[d] = gbx[orient(d, 0)];
+    cctkGH->cctk_ubnd[d] = gbx[orient(d, 1)];
   }
 
   // Boundaries
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      cctkGH->cctk_bbox[2 * d + f] = bx[orient(d, f)] != gbx[orient(d, f)];
+      cctkGH->cctk_bbox[2 * d + f] = bx[orient(d, f)] == gbx[orient(d, f)];
 
   // Grid function pointers
-  const Dim3 imin = lbound(bx);
+  const Dim3 imin = lbound(gbx);
   for (auto &restrict groupdata : leveldata.groupdata) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
@@ -291,18 +296,17 @@ int Initialise(tFleshConfig *config) {
     enter_level_mode(cctkGH, ghext->leveldata.at(0));
     const int *restrict gsh = cctkGH->cctk_gsh;
     CCTK_REAL x0[dim], x1[dim], dx[dim];
-    for (int d = 0; d < dim; ++d)
+    for (int d = 0; d < dim; ++d) {
       dx[d] = cctkGH->cctk_delta_space[d];
-    for (int d = 0; d < dim; ++d)
-      x0[d] = cctkGH->cctk_origin_space[d] - 0.0 * dx[d];
-    for (int d = 0; d < dim; ++d)
+      x0[d] = cctkGH->cctk_origin_space[d];
       x1[d] = x0[d] + gsh[d] * dx[d];
+    }
     CCTK_VINFO("Grid extent:");
     CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
     CCTK_VINFO("Domain extent:");
     CCTK_VINFO("  xmin=[%g,%g,%g]", x0[0], x0[1], x0[2]);
     CCTK_VINFO("  xmax=[%g,%g,%g]", x1[0], x1[1], x1[2]);
-    CCTK_VINFO("  dx=[%g,%g,%g]", dx[0], dx[1], dx[2]);
+    CCTK_VINFO("  base dx=[%g,%g,%g]", dx[0], dx[1], dx[2]);
     CCTK_VINFO("Time stepping:");
     CCTK_VINFO("  t0=%g", cctkGH->cctk_time);
     CCTK_VINFO("  dt=%g", cctkGH->cctk_delta_time);
@@ -315,6 +319,7 @@ int Initialise(tFleshConfig *config) {
 
   if (config->recovered) {
     // Recover
+    CCTK_VINFO("Recovering from checkpoint...");
 
     const char *recovery_mode = *static_cast<const char *const *>(
         CCTK_ParameterGet("recovery_mode", "Cactus", nullptr));
@@ -334,9 +339,11 @@ int Initialise(tFleshConfig *config) {
 
   } else {
     // Set up initial conditions
+    CCTK_VINFO("Setting up initial conditions...");
 
     for (;;) {
       current_level = ghext->amrcore->finestLevel();
+      CCTK_VINFO("Initializing level %d...", current_level);
 
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
       CCTK_Traverse(cctkGH, "CCTK_INITIAL");
@@ -348,15 +355,14 @@ int Initialise(tFleshConfig *config) {
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
-      cout << "I old_numlevels=" << old_numlevels << "\n";
-      cout << "I new_numlevels=" << new_numlevels << "\n";
-      cout << "I max_numlevels=" << int(ghext->amrcore->maxLevel() + 1) << "\n";
       // Did we create a new level?
-      if (new_numlevels <= old_numlevels)
+      const bool did_create_new_level = new_numlevels > old_numlevels;
+      if (!did_create_new_level)
         break;
     }
     current_level = -1;
   }
+  CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
 
   // Restrict
   for (int level = (ghext->leveldata.size()) - 2; level >= 0; --level)
@@ -423,7 +429,6 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
 
-  // TODO: Get ghost_size from mfab
   for (auto &restrict leveldata : ghext->leveldata) {
     for (auto &restrict groupdata : leveldata.groupdata) {
       const int ntls = groupdata.mfab.size();
@@ -442,6 +447,8 @@ int Evolve(tFleshConfig *config) {
   assert(config);
   cGH *restrict const cctkGH = config->GH[0];
   assert(cctkGH);
+
+  CCTK_VINFO("Starting evolution...");
 
   while (!EvolutionIsDone(cctkGH)) {
     CycleTimelevels(cctkGH);
@@ -468,6 +475,8 @@ int Shutdown(tFleshConfig *config) {
   cGH *restrict const cctkGH = config->GH[0];
   assert(cctkGH);
 
+  CCTK_VINFO("Shutting down...");
+
   CCTK_Traverse(cctkGH, "CCTK_TERMINATE");
   CCTK_Traverse(cctkGH, "CCTK_SHUTDOWN");
 
@@ -477,14 +486,17 @@ int Shutdown(tFleshConfig *config) {
 // Call a scheduled function
 int CallFunction(void *function, cFunctionData *restrict attribute,
                  void *data) {
+  DECLARE_CCTK_PARAMETERS;
+
   assert(function);
   assert(attribute);
   assert(data);
 
   cGH *restrict const cctkGH = static_cast<cGH *>(data);
 
-  CCTK_VINFO("CallFunction [%d] %s: %s::%s", cctkGH->cctk_iteration,
-             attribute->where, attribute->thorn, attribute->routine);
+  if (verbose)
+    CCTK_VINFO("CallFunction [%d] %s: %s::%s", cctkGH->cctk_iteration,
+               attribute->where, attribute->thorn, attribute->routine);
 
   const mode_t mode = decode_mode(attribute);
   switch (mode) {
@@ -498,8 +510,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       auto callfunc = [&](auto &restrict leveldata) {
         MultiFab &mfab = *leveldata.groupdata.at(0).mfab.at(0);
         enter_level_mode(threadGH, leveldata);
-        auto mfitinfo =
-            MFItInfo().SetDynamic(true).EnableTiling({1024000, 16, 32});
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
         for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
           enter_local_mode(threadGH, leveldata, mfi);
           CCTK_CallFunction(function, attribute, threadGH);
@@ -552,6 +564,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       // We always sync all directions.
       // If there is more than one time level, then we don't sync the
       // oldest.
+#warning "TODO: during evolution, sync only one time level"
       int ntls = groupdata.mfab.size();
       int sync_tl = ntls > 1 ? ntls - 1 : ntls;
 
@@ -563,8 +576,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               ghext->amrcore->Geom(leveldata.level).periodicity());
 
       } else {
-        // Refined level: Prolongate from next coarser level, and then
-        // copy from adjacent boxes on same level
+        // Refined level: Prolongate boundaries from next coarser
+        // level, and copy from adjacent boxes on same level
 
         const int level = leveldata.level;
         auto &restrict coarsegroupdata =
@@ -573,17 +586,24 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         PhysBCFunctNoOp cphysbc;
         PhysBCFunctNoOp fphysbc;
         const IntVect reffact{2, 2, 2};
-        CellBilinear interp;
+        // CellBilinear interp;
         // periodic boundaries
         const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
                           BCType::int_dir, BCType::int_dir, BCType::int_dir);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
-        for (int tl = 0; tl < sync_tl; ++tl)
-          InterpFromCoarseLevel(
-              *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
-              groupdata.numvars, ghext->amrcore->Geom(level - 1),
-              ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
-              &interp, bcs, 0);
+        for (int tl = 0; tl < sync_tl; ++tl) {
+          // InterpFromCoarseLevel(
+          //     *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0,
+          //     0, groupdata.numvars, ghext->amrcore->Geom(level - 1),
+          //     ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
+          //     &interp, bcs, 0);
+#warning "TODO: make copy of fine level"
+          FillPatchTwoLevels(
+              *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+              {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
+              ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
+              cphysbc, 0, fphysbc, 0, reffact, &cell_bilinear_interp, bcs, 0);
+        }
       }
     }
   }
@@ -599,15 +619,15 @@ void Restrict(int level) {
     const auto &finegroupdata = fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict
     // the oldest.
+#warning "TODO: during evolution, restrict only one time level"
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
     const IntVect reffact{2, 2, 2};
-    for (int tl = 0; tl < restrict_tl; ++tl) {
+    for (int tl = 0; tl < restrict_tl; ++tl)
       amrex::average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
                           ghext->amrcore->Geom(level + 1),
                           ghext->amrcore->Geom(level), 0, groupdata.numvars,
                           reffact);
-    }
   }
 }
 
