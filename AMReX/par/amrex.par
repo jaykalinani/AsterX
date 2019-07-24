@@ -9,7 +9,7 @@ $ncells = 128
 
 Cactus::cctk_show_schedule = no
 
-Cactus::cctk_itlast = 10
+Cactus::cctk_itlast = $ncells * 2 ** ($nlevels - 1) * 2
 
 AMReX::ncells_x = $ncells
 AMReX::ncells_y = $ncells
@@ -20,4 +20,4 @@ AMReX::max_num_levels = $nlevels
 AMReX::dtfac = 0.5
 
 IO::out_dir = "wavetoy"
-IO::out_every = 10
+IO::out_every = $ncells * 2 ** ($nlevels - 1) / 2
