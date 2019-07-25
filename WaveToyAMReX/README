@@ -14,38 +14,20 @@ A wave toy using the AMReX driver
 
 Scalar wave equation:
   phi,tt = phi,xx
-
-Introduce new variable:
-  psi = phi,t
-New set of equations:
-  phi,t = psi
-  psi,t = phi,tt = phi,xx
-
-Discretization:
-  phi_0 = phi_1 + dt psi_1
-  psi_0 = psi_1 + dt phi_1,xx
-
-
-
-3. Fancy equations:
-
-Scalar wave equation:
-  phi,tt = phi,xx
 Direct second order discretization:
   phi_0 = 2 phi_1 - phi_2 + dt^2 phi_1,xx
 
 Introduce new variable:
-  psi = phi,t
+  psi_0 = (phi_0 - phi_1) / dt
+
+Some calculations:
+  psi_1 = (phi_1 - phi_2) / dt
+  phi_0 = 2 phi_1 - phi_2 + dt^2 phi_1,xx
+  phi_0 = phi_1 + phi_1 - phi_2 + dt^2 phi_1,xx
+
+  phi_0 = phi_1 + dt psi_1 + dt^2 phi_1,xx
+  psi_0 = (phi_0 - phi_1) / dt
+
 New set of equations:
-  phi,t = psi
-  psi,t = phi,tt = phi,xx
-New, equivalent discretization:
-  phi_0 - phi_1 = dt psi_1
-
-  phi_0 - 2 phi_1 + phi_2 = dt^2 phi_1,xx
-  dt psi_1 - dt psi_2 = dt^2 phi_1,xx
-  psi_1 = psi_2 + dt^2 phi_1,xx
-
-  phi_0 = phi_1 + dt psi_1
-  psi_0 = psi_1 + dt phi_0,xx
-        = psi_1 + dt phi_1,xx + dt^2 psi_1,xx
+  psi_0 = psi_1 + dt phi_1,xx
+  phi_0 = phi_1 + dt psi_0

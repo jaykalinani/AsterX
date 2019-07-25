@@ -107,6 +107,17 @@ CCTK_INT max_num_levels "Maximum number of refinement levels"
   1:* :: ""
 } 1
 
+CCTK_INT regrid_every "Regridding interval" STEERABLE=always
+{
+  0 :: "never"
+  1:* :: "every that many iterations"
+} 0
+
+CCTK_REAL regrid_error_threshold "Regridding error threshold" STEERABLE=always
+{
+  0.0:* :: ""
+} 1.0
+
 
 
 CCTK_INT ghost_size "Number of ghost zones"

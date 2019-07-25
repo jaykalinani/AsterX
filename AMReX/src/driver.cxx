@@ -8,7 +8,10 @@
 
 #include <AMReX.H>
 #include <AMReX_BCRec.H>
+#include <AMReX_FillPatchUtil.H>
+#include <AMReX_Interpolater.H>
 #include <AMReX_ParmParse.H>
+#include <AMReX_PhysBCFunct.H>
 
 #include <omp.h>
 #include <mpi.h>
@@ -76,24 +79,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
   if (verbose)
     CCTK_VINFO("ErrorEst level %d", level);
 
-  // // refine everywhere
-  // tags.setVal(boxArray(level), TagBox::SET);
-
-  // // refine centre
-  // const Box &dom = Geom(level).Domain();
-  // Box nbx;
-  // for (int d = 0; d < dim; ++d) {
-  //   int md = (dom.bigEnd(d) + dom.smallEnd(d) + 1) / 2;
-  //   int rd = (dom.bigEnd(d) - dom.smallEnd(d) + 1) / 2;
-  //   // mark one fewer cells; AMReX seems to add one cell
-  //   nbx.setSmall(d, md - rd / (1 << (level + 1)) + 1);
-  //   nbx.setBig(d, md + rd / (1 << (level + 1)) - 2);
-  // }
-  // cout << "EE nbx: " << nbx << "\n";
-  // const BoxArray &ba = boxArray(level);
-  // tags.setVal(intersect(ba, nbx), TagBox::SET);
-
-  const int gi = CCTK_GroupIndex("AMReX::regrid_tag");
+  const int gi = CCTK_GroupIndex("AMReX::regrid_error");
   assert(gi >= 0);
   const int vi = 0;
   const int tl = 0;
@@ -117,7 +103,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
       lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
 
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-    const CCTK_REAL *restrict ptr = vars.ptr(imin.x, imin.y, imin.z, vi);
+    const CCTK_REAL *restrict err = vars.ptr(imin.x, imin.y, imin.z, vi);
     const Array4<char> &tagarr = tags.array(mfi);
 
     constexpr int di = 1;
@@ -130,45 +116,171 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
         for (int i = 0; i < lsh[0]; ++i) {
           int idx = di * i + dj * j + dk * k;
           tagarr(imin.x + i, imin.y + j, imin.z + k) =
-              ptr[idx] == 0.0 ? TagBox::CLEAR : TagBox::SET;
+              err[idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
         }
       }
     }
   }
 }
 
-void CactusAmrCore::MakeNewLevelFromScratch(int lev, Real time,
+void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("SetupLevel level %d", level);
+
+  assert(level == int(ghext->leveldata.size()));
+  ghext->leveldata.resize(level + 1);
+  GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+  leveldata.level = level;
+
+  const int numgroups = CCTK_NumGroups();
+  leveldata.groupdata.resize(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+    assert(group.grouptype == CCTK_GF);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
+    assert(group.dim == dim);
+
+    GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
+    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    groupdata.numvars = group.numvars;
+
+    // Allocate grid hierarchies
+    groupdata.mfab.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+      groupdata.mfab.at(tl) =
+          make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+    }
+  }
+}
+
+void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
                                             const BoxArray &ba,
                                             const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
-    CCTK_VINFO("MakeNewLevelFromScratch level %d", lev);
+    CCTK_VINFO("MakeNewLevelFromScratch level %d", level);
+
+  SetupLevel(level, ba, dm);
 }
 
-void CactusAmrCore::MakeNewLevelFromCoarse(int lev, Real time,
+void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
                                            const BoxArray &ba,
                                            const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
-    CCTK_VINFO("MakeNewLevelFromCoarse level %d", lev);
+    CCTK_VINFO("MakeNewLevelFromCoarse level %d", level);
+  assert(level > 0);
+
+  SetupLevel(level, ba, dm);
+
+  // Prolongate
+  auto &leveldata = ghext->leveldata.at(level);
+  auto &coarseleveldata = ghext->leveldata.at(level - 1);
+  const int num_groups = CCTK_NumGroups();
+  for (int gi = 0; gi < num_groups; ++gi) {
+    auto &restrict groupdata = leveldata.groupdata.at(gi);
+    auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
+    assert(coarsegroupdata.numvars == groupdata.numvars);
+    PhysBCFunctNoOp cphysbc;
+    PhysBCFunctNoOp fphysbc;
+    const IntVect reffact{2, 2, 2};
+    // periodic boundaries
+    const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
+                      BCType::int_dir, BCType::int_dir, BCType::int_dir);
+    const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+
+    // If there is more than one time level, then we don't
+    // prolongate the oldest.
+    int ntls = groupdata.mfab.size();
+    int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
+    for (int tl = 0; tl < prolongate_tl; ++tl)
+      InterpFromCoarseLevel(*groupdata.mfab.at(tl), 0.0,
+                            *coarsegroupdata.mfab.at(tl), 0, 0,
+                            groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                            ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
+                            reffact, &cell_bilinear_interp, bcs, 0);
+  }
 }
 
-void CactusAmrCore::RemakeLevel(int lev, Real time, const BoxArray &ba,
+void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                                 const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
-    CCTK_VINFO("RemakeLevel level %d", lev);
+    CCTK_VINFO("RemakeLevel level %d", level);
+
+  // Copy or prolongate
+  auto &leveldata = ghext->leveldata.at(level);
+  const int num_groups = CCTK_NumGroups();
+  for (int gi = 0; gi < num_groups; ++gi) {
+    auto &restrict groupdata = leveldata.groupdata.at(gi);
+
+    // If there is more than one time level, then we don't
+    // prolongate the oldest.
+    int ntls = groupdata.mfab.size();
+    int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
+
+    if (leveldata.level == 0) {
+      // Coarsest level: Copy from same level
+
+      // This should not happen
+      assert(0);
+
+      PhysBCFunctNoOp fphysbc;
+
+      for (int tl = 0; tl < ntls; ++tl) {
+        auto mfab =
+            make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+        if (tl < prolongate_tl)
+          FillPatchSingleLevel(*mfab, 0.0, {&*groupdata.mfab.at(tl)}, {0.0}, 0,
+                               0, groupdata.numvars,
+                               ghext->amrcore->Geom(level), fphysbc, 0);
+        groupdata.mfab.at(tl) = move(mfab);
+      }
+
+    } else {
+      // Refined level: copy from same level and/or prolongate from
+      // next coarser level
+
+      auto &coarseleveldata = ghext->leveldata.at(level - 1);
+      auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
+      assert(coarsegroupdata.numvars == groupdata.numvars);
+
+      PhysBCFunctNoOp cphysbc;
+      PhysBCFunctNoOp fphysbc;
+      const IntVect reffact{2, 2, 2};
+      // periodic boundaries
+      const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
+                        BCType::int_dir, BCType::int_dir, BCType::int_dir);
+      const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+      for (int tl = 0; tl < ntls; ++tl) {
+        auto mfab =
+            make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+        if (tl < prolongate_tl)
+          FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
+                             {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                             groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc,
+                             0, reffact, &cell_bilinear_interp, bcs, 0);
+        groupdata.mfab.at(tl) = move(mfab);
+      }
+    }
+  }
 }
 
-void CactusAmrCore::ClearLevel(int lev) {
+void CactusAmrCore::ClearLevel(int level) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
-    CCTK_VINFO("ClearLevel level %d", lev);
+    CCTK_VINFO("ClearLevel level %d", level);
+
+  assert(level == int(ghext->leveldata.size()) - 1);
+  ghext->leveldata.resize(level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-void SetupLevel(int level);
 
 // Start driver
 extern "C" int AMReX_Startup() {
@@ -272,10 +384,8 @@ int InitGH(cGH *restrict cctkGH) {
   }
 
   // Create coarse grid
-  const int level = 0;
   CCTK_REAL time = 0.0; // dummy time
   ghext->amrcore->MakeNewGrids(time);
-  SetupLevel(level);
 
   // CCTK_VINFO("BoxArray level %d:", level);
   // cout << ghext->amrcore->boxArray(level) << "\n";
@@ -300,43 +410,24 @@ void CreateRefinedGrid(int level) {
   int maxnumlevels = ghext->amrcore->maxLevel() + 1;
   assert(numlevels >= 0 && numlevels <= maxnumlevels);
   assert(numlevels <= level + 1);
-
-  if (numlevels == level + 1)
-    SetupLevel(level);
 }
 
-void SetupLevel(int level) {
+void RegridLevel(int level) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
-    CCTK_VINFO("SetupLevel level %d", level);
+    CCTK_VINFO("RegridLevel level %d", level);
 
-  assert(level == int(ghext->leveldata.size()));
-  ghext->leveldata.resize(level + 1);
+  assert(level < int(ghext->leveldata.size()));
   GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-  leveldata.level = level;
 
-  const int numgroups = CCTK_NumGroups();
-  leveldata.groupdata.resize(numgroups);
-  for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
-    assert(group.grouptype == CCTK_GF);
-    assert(group.vartype == CCTK_VARIABLE_REAL);
-    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
-    assert(group.dim == dim);
-
-    GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
-    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-    groupdata.numvars = group.numvars;
-
-    // Allocate grid hierarchies
-    groupdata.mfab.resize(group.numtimelevels);
+  for (auto &groupdata : leveldata.groupdata) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      groupdata.mfab.at(tl) = make_unique<MultiFab>(
-          ghext->amrcore->boxArray(leveldata.level),
-          ghext->amrcore->DistributionMap(leveldata.level), groupdata.numvars,
-          ghost_size);
+#warning "TODO"
+      assert(0);
+      groupdata.mfab.at(tl) =
+          make_unique<MultiFab>(ghext->amrcore->boxArray(level),
+                                ghext->amrcore->DistributionMap(level),
+                                groupdata.numvars, ghost_size);
     }
   }
 }

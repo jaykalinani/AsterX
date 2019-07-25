@@ -8,10 +8,10 @@ INHERITS: IO
 
 PUBLIC:
 
-CCTK_REAL regrid_tag TYPE=gf
+CCTK_REAL regrid_error TYPE=gf
 {
-  tag
-} "Regridding tags"
+  regrid_error
+} "Regridding condition"
 
 CCTK_REAL refinement_level TYPE=gf
 {

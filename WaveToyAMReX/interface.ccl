@@ -6,10 +6,10 @@ INHERITS: AMReX
 
 
 
-CCTK_REAL phi TYPE=gf TIMELEVELS=3
+CCTK_REAL phi TYPE=gf TIMELEVELS=2
 {
   phi
-  # psi
+  psi
 } "Scalar potential for wave equation"
 
 CCTK_REAL energy TYPE=gf
@@ -20,5 +20,5 @@ CCTK_REAL energy TYPE=gf
 CCTK_REAL err TYPE=gf
 {
   phierr
-  # psierr
-} "Error in scalar potential for wave equation"
+  psierr
+} "Error of wave equation solution"

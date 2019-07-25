@@ -39,15 +39,15 @@ public:
 
   virtual ~CactusAmrCore();
 
-  virtual void ErrorEst(int lev, TagBoxArray &tags, Real time,
+  virtual void ErrorEst(int level, TagBoxArray &tags, Real time,
                         int ngrow) override;
-  virtual void MakeNewLevelFromScratch(int lev, Real time, const BoxArray &ba,
+  virtual void MakeNewLevelFromScratch(int level, Real time, const BoxArray &ba,
                                        const DistributionMapping &dm) override;
-  virtual void MakeNewLevelFromCoarse(int lev, Real time, const BoxArray &ba,
+  virtual void MakeNewLevelFromCoarse(int level, Real time, const BoxArray &ba,
                                       const DistributionMapping &dm) override;
-  virtual void RemakeLevel(int lev, Real time, const BoxArray &ba,
+  virtual void RemakeLevel(int level, Real time, const BoxArray &ba,
                            const DistributionMapping &dm) override;
-  virtual void ClearLevel(int lev) override;
+  virtual void ClearLevel(int level) override;
 };
 
 // Cactus grid hierarchy extension

@@ -38,10 +38,6 @@ constexpr int undefined = 666;
 
 vector<cGH> thread_local_cctkGH;
 
-// During initialization, the schedule should traverse only a single
-// level. At all other times, all levels should be traversed.
-int current_level = -1;
-
 void Restrict(int level);
 
 namespace {
@@ -342,8 +338,10 @@ int Initialise(tFleshConfig *config) {
     CCTK_VINFO("Setting up initial conditions...");
 
     for (;;) {
-      current_level = ghext->amrcore->finestLevel();
-      CCTK_VINFO("Initializing level %d...", current_level);
+      // TODO: Remove "current_level" mechanism
+      // current_level = ghext->amrcore->finestLevel();
+      const int level = ghext->amrcore->finestLevel();
+      CCTK_VINFO("Initializing level %d...", level);
 
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
       CCTK_Traverse(cctkGH, "CCTK_INITIAL");
@@ -351,7 +349,7 @@ int Initialise(tFleshConfig *config) {
       CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
 
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
-      CreateRefinedGrid(current_level + 1);
+      CreateRefinedGrid(level + 1);
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
@@ -360,12 +358,12 @@ int Initialise(tFleshConfig *config) {
       if (!did_create_new_level)
         break;
     }
-    current_level = -1;
+    // current_level = -1;
   }
   CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
 
   // Restrict
-  for (int level = (ghext->leveldata.size()) - 2; level >= 0; --level)
+  for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
     Restrict(level);
 
   // Checkpoint, analysis, output
@@ -444,6 +442,8 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
 
 // Schedule evolution
 int Evolve(tFleshConfig *config) {
+  DECLARE_CCTK_PARAMETERS;
+
   assert(config);
   cGH *restrict const cctkGH = config->GH[0];
   assert(cctkGH);
@@ -451,6 +451,19 @@ int Evolve(tFleshConfig *config) {
   CCTK_VINFO("Starting evolution...");
 
   while (!EvolutionIsDone(cctkGH)) {
+
+    if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0) {
+      CCTK_VINFO("Regridding...");
+      CCTK_REAL time = 0.0; // dummy time
+      const int old_numlevels = ghext->amrcore->finestLevel() + 1;
+      ghext->amrcore->regrid(0, time);
+      const int new_numlevels = ghext->amrcore->finestLevel() + 1;
+      CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
+                 new_numlevels);
+
+      CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+    }
+
     CycleTimelevels(cctkGH);
 
     CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
@@ -520,16 +533,10 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         leave_level_mode(threadGH, leveldata);
       };
 
-      if (current_level < 0) {
-        // Loop over all levels
-        // TODO: parallelize this loop
-        for (auto &restrict leveldata : ghext->leveldata)
-          callfunc(leveldata);
-      } else {
-        // Loop over a single level
-        auto &restrict leveldata = ghext->leveldata.at(current_level);
+      // Loop over all levels
+      // TODO: parallelize this loop
+      for (auto &restrict leveldata : ghext->leveldata)
         callfunc(leveldata);
-      }
     }
     break;
   }
@@ -586,17 +593,11 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         PhysBCFunctNoOp cphysbc;
         PhysBCFunctNoOp fphysbc;
         const IntVect reffact{2, 2, 2};
-        // CellBilinear interp;
         // periodic boundaries
         const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
                           BCType::int_dir, BCType::int_dir, BCType::int_dir);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
-          // InterpFromCoarseLevel(
-          //     *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0,
-          //     0, groupdata.numvars, ghext->amrcore->Geom(level - 1),
-          //     ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
-          //     &interp, bcs, 0);
 #warning "TODO: make copy of fine level"
           FillPatchTwoLevels(
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
@@ -612,9 +613,17 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 }
 
 void Restrict(int level) {
+  const int gi_regrid_error = CCTK_GroupIndex("AMReX::regrid_error");
+  assert(gi_regrid_error >= 0);
+  const int gi_refinement_level = CCTK_GroupIndex("AMReX::refinement_level");
+  assert(gi_refinement_level >= 0);
+
   auto &leveldata = ghext->leveldata.at(level);
   const auto &fineleveldata = ghext->leveldata.at(level + 1);
   for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
+    // Don't restrict the regridding error nor the refinement level
+    if (gi == gi_regrid_error || gi == gi_refinement_level)
+      continue;
     auto &groupdata = leveldata.groupdata.at(gi);
     const auto &finegroupdata = fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict
