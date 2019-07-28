@@ -21,7 +21,7 @@ RUN wget https://github.com/AMReX-Codes/amrex/archive/19.07.tar.gz && \
     cd amrex-19.07 && \
     mkdir build && \
     cd build && \
-    cmake -DENABLE_ASSERTIONS=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/cactus/amrex .. && \
+    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/cactus/amrex .. && \
     make -j2 && \
     make -j2 install && \
     cd ../.. && \
