@@ -23,7 +23,7 @@ AMReX::regrid_error_threshold = 0.01   #TODO 0.1
 
 AMReX::dtfac = 0.5
 
-WaveToyAMReX::initial_condition = "periodic Gaussian"
+WaveToyAMReX::initial_condition = "Gaussian"
 
 # WaveToyAMReX::spatial_frequency_x = 0.5
 # WaveToyAMReX::spatial_frequency_y = 0.0

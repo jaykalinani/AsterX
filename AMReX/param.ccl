@@ -55,6 +55,22 @@ CCTK_INT ncells_z "Number of grid cells"
   1:* :: "must be a multiple of the blocking factor"
 } 128
 
+
+
+BOOLEAN periodic_x "Periodic"
+{
+} yes
+
+BOOLEAN periodic_y "Periodic"
+{
+} yes
+
+BOOLEAN periodic_z "Periodic"
+{
+} yes
+
+
+
 CCTK_INT blocking_factor_x "Blocking factor"
 {
   1:* :: ""

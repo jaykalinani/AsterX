@@ -560,6 +560,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
 int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups, const int *directions) {
+  DECLARE_CCTK_PARAMETERS;
+
   assert(cctkGH);
   assert(numgroups >= 0);
   assert(groups);
@@ -593,9 +595,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         PhysBCFunctNoOp cphysbc;
         PhysBCFunctNoOp fphysbc;
         const IntVect reffact{2, 2, 2};
-        // periodic boundaries
-        const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
-                          BCType::int_dir, BCType::int_dir, BCType::int_dir);
+        // boundary conditions
+        const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_z ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
 #warning "TODO: make copy of fine level"

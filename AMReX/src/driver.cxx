@@ -150,10 +150,9 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 
     // Allocate grid hierarchies
     groupdata.mfab.resize(group.numtimelevels);
-    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl)
       groupdata.mfab.at(tl) =
           make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
-    }
   }
 }
 
@@ -188,13 +187,17 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     PhysBCFunctNoOp cphysbc;
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
-    // periodic boundaries
-    const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
-                      BCType::int_dir, BCType::int_dir, BCType::int_dir);
+    // boundary conditions
+    const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
 
-    // If there is more than one time level, then we don't
-    // prolongate the oldest.
+    // If there is more than one time level, then we don't prolongate
+    // the oldest.
     int ntls = groupdata.mfab.size();
     int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
     for (int tl = 0; tl < prolongate_tl; ++tl)
@@ -252,9 +255,13 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       PhysBCFunctNoOp cphysbc;
       PhysBCFunctNoOp fphysbc;
       const IntVect reffact{2, 2, 2};
-      // periodic boundaries
-      const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
-                        BCType::int_dir, BCType::int_dir, BCType::int_dir);
+      // boundary conditions
+      const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                        periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                        periodic_z ? BCType::int_dir : BCType::reflect_odd,
+                        periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                        periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                        periodic_z ? BCType::int_dir : BCType::reflect_odd);
       const Vector<BCRec> bcs(groupdata.numvars, bcrec);
       for (int tl = 0; tl < ntls; ++tl) {
         auto mfab =
@@ -331,6 +338,9 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
   assert(cctkGH);
 
   // Initialize AMReX
+  ParmParse pp;
+  pp.add("amrex.verbose", true);
+  pp.add("amrex.signal_handling", false);
   pamrex = amrex::Initialize(MPI_COMM_WORLD);
 
   // Create grid structure
@@ -358,8 +368,8 @@ int InitGH(cGH *restrict cctkGH) {
   // Refinement ratios
   const Vector<IntVect> reffacts; // empty
 
-  // Periodic in all directions
-  const Array<int, dim> periodic{1, 1, 1};
+  // Periodicity
+  const Array<int, dim> periodic{periodic_x, periodic_y, periodic_z};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no
@@ -410,26 +420,6 @@ void CreateRefinedGrid(int level) {
   int maxnumlevels = ghext->amrcore->maxLevel() + 1;
   assert(numlevels >= 0 && numlevels <= maxnumlevels);
   assert(numlevels <= level + 1);
-}
-
-void RegridLevel(int level) {
-  DECLARE_CCTK_PARAMETERS;
-  if (verbose)
-    CCTK_VINFO("RegridLevel level %d", level);
-
-  assert(level < int(ghext->leveldata.size()));
-  GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-
-  for (auto &groupdata : leveldata.groupdata) {
-    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-#warning "TODO"
-      assert(0);
-      groupdata.mfab.at(tl) =
-          make_unique<MultiFab>(ghext->amrcore->boxArray(level),
-                                ghext->amrcore->DistributionMap(level),
-                                groupdata.numvars, ghost_size);
-    }
-  }
 }
 
 // Traverse schedule
