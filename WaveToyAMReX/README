@@ -31,3 +31,24 @@ Some calculations:
 New set of equations:
   psi_0 = psi_1 + dt phi_1,xx
   phi_0 = phi_1 + dt psi_0
+
+
+
+3. Scalar particles
+
+Lagrangian:
+  S = int 1/2 \eta^ab d_a u d_b u + 1/2 m^2 u^2 + \rho u
+
+equation of motion:
+  0 = dS/du = - \eta^ab d_a d_b u + m^2 u + \rho
+
+nonsense: [0 = dS/d\rho = u]
+nonsense: [0 = dS/dm = m u^2]
+
+Ansatz:
+  \rho = q \delta(x)
+
+  0 = dS/dx = -q (grad u)(x)
+  0 = dS/dq = u(x)
+
+

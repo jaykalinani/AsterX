@@ -1,6 +1,6 @@
-#include <driver.hxx>
-#include <io.hxx>
-#include <schedule.hxx>
+#include "driver.hxx"
+#include "io.hxx"
+#include "schedule.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -46,13 +46,6 @@ int Barrier(const cGH *cctkGHa);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace {
-// Convert a (direction, face) pair to an AMReX Orientation
-Orientation orient(int d, int f) {
-  return Orientation(d, Orientation::Side(f));
-}
-} // namespace
-
 // AmrCore functions
 
 CactusAmrCore::CactusAmrCore() {}
@@ -91,35 +84,17 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
   for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
-    const Box &fbx = mfi.fabbox();
-    const Box &bx = mfi.tilebox();
-
-    const Dim3 imin = lbound(bx);
-    int ash[3], lsh[3];
-    for (int d = 0; d < dim; ++d)
-      ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
-    // Note: This excludes ghosts, it's not the proper Cactus lsh
-    for (int d = 0; d < dim; ++d)
-      lsh[d] = bx[orient(d, 1)] - bx[orient(d, 0)] + 1;
+    GridPtrDesc grid(leveldata, mfi);
 
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-    const CCTK_REAL *restrict err = vars.ptr(imin.x, imin.y, imin.z, vi);
-    const Array4<char> &tagarr = tags.array(mfi);
+    CCTK_REAL *restrict const err = grid.ptr(vars, vi);
+    const Array4<char> &tag = tags.array(mfi);
 
-    constexpr int di = 1;
-    const int dj = di * ash[0];
-    const int dk = dj * ash[1];
-
-    for (int k = 0; k < lsh[2]; ++k) {
-      for (int j = 0; j < lsh[1]; ++j) {
-#pragma omp simd
-        for (int i = 0; i < lsh[0]; ++i) {
-          int idx = di * i + dj * j + dk * k;
-          tagarr(imin.x + i, imin.y + j, imin.z + k) =
-              err[idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
-        }
-      }
-    }
+    grid.loop_int([&](int i, int j, int k, int idx) {
+      tag(grid.cactus_offset.x + i, grid.cactus_offset.y + j,
+          grid.cactus_offset.z + k) =
+          err[idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
+    });
   }
 }
 
@@ -150,9 +125,24 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 
     // Allocate grid hierarchies
     groupdata.mfab.resize(group.numtimelevels);
-    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl)
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) =
           make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+      // Set grid functions to nan
+      MultiFab &mfab = *groupdata.mfab.at(tl);
+      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+      for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+        GridPtrDesc grid(leveldata, mfi);
+        const Array4<CCTK_REAL> &vars = mfab.array(mfi);
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+          grid.loop_all(
+              [&](int i, int j, int k, int idx) { ptr[idx] = 0.0 / 0.0; });
+        }
+      }
+    }
   }
 }
 
@@ -237,6 +227,19 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       for (int tl = 0; tl < ntls; ++tl) {
         auto mfab =
             make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+        // Set grid functions to nan
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+        for (MFIter mfi(*mfab, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc grid(leveldata, mfi);
+          const Array4<CCTK_REAL> &vars = mfab->array(mfi);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+            grid.loop_all(
+                [&](int i, int j, int k, int idx) { ptr[idx] = 0.0 / 0.0; });
+          }
+        }
         if (tl < prolongate_tl)
           FillPatchSingleLevel(*mfab, 0.0, {&*groupdata.mfab.at(tl)}, {0.0}, 0,
                                0, groupdata.numvars,
@@ -266,6 +269,19 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       for (int tl = 0; tl < ntls; ++tl) {
         auto mfab =
             make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+        // Set grid functions to nan
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+        for (MFIter mfi(*mfab, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc grid(leveldata, mfi);
+          const Array4<CCTK_REAL> &vars = mfab->array(mfi);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+            grid.loop_all(
+                [&](int i, int j, int k, int idx) { ptr[idx] = 0.0 / 0.0; });
+          }
+        }
         if (tl < prolongate_tl)
           FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
                              {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
@@ -283,7 +299,7 @@ void CactusAmrCore::ClearLevel(int level) {
   if (verbose)
     CCTK_VINFO("ClearLevel level %d", level);
 
-  assert(level == int(ghext->leveldata.size()) - 1);
+  // assert(level == int(ghext->leveldata.size()) - 1);
   ghext->leveldata.resize(level);
 }
 
@@ -339,8 +355,12 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
 
   // Initialize AMReX
   ParmParse pp;
-  pp.add("amrex.verbose", true);
-  pp.add("amrex.signal_handling", false);
+  // Don't catch Unix signals. If signals are caught, we don't get
+  // core files.
+  pp.add("amrex.signal_handling", 0);
+  // Throw exceptions for failing AMReX assertions. With exceptions,
+  // we get core files.
+  pp.add("amrex.throw_exception", 1);
   pamrex = amrex::Initialize(MPI_COMM_WORLD);
 
   // Create grid structure
@@ -369,7 +389,7 @@ int InitGH(cGH *restrict cctkGH) {
   const Vector<IntVect> reffacts; // empty
 
   // Periodicity
-  const Array<int, dim> periodic{periodic_x, periodic_y, periodic_z};
+  const Array<int, dim> is_periodic{periodic_x, periodic_y, periodic_z};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no
@@ -383,7 +403,7 @@ int InitGH(cGH *restrict cctkGH) {
   pp.add("amr.max_grid_size_z", max_grid_size_z);
 
   ghext->amrcore = make_unique<CactusAmrCore>(
-      domain, max_num_levels - 1, ncells, coord, reffacts, periodic);
+      domain, max_num_levels - 1, ncells, coord, reffacts, is_periodic);
 
   if (verbose) {
     int maxnumlevels = ghext->amrcore->maxLevel() + 1;
@@ -407,11 +427,12 @@ int InitGH(cGH *restrict cctkGH) {
 
 void CreateRefinedGrid(int level) {
   DECLARE_CCTK_PARAMETERS;
-  if (verbose)
-    CCTK_VINFO("CreateRefinedGrid level %d", level);
 
   if (level > ghext->amrcore->maxLevel())
     return;
+
+  if (verbose)
+    CCTK_VINFO("CreateRefinedGrid level %d", level);
 
   // Create refined grid
   CCTK_REAL time = 0.0; // dummy time
@@ -440,6 +461,8 @@ extern "C" int AMReX_Shutdown() {
   if (verbose)
     CCTK_VINFO("Shutdown");
 
+  // Should we really do this? Cactus's extension handling mechanism
+  // becomes inconsistent once extensions have been unregistered.
   int iret = CCTK_UnregisterGHExtension("AMReX");
   assert(iret == 0);
 

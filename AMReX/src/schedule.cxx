@@ -1,5 +1,5 @@
-#include <driver.hxx>
-#include <schedule.hxx>
+#include "driver.hxx"
+#include "schedule.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -22,6 +22,8 @@
 #include <sys/time.h>
 
 #include <algorithm>
+#include <memory>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -37,6 +39,12 @@ using namespace std;
 constexpr int undefined = 666;
 
 vector<cGH> thread_local_cctkGH;
+// Tile boxes, should be part of cGH
+struct TileBox {
+  int tile_min[dim];
+  int tile_max[dim];
+};
+vector<TileBox> thread_local_tilebox;
 
 void Restrict(int level);
 
@@ -48,6 +56,118 @@ Orientation orient(int d, int f) {
 } // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// Set up a GridDesc
+} // namespace AMReX
+namespace Loop {
+GridDescBase::GridDescBase() {}
+
+GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
+  for (int d = 0; d < dim; ++d)
+    gsh[d] = cctkGH->cctk_gsh[d];
+  for (int d = 0; d < dim; ++d) {
+    lbnd[d] = cctkGH->cctk_lbnd[d];
+    ubnd[d] = cctkGH->cctk_ubnd[d];
+  }
+  for (int d = 0; d < dim; ++d)
+    lsh[d] = cctkGH->cctk_lsh[d];
+  for (int d = 0; d < dim; ++d)
+    ash[d] = cctkGH->cctk_ash[d];
+  for (int d = 0; d < dim; ++d)
+    for (int f = 0; f < 2; ++f)
+      bbox[2 * d + f] = cctkGH->cctk_bbox[2 * d + f];
+  for (int d = 0; d < dim; ++d)
+    nghostzones[d] = cctkGH->cctk_nghostzones[d];
+
+  // Check whether we are in local mode
+  assert(cctkGH->cctk_bbox[0] != AMReX::undefined);
+  int thread_num = omp_get_thread_num();
+  const cGH *restrict threadGH = &AMReX::thread_local_cctkGH.at(thread_num);
+  // Check whether this is the correct cGH structure
+  assert(cctkGH == threadGH);
+
+  const AMReX::TileBox &restrict tilebox =
+      AMReX::thread_local_tilebox.at(thread_num);
+  for (int d = 0; d < dim; ++d) {
+    tmin[d] = tilebox.tile_min[d];
+    tmax[d] = tilebox.tile_max[d];
+  }
+}
+} // namespace Loop
+namespace AMReX {
+
+GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
+  const Box &fbx = mfi.fabbox();   // allocated array
+  const Box &vbx = mfi.validbox(); // interior region (without ghosts)
+  // const Box &bx = mfi.tilebox();       // current region (without ghosts)
+  const Box &gbx = mfi.growntilebox(); // current region (with ghosts)
+  const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+
+  // The number of ghostzones in each direction
+  for (int d = 0; d < dim; ++d)
+    nghostzones[d] = mfi.theFabArrayBase().nGrowVect()[d];
+
+  // Global shape
+  for (int d = 0; d < dim; ++d)
+    gsh[d] =
+        domain[orient(d, 1)] - domain[orient(d, 0)] + 1 + 2 * nghostzones[d];
+
+  // Local shape
+  for (int d = 0; d < dim; ++d)
+    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+
+  // Allocated shape
+  for (int d = 0; d < dim; ++d)
+    ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+
+  // Local extent
+  for (int d = 0; d < dim; ++d) {
+    lbnd[d] = fbx[orient(d, 0)] + nghostzones[d];
+    ubnd[d] = fbx[orient(d, 1)] + nghostzones[d];
+  }
+
+  // Boundaries
+  for (int d = 0; d < dim; ++d)
+    for (int f = 0; f < 2; ++f)
+      bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)];
+
+  // Thread tile box
+  for (int d = 0; d < dim; ++d) {
+    tmin[d] = gbx[orient(d, 0)] - fbx[orient(d, 0)];
+    tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)];
+  }
+
+  // Check constraints
+  for (int d = 0; d < dim; ++d) {
+    // Domain size
+    assert(gsh[d] >= 0);
+
+    // Local size
+    assert(lbnd[d] >= 0);
+    assert(lsh[d] >= 0);
+    assert(lbnd[d] + lsh[d] <= gsh[d]);
+    assert(ubnd[d] == lbnd[d] + lsh[d] - 1);
+
+    // Internal representation
+    assert(ash[d] >= 0);
+    assert(ash[d] >= lsh[d]);
+
+    // Ghost zones
+    assert(nghostzones[d] >= 0);
+    assert(2 * nghostzones[d] <= lsh[d]);
+
+    // Tiles
+    assert(tmin[d] >= 0);
+    assert(tmax[d] >= tmin[d]);
+    assert(tmax[d] <= lsh[d]);
+  }
+}
+
+GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata, const MFIter &mfi)
+    : GridDesc(leveldata, mfi) {
+  const Box &fbx = mfi.fabbox(); // allocated array
+  cactus_offset = lbound(fbx);
+}
 
 // Create a new cGH, copying those data that are set by the flesh, and
 // allocating space for these data that are set per thread by the driver
@@ -96,7 +216,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   const CCTK_REAL *restrict dx = geom.CellSize();
 
   for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_origin_space[d] = x0[d] + 0.0 * dx[d];
+    cctkGH->cctk_origin_space[d] = x0[d];
     cctkGH->cctk_delta_space[d] = dx[d];
   }
 
@@ -150,7 +270,8 @@ void enter_level_mode(cGH *restrict cctkGH,
   // Global shape
   const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1;
+    cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1 +
+                          2 * cctkGH->cctk_nghostzones[d];
 
   // The refinement factor over the top level (coarsest) grid
   for (int d = 0; d < dim; ++d)
@@ -159,7 +280,7 @@ void enter_level_mode(cGH *restrict cctkGH,
   // Offset between this level's and the coarsest level's origin as multiple of
   // the grid spacing
   for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_levoff[d] = 1;
+    cctkGH->cctk_levoff[d] = 1 - 2 * cctkGH->cctk_nghostzones[d];
     cctkGH->cctk_levoffdenom[d] = 2;
   }
 }
@@ -176,45 +297,65 @@ void leave_level_mode(cGH *restrict cctkGH,
 }
 
 // Set cctkGH entries for local mode
-void enter_local_mode(cGH *restrict cctkGH,
-                      GHExt::LevelData &restrict leveldata, const MFIter &mfi) {
-  const Box &fbx = mfi.fabbox(); // allocated array
-  // const Box &vbx = mfi.validbox();     // interior region (without ghosts)
-  const Box &bx = mfi.tilebox();       // current region (without ghosts)
-  const Box &gbx = mfi.growntilebox(); // current region (with ghosts)
+void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
+                      const GHExt::LevelData &restrict leveldata,
+                      const MFIter &mfi) {
+  GridPtrDesc grid(leveldata, mfi);
 
-  // Local shape
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_lsh[d] = gbx[orient(d, 1)] - gbx[orient(d, 0)] + 1;
-
-  // Allocated shape
+    cctkGH->cctk_lsh[d] = grid.lsh[d];
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
-
-  // Local extent
+    cctkGH->cctk_ash[d] = grid.ash[d];
   for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_lbnd[d] = gbx[orient(d, 0)];
-    cctkGH->cctk_ubnd[d] = gbx[orient(d, 1)];
+    cctkGH->cctk_lbnd[d] = grid.lbnd[d];
+    cctkGH->cctk_ubnd[d] = grid.ubnd[d];
   }
-
-  // Boundaries
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      cctkGH->cctk_bbox[2 * d + f] = bx[orient(d, f)] == gbx[orient(d, f)];
+      cctkGH->cctk_bbox[2 * d + f] = grid.bbox[2 * d + f];
+
+  for (int d = 0; d < dim; ++d) {
+    tilebox.tile_min[d] = grid.tmin[d];
+    tilebox.tile_max[d] = grid.tmax[d];
+  }
 
   // Grid function pointers
-  const Dim3 imin = lbound(gbx);
   for (auto &restrict groupdata : leveldata.groupdata) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        cctkGH->data[groupdata.firstvarindex + vi][tl] =
-            vars.ptr(imin.x, imin.y, imin.z, vi);
+        cctkGH->data[groupdata.firstvarindex + vi][tl] = grid.ptr(vars, vi);
       }
     }
   }
+
+  // Check constraints
+  for (int d = 0; d < dim; ++d) {
+    // Domain size
+    assert(cctkGH->cctk_gsh[d] >= 0);
+
+    // Local size
+    assert(cctkGH->cctk_lbnd[d] >= 0);
+    assert(cctkGH->cctk_lsh[d] >= 0);
+    assert(cctkGH->cctk_lbnd[d] + cctkGH->cctk_lsh[d] <= cctkGH->cctk_gsh[d]);
+    assert(cctkGH->cctk_ubnd[d] ==
+           cctkGH->cctk_lbnd[d] + cctkGH->cctk_lsh[d] - 1);
+
+    // Internal representation
+    assert(cctkGH->cctk_ash[d] >= 0);
+    assert(cctkGH->cctk_ash[d] >= cctkGH->cctk_lsh[d]);
+
+    // Ghost zones
+    assert(cctkGH->cctk_nghostzones[d] >= 0);
+    assert(2 * cctkGH->cctk_nghostzones[d] <= cctkGH->cctk_lsh[d]);
+
+    // Tiles
+    assert(tilebox.tile_min[d] >= 0);
+    assert(tilebox.tile_max[d] >= tilebox.tile_min[d]);
+    assert(tilebox.tile_max[d] <= cctkGH->cctk_lsh[d]);
+  }
 }
-void leave_local_mode(cGH *restrict cctkGH,
+void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFIter &mfi) {
   for (int d = 0; d < dim; ++d)
@@ -228,11 +369,32 @@ void leave_local_mode(cGH *restrict cctkGH,
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = undefined;
+  for (int d = 0; d < dim; ++d) {
+    tilebox.tile_min[d] = undefined;
+    tilebox.tile_max[d] = undefined;
+  }
   for (auto &restrict groupdata : leveldata.groupdata) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         cctkGH->data[groupdata.firstvarindex + vi][tl] = nullptr;
     }
+  }
+}
+extern "C" void AMReX_GetTileExtent(const void *restrict cctkGH_,
+                                    CCTK_INT *restrict tile_min,
+                                    CCTK_INT *restrict tile_max) {
+  const cGH *restrict cctkGH = static_cast<const cGH *>(cctkGH_);
+  // Check whether we are in local mode
+  assert(cctkGH->cctk_bbox[0] != undefined);
+  int thread_num = omp_get_thread_num();
+  const cGH *restrict threadGH = &thread_local_cctkGH.at(thread_num);
+  // Check whether this is the correct cGH structure
+  assert(cctkGH == threadGH);
+
+  const TileBox &restrict tilebox = thread_local_tilebox.at(thread_num);
+  for (int d = 0; d < dim; ++d) {
+    tile_min[d] = tilebox.tile_min[d];
+    tile_max[d] = tilebox.tile_max[d];
   }
 }
 
@@ -276,15 +438,14 @@ int Initialise(tFleshConfig *config) {
   // Set up cctkGH
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
-  // enter_level_mode(cctkGH);
   int max_threads = omp_get_max_threads();
   thread_local_cctkGH.resize(max_threads);
+  thread_local_tilebox.resize(max_threads);
   for (int n = 0; n < max_threads; ++n) {
     cGH *restrict threadGH = &thread_local_cctkGH.at(n);
     clone_cctkGH(threadGH, cctkGH);
     setup_cctkGH(threadGH);
     enter_global_mode(threadGH);
-    // enter_level_mode(threadGH);
   }
 
   // Output domain information
@@ -338,8 +499,6 @@ int Initialise(tFleshConfig *config) {
     CCTK_VINFO("Setting up initial conditions...");
 
     for (;;) {
-      // TODO: Remove "current_level" mechanism
-      // current_level = ghext->amrcore->finestLevel();
       const int level = ghext->amrcore->finestLevel();
       CCTK_VINFO("Initializing level %d...", level);
 
@@ -353,12 +512,14 @@ int Initialise(tFleshConfig *config) {
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
+
       // Did we create a new level?
       const bool did_create_new_level = new_numlevels > old_numlevels;
       if (!did_create_new_level)
         break;
+
+      CCTK_Traverse(cctkGH, "CCTK_POSTREGRIDINITIAL");
     }
-    // current_level = -1;
   }
   CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
 
@@ -452,7 +613,8 @@ int Evolve(tFleshConfig *config) {
 
   while (!EvolutionIsDone(cctkGH)) {
 
-    if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0) {
+    if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0 &&
+        ghext->amrcore->maxLevel() > 0) {
       CCTK_VINFO("Regridding...");
       CCTK_REAL time = 0.0; // dummy time
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
@@ -462,6 +624,7 @@ int Evolve(tFleshConfig *config) {
                  new_numlevels);
 
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+      CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
     }
 
     CycleTimelevels(cctkGH);
@@ -508,7 +671,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   cGH *restrict const cctkGH = static_cast<cGH *>(data);
 
   if (verbose)
-    CCTK_VINFO("CallFunction [%d] %s: %s::%s", cctkGH->cctk_iteration,
+    CCTK_VINFO("CallFunction iteration %d %s: %s::%s", cctkGH->cctk_iteration,
                attribute->where, attribute->thorn, attribute->routine);
 
   const mode_t mode = decode_mode(attribute);
@@ -517,26 +680,25 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     // Call function once per tile
 #pragma omp parallel
     {
-      cGH *restrict threadGH = &thread_local_cctkGH.at(omp_get_thread_num());
+      int thread_num = omp_get_thread_num();
+      cGH *restrict threadGH = &thread_local_cctkGH.at(thread_num);
       update_cctkGH(threadGH, cctkGH);
+      TileBox &restrict thread_tilebox = thread_local_tilebox.at(thread_num);
 
-      auto callfunc = [&](auto &restrict leveldata) {
+      // Loop over all levels
+      // TODO: parallelize this loop
+      for (auto &restrict leveldata : ghext->leveldata) {
         MultiFab &mfab = *leveldata.groupdata.at(0).mfab.at(0);
         enter_level_mode(threadGH, leveldata);
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
         for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
-          enter_local_mode(threadGH, leveldata, mfi);
+          enter_local_mode(threadGH, thread_tilebox, leveldata, mfi);
           CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, leveldata, mfi);
+          leave_local_mode(threadGH, thread_tilebox, leveldata, mfi);
         }
         leave_level_mode(threadGH, leveldata);
-      };
-
-      // Loop over all levels
-      // TODO: parallelize this loop
-      for (auto &restrict leveldata : ghext->leveldata)
-        callfunc(leveldata);
+      }
     }
     break;
   }
@@ -565,6 +727,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   assert(cctkGH);
   assert(numgroups >= 0);
   assert(groups);
+
+  if (verbose) {
+    ostringstream buf;
+    for (int n = 0; n < numgroups; ++n) {
+      if (n != 0)
+        buf << ", ";
+      buf << unique_ptr<char>(CCTK_GroupName(groups[n])).get();
+    }
+    CCTK_VINFO("SyncGroups %s", buf.str().c_str());
+  }
 
   for (auto &restrict leveldata : ghext->leveldata) {
     for (int n = 0; n < numgroups; ++n) {
@@ -603,14 +775,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                           periodic_y ? BCType::int_dir : BCType::reflect_odd,
                           periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
-        for (int tl = 0; tl < sync_tl; ++tl) {
-#warning "TODO: make copy of fine level"
+        for (int tl = 0; tl < sync_tl; ++tl)
           FillPatchTwoLevels(
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
               {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
               ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
               cphysbc, 0, fphysbc, 0, reffact, &cell_bilinear_interp, bcs, 0);
-        }
       }
     }
   }

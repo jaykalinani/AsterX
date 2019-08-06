@@ -1,0 +1,49 @@
+ActiveThorns = "
+    AMReX
+    IOUtil
+    WaveToyAMReX
+"
+ 
+$nlevels = 7
+$ncells = 32
+
+Cactus::cctk_show_schedule = no
+
+# Cactus::terminate = "iteration"
+# Cactus::cctk_itlast = 64   #TODO 0
+Cactus::terminate = "time"
+Cactus::cctk_final_time = 50.0
+
+# AMReX::verbose = yes
+
+AMReX::xmin = -100.0
+AMReX::ymin = -100.0
+AMReX::zmin = -100.0
+
+AMReX::xmax = +100.0
+AMReX::ymax = +100.0
+AMReX::zmax = +100.0
+
+AMReX::ncells_x = $ncells
+AMReX::ncells_y = $ncells
+AMReX::ncells_z = $ncells
+
+# AMReX::periodic_x = no
+# AMReX::periodic_y = no
+# AMReX::periodic_z = no
+
+AMReX::max_num_levels = $nlevels
+AMReX::regrid_every = 16
+AMReX::regrid_error_threshold = 0.1
+
+AMReX::dtfac = 0.5
+
+WaveToyAMReX::initial_condition = "central potential"
+
+WaveToyAMReX::boundary_condition = "initial"
+
+WaveToyAMReX::central_point_charge = 1.0
+WaveToyAMReX::central_point_radius = 1.0
+
+IO::out_dir = $parfile
+IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32

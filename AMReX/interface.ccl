@@ -6,6 +6,18 @@ INHERITS: IO
 
 
 
+INCLUDES HEADER: loop.hxx IN loop.hxx
+
+
+
+void FUNCTION GetTileExtent(
+  CCTK_POINTER_TO_CONST IN cctkGH,
+  CCTK_INT ARRAY OUT tile_min,
+  CCTK_INT ARRAY OUT tile_max)
+PROVIDES FUNCTION GetTileExtent WITH AMReX_GetTileExtent LANGUAGE C
+
+
+
 PUBLIC:
 
 CCTK_REAL regrid_error TYPE=gf

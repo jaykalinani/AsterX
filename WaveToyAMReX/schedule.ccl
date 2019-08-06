@@ -3,24 +3,95 @@
 SCHEDULE WaveToyAMReX_Initialize AT initial
 {
   LANG: C
-  SYNC: phi
 } "Set up initial conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_Sync AT initial AFTER WaveToyAMReX_Initialize
+{
+  LANG: C
+  SYNC: phi
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_Boundaries AT initial AFTER WaveToyAMReX_Sync
+{
+  LANG: C
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_NaNCheck_current AT postinitial
+{
+  LANG: C
+} "Check for nans in the state vector"
 
 SCHEDULE WaveToyAMReX_EstimateError AT postinitial
 {
   LANG: C
 } "Estimate local error for regridding initial conditions"
 
-SCHEDULE WaveToyAMReX_Evolve AT evol
+SCHEDULE WaveToyAMReX_Sync AT postregridinitial
 {
   LANG: C
   SYNC: phi
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_Boundaries AT postregridinitial AFTER WaveToyAMReX_Sync
+{
+  LANG: C
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_NaNCheck_current AT postregridinitial AFTER WaveToyAMReX_Boundaries
+{
+  LANG: C
+} "Check for nans in the state vector"
+
+
+
+SCHEDULE WaveToyAMReX_Sync AT postregrid
+{
+  LANG: C
+  SYNC: phi
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_Boundaries AT postregrid AFTER WaveToyAMReX_Sync
+{
+  LANG: C
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_NaNCheck_current AT postregrid AFTER WaveToyAMReX_Boundaries
+{
+  LANG: C
+} "Check for nans in the state vector"
+
+SCHEDULE WaveToyAMReX_NaNCheck_past AT prestep
+{
+  LANG: C
+} "Check for nans in the state vector"
+
+SCHEDULE WaveToyAMReX_Evolve AT evol
+{
+  LANG: C
 } "Evolve the wave equation"
+
+SCHEDULE WaveToyAMReX_Sync AT evol AFTER WaveToyAMReX_Evolve
+{
+  LANG: C
+  SYNC: phi
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_Boundaries AT evol AFTER WaveToyAMReX_Sync
+{
+  LANG: C
+} "Boundary conditions for the wave equation"
+
+SCHEDULE WaveToyAMReX_NaNCheck_current AT poststep
+{
+  LANG: C
+} "Check for nans in the state vector"
 
 SCHEDULE WaveToyAMReX_EstimateError AT poststep
 {
   LANG: C
 } "Estimate local error for regridding during evolution"
+
+
 
 SCHEDULE WaveToyAMReX_Energy AT analysis
 {

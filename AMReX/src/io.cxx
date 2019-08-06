@@ -1,6 +1,7 @@
-#include <driver.hxx>
-#include <io.hxx>
-#include <reduction.hxx>
+#include "driver.hxx"
+#include "io.hxx"
+#include "reduction.hxx"
+#include "schedule.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -24,19 +25,10 @@ namespace AMReX {
 using namespace amrex;
 using namespace std;
 
-namespace {
-// Convert a (direction, face) pair to an AMReX Orientation
-Orientation orient(int d, int f) {
-  return Orientation(d, Orientation::Side(f));
-}
-} // namespace
-
 template <typename T>
 void write_arrays(ostream &os, const cGH *restrict cctkGH, int level,
                   int component, const vector<const T *> ptrs,
-                  const int *restrict ash, const int *restrict lbnd,
-                  const int *restrict lsh, const int *restrict bbox,
-                  const int *restrict nghostzones) {
+                  const GridDesc &grid) {
   DECLARE_CCTK_ARGUMENTS;
 
   const int levfac = 1 << level;
@@ -48,27 +40,27 @@ void write_arrays(ostream &os, const cGH *restrict cctkGH, int level,
 
   int imin[dim], imax[dim];
   for (int d = 0; d < dim; ++d) {
-    imin[d] = cctk_bbox[2 * d] ? 0 : cctk_nghostzones[d];
-    imax[d] = cctk_lsh[d] - (cctk_bbox[2 * d + 1] ? 0 : cctk_nghostzones[d]);
+    imin[d] = grid.bbox[2 * d] ? 0 : grid.nghostzones[d];
+    imax[d] = grid.lsh[d] - (grid.bbox[2 * d + 1] ? 0 : grid.nghostzones[d]);
   }
 
   constexpr int di = 1;
-  const int dj = di * ash[0];
-  const int dk = dj * ash[1];
+  const int dj = di * grid.ash[0];
+  const int dk = dj * grid.ash[1];
 
-  for (int k = 0; k < lsh[2]; ++k) {
-    for (int j = 0; j < lsh[1]; ++j) {
-      for (int i = 0; i < lsh[0]; ++i) {
+  for (int k = 0; k < grid.lsh[2]; ++k) {
+    for (int j = 0; j < grid.lsh[1]; ++j) {
+      for (int i = 0; i < grid.lsh[0]; ++i) {
         const int idx = di * i + dj * j + dk * k;
         const int isghost = !(i >= imin[0] && i < imax[0] && j >= imin[1] &&
                               j < imax[1] && k >= imin[2] && k < imax[2]);
-        T x = x0[0] + (lbnd[0] + i) * dx[0];
-        T y = x0[1] + (lbnd[1] + j) * dx[1];
-        T z = x0[2] + (lbnd[2] + k) * dx[2];
+        T x = x0[0] + (grid.lbnd[0] + i) * dx[0];
+        T y = x0[1] + (grid.lbnd[1] + j) * dx[1];
+        T z = x0[2] + (grid.lbnd[2] + k) * dx[2];
         os << cctk_iteration << "\t" << cctk_time << "\t" << level << "\t"
-           << component << "\t" << isghost << "\t" << (lbnd[0] + i) << "\t"
-           << (lbnd[1] + j) << "\t" << (lbnd[2] + k) << "\t" << x << "\t" << y
-           << "\t" << z;
+           << component << "\t" << isghost << "\t" << (grid.lbnd[0] + i) << "\t"
+           << (grid.lbnd[1] + j) << "\t" << (grid.lbnd[2] + k) << "\t" << x
+           << "\t" << y << "\t" << z;
         for (const auto &ptr : ptrs)
           os << "\t" << ptr[idx];
         os << "\n";
@@ -114,44 +106,12 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
     const int tl = 0;
     const MultiFab &mfab = *groupdata.mfab.at(tl);
     for (MFIter mfi(mfab); mfi.isValid(); ++mfi) {
-      const Box &fbx = mfi.fabbox();       // allocated array
-      const Box &bx = mfi.tilebox();       // current region (without ghosts)
-      const Box &gbx = mfi.growntilebox(); // current region (with ghosts)
-
-      const Dim3 imin = lbound(gbx);
-
-      // Local shape
-      int lsh[dim];
-      for (int d = 0; d < dim; ++d)
-        lsh[d] = gbx[orient(d, 1)] - gbx[orient(d, 0)] + 1;
-
-      // Allocated shape
-      int ash[dim];
-      for (int d = 0; d < dim; ++d)
-        ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
-
-      // Local extent
-      int lbnd[dim];
-      for (int d = 0; d < dim; ++d)
-        lbnd[d] = gbx[orient(d, 0)];
-
-      // Boundaries
-      int bbox[2 * dim];
-      for (int d = 0; d < dim; ++d)
-        for (int f = 0; f < 2; ++f)
-          bbox[2 * d + f] = bx[orient(d, f)] == gbx[orient(d, f)];
-
-      // Number of ghost zones
-      int nghostzones[dim];
-      for (int d = 0; d < dim; ++d)
-        nghostzones[d] = mfab.fb_nghost[d];
-
+      GridPtrDesc grid(leveldata, mfi);
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
       vector<const CCTK_REAL *> ptrs(groupdata.numvars);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        ptrs.at(vi) = vars.ptr(imin.x, imin.y, imin.z, vi);
-      write_arrays(file, cctkGH, leveldata.level, mfi.index(), ptrs, ash, lbnd,
-                   lsh, bbox, nghostzones);
+        ptrs.at(vi) = grid.ptr(vars, vi);
+      write_arrays(file, cctkGH, leveldata.level, mfi.index(), ptrs, grid);
     }
   }
   file.close();

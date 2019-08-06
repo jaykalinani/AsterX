@@ -6,6 +6,10 @@ INHERITS: AMReX
 
 
 
+USES INCLUDE HEADER: loop.hxx
+
+
+
 CCTK_REAL phi TYPE=gf TIMELEVELS=2
 {
   phi

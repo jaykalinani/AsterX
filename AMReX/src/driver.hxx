@@ -1,11 +1,11 @@
 #ifndef DRIVER_HXX
 #define DRIVER_HXX
 
+#include <cctk.h>
+
 #include <AMReX.H>
 #include <AMReX_AmrCore.H>
 #include <AMReX_MultiFab.H>
-
-#include <cctk.h>
 
 #include <memory>
 #include <type_traits>
