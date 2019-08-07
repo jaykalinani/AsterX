@@ -5,6 +5,12 @@ SCHEDULE WaveToyAMReX_Initialize AT initial
   LANG: C
 } "Set up initial conditions for the wave equation"
 
+SCHEDULE WaveToyAMReX_InitializeParticle AT initial AFTER WaveToyAMReX_Initialize
+{
+  OPTIONS: global
+  LANG: C
+} "Set up initial conditions for the scalar particle"
+
 SCHEDULE WaveToyAMReX_Sync AT initial AFTER WaveToyAMReX_Initialize
 {
   LANG: C
@@ -70,6 +76,12 @@ SCHEDULE WaveToyAMReX_Evolve AT evol
   LANG: C
 } "Evolve the wave equation"
 
+SCHEDULE WaveToyAMReX_EvolveParticle AT evol AFTER WaveToyAMReX_Evolve
+{
+  OPTIONS: global
+  LANG: C
+} "Evolve the scalar particle"
+
 SCHEDULE WaveToyAMReX_Sync AT evol AFTER WaveToyAMReX_Evolve
 {
   LANG: C
@@ -103,3 +115,9 @@ SCHEDULE WaveToyAMReX_Error AT analysis
 {
   LANG: C
 } "Calculate error for the wave equation"
+
+SCHEDULE WaveToyAMReX_OutputParticle AT analysis
+{
+  OPTIONS: global
+  LANG: C
+} "Output for the scalar particle"

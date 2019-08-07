@@ -59,6 +59,13 @@ KEYWORD boundary_condition "Boundary condition"
 
 
 
+CCTK_REAL particle_charge "Particle charge"
+{
+  *:* :: ""
+} 0.0
+
+
+
 CCTK_REAL phi_abs "Typical value of phi to determine absolute error" STEERABLE=always
 {
   (0.0:* :: ""

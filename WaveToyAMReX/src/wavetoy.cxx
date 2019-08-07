@@ -51,6 +51,23 @@ template <typename T> auto timederiv(T f(T t, T x, T y, T z), T dt) {
   };
 }
 
+// Gradient
+template <typename T> auto xderiv(T f(T t, T x, T y, T z), T dx) {
+  return [=](T t, T x, T y, T z) {
+    return (f(t, x + dx, y, z) - f(t, x - dx, y, z)) / (2 * dx);
+  };
+}
+template <typename T> auto yderiv(T f(T t, T x, T y, T z), T dy) {
+  return [=](T t, T x, T y, T z) {
+    return (f(t, x, y + dy, z) - f(t, x, y - dy, z)) / (2 * dy);
+  };
+}
+template <typename T> auto zderiv(T f(T t, T x, T y, T z), T dz) {
+  return [=](T t, T x, T y, T z) {
+    return (f(t, x, y, z + dz) - f(t, x, y, z - dz)) / (2 * dz);
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Standing wave
@@ -91,9 +108,19 @@ template <typename T> T gaussian(T t, T x, T y, T z) {
 template <typename T> T central_potential(T t, T x, T y, T z) {
   DECLARE_CCTK_PARAMETERS;
   T r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-  return central_point_charge * pow(central_point_radius, -dim) *
+  return -central_point_charge * pow(central_point_radius, -dim) *
          spline_potential(r / central_point_radius);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T> struct particle_t {
+  T mass;
+  T time;
+  array<T, dim> pos;
+  array<T, dim> vel;
+};
+particle_t<CCTK_REAL> particle;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,6 +185,23 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
   }
 }
 
+extern "C" void WaveToyAMReX_InitializeParticle(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (particle_charge == 0)
+    return;
+
+  particle.mass = 1.0;
+  particle.time = 1.0;
+  for (int d = 0; d < dim; ++d)
+    particle.pos[d] = 0.0;
+  for (int d = 0; d < dim; ++d)
+    particle.vel[d] = 0.0;
+  particle.pos[0] = 10.0; // x axis
+  particle.vel[1] = -0.1; // y direction, counter-clockwise
+}
+
 extern "C" void WaveToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -190,6 +234,7 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
+  const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
   CCTK_REAL x0[dim], dx[dim];
   for (int d = 0; d < dim; ++d) {
@@ -205,7 +250,6 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
     CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
     CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
     CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-    CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
     CCTK_REAL ddx_phi =
         (phi_p[idx - di] - 2 * phi_p[idx] + phi_p[idx + di]) / pow(dx[0], 2);
     CCTK_REAL ddy_phi =
@@ -215,12 +259,69 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
     // phi[idx] = 2 * phi_p[idx] - phi_p_p[idx] +
     //            pow(dt, 2) * (ddx_phi + ddy_phi + ddz_phi);
     psi[idx] = psi_p[idx] +
-               dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[idx] -
-                     4 * M_PI * central_point_charge *
-                         pow(central_point_radius, -dim) *
-                         spline(r / central_point_radius));
+               dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[idx] +
+                     /*TODO*/ 0 * 4 * M_PI * central_potential(t, x, y, z));
     phi[idx] = phi_p[idx] + dt * psi[idx];
   });
+}
+
+extern "C" void WaveToyAMReX_EvolveParticle(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (particle_charge == 0)
+    return;
+
+  int type;
+  const void *maxlevel_par =
+      CCTK_ParameterGet("max_num_levels", "AMReX", &type);
+  assert(type == PARAMETER_INT);
+  const int maxlevel = *static_cast<const CCTK_INT *>(maxlevel_par);
+  const int maxlevfac = 1 << (maxlevel - 1);
+  const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx[dim] = {cctk_delta_space[0] / maxlevfac,
+                             cctk_delta_space[1] / maxlevfac,
+                             cctk_delta_space[2] / maxlevfac};
+
+  const auto q = particle_charge;
+
+  const auto m = particle.mass;
+  const auto t = particle.time;
+  const auto p = particle.pos;
+  const auto v = particle.vel;
+
+  // http://www.livingreviews.org/lrr-2011-7
+
+  const CCTK_REAL v2 = pow(v[0], 2) + pow(v[1], 2) + pow(v[2], 2);
+  // vt = dt/dtau
+  const CCTK_REAL vt = sqrt(1 - v2);
+
+  const CCTK_REAL phit = timederiv(central_potential, dt)(t, p[0], p[1], p[2]);
+  const array<CCTK_REAL, dim> dphi = {
+      xderiv(central_potential, dx[0])(t, p[0], p[1], p[2]),
+      yderiv(central_potential, dx[1])(t, p[0], p[1], p[2]),
+      zderiv(central_potential, dx[2])(t, p[0], p[1], p[2])};
+
+  // (17.8)
+  // dm/dtau = - q phi,a u^a
+  // alternatively: m = m0 - q phi
+  particle.mass +=
+      -dt / vt * q *
+      (-phit * vt + dphi[0] * v[0] + dphi[1] * v[1] + dphi[2] * v[2]);
+
+  particle.time += dt / vt;
+
+  for (int a = 0; a < dim; ++a)
+    particle.pos[a] += dt * v[a];
+
+  // (17.7)
+  // m du/dtau = q (g^ab + u^a u^b) phi,b
+  for (int a = 0; a < dim; ++a) {
+    CCTK_REAL dva = v[a] * vt * phit;
+    for (int b = 0; b < dim; ++b)
+      dva += ((a == b) + v[a] * v[b]) * dphi[b];
+    particle.vel[a] += dt / vt * q / m * dva;
+  }
 }
 
 // Miguel Alcubierre, Gabrielle Allen, Gerd Lanfermann
@@ -541,6 +642,33 @@ extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
   } else {
     assert(0);
   }
+}
+
+extern "C" void WaveToyAMReX_OutputParticle(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (particle_charge == 0)
+    return;
+
+  const auto q = particle_charge;
+
+  const auto m = particle.mass;
+  const auto t = particle.time;
+  const auto p = particle.pos;
+  const auto v = particle.vel;
+
+  const CCTK_REAL r = sqrt(pow(p[0], 2) + pow(p[1], 2) + pow(p[2], 2));
+
+  const CCTK_REAL v2 = pow(v[0], 2) + pow(v[1], 2) + pow(v[2], 2);
+  const CCTK_REAL vt = sqrt(1 - v2);
+
+  CCTK_VINFO("Particle:");
+  cout << "  q=" << q << " m=" << m << "\n"
+       << "  t=" << t << " x=[" << p[0] << "," << p[1] << "," << p[2]
+       << "] r=" << r << "\n"
+       << "  vt=" << vt << " v=[" << v[0] << "," << v[1] << "," << v[2]
+       << "] v2=" << v2 << "\n";
 }
 
 } // namespace WaveToyAMReX
