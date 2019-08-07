@@ -6,6 +6,13 @@
 
 #include <cctk.h>
 #include <cctk_Schedule.h>
+#undef copysign
+#undef fpclassify
+#undef isfinite
+#undef isinf
+#undef isnan
+#undef isnormal
+#undef signbit
 
 #include <algorithm>
 #include <array>

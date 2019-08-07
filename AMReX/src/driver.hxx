@@ -2,6 +2,13 @@
 #define DRIVER_HXX
 
 #include <cctk.h>
+#undef copysign
+#undef fpclassify
+#undef isfinite
+#undef isinf
+#undef isnan
+#undef isnormal
+#undef signbit
 
 #include <AMReX.H>
 #include <AMReX_AmrCore.H>
