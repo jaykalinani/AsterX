@@ -260,7 +260,7 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
     //            pow(dt, 2) * (ddx_phi + ddy_phi + ddz_phi);
     psi[idx] = psi_p[idx] +
                dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[idx] +
-                     /*TODO*/ 0 * 4 * M_PI * central_potential(t, x, y, z));
+                     4 * M_PI * central_potential(t, x, y, z));
     phi[idx] = phi_p[idx] + dt * psi[idx];
   });
 }

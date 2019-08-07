@@ -1,0 +1,75 @@
+# Interface definition for thorn MaxwellToyAMReX
+
+IMPLEMENTS: MaxwellToyAMReX
+
+INHERITS: AMReX
+
+
+
+USES INCLUDE HEADER: loop.hxx
+
+
+
+# Wikipedia, <https://en.wikipedia.org/wiki/Maxwell%27s_equations>
+
+CCTK_REAL potential TYPE=gf TIMELEVELS=2
+{
+  # d*dA = mu J   A^a,^b_b - A^b,^a_b = mu J^a
+  # d*A  = 0      A^a,a   = 0
+
+  # -d*(dphi + A,t)      = rho/epsilon
+  # d*dA + dt*(dphi+A,t) = mu J
+  # *phi,t + d*A         = 0             phi,t + A^i,i = 0
+
+  phi
+  ax ay az
+} "Electromagnetic potential"
+
+CCTK_REAL field TYPE=gf TIMELEVELS=2
+{
+  # F   = dA     F_ab                     = A_a,b - A_b,a
+  # dF  = 0      F_ab,c + F_bc,a + F_ca,b = 0
+  # d*F = mu J   F^ab,a                   = mu J^b
+
+  # E          = -dphi - A,t   E_i                     = - phi,i - A_i,t
+  # B          = dA            B_ij                    = A_j,i - A_i,j
+  # dE + B,t   = 0             E_j,i - E_i,j + B_ij,t  = 0
+  # dB         = 0             B_jk,i + B_ki,j + B_ijk = 0
+  # d*E        = rho/epsilon   E^i,i                   = rho/epsilon
+  # d*B - dt*E = mu J          - B^ij,i - E^j,t        = mu J^j
+
+  ex ey ez
+  bx by bz   # B_yz B_zx B_xy
+} "Electromagnetic field"
+
+CCTK_REAL current TYPE=gf TIMELEVELS=2
+{
+  rho
+  jx jy jz
+} "Electric charge current"
+
+CCTK_REAL errors TYPE=gf
+{
+  phierr
+  axerr ayerr azerr
+  exerr eyerr ezerr
+  bxerr byerr bzerr
+  rhoerr
+  jxerr jyerr jzerr
+} "Errors"
+
+# CCTK_REAL constraints TYPE=gf
+# {
+#   dive
+#   divb
+# } "Constraints"
+# 
+# CCTK_REAL poynting TYPE=gf
+# {
+#   sx sy sz
+# } "Poynting vector"
+# 
+# CCTK_REAL energy TYPE=gf
+# {
+#   eps
+# } "Electromagnetic energy density"

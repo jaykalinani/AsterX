@@ -1,0 +1,26 @@
+# Interface definition for thorn HydroToyAMReX
+
+IMPLEMENTS: HydroToyAMReX
+
+INHERITS: AMReX
+
+
+
+USES INCLUDE HEADER: loop.hxx
+
+
+
+CCTK_REAL density TYPE=gf TIMELEVELS=2
+{
+  rho
+} "Density"
+
+CCTK_REAL momentum TYPE=gf TIMELEVELS=2
+{
+  momx momy momz
+} "Momentum"
+
+CCTK_REAL energy TYPE=gf TIMELEVELS=2
+{
+  etot
+} "Energy"

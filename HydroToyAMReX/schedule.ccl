@@ -1,0 +1,11 @@
+# Schedule definitions for thorn HydroToyAMReX
+
+SCHEDULE HydroToyAMReX_Initialize AT initial
+{
+  LANG: C
+} "Set up hydro initial conditions"
+
+SCHEDULE HydroToyAMReX_Evolve AT evol
+{
+  LANG: C
+} "Evolve the hydro equations"

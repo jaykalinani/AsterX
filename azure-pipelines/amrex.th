@@ -101,4 +101,6 @@ ExternalLibraries/MPI
 !CHECKOUT =
 AMReX/AMReX
 # AMReX/AMReXTest
+AMReX/HydroToyAMReX
+AMReX/MaxwellToyAMReX
 AMReX/WaveToyAMReX

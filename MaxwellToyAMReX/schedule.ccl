@@ -1,0 +1,46 @@
+# Schedule definitions for thorn MaxwellToyAMReX
+
+SCHEDULE MaxwellToyAMReX_Initialize AT initial
+{
+  LANG: C
+} "Set up initial conditions for the Maxwell equations"
+
+SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
+{
+  LANG: C
+} "Estimate local error for regridding initial conditions"
+
+
+
+
+SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
+{
+  LANG: C
+  SYNC: potential field current
+} "Evolve the Maxwell equations, step 1"
+
+SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER MaxwellToyAMReX_Evolve1
+{
+  LANG: C
+  SYNC: potential field current
+} "Evolve the Maxwell equations step 2"
+
+# SCHEDULE MaxwellToyAMReX_Constraints AT analysis
+# {
+#   LANG: C
+# } "Calculate constraints of the Maxwell equations"
+
+# SCHEDULE MaxwellToyAMReX_Energy AT analysis
+# {
+#   LANG: C
+# } "Calculate energy density for the Maxwell equations"
+
+SCHEDULE MaxwellToyAMReX_EstimateError AT poststep
+{
+  LANG: C
+} "Estimate local error for regridding during evolution"
+
+SCHEDULE MaxwellToyAMReX_Error AT analysis
+{
+  LANG: C
+} "Calculate error for the Maxwell equations"
