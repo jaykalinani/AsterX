@@ -53,16 +53,28 @@ template <typename T> struct potential {
   potential operator/(T a) const { return *this / pure(a); }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
+// Plane wave
 template <typename T> potential<T> plane_wave(T t, T x, T y, T z) {
   DECLARE_CCTK_PARAMETERS;
   T kx = 2 * M_PI * spatial_frequency_x;
   T ky = 2 * M_PI * spatial_frequency_y;
   T kz = 2 * M_PI * spatial_frequency_z;
   T omega = sqrt(pow(kx, 2) + pow(ky, 2) + pow(kz, 2));
-  return {.phi = cos(omega * t - kx * x - ky * y - kz * z),
-          .ax = omega / kx * cos(omega * t - kx * x - ky * y - kz * z),
-          .ay = 0,
-          .az = 0};
+  T phi = cos(omega * t - kx * x - ky * y - kz * z);
+  return {.phi = phi, .ax = omega / kx * phi, .ay = 0, .az = 0};
+}
+
+// Plane wave with Gaussian profile
+template <typename T> potential<T> gaussian_wave(T t, T x, T y, T z) {
+  DECLARE_CCTK_PARAMETERS;
+  T kx = M_PI * spatial_frequency_x;
+  T ky = M_PI * spatial_frequency_y;
+  T kz = M_PI * spatial_frequency_z;
+  T omega = sqrt(pow(kx, 2) + pow(ky, 2) + pow(kz, 2));
+  T phi = exp(-pow(sin(omega * t - kx * x - ky * y - kz * z) / width, 2) / 2);
+  return {.phi = phi, .ax = omega / kx * phi, .ay = 0, .az = 0};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +109,9 @@ extern "C" void MaxwellToyAMReX_Initialize(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   const Loop::GF3D<CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
 
@@ -136,34 +151,92 @@ extern "C" void MaxwellToyAMReX_Initialize(CCTK_ARGUMENTS) {
 
     Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
       ex_(p.i, p.j, p.k) =
-          -xderiv(plane_wave<CCTK_REAL>, p.dx)(t + dt / 2, p.x, p.y, p.z).phi -
+          -xderiv(plane_wave<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z).phi -
           tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax;
     });
     Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
       ey_(p.i, p.j, p.k) =
-          -yderiv(plane_wave<CCTK_REAL>, p.dy)(t + dt / 2, p.x, p.y, p.z).phi -
+          -yderiv(plane_wave<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z).phi -
           tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay;
     });
     Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       ez_(p.i, p.j, p.k) =
-          -zderiv(plane_wave<CCTK_REAL>, p.dz)(t + dt / 2, p.x, p.y, p.z).phi -
+          -zderiv(plane_wave<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z).phi -
           tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az;
     });
 
     Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       bx_(p.i, p.j, p.k) =
-          yderiv(plane_wave<CCTK_REAL>, p.dy)(t, p.x, p.y, p.z).az -
-          zderiv(plane_wave<CCTK_REAL>, p.dz)(t, p.x, p.y, p.z).ay;
+          yderiv(plane_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
+          zderiv(plane_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay;
     });
     Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       by_(p.i, p.j, p.k) =
-          zderiv(plane_wave<CCTK_REAL>, p.dz)(t, p.x, p.y, p.z).ax -
-          xderiv(plane_wave<CCTK_REAL>, p.dx)(t, p.x, p.y, p.z).az;
+          zderiv(plane_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
+          xderiv(plane_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az;
     });
     Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
       bz_(p.i, p.j, p.k) =
-          xderiv(plane_wave<CCTK_REAL>, p.dx)(t, p.x, p.y, p.z).ay -
-          yderiv(plane_wave<CCTK_REAL>, p.dy)(t, p.x, p.y, p.z).ax;
+          xderiv(plane_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
+          yderiv(plane_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax;
+    });
+
+    Loop::loop_all<0, 0, 0>(
+        cctkGH, [&](const Loop::PointDesc &p) { rho_(p.i, p.j, p.k) = 0.0; });
+
+    Loop::loop_all<1, 0, 0>(
+        cctkGH, [&](const Loop::PointDesc &p) { jx_(p.i, p.j, p.k) = 0.0; });
+    Loop::loop_all<0, 1, 0>(
+        cctkGH, [&](const Loop::PointDesc &p) { jy_(p.i, p.j, p.k) = 0.0; });
+    Loop::loop_all<0, 0, 1>(
+        cctkGH, [&](const Loop::PointDesc &p) { jz_(p.i, p.j, p.k) = 0.0; });
+
+  } else if (CCTK_EQUALS(initial_condition, "Gaussian wave")) {
+
+    Loop::loop_all<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      phi_(p.i, p.j, p.k) = gaussian_wave(t + dt / 2, p.x, p.y, p.z).phi;
+    });
+
+    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      ax_(p.i, p.j, p.k) = gaussian_wave(t, p.x, p.y, p.z).ax;
+    });
+    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      ay_(p.i, p.j, p.k) = gaussian_wave(t, p.x, p.y, p.z).ay;
+    });
+    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      az_(p.i, p.j, p.k) = gaussian_wave(t, p.x, p.y, p.z).az;
+    });
+
+    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      ex_(p.i, p.j, p.k) =
+          -xderiv(gaussian_wave<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z).phi -
+          tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax;
+    });
+    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      ey_(p.i, p.j, p.k) =
+          -yderiv(gaussian_wave<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z).phi -
+          tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay;
+    });
+    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      ez_(p.i, p.j, p.k) =
+          -zderiv(gaussian_wave<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z).phi -
+          tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az;
+    });
+
+    Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      bx_(p.i, p.j, p.k) =
+          yderiv(gaussian_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
+          zderiv(gaussian_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay;
+    });
+    Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      by_(p.i, p.j, p.k) =
+          zderiv(gaussian_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
+          xderiv(gaussian_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az;
+    });
+    Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      bz_(p.i, p.j, p.k) =
+          xderiv(gaussian_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
+          yderiv(gaussian_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax;
     });
 
     Loop::loop_all<0, 0, 0>(
@@ -186,6 +259,9 @@ extern "C" void MaxwellToyAMReX_Evolve1(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_p_(cctkGH, phi_p);
 
@@ -232,38 +308,38 @@ extern "C" void MaxwellToyAMReX_Evolve1(CCTK_ARGUMENTS) {
   Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     bx_(p.i, p.j, p.k) =
         bx_p_(p.i, p.j, p.k) +
-        dt * ((ey_p_(p.i, p.j, p.k + 1) - ey_p_(p.i, p.j, p.k)) / p.dz -
-              (ez_p_(p.i, p.j + 1, p.k) - ez_p_(p.i, p.j, p.k)) / p.dy);
+        dt * ((ey_p_(p.i, p.j, p.k + 1) - ey_p_(p.i, p.j, p.k)) / dz -
+              (ez_p_(p.i, p.j + 1, p.k) - ez_p_(p.i, p.j, p.k)) / dy);
   });
   Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     by_(p.i, p.j, p.k) =
         by_p_(p.i, p.j, p.k) +
-        dt * ((ez_p_(p.i + 1, p.j, p.k) - ez_p_(p.i, p.j, p.k)) / p.dx -
-              (ex_p_(p.i, p.j, p.k + 1) - ex_p_(p.i, p.j, p.k)) / p.dz);
+        dt * ((ez_p_(p.i + 1, p.j, p.k) - ez_p_(p.i, p.j, p.k)) / dx -
+              (ex_p_(p.i, p.j, p.k + 1) - ex_p_(p.i, p.j, p.k)) / dz);
   });
   Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     bz_(p.i, p.j, p.k) =
         bz_p_(p.i, p.j, p.k) +
-        dt * ((ex_p_(p.i, p.j + 1, p.k) - ex_p_(p.i, p.j, p.k)) / p.dy -
-              (ey_p_(p.i + 1, p.j, p.k) - ey_p_(p.i, p.j, p.k)) / p.dx);
+        dt * ((ex_p_(p.i, p.j + 1, p.k) - ex_p_(p.i, p.j, p.k)) / dy -
+              (ey_p_(p.i + 1, p.j, p.k) - ey_p_(p.i, p.j, p.k)) / dx);
   });
 
   Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     ax_(p.i, p.j, p.k) =
         ax_p_(p.i, p.j, p.k) -
-        dt * ((phi_p_(p.i + 1, p.j, p.k) - phi_p_(p.i, p.j, p.k)) / p.dx +
+        dt * ((phi_p_(p.i + 1, p.j, p.k) - phi_p_(p.i, p.j, p.k)) / dx +
               ex_p_(p.i, p.j, p.k));
   });
   Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     ay_(p.i, p.j, p.k) =
         ay_p_(p.i, p.j, p.k) -
-        dt * ((phi_p_(p.i, p.j + 1, p.k) - phi_p_(p.i, p.j, p.k)) / p.dy +
+        dt * ((phi_p_(p.i, p.j + 1, p.k) - phi_p_(p.i, p.j, p.k)) / dy +
               ey_p_(p.i, p.j, p.k));
   });
   Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     az_(p.i, p.j, p.k) =
         az_p_(p.i, p.j, p.k) -
-        dt * ((phi_p_(p.i, p.j, p.k + 1) - phi_p_(p.i, p.j, p.k)) / p.dz +
+        dt * ((phi_p_(p.i, p.j, p.k + 1) - phi_p_(p.i, p.j, p.k)) / dz +
               ez_p_(p.i, p.j, p.k));
   });
 }
@@ -273,6 +349,9 @@ extern "C" void MaxwellToyAMReX_Evolve2(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_p_(cctkGH, phi_p);
 
@@ -305,39 +384,39 @@ extern "C" void MaxwellToyAMReX_Evolve2(CCTK_ARGUMENTS) {
   Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     rho_(p.i, p.j, p.k) =
         rho_p_(p.i, p.j, p.k) -
-        dt * ((jx_(p.i, p.j, p.k) - jx_(p.i - 1, p.j, p.k)) / p.dx +
-              (jy_(p.i, p.j, p.k) - jy_(p.i, p.j - 1, p.k)) / p.dy +
-              (jz_(p.i, p.j, p.k) - jz_(p.i, p.j, p.k - 1)) / p.dz);
+        dt * ((jx_(p.i, p.j, p.k) - jx_(p.i - 1, p.j, p.k)) / dx +
+              (jy_(p.i, p.j, p.k) - jy_(p.i, p.j - 1, p.k)) / dy +
+              (jz_(p.i, p.j, p.k) - jz_(p.i, p.j, p.k - 1)) / dz);
   });
 
   Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     ex_(p.i, p.j, p.k) =
         ex_p_(p.i, p.j, p.k) -
-        dt * ((by_(p.i, p.j, p.k) - by_(p.i, p.j, p.k - 1)) / p.dz -
-              (bz_(p.i, p.j, p.k) - bz_(p.i, p.j - 1, p.k)) / p.dy +
+        dt * ((by_(p.i, p.j, p.k) - by_(p.i, p.j, p.k - 1)) / dz -
+              (bz_(p.i, p.j, p.k) - bz_(p.i, p.j - 1, p.k)) / dy +
               jx_(p.i, p.j, p.k));
   });
   Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     ey_(p.i, p.j, p.k) =
         ey_p_(p.i, p.j, p.k) -
-        dt * ((bz_(p.i, p.j, p.k) - bz_(p.i - 1, p.j, p.k)) / p.dx -
-              (bx_(p.i, p.j, p.k) - bx_(p.i, p.j, p.k - 1)) / p.dz +
+        dt * ((bz_(p.i, p.j, p.k) - bz_(p.i - 1, p.j, p.k)) / dx -
+              (bx_(p.i, p.j, p.k) - bx_(p.i, p.j, p.k - 1)) / dz +
               jy_(p.i, p.j, p.k));
   });
   Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     ez_(p.i, p.j, p.k) =
         ez_p_(p.i, p.j, p.k) -
-        dt * ((bx_(p.i, p.j, p.k) - bx_(p.i, p.j - 1, p.k)) / p.dy -
-              (by_(p.i, p.j, p.k) - by_(p.i - 1, p.j, p.k)) / p.dx +
+        dt * ((bx_(p.i, p.j, p.k) - bx_(p.i, p.j - 1, p.k)) / dy -
+              (by_(p.i, p.j, p.k) - by_(p.i - 1, p.j, p.k)) / dx +
               jz_(p.i, p.j, p.k));
   });
 
   Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
     phi_(p.i, p.j, p.k) =
         phi_p_(p.i, p.j, p.k) -
-        dt * ((ax_(p.i, p.j, p.k) - ax_(p.i - 1, p.j, p.k)) / p.dx +
-              (ay_(p.i, p.j, p.k) - ay_(p.i, p.j - 1, p.k)) / p.dy +
-              (ay_(p.i, p.j, p.k) - az_(p.i, p.j, p.k - 1)) / p.dz);
+        dt * ((ax_(p.i, p.j, p.k) - ax_(p.i - 1, p.j, p.k)) / dx +
+              (ay_(p.i, p.j, p.k) - ay_(p.i, p.j - 1, p.k)) / dy +
+              (ay_(p.i, p.j, p.k) - az_(p.i, p.j, p.k - 1)) / dz);
   });
 }
 
@@ -345,8 +424,25 @@ extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  Loop::loop_int<1, 1, 1>(
-      cctkGH, [&](const Loop::PointDesc &p) { regrid_error[p.idx] = 0; });
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
+
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    CCTK_REAL err = 0;
+    for (int b = 0; b < 2; ++b)
+      for (int a = 0; a < 2; ++a)
+        err += fabs(ax_(p.i - 1, p.j + a, p.k + b) -
+                    2 * ax_(p.i, p.j + a, p.k + b) +
+                    ax_(p.i + 1, p.j + a, p.k + b)) +
+               fabs(ay_(p.i + a, p.j - 1, p.k + b) -
+                    2 * ay_(p.i + a, p.j, p.k + b) +
+                    ay_(p.i + a, p.j + 1, p.k + b)) +
+               fabs(az_(p.i + a, p.j + b, p.k - 1) -
+                    2 * az_(p.i + a, p.j + b, p.k) +
+                    az_(p.i + a, p.j + b, p.k + 1));
+    regrid_error[p.idx] = err;
+  });
 }
 
 extern "C" void MaxwellToyAMReX_Error(CCTK_ARGUMENTS) {
@@ -355,8 +451,11 @@ extern "C" void MaxwellToyAMReX_Error(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
-  const Loop::GF3D<CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
 
   const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
@@ -419,39 +518,111 @@ extern "C" void MaxwellToyAMReX_Error(CCTK_ARGUMENTS) {
     Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
       exerr_(p.i, p.j, p.k) =
           ex_(p.i, p.j, p.k) -
-          (-xderiv(plane_wave<CCTK_REAL>, p.dx)(t + dt / 2, p.x, p.y, p.z).phi -
+          (-xderiv(plane_wave<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z).phi -
            tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax);
     });
     Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
       eyerr_(p.i, p.j, p.k) =
           ey_(p.i, p.j, p.k) -
-          (-yderiv(plane_wave<CCTK_REAL>, p.dy)(t + dt / 2, p.x, p.y, p.z).phi -
+          (-yderiv(plane_wave<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z).phi -
            tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay);
     });
     Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       ezerr_(p.i, p.j, p.k) =
           ez_(p.i, p.j, p.k) -
-          (-zderiv(plane_wave<CCTK_REAL>, p.dz)(t + dt / 2, p.x, p.y, p.z).phi -
+          (-zderiv(plane_wave<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z).phi -
            tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az);
     });
 
     Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       bxerr_(p.i, p.j, p.k) =
           bx_(p.i, p.j, p.k) -
-          (yderiv(plane_wave<CCTK_REAL>, p.dy)(t, p.x, p.y, p.z).az -
-           zderiv(plane_wave<CCTK_REAL>, p.dz)(t, p.x, p.y, p.z).ay);
+          (yderiv(plane_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
+           zderiv(plane_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay);
     });
     Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       byerr_(p.i, p.j, p.k) =
           by_(p.i, p.j, p.k) -
-          (zderiv(plane_wave<CCTK_REAL>, p.dz)(t, p.x, p.y, p.z).ax -
-           xderiv(plane_wave<CCTK_REAL>, p.dx)(t, p.x, p.y, p.z).az);
+          (zderiv(plane_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
+           xderiv(plane_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az);
     });
     Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
       bzerr_(p.i, p.j, p.k) =
           bz_(p.i, p.j, p.k) -
-          (xderiv(plane_wave<CCTK_REAL>, p.dx)(t, p.x, p.y, p.z).ay -
-           yderiv(plane_wave<CCTK_REAL>, p.dy)(t, p.x, p.y, p.z).ax);
+          (xderiv(plane_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
+           yderiv(plane_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax);
+    });
+
+    Loop::loop_all<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      rhoerr_(p.i, p.j, p.k) = 0.0;
+    });
+
+    Loop::loop_all<1, 0, 0>(
+        cctkGH, [&](const Loop::PointDesc &p) { jxerr_(p.i, p.j, p.k) = 0.0; });
+    Loop::loop_all<0, 1, 0>(
+        cctkGH, [&](const Loop::PointDesc &p) { jyerr_(p.i, p.j, p.k) = 0.0; });
+    Loop::loop_all<0, 0, 1>(
+        cctkGH, [&](const Loop::PointDesc &p) { jzerr_(p.i, p.j, p.k) = 0.0; });
+
+  } else if (CCTK_EQUALS(initial_condition, "Gaussian wave")) {
+
+    Loop::loop_all<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      phierr_(p.i, p.j, p.k) =
+          phi_(p.i, p.j, p.k) - gaussian_wave(t + dt / 2, p.x, p.y, p.z).phi;
+    });
+
+    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      axerr_(p.i, p.j, p.k) =
+          ax_(p.i, p.j, p.k) - gaussian_wave(t, p.x, p.y, p.z).ax;
+    });
+    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      ayerr_(p.i, p.j, p.k) =
+          ay_(p.i, p.j, p.k) - gaussian_wave(t, p.x, p.y, p.z).ay;
+    });
+    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      azerr_(p.i, p.j, p.k) =
+          az_(p.i, p.j, p.k) - gaussian_wave(t, p.x, p.y, p.z).az;
+    });
+
+    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      exerr_(p.i, p.j, p.k) =
+          ex_(p.i, p.j, p.k) -
+          (-xderiv(gaussian_wave<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z)
+                .phi -
+           tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax);
+    });
+    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      eyerr_(p.i, p.j, p.k) =
+          ey_(p.i, p.j, p.k) -
+          (-yderiv(gaussian_wave<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z)
+                .phi -
+           tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay);
+    });
+    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      ezerr_(p.i, p.j, p.k) =
+          ez_(p.i, p.j, p.k) -
+          (-zderiv(gaussian_wave<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z)
+                .phi -
+           tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az);
+    });
+
+    Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      bxerr_(p.i, p.j, p.k) =
+          bx_(p.i, p.j, p.k) -
+          (yderiv(gaussian_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
+           zderiv(gaussian_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay);
+    });
+    Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      byerr_(p.i, p.j, p.k) =
+          by_(p.i, p.j, p.k) -
+          (zderiv(gaussian_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
+           xderiv(gaussian_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az);
+    });
+    Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      bzerr_(p.i, p.j, p.k) =
+          bz_(p.i, p.j, p.k) -
+          (xderiv(gaussian_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
+           yderiv(gaussian_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax);
     });
 
     Loop::loop_all<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {

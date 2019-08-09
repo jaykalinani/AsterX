@@ -245,6 +245,12 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
   for (int gi = 0; gi < num_groups; ++gi) {
     auto &restrict groupdata = leveldata.groupdata.at(gi);
 
+    const BoxArray &gba = convert(
+        ba,
+        IndexType(groupdata.indextype[0] ? IndexType::CELL : IndexType::NODE,
+                  groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
+                  groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
+
     // If there is more than one time level, then we don't
     // prolongate the oldest.
     int ntls = groupdata.mfab.size();
@@ -270,7 +276,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                       periodic_z ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
-      auto mfab = make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+      auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
       // Set grid functions to nan
       auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
           {max_tile_size_x, max_tile_size_y, max_tile_size_z});

@@ -5,6 +5,7 @@
 KEYWORD initial_condition "Initial condition"
 {
   "plane wave" :: ""
+  "Gaussian wave" :: ""
 } "plane wave"
 
 CCTK_REAL spatial_frequency_x "spatial frequency"
@@ -21,3 +22,8 @@ CCTK_REAL spatial_frequency_z "spatial frequency"
 {
   *:* :: ""
 } 0.5
+
+CCTK_REAL width "width"
+{
+  (0.0:* :: ""
+} 0.1

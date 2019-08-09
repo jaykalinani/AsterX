@@ -36,6 +36,9 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   constexpr int di = 1;
   const int dj = di * cctk_ash[0];
@@ -44,9 +47,9 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     // dt rho + d_i (rho vel^i) = 0
     rho[p.idx] =
-        rho_p[p.idx] - dt * ((momx_p[p.idx + di] - momx_p[p.idx]) / p.dx +
-                             (momy_p[p.idx + dj] - momy_p[p.idx]) / p.dy +
-                             (momz_p[p.idx + dk] - momz_p[p.idx]) / p.dz);
+        rho_p[p.idx] - dt * ((momx_p[p.idx + di] - momx_p[p.idx]) / dx +
+                             (momy_p[p.idx + dj] - momy_p[p.idx]) / dy +
+                             (momz_p[p.idx + dk] - momz_p[p.idx]) / dz);
 
     //     // dt mom^i + d_j (mom^i vel^j) = 0
     //     momx[p.idx] = momx_p[p.idx] - dt * (

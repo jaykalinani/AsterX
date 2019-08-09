@@ -835,11 +835,28 @@ void Restrict(int level) {
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
     const IntVect reffact{2, 2, 2};
-    for (int tl = 0; tl < restrict_tl; ++tl)
-      amrex::average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                          ghext->amrcore->Geom(level + 1),
-                          ghext->amrcore->Geom(level), 0, groupdata.numvars,
-                          reffact);
+    for (int tl = 0; tl < restrict_tl; ++tl) {
+      if (groupdata.indextype == array<int, dim>{0, 0, 0})
+        amrex::average_down_nodal(*finegroupdata.mfab.at(tl),
+                                  *groupdata.mfab.at(tl), reffact);
+      else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
+               groupdata.indextype == array<int, dim>{0, 1, 0} ||
+               groupdata.indextype == array<int, dim>{0, 0, 1})
+        amrex::average_down_edges(*finegroupdata.mfab.at(tl),
+                                  *groupdata.mfab.at(tl), reffact);
+      else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
+               groupdata.indextype == array<int, dim>{1, 0, 1} ||
+               groupdata.indextype == array<int, dim>{0, 1, 1})
+        amrex::average_down_faces(*finegroupdata.mfab.at(tl),
+                                  *groupdata.mfab.at(tl), reffact);
+      else if (groupdata.indextype == array<int, dim>{1, 1, 1})
+        amrex::average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                            // ghext->amrcore->Geom(level + 1),
+                            // ghext->amrcore->Geom(level),
+                            0, groupdata.numvars, reffact);
+      else
+        assert(0);
+    }
   }
 }
 

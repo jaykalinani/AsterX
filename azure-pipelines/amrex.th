@@ -77,10 +77,32 @@ CactusBase/CoordBase
 CactusBase/Fortran
 CactusBase/InitBase
 # CactusBase/IOASCII
-CactusBase/IOBasic
+# CactusBase/IOBasic
 CactusBase/IOUtil
 CactusBase/SymBase
 CactusBase/Time
+
+
+
+# CactusUtils thorns
+!TARGET   = $ARR
+!TYPE     = git
+!URL      = https://bitbucket.org/cactuscode/cactusutils.git
+!REPO_PATH= $2
+!CHECKOUT =
+CactusUtils/Formaline
+# CactusUtils/MemSpeed
+# CactusUtils/NaNCatcher
+# CactusUtils/NaNChecker
+# CactusUtils/Nice
+# CactusUtils/NoMPI
+# CactusUtils/SystemStatistics
+# CactusUtils/SystemTopology
+# CactusUtils/TerminationTrigger
+# CactusUtils/TimerReport
+# CactusUtils/Trigger
+# CactusUtils/Vectors
+# CactusUtils/WatchDog
 
 
 

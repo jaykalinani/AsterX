@@ -215,17 +215,20 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL ddx_phi =
         (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
-        pow(p.dx, 2);
+        pow(dx, 2);
     CCTK_REAL ddy_phi =
         (phi_p[p.idx - p.dj] - 2 * phi_p[p.idx] + phi_p[p.idx + p.dj]) /
-        pow(p.dy, 2);
+        pow(dy, 2);
     CCTK_REAL ddz_phi =
         (phi_p[p.idx - p.dk] - 2 * phi_p[p.idx] + phi_p[p.idx + p.dk]) /
-        pow(p.dz, 2);
+        pow(dz, 2);
     // phi[p.idx] = 2 * phi_p[p.idx] - phi_p_p[p.idx] +
     //            pow(dt, 2) * (ddx_phi + ddy_phi + ddz_phi);
     psi[p.idx] =
@@ -519,23 +522,26 @@ extern "C" void WaveToyAMReX_Energy(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL ddx_phi =
-        (phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) / pow(p.dx, 2);
+        (phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) / pow(dx, 2);
     CCTK_REAL ddy_phi =
-        (phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) / pow(p.dy, 2);
+        (phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) / pow(dy, 2);
     CCTK_REAL ddz_phi =
-        (phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) / pow(p.dz, 2);
+        (phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) / pow(dz, 2);
     CCTK_REAL psi_n = psi[p.idx] + dt * (ddx_phi + ddy_phi + ddz_phi);
     CCTK_REAL dt_phi_p = psi_n;
     CCTK_REAL dt_phi_m = psi_p[p.idx];
-    CCTK_REAL dx_phi_p = (phi[p.idx + p.di] - phi[p.idx]) / p.dx;
-    CCTK_REAL dx_phi_m = (phi[p.idx] - phi[p.idx - p.di]) / p.dx;
-    CCTK_REAL dy_phi_p = (phi[p.idx + p.dj] - phi[p.idx]) / p.dy;
-    CCTK_REAL dy_phi_m = (phi[p.idx] - phi[p.idx - p.dj]) / p.dy;
-    CCTK_REAL dz_phi_p = (phi[p.idx + p.dk] - phi[p.idx]) / p.dz;
-    CCTK_REAL dz_phi_m = (phi[p.idx] - phi[p.idx - p.dk]) / p.dz;
+    CCTK_REAL dx_phi_p = (phi[p.idx + p.di] - phi[p.idx]) / dx;
+    CCTK_REAL dx_phi_m = (phi[p.idx] - phi[p.idx - p.di]) / dx;
+    CCTK_REAL dy_phi_p = (phi[p.idx + p.dj] - phi[p.idx]) / dy;
+    CCTK_REAL dy_phi_m = (phi[p.idx] - phi[p.idx - p.dj]) / dy;
+    CCTK_REAL dz_phi_p = (phi[p.idx + p.dk] - phi[p.idx]) / dz;
+    CCTK_REAL dz_phi_m = (phi[p.idx] - phi[p.idx - p.dk]) / dz;
     eps[p.idx] = (pow(dt_phi_p, 2) + pow(dt_phi_m, 2) + pow(dx_phi_p, 2) +
                   pow(dx_phi_m, 2) + pow(dy_phi_p, 2) + pow(dy_phi_m, 2) +
                   pow(dz_phi_p, 2) + pow(dz_phi_m, 2)) /

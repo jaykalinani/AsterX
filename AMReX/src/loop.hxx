@@ -37,9 +37,13 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
         ni(cctkGH->cctk_lsh[0] + 1 - CI), nj(cctkGH->cctk_lsh[1] + 1 - CJ),
         nk(cctkGH->cctk_lsh[2] + 1 - CK) {}
   inline int offset(int i, int j, int k) const {
+    // These index checks prevent vectorization. We thus only enable
+    // them in debug mode.
+#ifdef CCTK_DEBUG
     assert(i >= 0 && i < ni);
     assert(j >= 0 && j < nj);
     assert(k >= 0 && k < nk);
+#endif
     return i * di + j * dj + k * dk;
   }
   inline T &restrict operator()(int i, int j, int k) const {
@@ -50,12 +54,11 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct PointDesc {
-  int idx;
   int i, j, k;
   CCTK_REAL x, y, z;
+  int idx;
   static constexpr int di = 1;
   int dj, dk;
-  CCTK_REAL dx, dy, dz;
 };
 
 struct GridDescBase {
@@ -124,7 +127,7 @@ public:
           CCTK_REAL y = x0[1] + (lbnd[1] + j + CCTK_REAL(CJ - 1) / 2) * dx[1];
           CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
           int idx = i * di + j * dj + k * dk;
-          const PointDesc p{idx, i, j, k, x, y, z, dj, dk, dx[0], dx[1], dx[2]};
+          const PointDesc p{i, j, k, x, y, z, idx, dj, dk};
           f(p);
         }
       }
