@@ -1,5 +1,6 @@
 ActiveThorns = "
     AMReX
+    Formaline
     IOUtil
     WaveToyAMReX
 "
@@ -44,6 +45,8 @@ WaveToyAMReX::boundary_condition = "initial"
 
 WaveToyAMReX::central_point_charge = 1.0
 WaveToyAMReX::central_point_radius = 1.0
+
+WaveToyAMReX::particle_charge = 1.0
 
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
