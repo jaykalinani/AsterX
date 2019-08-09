@@ -12,51 +12,179 @@ USES INCLUDE HEADER: loop.hxx
 
 # Wikipedia, <https://en.wikipedia.org/wiki/Maxwell%27s_equations>
 
-CCTK_REAL potential TYPE=gf TIMELEVELS=2
+# d*dA = mu J   A^a,^b_b - A^b,^a_b = mu J^a
+# d*A  = 0      A^a,a   = 0
+
+# -d*(dphi + A,t)      = rho/epsilon
+# d*dA + dt*(dphi+A,t) = mu J
+# *phi,t + d*A         = 0             phi,t + A^i,i = 0
+
+# F   = dA     F_ab                     = A_a,b - A_b,a
+# dF  = 0      F_ab,c + F_bc,a + F_ca,b = 0
+# d*F = mu J   F^ab,a                   = mu J^b
+
+# E          = -dphi - A,t   E_i                     = - phi,i - A_i,t
+# B          = dA            B_ij                    = A_j,i - A_i,j
+# dE + B,t   = 0             E_j,i - E_i,j + B_ij,t  = 0
+# dB         = 0             B_jk,i + B_ki,j + B_ijk = 0
+# d*E        = rho/epsilon   E^i,i                   = rho/epsilon
+# d*B - dt*E = mu J          - B^ij,i - E^j,t        = mu J^j
+
+
+
+# CCTK_REAL potential TYPE=gf TIMELEVELS=2a
+# {
+#   phi
+#   ax ay az
+# } "Electromagnetic potential"
+# 
+# CCTK_REAL field TYPE=gf TIMELEVELS=2
+# {
+#   ex ey ez
+#   bx by bz   # B_yz B_zx B_xy
+# } "Electromagnetic field"
+# 
+# CCTK_REAL current TYPE=gf TIMELEVELS=2
+# {
+#   rho
+#   jx jy jz
+# } "Electric charge current"
+# 
+# CCTK_REAL errors TYPE=gf
+# {
+#   phierr
+#   axerr ayerr azerr
+#   exerr eyerr ezerr
+#   bxerr byerr bzerr
+#   rhoerr
+#   jxerr jyerr jzerr
+# } "Errors"
+
+CCTK_REAL potential_phi TYPE=gf TIMELEVELS=2 TAGS='index={0 0 0}'
 {
-  # d*dA = mu J   A^a,^b_b - A^b,^a_b = mu J^a
-  # d*A  = 0      A^a,a   = 0
-
-  # -d*(dphi + A,t)      = rho/epsilon
-  # d*dA + dt*(dphi+A,t) = mu J
-  # *phi,t + d*A         = 0             phi,t + A^i,i = 0
-
   phi
-  ax ay az
 } "Electromagnetic potential"
 
-CCTK_REAL field TYPE=gf TIMELEVELS=2
+CCTK_REAL potential_ax TYPE=gf TIMELEVELS=2 TAGS='index={1 0 0}'
 {
-  # F   = dA     F_ab                     = A_a,b - A_b,a
-  # dF  = 0      F_ab,c + F_bc,a + F_ca,b = 0
-  # d*F = mu J   F^ab,a                   = mu J^b
+  ax
+} "Electromagnetic potential"
+CCTK_REAL potential_ay TYPE=gf TIMELEVELS=2 TAGS='index={0 1 0}'
+{
+  ay
+} "Electromagnetic potential"
+CCTK_REAL potential_az TYPE=gf TIMELEVELS=2 TAGS='index={0 0 1}'
+{
+  az
+} "Electromagnetic potential"
 
-  # E          = -dphi - A,t   E_i                     = - phi,i - A_i,t
-  # B          = dA            B_ij                    = A_j,i - A_i,j
-  # dE + B,t   = 0             E_j,i - E_i,j + B_ij,t  = 0
-  # dB         = 0             B_jk,i + B_ki,j + B_ijk = 0
-  # d*E        = rho/epsilon   E^i,i                   = rho/epsilon
-  # d*B - dt*E = mu J          - B^ij,i - E^j,t        = mu J^j
-
-  ex ey ez
-  bx by bz   # B_yz B_zx B_xy
+CCTK_REAL field_ex TYPE=gf TIMELEVELS=2 TAGS='index={1 0 0}'
+{
+  ex
+} "Electromagnetic field"
+CCTK_REAL field_ey TYPE=gf TIMELEVELS=2 TAGS='index={0 1 0}'
+{
+  ey
+} "Electromagnetic field"
+CCTK_REAL field_ez TYPE=gf TIMELEVELS=2 TAGS='index={0 0 1}'
+{
+  ez
 } "Electromagnetic field"
 
-CCTK_REAL current TYPE=gf TIMELEVELS=2
+CCTK_REAL field_bx TYPE=gf TIMELEVELS=2 TAGS='index={0 1 1}'
+{
+  bx
+} "Electromagnetic field"
+CCTK_REAL field_by TYPE=gf TIMELEVELS=2 TAGS='index={1 0 1}'
+{
+  by
+} "Electromagnetic field"
+CCTK_REAL field_bz TYPE=gf TIMELEVELS=2 TAGS='index={1 1 0}'
+{
+  bz
+} "Electromagnetic field"
+
+CCTK_REAL current_rho TYPE=gf TIMELEVELS=2 TAGS='index={0 0 0}'
 {
   rho
-  jx jy jz
 } "Electric charge current"
 
-CCTK_REAL errors TYPE=gf
+CCTK_REAL current_jx TYPE=gf TIMELEVELS=2 TAGS='index={1 0 0}'
+{
+  jx
+} "Electric charge current"
+CCTK_REAL current_jy TYPE=gf TIMELEVELS=2 TAGS='index={0 1 0}'
+{
+  jy
+} "Electric charge current"
+CCTK_REAL current_jz TYPE=gf TIMELEVELS=2 TAGS='index={0 0 1}'
+{
+  jz
+} "Electric charge current"
+
+
+
+CCTK_REAL errors_potential_phi TYPE=gf TAGS='index={0 0 0}'
 {
   phierr
-  axerr ayerr azerr
-  exerr eyerr ezerr
-  bxerr byerr bzerr
+} "Electromagnetic potential"
+
+CCTK_REAL errors_potential_ax TYPE=gf TAGS='index={1 0 0}'
+{
+  axerr
+} "Electromagnetic potential"
+CCTK_REAL errors_potential_ay TYPE=gf TAGS='index={0 1 0}'
+{
+  ayerr
+} "Electromagnetic potential"
+CCTK_REAL errors_potential_az TYPE=gf TAGS='index={0 0 1}'
+{
+  azerr
+} "Electromagnetic potential"
+
+CCTK_REAL errors_field_ex TYPE=gf TAGS='index={1 0 0}'
+{
+  exerr
+} "Electromagnetic field"
+CCTK_REAL errors_field_ey TYPE=gf TAGS='index={0 1 0}'
+{
+  eyerr
+} "Electromagnetic field"
+CCTK_REAL errors_field_ez TYPE=gf TAGS='index={0 0 1}'
+{
+  ezerr
+} "Electromagnetic field"
+
+CCTK_REAL errors_field_bx TYPE=gf TAGS='index={0 1 1}'
+{
+  bxerr
+} "Electromagnetic field"
+CCTK_REAL errors_field_by TYPE=gf TAGS='index={1 0 1}'
+{
+  byerr
+} "Electromagnetic field"
+CCTK_REAL errors_field_bz TYPE=gf TAGS='index={1 1 0}'
+{
+  bzerr
+} "Electromagnetic field"
+
+CCTK_REAL errors_current_rho TYPE=gf TAGS='index={0 0 0}'
+{
   rhoerr
-  jxerr jyerr jzerr
-} "Errors"
+} "Electric charge current"
+
+CCTK_REAL errors_current_jx TYPE=gf TAGS='index={1 0 0}'
+{
+  jxerr
+} "Electric charge current"
+CCTK_REAL errors_current_jy TYPE=gf TAGS='index={0 1 0}'
+{
+  jyerr
+} "Electric charge current"
+CCTK_REAL errors_current_jz TYPE=gf TAGS='index={0 0 1}'
+{
+  jzerr
+} "Electric charge current"
 
 # CCTK_REAL constraints TYPE=gf
 # {

@@ -16,13 +16,17 @@ SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
 SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
 {
   LANG: C
-  SYNC: potential field current
+  SYNC: potential_ax potential_ay potential_az
+  SYNC: field_bx field_by field_bz
+  SYNC: current_jx current_jy current_jz
 } "Evolve the Maxwell equations, step 1"
 
 SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER MaxwellToyAMReX_Evolve1
 {
   LANG: C
-  SYNC: potential field current
+  SYNC: potential_phi
+  SYNC: field_ex field_ey field_ez
+  SYNC: current_rho
 } "Evolve the Maxwell equations step 2"
 
 # SCHEDULE MaxwellToyAMReX_Constraints AT analysis

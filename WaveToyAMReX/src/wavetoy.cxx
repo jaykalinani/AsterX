@@ -130,54 +130,37 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  CCTK_REAL x0[dim], dx[dim];
-  for (int d = 0; d < dim; ++d) {
-    x0[d] = CCTK_ORIGIN_SPACE(d);
-    dx[d] = CCTK_DELTA_SPACE(d);
-  }
 
   if (CCTK_EQUALS(initial_condition, "standing wave")) {
 
-    Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phi[idx] = standing(t, x, y, z);
-      // phi_p[idx] = standing(t - dt, x, y, z);
-      psi[idx] = timederiv(standing, dt)(t, x, y, z);
+    Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phi[p.idx] = standing(t, p.x, p.y, p.z);
+      // phi_p[p.idx] = standing(t - dt, p.x, p.y, p.z);
+      psi[p.idx] = timederiv(standing, dt)(t, p.x, p.y, p.z);
     });
 
   } else if (CCTK_EQUALS(initial_condition, "periodic Gaussian")) {
 
-    Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phi[idx] = periodic_gaussian(t, x, y, z);
-      // phi_p[idx] = periodic_gaussian(t - dt, x, y, z);
-      psi[idx] = timederiv(periodic_gaussian, dt)(t, x, y, z);
+    Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phi[p.idx] = periodic_gaussian(t, p.x, p.y, p.z);
+      // phi_p[p.idx] = periodic_gaussian(t - dt, p.x, p.y, p.z);
+      psi[p.idx] = timederiv(periodic_gaussian, dt)(t, p.x, p.y, p.z);
     });
 
   } else if (CCTK_EQUALS(initial_condition, "Gaussian")) {
 
-    Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phi[idx] = gaussian(t, x, y, z);
-      // phi_p[idx] = gaussian(t - dt, x, y, z);
-      psi[idx] = timederiv(gaussian, dt)(t, x, y, z);
+    Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phi[p.idx] = gaussian(t, p.x, p.y, p.z);
+      // phi_p[p.idx] = gaussian(t - dt, p.x, p.y, p.z);
+      psi[p.idx] = timederiv(gaussian, dt)(t, p.x, p.y, p.z);
     });
 
   } else if (CCTK_EQUALS(initial_condition, "central potential")) {
 
-    Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phi[idx] = central_potential(t, x, y, z);
-      // phi_p[idx] = central_potential(t - dt, x, y, z);
-      psi[idx] = timederiv(central_potential, dt)(t, x, y, z);
+    Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phi[p.idx] = central_potential(t, p.x, p.y, p.z);
+      // phi_p[p.idx] = central_potential(t - dt, p.x, p.y, p.z);
+      psi[p.idx] = timederiv(central_potential, dt)(t, p.x, p.y, p.z);
     });
 
   } else {
@@ -206,26 +189,22 @@ extern "C" void WaveToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  constexpr int di = 1;
-  const int dj = di * cctk_ash[0];
-  const int dk = dj * cctk_ash[1];
-
-  Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
-    CCTK_REAL base_phi = fabs(phi[idx]) + fabs(phi_abs);
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    CCTK_REAL base_phi = fabs(phi[p.idx]) + fabs(phi_abs);
     CCTK_REAL errx_phi =
-        fabs(phi[idx - di] - 2 * phi[idx] + phi[idx + di]) / base_phi;
+        fabs(phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) / base_phi;
     CCTK_REAL erry_phi =
-        fabs(phi[idx - dj] - 2 * phi[idx] + phi[idx + dj]) / base_phi;
+        fabs(phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) / base_phi;
     CCTK_REAL errz_phi =
-        fabs(phi[idx - dk] - 2 * phi[idx] + phi[idx + dk]) / base_phi;
-    CCTK_REAL base_psi = fabs(psi[idx]) + fabs(psi_abs);
+        fabs(phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) / base_phi;
+    CCTK_REAL base_psi = fabs(psi[p.idx]) + fabs(psi_abs);
     CCTK_REAL errx_psi =
-        fabs(psi[idx - di] - 2 * psi[idx] + psi[idx + di]) / base_psi;
+        fabs(psi[p.idx - p.di] - 2 * psi[p.idx] + psi[p.idx + p.di]) / base_psi;
     CCTK_REAL erry_psi =
-        fabs(psi[idx - dj] - 2 * psi[idx] + psi[idx + dj]) / base_psi;
+        fabs(psi[p.idx - p.dj] - 2 * psi[p.idx] + psi[p.idx + p.dj]) / base_psi;
     CCTK_REAL errz_psi =
-        fabs(psi[idx - dk] - 2 * psi[idx] + psi[idx + dk]) / base_psi;
-    regrid_error[idx] =
+        fabs(psi[p.idx - p.dk] - 2 * psi[p.idx] + psi[p.idx + p.dk]) / base_psi;
+    regrid_error[p.idx] =
         errx_phi + erry_phi + errz_phi + errx_psi + erry_psi + errz_psi;
   });
 }
@@ -236,32 +215,24 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  CCTK_REAL x0[dim], dx[dim];
-  for (int d = 0; d < dim; ++d) {
-    x0[d] = CCTK_ORIGIN_SPACE(d);
-    dx[d] = CCTK_DELTA_SPACE(d);
-  }
 
-  constexpr int di = 1;
-  const int dj = di * cctk_ash[0];
-  const int dk = dj * cctk_ash[1];
-
-  Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
-    CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-    CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-    CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL ddx_phi =
-        (phi_p[idx - di] - 2 * phi_p[idx] + phi_p[idx + di]) / pow(dx[0], 2);
+        (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
+        pow(p.dx, 2);
     CCTK_REAL ddy_phi =
-        (phi_p[idx - dj] - 2 * phi_p[idx] + phi_p[idx + dj]) / pow(dx[1], 2);
+        (phi_p[p.idx - p.dj] - 2 * phi_p[p.idx] + phi_p[p.idx + p.dj]) /
+        pow(p.dy, 2);
     CCTK_REAL ddz_phi =
-        (phi_p[idx - dk] - 2 * phi_p[idx] + phi_p[idx + dk]) / pow(dx[2], 2);
-    // phi[idx] = 2 * phi_p[idx] - phi_p_p[idx] +
+        (phi_p[p.idx - p.dk] - 2 * phi_p[p.idx] + phi_p[p.idx + p.dk]) /
+        pow(p.dz, 2);
+    // phi[p.idx] = 2 * phi_p[p.idx] - phi_p_p[p.idx] +
     //            pow(dt, 2) * (ddx_phi + ddy_phi + ddz_phi);
-    psi[idx] = psi_p[idx] +
-               dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[idx] +
-                     4 * M_PI * central_potential(t, x, y, z));
-    phi[idx] = phi_p[idx] + dt * psi[idx];
+    psi[p.idx] =
+        psi_p[p.idx] +
+        dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[p.idx] +
+              4 * M_PI * central_potential(t, p.x, p.y, p.z));
+    phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
   });
 }
 
@@ -444,29 +415,29 @@ extern "C" void WaveToyAMReX_RadiativeBoundaries(CCTK_ARGUMENTS) {
             for (int i = bmin[0]; i < bmax[0]; ++i) {
               const int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
               CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-              CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-              CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
+              CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * p.dy;
+              CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * p.dz;
               CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
 
               int ddir = dir == 0 ? di : dir == 1 ? dj : dk;
               int ndir = 2 * face - 1;
 
               // CCTK_REAL gradphi =
-              //     (phi_p[idx] - phi_p[idx - ndir * ddir]) / dx[dir];
-              // phi[idx] =
-              //     phi_p[idx] -
-              //     dt * phi_vel * (r * gradphi + (phi_p[idx] - phi_inf) / r);
+              //     (phi_p[p.idx] - phi_p[p.idx - ndir * ddir]) / dx[dir];
+              // phi[p.idx] =
+              //     phi_p[p.idx] -
+              //     dt * phi_vel * (r * gradphi + (phi_p[p.idx] - phi_inf) / r);
 
               // CCTK_REAL gradpsi =
-              //     (psi_p[idx] - psi_p[idx - ndir * ddir]) / dx[dir];
-              // psi[idx] =
-              //     psi_p[idx] -
-              //     dt * psi_vel * (r * gradpsi + (psi_p[idx] - psi_inf) / r);
+              //     (psi_p[p.idx] - psi_p[p.idx - ndir * ddir]) / dx[dir];
+              // psi[p.idx] =
+              //     psi_p[p.idx] -
+              //     dt * psi_vel * (r * gradpsi + (psi_p[p.idx] - psi_inf) / r);
 
               CCTK_REAL gradphi =
-                  (phi_p[idx] - phi_p[idx - ndir * ddir]) / dx[dir];
-              psi[idx] = -phi_vel * (r * gradphi + (phi_p[idx] - phi_inf) / r);
-              phi[idx] = phi_p[idx] + dt * psi[idx];
+                  (phi_p[p.idx] - phi_p[p.idx - ndir * ddir]) / dx[dir];
+              psi[p.idx] = -phi_vel * (r * gradphi + (phi_p[p.idx] - phi_inf) / r);
+              phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
             }
           }
         }
@@ -486,11 +457,6 @@ extern "C" void WaveToyAMReX_Boundaries(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  CCTK_REAL x0[dim], dx[dim];
-  for (int d = 0; d < dim; ++d) {
-    x0[d] = CCTK_ORIGIN_SPACE(d);
-    dx[d] = CCTK_DELTA_SPACE(d);
-  }
 
   if (CCTK_EQUALS(boundary_condition, "none")) {
 
@@ -500,12 +466,9 @@ extern "C" void WaveToyAMReX_Boundaries(CCTK_ARGUMENTS) {
 
     if (CCTK_EQUALS(initial_condition, "central potential")) {
 
-      Loop::loop_bnd(cctkGH, [&](int i, int j, int k, int idx) {
-        CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-        CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-        CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-        phi[idx] = central_potential(t, x, y, z);
-        psi[idx] = timederiv(central_potential, dt)(t, x, y, z);
+      Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+        phi[p.idx] = central_potential(t, p.x, p.y, p.z);
+        psi[p.idx] = timederiv(central_potential, dt)(t, p.x, p.y, p.z);
       });
 
     } else {
@@ -521,9 +484,9 @@ extern "C" void WaveToyAMReX_NaNCheck_past(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-    assert(CCTK_isfinite(phi_p[idx]));
-    assert(CCTK_isfinite(psi_p[idx]));
+  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    assert(CCTK_isfinite(phi_p[p.idx]));
+    assert(CCTK_isfinite(psi_p[p.idx]));
   });
 }
 
@@ -539,11 +502,11 @@ extern "C" void WaveToyAMReX_NaNCheck_current(CCTK_ARGUMENTS) {
   }
 
   bool has_error = false;
-  Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-    if (!CCTK_isfinite(phi[idx]) || !CCTK_isfinite(psi[idx])) {
-      CCTK_VINFO("level %d idx=[%d,%d,%d] gidx=[%d,%d,%d] (%g,%g)", lev, i, j,
-                 k, cctk_lbnd[0] + i, cctk_lbnd[1] + j, cctk_lbnd[2] + k,
-                 phi[idx], psi[idx]);
+  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    if (!CCTK_isfinite(phi[p.idx]) || !CCTK_isfinite(psi[p.idx])) {
+      CCTK_VINFO("level %d idx=[%d,%d,%d] gidx=[%d,%d,%d] (%g,%g)", lev, p.i,
+                 p.j, p.k, cctk_lbnd[0] + p.i, cctk_lbnd[1] + p.j,
+                 cctk_lbnd[2] + p.k, phi[p.idx], psi[p.idx]);
       has_error = true;
     }
   });
@@ -556,34 +519,27 @@ extern "C" void WaveToyAMReX_Energy(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  CCTK_REAL dx[dim];
-  for (int d = 0; d < dim; ++d)
-    dx[d] = CCTK_DELTA_SPACE(d);
 
-  constexpr int di = 1;
-  const int dj = di * cctk_ash[0];
-  const int dk = dj * cctk_ash[1];
-
-  Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL ddx_phi =
-        (phi[idx - di] - 2 * phi[idx] + phi[idx + di]) / pow(dx[0], 2);
+        (phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) / pow(p.dx, 2);
     CCTK_REAL ddy_phi =
-        (phi[idx - dj] - 2 * phi[idx] + phi[idx + dj]) / pow(dx[1], 2);
+        (phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) / pow(p.dy, 2);
     CCTK_REAL ddz_phi =
-        (phi[idx - dk] - 2 * phi[idx] + phi[idx + dk]) / pow(dx[2], 2);
-    CCTK_REAL psi_n = psi[idx] + dt * (ddx_phi + ddy_phi + ddz_phi);
+        (phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) / pow(p.dz, 2);
+    CCTK_REAL psi_n = psi[p.idx] + dt * (ddx_phi + ddy_phi + ddz_phi);
     CCTK_REAL dt_phi_p = psi_n;
-    CCTK_REAL dt_phi_m = psi_p[idx];
-    CCTK_REAL dx_phi_p = (phi[idx + di] - phi[idx]) / dx[0];
-    CCTK_REAL dx_phi_m = (phi[idx] - phi[idx - di]) / dx[0];
-    CCTK_REAL dy_phi_p = (phi[idx + dj] - phi[idx]) / dx[1];
-    CCTK_REAL dy_phi_m = (phi[idx] - phi[idx - dj]) / dx[1];
-    CCTK_REAL dz_phi_p = (phi[idx + dk] - phi[idx]) / dx[2];
-    CCTK_REAL dz_phi_m = (phi[idx] - phi[idx - dk]) / dx[2];
-    eps[idx] = (pow(dt_phi_p, 2) + pow(dt_phi_m, 2) + pow(dx_phi_p, 2) +
-                pow(dx_phi_m, 2) + pow(dy_phi_p, 2) + pow(dy_phi_m, 2) +
-                pow(dz_phi_p, 2) + pow(dz_phi_m, 2)) /
-               4;
+    CCTK_REAL dt_phi_m = psi_p[p.idx];
+    CCTK_REAL dx_phi_p = (phi[p.idx + p.di] - phi[p.idx]) / p.dx;
+    CCTK_REAL dx_phi_m = (phi[p.idx] - phi[p.idx - p.di]) / p.dx;
+    CCTK_REAL dy_phi_p = (phi[p.idx + p.dj] - phi[p.idx]) / p.dy;
+    CCTK_REAL dy_phi_m = (phi[p.idx] - phi[p.idx - p.dj]) / p.dy;
+    CCTK_REAL dz_phi_p = (phi[p.idx + p.dk] - phi[p.idx]) / p.dz;
+    CCTK_REAL dz_phi_m = (phi[p.idx] - phi[p.idx - p.dk]) / p.dz;
+    eps[p.idx] = (pow(dt_phi_p, 2) + pow(dt_phi_m, 2) + pow(dx_phi_p, 2) +
+                  pow(dx_phi_m, 2) + pow(dy_phi_p, 2) + pow(dy_phi_m, 2) +
+                  pow(dz_phi_p, 2) + pow(dz_phi_m, 2)) /
+                 4;
   });
 }
 
@@ -593,50 +549,35 @@ extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  CCTK_REAL x0[dim], dx[dim];
-  for (int d = 0; d < dim; ++d) {
-    x0[d] = CCTK_ORIGIN_SPACE(d);
-    dx[d] = CCTK_DELTA_SPACE(d);
-  }
 
   if (CCTK_EQUALS(initial_condition, "standing wave")) {
 
-    Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phierr[idx] = phi[idx] - standing(t, x, y, z);
-      psierr[idx] = psi[idx] - timederiv(standing, dt)(t, x, y, z);
+    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phierr[p.idx] = phi[p.idx] - standing(t, p.x, p.y, p.z);
+      psierr[p.idx] = psi[p.idx] - timederiv(standing, dt)(t, p.x, p.y, p.z);
     });
 
   } else if (CCTK_EQUALS(initial_condition, "periodic Gaussian")) {
 
-    Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phierr[idx] = phi[idx] - periodic_gaussian(t, x, y, z);
-      psierr[idx] = psi[idx] - timederiv(periodic_gaussian, dt)(t, x, y, z);
+    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phierr[p.idx] = phi[p.idx] - periodic_gaussian(t, p.x, p.y, p.z);
+      psierr[p.idx] =
+          psi[p.idx] - timederiv(periodic_gaussian, dt)(t, p.x, p.y, p.z);
     });
 
   } else if (CCTK_EQUALS(initial_condition, "Gaussian")) {
 
-    Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phierr[idx] = phi[idx] - gaussian(t, x, y, z);
-      psierr[idx] = psi[idx] - timederiv(gaussian, dt)(t, x, y, z);
+    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phierr[p.idx] = phi[p.idx] - gaussian(t, p.x, p.y, p.z);
+      psierr[p.idx] = psi[p.idx] - timederiv(gaussian, dt)(t, p.x, p.y, p.z);
     });
 
   } else if (CCTK_EQUALS(initial_condition, "central potential")) {
 
-    Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-      CCTK_REAL x = x0[0] + (cctk_lbnd[0] + i) * dx[0];
-      CCTK_REAL y = x0[1] + (cctk_lbnd[1] + j) * dx[1];
-      CCTK_REAL z = x0[2] + (cctk_lbnd[2] + k) * dx[2];
-      phierr[idx] = phi[idx] - central_potential(t, x, y, z);
-      psierr[idx] = psi[idx] - timederiv(central_potential, dt)(t, x, y, z);
+    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      phierr[p.idx] = phi[p.idx] - central_potential(t, p.x, p.y, p.z);
+      psierr[p.idx] =
+          psi[p.idx] - timederiv(central_potential, dt)(t, p.x, p.y, p.z);
     });
 
   } else {

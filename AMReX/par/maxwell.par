@@ -40,3 +40,5 @@ MaxwellToyAMReX::spatial_frequency_z = 0.0
 
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
+
+# AMReX::out_tsv = yes

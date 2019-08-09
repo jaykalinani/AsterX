@@ -66,10 +66,15 @@ struct GHExt {
 
   struct LevelData {
     int level;
+    // Empty MultiFab holding a cell-centred BoxArray for iterating
+    // over grid functions.
+    // TODO: Can we store the BoxArray directly?
+    unique_ptr<MultiFab> mfab0;
 
     struct GroupData {
       int firstvarindex;
       int numvars;
+      array<int,dim> indextype;
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]
     };

@@ -19,6 +19,45 @@ using namespace std;
 
 constexpr int dim = 3;
 
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T, int CI, int CJ, int CK> struct GF3D {
+  static_assert(CI == 0 || CI == 1, "");
+  static_assert(CJ == 0 || CJ == 1, "");
+  static_assert(CK == 0 || CK == 1, "");
+  typedef T value_type;
+  T *restrict ptr;
+  static constexpr int di = 1;
+  int dj, dk;
+  int ni, nj, nk;
+  constexpr array<int, dim> indextype() const { return {CI, CJ, CK}; }
+  inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
+      : ptr(ptr), dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
+        dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),
+        ni(cctkGH->cctk_lsh[0] + 1 - CI), nj(cctkGH->cctk_lsh[1] + 1 - CJ),
+        nk(cctkGH->cctk_lsh[2] + 1 - CK) {}
+  inline int offset(int i, int j, int k) const {
+    assert(i >= 0 && i < ni);
+    assert(j >= 0 && j < nj);
+    assert(k >= 0 && k < nk);
+    return i * di + j * dj + k * dk;
+  }
+  inline T &restrict operator()(int i, int j, int k) const {
+    return ptr[offset(i, j, k)];
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct PointDesc {
+  int idx;
+  int i, j, k;
+  CCTK_REAL x, y, z;
+  static constexpr int di = 1;
+  int dj, dk;
+  CCTK_REAL dx, dy, dz;
+};
+
 struct GridDescBase {
   array<int, dim> gsh;
   array<int, dim> lbnd, ubnd;
@@ -27,6 +66,9 @@ struct GridDescBase {
   array<int, 2 * dim> bbox;
   array<int, dim> nghostzones;
   array<int, dim> tmin, tmax;
+
+  array<CCTK_REAL, dim> x0;
+  array<CCTK_REAL, dim> dx;
 
   template <typename T, size_t N>
   static void output(ostream &os, const string &str, const array<T, N> &arr) {
@@ -59,58 +101,70 @@ public:
   GridDescBase(const cGH *cctkGH);
 
   // Loop over a given box
-  template <typename F>
+  template <int CI, int CJ, int CK, typename F>
   void loop_box(const F &f, const array<int, dim> &restrict imin,
                 const array<int, dim> &restrict imax) const {
-    // cout << *this;
-    // output(cout, ",imin", imin);
-    // output(cout, ",imax", imax);
-    // cout << "\n";
+    static_assert(CI == 0 || CI == 1, "");
+    static_assert(CJ == 0 || CJ == 1, "");
+    static_assert(CK == 0 || CK == 1, "");
 
     for (int d = 0; d < dim; ++d)
       if (imin[d] >= imax[d])
         return;
 
     constexpr int di = 1;
-    const int dj = di * ash[0];
-    const int dk = dj * ash[1];
+    const int dj = di * (ash[0] + 1 - CI);
+    const int dk = dj * (ash[1] + 1 - CJ);
 
     for (int k = imin[2]; k < imax[2]; ++k) {
       for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
         for (int i = imin[0]; i < imax[0]; ++i) {
+          CCTK_REAL x = x0[0] + (lbnd[0] + i + CCTK_REAL(CI - 1) / 2) * dx[0];
+          CCTK_REAL y = x0[1] + (lbnd[1] + j + CCTK_REAL(CJ - 1) / 2) * dx[1];
+          CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
           int idx = i * di + j * dj + k * dk;
-          f(i, j, k, idx);
+          const PointDesc p{idx, i, j, k, x, y, z, dj, dk, dx[0], dx[1], dx[2]};
+          f(p);
         }
       }
     }
   }
 
   // Loop over all points
-  template <typename F> void loop_all(const F &f) const {
+  template <int CI, int CJ, int CK, typename F>
+  void loop_all(const F &f) const {
+    constexpr array<int, dim> offset{!CI, !CJ, !CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = max(tmin[d], 0);
-      imax[d] = min(tmax[d], lsh[d]);
+      imax[d] = min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
+                    lsh[d] + offset[d]);
     }
 
-    loop_box(f, imin, imax);
+    loop_box<CI, CJ, CK>(f, imin, imax);
   }
 
   // Loop over all interior points
-  template <typename F> void loop_int(const F &f) const {
+  template <int CI, int CJ, int CK, typename F>
+  void loop_int(const F &f) const {
+    constexpr array<int, dim> offset{!CI, !CJ, !CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = max(tmin[d], nghostzones[d]);
-      imax[d] = min(tmax[d], lsh[d] - nghostzones[d]);
+      imax[d] = min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
+                    lsh[d] + offset[d] - nghostzones[d]);
     }
 
-    loop_box(f, imin, imax);
+    loop_box<CI, CJ, CK>(f, imin, imax);
   }
 
   // Loop over all outer boundary points. This excludes ghost faces, but
   // includes ghost edges/corners on non-ghost faces.
-  template <typename F> void loop_bnd(const F &f) const {
+  template <int CI, int CJ, int CK, typename F>
+  void loop_bnd(const F &f) const {
+    constexpr array<int, dim> offset{!CI, !CJ, !CK};
+
     for (int dir = 0; dir < dim; ++dir) {
       for (int face = 0; face < 2; ++face) {
         if (bbox[2 * dir + face]) {
@@ -119,44 +173,150 @@ public:
           for (int d = 0; d < dim; ++d) {
             // by default, include interior and outer boundaries and ghosts
             imin[d] = 0;
-            imax[d] = lsh[d];
+            imax[d] = lsh[d] + offset[d];
 
             // avoid covering edges and corners multiple times
             if (d < dir) {
               if (bbox[2 * d])
                 imin[d] = nghostzones[d]; // only interior
               if (bbox[2 * d + 1])
-                imax[d] = lsh[d] - nghostzones[d]; // only interior
+                imax[d] = lsh[d] + offset[d] - nghostzones[d]; // only interior
             }
           }
           // only one face on outer boundary
           if (face == 0)
             imax[dir] = nghostzones[dir];
           else
-            imin[dir] = lsh[dir] - nghostzones[dir];
+            imin[dir] = lsh[dir] + offset[dir] - nghostzones[dir];
 
           for (int d = 0; d < dim; ++d) {
             imin[d] = max(tmin[d], imin[d]);
-            imax[d] = min(tmax[d], imax[d]);
+            imax[d] =
+                min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
           }
 
-          loop_box(f, imin, imax);
+          loop_box<CI, CJ, CK>(f, imin, imax);
         }
       }
     }
   }
+
+  template <typename F>
+  void loop_all(const array<int, dim> &indextype, const F &f) const {
+    // typedef void (GridDescBase::*funptr)(const F &f) const;
+    // constexpr array<funptr, 8> funptrs{
+    //     &GridDescBase::loop_all<0, 0, 0, F>,
+    //     &GridDescBase::loop_all<1, 0, 0, F>,
+    //     &GridDescBase::loop_all<0, 1, 0, F>,
+    //     &GridDescBase::loop_all<1, 1, 0, F>,
+    //     &GridDescBase::loop_all<0, 0, 1, F>,
+    //     &GridDescBase::loop_all<1, 0, 1, F>,
+    //     &GridDescBase::loop_all<0, 1, 1, F>,
+    //     &GridDescBase::loop_all<1, 1, 1, F>,
+    // };
+    // return (this->*funptrs[indextype[0] + 2 * indextype[1] + 4 *
+    // indextype[2]])(
+    //     f);
+
+    switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
+    case 0b000:
+      return loop_all<0, 0, 0>(f);
+    case 0b001:
+      return loop_all<1, 0, 0>(f);
+    case 0b010:
+      return loop_all<0, 1, 0>(f);
+    case 0b011:
+      return loop_all<1, 1, 0>(f);
+    case 0b100:
+      return loop_all<0, 0, 1>(f);
+    case 0b101:
+      return loop_all<1, 0, 1>(f);
+    case 0b110:
+      return loop_all<0, 1, 1>(f);
+    case 0b111:
+      return loop_all<1, 1, 1>(f);
+    default:
+      assert(0);
+    }
+  }
+
+  template <typename F>
+  void loop_int(const array<int, dim> &indextype, const F &f) const {
+    switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
+    case 0b000:
+      return loop_int<0, 0, 0>(f);
+    case 0b001:
+      return loop_int<1, 0, 0>(f);
+    case 0b010:
+      return loop_int<0, 1, 0>(f);
+    case 0b011:
+      return loop_int<1, 1, 0>(f);
+    case 0b100:
+      return loop_int<0, 0, 1>(f);
+    case 0b101:
+      return loop_int<1, 0, 1>(f);
+    case 0b110:
+      return loop_int<0, 1, 1>(f);
+    case 0b111:
+      return loop_int<1, 1, 1>(f);
+    default:
+      assert(0);
+    }
+  }
+
+  template <typename F>
+  void loop_bnd(const array<int, dim> &indextype, const F &f) const {
+    switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
+    case 0b000:
+      return loop_bnd<0, 0, 0>(f);
+    case 0b001:
+      return loop_bnd<1, 0, 0>(f);
+    case 0b010:
+      return loop_bnd<0, 1, 0>(f);
+    case 0b011:
+      return loop_bnd<1, 1, 0>(f);
+    case 0b100:
+      return loop_bnd<0, 0, 1>(f);
+    case 0b101:
+      return loop_bnd<1, 0, 1>(f);
+    case 0b110:
+      return loop_bnd<0, 1, 1>(f);
+    case 0b111:
+      return loop_bnd<1, 1, 1>(f);
+    default:
+      assert(0);
+    }
+  }
 };
 
-template <typename F> void loop_all(const cGH *cctkGH, const F &f) {
-  GridDescBase(cctkGH).loop_all(f);
+template <int CI, int CJ, int CK, typename F>
+void loop_all(const cGH *cctkGH, const F &f) {
+  GridDescBase(cctkGH).loop_all<CI, CJ, CK>(f);
 }
 
-template <typename F> void loop_int(const cGH *cctkGH, const F &f) {
-  GridDescBase(cctkGH).loop_int(f);
+template <int CI, int CJ, int CK, typename F>
+void loop_int(const cGH *cctkGH, const F &f) {
+  GridDescBase(cctkGH).loop_int<CI, CJ, CK>(f);
 }
 
-template <typename F> void loop_bnd(const cGH *cctkGH, const F &f) {
-  GridDescBase(cctkGH).loop_bnd(f);
+template <int CI, int CJ, int CK, typename F>
+void loop_bnd(const cGH *cctkGH, const F &f) {
+  GridDescBase(cctkGH).loop_bnd<CI, CJ, CK>(f);
+}
+
+template <typename F>
+void loop_all(const cGH *cctkGH, const array<int, dim> &indextype, const F &f) {
+  GridDescBase(cctkGH).loop_all(indextype, f);
+}
+
+template <typename F>
+void loop_int(const cGH *cctkGH, const array<int, dim> &indextype, const F &f) {
+  GridDescBase(cctkGH).loop_int(indextype, f);
+}
+
+template <typename F>
+void loop_bnd(const cGH *cctkGH, const array<int, dim> &indextype, const F &f) {
+  GridDescBase(cctkGH).loop_bnd(indextype, f);
 }
 
 } // namespace Loop

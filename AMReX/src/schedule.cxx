@@ -41,8 +41,8 @@ constexpr int undefined = 666;
 vector<cGH> thread_local_cctkGH;
 // Tile boxes, should be part of cGH
 struct TileBox {
-  int tile_min[dim];
-  int tile_max[dim];
+  array<int, dim> tile_min;
+  array<int, dim> tile_max;
 };
 vector<TileBox> thread_local_tilebox;
 
@@ -60,6 +60,7 @@ Orientation orient(int d, int f) {
 // Set up a GridDesc
 } // namespace AMReX
 namespace Loop {
+
 GridDescBase::GridDescBase() {}
 
 GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
@@ -82,9 +83,11 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
   // Check whether we are in local mode
   assert(cctkGH->cctk_bbox[0] != AMReX::undefined);
   int thread_num = omp_get_thread_num();
-  const cGH *restrict threadGH = &AMReX::thread_local_cctkGH.at(thread_num);
-  // Check whether this is the correct cGH structure
-  assert(cctkGH == threadGH);
+  if (omp_in_parallel()) {
+    const cGH *restrict threadGH = &AMReX::thread_local_cctkGH.at(thread_num);
+    // Check whether this is the correct cGH structure
+    assert(cctkGH == threadGH);
+  }
 
   const AMReX::TileBox &restrict tilebox =
       AMReX::thread_local_tilebox.at(thread_num);
@@ -92,7 +95,14 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
     tmin[d] = tilebox.tile_min[d];
     tmax[d] = tilebox.tile_max[d];
   }
+
+  for (int d = 0; d < dim; ++d) {
+    dx[d] = cctkGH->cctk_delta_space[d] / cctkGH->cctk_levfac[d];
+    x0[d] = cctkGH->cctk_origin_space[d] +
+            dx[d] * cctkGH->cctk_levoff[d] / cctkGH->cctk_levoffdenom[d];
+  }
 }
+
 } // namespace Loop
 namespace AMReX {
 
@@ -110,7 +120,7 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
   // Global shape
   for (int d = 0; d < dim; ++d)
     gsh[d] =
-        domain[orient(d, 1)] - domain[orient(d, 0)] + 1 + 2 * nghostzones[d];
+        domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 2 * nghostzones[d];
 
   // Local shape
   for (int d = 0; d < dim; ++d)
@@ -135,6 +145,19 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
   for (int d = 0; d < dim; ++d) {
     tmin[d] = gbx[orient(d, 0)] - fbx[orient(d, 0)];
     tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)];
+  }
+
+  const Geometry &geom = ghext->amrcore->Geom(0);
+  const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
+  const CCTK_REAL *restrict const global_dx = geom.CellSize();
+  for (int d = 0; d < dim; ++d) {
+    const int levfac = 1 << leveldata.level;
+    const int levoff = 1 - 2 * nghostzones[d];
+    const int levoffdenom = 2;
+    const CCTK_REAL origin_space = global_x0[d];
+    const CCTK_REAL delta_space = global_dx[d];
+    dx[d] = delta_space / levfac;
+    x0[d] = origin_space + dx[d] * levoff / levoffdenom;
   }
 
   // Check constraints
@@ -168,6 +191,8 @@ GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata, const MFIter &mfi)
   const Box &fbx = mfi.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 // Create a new cGH, copying those data that are set by the flesh, and
 // allocating space for these data that are set per thread by the driver
@@ -324,6 +349,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
+#warning "TODO: IndexType"
         cctkGH->data[groupdata.firstvarindex + vi][tl] = grid.ptr(vars, vi);
       }
     }
@@ -387,9 +413,11 @@ extern "C" void AMReX_GetTileExtent(const void *restrict cctkGH_,
   // Check whether we are in local mode
   assert(cctkGH->cctk_bbox[0] != undefined);
   int thread_num = omp_get_thread_num();
-  const cGH *restrict threadGH = &thread_local_cctkGH.at(thread_num);
-  // Check whether this is the correct cGH structure
-  assert(cctkGH == threadGH);
+  if (omp_in_parallel()) {
+    const cGH *restrict threadGH = &thread_local_cctkGH.at(thread_num);
+    // Check whether this is the correct cGH structure
+    assert(cctkGH == threadGH);
+  }
 
   const TileBox &restrict tilebox = thread_local_tilebox.at(thread_num);
   for (int d = 0; d < dim; ++d) {
@@ -688,11 +716,10 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       // Loop over all levels
       // TODO: parallelize this loop
       for (auto &restrict leveldata : ghext->leveldata) {
-        MultiFab &mfab = *leveldata.groupdata.at(0).mfab.at(0);
         enter_level_mode(threadGH, leveldata);
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-        for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
           enter_local_mode(threadGH, thread_tilebox, leveldata, mfi);
           CCTK_CallFunction(function, attribute, threadGH);
           leave_local_mode(threadGH, thread_tilebox, leveldata, mfi);

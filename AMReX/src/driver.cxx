@@ -5,6 +5,7 @@
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+#include <util_Table.h>
 
 #include <AMReX.H>
 #include <AMReX_BCRec.H>
@@ -79,24 +80,42 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
 
   auto &restrict leveldata = ghext->leveldata.at(level);
   auto &restrict groupdata = leveldata.groupdata.at(gi);
-  MultiFab &mfab = *groupdata.mfab.at(tl);
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+  for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
     GridPtrDesc grid(leveldata, mfi);
 
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     CCTK_REAL *restrict const err = grid.ptr(vars, vi);
     const Array4<char> &tag = tags.array(mfi);
 
-    grid.loop_int([&](int i, int j, int k, int idx) {
-      tag(grid.cactus_offset.x + i, grid.cactus_offset.y + j,
-          grid.cactus_offset.z + k) =
-          err[idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
+    grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
+      tag(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+          grid.cactus_offset.z + p.k) =
+          err[p.idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
     });
   }
 }
+
+namespace {
+array<int, dim> get_group_indextype(const int gi) {
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  array<CCTK_INT, dim> index;
+  int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    index = {1, 1, 1}; // default: cell-centred
+  } else {
+    assert(iret == dim);
+  }
+  array<int, dim> indextype;
+  for (int d = 0; d < dim; ++d)
+    indextype[d] = index[d];
+  return indextype;
+}
+} // namespace
 
 void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
@@ -107,6 +126,10 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   ghext->leveldata.resize(level + 1);
   GHExt::LevelData &leveldata = ghext->leveldata.at(level);
   leveldata.level = level;
+#warning "TODO: Make this an empty MultiFab"
+  leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
+  assert(ba.ixType() ==
+         IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
 
   const int numgroups = CCTK_NumGroups();
   leveldata.groupdata.resize(numgroups);
@@ -122,24 +145,30 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
+    groupdata.indextype = get_group_indextype(gi);
 
     // Allocate grid hierarchies
+    const BoxArray &gba = convert(
+        ba,
+        IndexType(groupdata.indextype[0] ? IndexType::CELL : IndexType::NODE,
+                  groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
+                  groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
     groupdata.mfab.resize(group.numtimelevels);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) =
-          make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+          make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
       // Set grid functions to nan
-      MultiFab &mfab = *groupdata.mfab.at(tl);
       auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
           {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-      for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
         GridPtrDesc grid(leveldata, mfi);
-        const Array4<CCTK_REAL> &vars = mfab.array(mfi);
+        const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-          grid.loop_all(
-              [&](int i, int j, int k, int idx) { ptr[idx] = 0.0 / 0.0; });
+          grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+            ptr[p.idx] = 0.0 / 0.0;
+          });
         }
       }
     }
@@ -207,6 +236,11 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
   // Copy or prolongate
   auto &leveldata = ghext->leveldata.at(level);
+#warning "TODO: Make this an empty MultiFab"
+  leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
+  assert(ba.ixType() ==
+         IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
+
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
     auto &restrict groupdata = leveldata.groupdata.at(gi);
@@ -216,80 +250,48 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     int ntls = groupdata.mfab.size();
     int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
 
-    if (leveldata.level == 0) {
-      // Coarsest level: Copy from same level
+    // This must not happen
+    assert(leveldata.level > 0);
 
-      // This should not happen
-      assert(0);
+    // Copy from same level and/or prolongate from next coarser level
+    auto &coarseleveldata = ghext->leveldata.at(level - 1);
+    auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
+    assert(coarsegroupdata.numvars == groupdata.numvars);
 
-      PhysBCFunctNoOp fphysbc;
-
-      for (int tl = 0; tl < ntls; ++tl) {
-        auto mfab =
-            make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
-        // Set grid functions to nan
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+    PhysBCFunctNoOp cphysbc;
+    PhysBCFunctNoOp fphysbc;
+    const IntVect reffact{2, 2, 2};
+    // boundary conditions
+    const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_x ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z ? BCType::int_dir : BCType::reflect_odd);
+    const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+    for (int tl = 0; tl < ntls; ++tl) {
+      auto mfab = make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
+      // Set grid functions to nan
+      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-        for (MFIter mfi(*mfab, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc grid(leveldata, mfi);
-          const Array4<CCTK_REAL> &vars = mfab->array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-            grid.loop_all(
-                [&](int i, int j, int k, int idx) { ptr[idx] = 0.0 / 0.0; });
-          }
+      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+        GridPtrDesc grid(leveldata, mfi);
+        const Array4<CCTK_REAL> &vars = mfab->array(mfi);
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+          grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+            ptr[p.idx] = 0.0 / 0.0;
+          });
         }
-        if (tl < prolongate_tl)
-          FillPatchSingleLevel(*mfab, 0.0, {&*groupdata.mfab.at(tl)}, {0.0}, 0,
-                               0, groupdata.numvars,
-                               ghext->amrcore->Geom(level), fphysbc, 0);
-        groupdata.mfab.at(tl) = move(mfab);
       }
-
-    } else {
-      // Refined level: copy from same level and/or prolongate from
-      // next coarser level
-
-      auto &coarseleveldata = ghext->leveldata.at(level - 1);
-      auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
-      assert(coarsegroupdata.numvars == groupdata.numvars);
-
-      PhysBCFunctNoOp cphysbc;
-      PhysBCFunctNoOp fphysbc;
-      const IntVect reffact{2, 2, 2};
-      // boundary conditions
-      const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                        periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                        periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                        periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                        periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                        periodic_z ? BCType::int_dir : BCType::reflect_odd);
-      const Vector<BCRec> bcs(groupdata.numvars, bcrec);
-      for (int tl = 0; tl < ntls; ++tl) {
-        auto mfab =
-            make_unique<MultiFab>(ba, dm, groupdata.numvars, ghost_size);
-        // Set grid functions to nan
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-        for (MFIter mfi(*mfab, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc grid(leveldata, mfi);
-          const Array4<CCTK_REAL> &vars = mfab->array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-            grid.loop_all(
-                [&](int i, int j, int k, int idx) { ptr[idx] = 0.0 / 0.0; });
-          }
-        }
-        if (tl < prolongate_tl)
-          FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
-                             {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                             groupdata.numvars, ghext->amrcore->Geom(level - 1),
-                             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc,
-                             0, reffact, &cell_bilinear_interp, bcs, 0);
-        groupdata.mfab.at(tl) = move(mfab);
-      }
+      if (tl < prolongate_tl)
+        FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
+                           {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                           groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                           ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
+                           reffact, &cell_bilinear_interp, bcs, 0);
+      groupdata.mfab.at(tl) = move(mfab);
     }
   }
 }
@@ -423,7 +425,7 @@ int InitGH(cGH *restrict cctkGH) {
   // cout << ghext->amrcore->DistributionMap(level) << "\n";
 
   return 0; // unused
-} // namespace AMReX
+}
 
 void CreateRefinedGrid(int level) {
   DECLARE_CCTK_PARAMETERS;

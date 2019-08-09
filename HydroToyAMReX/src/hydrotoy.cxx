@@ -21,18 +21,13 @@ extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  CCTK_REAL x0[dim], dx[dim];
-  for (int d = 0; d < dim; ++d) {
-    x0[d] = CCTK_ORIGIN_SPACE(d);
-    dx[d] = CCTK_DELTA_SPACE(d);
-  }
 
-  Loop::loop_all(cctkGH, [&](int i, int j, int k, int idx) {
-    rho[idx] = 1.0;
-    momx[idx] = 0.0;
-    momy[idx] = 0.0;
-    momz[idx] = 0.0;
-    etot[idx] = 1.0;
+  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    rho[p.idx] = 1.0;
+    momx[p.idx] = 0.0;
+    momy[p.idx] = 0.0;
+    momz[p.idx] = 0.0;
+    etot[p.idx] = 1.0;
   });
 }
 
@@ -41,28 +36,26 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   constexpr int di = 1;
   const int dj = di * cctk_ash[0];
   const int dk = dj * cctk_ash[1];
 
-  Loop::loop_int(cctkGH, [&](int i, int j, int k, int idx) {
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     // dt rho + d_i (rho vel^i) = 0
-    rho[idx] = rho_p[idx] - dt * ((momx_p[idx + di] - momx_p[idx]) / dx +
-                                  (momy_p[idx + dj] - momy_p[idx]) / dy +
-                                  (momz_p[idx + dk] - momz_p[idx]) / dz);
+    rho[p.idx] =
+        rho_p[p.idx] - dt * ((momx_p[p.idx + di] - momx_p[p.idx]) / p.dx +
+                             (momy_p[p.idx + dj] - momy_p[p.idx]) / p.dy +
+                             (momz_p[p.idx + dk] - momz_p[p.idx]) / p.dz);
 
     //     // dt mom^i + d_j (mom^i vel^j) = 0
-    //     momx[idx] = momx_p[idx] - dt * (
-    // momx_p[idx] * momx_p[idx]
+    //     momx[p.idx] = momx_p[p.idx] - dt * (
+    // momx_p[p.idx] * momx_p[p.idx]
     //                                     );
 
-    CCTK_REAL velx = momx[idx] / rho[idx];
-    CCTK_REAL vely = momy[idx] / rho[idx];
-    CCTK_REAL velz = momz[idx] / rho[idx];
+    CCTK_REAL velx = momx[p.idx] / rho[p.idx];
+    CCTK_REAL vely = momy[p.idx] / rho[p.idx];
+    CCTK_REAL velz = momz[p.idx] / rho[p.idx];
   });
 }
 
