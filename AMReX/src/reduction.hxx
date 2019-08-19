@@ -17,22 +17,24 @@
 namespace AMReX {
 using namespace std;
 
-template <typename T> struct reduction {
-  T fmax1(T x, T y) {
-    if (CCTK_isnan(x))
-      return x;
-    if (CCTK_isnan(y))
-      return y;
-    return fmax(x, y);
-  }
-  T fmin1(T x, T y) {
-    if (CCTK_isnan(x))
-      return x;
-    if (CCTK_isnan(y))
-      return y;
-    return fmin(x, y);
-  }
+template <typename T> T fmax1(T x, T y) {
+  if (CCTK_isnan(x))
+    return x;
+  if (CCTK_isnan(y))
+    return y;
+  return fmax(x, y);
+}
+template <typename T> T fmin1(T x, T y) {
+  if (CCTK_isnan(x))
+    return x;
+  if (CCTK_isnan(y))
+    return y;
+  return fmin(x, y);
+}
 
+template <typename T> struct reduction {
+  // TODO: contains_inf, contains_nan?
+  // TODO: minloc, maxloc
   T min, max, sum, sum2;
   T vol, maxabs, sumabs, sum2abs;
   reduction();

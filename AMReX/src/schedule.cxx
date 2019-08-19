@@ -549,6 +549,14 @@ int Initialise(tFleshConfig *config) {
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
+      double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+      for (const auto &leveldata : ghext->leveldata) {
+        int sz = leveldata.mfab0->size();
+        double pts = leveldata.mfab0->boxArray().d_numPts();
+        CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)", leveldata.level,
+                   sz, pts,
+                   100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+      }
 
       // Did we create a new level?
       const bool did_create_new_level = new_numlevels > old_numlevels;
@@ -666,6 +674,14 @@ int Evolve(tFleshConfig *config) {
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
                  new_numlevels);
+      double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+      for (const auto &leveldata : ghext->leveldata) {
+        int sz = leveldata.mfab0->size();
+        double pts = leveldata.mfab0->boxArray().d_numPts();
+        CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)", leveldata.level,
+                   sz, pts,
+                   100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+      }
 
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
       CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
