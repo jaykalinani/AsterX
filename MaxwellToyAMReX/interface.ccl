@@ -12,23 +12,27 @@ USES INCLUDE HEADER: loop.hxx
 
 # Wikipedia, <https://en.wikipedia.org/wiki/Maxwell%27s_equations>
 
-# d*dA = mu J   A^a,^b_b - A^b,^a_b = mu J^a
-# d*A  = 0      A^a,a   = 0
+# 4d:
+#
+# d*dA = mu J      A^a,^b_b - A^b,^a_b = mu J^a
+# d*A  = 0         A^a,a               = 0
+#
+# F   = dA        F_ab                     = A_a,b - A_b,a
+# dF  = 0         F_ab,c + F_bc,a + F_ca,b = 0
+# d*F = mu J      F^ab,a                   = mu J^b
 
+# 3d:
+#
 # -d*(dphi + A,t)      = rho/epsilon
 # d*dA + dt*(dphi+A,t) = mu J
-# *phi,t + d*A         = 0             phi,t + A^i,i = 0
-
-# F   = dA     F_ab                     = A_a,b - A_b,a
-# dF  = 0      F_ab,c + F_bc,a + F_ca,b = 0
-# d*F = mu J   F^ab,a                   = mu J^b
-
-# E          = -dphi - A,t   E_i                     = - phi,i - A_i,t
-# B          = dA            B_ij                    = A_j,i - A_i,j
-# dE + B,t   = 0             E_j,i - E_i,j + B_ij,t  = 0
-# dB         = 0             B_jk,i + B_ki,j + B_ijk = 0
-# d*E        = rho/epsilon   E^i,i                   = rho/epsilon
-# d*B - dt*E = mu J          - B^ij,i - E^j,t        = mu J^j
+# *phi,t + d*A         = 0                phi,t + A^i,i = 0
+#
+# E          = -dphi - A,t      E_i                      = - phi,i - A_i,t
+# B          = dA               B_ij                     = A_j,i - A_i,j
+# dE + B,t   = 0                E_j,i - E_i,j + B_ij,t   = 0
+# dB         = 0                B_jk,i + B_ki,j + B_ij,k = 0
+# d*E        = rho/epsilon      E^i,i                    = rho/epsilon
+# d*B - dt*E = mu J             - B^ij,i - E^j,t         = mu J^j
 
 
 
@@ -59,6 +63,12 @@ USES INCLUDE HEADER: loop.hxx
 #   rhoerr
 #   jxerr jyerr jzerr
 # } "Errors"
+# 
+# CCTK_REAL constraints TYPE=gf
+# {
+#   dive
+#   divb
+# } "Constraints"
 
 CCTK_REAL potential_phi TYPE=gf TIMELEVELS=2 TAGS='index={0 0 0}'
 {
@@ -186,12 +196,19 @@ CCTK_REAL errors_current_jz TYPE=gf TAGS='index={0 0 1}'
   jzerr
 } "Electric charge current"
 
-# CCTK_REAL constraints TYPE=gf
-# {
-#   dive
-#   divb
-# } "Constraints"
-# 
+
+
+CCTK_REAL constraints_dive TYPE=gf TAGS='index={0 0 0}'
+{
+  dive
+} "Constraints"
+CCTK_REAL constraints_divb TYPE=gf TAGS='index={1 1 1}'
+{
+  divb
+} "Constraints"
+
+
+
 # CCTK_REAL poynting TYPE=gf
 # {
 #   sx sy sz

@@ -74,7 +74,7 @@ struct GHExt {
     struct GroupData {
       int firstvarindex;
       int numvars;
-      array<int,dim> indextype;
+      array<int, dim> indextype;
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]
     };

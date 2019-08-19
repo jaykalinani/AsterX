@@ -88,11 +88,11 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
 
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     CCTK_REAL *restrict const err = grid.ptr(vars, vi);
-    const Array4<char> &tag = tags.array(mfi);
+    const Array4<char> &tags_array4 = tags.array(mfi);
 
     grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
-      tag(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-          grid.cactus_offset.z + p.k) =
+      tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+                  grid.cactus_offset.z + p.k) =
           err[p.idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
     });
   }

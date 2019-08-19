@@ -2,8 +2,15 @@
 
 
 
+BOOLEAN evolve_b "Evolve magnetic field" STEERABLE=never
+{
+} yes
+
+
+
 KEYWORD initial_condition "Initial condition"
 {
+  "linear" :: "for testing"
   "plane wave" :: ""
   "Gaussian wave" :: ""
 } "plane wave"
@@ -27,3 +34,11 @@ CCTK_REAL width "width"
 {
   (0.0:* :: ""
 } 0.1
+
+
+
+CCTK_INT analyse_every "How often to calculate analysis quantities" STEERABLE=always
+{
+  0 :: "never"
+  1:* :: "every that many iterations"
+} 1

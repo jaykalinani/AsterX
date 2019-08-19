@@ -10,6 +10,8 @@
 #undef isnormal
 #undef signbit
 
+#include <mpi.h>
+
 #include <cmath>
 
 namespace AMReX {
@@ -66,6 +68,8 @@ reduction<T>::reduction(const reduction &x, const reduction &y)
 
 typedef reduction<CCTK_REAL> reduction_CCTK_REAL;
 #pragma omp declare reduction(reduction:reduction_CCTK_REAL : omp_out += omp_in)
+
+MPI_Op reduction_mpi_op();
 
 reduction<CCTK_REAL> reduce(int gi, int vi, int tl);
 

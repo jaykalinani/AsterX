@@ -1,5 +1,6 @@
 #include "driver.hxx"
 #include "schedule.hxx"
+#include "timer.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -449,6 +450,9 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
 
 // Schedule initialisation
 int Initialise(tFleshConfig *config) {
+  static Timer timer("Initialise");
+  Interval interval(timer);
+
   cGH *restrict const cctkGH = CCTK_SetupGH(config, 0);
   CCTKi_AddGH(config, 0, cctkGH);
 
@@ -480,11 +484,12 @@ int Initialise(tFleshConfig *config) {
   if (CCTK_MyProc(nullptr) == 0) {
     enter_level_mode(cctkGH, ghext->leveldata.at(0));
     const int *restrict gsh = cctkGH->cctk_gsh;
+    const int *restrict nghostzones = cctkGH->cctk_nghostzones;
     CCTK_REAL x0[dim], x1[dim], dx[dim];
     for (int d = 0; d < dim; ++d) {
       dx[d] = cctkGH->cctk_delta_space[d];
       x0[d] = cctkGH->cctk_origin_space[d];
-      x1[d] = x0[d] + gsh[d] * dx[d];
+      x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
     }
     CCTK_VINFO("Grid extent:");
     CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
@@ -536,7 +541,11 @@ int Initialise(tFleshConfig *config) {
       CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
 
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
-      CreateRefinedGrid(level + 1);
+      {
+        static Timer timer("InitialiseRegrid");
+        Interval interval(timer);
+        CreateRefinedGrid(level + 1);
+      }
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
@@ -633,6 +642,9 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
 int Evolve(tFleshConfig *config) {
   DECLARE_CCTK_PARAMETERS;
 
+  static Timer timer("Evolve");
+  Interval interval(timer);
+
   assert(config);
   cGH *restrict const cctkGH = config->GH[0];
   assert(cctkGH);
@@ -646,7 +658,11 @@ int Evolve(tFleshConfig *config) {
       CCTK_VINFO("Regridding...");
       CCTK_REAL time = 0.0; // dummy time
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
-      ghext->amrcore->regrid(0, time);
+      {
+        static Timer timer("EvolveRegrid");
+        Interval interval(timer);
+        ghext->amrcore->regrid(0, time);
+      }
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
                  new_numlevels);
@@ -678,6 +694,9 @@ int Shutdown(tFleshConfig *config) {
   assert(config);
   cGH *restrict const cctkGH = config->GH[0];
   assert(cctkGH);
+
+  static Timer timer("Shutdown");
+  Interval interval(timer);
 
   CCTK_VINFO("Shutting down...");
 
@@ -751,6 +770,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
 
+  static Timer timer("Sync");
+  Interval interval(timer);
+
   assert(cctkGH);
   assert(numgroups >= 0);
   assert(groups);
@@ -816,6 +838,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 }
 
 void Restrict(int level) {
+  static Timer timer("Restrict");
+  Interval interval(timer);
+
   const int gi_regrid_error = CCTK_GroupIndex("AMReX::regrid_error");
   assert(gi_regrid_error >= 0);
   const int gi_refinement_level = CCTK_GroupIndex("AMReX::refinement_level");

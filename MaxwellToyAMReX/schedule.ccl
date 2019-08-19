@@ -1,9 +1,33 @@
 # Schedule definitions for thorn MaxwellToyAMReX
 
-SCHEDULE MaxwellToyAMReX_Initialize AT initial
-{
-  LANG: C
-} "Set up initial conditions for the Maxwell equations"
+if (evolve_b) {
+  SCHEDULE MaxwellToyAMReX_Initialize AT initial
+  {
+    LANG: C
+    SYNC: potential_phi
+    SYNC: potential_ax potential_ay potential_az
+    SYNC: field_ex field_ey field_ez
+    SYNC: field_bx field_by field_bz
+    SYNC: current_rho
+    SYNC: current_jx current_jy current_jz
+  } "Set up initial conditions for the Maxwell equations"
+} else {
+  SCHEDULE MaxwellToyAMReX_Initialize AT initial
+  {
+    LANG: C
+    SYNC: potential_phi
+    SYNC: potential_ax potential_ay potential_az
+    SYNC: field_ex field_ey field_ez
+    SYNC: current_rho
+    SYNC: current_jx current_jy current_jz
+  } "Set up initial conditions for the Maxwell equations"
+
+  SCHEDULE MaxwellToyAMReX_Dependents1 AT initial AFTER MaxwellToyAMReX_Initialize
+  {
+    LANG: C
+    SYNC: field_bx field_by field_bz
+  } "Calculate the magnetic field"
+}
 
 SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
 {
@@ -12,16 +36,30 @@ SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
 
 
 
+if (evolve_b) {
+  SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
+  {
+    LANG: C
+    SYNC: potential_ax potential_ay potential_az
+    SYNC: field_bx field_by field_bz
+    SYNC: current_jx current_jy current_jz
+  } "Evolve the Maxwell equations, step 1"
+} else {
+  SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
+  {
+    LANG: C
+    SYNC: potential_ax potential_ay potential_az
+    SYNC: current_jx current_jy current_jz
+  } "Evolve the Maxwell equations, step 1"
 
-SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
-{
-  LANG: C
-  SYNC: potential_ax potential_ay potential_az
-  SYNC: field_bx field_by field_bz
-  SYNC: current_jx current_jy current_jz
-} "Evolve the Maxwell equations, step 1"
+  SCHEDULE MaxwellToyAMReX_Dependents1 AT evol AFTER MaxwellToyAMReX_Evolve1
+  {
+    LANG: C
+    SYNC: field_bx field_by field_bz
+  } "Calculate the magnetic field"
+}
 
-SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER MaxwellToyAMReX_Evolve1
+SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER (MaxwellToyAMReX_Evolve1, MaxwellToyAMReX_Dependents1)
 {
   LANG: C
   SYNC: potential_phi
@@ -29,10 +67,14 @@ SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER MaxwellToyAMReX_Evolve1
   SYNC: current_rho
 } "Evolve the Maxwell equations step 2"
 
-# SCHEDULE MaxwellToyAMReX_Constraints AT analysis
-# {
-#   LANG: C
-# } "Calculate constraints of the Maxwell equations"
+SCHEDULE MaxwellToyAMReX_Constraints AT analysis
+{
+  LANG: C
+  SYNC: constraints_dive
+  SYNC: constraints_divb
+  # TRIGGERS: constraints_dive
+  # TRIGGERS: constraints_divb
+} "Calculate constraints of the Maxwell equations"
 
 # SCHEDULE MaxwellToyAMReX_Energy AT analysis
 # {
@@ -47,4 +89,10 @@ SCHEDULE MaxwellToyAMReX_EstimateError AT poststep
 SCHEDULE MaxwellToyAMReX_Error AT analysis
 {
   LANG: C
+  # TRIGGERS: errors_potential_phi
+  # TRIGGERS: errors_potential_ax errors_potential_ay errors_potential_az
+  # TRIGGERS: errors_field_ex errors_field_ey errors_field_ez
+  # TRIGGERS: errors_field_bx errors_field_by errors_field_bz
+  # TRIGGERS: errors_current_rho
+  # TRIGGERS: errors_current_jx errors_current_jy errors_current_jz
 } "Calculate error for the Maxwell equations"

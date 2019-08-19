@@ -97,9 +97,9 @@ CactusUtils/Formaline
 # CactusUtils/Nice
 # CactusUtils/NoMPI
 # CactusUtils/SystemStatistics
-# CactusUtils/SystemTopology
-# CactusUtils/TerminationTrigger
-# CactusUtils/TimerReport
+CactusUtils/SystemTopology
+CactusUtils/TerminationTrigger
+CactusUtils/TimerReport
 # CactusUtils/Trigger
 # CactusUtils/Vectors
 # CactusUtils/WatchDog
@@ -112,6 +112,8 @@ CactusUtils/Formaline
 !URL      = https://svn.cactuscode.org/projects/$1/$2/trunk
 !CHECKOUT =
 ExternalLibraries/MPI
+ExternalLibraries/hwloc
+ExternalLibraries/zlib
 
 
 

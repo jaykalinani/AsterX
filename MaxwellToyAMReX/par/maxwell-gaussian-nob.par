@@ -38,7 +38,7 @@ AMReX::regrid_error_threshold = 0.01
 
 AMReX::dtfac = 0.5
 
-MaxwellToyAMReX::evolve_b = yes
+MaxwellToyAMReX::evolve_b = no
 
 MaxwellToyAMReX::initial_condition = "Gaussian wave"
 

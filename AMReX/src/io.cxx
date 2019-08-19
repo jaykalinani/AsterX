@@ -2,6 +2,7 @@
 #include "io.hxx"
 #include "reduction.hxx"
 #include "schedule.hxx"
+#include "timer.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -29,6 +30,9 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
+  static Timer timer("OutputPlotfile");
+  Interval interval(timer);
+
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
     auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
@@ -39,10 +43,12 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &c : groupname)
         c = tolower(c);
-      ostringstream buf;
-      buf << out_dir << "/" << groupname;
-      buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
-      string filename = buf.str();
+      string filename = [&]() {
+        ostringstream buf;
+        buf << out_dir << "/" << groupname << ".it" << setw(6) << setfill('0')
+            << cctk_iteration;
+        return buf.str();
+      }();
 
       Vector<string> varnames(groupdata0.numvars);
       for (int vi = 0; vi < groupdata0.numvars; ++vi) {
@@ -67,6 +73,21 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
       // TODO: Output all groups into a single file
       WriteMultiLevelPlotfile(filename, mfabs.size(), mfabs, varnames, geoms,
                               cctk_time, iters, reffacts);
+
+      const bool is_root = CCTK_MyProc(nullptr) == 0;
+      if (is_root) {
+        string visitname = [&]() {
+          ostringstream buf;
+          buf << out_dir << "/" << groupname << ".visit";
+          return buf.str();
+        }();
+        ofstream visit(visitname, ios::app);
+        assert(visit.good());
+        // visit << filename << "/Header\n";
+        visit << groupname << ".it" << setw(6) << setfill('0') << cctk_iteration
+              << "/Header\n";
+        visit.close();
+      }
     }
   }
 }
@@ -204,6 +225,9 @@ void OutputASCII(const cGH *restrict cctkGH) {
   if (!out_tsv)
     return;
 
+  static Timer timer("OutputASCII");
+  Interval interval(timer);
+
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
     auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
@@ -238,6 +262,9 @@ void OutputNorms(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
+  static Timer timer("OutputNorms");
+  Interval interval(timer);
+
   const bool is_root = CCTK_MyProc(nullptr) == 0;
 
   const int numgroups = CCTK_NumGroups();
@@ -246,22 +273,35 @@ void OutputNorms(const cGH *restrict cctkGH) {
     const GHExt::LevelData &restrict leveldata = ghext->leveldata.at(level);
     const GHExt::LevelData::GroupData &restrict groupdata =
         leveldata.groupdata.at(gi);
-    const int numvars = groupdata.numvars;
-    for (int vi = 0; vi < numvars; ++vi) {
-      const int tl = 0;
+
+    const int tl = 0;
+    for (int vi = 0; vi < groupdata.numvars; ++vi) {
+
+#if 1
       reduction<CCTK_REAL> red = reduce(gi, vi, tl);
+#else
+      reduction<CCTK_REAL> red;
+      for (auto &restrict leveldata : ghext->leveldata) {
+        auto &restrict groupdata = leveldata.groupdata.at(gi);
+        MultiFab &mfab = *groupdata.mfab.at(tl);
+        reduction<CCTK_REAL> red1;
+        red1.min = mfab.min(vi);
+        red1.max = mfab.max(vi);
+        red1.sum = mfab.sum(vi);
+        // red1.sum2 = mfab.sum2(vi);
+        // red1.vol = mfab.vol(vi);
+        red1.maxabs = mfab.norminf(vi);
+        red1.sumabs = mfab.norm1(vi, mfab.fb_period);
+        red1.sum2abs = pow(mfab.norm2(vi), 2);
+        red += red1;
+      }
+#endif
+
       if (is_root)
         cout << "  "
              << unique_ptr<char>(CCTK_FullName(groupdata.firstvarindex + vi))
                     .get()
-             << ": maxabs=" << red.maxabs << "\n";
-      // CCTK_REAL maxabs = 0.0;
-      // for (auto &restrict leveldata : ghext->leveldata) {
-      //   auto &restrict groupdata = leveldata.groupdata.at(gi);
-      //   MultiFab &mfab = *groupdata.mfab.at(tl);
-      //   maxabs = fmax(maxabs, mfab.norminf(vi));
-      // }
-      // CCTK_VINFO("            %g", maxabs);
+             << ": maxabs=" << red.maxabs << " vol=" << red.vol << "\n";
     }
   }
 }
@@ -270,17 +310,19 @@ int OutputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
+  static Timer timer("OutputGH");
+  Interval interval(timer);
+
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root)
     cout << "OutputGH: iteration " << cctk_iteration << ", time " << cctk_time
          << ", run time " << CCTK_RunTime() << " s\n";
 
-  if (out_every <= 0 || cctk_iteration % out_every != 0)
-    return 0;
-
-  OutputPlotfile(cctkGH);
-  OutputASCII(cctkGH);
-  OutputNorms(cctkGH);
+  if (out_every > 0 && cctk_iteration % out_every == 0) {
+    OutputPlotfile(cctkGH);
+    OutputASCII(cctkGH);
+    OutputNorms(cctkGH);
+  }
 
   // TODO: This should be the number of variables output
   return 0;
