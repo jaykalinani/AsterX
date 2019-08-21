@@ -641,19 +641,22 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
         for (int tl = ntls - 1; tl > 0; --tl)
           groupdata.mfab.at(tl) = move(groupdata.mfab.at(tl - 1));
         groupdata.mfab.at(0) = move(tmp);
-        // Set grid functions to nan
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc grid(leveldata, mfi);
+
+        if (poison_undefined_points) {
+          // Set grid functions to nan
           const int tl = 0;
-          const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-            grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-              ptr[p.idx] = 0.0 / 0.0;
-            });
+          auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+              {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+          for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+            GridPtrDesc grid(leveldata, mfi);
+            const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+              grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+                ptr[p.idx] = 0.0 / 0.0;
+              });
+            }
           }
         }
       }

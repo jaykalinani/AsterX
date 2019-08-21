@@ -157,18 +157,20 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) =
           make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
-      // Set grid functions to nan
-      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+      if (poison_undefined_points) {
+        // Set grid functions to nan
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-        GridPtrDesc grid(leveldata, mfi);
-        const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-          grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-            ptr[p.idx] = 0.0 / 0.0;
-          });
+        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc grid(leveldata, mfi);
+          const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+            grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+              ptr[p.idx] = 0.0 / 0.0;
+            });
+          }
         }
       }
     }
@@ -277,18 +279,20 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
-      // Set grid functions to nan
-      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+      if (poison_undefined_points) {
+        // Set grid functions to nan
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-        GridPtrDesc grid(leveldata, mfi);
-        const Array4<CCTK_REAL> &vars = mfab->array(mfi);
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-          grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-            ptr[p.idx] = 0.0 / 0.0;
-          });
+        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc grid(leveldata, mfi);
+          const Array4<CCTK_REAL> &vars = mfab->array(mfi);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+            grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+              ptr[p.idx] = 0.0 / 0.0;
+            });
+          }
         }
       }
       if (tl < prolongate_tl)
