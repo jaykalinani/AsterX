@@ -288,7 +288,7 @@ void leave_global_mode(cGH *restrict cctkGH) {
     cctkGH->cctk_nghostzones[d] = undefined;
 }
 
-// Set cctkGH entries for local mode
+// Set cctkGH entries for level mode
 void enter_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata) {
   DECLARE_CCTK_PARAMETERS;
@@ -350,7 +350,6 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-#warning "TODO: IndexType"
         cctkGH->data[groupdata.firstvarindex + vi][tl] = grid.ptr(vars, vi);
       }
     }
