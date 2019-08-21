@@ -6,7 +6,7 @@ BOOLEAN verbose "Verbose output" STEERABLE=always
 {
 } "no"
 
-BOOLEAN poison_undefined_points "Set undefined grid points to nan" STEERABLE=always
+BOOLEAN poison_undefined_values "Set undefined grid point values to nan" STEERABLE=always
 {
 } "yes"
 

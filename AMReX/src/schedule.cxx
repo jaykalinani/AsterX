@@ -641,7 +641,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
           groupdata.mfab.at(tl) = move(groupdata.mfab.at(tl - 1));
         groupdata.mfab.at(0) = move(tmp);
 
-        if (poison_undefined_points) {
+        if (poison_undefined_values) {
           // Set grid functions to nan
           const int tl = 0;
           auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(

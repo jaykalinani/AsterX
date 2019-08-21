@@ -157,7 +157,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) =
           make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
-      if (poison_undefined_points) {
+      if (poison_undefined_values) {
         // Set grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
@@ -279,7 +279,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
-      if (poison_undefined_points) {
+      if (poison_undefined_values) {
         // Set grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
