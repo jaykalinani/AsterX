@@ -871,6 +871,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 }
 
 void Restrict(int level) {
+  DECLARE_CCTK_PARAMETERS;
+
   static Timer timer("Restrict");
   Interval interval(timer);
 
@@ -880,13 +882,13 @@ void Restrict(int level) {
   assert(gi_refinement_level >= 0);
 
   auto &leveldata = ghext->leveldata.at(level);
-  const auto &fineleveldata = ghext->leveldata.at(level + 1);
+  const auto &fine_leveldata = ghext->leveldata.at(level + 1);
   for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
       continue;
     auto &groupdata = leveldata.groupdata.at(gi);
-    const auto &finegroupdata = fineleveldata.groupdata.at(gi);
+    const auto &fine_groupdata = fine_leveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict
     // the oldest.
 #warning "TODO: during evolution, restrict only one time level"
@@ -894,23 +896,46 @@ void Restrict(int level) {
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
+
+      if (poison_undefined_values) {
+        MultiFab &mfab = *groupdata.mfab.at(tl);
+        const MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
+        const IntVect reffact{2, 2, 2};
+        const iMultiFab finemask =
+            makeFineMask(mfab, fine_mfab.boxArray(), reffact);
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc grid(leveldata, mfi);
+          const Array4<const int> &mask = finemask.array(mfi);
+          const Array4<CCTK_REAL> &vars = mfab.array(mfi);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+            grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+              if (mask(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+                       grid.cactus_offset.z + p.k))
+                ptr[p.idx] = 0.0 / 0.0;
+            });
+          }
+        }
+      }
+
       if (groupdata.indextype == array<int, dim>{0, 0, 0})
-        amrex::average_down_nodal(*finegroupdata.mfab.at(tl),
+        amrex::average_down_nodal(*fine_groupdata.mfab.at(tl),
                                   *groupdata.mfab.at(tl), reffact);
       else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
                groupdata.indextype == array<int, dim>{0, 1, 0} ||
                groupdata.indextype == array<int, dim>{0, 0, 1})
-        amrex::average_down_edges(*finegroupdata.mfab.at(tl),
+        amrex::average_down_edges(*fine_groupdata.mfab.at(tl),
                                   *groupdata.mfab.at(tl), reffact);
       else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
                groupdata.indextype == array<int, dim>{1, 0, 1} ||
                groupdata.indextype == array<int, dim>{0, 1, 1})
-        amrex::average_down_faces(*finegroupdata.mfab.at(tl),
+        amrex::average_down_faces(*fine_groupdata.mfab.at(tl),
                                   *groupdata.mfab.at(tl), reffact);
       else if (groupdata.indextype == array<int, dim>{1, 1, 1})
-        amrex::average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                            // ghext->amrcore->Geom(level + 1),
-                            // ghext->amrcore->Geom(level),
+        amrex::average_down(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
                             0, groupdata.numvars, reffact);
       else
         assert(0);
