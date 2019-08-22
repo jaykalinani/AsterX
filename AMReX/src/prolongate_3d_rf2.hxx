@@ -73,6 +73,7 @@ public:
                          RunOn            gpu_or_cpu) override;
 };
 
+extern Prolongate3D_VC_RF2<5> prolongate3d_vc_rf2_o5;
 }
 
 #endif // CARPET_PROLONGATE_3D_RF2_H_
