@@ -954,21 +954,21 @@ void Restrict(int level) {
       }
 
       if (groupdata.indextype == array<int, dim>{0, 0, 0})
-        amrex::average_down_nodal(*fine_groupdata.mfab.at(tl),
-                                  *groupdata.mfab.at(tl), reffact);
+        average_down_nodal(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           reffact);
       else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
                groupdata.indextype == array<int, dim>{0, 1, 0} ||
                groupdata.indextype == array<int, dim>{0, 0, 1})
-        amrex::average_down_edges(*fine_groupdata.mfab.at(tl),
-                                  *groupdata.mfab.at(tl), reffact);
+        average_down_edges(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           reffact);
       else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
                groupdata.indextype == array<int, dim>{1, 0, 1} ||
                groupdata.indextype == array<int, dim>{0, 1, 1})
-        amrex::average_down_faces(*fine_groupdata.mfab.at(tl),
-                                  *groupdata.mfab.at(tl), reffact);
+        average_down_faces(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           reffact);
       else if (groupdata.indextype == array<int, dim>{1, 1, 1})
-        amrex::average_down(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                            0, groupdata.numvars, reffact);
+        average_down(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
+                     groupdata.numvars, reffact);
       else
         assert(0);
     }
