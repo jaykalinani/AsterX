@@ -43,7 +43,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &c : groupname)
         c = tolower(c);
-      string filename = [&]() {
+      const string filename = [&]() {
         ostringstream buf;
         buf << out_dir << "/" << groupname << ".it" << setw(6) << setfill('0')
             << cctk_iteration;
@@ -76,7 +76,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
 
       const bool is_root = CCTK_MyProc(nullptr) == 0;
       if (is_root) {
-        string visitname = [&]() {
+        const string visitname = [&]() {
           ostringstream buf;
           buf << out_dir << "/" << groupname << ".visit";
           return buf.str();
@@ -87,50 +87,6 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
         visit << groupname << ".it" << setw(6) << setfill('0') << cctk_iteration
               << "/Header\n";
         visit.close();
-      }
-    }
-  }
-}
-
-template <typename T>
-void write_arrays(ostream &os, const cGH *restrict cctkGH, int level,
-                  int component, const vector<const T *> ptrs,
-                  const GridDesc &grid) {
-  DECLARE_CCTK_ARGUMENTS;
-
-  const int levfac = 1 << level;
-  CCTK_REAL x0[dim], dx[dim];
-  for (int d = 0; d < dim; ++d) {
-    dx[d] = cctk_delta_space[d] / levfac;
-    x0[d] = cctk_origin_space[d] + 0.5 * dx[d];
-  }
-
-  int imin[dim], imax[dim];
-  for (int d = 0; d < dim; ++d) {
-    imin[d] = grid.bbox[2 * d] ? 0 : grid.nghostzones[d];
-    imax[d] = grid.lsh[d] - (grid.bbox[2 * d + 1] ? 0 : grid.nghostzones[d]);
-  }
-
-  constexpr int di = 1;
-  const int dj = di * grid.ash[0];
-  const int dk = dj * grid.ash[1];
-
-  for (int k = 0; k < grid.lsh[2]; ++k) {
-    for (int j = 0; j < grid.lsh[1]; ++j) {
-      for (int i = 0; i < grid.lsh[0]; ++i) {
-        const int idx = di * i + dj * j + dk * k;
-        const int isghost = !(i >= imin[0] && i < imax[0] && j >= imin[1] &&
-                              j < imax[1] && k >= imin[2] && k < imax[2]);
-        T x = x0[0] + (grid.lbnd[0] + i) * dx[0];
-        T y = x0[1] + (grid.lbnd[1] + j) * dx[1];
-        T z = x0[2] + (grid.lbnd[2] + k) * dx[2];
-        os << cctk_iteration << "\t" << cctk_time << "\t" << level << "\t"
-           << component << "\t" << isghost << "\t" << (grid.lbnd[0] + i) << "\t"
-           << (grid.lbnd[1] + j) << "\t" << (grid.lbnd[2] + k) << "\t" << x
-           << "\t" << y << "\t" << z;
-        for (const auto &ptr : ptrs)
-          os << "\t" << ptr[idx];
-        os << "\n";
       }
     }
   }
@@ -167,8 +123,6 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
        << "level"
        << "\t"
        << "component"
-       // << "\t"
-       // << "isghost"
        << "\t"
        << "i"
        << "\t"
@@ -242,7 +196,7 @@ void OutputASCII(const cGH *restrict cctkGH) {
       buf << out_dir << "/" << groupname;
       buf << ".it" << setw(6) << setfill('0') << cctk_iteration;
       buf << ".p" << setw(4) << setfill('0') << CCTK_MyProc(nullptr);
-      string filename = buf.str();
+      const string filename = buf.str();
 
       Vector<string> varnames(groupdata0.numvars);
       for (int vi = 0; vi < groupdata0.numvars; ++vi) {
