@@ -18,7 +18,7 @@ Cactus::cctk_show_schedule = no
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 2.0
 
-# AMReX::verbose = yes
+AMReX::verbose = no
 
 AMReX::xmin = -1.0
 AMReX::ymin = -1.0
@@ -51,7 +51,7 @@ MaxwellToyAMReX::analyse_every = $ncells * 2 ** ($nlevels - 1) / 32
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
 
-# AMReX::out_tsv = yes
+AMReX::out_tsv = no
 
 TimerReport::out_every = $ncells * 2 ** ($nlevels - 1) / 32
 TimerReport::out_filename = "TimerReport"
