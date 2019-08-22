@@ -129,3 +129,8 @@ SCHEDULE MaxwellToyAMReX_Error AT analysis
   # TRIGGERS: errors_current_rho
   # TRIGGERS: errors_current_jx errors_current_jy errors_current_jz
 } "Calculate error for the Maxwell equations"
+
+SCHEDULE MaxwellToyAMReX_NaNCheck AT analysis AS zzz_MaxwellToyAMReX_NaNCheck
+{
+  LANG: C
+} "Check for NaNs"

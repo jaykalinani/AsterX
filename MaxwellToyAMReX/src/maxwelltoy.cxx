@@ -595,6 +595,81 @@ extern "C" void MaxwellToyAMReX_Boundaries(CCTK_ARGUMENTS) {
   // Do nothing; boundary conditions consist of synchronization only
 }
 
+extern "C" void MaxwellToyAMReX_NaNCheck(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
+
+  const auto nancheck = [&](const CCTK_REAL *restrict var,
+                            const Loop::PointDesc &p) {
+    if (CCTK_isnan(var[p.idx]))
+      CCTK_VERROR("Found nan at [%d,%d,%d]", p.i, p.j, p.k);
+  };
+
+  Loop::loop_all<0, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(phi, p); });
+
+  Loop::loop_all<1, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ax, p); });
+  Loop::loop_all<0, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ay, p); });
+  Loop::loop_all<0, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(az, p); });
+
+  Loop::loop_all<1, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ex, p); });
+  Loop::loop_all<0, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ey, p); });
+  Loop::loop_all<0, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ez, p); });
+
+  Loop::loop_all<0, 1, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(bx, p); });
+  Loop::loop_all<1, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(by, p); });
+  Loop::loop_all<1, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(bz, p); });
+
+  Loop::loop_all<0, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(rho, p); });
+
+  Loop::loop_all<1, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(jx, p); });
+  Loop::loop_all<0, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(jy, p); });
+  Loop::loop_all<0, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(jz, p); });
+
+  Loop::loop_all<0, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(dive, p); });
+
+  Loop::loop_all<1, 1, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(divb, p); });
+}
+
 extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
