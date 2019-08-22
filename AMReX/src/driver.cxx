@@ -1,6 +1,7 @@
 #include "driver.hxx"
 #include "io.hxx"
 #include "schedule.hxx"
+#include "prolongate_3d_rf2.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -226,7 +227,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
                             *coarsegroupdata.mfab.at(tl), 0, 0,
                             groupdata.numvars, ghext->amrcore->Geom(level - 1),
                             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
-                            reffact, &cell_bilinear_interp, bcs, 0);
+                            reffact, &prolongate3d_vc_rf2_o5, bcs, 0);
   }
 }
 
@@ -300,7 +301,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                            {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                            groupdata.numvars, ghext->amrcore->Geom(level - 1),
                            ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
-                           reffact, &cell_bilinear_interp, bcs, 0);
+                           reffact, &prolongate3d_vc_rf2_o5, bcs, 0);
       groupdata.mfab.at(tl) = move(mfab);
     }
   }
