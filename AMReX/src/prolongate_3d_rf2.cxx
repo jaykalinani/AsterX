@@ -422,7 +422,7 @@ template <typename T, int ORDER>
 void prolongate_3d_rf2(T *restrict const dst,
                        int const *restrict flo, int const *restrict fhi, //dstpadext,
                        int const *restrict fblo, int const *restrict fbhi, //dstext,
-                       int const ncomp, int const ratioX, int const ratioY, int const ratioZ,
+                       /*int const ncomp, int const ratioX, int const ratioY, int const ratioZ,*/
                        T const *restrict const src,
                        int const *restrict clo, int const *restrict chi//, //srcpadext,
                        //int const *restrict cblo, int const *restrict cbhi, //srcext,
@@ -458,9 +458,9 @@ void prolongate_3d_rf2(T *restrict const dst,
 
   int const regext[3] = {fbhi[0] - fblo[0] + 1, fbhi[1] - fblo[1] + 1, fbhi[2] - fblo[2] + 1};
   //assert(all((regbbox.lower() - srcbbox.lower()) % regbbox.stride() == 0));
-  int const srcoff[3] = {0,0,0};
+  int const srcoff[3] = {ORDER/2+1, ORDER/2+1, ORDER/2+1};
   //assert(all((regbbox.lower() - dstbbox.lower()) % regbbox.stride() == 0));
-  int const dstoff[3] = {0,0,0};
+  int const dstoff[3] = {fblo[0] - flo[0], fblo[1] - flo[1], fblo[2] - flo[2]};
 
   //bvect3 const needoffsetlo = srcoff % reffact2 != 0;
   //bvect3 const needoffsethi = (srcoff + regext - 1) % reffact2 != 0;
@@ -521,6 +521,14 @@ void prolongate_3d_rf2(T *restrict const dst,
   assert(srcdi == (srciext > 1 ? SRCIND3(1, 0, 0) - SRCIND3(0, 0, 0) : 1));
   size_t const srcdj = srcjext > 1 ? SRCIND3(0, 1, 0) - SRCIND3(0, 0, 0) : 0;
   size_t const srcdk = srckext > 1 ? SRCIND3(0, 0, 1) - SRCIND3(0, 0, 0) : 0;
+
+#if 0
+  for(size_t k = 0 ; k < regkext ; k++)
+  for(size_t j = 0 ; j < regjext ; j++)
+  for(size_t i = 0 ; i < regiext ; i++)
+    dst[DSTIND3(i+dstioff, j+dstjoff, k+dstkoff)] = src[SRCIND3(i/2+srcioff, j/2, k/2)];
+  return;
+#endif
 
   // Loop over fine region
   // Label scheme: l 8 fk fj fi
@@ -751,7 +759,7 @@ Prolongate3D_VC_RF2<ORDER>::CoarseBox (const Box& fine, int ratio)
   assert(ORDER % 2);
 
   Box b = amrex::coarsen(fine, ratio);
-  b.grow(ORDER/2);
+  b.grow(ORDER/2+1);
 
   return b;
 }
@@ -763,7 +771,7 @@ Prolongate3D_VC_RF2<ORDER>::CoarseBox (const Box& fine, const IntVect& ratio)
   assert(ORDER % 2);
 
   Box b = amrex::coarsen(fine, ratio);
-  b.grow(ORDER/2);
+  b.grow(ORDER/2+1);
 
   return b;
 }
@@ -805,29 +813,31 @@ Prolongate3D_VC_RF2<ORDER>::interp (const FArrayBox& crse,
         crse_geom.GetEdgeVolCoord(cvc[dir],crse_bx,dir);
     }
     */
-    CCTK_REAL* fdat        = fine.dataPtr(fine_comp);
-    const CCTK_REAL* cdat  = crse.dataPtr(crse_comp);
-    const int* flo    = fine.loVect();
-    const int* fhi    = fine.hiVect();
-    const int* fblo   = target_fine_region.loVect();
-    const int* fbhi   = target_fine_region.hiVect();
-    const int* clo    = crse.loVect();
-    const int* chi    = crse.hiVect();
-    //const int* cblo   = crse_bx.loVect();
-    //const int* cbhi   = crse_bx.hiVect();
-    Vector<int> bc     = GetBCArray(bcr);
-    const int* ratioV = ratio.getVect();
+    for (int var = 0 ; var < ncomp ; ++var) {
+      CCTK_REAL* fdat        = fine.dataPtr(fine_comp + var);
+      const CCTK_REAL* cdat  = crse.dataPtr(crse_comp + var);
+      const int* flo    = fine.loVect();
+      const int* fhi    = fine.hiVect();
+      const int* fblo   = target_fine_region.loVect();
+      const int* fbhi   = target_fine_region.hiVect();
+      const int* clo    = crse.loVect();
+      const int* chi    = crse.hiVect();
+      //const int* cblo   = crse_bx.loVect();
+      //const int* cbhi   = crse_bx.hiVect();
+      //Vector<int> bc     = GetBCArray(bcr);
+      //const int* ratioV = ratio.getVect();
 
-    CarpetLib::prolongate_3d_rf2<CCTK_REAL, ORDER>(fdat,flo,fhi,
-                   fblo, fbhi,
-                   ncomp,ratioV[0],ratioV[1],ratioV[2],
-                   cdat,clo,chi//,
-                   //cblo, cbhi,
-                   /*fslo,fshi,
-                   bc.dataPtr(), 
-                   fvc[0].dataPtr(),fvc[1].dataPtr(),fvc[2].dataPtr(),
-                   cvc[0].dataPtr(),cvc[1].dataPtr(),cvc[2].dataPtr(),
-                   actual_comp,actual_state*/);
+      CarpetLib::prolongate_3d_rf2<CCTK_REAL, ORDER>(fdat,flo,fhi,
+                     fblo, fbhi,
+                     /*ncomp,ratioV[0],ratioV[1],ratioV[2],*/
+                     cdat,clo,chi//,
+                     //cblo, cbhi,
+                     /*fslo,fshi,
+                     bc.dataPtr(), 
+                     fvc[0].dataPtr(),fvc[1].dataPtr(),fvc[2].dataPtr(),
+                     cvc[0].dataPtr(),cvc[1].dataPtr(),cvc[2].dataPtr(),
+                     actual_comp,actual_state*/);
+    }
 }
 
 Prolongate3D_VC_RF2<5> prolongate3d_vc_rf2_o5;
