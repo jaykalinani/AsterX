@@ -30,7 +30,7 @@ static_assert(AMREX_SPACEDIM == dim,
 static_assert(is_same<Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
-class CactusAmrCore : public AmrCore {
+class CactusAmrCore final : public AmrCore {
 public:
   CactusAmrCore();
   CactusAmrCore(const RealBox *rb, int max_level_in,
@@ -44,7 +44,7 @@ public:
   CactusAmrCore(const AmrCore &rhs) = delete;
   CactusAmrCore &operator=(const AmrCore &rhs) = delete;
 
-  virtual ~CactusAmrCore();
+  virtual ~CactusAmrCore() override;
 
   virtual void ErrorEst(int level, TagBoxArray &tags, Real time,
                         int ngrow) override;
