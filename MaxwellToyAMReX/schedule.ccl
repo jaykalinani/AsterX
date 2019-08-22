@@ -29,12 +29,34 @@ if (evolve_b) {
   } "Calculate the magnetic field"
 }
 
+SCHEDULE MaxwellToyAMReX_Boundaries AT postregridinitial
+{
+  LANG: C
+  SYNC: potential_phi
+  SYNC: potential_ax potential_ay potential_az
+  SYNC: field_ex field_ey field_ez
+  SYNC: field_bx field_by field_bz
+  SYNC: current_rho
+  SYNC: current_jx current_jy current_jz
+} "Apply boundary conditions for the Maxwell equations"
+
 SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
 {
   LANG: C
 } "Estimate local error for regridding initial conditions"
 
 
+
+SCHEDULE MaxwellToyAMReX_Boundaries AT postregrid
+{
+  LANG: C
+  SYNC: potential_phi
+  SYNC: potential_ax potential_ay potential_az
+  SYNC: field_ex field_ey field_ez
+  SYNC: field_bx field_by field_bz
+  SYNC: current_rho
+  SYNC: current_jx current_jy current_jz
+} "Apply boundary conditions for the Maxwell equations"
 
 if (evolve_b) {
   SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
@@ -67,6 +89,22 @@ SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER (MaxwellToyAMReX_Evolve1, Maxwell
   SYNC: current_rho
 } "Evolve the Maxwell equations step 2"
 
+SCHEDULE MaxwellToyAMReX_Boundaries AT postrestrict
+{
+  LANG: C
+  SYNC: potential_phi
+  SYNC: potential_ax potential_ay potential_az
+  SYNC: field_ex field_ey field_ez
+  SYNC: field_bx field_by field_bz
+  SYNC: current_rho
+  SYNC: current_jx current_jy current_jz
+} "Apply boundary conditions for the Maxwell equations"
+
+SCHEDULE MaxwellToyAMReX_EstimateError AT poststep
+{
+  LANG: C
+} "Estimate local error for regridding during evolution"
+
 SCHEDULE MaxwellToyAMReX_Constraints AT analysis
 {
   LANG: C
@@ -80,11 +118,6 @@ SCHEDULE MaxwellToyAMReX_Constraints AT analysis
 # {
 #   LANG: C
 # } "Calculate energy density for the Maxwell equations"
-
-SCHEDULE MaxwellToyAMReX_EstimateError AT poststep
-{
-  LANG: C
-} "Estimate local error for regridding during evolution"
 
 SCHEDULE MaxwellToyAMReX_Error AT analysis
 {

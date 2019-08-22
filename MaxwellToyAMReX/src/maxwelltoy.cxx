@@ -589,6 +589,12 @@ extern "C" void MaxwellToyAMReX_Evolve2(CCTK_ARGUMENTS) {
 #endif
 }
 
+extern "C" void MaxwellToyAMReX_Boundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+
+  // Do nothing; boundary conditions consist of synchronization only
+}
+
 extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;

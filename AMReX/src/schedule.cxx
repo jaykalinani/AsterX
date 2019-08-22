@@ -539,6 +539,7 @@ int Initialise(tFleshConfig *config) {
       CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
 
+      CCTK_VINFO("Regridding...");
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
       {
         static Timer timer("InitialiseRegrid");
@@ -570,6 +571,7 @@ int Initialise(tFleshConfig *config) {
   // Restrict
   for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
     Restrict(level);
+  CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
 
   // Checkpoint, analysis, output
   CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
@@ -712,6 +714,7 @@ int Evolve(tFleshConfig *config) {
     // Restrict
     for (int level = (ghext->leveldata.size()) - 2; level >= 0; --level)
       Restrict(level);
+    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
 
     CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
     CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
@@ -912,9 +915,38 @@ void Restrict(int level) {
           const Array4<CCTK_REAL> &vars = mfab.array(mfi);
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+
+#if 0
+#warning                                                                       \
+    "TODO: Remove this loop; it only checks AMReX's internal correctness, and this is not a good way for doing so"
+            // Poison points that will be restricted
             grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-              if (mask(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-                       grid.cactus_offset.z + p.k))
+              const int i = grid.cactus_offset.x + p.i;
+              const int j = grid.cactus_offset.y + p.j;
+              const int k = grid.cactus_offset.z + p.k;
+              bool is_restricted = true;
+              // For cell centred indices (indextype=1), check the
+              // mask directly. For vertex centred indices
+              // (indextype=0), check the two neighbouring cells. We
+              // assume restriction is possible if either of the cells
+              // is unmasked. At the boundary of the mask grid
+              // function, be conservative and don't poison.
+              for (int c = groupdata.indextype[2] - 1; c < 1; ++c)
+                for (int b = groupdata.indextype[1] - 1; b < 1; ++b)
+                  for (int a = groupdata.indextype[0] - 1; a < 1; ++a)
+                    if (i + a >= mask.begin.x && i + a < mask.end.x &&
+                        j + b >= mask.begin.y && j + b < mask.end.y &&
+                        k + c >= mask.begin.z && k + c < mask.end.z)
+                      is_restricted &= mask(i + a, j + b, k + c);
+                    else
+                      is_restricted = false; // be conservative
+              if (is_restricted)
+                ptr[p.idx] = 0.0 / 0.0;
+            });
+#endif
+
+            // Poison boundaries
+            grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
                 ptr[p.idx] = 0.0 / 0.0;
             });
           }
