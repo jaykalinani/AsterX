@@ -458,7 +458,7 @@ void prolongate_3d_rf2(T *restrict const dst,
 
   int const regext[3] = {fbhi[0] - fblo[0] + 1, fbhi[1] - fblo[1] + 1, fbhi[2] - fblo[2] + 1};
   //assert(all((regbbox.lower() - srcbbox.lower()) % regbbox.stride() == 0));
-  int const srcoff[3] = {ORDER/2+1, ORDER/2+1, ORDER/2+1};
+  int const srcoff[3] = {fblo[0] - 2*clo[0], fblo[1] - 2*clo[1], fblo[2] - 2*clo[2]};
   //assert(all((regbbox.lower() - dstbbox.lower()) % regbbox.stride() == 0));
   int const dstoff[3] = {fblo[0] - flo[0], fblo[1] - flo[1], fblo[2] - flo[2]};
 
@@ -492,9 +492,9 @@ void prolongate_3d_rf2(T *restrict const dst,
   size_t const srcjext = chi[1] - clo[1] + 1; // rcext[1];
   size_t const srckext = chi[2] - clo[2] + 1; // rcext[2];
 
-  size_t const dstiext = fbhi[0] - fblo[0] + 1; // stext[0];
-  size_t const dstjext = fbhi[1] - fblo[1] + 1; // stext[1];
-  size_t const dstkext = fbhi[2] - fblo[2] + 1; // stext[2];
+  size_t const dstiext = fhi[0] - flo[0] + 1; // stext[0];
+  size_t const dstjext = fhi[1] - flo[1] + 1; // stext[1];
+  size_t const dstkext = fhi[2] - flo[2] + 1; // stext[2];
 
   size_t const regiext = regext[0];
   size_t const regjext = regext[1];
