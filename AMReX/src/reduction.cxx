@@ -76,6 +76,13 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
     const MultiFab &mfab = *groupdata.mfab.at(tl);
     unique_ptr<iMultiFab> finemask;
 
+    if (!groupdata.valid.at(tl).at(vi).valid_int) {
+      CCTK_VWARN(CCTK_WARN_ALERT,
+                 "Variable %s has invalid data in the interior of level %d",
+                 CCTK_FullVarName(groupdata.firstvarindex + vi),
+                 leveldata.level);
+    }
+
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
       const auto &restrict fine_leveldata = ghext->leveldata.at(fine_level);

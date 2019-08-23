@@ -34,6 +34,17 @@ int CallFunction(void *function, cFunctionData *attribute, void *data);
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// This global variable passes the current cctkGH to CactusAmrCore.
+// (When it is null, then CactusAmrCore does not call any scheduled
+// functions. This is used early during startup.)
+extern cGH *saved_cctkGH;
+
+// Whether CallFunction traverses all levels (-1) or just one specific level
+// (>=0)
+extern int current_level;
+
+////////////////////////////////////////////////////////////////////////////////
+
 struct GridDesc : GridDescBase {
 
   GridDesc() = delete;

@@ -80,6 +80,8 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
 
   auto &restrict leveldata = ghext->leveldata.at(level);
   auto &restrict groupdata = leveldata.groupdata.at(gi);
+  // Ensure the error estimate has been set
+  assert(groupdata.valid.at(tl).at(vi).valid_int);
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
@@ -154,9 +156,11 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
                   groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
                   groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
     groupdata.mfab.resize(group.numtimelevels);
+    groupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) =
           make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
+      groupdata.valid.at(tl) = vector<valid_t>(groupdata.numvars);
       if (poison_undefined_values) {
         // Set grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -185,6 +189,15 @@ void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
     CCTK_VINFO("MakeNewLevelFromScratch level %d", level);
 
   SetupLevel(level, ba, dm);
+
+  if (saved_cctkGH) {
+    assert(current_level == -1);
+    current_level = level;
+    CCTK_Traverse(saved_cctkGH, "CCTK_BASEGRID");
+    // CCTK_Traverse(cctkGH, "CCTK_POSTREGRIDINITIAL");
+    CCTK_Traverse(saved_cctkGH, "CCTK_POSTREGRID");
+    current_level = -1;
+  }
 }
 
 void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
@@ -221,12 +234,29 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     // the oldest.
     int ntls = groupdata.mfab.size();
     int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
-    for (int tl = 0; tl < prolongate_tl; ++tl)
+    for (int tl = 0; tl < ntls; ++tl)
+      groupdata.valid.at(tl) = vector<valid_t>(groupdata.numvars);
+    for (int tl = 0; tl < prolongate_tl; ++tl) {
+#warning "TODO: only interpolate if coarse grid data are valid"
       InterpFromCoarseLevel(*groupdata.mfab.at(tl), 0.0,
                             *coarsegroupdata.mfab.at(tl), 0, 0,
                             groupdata.numvars, ghext->amrcore->Geom(level - 1),
                             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
                             reffact, &cell_bilinear_interp, bcs, 0);
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        if (coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+            coarsegroupdata.valid.at(tl).at(vi).valid_bnd)
+          groupdata.valid.at(tl).at(vi).valid_int = true;
+    }
+  }
+
+  if (saved_cctkGH) {
+    assert(current_level == -1);
+    current_level = level;
+    CCTK_Traverse(saved_cctkGH, "CCTK_BASEGRID");
+    // CCTK_Traverse(cctkGH, "CCTK_POSTREGRIDINITIAL");
+    CCTK_Traverse(saved_cctkGH, "CCTK_POSTREGRID");
+    current_level = -1;
   }
 }
 
@@ -279,6 +309,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
+      auto valid = vector<valid_t>(groupdata.numvars);
       if (poison_undefined_values) {
         // Set grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -295,14 +326,33 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
           }
         }
       }
-      if (tl < prolongate_tl)
+      if (tl < prolongate_tl) {
         FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
                            {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                            groupdata.numvars, ghext->amrcore->Geom(level - 1),
                            ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
                            reffact, &cell_bilinear_interp, bcs, 0);
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          valid.at(tl).valid_int =
+              coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+              coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+              groupdata.valid.at(tl).at(vi).valid_int &&
+              groupdata.valid.at(tl).at(vi).valid_bnd;
+          valid.at(tl).valid_bnd = false;
+        }
+      }
       groupdata.mfab.at(tl) = move(mfab);
+      groupdata.valid.at(tl) = move(valid);
     }
+  }
+
+  if (saved_cctkGH) {
+    assert(current_level == -1);
+    current_level = level;
+    CCTK_Traverse(saved_cctkGH, "CCTK_BASEGRID");
+    // CCTK_Traverse(cctkGH, "CCTK_POSTREGRIDINITIAL");
+    CCTK_Traverse(saved_cctkGH, "CCTK_POSTREGRID");
+    current_level = -1;
   }
 }
 
@@ -425,34 +475,12 @@ int InitGH(cGH *restrict cctkGH) {
     }
   }
 
-  // Create coarse grid
-  CCTK_REAL time = 0.0; // dummy time
-  ghext->amrcore->MakeNewGrids(time);
-
   // CCTK_VINFO("BoxArray level %d:", level);
   // cout << ghext->amrcore->boxArray(level) << "\n";
   // CCTK_VINFO("DistributionMap level %d:", level);
   // cout << ghext->amrcore->DistributionMap(level) << "\n";
 
   return 0; // unused
-}
-
-void CreateRefinedGrid(int level) {
-  DECLARE_CCTK_PARAMETERS;
-
-  if (level > ghext->amrcore->maxLevel())
-    return;
-
-  if (verbose)
-    CCTK_VINFO("CreateRefinedGrid level %d", level);
-
-  // Create refined grid
-  CCTK_REAL time = 0.0; // dummy time
-  ghext->amrcore->regrid(0, time);
-  int numlevels = ghext->amrcore->finestLevel() + 1;
-  int maxnumlevels = ghext->amrcore->maxLevel() + 1;
-  assert(numlevels >= 0 && numlevels <= maxnumlevels);
-  assert(numlevels <= level + 1);
 }
 
 // Traverse schedule

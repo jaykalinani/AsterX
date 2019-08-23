@@ -7,6 +7,21 @@
 namespace AMReX {
 using namespace std;
 
+extern "C" void AMReX_InitError(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  for (int k = 0; k < cctk_lsh[2]; ++k) {
+    for (int j = 0; j < cctk_lsh[1]; ++j) {
+#pragma omp simd
+      for (int i = 0; i < cctk_lsh[0]; ++i) {
+        const int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
+        regrid_error[idx] = 0;
+      }
+    }
+  }
+}
+
 extern "C" void AMReX_SetLevel(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;

@@ -23,7 +23,9 @@
 #include <sys/time.h>
 
 #include <algorithm>
+#include <cctype>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -46,6 +48,9 @@ struct TileBox {
   array<int, dim> tile_max;
 };
 vector<TileBox> thread_local_tilebox;
+
+cGH *saved_cctkGH = nullptr;
+int current_level = -1;
 
 void Restrict(int level);
 
@@ -447,6 +452,98 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
   return mode_t::local; // default
 }
 
+struct clause_t {
+  int gi, vi, tl;
+  valid_t valid;
+
+  friend bool operator<(const clause_t &x, const clause_t &y) {
+    if (x.gi < y.gi)
+      return true;
+    if (x.vi < y.vi)
+      return true;
+    if (x.tl < y.tl)
+      return true;
+    return x.valid < y.valid;
+  }
+};
+
+vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
+                                int n_clauses, const char **clauses) {
+  vector<clause_t> result;
+  for (int n = 0; n < n_clauses; ++n) {
+    for (const char *restrict p = clauses[n]; *p;) {
+      // Find beginning of word
+      while (isspace(*p))
+        ++p;
+      if (!*p)
+        break;
+      // Read grid function / group name
+      assert(isalnum(*p) || *p == '_' || *p == ':');
+      const char *const name0 = p;
+      while (isalnum(*p) || *p == '_' || *p == ':')
+        ++p;
+      string name(name0, p);
+      valid_t valid;
+      if (*p == '(') {
+        ++p;
+        const char *const reg0 = p;
+        while (isalpha(*p))
+          ++p;
+        string regstr(reg0, p);
+        if (regstr == "interior")
+          valid.valid_int = true;
+        else if (regstr == "boundary")
+          valid.valid_bnd = true;
+        else if (regstr == "everywhere")
+          valid.valid_int = valid.valid_bnd = true;
+        else
+          assert(0);
+        assert(*p == ')');
+        ++p;
+      } else {
+        assert(0); // missing region
+        valid.valid_int = valid.valid_bnd = true;
+      }
+      assert(!*p || isspace(*p));
+
+      int tl = 0;
+      while (name.size() >= 2 && name.substr(name.size() - 2) == "_p") {
+        name = name.substr(0, name.size() - 2);
+        ++tl;
+      }
+
+      if (name.find(':') == string::npos)
+        name = string(attribute->thorn) + "::" + name;
+
+      const int gi0 = CCTK_GroupIndex(name.c_str());
+      if (gi0 >= 0) {
+        const int gi = gi0;
+        const int nv = CCTK_NumVarsInGroupI(gi);
+        for (int vi = 0; vi < nv; ++vi)
+          result.push_back({gi, vi, tl, valid});
+      } else {
+        const int var = CCTK_VarIndex(name.c_str());
+        if (var >= 0) {
+          const int gi = CCTK_GroupIndexFromVarI(var);
+          const int v0 = CCTK_FirstVarIndexI(gi);
+          const int vi = var - v0;
+          result.push_back({gi, vi, tl, valid});
+        } else {
+          CCTK_VERROR("Cannot decode group/variable name \"%s\" in %s: %s::%s",
+                      name.c_str(), attribute->where, attribute->thorn,
+                      attribute->routine);
+        }
+      }
+    }
+  }
+  set<clause_t> seen;
+  for (const auto &res : result) {
+    assert(seen.count(res) == 0); // variable listed twice
+    seen.insert(res);
+  }
+  return result;
+}
+
 // Schedule initialisation
 int Initialise(tFleshConfig *config) {
   static Timer timer("Initialise");
@@ -479,29 +576,6 @@ int Initialise(tFleshConfig *config) {
     enter_global_mode(threadGH);
   }
 
-  // Output domain information
-  if (CCTK_MyProc(nullptr) == 0) {
-    enter_level_mode(cctkGH, ghext->leveldata.at(0));
-    const int *restrict gsh = cctkGH->cctk_gsh;
-    const int *restrict nghostzones = cctkGH->cctk_nghostzones;
-    CCTK_REAL x0[dim], x1[dim], dx[dim];
-    for (int d = 0; d < dim; ++d) {
-      dx[d] = cctkGH->cctk_delta_space[d];
-      x0[d] = cctkGH->cctk_origin_space[d];
-      x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
-    }
-    CCTK_VINFO("Grid extent:");
-    CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
-    CCTK_VINFO("Domain extent:");
-    CCTK_VINFO("  xmin=[%g,%g,%g]", x0[0], x0[1], x0[2]);
-    CCTK_VINFO("  xmax=[%g,%g,%g]", x1[0], x1[1], x1[2]);
-    CCTK_VINFO("  base dx=[%g,%g,%g]", dx[0], dx[1], dx[2]);
-    CCTK_VINFO("Time stepping:");
-    CCTK_VINFO("  t0=%g", cctkGH->cctk_time);
-    CCTK_VINFO("  dt=%g", cctkGH->cctk_delta_time);
-    leave_level_mode(cctkGH, ghext->leveldata.at(0));
-  }
-
   CCTK_Traverse(cctkGH, "CCTK_WRAGH");
   CCTK_Traverse(cctkGH, "CCTK_PARAMCHECK");
   CCTKi_FinaliseParamWarn();
@@ -530,23 +604,65 @@ int Initialise(tFleshConfig *config) {
     // Set up initial conditions
     CCTK_VINFO("Setting up initial conditions...");
 
+    // Create coarse grid
+    {
+      static Timer timer("InitialiseRegrid");
+      Interval interval(timer);
+      CCTK_REAL time = 0.0; // dummy time
+      assert(saved_cctkGH == nullptr);
+      saved_cctkGH = cctkGH;
+      ghext->amrcore->MakeNewGrids(time);
+      saved_cctkGH = nullptr;
+    }
+
+    // Output domain information
+    if (CCTK_MyProc(nullptr) == 0) {
+      enter_level_mode(cctkGH, ghext->leveldata.at(0));
+      const int *restrict gsh = cctkGH->cctk_gsh;
+      const int *restrict nghostzones = cctkGH->cctk_nghostzones;
+      CCTK_REAL x0[dim], x1[dim], dx[dim];
+      for (int d = 0; d < dim; ++d) {
+        dx[d] = cctkGH->cctk_delta_space[d];
+        x0[d] = cctkGH->cctk_origin_space[d];
+        x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
+      }
+      CCTK_VINFO("Grid extent:");
+      CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
+      CCTK_VINFO("Domain extent:");
+      CCTK_VINFO("  xmin=[%g,%g,%g]", x0[0], x0[1], x0[2]);
+      CCTK_VINFO("  xmax=[%g,%g,%g]", x1[0], x1[1], x1[2]);
+      CCTK_VINFO("  base dx=[%g,%g,%g]", dx[0], dx[1], dx[2]);
+      CCTK_VINFO("Time stepping:");
+      CCTK_VINFO("  t0=%g", cctkGH->cctk_time);
+      CCTK_VINFO("  dt=%g", cctkGH->cctk_delta_time);
+      leave_level_mode(cctkGH, ghext->leveldata.at(0));
+    }
+
     for (;;) {
       const int level = ghext->amrcore->finestLevel();
       CCTK_VINFO("Initializing level %d...", level);
 
-      CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
       CCTK_Traverse(cctkGH, "CCTK_INITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
+
+      if (level >= ghext->amrcore->maxLevel())
+        break;
 
       CCTK_VINFO("Regridding...");
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
       {
         static Timer timer("InitialiseRegrid");
         Interval interval(timer);
-        CreateRefinedGrid(level + 1);
+        assert(saved_cctkGH == nullptr);
+        saved_cctkGH = cctkGH;
+        CCTK_REAL time = 0.0; // dummy time
+        ghext->amrcore->regrid(0, time);
+        saved_cctkGH = nullptr;
       }
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
+      const int max_numlevels = ghext->amrcore->maxLevel() + 1;
+      assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
       double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
@@ -562,16 +678,18 @@ int Initialise(tFleshConfig *config) {
       const bool did_create_new_level = new_numlevels > old_numlevels;
       if (!did_create_new_level)
         break;
-
-      CCTK_Traverse(cctkGH, "CCTK_POSTREGRIDINITIAL");
     }
   }
   CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
 
   // Restrict
-  for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
+  assert(current_level == -1);
+  for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level) {
     Restrict(level);
-  CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+    current_level = level;
+    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+  }
+  current_level = -1;
 
   // Checkpoint, analysis, output
   CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
@@ -642,6 +760,9 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
         for (int tl = ntls - 1; tl > 0; --tl)
           groupdata.mfab.at(tl) = move(groupdata.mfab.at(tl - 1));
         groupdata.mfab.at(0) = move(tmp);
+        for (int tl = ntls - 1; tl > 0; --tl)
+          groupdata.valid.at(tl) = move(groupdata.valid.at(tl - 1));
+        groupdata.valid.at(0) = vector<valid_t>(groupdata.numvars);
 
         if (poison_undefined_values) {
           // Set grid functions to nan
@@ -683,14 +804,19 @@ int Evolve(tFleshConfig *config) {
     if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0 &&
         ghext->amrcore->maxLevel() > 0) {
       CCTK_VINFO("Regridding...");
-      CCTK_REAL time = 0.0; // dummy time
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
       {
         static Timer timer("EvolveRegrid");
         Interval interval(timer);
+        assert(saved_cctkGH == nullptr);
+        saved_cctkGH = cctkGH;
+        CCTK_REAL time = 0.0; // dummy time
         ghext->amrcore->regrid(0, time);
+        saved_cctkGH = nullptr;
       }
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
+      const int max_numlevels = ghext->amrcore->maxLevel() + 1;
+      assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
       CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
                  new_numlevels);
       double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
@@ -701,9 +827,6 @@ int Evolve(tFleshConfig *config) {
                    sz, pts,
                    100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
       }
-
-      CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
-      CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
     }
 
     CycleTimelevels(cctkGH);
@@ -712,9 +835,13 @@ int Evolve(tFleshConfig *config) {
     CCTK_Traverse(cctkGH, "CCTK_EVOL");
 
     // Restrict
-    for (int level = (ghext->leveldata.size()) - 2; level >= 0; --level)
+    assert(current_level == -1);
+    for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level) {
       Restrict(level);
-    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+      current_level = level;
+      CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+    }
+    current_level = -1;
 
     CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
     CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
@@ -757,6 +884,38 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     CCTK_VINFO("CallFunction iteration %d %s: %s::%s", cctkGH->cctk_iteration,
                attribute->where, attribute->thorn, attribute->routine);
 
+  const int min_level = current_level == -1 ? 0 : current_level;
+  const int max_level =
+      current_level == -1 ? ghext->leveldata.size() : current_level + 1;
+
+  // Check whether input variables have valid data
+  {
+    const vector<clause_t> reads = decode_clauses(
+        attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
+    for (const auto &rd : reads) {
+      for (int level = min_level; level < max_level; ++level) {
+        const auto &restrict leveldata = ghext->leveldata.at(level);
+        const auto &restrict groupdata = leveldata.groupdata.at(rd.gi);
+        const valid_t &need = rd.valid;
+        const valid_t &have = groupdata.valid.at(rd.tl).at(rd.vi);
+        // "x <= y" for booleans means "x implies y"
+        const bool cond = need.valid_int <= have.valid_int &&
+                          need.valid_bnd <= have.valid_bnd;
+        if (!cond)
+          CCTK_VERROR(
+              "Found invalid input data: iteration %d %s: %s::%s, level %d, "
+              "variable %s%s: need %s, have %s",
+              cctkGH->cctk_iteration, attribute->where, attribute->thorn,
+              attribute->routine, leveldata.level,
+              CCTK_FullVarName(groupdata.firstvarindex + rd.vi),
+              string("_p", rd.tl).c_str(), string(need).c_str(),
+              string(have).c_str());
+      }
+    }
+  }
+
+#warning "TODO: poison those output variables that are not input variables"
+
   const mode_t mode = decode_mode(attribute);
   switch (mode) {
   case mode_t::local: {
@@ -770,7 +929,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
       // Loop over all levels
       // TODO: parallelize this loop
-      for (auto &restrict leveldata : ghext->leveldata) {
+      for (int level = min_level; level < max_level; ++level) {
+        const auto &restrict leveldata = ghext->leveldata.at(level);
         enter_level_mode(threadGH, leveldata);
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
@@ -796,6 +956,23 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   default:
     assert(0);
+  }
+
+  // Mark output variables as having valid data
+  {
+    const vector<clause_t> writes = decode_clauses(
+        attribute, attribute->n_WritesClauses, attribute->WritesClauses);
+    for (const auto &wr : writes) {
+      for (int level = min_level; level < max_level; ++level) {
+        auto &restrict leveldata = ghext->leveldata.at(level);
+        auto &restrict groupdata = leveldata.groupdata.at(wr.gi);
+        const valid_t &provided = wr.valid;
+        valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
+        // Code cannot invalidate...
+        have.valid_int |= provided.valid_int;
+        have.valid_bnd |= provided.valid_bnd;
+      }
+    }
   }
 
   int didsync = 0;
@@ -837,9 +1014,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       if (leveldata.level == 0) {
         // Coarsest level: Copy from adjacent boxes on same level
 
-        for (int tl = 0; tl < sync_tl; ++tl)
+        for (int tl = 0; tl < sync_tl; ++tl) {
           groupdata.mfab.at(tl)->FillBoundary(
               ghext->amrcore->Geom(leveldata.level).periodicity());
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            groupdata.valid.at(tl).at(vi).valid_bnd =
+                groupdata.valid.at(tl).at(vi).valid_int;
+        }
 
       } else {
         // Refined level: Prolongate boundaries from next coarser
@@ -860,12 +1041,18 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                           periodic_y ? BCType::int_dir : BCType::reflect_odd,
                           periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
-        for (int tl = 0; tl < sync_tl; ++tl)
+        for (int tl = 0; tl < sync_tl; ++tl) {
           FillPatchTwoLevels(
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
               {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
               ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
               cphysbc, 0, fphysbc, 0, reffact, &cell_bilinear_interp, bcs, 0);
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            groupdata.valid.at(tl).at(vi).valid_bnd =
+                coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                groupdata.valid.at(tl).at(vi).valid_int;
+        }
       }
     }
   }
@@ -900,59 +1087,6 @@ void Restrict(int level) {
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      if (poison_undefined_values) {
-        MultiFab &mfab = *groupdata.mfab.at(tl);
-        const MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
-        const IntVect reffact{2, 2, 2};
-        const iMultiFab finemask =
-            makeFineMask(mfab, fine_mfab.boxArray(), reffact);
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc grid(leveldata, mfi);
-          const Array4<const int> &mask = finemask.array(mfi);
-          const Array4<CCTK_REAL> &vars = mfab.array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-
-#if 0
-#warning                                                                       \
-    "TODO: Remove this loop; it only checks AMReX's internal correctness, and this is not a good way for doing so"
-            // Poison points that will be restricted
-            grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-              const int i = grid.cactus_offset.x + p.i;
-              const int j = grid.cactus_offset.y + p.j;
-              const int k = grid.cactus_offset.z + p.k;
-              bool is_restricted = true;
-              // For cell centred indices (indextype=1), check the
-              // mask directly. For vertex centred indices
-              // (indextype=0), check the two neighbouring cells. We
-              // assume restriction is possible if either of the cells
-              // is unmasked. At the boundary of the mask grid
-              // function, be conservative and don't poison.
-              for (int c = groupdata.indextype[2] - 1; c < 1; ++c)
-                for (int b = groupdata.indextype[1] - 1; b < 1; ++b)
-                  for (int a = groupdata.indextype[0] - 1; a < 1; ++a)
-                    if (i + a >= mask.begin.x && i + a < mask.end.x &&
-                        j + b >= mask.begin.y && j + b < mask.end.y &&
-                        k + c >= mask.begin.z && k + c < mask.end.z)
-                      is_restricted &= mask(i + a, j + b, k + c);
-                    else
-                      is_restricted = false; // be conservative
-              if (is_restricted)
-                ptr[p.idx] = 0.0 / 0.0;
-            });
-#endif
-
-            // Poison boundaries
-            grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-                ptr[p.idx] = 0.0 / 0.0;
-            });
-          }
-        }
-      }
-
       if (groupdata.indextype == array<int, dim>{0, 0, 0})
         average_down_nodal(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
                            reffact);
@@ -971,6 +1105,35 @@ void Restrict(int level) {
                      groupdata.numvars, reffact);
       else
         assert(0);
+
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
+        groupdata.valid.at(tl).at(vi).valid_int &=
+            fine_groupdata.valid.at(tl).at(vi).valid_int &&
+            fine_groupdata.valid.at(tl).at(vi).valid_bnd;
+        groupdata.valid.at(tl).at(vi).valid_bnd = false;
+      }
+
+      if (poison_undefined_values) {
+        MultiFab &mfab = *groupdata.mfab.at(tl);
+        const MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
+        const IntVect reffact{2, 2, 2};
+        const iMultiFab finemask =
+            makeFineMask(mfab, fine_mfab.boxArray(), reffact);
+        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc grid(leveldata, mfi);
+          const Array4<CCTK_REAL> &vars = mfab.array(mfi);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+            // Poison boundaries
+            grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
+              ptr[p.idx] = 0.0 / 0.0;
+            });
+          }
+        }
+      }
     }
   }
 }

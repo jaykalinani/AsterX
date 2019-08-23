@@ -14,6 +14,7 @@
 #include <AMReX_AmrCore.H>
 #include <AMReX_MultiFab.H>
 
+#include <iostream>
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -57,6 +58,27 @@ public:
   virtual void ClearLevel(int level) override;
 };
 
+struct valid_t {
+  bool valid_int, valid_bnd;
+  valid_t() : valid_int(false), valid_bnd(false) {}
+
+  friend bool operator<(const valid_t &x, const valid_t &y) {
+    if (x.valid_int < y.valid_int)
+      return true;
+    return x.valid_bnd < y.valid_bnd;
+  }
+  friend ostream &operator<<(ostream &os, const valid_t v) {
+    auto str = [](bool v) { return v ? "VAL" : "INV"; };
+    return os << "[int:" << str(v.valid_int) << ",bnd:" << str(v.valid_bnd)
+              << "]";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
 // Cactus grid hierarchy extension
 struct GHExt {
 
@@ -77,6 +99,7 @@ struct GHExt {
       array<int, dim> indextype;
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]
+      vector<vector<valid_t> > valid;     // [time level][var index]
     };
     vector<GroupData> groupdata;
   };
@@ -84,8 +107,6 @@ struct GHExt {
 };
 
 extern unique_ptr<GHExt> ghext;
-
-void CreateRefinedGrid(int level);
 
 } // namespace AMReX
 
