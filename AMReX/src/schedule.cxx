@@ -2,6 +2,7 @@
 #include "schedule.hxx"
 #include "timer.hxx"
 #include "prolongate_3d_rf2.hxx"
+#include "prolongate_3d_cc_rf2.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -866,7 +867,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
               {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
               ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
-              cphysbc, 0, fphysbc, 0, reffact, &prolongate3d_vc_rf2_o5, bcs, 0);
+              cphysbc, 0, fphysbc, 0, reffact, &prolongate3d_cc_rf2_o4, bcs, 0);
       }
     }
   }
