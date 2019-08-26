@@ -1,6 +1,8 @@
 #include "driver.hxx"
 #include "io.hxx"
 #include "schedule.hxx"
+#include "prolongate_3d_rf2.hxx"
+#include "prolongate_3d_cc_rf2.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -242,7 +244,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
                             *coarsegroupdata.mfab.at(tl), 0, 0,
                             groupdata.numvars, ghext->amrcore->Geom(level - 1),
                             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
-                            reffact, &cell_bilinear_interp, bcs, 0);
+                            reffact, &prolongate3d_cc_rf2_o4, bcs, 0);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         if (coarsegroupdata.valid.at(tl).at(vi).valid_int &&
             coarsegroupdata.valid.at(tl).at(vi).valid_bnd)
@@ -331,7 +333,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                            {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                            groupdata.numvars, ghext->amrcore->Geom(level - 1),
                            ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
-                           reffact, &cell_bilinear_interp, bcs, 0);
+                           reffact, &prolongate3d_cc_rf2_o4, bcs, 0);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           valid.at(tl).valid_int =
               coarsegroupdata.valid.at(tl).at(vi).valid_int &&

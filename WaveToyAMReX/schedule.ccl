@@ -111,6 +111,12 @@ SCHEDULE WaveToyAMReX_EstimateError AT poststep
 } "Estimate local error for regridding during evolution"
 
 
+SCHEDULE WaveToyAMReX_Sync AT postrestrict
+{
+  LANG: C
+  SYNC: phi
+} "Boundary conditions for the wave equation"
+
 
 SCHEDULE WaveToyAMReX_Energy AT analysis
 {
