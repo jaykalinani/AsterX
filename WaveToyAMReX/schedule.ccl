@@ -14,7 +14,7 @@ SCHEDULE WaveToyAMReX_InitializeParticle AT initial AFTER WaveToyAMReX_Initializ
 SCHEDULE WaveToyAMReX_Sync AT initial AFTER WaveToyAMReX_Initialize
 {
   LANG: C
-  SYNC: phi
+  SYNC: state
 } "Boundary conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_Boundaries AT initial AFTER WaveToyAMReX_Sync
@@ -35,7 +35,7 @@ SCHEDULE WaveToyAMReX_EstimateError AT postinitial
 SCHEDULE WaveToyAMReX_Sync AT postregridinitial
 {
   LANG: C
-  SYNC: phi
+  SYNC: state
 } "Boundary conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_Boundaries AT postregridinitial AFTER WaveToyAMReX_Sync
@@ -53,7 +53,7 @@ SCHEDULE WaveToyAMReX_NaNCheck_current AT postregridinitial AFTER WaveToyAMReX_B
 SCHEDULE WaveToyAMReX_Sync AT postregrid
 {
   LANG: C
-  SYNC: phi
+  SYNC: state
 } "Boundary conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_Boundaries AT postregrid AFTER WaveToyAMReX_Sync
@@ -85,7 +85,7 @@ SCHEDULE WaveToyAMReX_EvolveParticle AT evol AFTER WaveToyAMReX_Evolve
 SCHEDULE WaveToyAMReX_Sync AT evol AFTER WaveToyAMReX_Evolve
 {
   LANG: C
-  SYNC: phi
+  SYNC: state
 } "Boundary conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_Boundaries AT evol AFTER WaveToyAMReX_Sync

@@ -10,7 +10,7 @@ USES INCLUDE HEADER: loop.hxx
 
 
 
-CCTK_REAL phi TYPE=gf TIMELEVELS=2
+CCTK_REAL state TYPE=gf TIMELEVELS=2
 {
   phi
   psi
