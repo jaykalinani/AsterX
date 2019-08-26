@@ -451,7 +451,7 @@ extern "C" void WaveToyAMReX_RadiativeBoundaries(CCTK_ARGUMENTS) {
 #endif
 
 extern "C" void WaveToyAMReX_Sync(CCTK_ARGUMENTS) {
-  // do nothinga
+  // do nothing
 }
 
 extern "C" void WaveToyAMReX_Boundaries(CCTK_ARGUMENTS) {
