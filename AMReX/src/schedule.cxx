@@ -29,6 +29,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -467,8 +468,13 @@ struct clause_t {
   }
 };
 
-vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
-                                int n_clauses, const char **clauses) {
+const vector<clause_t> &decode_clauses(const cFunctionData *restrict attribute,
+                                       int n_clauses, const char **clauses) {
+  // We assume that each `clauses` pointer is unique
+  static unordered_map<const char **, vector<clause_t> > memoized_results;
+  auto result_it = memoized_results.find(clauses);
+  if (result_it != memoized_results.end())
+    return result_it->second;
   vector<clause_t> result;
   for (int n = 0; n < n_clauses; ++n) {
     for (const char *restrict p = clauses[n]; *p;) {
@@ -541,7 +547,7 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
     assert(seen.count(res) == 0); // variable listed twice
     seen.insert(res);
   }
-  return result;
+  return memoized_results.emplace(clauses, move(result)).first->second;
 }
 
 // Schedule initialisation
@@ -890,7 +896,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Check whether input variables have valid data
   {
-    const vector<clause_t> reads = decode_clauses(
+    const vector<clause_t> &reads = decode_clauses(
         attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
     for (const auto &rd : reads) {
       for (int level = min_level; level < max_level; ++level) {
@@ -960,7 +966,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Mark output variables as having valid data
   {
-    const vector<clause_t> writes = decode_clauses(
+    const vector<clause_t> &writes = decode_clauses(
         attribute, attribute->n_WritesClauses, attribute->WritesClauses);
     for (const auto &wr : writes) {
       for (int level = min_level; level < max_level; ++level) {
