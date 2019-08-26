@@ -3,6 +3,7 @@
 SCHEDULE WaveToyAMReX_Initialize AT initial
 {
   LANG: C
+  WRITES: phi(interior) psi(interior)
 } "Set up initial conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_InitializeParticle AT initial AFTER WaveToyAMReX_Initialize
@@ -25,27 +26,32 @@ SCHEDULE WaveToyAMReX_Boundaries AT initial AFTER WaveToyAMReX_Sync
 SCHEDULE WaveToyAMReX_NaNCheck_current AT postinitial
 {
   LANG: C
+  READS: phi(everywhere) psi(everywhere)
 } "Check for nans in the state vector"
 
 SCHEDULE WaveToyAMReX_EstimateError AT postinitial
 {
   LANG: C
+  READS: phi(interior) psi(interior)
 } "Estimate local error for regridding initial conditions"
 
-SCHEDULE WaveToyAMReX_Sync AT postregridinitial
+
+
+SCHEDULE WaveToyAMReX_Sync AT postrestrict
 {
   LANG: C
   SYNC: state
 } "Boundary conditions for the wave equation"
 
-SCHEDULE WaveToyAMReX_Boundaries AT postregridinitial AFTER WaveToyAMReX_Sync
+SCHEDULE WaveToyAMReX_Boundaries AT postrestrict AFTER WaveToyAMReX_Sync
 {
   LANG: C
 } "Boundary conditions for the wave equation"
 
-SCHEDULE WaveToyAMReX_NaNCheck_current AT postregridinitial AFTER WaveToyAMReX_Boundaries
+SCHEDULE WaveToyAMReX_NaNCheck_current AT postrestrict AFTER WaveToyAMReX_Boundaries
 {
   LANG: C
+  READS: phi(everywhere) psi(everywhere)
 } "Check for nans in the state vector"
 
 
@@ -61,19 +67,19 @@ SCHEDULE WaveToyAMReX_Boundaries AT postregrid AFTER WaveToyAMReX_Sync
   LANG: C
 } "Boundary conditions for the wave equation"
 
-SCHEDULE WaveToyAMReX_NaNCheck_current AT postregrid AFTER WaveToyAMReX_Boundaries
-{
-  LANG: C
-} "Check for nans in the state vector"
+
 
 SCHEDULE WaveToyAMReX_NaNCheck_past AT prestep
 {
   LANG: C
+  READS: phi_p(everywhere) psi_p(everywhere)
 } "Check for nans in the state vector"
 
 SCHEDULE WaveToyAMReX_Evolve AT evol
 {
   LANG: C
+  READS: phi_p(everywhere) psi_p(everywhere)
+  WRITES: phi(interior) psi(interior)
 } "Evolve the wave equation"
 
 SCHEDULE WaveToyAMReX_EvolveParticle AT evol AFTER WaveToyAMReX_Evolve
@@ -93,9 +99,10 @@ SCHEDULE WaveToyAMReX_Boundaries AT evol AFTER WaveToyAMReX_Sync
   LANG: C
 } "Boundary conditions for the wave equation"
 
-SCHEDULE WaveToyAMReX_NaNCheck_current AT poststep
+SCHEDULE WaveToyAMReX_NaNCheck_current AT evol AFTER WaveToyAMReX_Boundaries
 {
   LANG: C
+  READS: phi(everywhere) psi(everywhere)
 } "Check for nans in the state vector"
 
 SCHEDULE WaveToyAMReX_EstimateError AT poststep
@@ -108,12 +115,16 @@ SCHEDULE WaveToyAMReX_EstimateError AT poststep
 SCHEDULE WaveToyAMReX_Energy AT analysis
 {
   LANG: C
+  READS: phi(everywhere) psi(interior)
+  WRITES: eps(interior)
   SYNC: energy
 } "Calculate energy density for the wave equation"
 
 SCHEDULE WaveToyAMReX_Error AT analysis
 {
   LANG: C
+  READS: phi(everywhere) psi(everywhere)
+  WRITES: phierr(everywhere) psierr(everywhere)
 } "Calculate error for the wave equation"
 
 SCHEDULE WaveToyAMReX_OutputParticle AT analysis
