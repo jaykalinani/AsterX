@@ -101,7 +101,7 @@ CactusUtils/SystemTopology
 CactusUtils/TerminationTrigger
 CactusUtils/TimerReport
 # CactusUtils/Trigger
-# CactusUtils/Vectors
+CactusUtils/Vectors
 # CactusUtils/WatchDog
 
 

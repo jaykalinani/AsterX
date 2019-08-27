@@ -4,6 +4,7 @@ IMPLEMENTS: AMReX
 
 INHERITS: IO
 
+uses include header: vectors.h
 
 
 INCLUDES HEADER: loop.hxx IN loop.hxx
