@@ -1,8 +1,8 @@
 #include "driver.hxx"
 #include "io.hxx"
-#include "schedule.hxx"
-#include "prolongate_3d_rf2.hxx"
 #include "prolongate_3d_cc_rf2.hxx"
+#include "prolongate_3d_rf2.hxx"
+#include "schedule.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -174,6 +174,21 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   }
 }
 
+Interpolater *get_interpolator() {
+  DECLARE_CCTK_PARAMETERS;
+  switch (prolongation_order) {
+  case 0:
+    return &pc_interp;
+  case 1:
+    return &cell_bilinear_interp;
+  case 2:
+    return &quadratic_interp;
+  case 4:
+    return &prolongate3d_cc_rf2_o4;
+  }
+  assert(0);
+}
+
 void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
                                             const BoxArray &ba,
                                             const DistributionMapping &dm) {
@@ -203,6 +218,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
   SetupLevel(level, ba, dm);
 
   // Prolongate
+  Interpolater *const interpolator = get_interpolator();
   auto &leveldata = ghext->leveldata.at(level);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
   const int num_groups = CCTK_NumGroups();
@@ -247,7 +263,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
             groupdata.numvars, ghext->amrcore->Geom(level - 1),
             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
-            &prolongate3d_cc_rf2_o4, bcs, 0);
+            interpolator, bcs, 0);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int =
               coarsegroupdata.valid.at(tl).at(vi).valid_int &&
@@ -276,6 +292,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     CCTK_VINFO("RemakeLevel level %d", level);
 
   // Copy or prolongate
+  Interpolater *const interpolator = get_interpolator();
   auto &leveldata = ghext->leveldata.at(level);
 #warning "TODO: Make this an empty MultiFab"
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
@@ -368,7 +385,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                              {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                              groupdata.numvars, ghext->amrcore->Geom(level - 1),
                              ghext->amrcore->Geom(level), cphysbc, 0, fphysbc,
-                             0, reffact, &prolongate3d_cc_rf2_o4, bcs, 0);
+                             0, reffact, interpolator, bcs, 0);
 
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             valid.at(tl).valid_int =

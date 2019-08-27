@@ -152,6 +152,16 @@ CCTK_INT ghost_size "Number of ghost zones"
 
 
 
+CCTK_INT prolongation_order "Prolongation order"
+{
+  0 :: "piecewise continuous"
+  1 :: "linear"
+  2 :: "quadratic"
+  4 :: ""
+} 1
+
+
+
 CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 {
   *:* :: ""
