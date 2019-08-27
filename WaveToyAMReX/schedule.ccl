@@ -33,6 +33,7 @@ SCHEDULE WaveToyAMReX_EstimateError AT postinitial
 {
   LANG: C
   READS: phi(interior) psi(interior)
+  WRITES: AMReX::regrid_error(interior)
 } "Estimate local error for regridding initial conditions"
 
 

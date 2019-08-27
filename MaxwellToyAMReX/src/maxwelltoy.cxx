@@ -663,11 +663,13 @@ extern "C" void MaxwellToyAMReX_NaNCheck(CCTK_ARGUMENTS) {
   Loop::loop_all<0, 0, 1>(cctkGH,
                           [&](const Loop::PointDesc &p) { nancheck(jz, p); });
 
-  Loop::loop_all<0, 0, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(dive, p); });
+  // Loop::loop_all<0, 0, 0>(cctkGH,
+  //                         [&](const Loop::PointDesc &p) { nancheck(dive, p);
+  //                         });
 
-  Loop::loop_all<1, 1, 1>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(divb, p); });
+  // Loop::loop_all<1, 1, 1>(cctkGH,
+  //                         [&](const Loop::PointDesc &p) { nancheck(divb, p);
+  //                         });
 }
 
 extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
@@ -688,27 +690,49 @@ extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
 
-  // Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-  //   regrid_error[p.idx] = fabs(p.x) < 0.5 && fabs(p.y) < 0.5 && fabs(p.z) <
-  //   0.5;
-  // });
+#if 0
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    regrid_error[p.idx] = fabs(p.x) < 0.5 && fabs(p.y) < 0.5 && fabs(p.z) <
+    0.5;
+  });
+#endif
 
-  // Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-  //   CCTK_REAL err = 0;
-  //   for (int b = 0; b < 2; ++b)
-  //     for (int a = 0; a < 2; ++a)
-  //       err += fabs(ax_(p.i - 1, p.j + a, p.k + b) -
-  //                   2 * ax_(p.i, p.j + a, p.k + b) +
-  //                   ax_(p.i + 1, p.j + a, p.k + b)) +
-  //              fabs(ay_(p.i + a, p.j - 1, p.k + b) -
-  //                   2 * ay_(p.i + a, p.j, p.k + b) +
-  //                   ay_(p.i + a, p.j + 1, p.k + b)) +
-  //              fabs(az_(p.i + a, p.j + b, p.k - 1) -
-  //                   2 * az_(p.i + a, p.j + b, p.k) +
-  //                   az_(p.i + a, p.j + b, p.k + 1));
-  //   regrid_error[p.idx] = err;
-  // });
+#if 0
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    CCTK_REAL err = 0;
+    for (int b = 0; b < 2; ++b)
+      for (int a = 0; a < 2; ++a)
+        err += fabs(ax_(p.i - 1, p.j + a, p.k + b) -
+                    2 * ax_(p.i, p.j + a, p.k + b) +
+                    ax_(p.i + 1, p.j + a, p.k + b)) +
+               fabs(ay_(p.i + a, p.j - 1, p.k + b) -
+                    2 * ay_(p.i + a, p.j, p.k + b) +
+                    ay_(p.i + a, p.j + 1, p.k + b)) +
+               fabs(az_(p.i + a, p.j + b, p.k - 1) -
+                    2 * az_(p.i + a, p.j + b, p.k) +
+                    az_(p.i + a, p.j + b, p.k + 1));
+    regrid_error[p.idx] = err;
+  });
+#endif
 
+#if 0
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    auto closeto = [&](CCTK_REAL x, CCTK_REAL y, CCTK_REAL z, CCTK_REAL r) {
+      return fabs(p.x - x) <= r && fabs(p.y - y) <= r && fabs(p.z - z) <= r;
+    };
+    constexpr CCTK_REAL x = 0.25;
+    constexpr CCTK_REAL y = 0.25;
+    constexpr CCTK_REAL z = 0.25;
+    constexpr CCTK_REAL r = 0.2;
+    regrid_error[p.idx] = // closeto(-x, -y, -z, r) ||
+        closeto(+x, -y, -z, r) || closeto(-x, +y, -z, r) ||
+        closeto(+x, +y, -z, r) || closeto(-x, -y, +z, r) ||
+        closeto(+x, -y, +z, r) || closeto(-x, +y, +z, r) ||
+        closeto(+x, +y, +z, r);
+  });
+#endif
+
+#if 1
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL err = 0;
     const auto accum = [&](CCTK_REAL x) { err += fabs(x); };
@@ -783,6 +807,7 @@ extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
     diff110(bz_);
     regrid_error[p.idx] = err;
   });
+#endif
 }
 
 extern "C" void MaxwellToyAMReX_Error(CCTK_ARGUMENTS) {

@@ -120,6 +120,11 @@ CCTK_INT max_tile_size_z "Maximum tile size"
   1:* :: ""
 } 32
 
+CCTK_REAL grid_efficiency "Minimum AMR grid efficiency"
+{
+  0.0:* :: ""
+} 0.7  
+
 
 
 CCTK_INT max_num_levels "Maximum number of refinement levels"

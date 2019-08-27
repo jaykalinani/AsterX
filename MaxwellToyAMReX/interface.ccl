@@ -134,75 +134,75 @@ CCTK_REAL current_jz TYPE=gf TIMELEVELS=2 TAGS='index={0 0 1}'
 
 
 
-CCTK_REAL errors_potential_phi TYPE=gf TAGS='index={0 0 0}'
+CCTK_REAL errors_potential_phi TYPE=gf TAGS='index={0 0 0} checkpoint="no"'
 {
   phierr
 } "Electromagnetic potential"
 
-CCTK_REAL errors_potential_ax TYPE=gf TAGS='index={1 0 0}'
+CCTK_REAL errors_potential_ax TYPE=gf TAGS='index={1 0 0} checkpoint="no"'
 {
   axerr
 } "Electromagnetic potential"
-CCTK_REAL errors_potential_ay TYPE=gf TAGS='index={0 1 0}'
+CCTK_REAL errors_potential_ay TYPE=gf TAGS='index={0 1 0} checkpoint="no"'
 {
   ayerr
 } "Electromagnetic potential"
-CCTK_REAL errors_potential_az TYPE=gf TAGS='index={0 0 1}'
+CCTK_REAL errors_potential_az TYPE=gf TAGS='index={0 0 1} checkpoint="no"'
 {
   azerr
 } "Electromagnetic potential"
 
-CCTK_REAL errors_field_ex TYPE=gf TAGS='index={1 0 0}'
+CCTK_REAL errors_field_ex TYPE=gf TAGS='index={1 0 0} checkpoint="no"'
 {
   exerr
 } "Electromagnetic field"
-CCTK_REAL errors_field_ey TYPE=gf TAGS='index={0 1 0}'
+CCTK_REAL errors_field_ey TYPE=gf TAGS='index={0 1 0} checkpoint="no"'
 {
   eyerr
 } "Electromagnetic field"
-CCTK_REAL errors_field_ez TYPE=gf TAGS='index={0 0 1}'
+CCTK_REAL errors_field_ez TYPE=gf TAGS='index={0 0 1} checkpoint="no"'
 {
   ezerr
 } "Electromagnetic field"
 
-CCTK_REAL errors_field_bx TYPE=gf TAGS='index={0 1 1}'
+CCTK_REAL errors_field_bx TYPE=gf TAGS='index={0 1 1} checkpoint="no"'
 {
   bxerr
 } "Electromagnetic field"
-CCTK_REAL errors_field_by TYPE=gf TAGS='index={1 0 1}'
+CCTK_REAL errors_field_by TYPE=gf TAGS='index={1 0 1} checkpoint="no"'
 {
   byerr
 } "Electromagnetic field"
-CCTK_REAL errors_field_bz TYPE=gf TAGS='index={1 1 0}'
+CCTK_REAL errors_field_bz TYPE=gf TAGS='index={1 1 0} checkpoint="no"'
 {
   bzerr
 } "Electromagnetic field"
 
-CCTK_REAL errors_current_rho TYPE=gf TAGS='index={0 0 0}'
+CCTK_REAL errors_current_rho TYPE=gf TAGS='index={0 0 0} checkpoint="no"'
 {
   rhoerr
 } "Electric charge current"
 
-CCTK_REAL errors_current_jx TYPE=gf TAGS='index={1 0 0}'
+CCTK_REAL errors_current_jx TYPE=gf TAGS='index={1 0 0} checkpoint="no"'
 {
   jxerr
 } "Electric charge current"
-CCTK_REAL errors_current_jy TYPE=gf TAGS='index={0 1 0}'
+CCTK_REAL errors_current_jy TYPE=gf TAGS='index={0 1 0} checkpoint="no"'
 {
   jyerr
 } "Electric charge current"
-CCTK_REAL errors_current_jz TYPE=gf TAGS='index={0 0 1}'
+CCTK_REAL errors_current_jz TYPE=gf TAGS='index={0 0 1} checkpoint="no"'
 {
   jzerr
 } "Electric charge current"
 
 
 
-CCTK_REAL constraints_dive TYPE=gf TAGS='index={0 0 0}'
+CCTK_REAL constraints_dive TYPE=gf TAGS='index={0 0 0} checkpoint="no"'
 {
   dive
 } "Constraints"
-CCTK_REAL constraints_divb TYPE=gf TAGS='index={1 1 1}'
+CCTK_REAL constraints_divb TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
 {
   divb
 } "Constraints"

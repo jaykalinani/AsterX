@@ -9,6 +9,7 @@
 #include <cctki_GHExtensions.h>
 #include <cctki_ScheduleBindings.h>
 #include <cctki_WarnLevel.h>
+#include <util_Table.h>
 
 #include <AMReX.H>
 #include <AMReX_FillPatchUtil.H>
@@ -24,12 +25,12 @@
 
 #include <algorithm>
 #include <cctype>
+#include <map>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -197,6 +198,48 @@ GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata, const MFIter &mfi)
     : GridDesc(leveldata, mfi) {
   const Box &fbx = mfi.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
+}
+
+// Set grid functions to nan
+void poison_invalid(const GHExt::LevelData &leveldata,
+                    const GHExt::LevelData::GroupData &groupdata, int vi,
+                    int tl) {
+  DECLARE_CCTK_PARAMETERS;
+  if (!poison_undefined_values)
+    return;
+
+  const valid_t &valid = groupdata.valid.at(tl).at(vi);
+  if (valid.valid_int && valid.valid_bnd)
+    return;
+
+  auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+  for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+    GridPtrDesc grid(leveldata, mfi);
+    const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+    CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+
+    if (!valid.valid_int) {
+      if (!valid.valid_bnd) {
+        grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+          ptr[p.idx] = 0.0 / 0.0;
+        });
+      } else {
+        grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
+          ptr[p.idx] = 0.0 / 0.0;
+        });
+      }
+    } else {
+      if (!valid.valid_bnd) {
+        grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
+          ptr[p.idx] = 0.0 / 0.0;
+        });
+      } else {
+        assert(0);
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -752,6 +795,47 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
   assert(0);
 }
 
+bool get_group_checkpoint_flag(const int gi) {
+  int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  char buf[100];
+  int iret = Util_TableGetString(tags, sizeof buf, buf, "checkpoint");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    return true;
+  } else if (iret >= 0) {
+    string str(buf);
+    for (auto &c : str)
+      c = tolower(c);
+    if (str == "yes")
+      return true;
+    if (str == "no")
+      return false;
+    assert(0);
+  } else {
+    assert(0);
+  }
+}
+
+void InvalidateTimelevels(cGH *restrict const cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
+  for (auto &restrict leveldata : ghext->leveldata) {
+    for (auto &restrict groupdata : leveldata.groupdata) {
+      const bool checkpoint = get_group_checkpoint_flag(groupdata.groupindex);
+      if (!checkpoint) {
+        // Invalidate all time levels
+        const int ntls = groupdata.mfab.size();
+        for (int tl = 0; tl < ntls; ++tl) {
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            groupdata.valid.at(tl).at(vi) = valid_t();
+            poison_invalid(leveldata, groupdata, vi, tl);
+          }
+        }
+      }
+    }
+  }
+}
+
 void CycleTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -761,32 +845,20 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
   for (auto &restrict leveldata : ghext->leveldata) {
     for (auto &restrict groupdata : leveldata.groupdata) {
       const int ntls = groupdata.mfab.size();
+      // Rotate time levels and invalidate current time level
       if (ntls > 1) {
         unique_ptr<MultiFab> tmp = move(groupdata.mfab.at(ntls - 1));
         for (int tl = ntls - 1; tl > 0; --tl)
           groupdata.mfab.at(tl) = move(groupdata.mfab.at(tl - 1));
         groupdata.mfab.at(0) = move(tmp);
+        vector<valid_t> vtmp = move(groupdata.valid.at(ntls - 1));
         for (int tl = ntls - 1; tl > 0; --tl)
           groupdata.valid.at(tl) = move(groupdata.valid.at(tl - 1));
-        groupdata.valid.at(0) = vector<valid_t>(groupdata.numvars);
-
-        if (poison_undefined_values) {
-          // Set grid functions to nan
-          const int tl = 0;
-          auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-              {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-          for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-            GridPtrDesc grid(leveldata, mfi);
-            const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-            for (int vi = 0; vi < groupdata.numvars; ++vi) {
-              CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-              grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-                ptr[p.idx] = 0.0 / 0.0;
-              });
-            }
-          }
-        }
+        groupdata.valid.at(0) = move(vtmp);
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          groupdata.valid.at(0).at(vi) = valid_t();
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          poison_invalid(leveldata, groupdata, vi, 0);
       }
     }
   }
@@ -806,6 +878,8 @@ int Evolve(tFleshConfig *config) {
   CCTK_VINFO("Starting evolution...");
 
   while (!EvolutionIsDone(cctkGH)) {
+
+    InvalidateTimelevels(cctkGH);
 
     if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0 &&
         ghext->amrcore->maxLevel() > 0) {
@@ -920,7 +994,36 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     }
   }
 
-#warning "TODO: poison those output variables that are not input variables"
+  // Poison those output variables that are not input variables
+  if (poison_undefined_values) {
+    map<clause_t, valid_t> isread;
+    const vector<clause_t> &reads = decode_clauses(
+        attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
+    for (const auto &rd : reads) {
+      clause_t cl = rd;
+      cl.valid = valid_t();
+      assert(isread.count(cl) == 0);
+      isread[cl] = rd.valid;
+    }
+    const vector<clause_t> &writes = decode_clauses(
+        attribute, attribute->n_WritesClauses, attribute->WritesClauses);
+    for (const auto &wr : writes) {
+      clause_t cl = wr;
+      cl.valid = valid_t();
+      valid_t need;
+      if (isread.count(cl) > 0)
+        need = isread[cl];
+
+      const valid_t &provided = wr.valid;
+      for (int level = min_level; level < max_level; ++level) {
+        auto &restrict leveldata = ghext->leveldata.at(level);
+        auto &restrict groupdata = leveldata.groupdata.at(wr.gi);
+        valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
+        have.valid_int &= need.valid_int || !provided.valid_int;
+        have.valid_bnd &= need.valid_bnd || !provided.valid_bnd;
+      }
+    }
+  }
 
   const mode_t mode = decode_mode(attribute);
   switch (mode) {
@@ -1021,6 +1124,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         // Coarsest level: Copy from adjacent boxes on same level
 
         for (int tl = 0; tl < sync_tl; ++tl) {
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            assert(groupdata.valid.at(tl).at(vi).valid_int);
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            groupdata.valid.at(tl).at(vi).valid_bnd = false;
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            poison_invalid(leveldata, groupdata, vi, tl);
           groupdata.mfab.at(tl)->FillBoundary(
               ghext->amrcore->Geom(leveldata.level).periodicity());
           for (int vi = 0; vi < groupdata.numvars; ++vi)
@@ -1048,6 +1157,14 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                           periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                   coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                   groupdata.valid.at(tl).at(vi).valid_int);
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            groupdata.valid.at(tl).at(vi).valid_bnd = false;
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            poison_invalid(leveldata, groupdata, vi, tl);
           FillPatchTwoLevels(
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
               {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
@@ -1060,6 +1177,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                 groupdata.valid.at(tl).at(vi).valid_int;
         }
       }
+
+      for (int tl = 0; tl < sync_tl; ++tl)
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          poison_invalid(leveldata, groupdata, vi, tl);
     }
   }
 
@@ -1093,53 +1214,56 @@ void Restrict(int level) {
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      if (groupdata.indextype == array<int, dim>{0, 0, 0})
-        average_down_nodal(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                           reffact);
-      else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
-               groupdata.indextype == array<int, dim>{0, 1, 0} ||
-               groupdata.indextype == array<int, dim>{0, 0, 1})
-        average_down_edges(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                           reffact);
-      else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
-               groupdata.indextype == array<int, dim>{1, 0, 1} ||
-               groupdata.indextype == array<int, dim>{0, 1, 1})
-        average_down_faces(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                           reffact);
-      else if (groupdata.indextype == array<int, dim>{1, 1, 1})
-        average_down(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
-                     groupdata.numvars, reffact);
-      else
-        assert(0);
+      // Only restrict valid grid functions
+      bool all_invalid = true;
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        all_invalid &= !fine_groupdata.valid.at(tl).at(vi).valid_int &&
+                       !fine_groupdata.valid.at(tl).at(vi).valid_bnd &&
+                       !groupdata.valid.at(tl).at(vi).valid_int;
 
-      for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        groupdata.valid.at(tl).at(vi).valid_int &=
-            fine_groupdata.valid.at(tl).at(vi).valid_int &&
-            fine_groupdata.valid.at(tl).at(vi).valid_bnd;
-        groupdata.valid.at(tl).at(vi).valid_bnd = false;
-      }
+      if (all_invalid) {
 
-      if (poison_undefined_values) {
-        MultiFab &mfab = *groupdata.mfab.at(tl);
-        const MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
-        const IntVect reffact{2, 2, 2};
-        const iMultiFab finemask =
-            makeFineMask(mfab, fine_mfab.boxArray(), reffact);
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc grid(leveldata, mfi);
-          const Array4<CCTK_REAL> &vars = mfab.array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-            // Poison boundaries
-            grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-              ptr[p.idx] = 0.0 / 0.0;
-            });
-          }
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          groupdata.valid.at(tl).at(vi).valid_int = false;
+          groupdata.valid.at(tl).at(vi).valid_bnd = false;
+        }
+
+      } else {
+
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          assert(fine_groupdata.valid.at(tl).at(vi).valid_int &&
+                 fine_groupdata.valid.at(tl).at(vi).valid_bnd &&
+                 groupdata.valid.at(tl).at(vi).valid_int);
+
+        if (groupdata.indextype == array<int, dim>{0, 0, 0})
+          average_down_nodal(*fine_groupdata.mfab.at(tl),
+                             *groupdata.mfab.at(tl), reffact);
+        else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
+                 groupdata.indextype == array<int, dim>{0, 1, 0} ||
+                 groupdata.indextype == array<int, dim>{0, 0, 1})
+          average_down_edges(*fine_groupdata.mfab.at(tl),
+                             *groupdata.mfab.at(tl), reffact);
+        else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
+                 groupdata.indextype == array<int, dim>{1, 0, 1} ||
+                 groupdata.indextype == array<int, dim>{0, 1, 1})
+          average_down_faces(*fine_groupdata.mfab.at(tl),
+                             *groupdata.mfab.at(tl), reffact);
+        else if (groupdata.indextype == array<int, dim>{1, 1, 1})
+          average_down(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
+                       groupdata.numvars, reffact);
+        else
+          assert(0);
+
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          groupdata.valid.at(tl).at(vi).valid_int &=
+              fine_groupdata.valid.at(tl).at(vi).valid_int &&
+              fine_groupdata.valid.at(tl).at(vi).valid_bnd;
+          groupdata.valid.at(tl).at(vi).valid_bnd = false;
         }
       }
+
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        poison_invalid(leveldata, groupdata, vi, tl);
     }
   }
 }

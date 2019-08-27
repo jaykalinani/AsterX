@@ -16,12 +16,12 @@ CCTK_REAL state TYPE=gf TIMELEVELS=2
   psi
 } "Scalar potential for wave equation"
 
-CCTK_REAL energy TYPE=gf
+CCTK_REAL energy TYPE=gf TAGS='checkpoint="no"'
 {
   eps
 } "Energy density for wave equation"
 
-CCTK_REAL err TYPE=gf
+CCTK_REAL err TYPE=gf TAGS='checkpoint="no"'
 {
   phierr
   psierr

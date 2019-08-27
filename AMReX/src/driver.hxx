@@ -94,6 +94,7 @@ struct GHExt {
     unique_ptr<MultiFab> mfab0;
 
     struct GroupData {
+      int groupindex;
       int firstvarindex;
       int numvars;
       array<int, dim> indextype;
