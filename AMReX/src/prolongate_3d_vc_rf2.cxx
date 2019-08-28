@@ -1,4 +1,4 @@
-#include "prolongate_3d_rf2.hxx"
+#include "prolongate_3d_vc_rf2.hxx"
 
 #include "cctk.h"
 
@@ -19,11 +19,12 @@
 namespace CarpetLib {
 using namespace std;
 
-static inline size_t index3(size_t const i, size_t const j, size_t const k,
-                            size_t const padexti, size_t const padextj,
-                            size_t const padextk, size_t const exti,
-                            size_t const extj, size_t const extk) {
-#ifdef CARPET_DEBUG
+namespace {
+inline size_t index3(size_t const i, size_t const j, size_t const k,
+                     size_t const padexti, size_t const padextj,
+                     size_t const padextk, size_t const exti, size_t const extj,
+                     size_t const extk) {
+#ifdef CACTUS_DEBUG
   assert(i < exti);
   assert(j < extj);
   assert(k < extk);
@@ -34,19 +35,22 @@ static inline size_t index3(size_t const i, size_t const j, size_t const k,
 
 template <typename T>
 inline T ipow_helper(T x, unsigned int y) CCTK_ATTRIBUTE_CONST;
-template <typename T> inline T ipow_helper(T x, unsigned int y) {                                         T z = y & 1 ? x : T(1);
+template <typename T> inline T ipow_helper(T x, unsigned int y) {
+  T z = y & 1 ? x : T(1);
   while (y >>= 1) {
     x *= x;
-    if (y & 1)                                                                                                z *= x;
+    if (y & 1)
+      z *= x;
   }
   return z;
-}                                                                                                       
+}
 template <class T> T ipow(T const x, int const y) {
   if (y < 0)
     return T(1) / ipow_helper(x, -y);
   else
     return ipow_helper(x, y);
 }
+} // namespace
 
 #define SRCIND3(i, j, k)                                                       \
   index3(i, j, k, srcipadext, srcjpadext, srckpadext, srciext, srcjext, srckext)
@@ -108,8 +112,7 @@ inline const char *typestring(const CCTK_COMPLEX32 &) {
 // 1D interpolation coefficients
 
 template <typename RT, int ORDER> struct coeffs1d {
-  static const RT
-      coeffs[];
+  static const RT coeffs[];
 
   static ptrdiff_t const ncoeffs = ORDER + 1;
   static ptrdiff_t const imin = -ncoeffs / 2 + 1;
@@ -436,38 +439,42 @@ void prolongate_3d_rf2(T *restrict const dst,
   typedef typename typeprops<T>::real RT;
   coeffs1d<RT, ORDER>::test();
 
-  //if (any(srcbbox.stride() <= regbbox.stride() or
+  // if (any(srcbbox.stride() <= regbbox.stride() or
   //        dstbbox.stride() != regbbox.stride()))
   //  CCTK_ERROR("Internal error: strides disagree");
 
-  //if (any(srcbbox.stride() != reffact2 * dstbbox.stride()))
+  // if (any(srcbbox.stride() != reffact2 * dstbbox.stride()))
   //  CCTK_ERROR(
-  //      "Internal error: source strides are not twice the destination strides");
+  //      "Internal error: source strides are not twice the destination
+  //      strides");
 
-  //if (any(srcbbox.lower() % srcbbox.stride() != 0))
+  // if (any(srcbbox.lower() % srcbbox.stride() != 0))
   //  CCTK_ERROR("Internal error: source bbox is not aligned with vertices");
-  //if (any(dstbbox.lower() % dstbbox.stride() != 0))
-  //  CCTK_ERROR("Internal error: destination bbox is not aligned with vertices");
-  //if (any(regbbox.lower() % regbbox.stride() != 0))
+  // if (any(dstbbox.lower() % dstbbox.stride() != 0))
+  //  CCTK_ERROR("Internal error: destination bbox is not aligned with
+  //  vertices");
+  // if (any(regbbox.lower() % regbbox.stride() != 0))
   //  CCTK_ERROR("Internal error: prolongation region bbox is not aligned with "
   //             "vertices");
 
   // This could be handled, but is likely to point to an error elsewhere
-  //if (regbbox.empty())
+  // if (regbbox.empty())
   //  CCTK_ERROR("Internal error: region extent is empty");
 
-  int const regext[3] = {fbhi[0] - fblo[0] + 1, fbhi[1] - fblo[1] + 1, fbhi[2] - fblo[2] + 1};
-  //assert(all((regbbox.lower() - srcbbox.lower()) % regbbox.stride() == 0));
-  int const srcoff[3] = {fblo[0] - 2*clo[0], fblo[1] - 2*clo[1], fblo[2] - 2*clo[2]};
-  //assert(all((regbbox.lower() - dstbbox.lower()) % regbbox.stride() == 0));
+  int const regext[3] = {fbhi[0] - fblo[0] + 1, fbhi[1] - fblo[1] + 1,
+                         fbhi[2] - fblo[2] + 1};
+  // assert(all((regbbox.lower() - srcbbox.lower()) % regbbox.stride() == 0));
+  int const srcoff[3] = {fblo[0] - 2 * clo[0], fblo[1] - 2 * clo[1],
+                         fblo[2] - 2 * clo[2]};
+  // assert(all((regbbox.lower() - dstbbox.lower()) % regbbox.stride() == 0));
   int const dstoff[3] = {fblo[0] - flo[0], fblo[1] - flo[1], fblo[2] - flo[2]};
 
-  //bvect3 const needoffsetlo = srcoff % reffact2 != 0;
-  //bvect3 const needoffsethi = (srcoff + regext - 1) % reffact2 != 0;
-  //int const offsetlo[3] = {0,0,0};
-  //int const offsethi[3] = {0,0,0};
+  // bvect3 const needoffsetlo = srcoff % reffact2 != 0;
+  // bvect3 const needoffsethi = (srcoff + regext - 1) % reffact2 != 0;
+  // int const offsetlo[3] = {0,0,0};
+  // int const offsethi[3] = {0,0,0};
 
-  //if (not regbbox.expand(offsetlo, offsethi).is_contained_in(srcbbox) or
+  // if (not regbbox.expand(offsetlo, offsethi).is_contained_in(srcbbox) or
   //    not regbbox.is_contained_in(dstbbox)) {
   //  cerr << "ORDER=" << ORDER << "\n"
   //       << "offsetlo=" << offsetlo << "\n"
@@ -480,9 +487,9 @@ void prolongate_3d_rf2(T *restrict const dst,
   //      "Internal error: region extent is not contained in array extent");
   //}
 
-  size_t const srcipadext = chi[0] - clo[0] + 1; //srcpadext[0];
-  size_t const srcjpadext = chi[1] - clo[1] + 1; //srcpadext[1];
-  size_t const srckpadext = chi[2] - clo[2] + 1; //srcpadext[2];
+  size_t const srcipadext = chi[0] - clo[0] + 1; // srcpadext[0];
+  size_t const srcjpadext = chi[1] - clo[1] + 1; // srcpadext[1];
+  size_t const srckpadext = chi[2] - clo[2] + 1; // srcpadext[2];
 
   size_t const dstipadext = fhi[0] - flo[0] + 1; // dstpadext[0];
   size_t const dstjpadext = fhi[1] - flo[1] + 1; // dstpadext[1];
@@ -749,85 +756,72 @@ l9:;
 } // namespace CarpetLib
 
 namespace amrex {
-template <int ORDER>
-Prolongate3D_VC_RF2<ORDER>::~Prolongate3D_VC_RF2 () { }
+template <int ORDER> Prolongate3D_VC_RF2<ORDER>::~Prolongate3D_VC_RF2() {}
 
 template <int ORDER>
-Box
-Prolongate3D_VC_RF2<ORDER>::CoarseBox (const Box& fine, int ratio)
-{
+Box Prolongate3D_VC_RF2<ORDER>::CoarseBox(const Box &fine, int ratio) {
   assert(ORDER % 2);
 
   Box b = amrex::coarsen(fine, ratio);
-  b.grow(ORDER/2+1);
+  b.grow(ORDER / 2 + 1);
 
   return b;
 }
 
 template <int ORDER>
-Box
-Prolongate3D_VC_RF2<ORDER>::CoarseBox (const Box& fine, const IntVect& ratio)
-{
+Box Prolongate3D_VC_RF2<ORDER>::CoarseBox(const Box &fine,
+                                          const IntVect &ratio) {
   assert(ORDER % 2);
 
   Box b = amrex::coarsen(fine, ratio);
-  b.grow(ORDER/2+1);
+  b.grow(ORDER / 2 + 1);
 
   return b;
 }
 
 template <int ORDER>
-void
-Prolongate3D_VC_RF2<ORDER>::interp (const FArrayBox& crse,
-                         int              crse_comp,
-                         FArrayBox&       fine,
-                         int              fine_comp,
-                         int              ncomp,
-                         const Box&       fine_region,
-                         const IntVect&   ratio,
-                         const Geometry&  crse_geom,
-                         const Geometry&  fine_geom,
-                         Vector<BCRec> const& bcr,
-                         int              actual_comp,
-                         int              actual_state,
-                         RunOn            gpu_or_cpu)
-{
-    assert(bcr.size() >= ncomp);
-    //
-    // Make box which is intersection of fine_region and domain of fine.
-    //
-    Box target_fine_region = fine_region & fine.box();
+void Prolongate3D_VC_RF2<ORDER>::interp(
+    const FArrayBox &crse, int crse_comp, FArrayBox &fine, int fine_comp,
+    int ncomp, const Box &fine_region, const IntVect &ratio,
+    const Geometry &crse_geom, const Geometry &fine_geom,
+    Vector<BCRec> const &bcr, int actual_comp, int actual_state,
+    RunOn gpu_or_cpu) {
+  assert(bcr.size() >= ncomp);
+  //
+  // Make box which is intersection of fine_region and domain of fine.
+  //
+  Box target_fine_region = fine_region & fine.box();
 
-    //Box crse_bx(amrex::coarsen(target_fine_region,ratio));
-    
-    //
-    // Get coarse and fine edge-centered volume coordinates.
-    //
-    // TODO: do not use AMREX macro
-    /*
-    Vector<CCTK_REAL> fvc[AMREX_SPACEDIM];
-    Vector<CCTK_REAL> cvc[AMREX_SPACEDIM];
-    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
-    {
-        fine_geom.GetEdgeVolCoord(fvc[dir],target_fine_region,dir);
-        crse_geom.GetEdgeVolCoord(cvc[dir],crse_bx,dir);
-    }
-    */
-    for (int var = 0 ; var < ncomp ; ++var) {
-      CCTK_REAL* fdat        = fine.dataPtr(fine_comp + var);
-      const CCTK_REAL* cdat  = crse.dataPtr(crse_comp + var);
-      const int* flo    = fine.loVect();
-      const int* fhi    = fine.hiVect();
-      const int* fblo   = target_fine_region.loVect();
-      const int* fbhi   = target_fine_region.hiVect();
-      const int* clo    = crse.loVect();
-      const int* chi    = crse.hiVect();
-      //const int* cblo   = crse_bx.loVect();
-      //const int* cbhi   = crse_bx.hiVect();
-      //Vector<int> bc     = GetBCArray(bcr);
-      //const int* ratioV = ratio.getVect();
+  // Box crse_bx(amrex::coarsen(target_fine_region,ratio));
 
-      CarpetLib::prolongate_3d_rf2<CCTK_REAL, ORDER>(fdat,flo,fhi,
+  //
+  // Get coarse and fine edge-centered volume coordinates.
+  //
+  // TODO: do not use AMREX macro
+  /*
+  Vector<CCTK_REAL> fvc[AMREX_SPACEDIM];
+  Vector<CCTK_REAL> cvc[AMREX_SPACEDIM];
+  for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+  {
+      fine_geom.GetEdgeVolCoord(fvc[dir],target_fine_region,dir);
+      crse_geom.GetEdgeVolCoord(cvc[dir],crse_bx,dir);
+  }
+  */
+  for (int var = 0; var < ncomp; ++var) {
+    CCTK_REAL *fdat = fine.dataPtr(fine_comp + var);
+    const CCTK_REAL *cdat = crse.dataPtr(crse_comp + var);
+    const int *flo = fine.loVect();
+    const int *fhi = fine.hiVect();
+    const int *fblo = target_fine_region.loVect();
+    const int *fbhi = target_fine_region.hiVect();
+    const int *clo = crse.loVect();
+    const int *chi = crse.hiVect();
+    // const int* cblo   = crse_bx.loVect();
+    // const int* cbhi   = crse_bx.hiVect();
+    // Vector<int> bc     = GetBCArray(bcr);
+    // const int* ratioV = ratio.getVect();
+
+    CarpetLib::prolongate_3d_rf2<CCTK_REAL, ORDER>(fdat,flo,fhi,
                      fblo, fbhi,
                      /*ncomp,ratioV[0],ratioV[1],ratioV[2],*/
                      cdat,clo,chi//,
@@ -837,9 +831,8 @@ Prolongate3D_VC_RF2<ORDER>::interp (const FArrayBox& crse,
                      fvc[0].dataPtr(),fvc[1].dataPtr(),fvc[2].dataPtr(),
                      cvc[0].dataPtr(),cvc[1].dataPtr(),cvc[2].dataPtr(),
                      actual_comp,actual_state*/);
-    }
+  }
 }
 
 Prolongate3D_VC_RF2<5> prolongate3d_vc_rf2_o5;
 } // namespace amrex
-

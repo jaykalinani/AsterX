@@ -12,8 +12,10 @@
 
 #include <AMReX.H>
 #include <AMReX_AmrCore.H>
+#include <AMReX_Interpolater.H>
 #include <AMReX_MultiFab.H>
 
+#include <array>
 #include <iostream>
 #include <memory>
 #include <type_traits>
@@ -108,6 +110,8 @@ struct GHExt {
 };
 
 extern unique_ptr<GHExt> ghext;
+
+Interpolater *get_interpolator(const array<int, dim> indextype);
 
 } // namespace AMReX
 

@@ -1,7 +1,7 @@
 #include "driver.hxx"
 #include "io.hxx"
 #include "prolongate_3d_cc_rf2.hxx"
-#include "prolongate_3d_rf2.hxx"
+#include "prolongate_3d_vc_rf2.hxx"
 #include "schedule.hxx"
 
 #include <cctk.h>
@@ -12,7 +12,6 @@
 #include <AMReX.H>
 #include <AMReX_BCRec.H>
 #include <AMReX_FillPatchUtil.H>
-#include <AMReX_Interpolater.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_PhysBCFunct.H>
 
@@ -174,18 +173,33 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   }
 }
 
-Interpolater *get_interpolator() {
+Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
-  switch (prolongation_order) {
-  case 0:
-    return &pc_interp;
-  case 1:
-    return &cell_bilinear_interp;
-  case 2:
-    return &quadratic_interp;
-  case 4:
-    return &prolongate3d_cc_rf2_o4;
+
+  if (indextype == array<int, dim>{0, 0, 0}) {
+    // Vertex centred
+    switch (prolongation_order) {
+    case 1:
+      return &node_bilinear_interp;
+    case 5:
+      return &prolongate3d_vc_rf2_o5;
+    }
   }
+
+  if (indextype == array<int, dim>{1, 1, 1}) {
+    // Cell centred
+    switch (prolongation_order) {
+    case 0:
+      return &pc_interp;
+    case 1:
+      return &cell_bilinear_interp;
+    case 2:
+      return &quadratic_interp;
+    case 4:
+      return &prolongate3d_cc_rf2_o4;
+    }
+  }
+
   assert(0);
 }
 
@@ -218,7 +232,6 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
   SetupLevel(level, ba, dm);
 
   // Prolongate
-  Interpolater *const interpolator = get_interpolator();
   auto &leveldata = ghext->leveldata.at(level);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
   const int num_groups = CCTK_NumGroups();
@@ -226,6 +239,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     auto &restrict groupdata = leveldata.groupdata.at(gi);
     auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
+    Interpolater *const interpolator = get_interpolator(groupdata.indextype);
     PhysBCFunctNoOp cphysbc;
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
@@ -292,7 +306,6 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     CCTK_VINFO("RemakeLevel level %d", level);
 
   // Copy or prolongate
-  Interpolater *const interpolator = get_interpolator();
   auto &leveldata = ghext->leveldata.at(level);
 #warning "TODO: Make this an empty MultiFab"
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
@@ -321,6 +334,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     auto &coarseleveldata = ghext->leveldata.at(level - 1);
     auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
+    Interpolater *const interpolator = get_interpolator(groupdata.indextype);
 
     PhysBCFunctNoOp cphysbc;
     PhysBCFunctNoOp fphysbc;
