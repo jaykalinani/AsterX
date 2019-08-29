@@ -1,7 +1,16 @@
 # Main make.code.defn file for thorn AMReX
 
 # Source files in this directory
-SRCS = driver.cxx io.cxx level.cxx prolongate_3d_cc_rf2.cxx prolongate_3d_vc_rf2.cxx reduction.cxx schedule.cxx timer.cxx
+SRCS =						\
+	driver.cxx				\
+	io.cxx					\
+	level.cxx				\
+	prolongate_3d_cc_rf2.cxx		\
+	prolongate_3d_rf2.cxx			\
+	prolongate_3d_vc_rf2.cxx		\
+	reduction.cxx				\
+	schedule.cxx				\
+	timer.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 

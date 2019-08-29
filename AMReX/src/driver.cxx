@@ -1,7 +1,6 @@
 #include "driver.hxx"
 #include "io.hxx"
-#include "prolongate_3d_cc_rf2.hxx"
-#include "prolongate_3d_vc_rf2.hxx"
+#include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
 
 #include <cctk.h>
@@ -176,28 +175,63 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
 
-  if (indextype == array<int, dim>{0, 0, 0}) {
-    // Vertex centred
-    switch (prolongation_order) {
-    case 1:
-      return &node_bilinear_interp;
-    case 5:
-      return &prolongate3d_vc_rf2_o5;
-    }
-  }
+  switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
 
-  if (indextype == array<int, dim>{1, 1, 1}) {
-    // Cell centred
+  case 0b000:
     switch (prolongation_order) {
-    case 0:
-      return &pc_interp;
     case 1:
-      return &cell_bilinear_interp;
-    case 2:
-      return &quadratic_interp;
-    case 4:
-      return &prolongate3d_cc_rf2_o4;
+      return &prolongate_3d_rf2_c000_o1;
     }
+    break;
+
+  case 0b001:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c001_o1;
+    }
+    break;
+
+  case 0b010:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c010_o1;
+    }
+    break;
+
+  case 0b011:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c011_o1;
+    }
+    break;
+
+  case 0b100:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c100_o1;
+    }
+    break;
+
+  case 0b101:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c101_o1;
+    }
+    break;
+
+  case 0b110:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c110_o1;
+    }
+    break;
+
+  case 0b111:
+    switch (prolongation_order) {
+    case 1:
+      return &prolongate_3d_rf2_c111_o1;
+    }
+    break;
   }
 
   assert(0);
