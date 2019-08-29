@@ -172,6 +172,7 @@ SCHEDULE MaxwellToyAMReX_Constraints AT analysis
 
   READS: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
   READS: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
+  READS: current_rho(interior)
 
   WRITES: constraints_dive(interior)
   WRITES: constraints_divb(interior)
