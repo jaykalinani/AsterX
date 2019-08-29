@@ -1096,10 +1096,6 @@ extern "C" void MaxwellToyAMReX_Constraints(CCTK_ARGUMENTS) {
 
   const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
 
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
-
   const Loop::GF3D<CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
 
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
