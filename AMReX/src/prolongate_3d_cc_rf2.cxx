@@ -24,7 +24,7 @@ inline size_t index3(size_t const i, size_t const j, size_t const k,
                      size_t const padexti, size_t const padextj,
                      size_t const padextk, size_t const exti, size_t const extj,
                      size_t const extk) {
-#ifdef CACTUS_DEBUG
+#ifdef CCTK_DEBUG
   assert(i < exti);
   assert(j < extj);
   assert(k < extk);
@@ -151,11 +151,11 @@ template <typename RT, int ORDER, int di> struct coeffs1d {
     static_assert(ncoeffs == sizeof coeffs_t::coeffs / sizeof *coeffs_t::coeffs,
                   "coefficient array has wrong size");
     static_assert(di == 0 or di == 1, "di must be 0 or 1");
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
     assert(i >= imin and i < imax);
 #endif
     ptrdiff_t const j = di == 0 ? i - imin : ncoeffs - 1 - (i - imin);
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
     assert(j >= 0 and j < ncoeffs);
 #endif
     return coeffs_t::coeffs[j];
@@ -287,7 +287,7 @@ template <typename T, int ORDER> static inline void check_indices0() {}
 
 template <typename T, int ORDER, int di>
 static inline void check_indices1(ptrdiff_t const is, ptrdiff_t const srciext) {
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
   typedef typename typeprops<T>::real RT;
   typedef coeffs1d<RT, ORDER, di> coeffs;
   assert(is + coeffs::imin >= 0);
@@ -300,7 +300,7 @@ template <typename T, int ORDER, int di, int dj>
 static inline void check_indices2(ptrdiff_t const is, ptrdiff_t const js,
                                   ptrdiff_t const srciext,
                                   ptrdiff_t const srcjext) {
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
   typedef typename typeprops<T>::real RT;
   typedef coeffs1d<RT, ORDER, dj> coeffs;
   assert(js + coeffs::imin >= 0);
@@ -314,7 +314,7 @@ static inline void check_indices3(ptrdiff_t const is, ptrdiff_t const js,
                                   ptrdiff_t const ks, ptrdiff_t const srciext,
                                   ptrdiff_t const srcjext,
                                   ptrdiff_t const srckext) {
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
   typedef typename typeprops<T>::real RT;
   typedef coeffs1d<RT, ORDER, dk> coeffs;
   assert(ks + coeffs::imin >= 0);

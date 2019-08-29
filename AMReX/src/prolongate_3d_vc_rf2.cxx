@@ -24,7 +24,7 @@ inline size_t index3(size_t const i, size_t const j, size_t const k,
                      size_t const padexti, size_t const padextj,
                      size_t const padextk, size_t const exti, size_t const extj,
                      size_t const extk) {
-#ifdef CACTUS_DEBUG
+#ifdef CCTK_DEBUG
   assert(i < exti);
   assert(j < extj);
   assert(k < extk);
@@ -121,11 +121,11 @@ template <typename RT, int ORDER> struct coeffs1d {
   static inline RT const &get(ptrdiff_t const i) {
     static_assert(ncoeffs == sizeof coeffs / sizeof *coeffs,
                   "coefficient array has wrong size");
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
     assert(i >= imin and i < imax);
 #endif
     ptrdiff_t const j = i - imin;
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
     assert(j >= 0 and j < ncoeffs);
 #endif
     return coeffs[j];
@@ -368,7 +368,7 @@ template <typename T, int ORDER> static inline void check_indices0() {}
 template <typename T, int ORDER, int di>
 static inline void check_indices1(ptrdiff_t const is, ptrdiff_t const srciext) {
   static_assert(di == 0 or di == 1, "di must be 0 or 1");
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
   typedef typename typeprops<T>::real RT;
   typedef coeffs1d<RT, ORDER> coeffs;
   if (di == 0) {
@@ -387,7 +387,7 @@ static inline void check_indices2(ptrdiff_t const is, ptrdiff_t const js,
                                   ptrdiff_t const srciext,
                                   ptrdiff_t const srcjext) {
   static_assert(dj == 0 or dj == 1, "dj must be 0 or 1");
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
   typedef typename typeprops<T>::real RT;
   typedef coeffs1d<RT, ORDER> coeffs;
   if (dj == 0) {
@@ -407,7 +407,7 @@ static inline void check_indices3(ptrdiff_t const is, ptrdiff_t const js,
                                   ptrdiff_t const srcjext,
                                   ptrdiff_t const srckext) {
   static_assert(dk == 0 or dk == 1, "dk must be 0 or 1");
-#ifdef CARPET_DEBUG
+#ifdef CCTK_DEBUG
   typedef typename typeprops<T>::real RT;
   typedef coeffs1d<RT, ORDER> coeffs;
   if (dk == 0) {
