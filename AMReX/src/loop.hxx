@@ -30,7 +30,7 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   static constexpr int di = 1;
   int dj, dk;
   int ni, nj, nk;
-  constexpr array<int, dim> indextype() const { return {CI, CJ, CK}; }
+  static constexpr array<int, dim> indextype() { return {CI, CJ, CK}; }
   inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
       : ptr(ptr), dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
         dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),

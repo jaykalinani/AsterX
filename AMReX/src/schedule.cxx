@@ -212,11 +212,11 @@ void poison_invalid(const GHExt::LevelData &leveldata,
   if (valid.valid_int && valid.valid_bnd)
     return;
 
-  auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+  const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
   for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    GridPtrDesc grid(leveldata, mfi);
+    const GridPtrDesc grid(leveldata, mfi);
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
 
