@@ -242,6 +242,47 @@ void poison_invalid(const GHExt::LevelData &leveldata,
   }
 }
 
+// Ensure grid functions are not nan
+void check_valid(const GHExt::LevelData &leveldata,
+                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl) {
+  DECLARE_CCTK_PARAMETERS;
+  if (!poison_undefined_values)
+    return;
+
+  const valid_t &valid = groupdata.valid.at(tl).at(vi);
+  if (!valid.valid_int && !valid.valid_bnd)
+    return;
+
+  const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+  for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+    const GridPtrDesc grid(leveldata, mfi);
+    const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+    const CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+
+    if (valid.valid_int) {
+      if (valid.valid_bnd) {
+        grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
+          assert(!isnan(ptr[p.idx]));
+        });
+      } else {
+        grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
+          assert(!isnan(ptr[p.idx]));
+        });
+      }
+    } else {
+      if (valid.valid_bnd) {
+        grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
+          assert(!isnan(ptr[p.idx]));
+        });
+      } else {
+        assert(0);
+      }
+    }
+  }
+} // namespace AMReX
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Create a new cGH, copying those data that are set by the flesh, and
@@ -990,6 +1031,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
               CCTK_FullVarName(groupdata.firstvarindex + rd.vi),
               string("_p", rd.tl).c_str(), string(need).c_str(),
               string(have).c_str());
+        check_valid(leveldata, groupdata, rd.vi, rd.tl);
       }
     }
   }
@@ -1080,6 +1122,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         // Code cannot invalidate...
         have.valid_int |= provided.valid_int;
         have.valid_bnd |= provided.valid_bnd;
+        check_valid(leveldata, groupdata, wr.vi, wr.tl);
       }
     }
   }
@@ -1128,8 +1171,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             assert(groupdata.valid.at(tl).at(vi).valid_int);
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).valid_bnd = false;
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
             poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl);
+          }
           groupdata.mfab.at(tl)->FillBoundary(
               ghext->amrcore->Geom(leveldata.level).periodicity());
           for (int vi = 0; vi < groupdata.numvars; ++vi)
@@ -1142,8 +1187,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         // level, and copy from adjacent boxes on same level
 
         const int level = leveldata.level;
-        auto &restrict coarsegroupdata =
-            ghext->leveldata.at(level - 1).groupdata.at(gi);
+        const auto &restrict coarseleveldata = ghext->leveldata.at(level - 1);
+        auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
         assert(coarsegroupdata.numvars == groupdata.numvars);
 
         Interpolater *const interpolator =
@@ -1166,8 +1211,11 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                    groupdata.valid.at(tl).at(vi).valid_int);
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).valid_bnd = false;
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
             poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl);
+          }
           FillPatchTwoLevels(
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
               {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
@@ -1181,9 +1229,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         }
       }
 
-      for (int tl = 0; tl < sync_tl; ++tl)
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
+      for (int tl = 0; tl < sync_tl; ++tl) {
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
           poison_invalid(leveldata, groupdata, vi, tl);
+          check_valid(leveldata, groupdata, vi, tl);
+        }
+      }
     }
   }
 
@@ -1202,13 +1253,13 @@ void Restrict(int level) {
   assert(gi_refinement_level >= 0);
 
   auto &leveldata = ghext->leveldata.at(level);
-  const auto &fine_leveldata = ghext->leveldata.at(level + 1);
+  const auto &fineleveldata = ghext->leveldata.at(level + 1);
   for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
       continue;
     auto &groupdata = leveldata.groupdata.at(gi);
-    const auto &fine_groupdata = fine_leveldata.groupdata.at(gi);
+    const auto &finegroupdata = fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict
     // the oldest.
 #warning "TODO: during evolution, restrict only one time level"
@@ -1220,8 +1271,8 @@ void Restrict(int level) {
       // Only restrict valid grid functions
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        all_invalid &= !fine_groupdata.valid.at(tl).at(vi).valid_int &&
-                       !fine_groupdata.valid.at(tl).at(vi).valid_bnd &&
+        all_invalid &= !finegroupdata.valid.at(tl).at(vi).valid_int &&
+                       !finegroupdata.valid.at(tl).at(vi).valid_bnd &&
                        !groupdata.valid.at(tl).at(vi).valid_int;
 
       if (all_invalid) {
@@ -1233,40 +1284,45 @@ void Restrict(int level) {
 
       } else {
 
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          assert(fine_groupdata.valid.at(tl).at(vi).valid_int &&
-                 fine_groupdata.valid.at(tl).at(vi).valid_bnd &&
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
+                 finegroupdata.valid.at(tl).at(vi).valid_bnd &&
                  groupdata.valid.at(tl).at(vi).valid_int);
+          check_valid(fineleveldata, finegroupdata, vi, tl);
+          check_valid(leveldata, groupdata, vi, tl);
+        }
 
         if (groupdata.indextype == array<int, dim>{0, 0, 0})
-          average_down_nodal(*fine_groupdata.mfab.at(tl),
-                             *groupdata.mfab.at(tl), reffact);
+          average_down_nodal(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                             reffact);
         else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
                  groupdata.indextype == array<int, dim>{0, 1, 0} ||
                  groupdata.indextype == array<int, dim>{0, 0, 1})
-          average_down_edges(*fine_groupdata.mfab.at(tl),
-                             *groupdata.mfab.at(tl), reffact);
+          average_down_edges(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                             reffact);
         else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
                  groupdata.indextype == array<int, dim>{1, 0, 1} ||
                  groupdata.indextype == array<int, dim>{0, 1, 1})
-          average_down_faces(*fine_groupdata.mfab.at(tl),
-                             *groupdata.mfab.at(tl), reffact);
+          average_down_faces(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                             reffact);
         else if (groupdata.indextype == array<int, dim>{1, 1, 1})
-          average_down(*fine_groupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
+          average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
                        groupdata.numvars, reffact);
         else
           assert(0);
 
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int &=
-              fine_groupdata.valid.at(tl).at(vi).valid_int &&
-              fine_groupdata.valid.at(tl).at(vi).valid_bnd;
+              finegroupdata.valid.at(tl).at(vi).valid_int &&
+              finegroupdata.valid.at(tl).at(vi).valid_bnd;
           groupdata.valid.at(tl).at(vi).valid_bnd = false;
         }
       }
 
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl);
+      }
     }
   }
 }

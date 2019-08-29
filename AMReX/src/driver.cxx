@@ -270,9 +270,11 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
           groupdata.valid.at(tl).at(vi).valid_bnd = false;
         }
       } else {
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
           assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                  coarsegroupdata.valid.at(tl).at(vi).valid_bnd);
+          check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+        }
         InterpFromCoarseLevel(
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
             groupdata.numvars, ghext->amrcore->Geom(level - 1),
@@ -285,8 +287,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
           groupdata.valid.at(tl).at(vi).valid_bnd = false;
         }
       }
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl);
+      }
     }
   }
 
@@ -393,6 +397,12 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                           string("_p", tl).c_str(),
                           string(coarsegroupdata.valid.at(tl).at(vi)).c_str(),
                           string(groupdata.valid.at(tl).at(vi)).c_str());
+            check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+            // We cannot call this function since it would try to
+            // traverse the old grid function with the new grid
+            // structure.
+#warning "TODO: Use explicit loop (see above)"
+            // check_valid(leveldata, groupdata, vi, tl);
           }
 
           FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
@@ -413,8 +423,10 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       }
       groupdata.mfab.at(tl) = move(mfab);
       groupdata.valid.at(tl) = move(valid);
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl);
+      }
     }
   }
 

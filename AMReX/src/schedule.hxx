@@ -71,6 +71,8 @@ struct GridPtrDesc : GridDesc {
 void poison_invalid(const GHExt::LevelData &leveldata,
                     const GHExt::LevelData::GroupData &groupdata, int vi,
                     int tl);
+void check_valid(const GHExt::LevelData &leveldata,
+                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl);
 
 } // namespace AMReX
 
