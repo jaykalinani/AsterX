@@ -116,7 +116,7 @@ SCHEDULE WaveToyAMReX_EstimateError AT poststep
 SCHEDULE WaveToyAMReX_Energy AT analysis
 {
   LANG: C
-  READS: phi(everywhere) psi(interior)
+  READS: phi(everywhere) psi(interior) # psi_p(interior)
   WRITES: eps(interior)
   SYNC: energy
 } "Calculate energy density for the wave equation"
