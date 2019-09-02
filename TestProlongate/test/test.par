@@ -1,0 +1,31 @@
+ActiveThorns = "
+    AMReX
+    Formaline
+    IOUtil
+    TestProlongate
+"
+ 
+$nlevels = 2
+$ncells = 16
+
+Cactus::cctk_show_schedule = no
+
+Cactus::cctk_itlast = 0
+
+#AMReX::blocking_factor_y = 1
+#AMReX::blocking_factor_z = 1
+
+AMReX::ncells_x = $ncells
+AMReX::ncells_y = $ncells
+AMReX::ncells_z = $ncells
+
+AMReX::max_num_levels = $nlevels
+AMReX::regrid_every = 16
+AMReX::regrid_error_threshold = 0.01
+
+AMReX::dtfac = 0.5
+
+AMReX::out_tsv = yes
+
+IO::out_dir = $parfile
+IO::out_every = 16   #TODO $ncells * 2 ** ($nlevels - 1) / 2

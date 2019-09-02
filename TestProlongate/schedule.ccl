@@ -1,0 +1,14 @@
+# Schedule definitions for thorn TestProlongate
+
+#STORAGE: data[1]
+
+SCHEDULE TestProlongate_Test IN CCTK_INITIAL
+{
+  LANG: C
+} "Set up test data"
+
+SCHEDULE TestProlongate_Sync IN CCTK_INITIAL AFTER TestProlongate_Test
+{
+  LANG: C
+  SYNC: data
+} "Sync up test data"

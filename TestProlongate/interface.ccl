@@ -1,0 +1,9 @@
+# Interface definition for thorn TestProlongate
+implements: TestProlongate
+inherits: AMREX# Grid # grid contains scalars
+
+USES INCLUDE HEADER: loop.hxx
+
+private:
+
+CCTK_REAL data TYPE=GF TIMELEVELS=1 "test grid function"
