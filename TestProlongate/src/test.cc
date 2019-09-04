@@ -20,7 +20,6 @@ void TestProlongate_Test(CCTK_ARGUMENTS)
     CCTK_REAL yL = p.y;
     CCTK_REAL zL = p.z;
 
-    printf("x[%d]: %g\n", idx, xL);
     data[idx] = xL;
   });
 }
