@@ -21,6 +21,79 @@ constexpr int dim = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <typename T, int D> struct vect {
+  array<T, D> elts;
+
+  vect() {
+    for (int d = 0; d < D; ++d)
+      elts[d] = 0;
+  }
+
+  vect(const array<T, D> &arr) : elts(arr) {}
+
+  static vect unit(int dir) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = d == dir;
+    return r;
+  }
+
+  const T &operator[](int d) const { return elts[d]; }
+  T &operator[](int d) { return elts[d]; }
+
+  friend vect operator+(const vect &x) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = +x.elts[d];
+    return r;
+  }
+  friend vect operator-(const vect &x) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = -x.elts[d];
+    return r;
+  }
+
+  friend vect operator+(const vect &x, const vect &y) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = x.elts[d] + y.elts[d];
+    return r;
+  }
+  friend vect operator-(const vect &x, const vect &y) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = x.elts[d] - y.elts[d];
+    return r;
+  }
+
+  friend vect operator*(T a, const vect &x) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = a * x.elts[d];
+    return r;
+  }
+  friend vect operator*(const vect &x, T a) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = x.elts[d] * a;
+    return r;
+  }
+
+  friend ostream &operator<<(ostream &os, vect &x) {
+    os << "[";
+    for (int d = 0; d < D; ++d) {
+      if (d > 0)
+        os << ",";
+      os << x.elts[d];
+    }
+    os << "]";
+    return os;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
 template <typename T, int CI, int CJ, int CK> struct GF3D {
   static_assert(CI == 0 || CI == 1, "");
   static_assert(CJ == 0 || CJ == 1, "");
@@ -49,6 +122,9 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   inline T &restrict operator()(int i, int j, int k) const {
     return ptr[offset(i, j, k)];
   }
+  inline T &restrict operator()(const vect<int, dim> &I) const {
+    return ptr[offset(I[0], I[1], I[2])];
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +135,8 @@ struct PointDesc {
   int idx;
   static constexpr int di = 1;
   int dj, dk;
+  vect<int, dim> I;
+  vect<int, dim> DI(int d) const { return vect<int, dim>::unit(d); }
 };
 
 struct GridDescBase {
@@ -127,7 +205,8 @@ public:
           CCTK_REAL y = x0[1] + (lbnd[1] + j + CCTK_REAL(CJ - 1) / 2) * dx[1];
           CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
           int idx = i * di + j * dj + k * dk;
-          const PointDesc p{i, j, k, x, y, z, idx, dj, dk};
+          vect<int, dim> I{{i, j, k}};
+          const PointDesc p{i, j, k, x, y, z, idx, dj, dk, I};
           f(p);
         }
       }
