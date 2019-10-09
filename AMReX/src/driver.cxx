@@ -605,7 +605,8 @@ int InitGH(cGH *restrict cctkGH) {
 int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
-    CCTK_VINFO("ScheduleTraverseGH [%d] %s", cctkGH->cctk_iteration, where);
+    CCTK_VINFO("ScheduleTraverseGH iteration %d %s", cctkGH->cctk_iteration,
+               where);
 
   int ierr = CCTK_ScheduleTraverse(where, cctkGH, CallFunction);
   assert(!ierr);
