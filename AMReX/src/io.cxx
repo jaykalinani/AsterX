@@ -255,7 +255,8 @@ void OutputNorms(const cGH *restrict cctkGH) {
         cout << "  "
              << unique_ptr<char>(CCTK_FullName(groupdata.firstvarindex + vi))
                     .get()
-             << ": maxabs=" << red.maxabs << " vol=" << red.vol << "\n";
+             << ": maxabs=" << red.maxabs << " sum=" << red.sum
+             << " vol=" << red.vol << "\n";
     }
   }
 }
