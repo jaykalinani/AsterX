@@ -10,17 +10,36 @@ USES INCLUDE HEADER: loop.hxx
 
 
 
-CCTK_REAL density TYPE=gf TIMELEVELS=2
+CCTK_REAL conserved TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1}'
 {
   rho
-} "Density"
-
-CCTK_REAL momentum TYPE=gf TIMELEVELS=2
-{
   momx momy momz
-} "Momentum"
-
-CCTK_REAL energy TYPE=gf TIMELEVELS=2
-{
   etot
-} "Energy"
+} "Conserved variables"
+
+CCTK_REAL primitive TYPE=gf TIMELEVELS=1 TAGS='index={1 1 1}'
+{
+  press
+  velx vely velz
+} "Primitive variables"
+
+CCTK_REAL flux_x TYPE=gf TIMELEVELS=1 TAGS='index={0 1 1}'
+{
+  fxrho
+  fxmomx fxmomy fxmomz
+  fxetot
+} "Fluxes in x direction"
+
+CCTK_REAL flux_y TYPE=gf TIMELEVELS=1 TAGS='index={1 0 1}'
+{
+  fyrho
+  fymomx fymomy fymomz
+  fyetot
+} "Fluxes in y direction"
+
+CCTK_REAL flux_z TYPE=gf TIMELEVELS=1 TAGS='index={1 1 0}'
+{
+  fzrho
+  fzmomx fzmomy fzmomz
+  fzetot
+} "Fluxes in z direction"
