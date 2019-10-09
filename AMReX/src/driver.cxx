@@ -132,7 +132,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   ghext->leveldata.resize(level + 1);
   GHExt::LevelData &leveldata = ghext->leveldata.at(level);
   leveldata.level = level;
-#warning "TODO: Make this an empty MultiFab"
+  // TODO: Make this an empty MultiFab
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
   assert(ba.ixType() ==
          IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
@@ -345,7 +345,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
   // Copy or prolongate
   auto &leveldata = ghext->leveldata.at(level);
-#warning "TODO: Make this an empty MultiFab"
+  // TODO: Make this an empty MultiFab
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
   assert(ba.ixType() ==
          IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
@@ -435,7 +435,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
             // We cannot call this function since it would try to
             // traverse the old grid function with the new grid
             // structure.
-#warning "TODO: Use explicit loop (see above)"
+            // TODO: Use explicit loop instead (see above)
             // check_valid(leveldata, groupdata, vi, tl);
           }
 

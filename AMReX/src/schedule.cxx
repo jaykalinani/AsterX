@@ -1159,7 +1159,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       // We always sync all directions.
       // If there is more than one time level, then we don't sync the
       // oldest.
-#warning "TODO: during evolution, sync only one time level"
+      // TODO: during evolution, sync only one time level
       int ntls = groupdata.mfab.size();
       int sync_tl = ntls > 1 ? ntls - 1 : ntls;
 
@@ -1262,7 +1262,7 @@ void Restrict(int level) {
     const auto &finegroupdata = fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict
     // the oldest.
-#warning "TODO: during evolution, restrict only one time level"
+    // TODO: during evolution, restrict only one time level
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
     const IntVect reffact{2, 2, 2};
