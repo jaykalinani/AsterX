@@ -24,6 +24,7 @@
 #include <sys/time.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <map>
 #include <memory>
@@ -253,6 +254,7 @@ void check_valid(const GHExt::LevelData &leveldata,
   if (!valid.valid_int && !valid.valid_bnd)
     return;
 
+  atomic<bool> found_nan{false};
   const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
@@ -264,22 +266,35 @@ void check_valid(const GHExt::LevelData &leveldata,
     if (valid.valid_int) {
       if (valid.valid_bnd) {
         grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          assert(!isnan(ptr[p.idx]));
+          if (CCTK_BUILTIN_EXPECT(isnan(ptr[p.idx]), false))
+            found_nan = true;
         });
       } else {
         grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          assert(!isnan(ptr[p.idx]));
+          if (CCTK_BUILTIN_EXPECT(isnan(ptr[p.idx]), false))
+            found_nan = true;
         });
       }
     } else {
       if (valid.valid_bnd) {
         grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          assert(!isnan(ptr[p.idx]));
+          if (CCTK_BUILTIN_EXPECT(isnan(ptr[p.idx]), false))
+            found_nan = true;
         });
       } else {
         assert(0);
       }
     }
+  }
+
+  if (CCTK_BUILTIN_EXPECT(found_nan, false)) {
+    const char *where = valid.valid_int && valid.valid_bnd
+                            ? "interior and boundary"
+                            : valid.valid_int ? "interior" : "boundary";
+    CCTK_VERROR("Grid function \"%s\" has nans on refinement level %d, time "
+                "level %d; expected valid %s",
+                CCTK_FullVarName(groupdata.firstvarindex + vi), leveldata.level,
+                tl, where);
   }
 } // namespace AMReX
 
