@@ -789,12 +789,9 @@ int Initialise(tFleshConfig *config) {
 
   // Restrict
   assert(current_level == -1);
-  for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level) {
+  for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
     Restrict(level);
-    current_level = level;
-    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
-  }
-  current_level = -1;
+  CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
 
   // Checkpoint, analysis, output
   CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
@@ -875,6 +872,7 @@ bool get_group_checkpoint_flag(const int gi) {
 void InvalidateTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
+  assert(current_level == -1);
   for (auto &restrict leveldata : ghext->leveldata) {
     for (auto &restrict groupdata : leveldata.groupdata) {
       const bool checkpoint = get_group_checkpoint_flag(groupdata.groupindex);
@@ -898,6 +896,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
 
+  assert(current_level == -1);
   for (auto &restrict leveldata : ghext->leveldata) {
     for (auto &restrict groupdata : leveldata.groupdata) {
       const int ntls = groupdata.mfab.size();
@@ -956,6 +955,7 @@ int Evolve(tFleshConfig *config) {
       CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
                  new_numlevels);
       double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+      assert(current_level == -1);
       for (const auto &leveldata : ghext->leveldata) {
         int sz = leveldata.mfab0->size();
         double pts = leveldata.mfab0->boxArray().d_numPts();
@@ -972,12 +972,9 @@ int Evolve(tFleshConfig *config) {
 
     // Restrict
     assert(current_level == -1);
-    for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level) {
+    for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
       Restrict(level);
-      current_level = level;
-      CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
-    }
-    current_level = -1;
+    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
 
     CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
     CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
@@ -1167,7 +1164,11 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     CCTK_VINFO("SyncGroups %s", buf.str().c_str());
   }
 
-  for (auto &restrict leveldata : ghext->leveldata) {
+  const int min_level = current_level == -1 ? 0 : current_level;
+  const int max_level =
+      current_level == -1 ? ghext->leveldata.size() : current_level + 1;
+  for (int level = min_level; level < max_level; ++level) {
+    auto &restrict leveldata = ghext->leveldata.at(level);
     for (int n = 0; n < numgroups; ++n) {
       int gi = groups[n];
       auto &restrict groupdata = leveldata.groupdata.at(gi);
@@ -1283,11 +1284,10 @@ void Restrict(int level) {
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      // Only restrict valid grid functions
+      // Only restrict valid grid functions. Restriction only uses the interior.
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         all_invalid &= !finegroupdata.valid.at(tl).at(vi).valid_int &&
-                       !finegroupdata.valid.at(tl).at(vi).valid_bnd &&
                        !groupdata.valid.at(tl).at(vi).valid_int;
 
       if (all_invalid) {
@@ -1301,9 +1301,10 @@ void Restrict(int level) {
 
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
-                 finegroupdata.valid.at(tl).at(vi).valid_bnd &&
                  groupdata.valid.at(tl).at(vi).valid_int);
+          poison_invalid(fineleveldata, finegroupdata, vi, tl);
           check_valid(fineleveldata, finegroupdata, vi, tl);
+          poison_invalid(leveldata, groupdata, vi, tl);
           check_valid(leveldata, groupdata, vi, tl);
         }
 
@@ -1328,8 +1329,7 @@ void Restrict(int level) {
 
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int &=
-              finegroupdata.valid.at(tl).at(vi).valid_int &&
-              finegroupdata.valid.at(tl).at(vi).valid_bnd;
+              finegroupdata.valid.at(tl).at(vi).valid_int;
           groupdata.valid.at(tl).at(vi).valid_bnd = false;
         }
       }

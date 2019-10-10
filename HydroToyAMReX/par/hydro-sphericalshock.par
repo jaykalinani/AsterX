@@ -7,7 +7,7 @@ ActiveThorns = "
     TimerReport
 "
  
-$nlevels = 1
+$nlevels = 3
 $ncells = 32
 
 Cactus::cctk_show_schedule = no
@@ -33,7 +33,7 @@ AMReX::ncells_z = $ncells
 
 AMReX::max_num_levels = $nlevels
 AMReX::regrid_every = 16
-AMReX::regrid_error_threshold = 0.1
+AMReX::regrid_error_threshold = 0.01
 
 AMReX::dtfac = 0.25
 

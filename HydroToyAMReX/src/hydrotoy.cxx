@@ -15,8 +15,6 @@ constexpr int dim = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-
 extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -84,6 +82,12 @@ extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
   } else {
     assert(0);
   }
+}
+
+extern "C" void HydroToyAMReX_Boundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+
+  // do nothing
 }
 
 extern "C" void HydroToyAMReX_Pressure(CCTK_ARGUMENTS) {
@@ -186,7 +190,7 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
   // fetot^i = (etot + press) vel^i
 
   Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto mkflux{[&](auto &u, auto f) {
+    auto calcflux{[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(0);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -198,19 +202,19 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
       return llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
     }};
 
-    fxrho_(p.I) = mkflux(rho_, [&](auto I) { return rho_(I) * velx_(I); });
+    fxrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velx_(I); });
 
-    fxmomx_(p.I) =
-        mkflux(momx_, [&](auto I) { return momx_(I) * velx_(I) + press_(I); });
-    fxmomy_(p.I) = mkflux(momy_, [&](auto I) { return momy_(I) * velx_(I); });
-    fxmomz_(p.I) = mkflux(momz_, [&](auto I) { return momz_(I) * velx_(I); });
+    fxmomx_(p.I) = calcflux(
+        momx_, [&](auto I) { return momx_(I) * velx_(I) + press_(I); });
+    fxmomy_(p.I) = calcflux(momy_, [&](auto I) { return momy_(I) * velx_(I); });
+    fxmomz_(p.I) = calcflux(momz_, [&](auto I) { return momz_(I) * velx_(I); });
 
-    fxetot_(p.I) = mkflux(
+    fxetot_(p.I) = calcflux(
         etot_, [&](auto I) { return (etot_(I) + press_(I)) * velx_(I); });
   });
 
   Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto mkflux{[&](auto &u, auto f) {
+    auto calcflux{[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(1);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -222,19 +226,19 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
       return llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
     }};
 
-    fyrho_(p.I) = mkflux(rho_, [&](auto I) { return rho_(I) * vely_(I); });
+    fyrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * vely_(I); });
 
-    fymomx_(p.I) = mkflux(momx_, [&](auto I) { return momx_(I) * vely_(I); });
-    fymomy_(p.I) =
-        mkflux(momy_, [&](auto I) { return momy_(I) * vely_(I) + press_(I); });
-    fymomz_(p.I) = mkflux(momz_, [&](auto I) { return momz_(I) * vely_(I); });
+    fymomx_(p.I) = calcflux(momx_, [&](auto I) { return momx_(I) * vely_(I); });
+    fymomy_(p.I) = calcflux(
+        momy_, [&](auto I) { return momy_(I) * vely_(I) + press_(I); });
+    fymomz_(p.I) = calcflux(momz_, [&](auto I) { return momz_(I) * vely_(I); });
 
-    fyetot_(p.I) = mkflux(
+    fyetot_(p.I) = calcflux(
         etot_, [&](auto I) { return (etot_(I) + press_(I)) * vely_(I); });
   });
 
   Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto mkflux{[&](auto &u, auto f) {
+    auto calcflux{[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(2);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -246,77 +250,15 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
       return llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
     }};
 
-    fzrho_(p.I) = mkflux(rho_, [&](auto I) { return rho_(I) * velz_(I); });
+    fzrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velz_(I); });
 
-    fzmomx_(p.I) = mkflux(momx_, [&](auto I) { return momx_(I) * velz_(I); });
-    fzmomy_(p.I) = mkflux(momy_, [&](auto I) { return momy_(I) * velz_(I); });
-    fzmomz_(p.I) =
-        mkflux(momz_, [&](auto I) { return momz_(I) * velz_(I) + press_(I); });
+    fzmomx_(p.I) = calcflux(momx_, [&](auto I) { return momx_(I) * velz_(I); });
+    fzmomy_(p.I) = calcflux(momy_, [&](auto I) { return momy_(I) * velz_(I); });
+    fzmomz_(p.I) = calcflux(
+        momz_, [&](auto I) { return momz_(I) * velz_(I) + press_(I); });
 
-    fzetot_(p.I) = mkflux(
+    fzetot_(p.I) = calcflux(
         etot_, [&](auto I) { return (etot_(I) + press_(I)) * velz_(I); });
-  });
-}
-
-extern "C" void HydroToyAMReX_Evolve1(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  const CCTK_REAL dt = CCTK_DELTA_TIME;
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_p_(cctkGH, rho_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_p_(cctkGH, momx_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_p_(cctkGH, momy_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_p_(cctkGH, momz_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_p_(cctkGH, etot_p);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomz_(cctkGH, fxmomz);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxetot_(cctkGH, fxetot);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fyrho_(cctkGH, fyrho);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fymomx_(cctkGH, fymomx);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fymomy_(cctkGH, fymomy);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fymomz_(cctkGH, fymomz);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fyetot_(cctkGH, fyetot);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzrho_(cctkGH, fzrho);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomx_(cctkGH, fzmomx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomy_(cctkGH, fzmomy);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomz_(cctkGH, fzmomz);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzetot_(cctkGH, fzetot);
-
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
-
-  // Transport
-  // dt rho + d_i (rho vel^i) = 0
-  // dt mom_j + d_i (mom_j vel^i) = 0
-  // dt etot + d_i (etot vel^i) = 0
-
-  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto mkupdate{[&](auto &fx, auto &fy, auto &fz) {
-      return 0.5 * dt *
-             ((fx(p.I + p.DI(0)) - fx(p.I)) / dx +
-              (fy(p.I + p.DI(1)) - fy(p.I)) / dy +
-              (fz(p.I + p.DI(2)) - fz(p.I)) / dz);
-    }};
-
-    rho_(p.I) = rho_p_(p.I) - mkupdate(fxrho_, fyrho_, fzrho_);
-
-    momx_(p.I) = momx_p_(p.I) - mkupdate(fxmomx_, fymomx_, fzmomx_);
-    momy_(p.I) = momy_p_(p.I) - mkupdate(fxmomy_, fymomy_, fzmomy_);
-    momz_(p.I) = momz_p_(p.I) - mkupdate(fxmomz_, fymomz_, fzmomz_);
-
-    etot_(p.I) = etot_p_(p.I) - mkupdate(fxetot_, fyetot_, fzetot_);
   });
 }
 
@@ -365,19 +307,19 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   // dt etot + d_i (etot vel^i) = 0
 
   Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto mkupdate{[&](auto &fx, auto &fy, auto &fz) {
+    auto calcupdate{[&](auto &fx, auto &fy, auto &fz) {
       return dt * ((fx(p.I + p.DI(0)) - fx(p.I)) / dx +
                    (fy(p.I + p.DI(1)) - fy(p.I)) / dy +
                    (fz(p.I + p.DI(2)) - fz(p.I)) / dz);
     }};
 
-    rho_(p.I) = rho_p_(p.I) - mkupdate(fxrho_, fyrho_, fzrho_);
+    rho_(p.I) = rho_p_(p.I) - calcupdate(fxrho_, fyrho_, fzrho_);
 
-    momx_(p.I) = momx_p_(p.I) - mkupdate(fxmomx_, fymomx_, fzmomx_);
-    momy_(p.I) = momy_p_(p.I) - mkupdate(fxmomy_, fymomy_, fzmomy_);
-    momz_(p.I) = momz_p_(p.I) - mkupdate(fxmomz_, fymomz_, fzmomz_);
+    momx_(p.I) = momx_p_(p.I) - calcupdate(fxmomx_, fymomx_, fzmomx_);
+    momy_(p.I) = momy_p_(p.I) - calcupdate(fxmomy_, fymomy_, fzmomy_);
+    momz_(p.I) = momz_p_(p.I) - calcupdate(fxmomz_, fymomz_, fzmomz_);
 
-    etot_(p.I) = etot_p_(p.I) - mkupdate(fxetot_, fyetot_, fzetot_);
+    etot_(p.I) = etot_p_(p.I) - calcupdate(fxetot_, fyetot_, fzetot_);
   });
 }
 
@@ -385,8 +327,31 @@ extern "C" void HydroToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  Loop::loop_int<1, 1, 1>(
-      cctkGH, [&](const Loop::PointDesc &p) { regrid_error[p.idx] = 0.0; });
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
+
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    auto calcerr{[&](auto &var_) {
+      CCTK_REAL err{0};
+      for (int d = 0; d < dim; ++d) {
+        auto varm = var_(p.I - p.DI(d));
+        auto var0 = var_(p.I);
+        auto varp = var_(p.I + p.DI(d));
+        err = fmax(err, fabs(varm - 2 * var0 + varp));
+      }
+      return err;
+    }};
+
+    regrid_error_(p.I) =
+        fmax(fmax(fmax(fmax(calcerr(rho_), calcerr(momx_)), calcerr(momy_)),
+                  calcerr(momz_)),
+             calcerr(etot_));
+  });
 }
 
 extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {

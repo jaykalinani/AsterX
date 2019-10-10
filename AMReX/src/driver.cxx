@@ -414,8 +414,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                          !groupdata.valid.at(tl).at(vi).valid_bnd;
 
         if (all_invalid) {
-          valid.at(tl).valid_int = false;
-          valid.at(tl).valid_bnd = false;
+          // do nothing
         } else {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             const bool cond = coarsegroupdata.valid.at(tl).at(vi).valid_int &&
@@ -446,12 +445,12 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                              0, reffact, interpolator, bcs, 0);
 
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            valid.at(tl).valid_int =
+            valid.at(vi).valid_int =
                 coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                 coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
                 groupdata.valid.at(tl).at(vi).valid_int &&
                 groupdata.valid.at(tl).at(vi).valid_bnd;
-            valid.at(tl).valid_bnd = false;
+            valid.at(vi).valid_bnd = false;
           }
         }
       }
