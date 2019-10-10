@@ -152,11 +152,6 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  const CCTK_REAL dt = CCTK_DELTA_TIME;
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
-
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
