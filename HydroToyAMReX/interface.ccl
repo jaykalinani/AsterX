@@ -10,7 +10,7 @@ USES INCLUDE HEADER: loop.hxx
 
 
 
-CCTK_REAL conserved TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1}'
+CCTK_REAL conserved TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1} fluxes="HydroToyAMReX::flux_x HydroToyAMReX::flux_y HydroToyAMReX::flux_z"'
 {
   rho
   momx momy momz
