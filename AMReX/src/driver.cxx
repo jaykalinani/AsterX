@@ -254,64 +254,128 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
 
-  switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
+  if (!conservative_prolongation) {
 
-  case 0b000:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c000_o1;
-    }
-    break;
+    switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
 
-  case 0b001:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c001_o1;
-    }
-    break;
+    case 0b000:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c000_o1;
+      }
+      break;
 
-  case 0b010:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c010_o1;
-    }
-    break;
+    case 0b001:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c001_o1;
+      }
+      break;
 
-  case 0b011:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c011_o1;
-    }
-    break;
+    case 0b010:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c010_o1;
+      }
+      break;
 
-  case 0b100:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c100_o1;
-    }
-    break;
+    case 0b011:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c011_o1;
+      }
+      break;
 
-  case 0b101:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c101_o1;
-    }
-    break;
+    case 0b100:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c100_o1;
+      }
+      break;
 
-  case 0b110:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c110_o1;
-    }
-    break;
+    case 0b101:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c101_o1;
+      }
+      break;
 
-  case 0b111:
-    switch (prolongation_order) {
-    case 1:
-      return &prolongate_3d_rf2_c111_o1;
+    case 0b110:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c110_o1;
+      }
+      break;
+
+    case 0b111:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_3d_rf2_c111_o1;
+      }
+      break;
     }
-    break;
-  }
+
+  } else { // if conservative_prolongation
+
+    switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
+
+    case 0b000:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c000_o0;
+      }
+      break;
+
+    case 0b001:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c001_o0;
+      }
+      break;
+
+    case 0b010:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c010_o0;
+      }
+      break;
+
+    case 0b011:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c011_o0;
+      }
+      break;
+
+    case 0b100:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c100_o0;
+      }
+      break;
+
+    case 0b101:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c101_o0;
+      }
+      break;
+
+    case 0b110:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c110_o0;
+      }
+      break;
+
+    case 0b111:
+      switch (prolongation_order) {
+      case 1:
+        return &prolongate_cons_3d_rf2_c111_o0;
+      }
+      break;
+    }
+  } // if conservative_prolongation
 
   assert(0);
 }

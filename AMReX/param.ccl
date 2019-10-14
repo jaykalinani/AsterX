@@ -157,6 +157,12 @@ CCTK_INT prolongation_order "Prolongation order"
   0:* :: ""
 } 1
 
+BOOLEAN conservative_prolongation "Conservative prolongation"
+{
+} no
+
+
+
 BOOLEAN do_reflux "Manage flux registers to ensure conservation"
 {
 } yes
