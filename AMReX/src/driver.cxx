@@ -123,6 +123,55 @@ array<int, dim> get_group_indextype(const int gi) {
   return indextype;
 }
 
+array<int, dim> get_group_fluxes(const int gi) {
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  vector<char> fluxes_buf(1000);
+  const int iret =
+      Util_TableGetString(tags, fluxes_buf.size(), fluxes_buf.data(), "fluxes");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    fluxes_buf[0] = '\0'; // default: empty (no fluxes)
+  } else if (iret >= 0) {
+    // do nothing
+  } else {
+    assert(0);
+  }
+
+  const string str(fluxes_buf.data());
+  vector<string> strs;
+  size_t end = 0;
+  while (end < str.size()) {
+    size_t begin = str.find_first_not_of(' ', end);
+    if (begin == string::npos)
+      break;
+    end = str.find(' ', begin);
+    strs.push_back(str.substr(begin, end - begin));
+  }
+
+  array<int, dim> fluxes;
+  fluxes.fill(-1);
+  if (strs.empty())
+    return fluxes; // No fluxes specified
+
+  assert(strs.size() == dim); // Check number of fluxes
+  for (int d = 0; d < dim; ++d) {
+    auto str1 = strs[d];
+    if (str1.find(':') == string::npos) {
+      const char *impl = CCTK_GroupImplementationI(gi);
+      str1 = string(impl) + "::" + str1;
+    }
+    int gi1 = CCTK_GroupIndex(str1.c_str());
+    assert(gi1 >= 0); // Check fluxes are valid groups
+    fluxes[d] = gi1;
+  }
+
+  for (int d = 0; d < dim; ++d)
+    for (int d1 = d + 1; d1 < dim; ++d1)
+      assert(fluxes[d] != fluxes[d1]); // Check groups are all different
+  return fluxes;
+}
+
 void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
@@ -168,6 +217,36 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
       groupdata.valid.at(tl) = vector<valid_t>(groupdata.numvars);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         poison_invalid(leveldata, groupdata, vi, tl);
+    }
+
+    if (level > 0) {
+      array<int, dim> fluxes = get_group_fluxes(groupdata.groupindex);
+      const bool have_fluxes = fluxes[0] >= 0;
+      if (have_fluxes) {
+        assert((groupdata.indextype == array<int, dim>{1, 1, 1}));
+        groupdata.freg = make_unique<FluxRegister>(
+            gba, dm, ghext->amrcore->refRatio(level - 1), level,
+            groupdata.numvars);
+        groupdata.fluxes = fluxes;
+      } else {
+        groupdata.fluxes.fill(-1);
+      }
+    }
+  }
+
+  // Check flux register consistency
+  for (int gi = 0; gi < numgroups; ++gi) {
+    const auto &groupdata = leveldata.groupdata.at(gi);
+    if (groupdata.freg) {
+      for (int d = 0; d < dim; ++d) {
+        assert(groupdata.fluxes[d] != groupdata.groupindex);
+        const auto &flux_groupdata =
+            leveldata.groupdata.at(groupdata.fluxes[d]);
+        array<int, dim> flux_indextype{1, 1, 1};
+        flux_indextype[d] = 0;
+        assert(flux_groupdata.indextype == flux_indextype);
+        assert(flux_groupdata.numvars == groupdata.numvars);
+      }
     }
   }
 }
@@ -456,6 +535,12 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       }
       groupdata.mfab.at(tl) = move(mfab);
       groupdata.valid.at(tl) = move(valid);
+
+      if (groupdata.freg)
+        groupdata.freg = make_unique<FluxRegister>(
+            gba, dm, ghext->amrcore->refRatio(level - 1), level,
+            groupdata.numvars);
+
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
         check_valid(leveldata, groupdata, vi, tl);

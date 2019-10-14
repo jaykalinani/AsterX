@@ -12,6 +12,7 @@
 
 #include <AMReX.H>
 #include <AMReX_AmrCore.H>
+#include <AMReX_FluxRegister.H>
 #include <AMReX_Interpolater.H>
 #include <AMReX_MultiFab.H>
 
@@ -100,9 +101,15 @@ struct GHExt {
       int firstvarindex;
       int numvars;
       array<int, dim> indextype;
+
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]
       vector<vector<valid_t> > valid;     // [time level][var index]
+
+      // flux register between this and the next coarser level
+      unique_ptr<FluxRegister> freg;
+      // associated flux group indices
+      array<int, dim> fluxes; // [dir]
     };
     vector<GroupData> groupdata;
   };

@@ -55,6 +55,7 @@ vector<TileBox> thread_local_tilebox;
 cGH *saved_cctkGH = nullptr;
 int current_level = -1;
 
+void Reflux(int level);
 void Restrict(int level);
 
 namespace {
@@ -970,6 +971,11 @@ int Evolve(tFleshConfig *config) {
     CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
     CCTK_Traverse(cctkGH, "CCTK_EVOL");
 
+    // Reflux
+    assert(current_level == -1);
+    for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
+      Reflux(level);
+
     // Restrict
     assert(current_level == -1);
     for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
@@ -1257,6 +1263,74 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   return numgroups; // number of groups synchronized
 }
 
+void Reflux(int level) {
+  DECLARE_CCTK_PARAMETERS;
+
+  if (!do_reflux)
+    return;
+
+  CCTK_VINFO("Refluxing level %d", level);
+#warning "TODO"
+  bool didprint = false;
+
+  static Timer timer("Reflux");
+  Interval interval(timer);
+
+  auto &leveldata = ghext->leveldata.at(level);
+  const auto &fineleveldata = ghext->leveldata.at(level + 1);
+  for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
+    const int tl = 0;
+    auto &groupdata = leveldata.groupdata.at(gi);
+    const auto &finegroupdata = fineleveldata.groupdata.at(gi);
+
+    // If the group has associated fluxes
+    if (finegroupdata.freg) {
+      if (!didprint) {
+        CCTK_VINFO("  found flux registers");
+        didprint = true;
+      }
+
+      // Check coarse and fine data and fluxes are valid
+      for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
+        assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
+               finegroupdata.valid.at(tl).at(vi).valid_bnd);
+        assert(groupdata.valid.at(tl).at(vi).valid_int &&
+               groupdata.valid.at(tl).at(vi).valid_bnd);
+      }
+      for (int d = 0; d < dim; ++d) {
+        int flux_gi = finegroupdata.fluxes[d];
+        const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
+        const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
+        for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
+          assert(flux_finegroupdata.valid.at(tl).at(vi).valid_int &&
+                 flux_finegroupdata.valid.at(tl).at(vi).valid_bnd);
+          assert(flux_groupdata.valid.at(tl).at(vi).valid_int &&
+                 flux_groupdata.valid.at(tl).at(vi).valid_bnd);
+        }
+      }
+
+#warning "TODO"
+      const Geometry &geom0 = ghext->amrcore->Geom(level);
+      const CCTK_REAL *restrict gdx = geom0.CellSize();
+      CCTK_REAL dt = 0.25 * pow(0.5, 2) * gdx[0];
+      CCTK_REAL dx = 1.0 * pow(0.5, level) * gdx[0];
+      for (int d = 0; d < dim; ++d) {
+        int flux_gi = finegroupdata.fluxes[d];
+        const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
+        const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
+        finegroupdata.freg->CrseInit(*flux_groupdata.mfab.at(tl), d, 0, 0,
+                                     flux_groupdata.numvars, -dt * dx * dx);
+        finegroupdata.freg->FineAdd(*flux_finegroupdata.mfab.at(tl), d, 0, 0,
+                                    flux_finegroupdata.numvars,
+                                    dt * (0.5 * dx) * (0.5 * dx));
+      }
+      const Geometry &geom = ghext->amrcore->Geom(level);
+      finegroupdata.freg->Reflux(*groupdata.mfab.at(tl), 1.0, 0, 0,
+                                 groupdata.numvars, geom);
+    }
+  }
+}
+
 void Restrict(int level) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -1276,15 +1350,15 @@ void Restrict(int level) {
       continue;
     auto &groupdata = leveldata.groupdata.at(gi);
     const auto &finegroupdata = fineleveldata.groupdata.at(gi);
-    // If there is more than one time level, then we don't restrict
-    // the oldest.
+    // If there is more than one time level, then we don't restrict the oldest.
     // TODO: during evolution, restrict only one time level
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      // Only restrict valid grid functions. Restriction only uses the interior.
+      // Only restrict valid grid functions. Restriction only uses the
+      // interior.
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         all_invalid &= !finegroupdata.valid.at(tl).at(vi).valid_int &&
