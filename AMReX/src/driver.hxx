@@ -89,6 +89,28 @@ struct GHExt {
   // TODO: Remove unique_ptr once AmrCore has move constructors
   unique_ptr<CactusAmrCore> amrcore;
 
+  struct CommonGroupData {
+    int groupindex;
+    int firstvarindex;
+    int numvars;
+
+    vector<vector<valid_t> > valid; // [time level][var index]
+    // TODO: add poison_invalid and check_valid functions
+  };
+
+  struct GlobalData {
+    // all data that exists on all levels
+
+    struct ScalarGroupData : public CommonGroupData {
+      // TODO: find out how to do this without a pointer to a single double but
+      // also working around const vector<CCTK_REAL> issues
+      vector<vector<CCTK_REAL *> > data; // [time level][var index]
+    };
+    // TODO: right now this is sized for the total number of groups
+    vector<ScalarGroupData> scalargroupdata; // [group index]
+  };
+  GlobalData globaldata;
+
   struct LevelData {
     int level;
     // Empty MultiFab holding a cell-centred BoxArray for iterating
@@ -96,24 +118,21 @@ struct GHExt {
     // TODO: Can we store the BoxArray directly?
     unique_ptr<MultiFab> mfab0;
 
-    struct GroupData {
-      int groupindex;
-      int firstvarindex;
-      int numvars;
+    struct GroupData : public CommonGroupData {
       array<int, dim> indextype;
 
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]
-      vector<vector<valid_t> > valid;     // [time level][var index]
 
       // flux register between this and the next coarser level
       unique_ptr<FluxRegister> freg;
       // associated flux group indices
       array<int, dim> fluxes; // [dir]
     };
-    vector<GroupData> groupdata;
+    // TODO: right now this is sized for the total number of groups
+    vector<GroupData> groupdata; // [group index]
   };
-  vector<LevelData> leveldata;
+  vector<LevelData> leveldata; // [reflevel]
 };
 
 extern unique_ptr<GHExt> ghext;
