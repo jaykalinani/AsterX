@@ -81,27 +81,43 @@ template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 4, T> {
   };
 };
 
-template <typename T> struct coeffs1d<VC, CONS, /*order*/ 2, T> {
-  static constexpr array<T, 3> coeffs0 = {
-      -1 / T(32),
-      +17 / T(16),
-      -1 / T(32),
+template <typename T> struct coeffs1d<VC, CONS, /*order*/ 0, T> {
+  static constexpr array<T, 1> coeffs0 = {
+      1 / T(1),
   };
-  static constexpr array<T, 3> coeffs1 = {
-      +13 / T(16),
-      -5 / T(32),
-      +11 / T(32),
+  static constexpr array<T, 0> coeffs1 = {};
+};
+template <typename T> struct coeffs1d<VC, CONS, /*order*/ 1, T> {
+  static constexpr array<T, 1> coeffs0 = {
+      1 / T(1),
+  };
+  static constexpr array<T, 2> coeffs1 = {
+      +1 / T(2),
+      +1 / T(2),
   };
 };
-template <typename T> struct coeffs1d<VC, CONS, /*order*/ 4, T> {
-  static constexpr array<T, 5> coeffs0 = {
-      +7 / T(2048), -23 / T(512), +1109 / T(1024), -23 / T(512), +7 / T(2048),
-  };
-  static constexpr array<T, 5> coeffs1 = {
-      +63 / T(2048), -103 / T(512), +781 / T(1024),
-      +233 / T(512), -97 / T(2048),
-  };
-};
+// template <typename T> struct coeffs1d<VC, CONS, /*order*/ 2, T> {
+//   static constexpr array<T, 3> coeffs0 = {
+//       -1 / T(32),
+//       +17 / T(16),
+//       -1 / T(32),
+//   };
+//   static constexpr array<T, 3> coeffs1 = {
+//       +13 / T(16),
+//       -5 / T(32),
+//       +11 / T(32),
+//   };
+// };
+// template <typename T> struct coeffs1d<VC, CONS, /*order*/ 4, T> {
+//   static constexpr array<T, 5> coeffs0 = {
+//       +7 / T(2048), -23 / T(512), +1109 / T(1024), -23 / T(512), +7 /
+//       T(2048),
+//   };
+//   static constexpr array<T, 5> coeffs1 = {
+//       +63 / T(2048), -103 / T(512), +781 / T(1024),
+//       +233 / T(512), -97 / T(2048),
+//   };
+// };
 
 template <typename T> struct coeffs1d<CC, CONS, /*order*/ 0, T> {
   static constexpr array<T, 1> coeffs = {
@@ -183,27 +199,54 @@ template <int ORDER> struct interp1d<CC, NOCONS, ORDER> {
 // off=0: on coarse point
 // off=1: between coarse points
 template <int ORDER> struct interp1d<VC, CONS, ORDER> {
-  static_assert(ORDER % 2 == 0);
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
                       const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
-    constexpr int i0 = (ORDER + 1) / 2;
     T y = 0;
     if (off == 0) {
-      constexpr array<T, ORDER + 1> cs = coeffs1d<VC, CONS, ORDER, T>::coeffs0;
-      for (int i = 0; i < ORDER + 1; ++i)
+      constexpr int i0 = ORDER / 2;
+      constexpr array<T, ORDER / 2 * 2 + 1> cs =
+          coeffs1d<VC, CONS, ORDER, T>::coeffs0;
+#warning "TODO: use symmetry"
+      for (int i = 0; i < ORDER / 2 * 2 + 1; ++i)
         y += cs[i] * crseptr[(i - i0) * di];
     } else {
-      constexpr array<T, ORDER + 1> cs = coeffs1d<VC, CONS, ORDER, T>::coeffs1;
-      for (int i = 0; i < ORDER + 1; ++i)
+      constexpr int i0 = (ORDER + 1) / 2;
+      constexpr array<T, (ORDER + 1) / 2 * 2> cs =
+          coeffs1d<VC, CONS, ORDER, T>::coeffs1;
+#warning "TODO: use symmetry"
+      for (int i = 0; i < (ORDER + 1) / 2 * 2; ++i)
         y += cs[i] * crseptr[(i - i0) * di];
     }
     return y;
   }
 };
+// template <int ORDER> struct interp1d<VC, CONS, ORDER> {
+//   static_assert(ORDER % 2 == 0);
+//   static_assert(ORDER > 0);
+//   template <typename T>
+//   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
+//                       const int off) const {
+// #ifdef CCTK_DEBUG
+//     assert(off == 0 || off == 1);
+// #endif
+//     constexpr int i0 = (ORDER + 1) / 2;
+//     T y = 0;
+//     if (off == 0) {
+//       constexpr array<T, ORDER + 1> cs = coeffs1d<VC, CONS, ORDER,
+//       T>::coeffs0; for (int i = 0; i < ORDER + 1; ++i)
+//         y += cs[i] * crseptr[(i - i0) * di];
+//     } else {
+//       constexpr array<T, ORDER + 1> cs = coeffs1d<VC, CONS, ORDER,
+//       T>::coeffs1; for (int i = 0; i < ORDER + 1; ++i)
+//         y += cs[i] * crseptr[(i - i0) * di];
+//     }
+//     return y;
+//   }
+// };
 
 // off=0: left sub-cell
 // off=1: right sub-cell
@@ -235,7 +278,7 @@ struct test_interp1d;
 
 template <int CENTERING, int ORDER, typename T>
 struct test_interp1d<CENTERING, NOCONS, ORDER, T> {
-  void operator()() const {
+  test_interp1d() {
     for (int order = 0; order < ORDER; ++order) {
       auto f = [&](T x) { return order == 0 ? T(1) : pow(x, order); };
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
@@ -258,13 +301,88 @@ struct test_interp1d<CENTERING, NOCONS, ORDER, T> {
   }
 };
 
+template <int CENTERING, int ORDER, typename T>
+struct test_interp1d<CENTERING, CONS, ORDER, T> {
+  test_interp1d() {
+    for (int order = 0; order < ORDER; ++order) {
+      auto f = [&](T x) { return order == 0 ? T(1) : pow(x, order); };
+      auto fint = [&](T x) { return pow(x, order + 1) / (order + 1); };
+      constexpr int n = (ORDER + 1) / 2 * 2 + 1;
+      if (CENTERING == CC) {
+        array<T, n + 2> ys;
+        ys[0] = ys[n + 1] = 0 / T(0);
+        const int i0 = n / 2;
+        for (int i = 0; i < n; ++i) {
+          T x = (i - i0) + CENTERING / T(2);
+          T y = f(x);
+          ys[i + 1] = y;
+        }
+        array<T, 2> x1;
+        array<T, 2> y1;
+        for (int off = 0; off < 2; ++off) {
+          x1[off] = CENTERING / T(4) + off / T(2);
+          y1[off] = interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off);
+          assert(!isnan(y1[off]));
+        }
+        assert(y1[0] / 2 + y1[1] / 2 == ys[i0 + 1]);
+        T dx = x1[1] - x1[0];
+        T xlo = x1[0] - dx / 2;
+        T xhi = x1[1] + dx / 2;
+        T yint = fint(xhi) - fint(xlo);
+        assert(y1[0] * dx + y1[1] * dx == yint);
+      } else {
+        array<T, n + 3> xs, ys;
+        xs[0] = xs[n + 2] = 0 / T(0);
+        ys[0] = ys[n + 2] = 0 / T(0);
+        const int i0 = n / 2;
+        for (int i = -1; i < n; ++i) {
+          T x = (i - i0) + CENTERING / T(2);
+          T y = f(x);
+          xs[i + 2] = x;
+          ys[i + 2] = y;
+        }
+        array<T, 3> x1;
+        array<T, 3> y1;
+        for (int off = -1; off < 2; ++off) {
+          x1[off + 1] = CENTERING / T(4) + off / T(2);
+          if (off < 0)
+            y1[off + 1] =
+                interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off + 2);
+          else
+            y1[off + 1] =
+                interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 2], 1, off);
+          assert(!isnan(y1[off + 1]));
+        }
+        T dx = x1[1] - x1[0];
+        T xlo = x1[0];
+        T xhi = x1[2];
+        T yint = fint(xhi) - fint(xlo);
+        if (!(y1[0] / 4 + y1[1] / 2 + y1[2] / 4 == ys[i0 + 2]) ||
+            !(y1[0] * dx / 2 + y1[1] * dx + y1[2] * dx / 2 == yint)) {
+          cerr << "settings: CENTERING=" << CENTERING << " ORDER=" << ORDER
+               << " order=" << order << "\n";
+          cerr << "input:\n";
+          for (int i = -1; i < n; ++i)
+            cerr << "  xs=" << xs[i + 2] << " ys=" << ys[i + 2] << "\n";
+          cerr << "output:\n";
+          for (int off = -1; off < 2; ++off)
+            cerr << "  x1=" << x1[off + 1] << " y1=" << y1[off + 1] << "\n";
+          cerr << "xlo=" << xlo << " xhi=" << xhi << " yint=" << yint << "\n";
+        }
+        assert(y1[0] / 4 + y1[1] / 2 + y1[2] / 4 == ys[i0 + 2]);
+        assert(y1[0] * dx / 2 + y1[1] * dx + y1[2] * dx / 2 == yint);
+      }
+    }
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <int CENTERING, bool CONSERVATIVE, int ORDER, int D, typename T>
 void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
               T *restrict const fineptr, const Box &restrict finebox,
               const Box &restrict targetbox) {
-  test_interp1d<CENTERING, CONSERVATIVE, ORDER, T>()();
+  static test_interp1d<CENTERING, CONSERVATIVE, ORDER, T> test;
 
   assert(crseptr);
   assert(crsebox.ok());
@@ -463,5 +581,39 @@ prolongate_3d_rf2<1, 1, 0, false, false, false, 1, 1, 1>
     prolongate_3d_rf2_c110_o1;
 prolongate_3d_rf2<1, 1, 1, false, false, false, 1, 1, 1>
     prolongate_3d_rf2_c111_o1;
+
+prolongate_3d_rf2<0, 0, 0, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c000_o0;
+prolongate_3d_rf2<0, 0, 1, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c001_o0;
+prolongate_3d_rf2<0, 1, 0, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c010_o0;
+prolongate_3d_rf2<0, 1, 1, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c011_o0;
+prolongate_3d_rf2<1, 0, 0, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c100_o0;
+prolongate_3d_rf2<1, 0, 1, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c101_o0;
+prolongate_3d_rf2<1, 1, 0, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c110_o0;
+prolongate_3d_rf2<1, 1, 1, true, true, true, 0, 0, 0>
+    prolongate_cons_3d_rf2_c111_o0;
+
+prolongate_3d_rf2<0, 0, 0, true, true, true, 1, 1, 1>
+    prolongate_cons_3d_rf2_c000_o1;
+prolongate_3d_rf2<0, 0, 1, true, true, true, 1, 1, 2>
+    prolongate_cons_3d_rf2_c001_o1;
+prolongate_3d_rf2<0, 1, 0, true, true, true, 1, 2, 1>
+    prolongate_cons_3d_rf2_c010_o1;
+prolongate_3d_rf2<0, 1, 1, true, true, true, 1, 2, 2>
+    prolongate_cons_3d_rf2_c011_o1;
+prolongate_3d_rf2<1, 0, 0, true, true, true, 2, 1, 1>
+    prolongate_cons_3d_rf2_c100_o1;
+prolongate_3d_rf2<1, 0, 1, true, true, true, 2, 1, 2>
+    prolongate_cons_3d_rf2_c101_o1;
+prolongate_3d_rf2<1, 1, 0, true, true, true, 2, 2, 1>
+    prolongate_cons_3d_rf2_c110_o1;
+prolongate_3d_rf2<1, 1, 1, true, true, true, 2, 2, 2>
+    prolongate_cons_3d_rf2_c111_o1;
 
 } // namespace AMReX
