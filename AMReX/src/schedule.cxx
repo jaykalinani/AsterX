@@ -1273,10 +1273,6 @@ void Reflux(int level) {
   if (!do_reflux)
     return;
 
-  CCTK_VINFO("Refluxing level %d", level);
-#warning "TODO"
-  bool didprint = false;
-
   static Timer timer("Reflux");
   Interval interval(timer);
 
@@ -1289,10 +1285,6 @@ void Reflux(int level) {
 
     // If the group has associated fluxes
     if (finegroupdata.freg) {
-      if (!didprint) {
-        CCTK_VINFO("  found flux registers");
-        didprint = true;
-      }
 
       // Check coarse and fine data and fluxes are valid
       for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
