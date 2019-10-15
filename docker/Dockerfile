@@ -40,16 +40,13 @@ RUN dnf install -y file
 RUN useradd -m jovyan
 USER jovyan
 WORKDIR /home/jovyan
-RUN git clone https://stevenrbrandt@bitbucket.org/eschnett/cactusamrex.git
-WORKDIR /home/jovyan/cactusamrex
-RUN curl -kLO https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
-RUN chmod a+x GetComponents
-RUN ./GetComponents --parallel azure-pipelines/amrex.th
-WORKDIR /home/jovyan/cactusamrex/Cactus
-RUN echo docker > /home/jovyan/.hostname
 ENV HOME /home/jovyan
 ENV USER jovyan
-RUN ./simfactory/bin/sim setup-silent
-COPY amrex.cfg ./
-RUN ./simfactory/bin/sim build -j4 --thornlist ../azure-pipelines/amrex.th --optionlist amrex.cfg
-RUN ./exe/cactus_sim ./repos/cactusamrex/AMReX/par/amrex.par
+RUN mkdir -p /home/jovyan/bin
+USER root
+COPY amrex.cfg /amrex.cfg
+COPY setmeup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/setmeup.sh
+USER jovyan
+COPY Dockerfile /Dockerfile
+CMD ["/usr/sbin/init"]
