@@ -1031,7 +1031,8 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
         const int ntls = scalargroupdata.data.size();
         for (int tl = 0; tl < ntls; ++tl) {
           for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-            scalargroupdata.valid.at(tl).at(vi) = valid_t();
+            // TODO: handle this more nicely
+            scalargroupdata.valid.at(tl).at(vi).valid_int = false;
             poison_invalid(scalargroupdata, vi, tl);
           }
         }
