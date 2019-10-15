@@ -63,6 +63,8 @@ namespace {
 Orientation orient(int d, int f) {
   return Orientation(d, Orientation::Side(f));
 }
+int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
+                       const int *requested_tls, int *status, const bool inc);
 } // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1414,6 +1416,111 @@ void Restrict(int level) {
       }
     }
   }
+}
+
+
+// storage handling
+namespace {
+int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
+                       const int *requested_tls, int *status, const bool inc) {
+  DECLARE_CCTK_PARAMETERS;
+
+  assert(cctkGH);
+  assert(n_groups >= 0);
+  assert(groups);
+  assert(requested_tls);
+  for (int n = 0; n < n_groups; ++n) {
+    if (groups[n] < 0 or groups[n] >= CCTK_NumGroups()) {
+      CCTK_VWarn(1, __LINE__, __FILE__, CCTK_THORNSTRING,
+                 "Group index %d is illegal", groups[n]);
+      return -1;
+    }
+    assert(groups[n] >= 0 and groups[n] < CCTK_NumGroups());
+    assert(requested_tls[n] >= 0 or requested_tls[n] == -1);
+  }
+
+  // sanitize list of requested timelevels
+  std::vector<int> tls(n_groups);
+  for (int n = 0; n < n_groups; ++n) {
+    int ntls = requested_tls[n];
+    int const declared_tls = CCTK_DeclaredTimeLevelsGI(groups[n]);
+    if (inc and declared_tls < 2 and ntls > declared_tls) {
+      char *groupname = CCTK_GroupName(groups[n]);
+      CCTK_VWarn(CCTK_WARN_ALERT, __LINE__, __FILE__, CCTK_THORNSTRING,
+                 "Attempting to activate %d timelevels for group '%s' which "
+                 "only has a single timelevel declared in interface.ccl. "
+                 "Please declared at least 2 timelevels in interface.ccl to "
+                 "allow more timelevels to be created at runtime.",
+                 ntls, groupname);
+      free(groupname);
+      ntls = declared_tls;
+    }
+    if (ntls == -1) {
+      ntls = declared_tls;
+    }
+    tls.at(n) = ntls;
+  }
+
+  // TODO: actually do something
+  int min_num_timelevels = INT_MAX;
+  for (int n = 0; n < n_groups; ++n) {
+    int const gid = groups[n];
+
+    cGroup group;
+    int ierr = CCTK_GroupData(gid, &group);
+    assert(not ierr);
+
+
+    // Record previous number of allocated time levels
+    if (status) {
+      // Note: This remembers only the last level
+      status[n] = group.numtimelevels;
+    }
+
+   // Record (minimum of) current number of time levels
+   min_num_timelevels = min(min_num_timelevels, group.numtimelevels);
+  } // for n
+  if (min_num_timelevels == INT_MAX) {
+    min_num_timelevels = 0;
+  }
+
+  return min_num_timelevels;
+}
+}
+
+int GroupStorageIncrease(const cGH *cctkGH, int n_groups, const int *groups,
+                         const int *tls, int *status) {
+  DECLARE_CCTK_PARAMETERS
+
+  return GroupStorageCrease(cctkGH, n_groups, groups, tls, status, true);
+}
+
+int GroupStorageDecrease(const cGH *cctkGH, int n_groups, const int *groups,
+                         const int *tls, int *status) {
+  DECLARE_CCTK_PARAMETERS
+
+  return GroupStorageCrease(cctkGH, n_groups, groups, tls, status, false);
+}
+
+int EnableGroupStorage(const cGH *cctkGH, const char *groupname) {
+  const int group = CCTK_GroupIndex(groupname);
+  assert(group >= 0 and group < CCTK_NumGroups());
+  // TODO: decide whether to use CCTK_MaxActiveTimeLevelsGI
+  const int tls = CCTK_DeclaredTimeLevelsGI(group);
+  int status;
+  GroupStorageIncrease(cctkGH, 1, &group, &tls, &status);
+  // Return whether storage was allocated previously
+  return status;
+}
+
+int DisableGroupStorage(const cGH *cctkGH, const char *groupname) {
+  const int group = CCTK_GroupIndex(groupname);
+  assert(group >= 0 and group < CCTK_NumGroups());
+  const int tls = 0;
+  int status;
+  GroupStorageDecrease(cctkGH, 1, &group, &tls, &status);
+  // Return whether storage was allocated previously
+  return status;
 }
 
 } // namespace AMReX

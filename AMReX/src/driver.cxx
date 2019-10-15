@@ -665,6 +665,11 @@ extern "C" int AMReX_Startup() {
   CCTK_OverloadAbort(Abort);
   CCTK_OverloadBarrier(Barrier);
 
+  CCTK_OverloadEnableGroupStorage(EnableGroupStorage);
+  CCTK_OverloadDisableGroupStorage(DisableGroupStorage);
+  CCTK_OverloadGroupStorageIncrease(GroupStorageIncrease);
+  CCTK_OverloadGroupStorageDecrease(GroupStorageDecrease);
+
   CCTK_OverloadSyncGroupsByDirI(SyncGroupsByDirI);
 
   return 0;

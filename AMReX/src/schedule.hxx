@@ -32,6 +32,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
 int CallFunction(void *function, cFunctionData *attribute, void *data);
 
+int GroupStorageIncrease(const cGH *cctkGH, int n_groups, const int *groups,
+                         const int *tls, int *status);
+int GroupStorageDecrease(const cGH *cctkGH, int n_groups, const int *groups,
+                         const int *tls, int *status);
+int EnableGroupStorage(const cGH *cctkGH, const char *groupname);
+int DisableGroupStorage(const cGH *cctkGH, const char *groupname);
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // This global variable passes the current cctkGH to CactusAmrCore.
