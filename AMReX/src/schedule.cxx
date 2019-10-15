@@ -598,11 +598,11 @@ const vector<clause_t> &decode_clauses(const cFunctionData *restrict attribute,
         while (isalpha(*p))
           ++p;
         string regstr(reg0, p);
-        if (regstr == "interior")
+        if (CCTK_Equals(regstr.c_str(), "interior"))
           valid.valid_int = true;
-        else if (regstr == "boundary")
+        else if (CCTK_Equals(regstr.c_str(), "boundary"))
           valid.valid_bnd = true;
-        else if (regstr == "everywhere")
+        else if (CCTK_Equals(regstr.c_str(), "everywhere"))
           valid.valid_int = valid.valid_bnd = true;
         else
           assert(0);
