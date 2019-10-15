@@ -882,10 +882,12 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
       if (!checkpoint) {
         // Invalidate all time levels
         const int ntls = groupdata.mfab.size();
-        for (int tl = 0; tl < ntls; ++tl) {
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            groupdata.valid.at(tl).at(vi) = valid_t();
-            poison_invalid(leveldata, groupdata, vi, tl);
+        if (ntls > 1) { // assume one timelevel only means constant data
+          for (int tl = 0; tl < ntls; ++tl) {
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              groupdata.valid.at(tl).at(vi) = valid_t();
+              poison_invalid(leveldata, groupdata, vi, tl);
+            }
           }
         }
       }
