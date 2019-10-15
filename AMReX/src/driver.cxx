@@ -133,8 +133,8 @@ void SetupGlobals() {
 
     assert(group.grouptype == CCTK_SCALAR);
     assert(group.vartype == CCTK_VARIABLE_REAL);
-    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
-    assert(group.dim == dim);
+    assert(group.disttype == CCTK_DISTRIB_CONSTANT);
+    assert(group.dim == 0);
     // TODO: vectors must be contiguous in memory and mine aren't
     assert(group.vectorlength == 1);
 
@@ -145,8 +145,10 @@ void SetupGlobals() {
 
     // Allocate data
     scalargroupdata.data.resize(group.numtimelevels);
+    scalargroupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
       scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
+      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars);
       for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
         // TODO: find out something that avoid new ?
         scalargroupdata.data.at(tl).at(vi) = new CCTK_REAL;
