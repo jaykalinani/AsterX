@@ -575,6 +575,7 @@ struct clause_t {
 vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
                                 const rdwr_t rdwr) {
   vector<clause_t> result;
+  result.reserve(attribute->n_RDWR);
   for (int n = 0; n < attribute->n_RDWR; ++n) {
     const RDWR_entry &restrict RDWR = attribute->RDWR[n];
     int gi = CCTK_GroupIndexFromVarI(RDWR.var_id);
