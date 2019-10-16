@@ -17,7 +17,7 @@ SCHEDULE TestProlongate_Regrid AT CCTK_POSTSTEP
 SCHEDULE TestProlongate_Test AT CCTK_INITIAL
 {
   LANG: C
-  WRITES: data(interior)
+  WRITES: TestProlongate::data(interior)
 } "Set up test data"
 
 SCHEDULE TestProlongate_Sync AT CCTK_INITIAL AFTER TestProlongate_Test
