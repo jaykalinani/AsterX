@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -248,7 +249,8 @@ void poison_invalid(const GHExt::LevelData &leveldata,
 
 // Ensure grid functions are not nan
 void check_valid(const GHExt::LevelData &leveldata,
-                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl) {
+                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
+                 const function<string()> &msg) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
@@ -294,10 +296,11 @@ void check_valid(const GHExt::LevelData &leveldata,
     const char *where = valid.valid_int && valid.valid_bnd
                             ? "interior and boundary"
                             : valid.valid_int ? "interior" : "boundary";
-    CCTK_VERROR("Grid function \"%s\" has nans on refinement level %d, time "
+    CCTK_VERROR(
+        "%s: Grid function \"%s\" has nans on refinement level %d, time "
                 "level %d; expected valid %s",
-                CCTK_FullVarName(groupdata.firstvarindex + vi), leveldata.level,
-                tl, where);
+        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+        leveldata.level, tl, where);
   }
 }
 
@@ -1006,7 +1009,13 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
               CCTK_FullVarName(groupdata.firstvarindex + rd.vi),
               string("_p", rd.tl).c_str(), string(need).c_str(),
               string(have).c_str());
-        check_valid(leveldata, groupdata, rd.vi, rd.tl);
+        check_valid(leveldata, groupdata, rd.vi, rd.tl, [&]() {
+          ostringstream buf;
+          buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+              << attribute->where << ": " << attribute->thorn
+              << "::" << attribute->routine << " checking input";
+          return buf.str();
+        });
       }
     }
   }
@@ -1094,7 +1103,13 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         // Code cannot invalidate...
         have.valid_int |= provided.valid_int;
         have.valid_bnd |= provided.valid_bnd;
-        check_valid(leveldata, groupdata, wr.vi, wr.tl);
+        check_valid(leveldata, groupdata, wr.vi, wr.tl, [&]() {
+          ostringstream buf;
+          buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+              << attribute->where << ": " << attribute->thorn
+              << "::" << attribute->routine << " checking output";
+          return buf.str();
+        });
       }
     }
   }
@@ -1149,7 +1164,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             groupdata.valid.at(tl).at(vi).valid_bnd = false;
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             poison_invalid(leveldata, groupdata, vi, tl);
-            check_valid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl,
+                        [&]() { return "SyncGroupsByDirI before syncing"; });
           }
           groupdata.mfab.at(tl)->FillBoundary(
               ghext->amrcore->Geom(leveldata.level).periodicity());
@@ -1189,14 +1205,19 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             groupdata.valid.at(tl).at(vi).valid_bnd = false;
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             poison_invalid(leveldata, groupdata, vi, tl);
-            check_valid(coarseleveldata, coarsegroupdata, vi, tl);
-            check_valid(leveldata, groupdata, vi, tl);
+              check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
+                return "SyncGroupsByDirI on coarse level before prolongation";
+              });
+              check_valid(leveldata, groupdata, vi, tl, [&]() {
+                return "SyncGroupsByDirI on fine level before prolongation";
+              });
           }
           FillPatchTwoLevels(
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
-              {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
-              ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
-              cphysbc, 0, fphysbc, 0, reffact, interpolator, bcs, 0);
+                {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
+                interpolator, bcs, 0);
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).valid_bnd =
                 coarsegroupdata.valid.at(tl).at(vi).valid_int &&
@@ -1208,7 +1229,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       for (int tl = 0; tl < sync_tl; ++tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           poison_invalid(leveldata, groupdata, vi, tl);
-          check_valid(leveldata, groupdata, vi, tl);
+          check_valid(leveldata, groupdata, vi, tl,
+                      [&]() { return "SyncGroupsByDirI after prolongation"; });
         }
       }
     }
@@ -1323,9 +1345,13 @@ void Restrict(int level) {
           assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
                  groupdata.valid.at(tl).at(vi).valid_int);
           poison_invalid(fineleveldata, finegroupdata, vi, tl);
-          check_valid(fineleveldata, finegroupdata, vi, tl);
+          check_valid(fineleveldata, finegroupdata, vi, tl, [&]() {
+            return "Restrict on fine level before restricting";
+          });
           poison_invalid(leveldata, groupdata, vi, tl);
-          check_valid(leveldata, groupdata, vi, tl);
+          check_valid(leveldata, groupdata, vi, tl, [&]() {
+            return "Restrict on coarse level before restricting";
+          });
         }
 
         if (groupdata.indextype == array<int, dim>{0, 0, 0})
@@ -1356,7 +1382,9 @@ void Restrict(int level) {
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl, [&]() {
+          return "Restrict on coarse level after restricting";
+        });
       }
     }
   }

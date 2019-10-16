@@ -455,7 +455,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                  coarsegroupdata.valid.at(tl).at(vi).valid_bnd);
-          check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+          check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
+            return "MakeNewLevelFromCoarse before prolongation";
+          });
         }
         InterpFromCoarseLevel(
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
@@ -471,7 +473,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
       }
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl, [&]() {
+          return "MakeNewLevelFromCoarse after prolongation";
+        });
       }
     }
   }
@@ -578,7 +582,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                           string("_p", tl).c_str(),
                           string(coarsegroupdata.valid.at(tl).at(vi)).c_str(),
                           string(groupdata.valid.at(tl).at(vi)).c_str());
-            check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+            check_valid(coarseleveldata, coarsegroupdata, vi, tl,
+                        [&]() { return "RemakeLevel before prolongation"; });
             // We cannot call this function since it would try to
             // traverse the old grid function with the new grid
             // structure.
@@ -612,7 +617,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl,
+                    [&]() { return "RemakeLevel after prolongation"; });
       }
     }
   }
