@@ -564,11 +564,22 @@ struct clause_t {
   friend bool operator<(const clause_t &x, const clause_t &y) {
     if (x.gi < y.gi)
       return true;
+    if (x.gi > y.gi)
+      return false;
     if (x.vi < y.vi)
       return true;
+    if (x.vi > y.vi)
+      return false;
     if (x.tl < y.tl)
       return true;
+    if (x.tl > y.tl)
+      return false;
     return x.valid < y.valid;
+  }
+
+  friend ostream &operator<<(ostream &os, const clause_t &cl) {
+    return os << "clause_t{gi:" << cl.gi << ",vi:" << cl.vi << ",tl:" << cl.tl
+              << ",valid:" << cl.valid << "}";
   }
 };
 
