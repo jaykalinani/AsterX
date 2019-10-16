@@ -8,13 +8,13 @@ SCHEDULE AMReX_Startup AT startup AS Driver_Startup
 SCHEDULE AMReX_InitError AT basegrid
 {
   LANG: C
-  WRITES: regrid_error(everywhere)
+  WRITES: AMReX::regrid_error(everywhere)
 } "Initialize regridding error to zero"
 
 SCHEDULE AMReX_SetLevel AT basegrid
 {
   LANG: C
-  WRITES: refinement_level(everywhere)
+  WRITES: AMReX::refinement_level(everywhere)
 } "Set refinemenet level grid function"
 
 SCHEDULE AMReX_Shutdown AT shutdown AS Driver_Shutdown
