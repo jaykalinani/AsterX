@@ -91,6 +91,31 @@ extern "C" void HydroToyAMReX_Boundaries(CCTK_ARGUMENTS) {
   // do nothing
 }
 
+extern "C" void HydroToyAMReX_CopyConserved(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_CopyConserved;
+  DECLARE_CCTK_PARAMETERS;
+
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_p_(cctkGH, rho_p);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_p_(cctkGH, momx_p);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_p_(cctkGH, momy_p);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_p_(cctkGH, momz_p);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_p_(cctkGH, etot_p);
+
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+
+  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    rho_(p.I) = rho_p_(p.I);
+    momx_(p.I) = momx_p_(p.I);
+    momy_(p.I) = momy_p_(p.I);
+    momz_(p.I) = momz_p_(p.I);
+    etot_(p.I) = etot_p_(p.I);
+  });
+}
+
 extern "C" void HydroToyAMReX_Pressure(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Pressure;
   DECLARE_CCTK_PARAMETERS;
@@ -307,7 +332,7 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   // dt mom_j + d_i (mom_j vel^i) = 0
   // dt etot + d_i (etot vel^i) = 0
 
-  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     auto calcupdate{[&](auto &fx, auto &fy, auto &fz) {
       return dt * ((fx(p.I + p.DI(0)) - fx(p.I)) / dx +
                    (fy(p.I + p.DI(1)) - fy(p.I)) / dy +
