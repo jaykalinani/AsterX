@@ -585,21 +585,11 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
     int tl = RDWR.time_level;
     int where = rdwr == rdwr_t::read ? RDWR.where_rd : RDWR.where_wr;
     valid_t valid;
-    switch (where) {
-    case WH_NOWHERE:
-      break;
-    case WH_INTERIOR:
+    if (where & WH_INTERIOR)
       valid.valid_int = true;
-      break;
-    case WH_GHOSTS | WH_BOUNDARY:
+    // We treat "ghost" and "boundary" as the same
+    if (where & (WH_GHOSTS | WH_BOUNDARY))
       valid.valid_bnd = true;
-      break;
-    case WH_EVERYWHERE:
-      valid.valid_int = valid.valid_bnd = true;
-      break;
-    default:
-      assert(0);
-    }
     result.push_back({gi, vi, tl, valid});
   }
   return result;
