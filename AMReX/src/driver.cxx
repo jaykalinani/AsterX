@@ -97,10 +97,13 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
                   grid.cactus_offset.z + p.k) =
           err[p.idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
     });
-    grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-      tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-                  grid.cactus_offset.z + p.k) = TagBox::CLEAR;
-    });
+    // Do not set the boundary; AMReX's error grid function might have
+    // a different number of ghost zones, and these ghost zones are
+    // probably unused anyway.
+    // grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
+    //   tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+    //               grid.cactus_offset.z + p.k) = TagBox::CLEAR;
+    // });
   }
 }
 

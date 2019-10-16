@@ -123,7 +123,7 @@ CCTK_INT max_tile_size_z "Maximum tile size"
 CCTK_REAL grid_efficiency "Minimum AMR grid efficiency"
 {
   0.0:* :: ""
-} 0.7  
+} 0.7
 
 
 
@@ -172,7 +172,7 @@ BOOLEAN do_reflux "Manage flux registers to ensure conservation"
 CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 {
   *:* :: ""
-} 0.5 
+} 0.5
 
 
 
@@ -189,7 +189,7 @@ USES KEYWORD terminate
 USES CCTK_INT cctk_itlast
 USES CCTK_REAL cctk_initial_time
 USES CCTK_REAL cctk_final_time
-USES CCTK_REAL max_runtime 
+USES CCTK_REAL max_runtime
 
 SHARES: IO
 
