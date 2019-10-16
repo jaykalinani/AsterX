@@ -116,27 +116,28 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
   ofstream file(buf.str());
 
   // Output header
-  file << "#"
+  file << "# 1:iteration"
        << "\t"
-       << "time"
+       << "2:time"
        << "\t"
-       << "level"
+       << "3:level"
        << "\t"
-       << "component"
+       << "4:component"
        << "\t"
-       << "i"
+       << "5:i"
        << "\t"
-       << "j"
+       << "6:j"
        << "\t"
-       << "k"
+       << "7:k"
        << "\t"
-       << "x"
+       << "8:x"
        << "\t"
-       << "y"
+       << "9:y"
        << "\t"
-       << "z";
+       << "10:z";
+  int col = 11;
   for (const auto &varname : varnames)
-    file << "\t" << varname;
+    file << "\t" << col++ << ":" << varname;
   file << "\n";
 
   for (const auto &leveldata : ghext->leveldata) {
