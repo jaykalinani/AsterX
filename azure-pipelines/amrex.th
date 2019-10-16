@@ -128,5 +128,5 @@ AMReX/AMReX
 # AMReX/AMReXTest
 AMReX/HydroToyAMReX
 AMReX/MaxwellToyAMReX
-AMReX/WaveToyAMReX
 AMReX/TestProlongate
+AMReX/WaveToyAMReX
