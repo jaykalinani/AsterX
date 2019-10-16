@@ -298,7 +298,7 @@ void check_valid(const GHExt::LevelData &leveldata,
                             : valid.valid_int ? "interior" : "boundary";
     CCTK_VERROR(
         "%s: Grid function \"%s\" has nans on refinement level %d, time "
-                "level %d; expected valid %s",
+        "level %d; expected valid %s",
         msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
         leveldata.level, tl, where);
   }
@@ -839,12 +839,10 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
       if (!checkpoint) {
         // Invalidate all time levels
         const int ntls = groupdata.mfab.size();
-        if (ntls > 1) { // assume one timelevel only means constant data
-          for (int tl = 0; tl < ntls; ++tl) {
-            for (int vi = 0; vi < groupdata.numvars; ++vi) {
-              groupdata.valid.at(tl).at(vi) = valid_t();
-              poison_invalid(leveldata, groupdata, vi, tl);
-            }
+        for (int tl = 0; tl < ntls; ++tl) {
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            groupdata.valid.at(tl).at(vi) = valid_t();
+            poison_invalid(leveldata, groupdata, vi, tl);
           }
         }
       }
@@ -1197,32 +1195,32 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                           periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                   coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
-                   groupdata.valid.at(tl).at(vi).valid_int);
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).valid_bnd = false;
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            poison_invalid(leveldata, groupdata, vi, tl);
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                     coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                     groupdata.valid.at(tl).at(vi).valid_int);
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              groupdata.valid.at(tl).at(vi).valid_bnd = false;
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              poison_invalid(leveldata, groupdata, vi, tl);
               check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
                 return "SyncGroupsByDirI on coarse level before prolongation";
               });
               check_valid(leveldata, groupdata, vi, tl, [&]() {
                 return "SyncGroupsByDirI on fine level before prolongation";
               });
-          }
-          FillPatchTwoLevels(
-              *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+            }
+            FillPatchTwoLevels(
+                *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
                 {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                 groupdata.numvars, ghext->amrcore->Geom(level - 1),
                 ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
                 interpolator, bcs, 0);
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).valid_bnd =
-                coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
-                groupdata.valid.at(tl).at(vi).valid_int;
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              groupdata.valid.at(tl).at(vi).valid_bnd =
+                  coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                  coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                  groupdata.valid.at(tl).at(vi).valid_int;
         }
       }
 
