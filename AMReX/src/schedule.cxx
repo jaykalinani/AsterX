@@ -1195,6 +1195,23 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                           periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
+
+          // Only prolongate valid grid functions
+          bool all_invalid = true;
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                           !coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                           !groupdata.valid.at(tl).at(vi).valid_int;
+
+          if (all_invalid) {
+
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              groupdata.valid.at(tl).at(vi).valid_int = false;
+              groupdata.valid.at(tl).at(vi).valid_bnd = false;
+            }
+
+          } else {
+
             for (int vi = 0; vi < groupdata.numvars; ++vi)
               assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                      coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
@@ -1221,7 +1238,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                   coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                   coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
                   groupdata.valid.at(tl).at(vi).valid_int;
-        }
+          } // if all_invalid
+        }   // for tl
       }
 
       for (int tl = 0; tl < sync_tl; ++tl) {
