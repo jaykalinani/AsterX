@@ -21,6 +21,8 @@ SCHEDULE WaveToyAMReX_Sync AT initial AFTER WaveToyAMReX_Initialize
 SCHEDULE WaveToyAMReX_Boundaries AT initial AFTER WaveToyAMReX_Sync
 {
   LANG: C
+  READS: state(everywhere)
+  WRITES: state(boundary)
 } "Boundary conditions for the wave equation"
 
 SCHEDULE WaveToyAMReX_NaNCheck_current AT postinitial

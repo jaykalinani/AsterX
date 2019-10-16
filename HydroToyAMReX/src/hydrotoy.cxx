@@ -2,6 +2,7 @@
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
+#include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
 #include <cassert>
@@ -16,7 +17,7 @@ constexpr int dim = 3;
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
   // const CCTK_REAL t = cctk_time;
@@ -85,13 +86,13 @@ extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
 }
 
 extern "C" void HydroToyAMReX_Boundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Boundaries;
 
   // do nothing
 }
 
 extern "C" void HydroToyAMReX_Pressure(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Pressure;
   DECLARE_CCTK_PARAMETERS;
 
   // Equation of state: p = (gamma - 1) e
@@ -153,7 +154,7 @@ T hlle(T lambda_m, T lambda_p, T var_m, T var_p, T flux_m, T flux_p) {
 }
 
 extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
@@ -263,7 +264,7 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
 }
 
 extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Evolve;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
@@ -324,7 +325,7 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
 }
 
 extern "C" void HydroToyAMReX_EstimateError(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
@@ -354,8 +355,9 @@ extern "C" void HydroToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   });
 }
 
+#if 0
 extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Output;
   DECLARE_CCTK_PARAMETERS;
 
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
@@ -393,5 +395,6 @@ extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
     }
   });
 }
+#endif
 
 } // namespace HydroToyAMReX
