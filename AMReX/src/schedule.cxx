@@ -299,7 +299,7 @@ void check_valid(const GHExt::LevelData &leveldata,
                 CCTK_FullVarName(groupdata.firstvarindex + vi), leveldata.level,
                 tl, where);
   }
-} // namespace AMReX
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1360,7 +1360,6 @@ void Restrict(int level) {
   }
 }
 
-
 // storage handling
 namespace {
 int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
@@ -1412,7 +1411,6 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
     int ierr = CCTK_GroupData(gid, &group);
     assert(not ierr);
 
-
     // Record previous number of allocated time levels
     if (status) {
       // Note: This remembers only the last level
@@ -1428,18 +1426,18 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
 
   return min_num_timelevels;
 }
-}
+} // namespace
 
 int GroupStorageIncrease(const cGH *cctkGH, int n_groups, const int *groups,
                          const int *tls, int *status) {
-  DECLARE_CCTK_PARAMETERS
+  DECLARE_CCTK_PARAMETERS;
 
   return GroupStorageCrease(cctkGH, n_groups, groups, tls, status, true);
 }
 
 int GroupStorageDecrease(const cGH *cctkGH, int n_groups, const int *groups,
                          const int *tls, int *status) {
-  DECLARE_CCTK_PARAMETERS
+  DECLARE_CCTK_PARAMETERS;
 
   return GroupStorageCrease(cctkGH, n_groups, groups, tls, status, false);
 }
