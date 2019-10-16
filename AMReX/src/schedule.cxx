@@ -555,6 +555,8 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
   return mode_t::local; // default
 }
 
+enum class rdwr_t { read, write };
+
 struct clause_t {
   int gi, vi, tl;
   valid_t valid;
@@ -570,86 +572,36 @@ struct clause_t {
   }
 };
 
-const vector<clause_t> &decode_clauses(const cFunctionData *restrict attribute,
-                                       int n_clauses, const char **clauses) {
-  // We assume that each `clauses` pointer is unique
-  static unordered_map<const char **, vector<clause_t> > memoized_results;
-  auto result_it = memoized_results.find(clauses);
-  if (result_it != memoized_results.end())
-    return result_it->second;
+vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
+                                const rdwr_t rdwr) {
   vector<clause_t> result;
-  for (int n = 0; n < n_clauses; ++n) {
-    for (const char *restrict p = clauses[n]; *p;) {
-      // Find beginning of word
-      while (isspace(*p))
-        ++p;
-      if (!*p)
-        break;
-      // Read grid function / group name
-      assert(isalnum(*p) || *p == '_' || *p == ':');
-      const char *const name0 = p;
-      while (isalnum(*p) || *p == '_' || *p == ':')
-        ++p;
-      string name(name0, p);
+  for (int n = 0; n < attribute->n_RDWR; ++n) {
+    const RDWR_entry &restrict RDWR = attribute->RDWR[n];
+    int gi = CCTK_GroupIndexFromVarI(RDWR.var_id);
+    assert(gi >= 0);
+    int vi = RDWR.var_id - CCTK_FirstVarIndexI(gi);
+    assert(vi >= 0 && vi < CCTK_NumVarsInGroupI(gi));
+    int tl = RDWR.time_level;
+    int where = rdwr == rdwr_t::read ? RDWR.where_rd : RDWR.where_wr;
       valid_t valid;
-      if (*p == '(') {
-        ++p;
-        const char *const reg0 = p;
-        while (isalpha(*p))
-          ++p;
-        string regstr(reg0, p);
-        if (CCTK_Equals(regstr.c_str(), "interior"))
+    switch (where) {
+    case WH_NOWHERE:
+      break;
+    case WH_INTERIOR:
           valid.valid_int = true;
-        else if (CCTK_Equals(regstr.c_str(), "boundary"))
+      break;
+    case WH_GHOSTS | WH_BOUNDARY:
           valid.valid_bnd = true;
-        else if (CCTK_Equals(regstr.c_str(), "everywhere"))
+      break;
+    case WH_EVERYWHERE:
           valid.valid_int = valid.valid_bnd = true;
-        else
+      break;
+    default:
           assert(0);
-        assert(*p == ')');
-        ++p;
-      } else {
-        assert(0); // missing region
-        valid.valid_int = valid.valid_bnd = true;
       }
-      assert(!*p || isspace(*p));
-
-      int tl = 0;
-      while (name.size() >= 2 && name.substr(name.size() - 2) == "_p") {
-        name = name.substr(0, name.size() - 2);
-        ++tl;
-      }
-
-      if (name.find(':') == string::npos)
-        name = string(attribute->thorn) + "::" + name;
-
-      const int gi0 = CCTK_GroupIndex(name.c_str());
-      if (gi0 >= 0) {
-        const int gi = gi0;
-        const int nv = CCTK_NumVarsInGroupI(gi);
-        for (int vi = 0; vi < nv; ++vi)
           result.push_back({gi, vi, tl, valid});
-      } else {
-        const int var = CCTK_VarIndex(name.c_str());
-        if (var >= 0) {
-          const int gi = CCTK_GroupIndexFromVarI(var);
-          const int v0 = CCTK_FirstVarIndexI(gi);
-          const int vi = var - v0;
-          result.push_back({gi, vi, tl, valid});
-        } else {
-          CCTK_VERROR("Cannot decode group/variable name \"%s\" in %s: %s::%s",
-                      name.c_str(), attribute->where, attribute->thorn,
-                      attribute->routine);
-        }
-      }
     }
-  }
-  set<clause_t> seen;
-  for (const auto &res : result) {
-    assert(seen.count(res) == 0); // variable listed twice
-    seen.insert(res);
-  }
-  return memoized_results.emplace(clauses, move(result)).first->second;
+  return result;
 }
 
 // Schedule initialisation
@@ -1033,8 +985,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Check whether input variables have valid data
   {
-    const vector<clause_t> &reads = decode_clauses(
-        attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
+    const vector<clause_t> &reads = decode_clauses(attribute, rdwr_t::read);
     for (const auto &rd : reads) {
       for (int level = min_level; level < max_level; ++level) {
         const auto &restrict leveldata = ghext->leveldata.at(level);
@@ -1061,16 +1012,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   // Poison those output variables that are not input variables
   if (poison_undefined_values) {
     map<clause_t, valid_t> isread;
-    const vector<clause_t> &reads = decode_clauses(
-        attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
+    const vector<clause_t> &reads = decode_clauses(attribute, rdwr_t::read);
     for (const auto &rd : reads) {
       clause_t cl = rd;
       cl.valid = valid_t();
       assert(isread.count(cl) == 0);
       isread[cl] = rd.valid;
     }
-    const vector<clause_t> &writes = decode_clauses(
-        attribute, attribute->n_WritesClauses, attribute->WritesClauses);
+    const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
     for (const auto &wr : writes) {
       clause_t cl = wr;
       cl.valid = valid_t();
@@ -1133,8 +1082,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Mark output variables as having valid data
   {
-    const vector<clause_t> &writes = decode_clauses(
-        attribute, attribute->n_WritesClauses, attribute->WritesClauses);
+    const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
     for (const auto &wr : writes) {
       for (int level = min_level; level < max_level; ++level) {
         auto &restrict leveldata = ghext->leveldata.at(level);
