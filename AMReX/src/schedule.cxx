@@ -1276,20 +1276,16 @@ void Reflux(int level) {
 
       // Check coarse and fine data and fluxes are valid
       for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
-               finegroupdata.valid.at(tl).at(vi).valid_bnd);
-        assert(groupdata.valid.at(tl).at(vi).valid_int &&
-               groupdata.valid.at(tl).at(vi).valid_bnd);
+        assert(finegroupdata.valid.at(tl).at(vi).valid_int);
+        assert(groupdata.valid.at(tl).at(vi).valid_int);
       }
       for (int d = 0; d < dim; ++d) {
         int flux_gi = finegroupdata.fluxes[d];
         const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
         const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
         for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-          assert(flux_finegroupdata.valid.at(tl).at(vi).valid_int &&
-                 flux_finegroupdata.valid.at(tl).at(vi).valid_bnd);
-          assert(flux_groupdata.valid.at(tl).at(vi).valid_int &&
-                 flux_groupdata.valid.at(tl).at(vi).valid_bnd);
+          assert(flux_finegroupdata.valid.at(tl).at(vi).valid_int);
+          assert(flux_groupdata.valid.at(tl).at(vi).valid_int);
         }
       }
 
