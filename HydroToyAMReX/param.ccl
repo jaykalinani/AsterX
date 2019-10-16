@@ -24,3 +24,9 @@ CCTK_REAL gamma "EOS parameter" STEERABLE=always
 {
   0.0:* :: ""
 } 1.6666666666666667
+
+
+
+BOOLEAN output "Output 1D data for debugging" STEERABLE=recover
+{
+} no

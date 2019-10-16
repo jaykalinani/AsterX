@@ -36,32 +36,33 @@ SCHEDULE HydroToyAMReX_Boundaries AT postregrid
 
 # Dependent quantities
 
-SCHEDULE GROUP HydroToyAMReX_OutputGroup AT poststep
-{
-} "Output HydroToy quantities"
-
-  SCHEDULE HydroToyAMReX_Pressure IN HydroToyAMReX_OutputGroup
+if (output) {
+  SCHEDULE GROUP HydroToyAMReX_OutputGroup AT poststep
   {
-    LANG: C
-    READS: conserved(everywhere)
-    WRITES: primitive(everywhere)
-  } "Calculate pressure"
+  } "Output HydroToy quantities"
 
-  SCHEDULE HydroToyAMReX_Fluxes IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Pressure
-  {
-    LANG: C
-    READS: conserved(everywhere)
-    READS: primitive(everywhere)
-    WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
-  } "Calculate the hydro fluxes"
+    SCHEDULE HydroToyAMReX_Pressure IN HydroToyAMReX_OutputGroup
+    {
+      LANG: C
+      READS: conserved(everywhere)
+      WRITES: primitive(everywhere)
+    } "Calculate pressure"
+    SCHEDULE HydroToyAMReX_Fluxes IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Pressure
+    {
+      LANG: C
+      READS: conserved(everywhere)
+      READS: primitive(everywhere)
+      WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+    } "Calculate the hydro fluxes"
 
-  SCHEDULE HydroToyAMReX_Output IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Fluxes
-  {
-    LANG: C
-    READS: conserved(interior)
-    READS: flux_x(interior) flux_y(interior) flux_z(interior)
-    READS: AMReX::regrid_error(interior)
-  } "Output grid data"
+    SCHEDULE HydroToyAMReX_Output IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Fluxes
+    {
+      LANG: C
+      READS: conserved(interior)
+      READS: flux_x(interior) flux_y(interior) flux_z(interior)
+      READS: AMReX::regrid_error(interior)
+    } "Output grid data"
+} # if output
 
 SCHEDULE HydroToyAMReX_EstimateError AT poststep
 {

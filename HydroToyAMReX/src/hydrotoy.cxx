@@ -20,9 +20,6 @@ extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
-  // const CCTK_REAL t = cctk_time;
-  // const CCTK_REAL dt = CCTK_DELTA_TIME;
-
   if (CCTK_EQUALS(setup, "equilibrium")) {
 
     Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
@@ -380,7 +377,6 @@ extern "C" void HydroToyAMReX_EstimateError(CCTK_ARGUMENTS) {
   });
 }
 
-#if 0
 extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Output;
   DECLARE_CCTK_PARAMETERS;
@@ -391,35 +387,50 @@ extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
 
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH,
+                                                           regrid_error);
+
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomz_(cctkGH, fxmomz);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxetot_(cctkGH, fxetot);
 
-  Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    if (p.j == 0 && p.k == 0) {
+  int levfac = cctk_levfac[0];
+  int lev = 0;
+  while (levfac > 1) {
+    levfac >>= 1;
+    lev += 1;
+  }
+
 #pragma omp critical(HydroToyAMReX_Output)
       {
+    const int oldprec = cout.precision(17);
+    cout << "iteration " << cctk_iteration << " level " << lev << ":\n";
+
+    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      if (p.j == 0 && p.k == 0) {
         cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
-             << p.y << "," << p.z << ") rho=" << rho_(p.I)
-             << " momx=" << momx_(p.I) << " etot=" << etot_(p.I) << "\n";
-      }
+             << p.y << "," << p.z << ") rho="
+             << rho_(p.I)
+             // << " momx=" << momx_(p.I) << " etot=" << etot_(p.I)
+             // << " err=" << regrid_error_(p.I)
+             << "\n";
     }
   });
 
   Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     if (p.j == 0 && p.k == 0) {
-#pragma omp critical(HydroToyAMReX_Output)
-      {
         cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
-             << p.y << "," << p.z << ") fxrho=" << fxrho_(p.I)
-             << " fxmomx=" << fxmomx_(p.I) << " fxetot=" << fxetot_(p.I)
+             << p.y << "," << p.z << ") fxrho="
+             << fxrho_(p.I)
+             // << " fxmomx=" << fxmomx_(p.I) << " fxetot=" << fxetot_(p.I)
              << "\n";
       }
-    }
   });
+
+    cout.precision(oldprec);
+  }
 }
-#endif
 
 } // namespace HydroToyAMReX
