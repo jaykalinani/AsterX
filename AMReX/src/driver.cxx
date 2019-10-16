@@ -377,6 +377,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
     }
   } // if conservative_prolongation
 
+  CCTK_VERROR("Unsupported index type 0b%d%d%d and for order %d", indextype[0],
+              indextype[1], indextype[2], prolongation_order);
   assert(0);
 }
 
