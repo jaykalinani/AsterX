@@ -583,24 +583,24 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
     assert(vi >= 0 && vi < CCTK_NumVarsInGroupI(gi));
     int tl = RDWR.time_level;
     int where = rdwr == rdwr_t::read ? RDWR.where_rd : RDWR.where_wr;
-      valid_t valid;
+    valid_t valid;
     switch (where) {
     case WH_NOWHERE:
       break;
     case WH_INTERIOR:
-          valid.valid_int = true;
+      valid.valid_int = true;
       break;
     case WH_GHOSTS | WH_BOUNDARY:
-          valid.valid_bnd = true;
+      valid.valid_bnd = true;
       break;
     case WH_EVERYWHERE:
-          valid.valid_int = valid.valid_bnd = true;
+      valid.valid_int = valid.valid_bnd = true;
       break;
     default:
-          assert(0);
-      }
-          result.push_back({gi, vi, tl, valid});
+      assert(0);
     }
+    result.push_back({gi, vi, tl, valid});
+  }
   return result;
 }
 
@@ -1417,8 +1417,8 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
       status[n] = group.numtimelevels;
     }
 
-   // Record (minimum of) current number of time levels
-   min_num_timelevels = min(min_num_timelevels, group.numtimelevels);
+    // Record (minimum of) current number of time levels
+    min_num_timelevels = min(min_num_timelevels, group.numtimelevels);
   } // for n
   if (min_num_timelevels == INT_MAX) {
     min_num_timelevels = 0;
