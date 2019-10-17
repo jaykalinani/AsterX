@@ -7,3 +7,5 @@ USES INCLUDE HEADER: loop.hxx
 private:
 
 CCTK_REAL data TYPE=GF TIMELEVELS=1 "test grid function"
+
+CCTK_REAL max_diff TYPE=SCALAR TIMELEVELS=1 "difference to expected value"

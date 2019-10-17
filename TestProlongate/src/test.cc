@@ -4,6 +4,7 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -27,6 +28,8 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     data[p.idx] = pow(p.x * p.y * p.z, operator_order);
   });
+
+  *max_diff = 0.;
 }
 
 extern "C" void TestProlongate_Sync(CCTK_ARGUMENTS) {
@@ -51,6 +54,36 @@ extern "C" void TestProlongate_Regrid(CCTK_ARGUMENTS) {
       regrid_error[p.idx] = 0.;
     }
   });
+}
+
+extern "C" void TestProlongate_Check(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_PARAMETERS;
+  DECLARE_CCTK_ARGUMENTS;
+
+  // there is no reduction yet, so for now I require that only 1 MPI rank be in
+  // use
+  assert(CCTK_nProcs(cctkGH) == 1 && "Must be single rank");
+
+  // get prolongation order from driver, the parmeter is private since really
+  // there is normally no reason to depend on it
+  int order_type;
+  const void *order_p = CCTK_ParameterGet("prolongation_order", "AMReX",
+                                          &order_type);
+  assert(order_p);
+  assert(order_type == PARAMETER_INT);
+  const CCTK_INT operator_order = *static_cast<const CCTK_INT*>(order_p);
+
+  CCTK_REAL my_max_diff = 0;
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    const CCTK_REAL diff = fabs(data[p.idx] -
+                                pow(p.x * p.y * p.z, operator_order));
+    my_max_diff = max(diff, my_max_diff);
+  });
+
+  #pragma omp critical
+  {
+    *max_diff = max(*max_diff, my_max_diff);
+  }
 }
 
 } // namespace TestProlongate
