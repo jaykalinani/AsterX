@@ -650,7 +650,8 @@ extern "C" int AMReX_Startup() {
     CCTK_VINFO("Startup");
 
   // Output a startup message
-  string banner = "AMR driver provided by AMReX " + amrex::Version();
+  string banner =
+      "AMR driver provided by CarpetX, using AMReX " + amrex::Version();
   int ierr = CCTK_RegisterBanner(banner.c_str());
   assert(!ierr);
 
