@@ -140,6 +140,9 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
     file << "\t" << col++ << ":" << varname;
   file << "\n";
 
+  // get more precision for floats, could also use https://stackoverflow.com/a/30968371
+  file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
+
   for (const auto &leveldata : ghext->leveldata) {
     enter_level_mode(const_cast<cGH *>(cctkGH), leveldata);
     const auto &groupdata = leveldata.groupdata.at(gi);
