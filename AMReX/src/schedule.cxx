@@ -436,6 +436,7 @@ void leave_level_mode(cGH *restrict cctkGH,
 bool in_local_mode(const cGH *restrict cctkGH) {
   if (cctkGH->cctk_gsh[0] == undefined)
     return false;
+  return true;
 }
 
 bool in_level_mode(const cGH *restrict cctkGH) {
@@ -1180,7 +1181,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
 
-  assert(in_global_mode(cctkGH));
+  //assert(!in_local_mode(cctkGH));
+  //assert(!in_level_mode(cctkGH));
+  //assert(in_global_mode(cctkGH));
 
   static Timer timer("Sync");
   Interval interval(timer);
