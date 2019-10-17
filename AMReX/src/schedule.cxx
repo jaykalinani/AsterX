@@ -433,6 +433,29 @@ void leave_level_mode(cGH *restrict cctkGH,
     cctkGH->cctk_levoffdenom[d] = 0;
 }
 
+bool in_local_mode(const cGH *restrict cctkGH) {
+  if (cctkGH->cctk_gsh[0] == undefined)
+    return false;
+}
+
+bool in_level_mode(const cGH *restrict cctkGH) {
+  if (in_local_mode(cctkGH))
+    return false;
+  if (cctkGH->cctk_gsh[0] == undefined)
+    return false;
+  return true;
+}
+
+bool in_global_mode(const cGH *restrict cctkGH) {
+  if(in_local_mode(cctkGH))
+    return false;
+  if(in_level_mode(cctkGH))
+    return false;
+  if(cctkGH->cctk_nghostzones[0] == undefined)
+    return false;
+  return true;
+}
+
 // Set cctkGH entries for local mode
 void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
@@ -1156,6 +1179,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
+
+  assert(in_global_mode(cctkGH));
 
   static Timer timer("Sync");
   Interval interval(timer);
