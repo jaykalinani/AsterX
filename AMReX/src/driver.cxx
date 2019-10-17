@@ -265,6 +265,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c000_o1;
+      case 3:
+        return &prolongate_3d_rf2_c000_o3;
       }
       break;
 
@@ -272,6 +274,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c001_o1;
+      case 3:
+        return &prolongate_3d_rf2_c001_o3;
       }
       break;
 
@@ -279,6 +283,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c010_o1;
+      case 3:
+        return &prolongate_3d_rf2_c010_o3;
       }
       break;
 
@@ -286,6 +292,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c011_o1;
+      case 3:
+        return &prolongate_3d_rf2_c011_o3;
       }
       break;
 
@@ -293,6 +301,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c100_o1;
+      case 3:
+        return &prolongate_3d_rf2_c100_o3;
       }
       break;
 
@@ -300,6 +310,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c101_o1;
+      case 3:
+        return &prolongate_3d_rf2_c101_o3;
       }
       break;
 
@@ -307,6 +319,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c110_o1;
+      case 3:
+        return &prolongate_3d_rf2_c110_o3;
       }
       break;
 
@@ -314,6 +328,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c111_o1;
+      case 3:
+        return &prolongate_3d_rf2_c111_o3;
       }
       break;
     }
