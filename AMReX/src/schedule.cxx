@@ -332,6 +332,35 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
     cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
 }
 
+enum class mode_t { unknown, local, level, global, meta };
+
+mode_t current_mode(const cGH *restrict cctkGH) {
+  if (cctkGH->cctk_lsh[0] != undefined)
+    return mode_t::local;
+  else if(cctkGH->cctk_gsh[0] != undefined)
+    return mode_t::level;
+  else if(cctkGH->cctk_nghostzones[0] != undefined)
+    return mode_t::global;
+  else
+    return mode_t::meta;
+}
+
+bool in_local_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::local;
+}
+
+bool in_level_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::level;
+}
+
+bool in_global_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::global;
+}
+
+bool in_meta_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::meta;
+}
+
 // Initialize cctkGH entries
 void setup_cctkGH(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
@@ -372,6 +401,11 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   mindx = mindx / (1 << (max_num_levels - 1));
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
+  // init into meta mode
+  cctkGH->cctk_nghostzones[0] = undefined;
+  cctkGH->cctk_lsh[0] = undefined;
+  cctkGH->cctk_gsh[0] = undefined;
+  assert(in_meta_mode(cctkGH));
 }
 
 // Update fields that carry state and change over time
@@ -388,6 +422,7 @@ void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 // Set cctkGH entries for global mode
 void enter_global_mode(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
+  assert(in_meta_mode(cctkGH));
 
   // The number of ghostzones in each direction
   // TODO: Get this from mfab (mfab.fb_ghosts)
@@ -395,6 +430,7 @@ void enter_global_mode(cGH *restrict cctkGH) {
     cctkGH->cctk_nghostzones[d] = ghost_size;
 }
 void leave_global_mode(cGH *restrict cctkGH) {
+  assert(in_global_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_nghostzones[d] = undefined;
 }
@@ -403,6 +439,7 @@ void leave_global_mode(cGH *restrict cctkGH) {
 void enter_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata) {
   DECLARE_CCTK_PARAMETERS;
+  assert(in_global_mode(cctkGH));
 
   // Global shape
   const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
@@ -423,6 +460,7 @@ void enter_level_mode(cGH *restrict cctkGH,
 }
 void leave_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata) {
+  assert(in_level_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
@@ -433,34 +471,11 @@ void leave_level_mode(cGH *restrict cctkGH,
     cctkGH->cctk_levoffdenom[d] = 0;
 }
 
-bool in_local_mode(const cGH *restrict cctkGH) {
-  if (cctkGH->cctk_gsh[0] == undefined)
-    return false;
-  return true;
-}
-
-bool in_level_mode(const cGH *restrict cctkGH) {
-  if (in_local_mode(cctkGH))
-    return false;
-  if (cctkGH->cctk_gsh[0] == undefined)
-    return false;
-  return true;
-}
-
-bool in_global_mode(const cGH *restrict cctkGH) {
-  if(in_local_mode(cctkGH))
-    return false;
-  if(in_level_mode(cctkGH))
-    return false;
-  if(cctkGH->cctk_nghostzones[0] == undefined)
-    return false;
-  return true;
-}
-
 // Set cctkGH entries for local mode
 void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFIter &mfi) {
+  assert(in_level_mode(cctkGH));
   GridPtrDesc grid(leveldata, mfi);
 
   for (int d = 0; d < dim; ++d)
@@ -519,6 +534,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
 void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFIter &mfi) {
+  assert(in_local_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
@@ -560,8 +576,6 @@ extern "C" void AMReX_GetTileExtent(const void *restrict cctkGH_,
     tile_max[d] = tilebox.tile_max[d];
   }
 }
-
-enum class mode_t { unknown, local, level, global, meta };
 
 mode_t decode_mode(const cFunctionData *restrict attribute) {
   bool local_mode = attribute->local;
@@ -1181,9 +1195,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
 
-  //assert(!in_local_mode(cctkGH));
-  //assert(!in_level_mode(cctkGH));
-  //assert(in_global_mode(cctkGH));
+  assert(in_global_mode(cctkGH));
 
   static Timer timer("Sync");
   Interval interval(timer);
