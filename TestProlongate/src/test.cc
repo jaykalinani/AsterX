@@ -4,6 +4,7 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 
@@ -14,15 +15,8 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
   DECLARE_CCTK_ARGUMENTS;
 
-  CCTK_VINFO("Initializing data of size %d %d %d", cctk_lsh[0], cctk_lsh[1],
-             cctk_lsh[2]);
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    ptrdiff_t idx = p.idx;
-    CCTK_REAL xL = p.x;
-    CCTK_REAL yL = p.y;
-    CCTK_REAL zL = p.z;
-
-    data[idx] = xL;
+    data[p.idx] = p.x;
   });
 }
 
@@ -36,21 +30,18 @@ extern "C" void TestProlongate_Regrid(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  if (cctk_iteration < 1)
+  if (cctk_iteration < regrid_after)
     return;
 
-  printf("Setting grid\n");
-
+  CCTK_VINFO("Setting grid at %d\n", cctk_iteration);
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    if (p.x > -0.5 && p.x < 0.5 && p.y > -0.5 && p.y < 0.5 && p.z > -0.5 &&
-        p.z < 0.5) {
-      fprintf(stderr, "Setting error %g %g %g\n", p.x, p.y, p.z);
+    if (fabs(p.x) <= refined_radius && fabs(p.y) <= refined_radius &&
+        fabs(p.z) <= refined_radius) {
       regrid_error[p.idx] = 1e3;
     } else {
       regrid_error[p.idx] = 0.;
     }
   });
-  fprintf(stderr, "done\n");
 }
 
 } // namespace TestProlongate
