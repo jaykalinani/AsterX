@@ -558,7 +558,7 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
   return mode_t::local; // default
 }
 
-enum class rdwr_t { read, write };
+enum class rdwr_t { read, write, invalid };
 
 struct clause_t {
   int gi, vi, tl;
@@ -597,7 +597,20 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
     int vi = RDWR.var_id - CCTK_FirstVarIndexI(gi);
     assert(vi >= 0 && vi < CCTK_NumVarsInGroupI(gi));
     int tl = RDWR.time_level;
-    int where = rdwr == rdwr_t::read ? RDWR.where_rd : RDWR.where_wr;
+    int where;
+    switch(rdwr) {
+        case rdwr_t::read:
+            where = RDWR.where_rd;
+            break;
+        case rdwr_t::write:
+            where = RDWR.where_wr;
+            break;
+        case rdwr_t::invalid:
+            where = RDWR.where_inv;
+            break;
+        default:
+            assert(0);
+    }
     valid_t valid;
     if (where & WH_INTERIOR)
       valid.valid_int = true;
@@ -1102,6 +1115,28 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         have.valid_int |= provided.valid_int;
         have.valid_bnd |= provided.valid_bnd;
         check_valid(leveldata, groupdata, wr.vi, wr.tl, [&]() {
+          ostringstream buf;
+          buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+              << attribute->where << ": " << attribute->thorn
+              << "::" << attribute->routine << " checking output";
+          return buf.str();
+        });
+      }
+    }
+  }
+  // Mark invalid variables as having invalid data
+  {
+    const vector<clause_t> &invalids = decode_clauses(attribute, rdwr_t::invalid);
+    for (const auto &inv : invalids) {
+      for (int level = min_level; level < max_level; ++level) {
+        auto &restrict leveldata = ghext->leveldata.at(level);
+        auto &restrict groupdata = leveldata.groupdata.at(inv.gi);
+        const valid_t &provided = inv.valid;
+        valid_t &have = groupdata.valid.at(inv.tl).at(inv.vi);
+        // Code cannot invalidate...
+        have.valid_int &= !provided.valid_int;
+        have.valid_bnd &= !provided.valid_bnd;
+        check_valid(leveldata, groupdata, inv.vi, inv.tl, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
