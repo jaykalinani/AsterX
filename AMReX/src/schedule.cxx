@@ -808,6 +808,7 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
   assert(0);
 }
 
+namespace {
 bool get_group_checkpoint_flag(const int gi) {
   int tags = CCTK_GroupTagsTableI(gi);
   assert(tags >= 0);
@@ -828,6 +829,7 @@ bool get_group_checkpoint_flag(const int gi) {
     assert(0);
   }
 }
+} // namespace
 
 void InvalidateTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
@@ -1311,6 +1313,29 @@ void Reflux(int level) {
   }
 }
 
+namespace {
+bool get_group_restrict_flag(const int gi) {
+  int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  char buf[100];
+  int iret = Util_TableGetString(tags, sizeof buf, buf, "restrict");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    return true;
+  } else if (iret >= 0) {
+    string str(buf);
+    for (auto &c : str)
+      c = tolower(c);
+    if (str == "yes")
+      return true;
+    if (str == "no")
+      return false;
+    assert(0);
+  } else {
+    assert(0);
+  }
+}
+} // namespace
+
 void Restrict(int level) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -1328,6 +1353,11 @@ void Restrict(int level) {
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
       continue;
+    // Don't restrict groups that have restriction disabled
+    const bool do_restrict = get_group_restrict_flag(gi);
+    if (!do_restrict)
+      continue;
+
     auto &groupdata = leveldata.groupdata.at(gi);
     const auto &finegroupdata = fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict the oldest.
