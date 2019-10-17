@@ -45,7 +45,7 @@ extern "C" void TestProlongate_Regrid(CCTK_ARGUMENTS) {
   if (cctk_iteration < regrid_after)
     return;
 
-  CCTK_VINFO("Setting grid at %d\n", cctk_iteration);
+  CCTK_VINFO("Setting grid at %d", cctk_iteration);
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     if (fabs(p.x) <= refined_radius && fabs(p.y) <= refined_radius &&
         fabs(p.z) <= refined_radius) {
