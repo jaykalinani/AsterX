@@ -552,8 +552,6 @@ extern "C" void WaveToyAMReX_Energy(CCTK_ARGUMENTS) {
                   pow(dx_phi_m, 2) + pow(dy_phi_p, 2) + pow(dy_phi_m, 2) +
                   pow(dz_phi_p, 2) + pow(dz_phi_m, 2)) /
                  4;
-#warning "TODO"
-    assert(!isnan(eps[p.idx]));
   });
 }
 
