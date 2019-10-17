@@ -32,6 +32,7 @@
 !TARGET   = $ROOT
 !TYPE     = git
 !URL      = https://bitbucket.org/cactuscode/cactus.git
+!REPO_BRANCH = presync
 !NAME     = flesh
 !CHECKOUT = .clang-format CONTRIBUTORS COPYRIGHT doc lib Makefile src
 
@@ -127,4 +128,5 @@ AMReX/AMReX
 # AMReX/AMReXTest
 AMReX/HydroToyAMReX
 AMReX/MaxwellToyAMReX
+AMReX/TestProlongate
 AMReX/WaveToyAMReX

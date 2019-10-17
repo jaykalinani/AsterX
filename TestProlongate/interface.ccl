@@ -1,6 +1,6 @@
 # Interface definition for thorn TestProlongate
 implements: TestProlongate
-inherits: AMREX# Grid # grid contains scalars
+inherits: AMREX # Grid # grid contains scalars
 
 USES INCLUDE HEADER: loop.hxx
 

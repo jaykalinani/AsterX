@@ -1,0 +1,16 @@
+version: '2'
+
+volumes:
+  homefs-cactusamrex:
+
+services:
+  cactus-amrex:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    privileged: true
+    image: cactusamrex
+    container_name: cacrex
+    user: jovyan
+    volumes:
+      - homefs-cactusamrex:/home/jovyan

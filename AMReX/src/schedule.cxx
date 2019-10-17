@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -248,7 +249,8 @@ void poison_invalid(const GHExt::LevelData &leveldata,
 
 // Ensure grid functions are not nan
 void check_valid(const GHExt::LevelData &leveldata,
-                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl) {
+                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
+                 const function<string()> &msg) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
@@ -294,10 +296,11 @@ void check_valid(const GHExt::LevelData &leveldata,
     const char *where = valid.valid_int && valid.valid_bnd
                             ? "interior and boundary"
                             : valid.valid_int ? "interior" : "boundary";
-    CCTK_VERROR("Grid function \"%s\" has nans on refinement level %d, time "
-                "level %d; expected valid %s",
-                CCTK_FullVarName(groupdata.firstvarindex + vi), leveldata.level,
-                tl, where);
+    CCTK_VERROR(
+        "%s: Grid function \"%s\" has nans on refinement level %d, time "
+        "level %d; expected valid %s",
+        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+        leveldata.level, tl, where);
   }
 }
 
@@ -323,7 +326,8 @@ void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata, i
 
 // Ensure grid scalars are not nan
 void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata, int vi,
-                 int tl) {
+                 int tl,
+                 const function<string()> &msg) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
@@ -347,11 +351,11 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata, int 
     const char *where = valid.valid_int && valid.valid_bnd
                             ? "interior and boundary"
                             : valid.valid_int ? "interior" : "boundary";
-    CCTK_VERROR("Grid Scalar \"%s\" has nans on time level %d; expected valid %s",
-                CCTK_FullVarName(scalargroupdata.firstvarindex + vi),
+    CCTK_VERROR("%s: Grid Scalar \"%s\" has nans on time level %d; expected valid %s",
+                msg().c_str(), CCTK_FullVarName(scalargroupdata.firstvarindex + vi),
                 tl, where);
   }
-} // namespace AMReX
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -379,6 +383,35 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
   cctkGH->data = new void **[numvars];
   for (int vi = 0; vi < numvars; ++vi)
     cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
+}
+
+enum class mode_t { unknown, local, level, global, meta };
+
+mode_t current_mode(const cGH *restrict cctkGH) {
+  if (cctkGH->cctk_lsh[0] != undefined)
+    return mode_t::local;
+  else if(cctkGH->cctk_gsh[0] != undefined)
+    return mode_t::level;
+  else if(cctkGH->cctk_nghostzones[0] != undefined)
+    return mode_t::global;
+  else
+    return mode_t::meta;
+}
+
+bool in_local_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::local;
+}
+
+bool in_level_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::level;
+}
+
+bool in_global_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::global;
+}
+
+bool in_meta_mode(const cGH *restrict cctkGH) {
+    return current_mode(cctkGH) == mode_t::meta;
 }
 
 // Initialize cctkGH entries
@@ -421,6 +454,11 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   mindx = mindx / (1 << (max_num_levels - 1));
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
+  // init into meta mode
+  cctkGH->cctk_nghostzones[0] = undefined;
+  cctkGH->cctk_lsh[0] = undefined;
+  cctkGH->cctk_gsh[0] = undefined;
+  assert(in_meta_mode(cctkGH));
 }
 
 // Update fields that carry state and change over time
@@ -437,6 +475,7 @@ void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 // Set cctkGH entries for global mode
 void enter_global_mode(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
+  assert(in_meta_mode(cctkGH));
 
   // The number of ghostzones in each direction
   // TODO: Get this from mfab (mfab.fb_ghosts)
@@ -466,6 +505,8 @@ void enter_global_mode(cGH *restrict cctkGH) {
   }
 }
 void leave_global_mode(cGH *restrict cctkGH) {
+  assert(in_global_mode(cctkGH));
+
   // Grid scalar pointers
   {
     auto &restrict globaldata = ghext->globaldata;
@@ -495,6 +536,7 @@ void leave_global_mode(cGH *restrict cctkGH) {
 void enter_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata) {
   DECLARE_CCTK_PARAMETERS;
+  assert(in_global_mode(cctkGH));
 
   // Global shape
   const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
@@ -515,6 +557,7 @@ void enter_level_mode(cGH *restrict cctkGH,
 }
 void leave_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata) {
+  assert(in_level_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
@@ -529,6 +572,7 @@ void leave_level_mode(cGH *restrict cctkGH,
 void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFIter &mfi) {
+  assert(in_level_mode(cctkGH));
   GridPtrDesc grid(leveldata, mfi);
 
   for (int d = 0; d < dim; ++d)
@@ -596,6 +640,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
 void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFIter &mfi) {
+  assert(in_local_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
@@ -647,8 +692,6 @@ extern "C" void AMReX_GetTileExtent(const void *restrict cctkGH_,
   }
 }
 
-enum class mode_t { unknown, local, level, global, meta };
-
 mode_t decode_mode(const cFunctionData *restrict attribute) {
   bool local_mode = attribute->local;
   bool level_mode = attribute->level;
@@ -668,6 +711,8 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
   return mode_t::local; // default
 }
 
+enum class rdwr_t { read, write, invalid };
+
 struct clause_t {
   int gi, vi, tl;
   valid_t valid;
@@ -675,94 +720,59 @@ struct clause_t {
   friend bool operator<(const clause_t &x, const clause_t &y) {
     if (x.gi < y.gi)
       return true;
+    if (x.gi > y.gi)
+      return false;
     if (x.vi < y.vi)
       return true;
+    if (x.vi > y.vi)
+      return false;
     if (x.tl < y.tl)
       return true;
+    if (x.tl > y.tl)
+      return false;
     return x.valid < y.valid;
+  }
+
+  friend ostream &operator<<(ostream &os, const clause_t &cl) {
+    return os << "clause_t{gi:" << cl.gi << ",vi:" << cl.vi << ",tl:" << cl.tl
+              << ",valid:" << cl.valid << "}";
   }
 };
 
-const vector<clause_t> &decode_clauses(const cFunctionData *restrict attribute,
-                                       int n_clauses, const char **clauses) {
-  // We assume that each `clauses` pointer is unique
-  static unordered_map<const char **, vector<clause_t> > memoized_results;
-  auto result_it = memoized_results.find(clauses);
-  if (result_it != memoized_results.end())
-    return result_it->second;
+vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
+                                const rdwr_t rdwr) {
   vector<clause_t> result;
-  for (int n = 0; n < n_clauses; ++n) {
-    for (const char *restrict p = clauses[n]; *p;) {
-      // Find beginning of word
-      while (isspace(*p))
-        ++p;
-      if (!*p)
-        break;
-      // Read grid function / group name
-      assert(isalnum(*p) || *p == '_' || *p == ':');
-      const char *const name0 = p;
-      while (isalnum(*p) || *p == '_' || *p == ':')
-        ++p;
-      string name(name0, p);
-      valid_t valid;
-      if (*p == '(') {
-        ++p;
-        const char *const reg0 = p;
-        while (isalpha(*p))
-          ++p;
-        string regstr(reg0, p);
-        if (CCTK_Equals(regstr.c_str(), "interior"))
-          valid.valid_int = true;
-        else if (CCTK_Equals(regstr.c_str(), "boundary"))
-          valid.valid_bnd = true;
-        else if (CCTK_Equals(regstr.c_str(), "everywhere"))
-          valid.valid_int = valid.valid_bnd = true;
-        else
-          assert(0);
-        assert(*p == ')');
-        ++p;
-      } else {
-        assert(0); // missing region
-        valid.valid_int = valid.valid_bnd = true;
-      }
-      assert(!*p || isspace(*p));
-
-      int tl = 0;
-      while (name.size() >= 2 && name.substr(name.size() - 2) == "_p") {
-        name = name.substr(0, name.size() - 2);
-        ++tl;
-      }
-
-      if (name.find(':') == string::npos)
-        name = string(attribute->thorn) + "::" + name;
-
-      const int gi0 = CCTK_GroupIndex(name.c_str());
-      if (gi0 >= 0) {
-        const int gi = gi0;
-        const int nv = CCTK_NumVarsInGroupI(gi);
-        for (int vi = 0; vi < nv; ++vi)
-          result.push_back({gi, vi, tl, valid});
-      } else {
-        const int var = CCTK_VarIndex(name.c_str());
-        if (var >= 0) {
-          const int gi = CCTK_GroupIndexFromVarI(var);
-          const int v0 = CCTK_FirstVarIndexI(gi);
-          const int vi = var - v0;
-          result.push_back({gi, vi, tl, valid});
-        } else {
-          CCTK_VERROR("Cannot decode group/variable name \"%s\" in %s: %s::%s",
-                      name.c_str(), attribute->where, attribute->thorn,
-                      attribute->routine);
-        }
-      }
+  result.reserve(attribute->n_RDWR);
+  for (int n = 0; n < attribute->n_RDWR; ++n) {
+    const RDWR_entry &restrict RDWR = attribute->RDWR[n];
+    int gi = CCTK_GroupIndexFromVarI(RDWR.var_id);
+    assert(gi >= 0);
+    int vi = RDWR.var_id - CCTK_FirstVarIndexI(gi);
+    assert(vi >= 0 && vi < CCTK_NumVarsInGroupI(gi));
+    int tl = RDWR.time_level;
+    int where;
+    switch(rdwr) {
+        case rdwr_t::read:
+            where = RDWR.where_rd;
+            break;
+        case rdwr_t::write:
+            where = RDWR.where_wr;
+            break;
+        case rdwr_t::invalid:
+            where = RDWR.where_inv;
+            break;
+        default:
+            assert(0);
     }
+    valid_t valid;
+    if (where & WH_INTERIOR)
+      valid.valid_int = true;
+    // We treat "ghost" and "boundary" as the same
+    if (where & (WH_GHOSTS | WH_BOUNDARY))
+      valid.valid_bnd = true;
+    result.push_back({gi, vi, tl, valid});
   }
-  set<clause_t> seen;
-  for (const auto &res : result) {
-    assert(seen.count(res) == 0); // variable listed twice
-    seen.insert(res);
-  }
-  return memoized_results.emplace(clauses, move(result)).first->second;
+  return result;
 }
 
 // Schedule initialisation
@@ -964,6 +974,7 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
   assert(0);
 }
 
+namespace {
 bool get_group_checkpoint_flag(const int gi) {
   int tags = CCTK_GroupTagsTableI(gi);
   assert(tags >= 0);
@@ -984,6 +995,7 @@ bool get_group_checkpoint_flag(const int gi) {
     assert(0);
   }
 }
+} // namespace
 
 void InvalidateTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
@@ -1004,12 +1016,10 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
       if (!checkpoint) {
         // Invalidate all time levels
         const int ntls = groupdata.mfab.size();
-        if (ntls > 1) { // assume one timelevel only means constant data
-          for (int tl = 0; tl < ntls; ++tl) {
-            for (int vi = 0; vi < groupdata.numvars; ++vi) {
-              groupdata.valid.at(tl).at(vi) = valid_t();
-              poison_invalid(leveldata, groupdata, vi, tl);
-            }
+        for (int tl = 0; tl < ntls; ++tl) {
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            groupdata.valid.at(tl).at(vi) = valid_t();
+            poison_invalid(leveldata, groupdata, vi, tl);
           }
         }
       }
@@ -1225,8 +1235,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   // Check whether input variables have valid data
   {
     const auto &restrict globaldata = ghext->globaldata;
-    const vector<clause_t> &reads = decode_clauses(
-        attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
+    const vector<clause_t> &reads = decode_clauses(attribute, rdwr_t::read);
     for (const auto &rd : reads) {
       for (int level = min_level; level < max_level; ++level) {
         const auto &restrict leveldata = ghext->leveldata.at(level);
@@ -1253,9 +1262,21 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
               string("_p", rd.tl).c_str(), string(need).c_str(),
               string(have).c_str());
         if (group.grouptype == CCTK_GF) {
-          check_valid(leveldata, leveldata.groupdata.at(rd.gi), rd.vi, rd.tl);
+          check_valid(leveldata, leveldata.groupdata.at(rd.gi), rd.vi, rd.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking input";
+            return buf.str();
+          });
         } else {
-          check_valid(globaldata.scalargroupdata.at(rd.gi), rd.vi, rd.tl);
+          check_valid(globaldata.scalargroupdata.at(rd.gi), rd.vi, rd.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking input";
+            return buf.str();
+          });
         }
       }
     }
@@ -1265,16 +1286,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   if (poison_undefined_values) {
     auto &restrict globaldata = ghext->globaldata;
     map<clause_t, valid_t> isread;
-    const vector<clause_t> &reads = decode_clauses(
-        attribute, attribute->n_ReadsClauses, attribute->ReadsClauses);
+    const vector<clause_t> &reads = decode_clauses(attribute, rdwr_t::read);
     for (const auto &rd : reads) {
       clause_t cl = rd;
       cl.valid = valid_t();
       assert(isread.count(cl) == 0);
       isread[cl] = rd.valid;
     }
-    const vector<clause_t> &writes = decode_clauses(
-        attribute, attribute->n_WritesClauses, attribute->WritesClauses);
+    const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
     for (const auto &wr : writes) {
       clause_t cl = wr;
       cl.valid = valid_t();
@@ -1344,8 +1363,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   // Mark output variables as having valid data
   {
     auto &restrict globaldata = ghext->globaldata;
-    const vector<clause_t> &writes = decode_clauses(
-        attribute, attribute->n_WritesClauses, attribute->WritesClauses);
+    const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
     for (const auto &wr : writes) {
       for (int level = min_level; level < max_level; ++level) {
         auto &restrict leveldata = ghext->leveldata.at(level);
@@ -1362,9 +1380,60 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         have.valid_int |= provided.valid_int;
         have.valid_bnd |= provided.valid_bnd;
         if (group.grouptype == CCTK_GF) {
-          check_valid(leveldata, leveldata.groupdata.at(wr.gi), wr.vi, wr.tl);
+          check_valid(leveldata, leveldata.groupdata.at(wr.gi), wr.vi, wr.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking output";
+            return buf.str();
+          });
         } else {
-          check_valid(globaldata.scalargroupdata.at(wr.gi), wr.vi, wr.tl);
+          check_valid(globaldata.scalargroupdata.at(wr.gi), wr.vi, wr.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking output";
+            return buf.str();
+          });
+        }
+      }
+    }
+  }
+  // Mark invalid variables as having invalid data
+  {
+    auto &restrict globaldata = ghext->globaldata;
+    const vector<clause_t> &invalids = decode_clauses(attribute, rdwr_t::invalid);
+    for (const auto &inv : invalids) {
+      for (int level = min_level; level < max_level; ++level) {
+        auto &restrict leveldata = ghext->leveldata.at(level);
+        cGroup group;
+        int ierr = CCTK_GroupData(inv.gi, &group);
+        assert(!ierr);
+
+        GHExt::CommonGroupData * groupdata = group.grouptype == CCTK_GF ?
+          static_cast<GHExt::CommonGroupData *>(&leveldata.groupdata.at(inv.gi)) :
+          static_cast<GHExt::CommonGroupData *>(&globaldata.scalargroupdata.at(inv.gi));
+        const valid_t &provided = inv.valid;
+        valid_t &have = groupdata->valid.at(inv.tl).at(inv.vi);
+        // Code cannot invalidate...
+        have.valid_int &= !provided.valid_int;
+        have.valid_bnd &= !provided.valid_bnd;
+        if (group.grouptype == CCTK_GF) {
+          check_valid(leveldata, leveldata.groupdata.at(inv.gi), inv.vi, inv.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking output";
+            return buf.str();
+          });
+        } else {
+          check_valid(globaldata.scalargroupdata.at(inv.gi), inv.vi, inv.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking output";
+            return buf.str();
+          });
         }
       }
     }
@@ -1377,6 +1446,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
+
+  assert(in_global_mode(cctkGH));
 
   static Timer timer("Sync");
   Interval interval(timer);
@@ -1427,7 +1498,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             groupdata.valid.at(tl).at(vi).valid_bnd = false;
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             poison_invalid(leveldata, groupdata, vi, tl);
-            check_valid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl,
+                        [&]() { return "SyncGroupsByDirI before syncing"; });
           }
           groupdata.mfab.at(tl)->FillBoundary(
               ghext->amrcore->Geom(leveldata.level).periodicity());
@@ -1459,34 +1531,58 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                           periodic_z ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
+
+          // Only prolongate valid grid functions
+          bool all_invalid = true;
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                   coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
-                   groupdata.valid.at(tl).at(vi).valid_int);
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).valid_bnd = false;
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            poison_invalid(leveldata, groupdata, vi, tl);
-            check_valid(coarseleveldata, coarsegroupdata, vi, tl);
-            check_valid(leveldata, groupdata, vi, tl);
-          }
-          FillPatchTwoLevels(
-              *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
-              {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
-              ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
-              cphysbc, 0, fphysbc, 0, reffact, interpolator, bcs, 0);
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).valid_bnd =
-                coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
-                groupdata.valid.at(tl).at(vi).valid_int;
-        }
+            all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                           !coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                           !groupdata.valid.at(tl).at(vi).valid_int;
+
+          if (all_invalid) {
+
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              groupdata.valid.at(tl).at(vi).valid_int = false;
+              groupdata.valid.at(tl).at(vi).valid_bnd = false;
+            }
+
+          } else {
+
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                     coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                     groupdata.valid.at(tl).at(vi).valid_int);
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              groupdata.valid.at(tl).at(vi).valid_bnd = false;
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              poison_invalid(leveldata, groupdata, vi, tl);
+              check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
+                return "SyncGroupsByDirI on coarse level before prolongation";
+              });
+              check_valid(leveldata, groupdata, vi, tl, [&]() {
+                return "SyncGroupsByDirI on fine level before prolongation";
+              });
+            }
+            FillPatchTwoLevels(
+                *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+                {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
+                interpolator, bcs, 0);
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              groupdata.valid.at(tl).at(vi).valid_bnd =
+                  coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                  coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                  groupdata.valid.at(tl).at(vi).valid_int;
+          } // if all_invalid
+        }   // for tl
       }
 
       for (int tl = 0; tl < sync_tl; ++tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           poison_invalid(leveldata, groupdata, vi, tl);
-          check_valid(leveldata, groupdata, vi, tl);
+          check_valid(leveldata, groupdata, vi, tl,
+                      [&]() { return "SyncGroupsByDirI after prolongation"; });
         }
       }
     }
@@ -1500,10 +1596,6 @@ void Reflux(int level) {
 
   if (!do_reflux)
     return;
-
-  CCTK_VINFO("Refluxing level %d", level);
-#warning "TODO"
-  bool didprint = false;
 
   static Timer timer("Reflux");
   Interval interval(timer);
@@ -1524,27 +1616,19 @@ void Reflux(int level) {
 
     // If the group has associated fluxes
     if (finegroupdata.freg) {
-      if (!didprint) {
-        CCTK_VINFO("  found flux registers");
-        didprint = true;
-      }
 
       // Check coarse and fine data and fluxes are valid
       for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
-               finegroupdata.valid.at(tl).at(vi).valid_bnd);
-        assert(groupdata.valid.at(tl).at(vi).valid_int &&
-               groupdata.valid.at(tl).at(vi).valid_bnd);
+        assert(finegroupdata.valid.at(tl).at(vi).valid_int);
+        assert(groupdata.valid.at(tl).at(vi).valid_int);
       }
       for (int d = 0; d < dim; ++d) {
         int flux_gi = finegroupdata.fluxes[d];
         const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
         const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
         for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-          assert(flux_finegroupdata.valid.at(tl).at(vi).valid_int &&
-                 flux_finegroupdata.valid.at(tl).at(vi).valid_bnd);
-          assert(flux_groupdata.valid.at(tl).at(vi).valid_int &&
-                 flux_groupdata.valid.at(tl).at(vi).valid_bnd);
+          assert(flux_finegroupdata.valid.at(tl).at(vi).valid_int);
+          assert(flux_groupdata.valid.at(tl).at(vi).valid_int);
         }
       }
 
@@ -1570,6 +1654,29 @@ void Reflux(int level) {
   }
 }
 
+namespace {
+bool get_group_restrict_flag(const int gi) {
+  int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  char buf[100];
+  int iret = Util_TableGetString(tags, sizeof buf, buf, "restrict");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    return true;
+  } else if (iret >= 0) {
+    string str(buf);
+    for (auto &c : str)
+      c = tolower(c);
+    if (str == "yes")
+      return true;
+    if (str == "no")
+      return false;
+    assert(0);
+  } else {
+    assert(0);
+  }
+}
+} // namespace
+
 void Restrict(int level) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -1594,6 +1701,11 @@ void Restrict(int level) {
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
       continue;
+    // Don't restrict groups that have restriction disabled
+    const bool do_restrict = get_group_restrict_flag(gi);
+    if (!do_restrict)
+      continue;
+
     auto &groupdata = leveldata.groupdata.at(gi);
     const auto &finegroupdata = fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict the oldest.
@@ -1623,9 +1735,13 @@ void Restrict(int level) {
           assert(finegroupdata.valid.at(tl).at(vi).valid_int &&
                  groupdata.valid.at(tl).at(vi).valid_int);
           poison_invalid(fineleveldata, finegroupdata, vi, tl);
-          check_valid(fineleveldata, finegroupdata, vi, tl);
+          check_valid(fineleveldata, finegroupdata, vi, tl, [&]() {
+            return "Restrict on fine level before restricting";
+          });
           poison_invalid(leveldata, groupdata, vi, tl);
-          check_valid(leveldata, groupdata, vi, tl);
+          check_valid(leveldata, groupdata, vi, tl, [&]() {
+            return "Restrict on coarse level before restricting";
+          });
         }
 
         if (groupdata.indextype == array<int, dim>{0, 0, 0})
@@ -1656,12 +1772,13 @@ void Restrict(int level) {
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl, [&]() {
+          return "Restrict on coarse level after restricting";
+        });
       }
     }
   }
 }
-
 
 // storage handling
 namespace {
@@ -1714,15 +1831,14 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
     int ierr = CCTK_GroupData(gid, &group);
     assert(not ierr);
 
-
     // Record previous number of allocated time levels
     if (status) {
       // Note: This remembers only the last level
       status[n] = group.numtimelevels;
     }
 
-   // Record (minimum of) current number of time levels
-   min_num_timelevels = min(min_num_timelevels, group.numtimelevels);
+    // Record (minimum of) current number of time levels
+    min_num_timelevels = min(min_num_timelevels, group.numtimelevels);
   } // for n
   if (min_num_timelevels == INT_MAX) {
     min_num_timelevels = 0;
@@ -1730,18 +1846,18 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
 
   return min_num_timelevels;
 }
-}
+} // namespace
 
 int GroupStorageIncrease(const cGH *cctkGH, int n_groups, const int *groups,
                          const int *tls, int *status) {
-  DECLARE_CCTK_PARAMETERS
+  DECLARE_CCTK_PARAMETERS;
 
   return GroupStorageCrease(cctkGH, n_groups, groups, tls, status, true);
 }
 
 int GroupStorageDecrease(const cGH *cctkGH, int n_groups, const int *groups,
                          const int *tls, int *status) {
-  DECLARE_CCTK_PARAMETERS
+  DECLARE_CCTK_PARAMETERS;
 
   return GroupStorageCrease(cctkGH, n_groups, groups, tls, status, false);
 }

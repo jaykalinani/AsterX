@@ -1,8 +1,8 @@
 # Schedule definitions for thorn HydroToyAMReX
 
-# STORAGE: conserved[2]
-# STORAGE: primitive
-# STORAGE: flux_x flux_y flux_z
+STORAGE: conserved[2]
+STORAGE: primitive
+STORAGE: flux_x flux_y flux_z
 
 
 
@@ -15,23 +15,7 @@ SCHEDULE HydroToyAMReX_Initialize AT initial
   SYNC: conserved
 } "Set up hydro initial conditions"
 
-SCHEDULE HydroToyAMReX_Pressure AT initial AFTER HydroToyAMReX_Boundaries
-{
-  LANG: C
-  READS: conserved(everywhere)
-  WRITES: primitive(everywhere)
-} "Calculate pressure"
-
-SCHEDULE HydroToyAMReX_Fluxes AT initial AFTER HydroToyAMReX_Pressure
-{
-  LANG: C
-  READS: conserved(everywhere)
-  READS: primitive(everywhere)
-  WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
-  SYNC: flux_x flux_y flux_z
-} "Calculate the hydro fluxes"
-
-SCHEDULE HydroToyAMReX_EstimateError AT postinitial AFTER HydroToyAMReX_Boundaries
+SCHEDULE HydroToyAMReX_EstimateError AT postinitial
 {
   LANG: C
   READS: conserved(everywhere)
@@ -48,47 +32,37 @@ SCHEDULE HydroToyAMReX_Boundaries AT postregrid
   SYNC: conserved
 } "Apply boundary conditions after regridding"
 
-SCHEDULE HydroToyAMReX_Pressure AT postregrid AFTER HydroToyAMReX_Boundaries
-{
-  LANG: C
-  READS: conserved(everywhere)
-  WRITES: primitive(everywhere)
-} "Calculate pressure"
-
-SCHEDULE HydroToyAMReX_Fluxes AT postregrid AFTER HydroToyAMReX_Pressure
-{
-  LANG: C
-  READS: conserved(everywhere)
-  READS: primitive(everywhere)
-  WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
-  SYNC: flux_x flux_y flux_z
-} "Calculate the hydro fluxes"
-
 
 
 # Dependent quantities
 
-SCHEDULE HydroToyAMReX_Pressure AT poststep
-{
-  LANG: C
-  READS: conserved(everywhere)
-  WRITES: primitive(everywhere)
-} "Calculate pressure"
+if (output) {
+  SCHEDULE GROUP HydroToyAMReX_OutputGroup AT poststep
+  {
+  } "Output HydroToy quantities"
 
-SCHEDULE HydroToyAMReX_Fluxes AT poststep AFTER HydroToyAMReX_Pressure
-{
-  LANG: C
-  READS: conserved(everywhere)
-  READS: primitive(everywhere)
-  WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
-  SYNC: flux_x flux_y flux_z
-} "Calculate the hydro fluxes"
+    SCHEDULE HydroToyAMReX_Pressure IN HydroToyAMReX_OutputGroup
+    {
+      LANG: C
+      READS: conserved(everywhere)
+      WRITES: primitive(everywhere)
+    } "Calculate pressure"
+    SCHEDULE HydroToyAMReX_Fluxes IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Pressure
+    {
+      LANG: C
+      READS: conserved(everywhere)
+      READS: primitive(everywhere)
+      WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+    } "Calculate the hydro fluxes"
 
-# SCHEDULE HydroToyAMReX_Output AT poststep
-# {
-#   LANG: C
-#   READS: conserved(everywhere)
-# } "Output grid data"
+    SCHEDULE HydroToyAMReX_Output IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Fluxes
+    {
+      LANG: C
+      READS: conserved(interior)
+      READS: flux_x(interior) flux_y(interior) flux_z(interior)
+      READS: AMReX::regrid_error(interior)
+    } "Output grid data"
+} # if output
 
 SCHEDULE HydroToyAMReX_EstimateError AT poststep
 {
@@ -101,12 +75,35 @@ SCHEDULE HydroToyAMReX_EstimateError AT poststep
 
 # Time stepping
 
-SCHEDULE HydroToyAMReX_Evolve AT evol
+SCHEDULE HydroToyAMReX_CopyConserved AT evol
 {
   LANG: C
   READS: conserved_p(everywhere)
-  READS: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
   WRITES: conserved(everywhere)
+} "Copy conserved variables to current time level"
+
+SCHEDULE HydroToyAMReX_Pressure AT evol AFTER HydroToyAMReX_CopyConserved
+{
+  LANG: C
+  READS: conserved(everywhere)
+  WRITES: primitive(everywhere)
+} "Calculate pressure"
+
+SCHEDULE HydroToyAMReX_Fluxes AT evol AFTER HydroToyAMReX_Pressure
+{
+  LANG: C
+  READS: conserved(everywhere)
+  READS: primitive(everywhere)
+  WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+} "Calculate the hydro fluxes"
+
+SCHEDULE HydroToyAMReX_Evolve AT evol AFTER HydroToyAMReX_Fluxes
+{
+  LANG: C
+  READS: conserved_p(interior)
+  READS: flux_x(interior) flux_y(interior) flux_z(interior)
+  WRITES: conserved(interior)
+  SYNC: conserved
 } "Evolve the hydro equations"
 
 

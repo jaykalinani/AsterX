@@ -106,10 +106,13 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
                   grid.cactus_offset.z + p.k) =
           err[p.idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
     });
-    grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-      tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-                  grid.cactus_offset.z + p.k) = TagBox::CLEAR;
-    });
+    // Do not set the boundary; AMReX's error grid function might have
+    // a different number of ghost zones, and these ghost zones are
+    // probably unused anyway.
+    // grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
+    //   tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+    //               grid.cactus_offset.z + p.k) = TagBox::CLEAR;
+    // });
   }
 }
 
@@ -160,7 +163,9 @@ void SetupGlobals() {
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
         poison_invalid(scalargroupdata, vi, tl);
-        check_valid(scalargroupdata, vi, tl);
+        check_valid(scalargroupdata, vi, tl, [&]() {
+            return "SetupGlobals";
+          });
       }
     }
   }
@@ -330,6 +335,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c000_o1;
+      case 3:
+        return &prolongate_3d_rf2_c000_o3;
       }
       break;
 
@@ -337,6 +344,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c001_o1;
+      case 3:
+        return &prolongate_3d_rf2_c001_o3;
       }
       break;
 
@@ -344,6 +353,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c010_o1;
+      case 3:
+        return &prolongate_3d_rf2_c010_o3;
       }
       break;
 
@@ -351,6 +362,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c011_o1;
+      case 3:
+        return &prolongate_3d_rf2_c011_o3;
       }
       break;
 
@@ -358,6 +371,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c100_o1;
+      case 3:
+        return &prolongate_3d_rf2_c100_o3;
       }
       break;
 
@@ -365,6 +380,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c101_o1;
+      case 3:
+        return &prolongate_3d_rf2_c101_o3;
       }
       break;
 
@@ -372,6 +389,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c110_o1;
+      case 3:
+        return &prolongate_3d_rf2_c110_o3;
       }
       break;
 
@@ -379,6 +398,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c111_o1;
+      case 3:
+        return &prolongate_3d_rf2_c111_o3;
       }
       break;
     }
@@ -445,6 +466,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
     }
   } // if conservative_prolongation
 
+  CCTK_VERROR("Unsupported index type 0b%d%d%d and for order %d", indextype[0],
+              indextype[1], indextype[2], prolongation_order);
   assert(0);
 }
 
@@ -525,7 +548,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                  coarsegroupdata.valid.at(tl).at(vi).valid_bnd);
-          check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+          check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
+            return "MakeNewLevelFromCoarse before prolongation";
+          });
         }
         InterpFromCoarseLevel(
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
@@ -541,7 +566,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
       }
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl, [&]() {
+          return "MakeNewLevelFromCoarse after prolongation";
+        });
       }
     }
   }
@@ -655,7 +682,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                           string("_p", tl).c_str(),
                           string(coarsegroupdata.valid.at(tl).at(vi)).c_str(),
                           string(groupdata.valid.at(tl).at(vi)).c_str());
-            check_valid(coarseleveldata, coarsegroupdata, vi, tl);
+            check_valid(coarseleveldata, coarsegroupdata, vi, tl,
+                        [&]() { return "RemakeLevel before prolongation"; });
             // We cannot call this function since it would try to
             // traverse the old grid function with the new grid
             // structure.
@@ -689,7 +717,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl,
+                    [&]() { return "RemakeLevel after prolongation"; });
       }
     }
   }
@@ -721,7 +750,8 @@ extern "C" int AMReX_Startup() {
     CCTK_VINFO("Startup");
 
   // Output a startup message
-  string banner = "AMR driver provided by AMReX " + amrex::Version();
+  string banner =
+      "AMR driver provided by CarpetX, using AMReX " + amrex::Version();
   int ierr = CCTK_RegisterBanner(banner.c_str());
   assert(!ierr);
 

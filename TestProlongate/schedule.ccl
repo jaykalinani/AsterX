@@ -2,13 +2,41 @@
 
 #STORAGE: data[1]
 
-SCHEDULE TestProlongate_Test IN CCTK_INITIAL
+SCHEDULE TestProlongate_Regrid AT CCTK_POSTINITIAL
 {
   LANG: C
-  WRITES: data
+  WRITES: AMReX::regrid_error(everywhere)
+} "Set up test grid"
+
+SCHEDULE TestProlongate_Regrid AT CCTK_POSTSTEP
+{
+  LANG: C
+  WRITES: AMReX::regrid_error(everywhere)
+} "Set up test grid"
+
+
+SCHEDULE GROUP TestProlongate_SetValue AT CCTK_INITIAL
+{
 } "Set up test data"
 
-SCHEDULE TestProlongate_Sync IN CCTK_INITIAL AFTER TestProlongate_Test
+SCHEDULE GROUP TestProlongate_SetValue AT CCTK_EVOL
+{
+} "Set up test data"
+
+SCHEDULE TestProlongate_Test IN TestProlongate_SetValue
+{
+  LANG: C
+  WRITES: TestProlongate::data(interior)
+} "Set up test data"
+
+SCHEDULE TestProlongate_Sync IN TestProlongate_SetValue AFTER TestProlongate_Test
+{
+  LANG: C
+  SYNC: data
+} "Sync up test data"
+
+# need to apply b/c in POSTRESTRICT
+SCHEDULE TestProlongate_Sync IN CCTK_POSTRESTRICT
 {
   LANG: C
   SYNC: data

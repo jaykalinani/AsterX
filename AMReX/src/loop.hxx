@@ -80,7 +80,7 @@ template <typename T, int D> struct vect {
     return r;
   }
 
-  friend ostream &operator<<(ostream &os, vect &x) {
+  friend ostream &operator<<(ostream &os, const vect &x) {
     os << "[";
     for (int d = 0; d < D; ++d) {
       if (d > 0)
@@ -137,6 +137,18 @@ struct PointDesc {
   int dj, dk;
   vect<int, dim> I;
   vect<int, dim> DI(int d) const { return vect<int, dim>::unit(d); }
+  friend ostream &operator<<(ostream &os, const PointDesc &p) {
+    os << "PointDesc{"
+       << "ijk:"
+       << "{" << p.i << "," << p.j << "," << p.k << "}, "
+       << "xyz:"
+       << "{" << p.x << "," << p.y << "," << p.z << "}, "
+       << "idx:" << p.idx << ", "
+       << "dijk:"
+       << "{" << p.di << "," << p.dj << "," << p.dk << "}"
+       << "}";
+    return os;
+  }
 };
 
 struct GridDescBase {

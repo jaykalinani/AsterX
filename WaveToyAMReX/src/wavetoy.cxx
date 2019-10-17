@@ -1,5 +1,6 @@
 #include <cctk.h>
 #include <cctk_Arguments.h>
+#include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
 #include <loop.hxx>
@@ -125,7 +126,7 @@ particle_t<CCTK_REAL> particle;
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -169,7 +170,7 @@ extern "C" void WaveToyAMReX_Initialize(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_InitializeParticle(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_InitializeParticle;
   DECLARE_CCTK_PARAMETERS;
 
   if (particle_charge == 0)
@@ -186,7 +187,7 @@ extern "C" void WaveToyAMReX_InitializeParticle(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_EstimateError(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
@@ -210,7 +211,7 @@ extern "C" void WaveToyAMReX_EstimateError(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_Evolve;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -240,7 +241,7 @@ extern "C" void WaveToyAMReX_Evolve(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_EvolveParticle(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_EvolveParticle;
   DECLARE_CCTK_PARAMETERS;
 
   if (particle_charge == 0)
@@ -455,7 +456,7 @@ extern "C" void WaveToyAMReX_Sync(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_Boundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_Boundaries;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -484,7 +485,7 @@ extern "C" void WaveToyAMReX_Boundaries(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_NaNCheck_past(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_NaNCheck_past;
   DECLARE_CCTK_PARAMETERS;
 
   Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
@@ -494,7 +495,7 @@ extern "C" void WaveToyAMReX_NaNCheck_past(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_NaNCheck_current(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_NaNCheck_current;
   DECLARE_CCTK_PARAMETERS;
 
   int levfac = cctk_levfac[0];
@@ -518,7 +519,7 @@ extern "C" void WaveToyAMReX_NaNCheck_current(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_Energy(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_Energy;
   DECLARE_CCTK_PARAMETERS;
 
   // const CCTK_REAL dt = CCTK_DELTA_TIME;
@@ -557,7 +558,7 @@ extern "C" void WaveToyAMReX_Energy(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_Error;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -599,7 +600,7 @@ extern "C" void WaveToyAMReX_Error(CCTK_ARGUMENTS) {
 }
 
 extern "C" void WaveToyAMReX_OutputParticle(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_WaveToyAMReX_OutputParticle;
   DECLARE_CCTK_PARAMETERS;
 
   if (particle_charge == 0)
