@@ -15,8 +15,17 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
   DECLARE_CCTK_ARGUMENTS;
 
+  // get prolongation order from driver, the parmeter is private since really
+  // there is normally no reason to depend on it
+  int order_type;
+  const void *order_p = CCTK_ParameterGet("prolongation_order", "AMReX",
+                                          &order_type);
+  assert(order_p);
+  assert(order_type == PARAMETER_INT);
+  const CCTK_INT operator_order = *static_cast<const CCTK_INT*>(order_p);
+
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    data[p.idx] = p.x;
+    data[p.idx] = pow(p.x * p.y * p.z, operator_order);
   });
 }
 
