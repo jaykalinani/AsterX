@@ -311,7 +311,7 @@ void OutputScalars(const cGH *restrict cctkGH) {
     for (auto &c : groupname)
       c = tolower(c);
     ostringstream buf;
-    buf << out_dir << "/" << groupname;
+    buf << out_dir << "/" << groupname << ".tsv";
     const string filename = buf.str();
 
     ofstream file(filename.c_str(), std::ofstream::out | std::ofstream::app);
