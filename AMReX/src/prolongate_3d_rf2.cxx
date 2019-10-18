@@ -582,6 +582,23 @@ prolongate_3d_rf2<1, 1, 0, false, false, false, 1, 1, 1>
 prolongate_3d_rf2<1, 1, 1, false, false, false, 1, 1, 1>
     prolongate_3d_rf2_c111_o1;
 
+prolongate_3d_rf2<0, 0, 0, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c000_o3;
+prolongate_3d_rf2<0, 0, 1, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c001_o3;
+prolongate_3d_rf2<0, 1, 0, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c010_o3;
+prolongate_3d_rf2<0, 1, 1, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c011_o3;
+prolongate_3d_rf2<1, 0, 0, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c100_o3;
+prolongate_3d_rf2<1, 0, 1, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c101_o3;
+prolongate_3d_rf2<1, 1, 0, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c110_o3;
+prolongate_3d_rf2<1, 1, 1, false, false, false, 3, 3, 3>
+    prolongate_3d_rf2_c111_o3;
+
 prolongate_3d_rf2<0, 0, 0, true, true, true, 0, 0, 0>
     prolongate_cons_3d_rf2_c000_o0;
 prolongate_3d_rf2<0, 0, 1, true, true, true, 0, 0, 0>

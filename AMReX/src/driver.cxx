@@ -45,6 +45,10 @@ int Exit(cGH *cctkGH, int retval);
 int Abort(cGH *cctkGH, int retval);
 int Barrier(const cGH *cctkGHa);
 
+// Local functions
+void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm);
+void SetupGlobals();
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // AmrCore functions
@@ -53,12 +57,17 @@ CactusAmrCore::CactusAmrCore() {}
 CactusAmrCore::CactusAmrCore(const RealBox *rb, int max_level_in,
                              const Vector<int> &n_cell_in, int coord,
                              Vector<IntVect> ref_ratios, const int *is_per)
-    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
+    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
+  SetupGlobals();
+}
+
 CactusAmrCore::CactusAmrCore(const RealBox &rb, int max_level_in,
                              const Vector<int> &n_cell_in, int coord,
                              Vector<IntVect> const &ref_ratios,
                              Array<int, AMREX_SPACEDIM> const &is_per)
-    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {}
+    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
+  SetupGlobals();
+}
 
 CactusAmrCore::~CactusAmrCore() {}
 
@@ -106,6 +115,62 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
     // });
   }
 }
+
+void SetupGlobals() {
+  DECLARE_CCTK_PARAMETERS;
+  if (verbose)
+    CCTK_VINFO("SetupGlobals");
+
+  GHExt::GlobalData &globaldata = ghext->globaldata;
+
+  const int numgroups = CCTK_NumGroups();
+  globaldata.scalargroupdata.resize(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if(group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
+      continue;
+
+    assert(group.grouptype == CCTK_SCALAR);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_CONSTANT);
+    assert(group.dim == 0);
+
+    GHExt::GlobalData::ScalarGroupData &scalargroupdata = globaldata.scalargroupdata.at(gi);
+    scalargroupdata.groupindex = gi;
+    scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    scalargroupdata.numvars = group.numvars;
+
+    // Allocate data
+    scalargroupdata.data.resize(group.numtimelevels);
+    scalargroupdata.valid.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
+      scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
+      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars);
+      scalargroupdata.data.at(tl).at(0) = new CCTK_REAL[scalargroupdata.numvars];
+      for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
+        // TODO: find out something that avoid new ?
+        scalargroupdata.data.at(tl).at(vi) = scalargroupdata.data.at(tl).at(0) + vi;
+
+        // TODO: decide that valid_bnd == false always and rely on
+        // initialization magic?
+        scalargroupdata.valid.at(tl).at(vi).valid_int = false;
+        scalargroupdata.valid.at(tl).at(vi).valid_bnd = true;
+
+        // TODO: make poison_invalid and check_invalid virtual members of
+        // CommonGroupData
+        poison_invalid(scalargroupdata, vi, tl);
+        check_valid(scalargroupdata, vi, tl, [&]() {
+            return "SetupGlobals";
+          });
+      }
+    }
+  }
+}
+
 
 array<int, dim> get_group_indextype(const int gi) {
   assert(gi >= 0);
@@ -195,6 +260,11 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     cGroup group;
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if(group.grouptype != CCTK_GF)
+      continue;
+
     assert(group.grouptype == CCTK_GF);
     assert(group.vartype == CCTK_VARIABLE_REAL);
     assert(group.disttype == CCTK_DISTRIB_DEFAULT);
@@ -265,6 +335,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c000_o1;
+      case 3:
+        return &prolongate_3d_rf2_c000_o3;
       }
       break;
 
@@ -272,6 +344,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c001_o1;
+      case 3:
+        return &prolongate_3d_rf2_c001_o3;
       }
       break;
 
@@ -279,6 +353,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c010_o1;
+      case 3:
+        return &prolongate_3d_rf2_c010_o3;
       }
       break;
 
@@ -286,6 +362,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c011_o1;
+      case 3:
+        return &prolongate_3d_rf2_c011_o3;
       }
       break;
 
@@ -293,6 +371,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c100_o1;
+      case 3:
+        return &prolongate_3d_rf2_c100_o3;
       }
       break;
 
@@ -300,6 +380,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c101_o1;
+      case 3:
+        return &prolongate_3d_rf2_c101_o3;
       }
       break;
 
@@ -307,6 +389,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c110_o1;
+      case 3:
+        return &prolongate_3d_rf2_c110_o3;
       }
       break;
 
@@ -314,6 +398,8 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       switch (prolongation_order) {
       case 1:
         return &prolongate_3d_rf2_c111_o1;
+      case 3:
+        return &prolongate_3d_rf2_c111_o3;
       }
       break;
     }
@@ -418,6 +504,13 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_GF)
+      continue;
+
     auto &restrict groupdata = leveldata.groupdata.at(gi);
     auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
@@ -504,6 +597,13 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_GF)
+      continue;
+
     auto &restrict groupdata = leveldata.groupdata.at(gi);
 
     const BoxArray &gba = convert(

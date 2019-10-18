@@ -26,7 +26,7 @@ SCHEDULE GROUP TestProlongate_SetValue AT CCTK_EVOL
 SCHEDULE TestProlongate_Test IN TestProlongate_SetValue
 {
   LANG: C
-  WRITES: TestProlongate::data(interior)
+  WRITES: data(interior) max_diff(interior)
 } "Set up test data"
 
 SCHEDULE TestProlongate_Sync IN TestProlongate_SetValue AFTER TestProlongate_Test
@@ -41,3 +41,10 @@ SCHEDULE TestProlongate_Sync IN CCTK_POSTRESTRICT
   LANG: C
   SYNC: data
 } "Sync up test data"
+
+SCHEDULE TestProlongate_Check IN CCTK_ANALYSIS
+{
+  LANG: C
+  READS: max_diff(interior)
+  WRITES: max_diff(interior)
+} "Compute max difference"
