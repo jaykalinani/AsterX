@@ -12,6 +12,8 @@ SCHEDULE HydroToyAMReX_Initialize AT initial
 {
   LANG: C
   WRITES: conserved(interior)
+  INVALIDATES: primitive(everywhere)
+  INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
   SYNC: conserved
 } "Set up hydro initial conditions"
 
@@ -47,6 +49,7 @@ if (output || output_every > 0) {
       LANG: C
       READS: conserved(everywhere)
       WRITES: primitive(everywhere)
+      INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
     } "Calculate pressure"
 
     SCHEDULE HydroToyAMReX_Fluxes IN HydroToyAMReX_OutputGroup AFTER HydroToyAMReX_Pressure
@@ -84,6 +87,8 @@ SCHEDULE HydroToyAMReX_CopyConserved AT evol
   LANG: C
   READS: conserved_p(everywhere)
   WRITES: conserved(everywhere)
+  INVALIDATES: primitive(everywhere)
+  INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
 } "Copy conserved variables to current time level"
 
 SCHEDULE HydroToyAMReX_Pressure AT evol AFTER HydroToyAMReX_CopyConserved
@@ -91,6 +96,7 @@ SCHEDULE HydroToyAMReX_Pressure AT evol AFTER HydroToyAMReX_CopyConserved
   LANG: C
   READS: conserved(everywhere)
   WRITES: primitive(everywhere)
+  INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
 } "Calculate pressure"
 
 SCHEDULE HydroToyAMReX_Fluxes AT evol AFTER HydroToyAMReX_Pressure
@@ -107,6 +113,8 @@ SCHEDULE HydroToyAMReX_Evolve AT evol AFTER HydroToyAMReX_Fluxes
   READS: conserved_p(interior)
   READS: flux_x(interior) flux_y(interior) flux_z(interior)
   WRITES: conserved(interior)
+  INVALIDATES: primitive(everywhere)
+  # Note: We need to keep the fluxes valid for the flux registers 
   SYNC: conserved
 } "Evolve the hydro equations"
 
@@ -117,5 +125,7 @@ SCHEDULE HydroToyAMReX_Evolve AT evol AFTER HydroToyAMReX_Fluxes
 SCHEDULE HydroToyAMReX_Boundaries AT postrestrict
 {
   LANG: C
+  # Refluxing is over, we can now mark the fluxes as invalid
+  INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
   SYNC: conserved
 } "Apply boundary conditions after restricting"
