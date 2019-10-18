@@ -94,6 +94,10 @@ struct GHExt {
     // Empty MultiFab holding a cell-centred BoxArray for iterating
     // over grid functions.
     // TODO: Can we store the BoxArray directly?
+    // The data in mfab0 is not valid. It's a dummy
+    // variable to get the distribution mapping, the
+    // grid size, ghost zones, etc. Only needed for
+    // cctkGH.
     unique_ptr<MultiFab> mfab0;
 
     struct GroupData {
