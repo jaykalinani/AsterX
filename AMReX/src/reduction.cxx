@@ -70,6 +70,11 @@ reduction<T> reduce_array(const Geometry &geom,
 reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
   DECLARE_CCTK_PARAMETERS;
 
+  cGroup group;
+  int ierr = CCTK_GroupData(gi, &group);
+  assert(!ierr);
+  assert(group.grouptype == CCTK_GF);
+
   reduction<CCTK_REAL> red;
   for (auto &restrict leveldata : ghext->leveldata) {
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
