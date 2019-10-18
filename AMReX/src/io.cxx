@@ -35,6 +35,13 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
 
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_GF)
+      continue;
+
     auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
@@ -188,6 +195,13 @@ void OutputASCII(const cGH *restrict cctkGH) {
 
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_GF)
+      continue;
+
     auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
@@ -227,6 +241,13 @@ void OutputNorms(const cGH *restrict cctkGH) {
 
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_GF)
+      continue;
+
     const int level = 0;
     const GHExt::LevelData &restrict leveldata = ghext->leveldata.at(level);
     const GHExt::LevelData::GroupData &restrict groupdata =
@@ -265,6 +286,62 @@ void OutputNorms(const cGH *restrict cctkGH) {
   }
 }
 
+void OutputScalars(const cGH *restrict cctkGH) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  static Timer timer("OutputNorms");
+  Interval interval(timer);
+
+  const bool is_root = CCTK_MyProc(nullptr) == 0;
+  if (!is_root)
+    return;
+
+  const int numgroups = CCTK_NumGroups();
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_SCALAR)
+      continue;
+
+    string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
+    groupname = regex_replace(groupname, regex("::"), "-");
+    for (auto &c : groupname)
+      c = tolower(c);
+    ostringstream buf;
+    buf << out_dir << "/" << groupname;
+    const string filename = buf.str();
+
+    ofstream file(filename.c_str(), std::ofstream::out | std::ofstream::app);
+
+    // TODO: write proper header (once)
+#if 0
+    // Output header
+    file << "#"
+         << "\t"
+         << "iteration"
+         << "\t"
+         << "time";
+    for (int vi = 0; vi < groupdata.numvars; ++vi) {
+      file << "\t" << CCTK_VarName(group.firstvarindex + vi);
+    file << "\n";
+#endif
+
+    // Output data
+    const GHExt::GlobalData &restrict globaldata = ghext->globaldata;
+    const GHExt::GlobalData::ScalarGroupData &restrict scalargroupdata =
+        globaldata.scalargroupdata.at(gi);
+    const int tl = 0;
+    file << cctkGH->cctk_iteration << "\t" << cctkGH->cctk_time;
+    for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
+      file << "\t" << *scalargroupdata.data.at(tl).at(vi);
+    }
+    file << "\n";
+  }
+}
+
 int OutputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -281,6 +358,7 @@ int OutputGH(const cGH *restrict cctkGH) {
     OutputPlotfile(cctkGH);
     OutputASCII(cctkGH);
     OutputNorms(cctkGH);
+    OutputScalars(cctkGH);
   }
 
   // TODO: This should be the number of variables output

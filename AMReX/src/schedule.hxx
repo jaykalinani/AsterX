@@ -83,6 +83,11 @@ void check_valid(
     const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
     const function<string()> &msg);
 
+void poison_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata, int vi,
+                    int tl);
+void check_valid(const GHExt::GlobalData::ScalarGroupData &groupdata, int vi,
+                 int tl, const function<string()> &msg);
+
 } // namespace AMReX
 
 #endif // #ifndef SCHEDULE_HXX
