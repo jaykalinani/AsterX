@@ -25,8 +25,32 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
   assert(order_type == PARAMETER_INT);
   const CCTK_INT operator_order = *static_cast<const CCTK_INT*>(order_p);
 
+  int conservative_type;
+  const void *conservative_p =
+    CCTK_ParameterGet("conservative_prolongation", "AMReX", &conservative_type);
+  assert(conservative_p);
+  assert(conservative_type == PARAMETER_BOOLEAN);
+  const CCTK_INT conservative_prolongation =
+    *static_cast<const CCTK_INT*>(conservative_p);
+
+  // the grid stores the average values of the underlying function
+  // (x*y*z)**n which amounts to storing differences of the anti-derivative
+  // 1/(n+1)**3 * (x*y*z)**(n+1)
+  auto avg_fun = [&](CCTK_REAL xi, int dir) {
+    return 1./(operator_order + 1) *
+           (pow(xi+CCTK_DELTA_SPACE(dir)/2., operator_order + 1) -
+            pow(xi-CCTK_DELTA_SPACE(dir)/2., operator_order + 1)) /
+           CCTK_DELTA_SPACE(dir);
+  };
+
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    data[p.idx] = pow(p.x * p.y * p.z, operator_order);
+    CCTK_REAL good_data;
+    if (conservative_prolongation) {
+      good_data = avg_fun(p.x, 0) * avg_fun(p.y, 1) * avg_fun(p.z, 2);
+    } else {
+      good_data = pow(p.x * p.y * p.z, operator_order);
+    }
+    data[p.idx] = good_data;
   });
 
   *max_diff = 0.;
@@ -73,10 +97,33 @@ extern "C" void TestProlongate_Check(CCTK_ARGUMENTS) {
   assert(order_type == PARAMETER_INT);
   const CCTK_INT operator_order = *static_cast<const CCTK_INT*>(order_p);
 
+  int conservative_type;
+  const void *conservative_p =
+    CCTK_ParameterGet("conservative_prolongation", "AMReX", &conservative_type);
+  assert(conservative_p);
+  assert(conservative_type == PARAMETER_BOOLEAN);
+  const CCTK_INT conservative_prolongation =
+    *static_cast<const CCTK_INT*>(conservative_p);
+
+  // the grid stores the average values of the underlying function
+  // (x*y*z)**n which amounts to storing differences of the anti-derivative
+  // 1/(n+1)**3 * (x*y*z)**(n+1)
+  auto avg_fun = [&](CCTK_REAL xi, int dir) {
+    return 1./(operator_order + 1) *
+           (pow(xi+CCTK_DELTA_SPACE(dir)/2., operator_order + 1) -
+            pow(xi-CCTK_DELTA_SPACE(dir)/2., operator_order + 1)) /
+           CCTK_DELTA_SPACE(dir);
+  };
+
   CCTK_REAL my_max_diff = 0;
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    const CCTK_REAL diff = fabs(data[p.idx] -
-                                pow(p.x * p.y * p.z, operator_order));
+    CCTK_REAL good_data;
+    if (conservative_prolongation) {
+      good_data = avg_fun(p.x, 0) * avg_fun(p.y, 1) * avg_fun(p.z, 2);
+    } else {
+      good_data = pow(p.x * p.y * p.z, operator_order);
+    }
+    const CCTK_REAL diff = fabs(data[p.idx] - good_data);
     my_max_diff = max(diff, my_max_diff);
   });
 
