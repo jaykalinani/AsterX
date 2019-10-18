@@ -137,7 +137,7 @@ void SetupGlobals() {
     assert(!ierr);
 
     /* only grid functions live on levels (and the grid) */
-    if(group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
+    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
       continue;
 
     assert(group.grouptype == CCTK_SCALAR);
@@ -145,7 +145,8 @@ void SetupGlobals() {
     assert(group.disttype == CCTK_DISTRIB_CONSTANT);
     assert(group.dim == 0);
 
-    GHExt::GlobalData::ScalarGroupData &scalargroupdata = globaldata.scalargroupdata.at(gi);
+    GHExt::GlobalData::ScalarGroupData &scalargroupdata =
+        globaldata.scalargroupdata.at(gi);
     scalargroupdata.groupindex = gi;
     scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     scalargroupdata.numvars = group.numvars;
@@ -156,10 +157,12 @@ void SetupGlobals() {
     for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
       scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
       scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars);
-      scalargroupdata.data.at(tl).at(0) = new CCTK_REAL[scalargroupdata.numvars];
+      scalargroupdata.data.at(tl).at(0) =
+          new CCTK_REAL[scalargroupdata.numvars];
       for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
         // TODO: find out something that avoid new ?
-        scalargroupdata.data.at(tl).at(vi) = scalargroupdata.data.at(tl).at(0) + vi;
+        scalargroupdata.data.at(tl).at(vi) =
+            scalargroupdata.data.at(tl).at(0) + vi;
 
         // TODO: decide that valid_bnd == false always and rely on
         // initialization magic?
@@ -169,14 +172,11 @@ void SetupGlobals() {
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
         poison_invalid(scalargroupdata, vi, tl);
-        check_valid(scalargroupdata, vi, tl, [&]() {
-            return "SetupGlobals";
-          });
+        check_valid(scalargroupdata, vi, tl, [&]() { return "SetupGlobals"; });
       }
     }
   }
 }
-
 
 array<int, dim> get_group_indextype(const int gi) {
   assert(gi >= 0);
@@ -287,7 +287,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     assert(!ierr);
 
     /* only grid functions live on levels (and the grid) */
-    if(group.grouptype != CCTK_GF)
+    if (group.grouptype != CCTK_GF)
       continue;
 
     assert(group.grouptype == CCTK_GF);
