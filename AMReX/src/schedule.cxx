@@ -46,13 +46,22 @@ using namespace std;
 // positive values often lead to segfault, exposing bugs.
 constexpr int undefined = 666;
 
-vector<cGH> thread_local_cctkGH;
 // Tile boxes, should be part of cGH
 struct TileBox {
   array<int, dim> tile_min;
   array<int, dim> tile_max;
 };
-vector<TileBox> thread_local_tilebox;
+
+struct thread_local_info_t {
+  // TODO: store only MFIter here; recalculate other things from it
+  cGH cctkGH;
+  TileBox tilebox;
+  MFIter *mfiter;
+  unsigned char padding[128]; // Prevent false sharing
+};
+
+vector<unique_ptr<thread_local_info_t> > thread_local_info;
+vector<unique_ptr<thread_local_info_t> > saved_thread_local_info;
 
 cGH *saved_cctkGH = nullptr;
 int current_level = -1;
@@ -98,13 +107,14 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
   assert(cctkGH->cctk_bbox[0] != AMReX::undefined);
   int thread_num = omp_get_thread_num();
   if (omp_in_parallel()) {
-    const cGH *restrict threadGH = &AMReX::thread_local_cctkGH.at(thread_num);
+    const cGH *restrict threadGH =
+        &AMReX::thread_local_info.at(thread_num)->cctkGH;
     // Check whether this is the correct cGH structure
     assert(cctkGH == threadGH);
   }
 
   const AMReX::TileBox &restrict tilebox =
-      AMReX::thread_local_tilebox.at(thread_num);
+      AMReX::thread_local_info.at(thread_num)->tilebox;
   for (int d = 0; d < dim; ++d) {
     tmin[d] = tilebox.tile_min[d];
     tmax[d] = tilebox.tile_max[d];
@@ -206,6 +216,26 @@ GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata, const MFIter &mfi)
   cactus_offset = lbound(fbx);
 }
 
+GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData &leveldata,
+                           const GHExt::LevelData::GroupData &groupdata,
+                           const MFIter &mfi)
+    : GridDesc(leveldata, mfi) {
+  const Box &fbx = mfi.fabbox(); // allocated array
+  cactus_offset = lbound(fbx);
+  for (int d = 0; d < dim; ++d) {
+    assert(groupdata.nghostzones[d] >= 0);
+    assert(groupdata.nghostzones[d] <= nghostzones[d]);
+  }
+  for (int d = 0; d < dim; ++d)
+    gimin[d] = nghostzones[d] - groupdata.nghostzones[d];
+  for (int d = 0; d < dim; ++d)
+    gimax[d] = lsh[d] + (1 - groupdata.indextype[d]) -
+               (nghostzones[d] - groupdata.nghostzones[d]);
+  for (int d = 0; d < dim; ++d)
+    gash[d] = ash[d] + (1 - groupdata.indextype[d]) -
+              2 * (nghostzones[d] - groupdata.nghostzones[d]);
+}
+
 // Set grid functions to nan
 void poison_invalid(const GHExt::LevelData &leveldata,
                     const GHExt::LevelData::GroupData &groupdata, int vi,
@@ -222,29 +252,24 @@ void poison_invalid(const GHExt::LevelData &leveldata,
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
   for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    const GridPtrDesc grid(leveldata, mfi);
+    const GridPtrDesc1 grid(leveldata, groupdata, mfi);
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-    CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+    const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
+    where_t where;
     if (!valid.valid_int) {
-      if (!valid.valid_bnd) {
-        grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          ptr[p.idx] = 0.0 / 0.0;
-        });
-      } else {
-        grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          ptr[p.idx] = 0.0 / 0.0;
-        });
-      }
+      if (!valid.valid_bnd)
+        where = where_t::everywhere;
+      else
+        where = where_t::interior;
     } else {
-      if (!valid.valid_bnd) {
-        grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          ptr[p.idx] = 0.0 / 0.0;
-        });
-      } else {
+      if (!valid.valid_bnd)
+        where = where_t::boundary;
+      else
         assert(0);
-      }
     }
+    grid.loop_idx(where, groupdata.indextype, groupdata.nghostzones,
+                  [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
   }
 }
 
@@ -265,32 +290,27 @@ void check_valid(const GHExt::LevelData &leveldata,
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
   for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    const GridPtrDesc grid(leveldata, mfi);
+    const GridPtrDesc1 grid(leveldata, groupdata, mfi);
     const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-    const CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
+    const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
+    where_t where;
     if (valid.valid_int) {
-      if (valid.valid_bnd) {
-        grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          if (CCTK_BUILTIN_EXPECT(isnan(ptr[p.idx]), false))
-            found_nan = true;
-        });
-      } else {
-        grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          if (CCTK_BUILTIN_EXPECT(isnan(ptr[p.idx]), false))
-            found_nan = true;
-        });
-      }
+      if (valid.valid_bnd)
+        where = where_t::everywhere;
+      else
+        where = where_t::interior;
     } else {
-      if (valid.valid_bnd) {
-        grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-          if (CCTK_BUILTIN_EXPECT(isnan(ptr[p.idx]), false))
-            found_nan = true;
-        });
-      } else {
+      if (valid.valid_bnd)
+        where = where_t::boundary;
+      else
         assert(0);
-      }
     }
+    grid.loop_idx(where, groupdata.indextype, groupdata.nghostzones,
+                  [&](const Loop::PointDesc &p) {
+                    if (CCTK_BUILTIN_EXPECT(isnan(ptr_(p.I)), false))
+                      found_nan = true;
+                  });
   }
 
   if (CCTK_BUILTIN_EXPECT(found_nan, false)) {
@@ -459,11 +479,11 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
 
   // Grid function pointers
   for (auto &restrict groupdata : leveldata.groupdata) {
+    GridPtrDesc1 grid1(leveldata, groupdata, mfi);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-      for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        cctkGH->data[groupdata.firstvarindex + vi][tl] = grid.ptr(vars, vi);
-      }
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        cctkGH->data[groupdata.firstvarindex + vi][tl] = grid1.ptr(vars, vi);
     }
   }
 
@@ -526,12 +546,12 @@ extern "C" void AMReX_GetTileExtent(const void *restrict cctkGH_,
   assert(cctkGH->cctk_bbox[0] != undefined);
   int thread_num = omp_get_thread_num();
   if (omp_in_parallel()) {
-    const cGH *restrict threadGH = &thread_local_cctkGH.at(thread_num);
+    const cGH *restrict threadGH = &thread_local_info.at(thread_num)->cctkGH;
     // Check whether this is the correct cGH structure
     assert(cctkGH == threadGH);
   }
 
-  const TileBox &restrict tilebox = thread_local_tilebox.at(thread_num);
+  const TileBox &restrict tilebox = thread_local_info.at(thread_num)->tilebox;
   for (int d = 0; d < dim; ++d) {
     tile_min[d] = tilebox.tile_min[d];
     tile_max[d] = tilebox.tile_max[d];
@@ -625,15 +645,19 @@ int Initialise(tFleshConfig *config) {
   // Set up cctkGH
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
+
   int max_threads = omp_get_max_threads();
-  thread_local_cctkGH.resize(max_threads);
-  thread_local_tilebox.resize(max_threads);
+  thread_local_info.resize(max_threads);
   for (int n = 0; n < max_threads; ++n) {
-    cGH *restrict threadGH = &thread_local_cctkGH.at(n);
+    thread_local_info.at(n) = make_unique<thread_local_info_t>();
+    cGH *restrict threadGH = &thread_local_info.at(n)->cctkGH;
     clone_cctkGH(threadGH, cctkGH);
     setup_cctkGH(threadGH);
     enter_global_mode(threadGH);
+    thread_local_info.at(n)->mfiter = nullptr;
   }
+  swap(saved_thread_local_info, thread_local_info);
+  assert(thread_local_info.empty());
 
   CCTK_Traverse(cctkGH, "CCTK_WRAGH");
   CCTK_Traverse(cctkGH, "CCTK_PARAMCHECK");
@@ -871,6 +895,10 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
         for (int vi = 0; vi < groupdata.numvars; ++vi)
           poison_invalid(leveldata, groupdata, vi, 0);
       }
+      for (int tl = 0; tl < ntls; ++tl)
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          check_valid(leveldata, groupdata, vi, tl,
+                      [&]() { return "CycleTimelevels"; });
     }
   }
 }
@@ -1047,12 +1075,17 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   switch (mode) {
   case mode_t::local: {
     // Call function once per tile
+    // TODO: provide looping function
+    assert(thread_local_info.empty());
+    swap(thread_local_info, saved_thread_local_info);
 #pragma omp parallel
     {
       int thread_num = omp_get_thread_num();
-      cGH *restrict threadGH = &thread_local_cctkGH.at(thread_num);
+      thread_local_info_t &restrict thread_info =
+          *thread_local_info.at(thread_num);
+      cGH *restrict threadGH = &thread_info.cctkGH;
       update_cctkGH(threadGH, cctkGH);
-      TileBox &restrict thread_tilebox = thread_local_tilebox.at(thread_num);
+      TileBox &restrict thread_tilebox = thread_info.tilebox;
 
       // Loop over all levels
       // TODO: parallelize this loop
@@ -1062,13 +1095,17 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
         for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+          thread_info.mfiter = &mfi;
           enter_local_mode(threadGH, thread_tilebox, leveldata, mfi);
           CCTK_CallFunction(function, attribute, threadGH);
           leave_local_mode(threadGH, thread_tilebox, leveldata, mfi);
+          thread_info.mfiter = nullptr;
         }
         leave_level_mode(threadGH, leveldata);
       }
     }
+    swap(saved_thread_local_info, thread_local_info);
+    assert(thread_local_info.empty());
     break;
   }
   case mode_t::meta:
@@ -1285,7 +1322,7 @@ void Reflux(int level) {
         }
       }
 
-#warning "TODO"
+#warning "TODO: scale fluxes correctly"
       const Geometry &geom0 = ghext->amrcore->Geom(level);
       const CCTK_REAL *restrict gdx = geom0.CellSize();
       CCTK_REAL dt = 0.25 * pow(0.5, 2) * gdx[0];
@@ -1361,8 +1398,7 @@ void Restrict(int level) {
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      // Only restrict valid grid functions. Restriction only uses the
-      // interior.
+      // Only restrict valid grid functions. Restriction only uses the interior.
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         all_invalid &= !finegroupdata.valid.at(tl).at(vi).valid_int &&
@@ -1370,10 +1406,8 @@ void Restrict(int level) {
 
       if (all_invalid) {
 
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          groupdata.valid.at(tl).at(vi).valid_int = false;
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
           groupdata.valid.at(tl).at(vi).valid_bnd = false;
-        }
 
       } else {
 
@@ -1390,24 +1424,32 @@ void Restrict(int level) {
           });
         }
 
-        if (groupdata.indextype == array<int, dim>{0, 0, 0})
+#warning                                                                       \
+    "TODO: Allow different restriction operators, and ensure this is conservative"
+        // rank: 0: vertex, 1: edge, 2: face, 3: volume
+        int rank = 0;
+        for (int d = 0; d < dim; ++d)
+          rank += groupdata.indextype[d];
+        switch (rank) {
+        case 0:
           average_down_nodal(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
                              reffact);
-        else if (groupdata.indextype == array<int, dim>{1, 0, 0} ||
-                 groupdata.indextype == array<int, dim>{0, 1, 0} ||
-                 groupdata.indextype == array<int, dim>{0, 0, 1})
+          break;
+        case 1:
           average_down_edges(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
                              reffact);
-        else if (groupdata.indextype == array<int, dim>{1, 1, 0} ||
-                 groupdata.indextype == array<int, dim>{1, 0, 1} ||
-                 groupdata.indextype == array<int, dim>{0, 1, 1})
+          break;
+        case 2:
           average_down_faces(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
                              reffact);
-        else if (groupdata.indextype == array<int, dim>{1, 1, 1})
+          break;
+        case 3:
           average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
                        groupdata.numvars, reffact);
-        else
+          break;
+        default:
           assert(0);
+        }
 
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int &=

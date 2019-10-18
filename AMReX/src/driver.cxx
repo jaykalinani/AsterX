@@ -86,24 +86,30 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
   for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    GridPtrDesc grid(leveldata, mfi);
+    GridPtrDesc1 grid(leveldata, groupdata, mfi);
 
-    const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-    CCTK_REAL *restrict const err = grid.ptr(vars, vi);
+    const Array4<const CCTK_REAL> &err_array4 =
+        groupdata.mfab.at(tl)->array(mfi);
+    const GF3D1<const CCTK_REAL> err_ = grid.gf3d(err_array4, vi);
     const Array4<char> &tags_array4 = tags.array(mfi);
 
-    grid.loop_int(groupdata.indextype, [&](const Loop::PointDesc &p) {
-      tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-                  grid.cactus_offset.z + p.k) =
-          err[p.idx] >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
-    });
+    grid.loop_idx(
+        where_t::interior, groupdata.indextype, [&](const Loop::PointDesc &p) {
+          tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+                      grid.cactus_offset.z + p.k) =
+              err_(p.I) >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
+        });
     // Do not set the boundary; AMReX's error grid function might have
     // a different number of ghost zones, and these ghost zones are
     // probably unused anyway.
-    // grid.loop_bnd(groupdata.indextype, [&](const Loop::PointDesc &p) {
-    //   tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-    //               grid.cactus_offset.z + p.k) = TagBox::CLEAR;
-    // });
+    if (false) {
+      grid.loop_idx(where_t::boundary, groupdata.indextype,
+                    [&](const Loop::PointDesc &p) {
+                      tags_array4(grid.cactus_offset.x + p.i,
+                                  grid.cactus_offset.y + p.j,
+                                  grid.cactus_offset.z + p.k) = TagBox::CLEAR;
+                    });
+    }
   }
 }
 
@@ -175,6 +181,25 @@ array<int, dim> get_group_fluxes(const int gi) {
   return fluxes;
 }
 
+array<int, dim> get_group_nghostzones(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  array<CCTK_INT, dim> nghostzones;
+  int iret =
+      Util_TableGetIntArray(tags, dim, nghostzones.data(), "nghostzones");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    // default: use driver parameter
+    nghostzones = {ghost_size, ghost_size, ghost_size};
+  } else if (iret >= 0) {
+    assert(iret == dim);
+  } else {
+    assert(0);
+  }
+  return nghostzones;
+}
+
 void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
@@ -205,6 +230,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
     groupdata.indextype = get_group_indextype(gi);
+    groupdata.nghostzones = get_group_nghostzones(gi);
 
     // Allocate grid hierarchies
     const BoxArray &gba = convert(
@@ -215,8 +241,8 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     groupdata.mfab.resize(group.numtimelevels);
     groupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      groupdata.mfab.at(tl) =
-          make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
+      groupdata.mfab.at(tl) = make_unique<MultiFab>(
+          gba, dm, groupdata.numvars, IntVect(groupdata.nghostzones));
       groupdata.valid.at(tl) = vector<valid_t>(groupdata.numvars);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         poison_invalid(leveldata, groupdata, vi, tl);
@@ -538,7 +564,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                       periodic_z ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
-      auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars, ghost_size);
+      auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
+                                        IntVect(groupdata.nghostzones));
       auto valid = vector<valid_t>(groupdata.numvars);
       if (poison_undefined_values) {
         // Set new grid functions to nan
@@ -546,13 +573,13 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
         for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc grid(leveldata, mfi);
+          GridPtrDesc1 grid(leveldata, groupdata, mfi);
           const Array4<CCTK_REAL> &vars = mfab->array(mfi);
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            CCTK_REAL *restrict const ptr = grid.ptr(vars, vi);
-            grid.loop_all(groupdata.indextype, [&](const Loop::PointDesc &p) {
-              ptr[p.idx] = 0.0 / 0.0;
-            });
+            const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
+            grid.loop_idx(
+                where_t::everywhere, groupdata.indextype, groupdata.nghostzones,
+                [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
           }
         }
       }
@@ -650,8 +677,30 @@ extern "C" int AMReX_Startup() {
     CCTK_VINFO("Startup");
 
   // Output a startup message
-  string banner =
-      "AMR driver provided by CarpetX, using AMReX " + amrex::Version();
+  string banner = "AMR driver provided by CarpetX, using AMReX " +
+                  amrex::Version() +
+                  " ("
+#ifdef AMREX_USE_MPI
+                  "MPI, "
+#else
+                  "no MPI, "
+#endif
+#ifdef AMREX_USE_OMP
+                  "OpenMP, "
+#else
+                  "no OpenMP, "
+#endif
+#ifdef AMREX_USE_GPU
+                  "Accelerators, "
+#else
+                  "no Accelerators, "
+#endif
+#ifdef AMREX_USE_ASSERTION
+                  "DEBUG, "
+#else
+                  "OPTIMIZED, "
+#endif
+                  ")";
   int ierr = CCTK_RegisterBanner(banner.c_str());
   assert(!ierr);
 

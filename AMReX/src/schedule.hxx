@@ -59,6 +59,7 @@ struct GridDesc : GridDescBase {
   GridDesc(const cGH *cctkGH) : GridDescBase(cctkGH) {}
 };
 
+// TODO: remove this
 struct GridPtrDesc : GridDesc {
   Dim3 cactus_offset;
 
@@ -75,13 +76,36 @@ struct GridPtrDesc : GridDesc {
   }
 };
 
+struct GridPtrDesc1 : GridDesc {
+  Dim3 cactus_offset;
+  array<int, dim> gimin, gimax;
+  array<int, dim> gash;
+
+  GridPtrDesc1() = delete;
+  GridPtrDesc1(const GHExt::LevelData &leveldata,
+               const GHExt::LevelData::GroupData &groupdata, const MFIter &mfi);
+
+  template <typename T> T *ptr(const Array4<T> &vars, int vi) const {
+    return vars.ptr(cactus_offset.x + gimin[0], cactus_offset.y + gimin[1],
+                    cactus_offset.z + gimin[2], vi);
+  }
+  template <typename T>
+  T &idx(const Array4<T> &vars, int i, int j, int k, int vi) const {
+    return vars(cactus_offset.x + gimin[0] + i, cactus_offset.y + gimin[1] + i,
+                cactus_offset.z + gimin[2] + j, vi);
+  }
+
+  template <typename T> GF3D1<T> gf3d(const Array4<T> &vars, int vi) const {
+    return GF3D1<T>(ptr(vars, vi), gimin, gimax, gash);
+  }
+};
+
 void poison_invalid(const GHExt::LevelData &leveldata,
                     const GHExt::LevelData::GroupData &groupdata, int vi,
                     int tl);
-void check_valid(
-    const GHExt::LevelData &leveldata,
-    const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
-    const function<string()> &msg);
+void check_valid(const GHExt::LevelData &leveldata,
+                 const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
+                 const function<string()> &msg);
 
 } // namespace AMReX
 

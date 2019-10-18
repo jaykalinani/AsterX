@@ -16,45 +16,61 @@ constexpr int dim = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <typename T> inline T fmax5(T x0, T x1, T x2, T x3, T x4) {
+  T r0 = fmax(x0, x1);
+  T r1 = fmax(x2, x3);
+  T r2 = fmax(x4, r0);
+  T r3 = fmax(r1, r2);
+  return r3;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+
   if (CCTK_EQUALS(setup, "equilibrium")) {
 
     Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      rho[p.idx] = 1.0;
-      momx[p.idx] = 0.0;
-      momy[p.idx] = 0.0;
-      momz[p.idx] = 0.0;
-      etot[p.idx] = 1.0;
+      rho_(p.I) = 1.0;
+      momx_(p.I) = 0.0;
+      momy_(p.I) = 0.0;
+      momz_(p.I) = 0.0;
+      etot_(p.I) = 1.0;
     });
 
   } else if (CCTK_EQUALS(setup, "sound wave")) {
 
     Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      rho[p.idx] = 1.0;
-      momx[p.idx] = 0.0 + amplitude * sin(M_PI * p.x);
-      momy[p.idx] = 0.0;
-      momz[p.idx] = 0.0;
-      etot[p.idx] = 1.0; // should add kinetic energy here
+      rho_(p.I) = 1.0;
+      momx_(p.I) = 0.0 + amplitude * sin(M_PI * p.x);
+      momy_(p.I) = 0.0;
+      momz_(p.I) = 0.0;
+      etot_(p.I) = 1.0; // should add kinetic energy here
     });
 
   } else if (CCTK_EQUALS(setup, "shock tube")) {
 
     Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       if (p.x <= 0.0) {
-        rho[p.idx] = 2.0;
-        momx[p.idx] = 0.0;
-        momy[p.idx] = 0.0;
-        momz[p.idx] = 0.0;
-        etot[p.idx] = 2.0;
+        rho_(p.I) = 2.0;
+        momx_(p.I) = 0.0;
+        momy_(p.I) = 0.0;
+        momz_(p.I) = 0.0;
+        etot_(p.I) = 2.0;
       } else {
-        rho[p.idx] = 1.0;
-        momx[p.idx] = 0.0;
-        momy[p.idx] = 0.0;
-        momz[p.idx] = 0.0;
-        etot[p.idx] = 1.0;
+        rho_(p.I) = 1.0;
+        momx_(p.I) = 0.0;
+        momy_(p.I) = 0.0;
+        momz_(p.I) = 0.0;
+        etot_(p.I) = 1.0;
       }
     });
 
@@ -63,17 +79,17 @@ extern "C" void HydroToyAMReX_Initialize(CCTK_ARGUMENTS) {
     Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       CCTK_REAL r2 = pow(p.x, 2) + pow(p.y, 2) + pow(p.z, 2);
       if (r2 <= pow(shock_radius, 2)) {
-        rho[p.idx] = 2.0;
-        momx[p.idx] = 0.0;
-        momy[p.idx] = 0.0;
-        momz[p.idx] = 0.0;
-        etot[p.idx] = 2.0;
+        rho_(p.I) = 2.0;
+        momx_(p.I) = 0.0;
+        momy_(p.I) = 0.0;
+        momz_(p.I) = 0.0;
+        etot_(p.I) = 2.0;
       } else {
-        rho[p.idx] = 1.0;
-        momx[p.idx] = 0.0;
-        momy[p.idx] = 0.0;
-        momz[p.idx] = 0.0;
-        etot[p.idx] = 1.0;
+        rho_(p.I) = 1.0;
+        momx_(p.I) = 0.0;
+        momy_(p.I) = 0.0;
+        momz_(p.I) = 0.0;
+        etot_(p.I) = 1.0;
       }
     });
 
@@ -117,20 +133,33 @@ extern "C" void HydroToyAMReX_Pressure(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyAMReX_Pressure;
   DECLARE_CCTK_PARAMETERS;
 
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> press_(cctkGH, press);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> velx_(cctkGH, velx);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> vely_(cctkGH, vely);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> velz_(cctkGH, velz);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> eint_(cctkGH, eint);
+
   // Equation of state: p = (gamma - 1) e
 
   // vel^j = delta^j_i mom_i / rho
 
   Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL ekin =
-        sqrt(pow(momx[p.idx], 2) + pow(momy[p.idx], 2) + pow(momz[p.idx], 2)) /
-        (2 * rho[p.idx]);
-    CCTK_REAL eint = etot[p.idx] - ekin;
-    press[p.idx] = (gamma - 1) * eint;
+        sqrt(pow(momx_(p.I), 2) + pow(momy_(p.I), 2) + pow(momz_(p.I), 2)) /
+        (2 * rho_(p.I));
+    eint_(p.I) = etot_(p.I) - ekin;
 
-    velx[p.idx] = momx[p.idx] / rho[p.idx];
-    vely[p.idx] = momy[p.idx] / rho[p.idx];
-    velz[p.idx] = momz[p.idx] / rho[p.idx];
+    press_(p.I) = (gamma - 1) * eint_(p.I);
+
+    velx_(p.I) = momx_(p.I) / rho_(p.I);
+    vely_(p.I) = momy_(p.I) / rho_(p.I);
+    velz_(p.I) = momz_(p.I) / rho_(p.I);
   });
 }
 
@@ -190,6 +219,7 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> vely_(cctkGH, vely);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> velz_(cctkGH, velz);
 
+#if 0
   const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
   const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
   const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
@@ -207,6 +237,26 @@ extern "C" void HydroToyAMReX_Fluxes(CCTK_ARGUMENTS) {
   const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzmomy_(cctkGH, fzmomy);
   const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzmomz_(cctkGH, fzmomz);
   const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzetot_(cctkGH, fzetot);
+#else
+  const array<int, dim> nghosts{0, 0, 0};
+  const Loop::GF3D1<CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, nghosts, fxrho);
+  const Loop::GF3D1<CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, nghosts, fxmomx);
+  const Loop::GF3D1<CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, nghosts, fxmomy);
+  const Loop::GF3D1<CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, nghosts, fxmomz);
+  const Loop::GF3D1<CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, nghosts, fxetot);
+
+  const Loop::GF3D1<CCTK_REAL> fyrho_(cctkGH, {1, 0, 1}, nghosts, fyrho);
+  const Loop::GF3D1<CCTK_REAL> fymomx_(cctkGH, {1, 0, 1}, nghosts, fymomx);
+  const Loop::GF3D1<CCTK_REAL> fymomy_(cctkGH, {1, 0, 1}, nghosts, fymomy);
+  const Loop::GF3D1<CCTK_REAL> fymomz_(cctkGH, {1, 0, 1}, nghosts, fymomz);
+  const Loop::GF3D1<CCTK_REAL> fyetot_(cctkGH, {1, 0, 1}, nghosts, fyetot);
+
+  const Loop::GF3D1<CCTK_REAL> fzrho_(cctkGH, {1, 1, 0}, nghosts, fzrho);
+  const Loop::GF3D1<CCTK_REAL> fzmomx_(cctkGH, {1, 1, 0}, nghosts, fzmomx);
+  const Loop::GF3D1<CCTK_REAL> fzmomy_(cctkGH, {1, 1, 0}, nghosts, fzmomy);
+  const Loop::GF3D1<CCTK_REAL> fzmomz_(cctkGH, {1, 1, 0}, nghosts, fzmomz);
+  const Loop::GF3D1<CCTK_REAL> fzetot_(cctkGH, {1, 1, 0}, nghosts, fzetot);
+#endif
 
   // frho^i = rho vel^i
   // fmom^i_j = mom_j vel^i + delta^i_j press
@@ -300,6 +350,7 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_p_(cctkGH, momz_p);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_p_(cctkGH, etot_p);
 
+#if 0
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
@@ -317,6 +368,38 @@ extern "C" void HydroToyAMReX_Evolve(CCTK_ARGUMENTS) {
   const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomy_(cctkGH, fzmomy);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomz_(cctkGH, fzmomz);
   const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzetot_(cctkGH, fzetot);
+#else
+  const array<int, dim> nghosts{0, 0, 0};
+  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, nghosts, fxrho);
+  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxmomx);
+  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxmomy);
+  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxmomz);
+  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxetot);
+
+  const Loop::GF3D1<const CCTK_REAL> fyrho_(cctkGH, {1, 0, 1}, nghosts, fyrho);
+  const Loop::GF3D1<const CCTK_REAL> fymomx_(cctkGH, {1, 0, 1}, nghosts,
+                                             fymomx);
+  const Loop::GF3D1<const CCTK_REAL> fymomy_(cctkGH, {1, 0, 1}, nghosts,
+                                             fymomy);
+  const Loop::GF3D1<const CCTK_REAL> fymomz_(cctkGH, {1, 0, 1}, nghosts,
+                                             fymomz);
+  const Loop::GF3D1<const CCTK_REAL> fyetot_(cctkGH, {1, 0, 1}, nghosts,
+                                             fyetot);
+
+  const Loop::GF3D1<const CCTK_REAL> fzrho_(cctkGH, {1, 1, 0}, nghosts, fzrho);
+  const Loop::GF3D1<const CCTK_REAL> fzmomx_(cctkGH, {1, 1, 0}, nghosts,
+                                             fzmomx);
+  const Loop::GF3D1<const CCTK_REAL> fzmomy_(cctkGH, {1, 1, 0}, nghosts,
+                                             fzmomy);
+  const Loop::GF3D1<const CCTK_REAL> fzmomz_(cctkGH, {1, 1, 0}, nghosts,
+                                             fzmomz);
+  const Loop::GF3D1<const CCTK_REAL> fzetot_(cctkGH, {1, 1, 0}, nghosts,
+                                             fzetot);
+#endif
 
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
@@ -358,6 +441,12 @@ extern "C" void HydroToyAMReX_EstimateError(CCTK_ARGUMENTS) {
 
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
 
+  if (false) {
+    Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      regrid_error_(p.I) = fabs(p.x) < 0.2;
+    });
+  }
+
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     auto calcerr{[&](auto &var_) {
       CCTK_REAL err{0};
@@ -370,10 +459,8 @@ extern "C" void HydroToyAMReX_EstimateError(CCTK_ARGUMENTS) {
       return err;
     }};
 
-    regrid_error_(p.I) =
-        fmax(fmax(fmax(fmax(calcerr(rho_), calcerr(momx_)), calcerr(momy_)),
-                  calcerr(momz_)),
-             calcerr(etot_));
+    regrid_error_(p.I) = fmax5(calcerr(rho_), calcerr(momx_), calcerr(momy_),
+                               calcerr(momz_), calcerr(etot_));
   });
 }
 
@@ -390,11 +477,24 @@ extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
   const Loop::GF3D<const CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH,
                                                            regrid_error);
 
+#if 0
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomz_(cctkGH, fxmomz);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxetot_(cctkGH, fxetot);
+#else
+  const array<int, dim> nghosts{0, 0, 0};
+  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, nghosts, fxrho);
+  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxmomx);
+  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxmomy);
+  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxmomz);
+  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, nghosts,
+                                             fxetot);
+#endif
 
   int levfac = cctk_levfac[0];
   int lev = 0;
@@ -404,7 +504,7 @@ extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
   }
 
 #pragma omp critical(HydroToyAMReX_Output)
-      {
+  {
     const int oldprec = cout.precision(17);
     cout << "iteration " << cctk_iteration << " level " << lev << ":\n";
 
@@ -416,18 +516,18 @@ extern "C" void HydroToyAMReX_Output(CCTK_ARGUMENTS) {
              // << " momx=" << momx_(p.I) << " etot=" << etot_(p.I)
              // << " err=" << regrid_error_(p.I)
              << "\n";
-    }
-  });
+      }
+    });
 
-  Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    if (p.j == 0 && p.k == 0) {
+    Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      if (p.j == 0 && p.k == 0) {
         cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
              << p.y << "," << p.z << ") fxrho="
              << fxrho_(p.I)
              // << " fxmomx=" << fxmomx_(p.I) << " fxetot=" << fxetot_(p.I)
              << "\n";
       }
-  });
+    });
 
     cout.precision(oldprec);
   }

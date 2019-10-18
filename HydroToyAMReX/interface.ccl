@@ -21,23 +21,24 @@ CCTK_REAL primitive TYPE=gf TIMELEVELS=1 TAGS='index={1 1 1} checkpoint="no" res
 {
   press
   velx vely velz
+  eint
 } "Primitive variables"
 
-CCTK_REAL flux_x TYPE=gf TIMELEVELS=1 TAGS='index={0 1 1} checkpoint="no" restrict="no"'
+CCTK_REAL flux_x TYPE=gf TIMELEVELS=1 TAGS='index={0 1 1} checkpoint="no" restrict="no" nghostzones={0 0 0}'
 {
   fxrho
   fxmomx fxmomy fxmomz
   fxetot
 } "Fluxes in x direction"
 
-CCTK_REAL flux_y TYPE=gf TIMELEVELS=1 TAGS='index={1 0 1} checkpoint="no" restrict="no"'
+CCTK_REAL flux_y TYPE=gf TIMELEVELS=1 TAGS='index={1 0 1} checkpoint="no" restrict="no" nghostzones={0 0 0}'
 {
   fyrho
   fymomx fymomy fymomz
   fyetot
 } "Fluxes in y direction"
 
-CCTK_REAL flux_z TYPE=gf TIMELEVELS=1 TAGS='index={1 1 0} checkpoint="no" restrict="no"'
+CCTK_REAL flux_z TYPE=gf TIMELEVELS=1 TAGS='index={1 1 0} checkpoint="no" restrict="no" nghostzones={0 0 0}'
 {
   fzrho
   fzmomx fzmomy fzmomz

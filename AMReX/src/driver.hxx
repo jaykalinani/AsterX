@@ -105,6 +105,7 @@ struct GHExt {
       int firstvarindex;
       int numvars;
       array<int, dim> indextype;
+      array<int, dim> nghostzones;
 
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]

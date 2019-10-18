@@ -151,29 +151,33 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
     for (MFIter mfi(*leveldata.mfab0); mfi.isValid(); ++mfi) {
       TileBox tilebox;
       enter_local_mode(const_cast<cGH *>(cctkGH), tilebox, leveldata, mfi);
-      GridPtrDesc grid(leveldata, mfi);
-      const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-      vector<const CCTK_REAL *> ptrs(groupdata.numvars);
+      GridPtrDesc1 grid(leveldata, groupdata, mfi);
+      const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+      vector<GF3D1<const CCTK_REAL> > ptrs_;
+      ptrs_.reserve(groupdata.numvars);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        ptrs.at(vi) = grid.ptr(vars, vi);
+        ptrs_.push_back(grid.gf3d(vars, vi));
       // write_arrays(file, cctkGH, leveldata.level, mfi.index(), ptrs, grid);
-      Loop::loop_all(
-          cctkGH, groupdata.indextype, [&](const Loop::PointDesc &p) {
-            file << cctkGH->cctk_iteration << "\t" << cctkGH->cctk_time << "\t"
-                 << leveldata.level << "\t"
-                 << mfi.index()
-                 // << "\t" << isghost
-                 << "\t" << (grid.lbnd[0] + p.i) << "\t" << (grid.lbnd[1] + p.j)
-                 << "\t" << (grid.lbnd[2] + p.k) << "\t" << p.x << "\t" << p.y
-                 << "\t" << p.z;
-            for (const auto &ptr : ptrs)
-              file << "\t" << ptr[p.idx];
-            file << "\n";
-          });
+      Loop::loop_idx(cctkGH, where_t::everywhere, groupdata.indextype,
+                     [&](const Loop::PointDesc &p) {
+                       file << cctkGH->cctk_iteration << "\t"
+                            << cctkGH->cctk_time << "\t" << leveldata.level
+                            << "\t"
+                            << mfi.index()
+                            // << "\t" << isghost
+                            << "\t" << (grid.lbnd[0] + p.i) << "\t"
+                            << (grid.lbnd[1] + p.j) << "\t"
+                            << (grid.lbnd[2] + p.k) << "\t" << p.x << "\t"
+                            << p.y << "\t" << p.z;
+                       for (const auto &ptr_ : ptrs_)
+                         file << "\t" << ptr_(p.I);
+                       file << "\n";
+                     });
       leave_local_mode(const_cast<cGH *>(cctkGH), tilebox, leveldata, mfi);
     }
     leave_level_mode(const_cast<cGH *>(cctkGH), leveldata);
   }
+
   file.close();
 }
 

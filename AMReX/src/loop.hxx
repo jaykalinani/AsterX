@@ -102,6 +102,7 @@ template <typename T, int D> struct vect {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO: remove this
 template <typename T, int CI, int CJ, int CK> struct GF3D {
   static_assert(CI == 0 || CI == 1, "");
   static_assert(CJ == 0 || CJ == 1, "");
@@ -135,7 +136,66 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   }
 };
 
+template <typename T> struct GF3D1 {
+  typedef T value_type;
+  T *restrict ptr;
+#ifdef CCTK_DEBUG
+  array<int, dim> imin, imax;
+  array<int, dim> ash;
+#endif
+  static constexpr int di = 1;
+  int dj, dk;
+  int off;
+  inline GF3D1(T *restrict ptr, const array<int, dim> &imin,
+               const array<int, dim> &imax, const array<int, dim> &ash)
+      : ptr(ptr),
+#ifdef CCTK_DEBUG
+        imin(imin), imax(imax), ash(ash),
+#endif
+        dj(di * ash[0]), dk(dj * ash[1]),
+        off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
+  }
+  inline GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
+               const array<int, dim> &nghostzones, T *restrict ptr) {
+    for (int d = 0; d < dim; ++d)
+      assert(indextype[d] == 0 || indextype[d] == 1);
+    for (int d = 0; d < dim; ++d) {
+      assert(nghostzones[d] >= 0);
+      assert(nghostzones[d] <= cctkGH->cctk_nghostzones[d]);
+    }
+    array<int, dim> imin, imax;
+    for (int d = 0; d < dim; ++d) {
+      imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
+      imax[d] = cctkGH->cctk_lsh[d] + (1 - indextype[d]) -
+                (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    }
+    array<int, dim> ash;
+    for (int d = 0; d < dim; ++d)
+      ash[d] = cctkGH->cctk_ash[d] + (1 - indextype[d]) -
+               2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    *this = GF3D1(ptr, imin, imax, ash);
+  }
+  inline int offset(int i, int j, int k) const {
+    // These index checks prevent vectorization. We thus only enable
+    // them in debug mode.
+#ifdef CCTK_DEBUG
+    assert(i >= imin[0] && i < imax[0]);
+    assert(j >= imin[1] && j < imax[1]);
+    assert(k >= imin[2] && k < imax[2]);
+#endif
+    return i * di + j * dj + k * dk - off;
+  }
+  inline T &restrict operator()(int i, int j, int k) const {
+    return ptr[offset(i, j, k)];
+  }
+  inline T &restrict operator()(const vect<int, dim> &I) const {
+    return ptr[offset(I[0], I[1], I[2])];
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
+
+enum class where_t { everywhere, interior, boundary };
 
 struct PointDesc {
   int i, j, k;
@@ -235,13 +295,14 @@ public:
 
   // Loop over all points
   template <int CI, int CJ, int CK, typename F>
-  void loop_all(const F &f) const {
+  void loop_all(const array<int, dim> &group_nghostzones, const F &f) const {
     constexpr array<int, dim> offset{!CI, !CJ, !CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
-      imin[d] = max(tmin[d], 0);
+      int ghost_offset = nghostzones[d] - group_nghostzones[d];
+      imin[d] = max(tmin[d], ghost_offset);
       imax[d] = min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                    lsh[d] + offset[d]);
+                    lsh[d] + offset[d] - ghost_offset);
     }
 
     loop_box<CI, CJ, CK>(f, imin, imax);
@@ -249,7 +310,7 @@ public:
 
   // Loop over all interior points
   template <int CI, int CJ, int CK, typename F>
-  void loop_int(const F &f) const {
+  void loop_int(const array<int, dim> &group_nghostzones, const F &f) const {
     constexpr array<int, dim> offset{!CI, !CJ, !CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
@@ -264,7 +325,7 @@ public:
   // Loop over all outer boundary points. This excludes ghost faces, but
   // includes ghost edges/corners on non-ghost faces.
   template <int CI, int CJ, int CK, typename F>
-  void loop_bnd(const F &f) const {
+  void loop_bnd(const array<int, dim> &group_nghostzones, const F &f) const {
     constexpr array<int, dim> offset{!CI, !CJ, !CK};
 
     for (int dir = 0; dir < dim; ++dir) {
@@ -274,8 +335,9 @@ public:
           array<int, dim> imin, imax;
           for (int d = 0; d < dim; ++d) {
             // by default, include interior and outer boundaries and ghosts
-            imin[d] = 0;
-            imax[d] = lsh[d] + offset[d];
+            int ghost_offset = nghostzones[d] - group_nghostzones[d];
+            imin[d] = ghost_offset;
+            imax[d] = lsh[d] + offset[d] - ghost_offset;
 
             // avoid covering edges and corners multiple times
             if (d < dir) {
@@ -303,122 +365,90 @@ public:
     }
   }
 
-  template <typename F>
-  void loop_all(const array<int, dim> &indextype, const F &f) const {
-    // typedef void (GridDescBase::*funptr)(const F &f) const;
-    // constexpr array<funptr, 8> funptrs{
-    //     &GridDescBase::loop_all<0, 0, 0, F>,
-    //     &GridDescBase::loop_all<1, 0, 0, F>,
-    //     &GridDescBase::loop_all<0, 1, 0, F>,
-    //     &GridDescBase::loop_all<1, 1, 0, F>,
-    //     &GridDescBase::loop_all<0, 0, 1, F>,
-    //     &GridDescBase::loop_all<1, 0, 1, F>,
-    //     &GridDescBase::loop_all<0, 1, 1, F>,
-    //     &GridDescBase::loop_all<1, 1, 1, F>,
-    // };
-    // return (this->*funptrs[indextype[0] + 2 * indextype[1] + 4 *
-    // indextype[2]])(
-    //     f);
+  template <int CI, int CJ, int CK, typename F>
+  void loop(where_t where, const array<int, dim> &group_nghostzones,
+            const F &f) const {
+    switch (where) {
+    case where_t::everywhere:
+      return loop_all<CI, CJ, CK>(group_nghostzones, f);
+    case where_t::interior:
+      return loop_int<CI, CJ, CK>(group_nghostzones, f);
+    case where_t::boundary:
+      return loop_bnd<CI, CJ, CK>(group_nghostzones, f);
+    default:
+      assert(0);
+    }
+  }
 
+  template <int CI, int CJ, int CK, typename F>
+  void loop(where_t where, const F &f) const {
+    loop<CI, CJ, CK>(where, nghostzones, f);
+  }
+
+  template <typename F>
+  void loop_idx(where_t where, const array<int, dim> &indextype,
+                const array<int, dim> &group_nghostzones, const F &f) const {
     switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
     case 0b000:
-      return loop_all<0, 0, 0>(f);
+      return loop<0, 0, 0>(where, group_nghostzones, f);
     case 0b001:
-      return loop_all<1, 0, 0>(f);
+      return loop<1, 0, 0>(where, group_nghostzones, f);
     case 0b010:
-      return loop_all<0, 1, 0>(f);
+      return loop<0, 1, 0>(where, group_nghostzones, f);
     case 0b011:
-      return loop_all<1, 1, 0>(f);
+      return loop<1, 1, 0>(where, group_nghostzones, f);
     case 0b100:
-      return loop_all<0, 0, 1>(f);
+      return loop<0, 0, 1>(where, group_nghostzones, f);
     case 0b101:
-      return loop_all<1, 0, 1>(f);
+      return loop<1, 0, 1>(where, group_nghostzones, f);
     case 0b110:
-      return loop_all<0, 1, 1>(f);
+      return loop<0, 1, 1>(where, group_nghostzones, f);
     case 0b111:
-      return loop_all<1, 1, 1>(f);
+      return loop<1, 1, 1>(where, group_nghostzones, f);
     default:
       assert(0);
     }
   }
 
   template <typename F>
-  void loop_int(const array<int, dim> &indextype, const F &f) const {
-    switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
-    case 0b000:
-      return loop_int<0, 0, 0>(f);
-    case 0b001:
-      return loop_int<1, 0, 0>(f);
-    case 0b010:
-      return loop_int<0, 1, 0>(f);
-    case 0b011:
-      return loop_int<1, 1, 0>(f);
-    case 0b100:
-      return loop_int<0, 0, 1>(f);
-    case 0b101:
-      return loop_int<1, 0, 1>(f);
-    case 0b110:
-      return loop_int<0, 1, 1>(f);
-    case 0b111:
-      return loop_int<1, 1, 1>(f);
-    default:
-      assert(0);
-    }
-  }
-
-  template <typename F>
-  void loop_bnd(const array<int, dim> &indextype, const F &f) const {
-    switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
-    case 0b000:
-      return loop_bnd<0, 0, 0>(f);
-    case 0b001:
-      return loop_bnd<1, 0, 0>(f);
-    case 0b010:
-      return loop_bnd<0, 1, 0>(f);
-    case 0b011:
-      return loop_bnd<1, 1, 0>(f);
-    case 0b100:
-      return loop_bnd<0, 0, 1>(f);
-    case 0b101:
-      return loop_bnd<1, 0, 1>(f);
-    case 0b110:
-      return loop_bnd<0, 1, 1>(f);
-    case 0b111:
-      return loop_bnd<1, 1, 1>(f);
-    default:
-      assert(0);
-    }
+  void loop_idx(where_t where, const array<int, dim> &indextype,
+                const F &f) const {
+    loop_idx(where, indextype, nghostzones, f);
   }
 };
 
+template <typename F>
+void loop_idx(const cGH *cctkGH, where_t where,
+              const array<int, dim> &indextype,
+              const array<int, dim> &nghostzones, const F &f) {
+  GridDescBase(cctkGH).loop_idx(where, indextype, nghostzones, f);
+}
+
+template <typename F>
+void loop_idx(const cGH *cctkGH, where_t where,
+              const array<int, dim> &indextype, const F &f) {
+  GridDescBase(cctkGH).loop_idx(where, indextype, f);
+}
+
+template <int CI, int CJ, int CK, typename F>
+void loop(const cGH *cctkGH, where_t where, const F &f) {
+  GridDescBase(cctkGH).loop<CI, CJ, CK>(where, f);
+}
+
+// Keep these for convenience
 template <int CI, int CJ, int CK, typename F>
 void loop_all(const cGH *cctkGH, const F &f) {
-  GridDescBase(cctkGH).loop_all<CI, CJ, CK>(f);
+  loop<CI, CJ, CK>(cctkGH, where_t::everywhere, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
 void loop_int(const cGH *cctkGH, const F &f) {
-  GridDescBase(cctkGH).loop_int<CI, CJ, CK>(f);
+  loop<CI, CJ, CK>(cctkGH, where_t::interior, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
 void loop_bnd(const cGH *cctkGH, const F &f) {
-  GridDescBase(cctkGH).loop_bnd<CI, CJ, CK>(f);
-}
-
-template <typename F>
-void loop_all(const cGH *cctkGH, const array<int, dim> &indextype, const F &f) {
-  GridDescBase(cctkGH).loop_all(indextype, f);
-}
-
-template <typename F>
-void loop_int(const cGH *cctkGH, const array<int, dim> &indextype, const F &f) {
-  GridDescBase(cctkGH).loop_int(indextype, f);
-}
-
-template <typename F>
-void loop_bnd(const cGH *cctkGH, const array<int, dim> &indextype, const F &f) {
-  GridDescBase(cctkGH).loop_bnd(indextype, f);
+  loop<CI, CJ, CK>(cctkGH, where_t::boundary, f);
 }
 
 } // namespace Loop
