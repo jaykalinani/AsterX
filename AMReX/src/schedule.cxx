@@ -274,6 +274,8 @@ void poison_invalid(const GHExt::LevelData &leveldata,
 }
 
 // Ensure grid functions are not nan
+// TODO: Parallelize this loop (and poison_invalid) further out, at
+// the loop over time levels and grid variables
 void check_valid(const GHExt::LevelData &leveldata,
                  const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
                  const function<string()> &msg) {
@@ -1257,63 +1259,66 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Check whether input variables have valid data
   {
-    const auto &restrict globaldata = ghext->globaldata;
     const vector<clause_t> &reads = decode_clauses(attribute, rdwr_t::read);
     for (const auto &rd : reads) {
-      for (int level = min_level; level < max_level; ++level) {
-        const auto &restrict leveldata = ghext->leveldata.at(level);
-        cGroup group;
-        int ierr = CCTK_GroupData(rd.gi, &group);
-        assert(!ierr);
+      if (CCTK_GroupTypeI(rd.gi) == CCTK_GF) {
 
-        // TODO: something about this cast
-        // (https://stackoverflow.com/questions/6179314/casting-pointers-and-the-ternary-operator-have-i-reinvented-the-wheel)
-        const GHExt::CommonGroupData *groupdata =
-            group.grouptype == CCTK_GF
-                ? static_cast<const GHExt::CommonGroupData *>(
-                      &leveldata.groupdata.at(rd.gi))
-                : static_cast<const GHExt::CommonGroupData *>(
-                      &globaldata.scalargroupdata.at(rd.gi));
+        for (int level = min_level; level < max_level; ++level) {
+          const auto &restrict leveldata = ghext->leveldata.at(level);
+          const auto &restrict groupdata = leveldata.groupdata.at(rd.gi);
+          const valid_t &need = rd.valid;
+          const valid_t &have = groupdata.valid.at(rd.tl).at(rd.vi);
+          // "x <= y" for booleans means "x implies y"
+          const bool cond = need.valid_int <= have.valid_int &&
+                            need.valid_bnd <= have.valid_bnd;
+          if (!cond)
+            CCTK_VERROR(
+                "Found invalid input data: iteration %d %s: %s::%s, level %d, "
+                "variable %s%s: need %s, have %s",
+                cctkGH->cctk_iteration, attribute->where, attribute->thorn,
+                attribute->routine, leveldata.level,
+                CCTK_FullVarName(groupdata.firstvarindex + rd.vi),
+                string("_p", rd.tl).c_str(), string(need).c_str(),
+                string(have).c_str());
+          check_valid(leveldata, groupdata, rd.vi, rd.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking input";
+            return buf.str();
+          });
+        }
+
+      } else { // CCTK_SCALAR
+
+        const auto &restrict scalargroupdata =
+            ghext->globaldata.scalargroupdata.at(rd.gi);
         const valid_t &need = rd.valid;
-        const valid_t &have = groupdata->valid.at(rd.tl).at(rd.vi);
+        const valid_t &have = scalargroupdata.valid.at(rd.tl).at(rd.vi);
         // "x <= y" for booleans means "x implies y"
         const bool cond = need.valid_int <= have.valid_int &&
                           need.valid_bnd <= have.valid_bnd;
         if (!cond)
-          CCTK_VERROR(
-              "Found invalid input data: iteration %d %s: %s::%s, level %d, "
-              "variable %s%s: need %s, have %s",
-              cctkGH->cctk_iteration, attribute->where, attribute->thorn,
-              attribute->routine, leveldata.level,
-              CCTK_FullVarName(groupdata->firstvarindex + rd.vi),
-              string("_p", rd.tl).c_str(), string(need).c_str(),
-              string(have).c_str());
-        if (group.grouptype == CCTK_GF) {
-          check_valid(
-              leveldata, leveldata.groupdata.at(rd.gi), rd.vi, rd.tl, [&]() {
-                ostringstream buf;
-                buf << "CallFunction iteration " << cctkGH->cctk_iteration
-                    << " " << attribute->where << ": " << attribute->thorn
-                    << "::" << attribute->routine << " checking input";
-                return buf.str();
-              });
-        } else {
-          check_valid(
-              globaldata.scalargroupdata.at(rd.gi), rd.vi, rd.tl, [&]() {
-                ostringstream buf;
-                buf << "CallFunction iteration " << cctkGH->cctk_iteration
-                    << " " << attribute->where << ": " << attribute->thorn
-                    << "::" << attribute->routine << " checking input";
-                return buf.str();
-              });
-        }
+          CCTK_VERROR("Found invalid input data: iteration %d %s: %s::%s, "
+                      "variable %s%s: need %s, have %s",
+                      cctkGH->cctk_iteration, attribute->where,
+                      attribute->thorn, attribute->routine,
+                      CCTK_FullVarName(scalargroupdata.firstvarindex + rd.vi),
+                      string("_p", rd.tl).c_str(), string(need).c_str(),
+                      string(have).c_str());
+        check_valid(scalargroupdata, rd.vi, rd.tl, [&]() {
+          ostringstream buf;
+          buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+              << attribute->where << ": " << attribute->thorn
+              << "::" << attribute->routine << " checking input";
+          return buf.str();
+        });
       }
     }
   }
 
   // Poison those output variables that are not input variables
   if (poison_undefined_values) {
-    auto &restrict globaldata = ghext->globaldata;
     map<clause_t, valid_t> isread;
     const vector<clause_t> &reads = decode_clauses(attribute, rdwr_t::read);
     for (const auto &rd : reads) {
@@ -1330,22 +1335,27 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       if (isread.count(cl) > 0)
         need = isread[cl];
 
-      const valid_t &provided = wr.valid;
-      for (int level = min_level; level < max_level; ++level) {
-        auto &restrict leveldata = ghext->leveldata.at(level);
-        cGroup group;
-        int ierr = CCTK_GroupData(wr.gi, &group);
-        assert(!ierr);
+      if (CCTK_GroupTypeI(wr.gi) == CCTK_GF) {
 
-        GHExt::CommonGroupData *groupdata =
-            group.grouptype == CCTK_GF
-                ? static_cast<GHExt::CommonGroupData *>(
-                      &leveldata.groupdata.at(wr.gi))
-                : static_cast<GHExt::CommonGroupData *>(
-                      &globaldata.scalargroupdata.at(wr.gi));
-        valid_t &have = groupdata->valid.at(wr.tl).at(wr.vi);
+        for (int level = min_level; level < max_level; ++level) {
+          auto &restrict leveldata = ghext->leveldata.at(level);
+          auto &restrict groupdata = leveldata.groupdata.at(wr.gi);
+          const valid_t &provided = wr.valid;
+          valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
+          have.valid_int &= need.valid_int || !provided.valid_int;
+          have.valid_bnd &= need.valid_bnd || !provided.valid_bnd;
+          poison_invalid(leveldata, groupdata, wr.vi, wr.tl);
+        }
+
+      } else { // CCTK_SCALAR
+
+        auto &restrict scalargroupdata =
+            ghext->globaldata.scalargroupdata.at(wr.gi);
+        const valid_t &provided = wr.valid;
+        valid_t &have = scalargroupdata.valid.at(wr.tl).at(wr.vi);
         have.valid_int &= need.valid_int || !provided.valid_int;
         have.valid_bnd &= need.valid_bnd || !provided.valid_bnd;
+        poison_invalid(scalargroupdata, wr.vi, wr.tl);
       }
     }
   }
@@ -1403,90 +1413,83 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Mark output variables as having valid data
   {
-    auto &restrict globaldata = ghext->globaldata;
     const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
     for (const auto &wr : writes) {
-      for (int level = min_level; level < max_level; ++level) {
-        auto &restrict leveldata = ghext->leveldata.at(level);
-        cGroup group;
-        int ierr = CCTK_GroupData(wr.gi, &group);
-        assert(!ierr);
+      if (CCTK_GroupTypeI(wr.gi) == CCTK_GF) {
 
-        GHExt::CommonGroupData *groupdata =
-            group.grouptype == CCTK_GF
-                ? static_cast<GHExt::CommonGroupData *>(
-                      &leveldata.groupdata.at(wr.gi))
-                : static_cast<GHExt::CommonGroupData *>(
-                      &globaldata.scalargroupdata.at(wr.gi));
+        for (int level = min_level; level < max_level; ++level) {
+          auto &restrict leveldata = ghext->leveldata.at(level);
+          auto &restrict groupdata = leveldata.groupdata.at(wr.gi);
+          const valid_t &provided = wr.valid;
+          valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
+          have.valid_int |= provided.valid_int;
+          have.valid_bnd |= provided.valid_bnd;
+          check_valid(leveldata, groupdata, wr.vi, wr.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking output";
+            return buf.str();
+          });
+        }
+
+      } else { // CCTK_SCALAR
+
+        auto &restrict scalargroupdata =
+            ghext->globaldata.scalargroupdata.at(wr.gi);
         const valid_t &provided = wr.valid;
-        valid_t &have = groupdata->valid.at(wr.tl).at(wr.vi);
-        // Code cannot invalidate...
+        valid_t &have = scalargroupdata.valid.at(wr.tl).at(wr.vi);
         have.valid_int |= provided.valid_int;
         have.valid_bnd |= provided.valid_bnd;
-        if (group.grouptype == CCTK_GF) {
-          check_valid(
-              leveldata, leveldata.groupdata.at(wr.gi), wr.vi, wr.tl, [&]() {
-                ostringstream buf;
-                buf << "CallFunction iteration " << cctkGH->cctk_iteration
-                    << " " << attribute->where << ": " << attribute->thorn
-                    << "::" << attribute->routine << " checking output";
-                return buf.str();
-              });
-        } else {
-          check_valid(
-              globaldata.scalargroupdata.at(wr.gi), wr.vi, wr.tl, [&]() {
-                ostringstream buf;
-                buf << "CallFunction iteration " << cctkGH->cctk_iteration
-                    << " " << attribute->where << ": " << attribute->thorn
-                    << "::" << attribute->routine << " checking output";
-                return buf.str();
-              });
-        }
+        check_valid(scalargroupdata, wr.vi, wr.tl, [&]() {
+          ostringstream buf;
+          buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+              << attribute->where << ": " << attribute->thorn
+              << "::" << attribute->routine << " checking output";
+          return buf.str();
+        });
       }
     }
   }
+
   // Mark invalid variables as having invalid data
   {
-    auto &restrict globaldata = ghext->globaldata;
     const vector<clause_t> &invalids =
         decode_clauses(attribute, rdwr_t::invalid);
     for (const auto &inv : invalids) {
-      for (int level = min_level; level < max_level; ++level) {
-        auto &restrict leveldata = ghext->leveldata.at(level);
-        cGroup group;
-        int ierr = CCTK_GroupData(inv.gi, &group);
-        assert(!ierr);
+      if (CCTK_GroupTypeI(inv.gi) == CCTK_GF) {
 
-        GHExt::CommonGroupData *groupdata =
-            group.grouptype == CCTK_GF
-                ? static_cast<GHExt::CommonGroupData *>(
-                      &leveldata.groupdata.at(inv.gi))
-                : static_cast<GHExt::CommonGroupData *>(
-                      &globaldata.scalargroupdata.at(inv.gi));
+        for (int level = min_level; level < max_level; ++level) {
+          auto &restrict leveldata = ghext->leveldata.at(level);
+          auto &restrict groupdata = leveldata.groupdata.at(inv.gi);
+          const valid_t &provided = inv.valid;
+          valid_t &have = groupdata.valid.at(inv.tl).at(inv.vi);
+          have.valid_int &= !provided.valid_int;
+          have.valid_bnd &= !provided.valid_bnd;
+          check_valid(leveldata, groupdata, inv.vi, inv.tl, [&]() {
+            ostringstream buf;
+            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+                << attribute->where << ": " << attribute->thorn
+                << "::" << attribute->routine << " checking output";
+            return buf.str();
+          });
+        }
+
+      } else { // CCTK_SCALAR
+
+        auto &restrict scalargroupdata =
+            ghext->globaldata.scalargroupdata.at(inv.gi);
         const valid_t &provided = inv.valid;
-        valid_t &have = groupdata->valid.at(inv.tl).at(inv.vi);
-        // Code cannot invalidate...
+        valid_t &have = scalargroupdata.valid.at(inv.tl).at(inv.vi);
         have.valid_int &= !provided.valid_int;
         have.valid_bnd &= !provided.valid_bnd;
-        if (group.grouptype == CCTK_GF) {
-          check_valid(
-              leveldata, leveldata.groupdata.at(inv.gi), inv.vi, inv.tl, [&]() {
-                ostringstream buf;
-                buf << "CallFunction iteration " << cctkGH->cctk_iteration
-                    << " " << attribute->where << ": " << attribute->thorn
-                    << "::" << attribute->routine << " checking output";
-                return buf.str();
-              });
-        } else {
-          check_valid(
-              globaldata.scalargroupdata.at(inv.gi), inv.vi, inv.tl, [&]() {
-                ostringstream buf;
-                buf << "CallFunction iteration " << cctkGH->cctk_iteration
-                    << " " << attribute->where << ": " << attribute->thorn
-                    << "::" << attribute->routine << " checking output";
-                return buf.str();
-              });
-        }
+        check_valid(scalargroupdata, inv.vi, inv.tl, [&]() {
+          ostringstream buf;
+          buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+              << attribute->where << ": " << attribute->thorn
+              << "::" << attribute->routine << " checking output";
+          return buf.str();
+        });
       }
     }
   }
