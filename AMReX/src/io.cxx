@@ -97,7 +97,7 @@ struct TileBox {
   array<int, dim> tile_min;
   array<int, dim> tile_max;
 };
-extern vector<TileBox> thread_local_tilebox;
+
 void enter_level_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata);
 void leave_level_mode(cGH *restrict cctkGH,
@@ -140,7 +140,8 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
     file << "\t" << col++ << ":" << varname;
   file << "\n";
 
-  // get more precision for floats, could also use https://stackoverflow.com/a/30968371
+  // get more precision for floats, could also use
+  // https://stackoverflow.com/a/30968371
   file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
 
   for (const auto &leveldata : ghext->leveldata) {
@@ -148,7 +149,7 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
     const auto &groupdata = leveldata.groupdata.at(gi);
     const int tl = 0;
     for (MFIter mfi(*leveldata.mfab0); mfi.isValid(); ++mfi) {
-      TileBox &tilebox = thread_local_tilebox.at(omp_get_thread_num());
+      TileBox tilebox;
       enter_local_mode(const_cast<cGH *>(cctkGH), tilebox, leveldata, mfi);
       GridPtrDesc grid(leveldata, mfi);
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
