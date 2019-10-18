@@ -341,7 +341,7 @@ void OutputScalars(const cGH *restrict cctkGH) {
     const int tl = 0;
     file << cctkGH->cctk_iteration << "\t" << cctkGH->cctk_time;
     for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-      file << "\t" << *scalargroupdata.data.at(tl).at(vi);
+      file << "\t" << scalargroupdata.data.at(tl).at(vi);
     }
     file << "\n";
   }

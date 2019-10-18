@@ -342,7 +342,8 @@ void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
   assert(valid.valid_bnd);
 
   if (!valid.valid_int) {
-    CCTK_REAL *restrict const ptr = scalargroupdata.data.at(tl).at(vi);
+    CCTK_REAL *restrict const ptr =
+        const_cast<CCTK_REAL *>(&scalargroupdata.data.at(tl).at(vi));
     *ptr = 0.0 / 0.0;
   }
 }
@@ -363,7 +364,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
 
   atomic<bool> found_nan{false};
   if (valid.valid_int) {
-    CCTK_REAL *restrict const ptr = scalargroupdata.data.at(tl).at(vi);
+    const CCTK_REAL *restrict const ptr = &scalargroupdata.data.at(tl).at(vi);
     if (CCTK_BUILTIN_EXPECT(isnan(*ptr), false)) {
       found_nan = true;
     }
@@ -521,7 +522,8 @@ void enter_global_mode(cGH *restrict cctkGH) {
       for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
         const auto &restrict vars = scalargroupdata.data.at(tl);
         for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-          cctkGH->data[scalargroupdata.firstvarindex + vi][tl] = vars.at(vi);
+          cctkGH->data[scalargroupdata.firstvarindex + vi][tl] =
+              const_cast<CCTK_REAL *>(&vars.at(vi));
         }
       }
     }

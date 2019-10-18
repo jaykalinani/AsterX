@@ -106,10 +106,7 @@ struct GHExt {
     // all data that exists on all levels
 
     struct ScalarGroupData : public CommonGroupData {
-      // TODO: find out how to do this without a pointer to a single double but
-      // also working around const vector<CCTK_REAL> issues
-      // TODO: use unique_ptr
-      vector<vector<CCTK_REAL *> > data; // [time level][var index]
+      vector<vector<CCTK_REAL> > data; // [time level][var index]
     };
     // TODO: right now this is sized for the total number of groups
     vector<ScalarGroupData> scalargroupdata; // [group index]
