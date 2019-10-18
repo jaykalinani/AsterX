@@ -13,6 +13,7 @@
 #include <array>
 #include <iostream>
 #include <string>
+#include <tuple>
 
 namespace Loop {
 using namespace std;
@@ -78,6 +79,13 @@ template <typename T, int D> struct vect {
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] * a;
     return r;
+  }
+
+  friend bool operator==(const vect &x, const vect &y) {
+    return x.elts == y.elts;
+  }
+  friend bool operator<(const vect &x, const vect &y) {
+    return x.elts < y.elts;
   }
 
   friend ostream &operator<<(ostream &os, const vect &x) {

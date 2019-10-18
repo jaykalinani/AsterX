@@ -32,6 +32,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -564,20 +565,13 @@ struct clause_t {
   int gi, vi, tl;
   valid_t valid;
 
+  friend bool operator==(const clause_t &x, const clause_t &y) {
+    return make_tuple(x.gi, x.vi, x.tl, x.valid) ==
+           make_tuple(y.gi, y.vi, y.tl, y.valid);
+  }
   friend bool operator<(const clause_t &x, const clause_t &y) {
-    if (x.gi < y.gi)
-      return true;
-    if (x.gi > y.gi)
-      return false;
-    if (x.vi < y.vi)
-      return true;
-    if (x.vi > y.vi)
-      return false;
-    if (x.tl < y.tl)
-      return true;
-    if (x.tl > y.tl)
-      return false;
-    return x.valid < y.valid;
+    return make_tuple(x.gi, x.vi, x.tl, x.valid) <
+           make_tuple(y.gi, y.vi, y.tl, y.valid);
   }
 
   friend ostream &operator<<(ostream &os, const clause_t &cl) {
