@@ -113,6 +113,28 @@ extern prolongate_3d_rf2<1, 1, 0, true, true, true, 2, 2, 1>
 extern prolongate_3d_rf2<1, 1, 1, true, true, true, 2, 2, 2>
     prolongate_cons_3d_rf2_c111_o1;
 
+// Prolongation operators for discrete differential forms:
+// interpolating (non-conservative) for vertex centred directions,
+// conservative for cell centred directions. We use linear
+// interpolation for vertex centred and constant interpolation for
+// cell centred directions.
+extern prolongate_3d_rf2<0, 0, 0, false, false, false, 1, 1, 1>
+    prolongate_ddf_3d_rf2_c000_o1;
+extern prolongate_3d_rf2<0, 0, 1, false, false, true, 1, 1, 0>
+    prolongate_ddf_3d_rf2_c001_o1;
+extern prolongate_3d_rf2<0, 1, 0, false, true, false, 1, 0, 1>
+    prolongate_ddf_3d_rf2_c010_o1;
+extern prolongate_3d_rf2<0, 1, 1, false, true, true, 1, 0, 0>
+    prolongate_ddf_3d_rf2_c011_o1;
+extern prolongate_3d_rf2<1, 0, 0, true, false, false, 0, 1, 1>
+    prolongate_ddf_3d_rf2_c100_o1;
+extern prolongate_3d_rf2<1, 0, 1, true, false, true, 0, 1, 0>
+    prolongate_ddf_3d_rf2_c101_o1;
+extern prolongate_3d_rf2<1, 1, 0, true, true, false, 0, 0, 1>
+    prolongate_ddf_3d_rf2_c110_o1;
+extern prolongate_3d_rf2<1, 1, 1, true, true, true, 0, 0, 0>
+    prolongate_ddf_3d_rf2_c111_o1;
+
 } // namespace AMReX
 
 #endif // #ifndef PROLONGATE_3D_RF2_HXX

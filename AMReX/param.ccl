@@ -152,14 +152,17 @@ CCTK_INT ghost_size "Number of ghost zones"
 
 
 
+KEYWORD prolongation_type "Prolongation type"
+{
+  "interpolate" :: "interpolate between data points"
+  "conservative" :: "interpolate cell averages, ensuring conservation"
+  "ddf" :: "interpolate in vertex centred and conserve in cell centred directions"
+} "interpolate"
+
 CCTK_INT prolongation_order "Prolongation order"
 {
   0:* :: ""
 } 1
-
-BOOLEAN conservative_prolongation "Conservative prolongation"
-{
-} no
 
 
 

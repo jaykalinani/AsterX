@@ -347,7 +347,23 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
 
-  if (!conservative_prolongation) {
+  enum class interp_t { unset, interpolate, conservative, ddf };
+  static interp_t interp = interp_t::unset;
+  if (interp == interp_t::unset) {
+    if (CCTK_EQUALS(prolongation_type, "interpolate")) {
+      interp = interp_t::interpolate;
+    } else if (CCTK_EQUALS(prolongation_type, "conservative")) {
+      interp = interp_t::conservative;
+    } else if (CCTK_EQUALS(prolongation_type, "ddf")) {
+      interp = interp_t::ddf;
+    } else {
+      assert(0);
+    }
+  }
+  assert(interp != interp_t::unset);
+
+  switch (interp) {
+  case interp_t::interpolate:
 
     switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
 
@@ -423,8 +439,9 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       }
       break;
     }
+    break;
 
-  } else { // if conservative_prolongation
+  case interp_t::conservative:
 
     switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
 
@@ -484,10 +501,40 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
       }
       break;
     }
-  } // if conservative_prolongation
+    break;
 
-  CCTK_VERROR("Unsupported index type 0b%d%d%d and for order %d", indextype[0],
-              indextype[1], indextype[2], prolongation_order);
+  case interp_t::ddf:
+
+    switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
+    case 0b000:
+      return &prolongate_ddf_3d_rf2_c000_o1;
+    case 0b001:
+      return &prolongate_ddf_3d_rf2_c001_o1;
+    case 0b010:
+      return &prolongate_ddf_3d_rf2_c010_o1;
+    case 0b011:
+      return &prolongate_ddf_3d_rf2_c011_o1;
+    case 0b100:
+      return &prolongate_ddf_3d_rf2_c100_o1;
+    case 0b101:
+      return &prolongate_ddf_3d_rf2_c101_o1;
+    case 0b110:
+      return &prolongate_ddf_3d_rf2_c110_o1;
+    case 0b111:
+      return &prolongate_ddf_3d_rf2_c111_o1;
+    }
+    break;
+
+  case interp_t::unset:
+    // do nothing; errors are handled below
+    break;
+
+  } // switch prolongation_type
+
+  CCTK_VERROR("Unsupported combination of prolongation_type \"%s\", "
+              "prolongation order %d, and index type [%d,%d,%d]",
+              prolongation_type, prolongation_order, indextype[0], indextype[1],
+              indextype[2]);
   assert(0);
 }
 

@@ -25,13 +25,15 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
   assert(order_type == PARAMETER_INT);
   const CCTK_INT operator_order = *static_cast<const CCTK_INT*>(order_p);
 
-  int conservative_type;
-  const void *conservative_p =
-    CCTK_ParameterGet("conservative_prolongation", "AMReX", &conservative_type);
-  assert(conservative_p);
-  assert(conservative_type == PARAMETER_BOOLEAN);
-  const CCTK_INT conservative_prolongation =
-    *static_cast<const CCTK_INT*>(conservative_p);
+  int prolongation_type_type;
+  const void *prolongation_type_p =
+    CCTK_ParameterGet("prolongation_type", "AMReX", &prolongation_type_type);
+  assert(prolongation_type_p);
+  assert(prolongation_type_type == PARAMETER_KEYWORD);
+  const char* prolongation_type =
+    *static_cast<const char* const*>(prolongation_type_p);
+  const bool conservative_prolongation =
+    CCTK_EQUALS(prolongation_type, "conservative");
 
   // the grid stores the average values of the underlying function
   // (x*y*z)**n which amounts to storing differences of the anti-derivative
@@ -97,13 +99,15 @@ extern "C" void TestProlongate_Check(CCTK_ARGUMENTS) {
   assert(order_type == PARAMETER_INT);
   const CCTK_INT operator_order = *static_cast<const CCTK_INT*>(order_p);
 
-  int conservative_type;
-  const void *conservative_p =
-    CCTK_ParameterGet("conservative_prolongation", "AMReX", &conservative_type);
-  assert(conservative_p);
-  assert(conservative_type == PARAMETER_BOOLEAN);
-  const CCTK_INT conservative_prolongation =
-    *static_cast<const CCTK_INT*>(conservative_p);
+  int prolongation_type_type;
+  const void *prolongation_type_p =
+    CCTK_ParameterGet("prolongation_type", "AMReX", &prolongation_type_type);
+  assert(prolongation_type_p);
+  assert(prolongation_type_type == PARAMETER_KEYWORD);
+  const char* prolongation_type =
+    *static_cast<const char* const*>(prolongation_type_p);
+  const bool conservative_prolongation =
+    CCTK_EQUALS(prolongation_type, "conservative");
 
   // the grid stores the average values of the underlying function
   // (x*y*z)**n which amounts to storing differences of the anti-derivative

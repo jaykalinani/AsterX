@@ -35,12 +35,14 @@ AMReX::max_num_levels = $nlevels
 AMReX::regrid_every = 16
 AMReX::regrid_error_threshold = 0.01
 
-AMReX::conservative_prolongation = yes
+AMReX::prolongation_type = "conservative"
 AMReX::do_reflux = yes
 
 AMReX::dtfac = 0.25
 
 HydroToyAMReX::setup = "spherical shock"
+
+HydroToyAMReX::output_every = 1
 
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
