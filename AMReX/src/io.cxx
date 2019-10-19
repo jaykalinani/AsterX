@@ -244,13 +244,42 @@ void OutputNorms(const cGH *restrict cctkGH) {
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
 
+  ofstream file;
+  if (is_root) {
+    ostringstream buf;
+    buf << out_dir << "/norms.it" << setw(6) << setfill('0') << cctk_iteration
+        << ".tsv";
+    const string filename = buf.str();
+    file = ofstream(filename);
+    file << "# 1:iteration"
+         << "\t"
+         << "2:time"
+         << "\t"
+         << "3:varname"
+         << "\t"
+         << "4:min"
+         << "\t"
+         << "5:max"
+         << "\t"
+         << "6:sum"
+         << "\t"
+         << "7:avg"
+         << "\t"
+         << "8:stddev"
+         << "\t"
+         << "9:volume"
+         << "\t"
+         << "10:maxabs"
+         << "\t"
+         << "11:L1norm"
+         << "\t"
+         << "12:L2norm"
+         << "\n";
+  }
+
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
-
-    if (group.grouptype != CCTK_GF)
+    if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
 
     const int level = 0;
@@ -282,13 +311,17 @@ void OutputNorms(const cGH *restrict cctkGH) {
 #endif
 
       if (is_root)
-        cout << "  "
-             << unique_ptr<char>(CCTK_FullName(groupdata.firstvarindex + vi))
-                    .get()
-             << ": maxabs=" << red.maxabs << " sum=" << red.sum
-             << " vol=" << red.vol << "\n";
+        file << cctk_iteration << "\t" << cctk_time << "\t"
+             << CCTK_FullVarName(groupdata.firstvarindex + vi) << "\t"
+             << red.min << "\t" << red.max << "\t" << red.sum << "\t"
+             << red.avg() << "\t" << red.sdv() << "\t" << red.norm0() << "\t"
+             << red.norm1() << "\t" << red.norm2() << "\t" << red.norm_inf()
+             << "\n";
     }
   }
+
+  if (is_root)
+    file.close();
 }
 
 void OutputScalars(const cGH *restrict cctkGH) {
