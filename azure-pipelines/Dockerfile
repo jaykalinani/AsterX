@@ -16,16 +16,16 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5
     rm cmake-3.14.5-Linux-x86_64.tar.gz
 
 # Build AMReX
-RUN wget https://github.com/AMReX-Codes/amrex/archive/19.09.tar.gz && \
-    tar xzf 19.09.tar.gz && \
-    cd amrex-19.09 && \
+RUN wget https://github.com/AMReX-Codes/amrex/archive/19.10.tar.gz && \
+    tar xzf 19.10.tar.gz && \
+    cd amrex-19.10 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/cactus/amrex .. && \
     make -j2 && \
     make -j2 install && \
     cd ../.. && \
-    rm -rf 19.09.tar.gz amrex-19.09
+    rm -rf 19.10.tar.gz amrex-19.10
 
 # As documentation
 COPY Dockerfile /Dockerfile
