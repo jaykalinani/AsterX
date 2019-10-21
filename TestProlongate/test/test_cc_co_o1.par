@@ -1,5 +1,5 @@
 ActiveThorns = "
-    AMReX
+    CarpetX
     Formaline
     IOUtil
     TestProlongate
@@ -13,26 +13,26 @@ Cactus::cctk_show_schedule = no
 
 Cactus::cctk_itlast = 2
 
-AMReX::ghost_size = 3
-AMReX::prolongation_type = "conservative"
-AMReX::prolongation_order = 1
-AMReX::verbose = yes
+CarpetX::ghost_size = 3
+CarpetX::prolongation_type = "conservative"
+CarpetX::prolongation_order = 1
+CarpetX::verbose = yes
 
-AMReX::ncells_x = $ncells
-AMReX::ncells_y = $ncells
-AMReX::ncells_z = $ncells
+CarpetX::ncells_x = $ncells
+CarpetX::ncells_y = $ncells
+CarpetX::ncells_z = $ncells
 
-AMReX::blocking_factor_x = $blocking_factor
-AMReX::blocking_factor_y = 1 # $blocking_factor
-AMReX::blocking_factor_z = 1 # $blocking_factor
+CarpetX::blocking_factor_x = $blocking_factor
+CarpetX::blocking_factor_y = 1 # $blocking_factor
+CarpetX::blocking_factor_z = 1 # $blocking_factor
 
-AMReX::max_num_levels = $nlevels
-AMReX::regrid_every = 1
-AMReX::regrid_error_threshold = 0.01
+CarpetX::max_num_levels = $nlevels
+CarpetX::regrid_every = 1
+CarpetX::regrid_error_threshold = 0.01
 
-AMReX::dtfac = 0.5
+CarpetX::dtfac = 0.5
 
-AMReX::out_tsv = yes
+CarpetX::out_tsv = yes
 
 IO::out_dir = $parfile
 IO::out_every = 1  #TODO $ncells * 2 ** ($nlevels - 1) / 2

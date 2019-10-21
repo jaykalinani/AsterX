@@ -1,0 +1,34 @@
+ActiveThorns = "
+    CarpetX
+    Formaline
+    IOUtil
+    WaveToyCarpetX
+"
+ 
+$nlevels = 6
+$ncells = 16
+
+Cactus::cctk_show_schedule = no
+
+Cactus::cctk_itlast = $ncells * 2 ** ($nlevels - 1) * 2
+
+# CarpetX::verbose = yes
+
+CarpetX::ncells_x = $ncells
+CarpetX::ncells_y = $ncells
+CarpetX::ncells_z = $ncells
+
+CarpetX::max_num_levels = $nlevels
+CarpetX::regrid_every = 16
+CarpetX::regrid_error_threshold = 0.01
+
+CarpetX::dtfac = 0.5
+
+WaveToyCarpetX::initial_condition = "periodic Gaussian"
+
+# WaveToyCarpetX::spatial_frequency_x = 0.5
+# WaveToyCarpetX::spatial_frequency_y = 0.0
+# WaveToyCarpetX::spatial_frequency_z = 0.0
+
+IO::out_dir = $parfile
+IO::out_every = 16   #TODO $ncells * 2 ** ($nlevels - 1) / 2

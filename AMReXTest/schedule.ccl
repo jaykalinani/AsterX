@@ -1,7 +1,0 @@
-# Schedule definitions for thorn AMReXTest
-
-SCHEDULE AMReXTest_CheckLoops AT basegrid
-{
-  LANG: C
-  OPTIONS: level
-} "Check looping constructs"

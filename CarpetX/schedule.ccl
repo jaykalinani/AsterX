@@ -1,0 +1,24 @@
+# Schedule definitions for thorn CarpetX
+
+SCHEDULE CarpetX_Startup AT startup AS Driver_Startup
+{
+  LANG: C
+} "Start up the driver"
+
+SCHEDULE CarpetX_InitError AT basegrid
+{
+  LANG: C
+  WRITES: CarpetX::regrid_error(everywhere)
+} "Initialize regridding error to zero"
+
+SCHEDULE CarpetX_SetLevel AT basegrid
+{
+  LANG: C
+  WRITES: CarpetX::refinement_level(everywhere)
+} "Set refinemenet level grid function"
+
+SCHEDULE CarpetX_Shutdown AT shutdown AS Driver_Shutdown
+{
+  LANG: C
+  OPTIONS: meta
+} "Shut down the driver"

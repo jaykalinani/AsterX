@@ -5,13 +5,13 @@
 SCHEDULE TestProlongate_Regrid AT CCTK_POSTINITIAL
 {
   LANG: C
-  WRITES: AMReX::regrid_error(everywhere)
+  WRITES: CarpetX::regrid_error(everywhere)
 } "Set up test grid"
 
 SCHEDULE TestProlongate_Regrid AT CCTK_POSTSTEP
 {
   LANG: C
-  WRITES: AMReX::regrid_error(everywhere)
+  WRITES: CarpetX::regrid_error(everywhere)
 } "Set up test grid"
 
 

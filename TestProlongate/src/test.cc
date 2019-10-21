@@ -19,7 +19,7 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
   // get prolongation order from driver, the parmeter is private since really
   // there is normally no reason to depend on it
   int order_type;
-  const void *order_p = CCTK_ParameterGet("prolongation_order", "AMReX",
+  const void *order_p = CCTK_ParameterGet("prolongation_order", "CarpetX",
                                           &order_type);
   assert(order_p);
   assert(order_type == PARAMETER_INT);
@@ -27,7 +27,7 @@ extern "C" void TestProlongate_Test(CCTK_ARGUMENTS) {
 
   int prolongation_type_type;
   const void *prolongation_type_p =
-    CCTK_ParameterGet("prolongation_type", "AMReX", &prolongation_type_type);
+    CCTK_ParameterGet("prolongation_type", "CarpetX", &prolongation_type_type);
   assert(prolongation_type_p);
   assert(prolongation_type_type == PARAMETER_KEYWORD);
   const char* prolongation_type =
@@ -93,7 +93,7 @@ extern "C" void TestProlongate_Check(CCTK_ARGUMENTS) {
   // get prolongation order from driver, the parmeter is private since really
   // there is normally no reason to depend on it
   int order_type;
-  const void *order_p = CCTK_ParameterGet("prolongation_order", "AMReX",
+  const void *order_p = CCTK_ParameterGet("prolongation_order", "CarpetX",
                                           &order_type);
   assert(order_p);
   assert(order_type == PARAMETER_INT);
@@ -101,7 +101,7 @@ extern "C" void TestProlongate_Check(CCTK_ARGUMENTS) {
 
   int prolongation_type_type;
   const void *prolongation_type_p =
-    CCTK_ParameterGet("prolongation_type", "AMReX", &prolongation_type_type);
+    CCTK_ParameterGet("prolongation_type", "CarpetX", &prolongation_type_type);
   assert(prolongation_type_p);
   assert(prolongation_type_type == PARAMETER_KEYWORD);
   const char* prolongation_type =
