@@ -1,16 +1,17 @@
 # Schedule definitions for thorn MaxwellToyAMReX
 
 if (evolve_b) {
+
   SCHEDULE MaxwellToyAMReX_Initialize AT initial
   {
     LANG: C
 
-    WRITES: potential_phi(everywhere)
-    WRITES: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
-    WRITES: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
-    WRITES: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
-    WRITES: current_rho(everywhere)
-    WRITES: current_jx(everywhere) current_jy(everywhere) current_jz(everywhere)
+    WRITES: potential_phi(interior)
+    WRITES: potential_ax(interior) potential_ay(interior) potential_az(interior)
+    WRITES: field_ex(interior) field_ey(interior) field_ez(interior)
+    WRITES: field_bx(interior) field_by(interior) field_bz(interior)
+    WRITES: current_rho(interior)
+    WRITES: current_jx(interior) current_jy(interior) current_jz(interior)
 
     SYNC: potential_phi
     SYNC: potential_ax potential_ay potential_az
@@ -19,16 +20,18 @@ if (evolve_b) {
     SYNC: current_rho
     SYNC: current_jx current_jy current_jz
   } "Set up initial conditions for the Maxwell equations"
+
 } else {
+
   SCHEDULE MaxwellToyAMReX_Initialize AT initial
   {
     LANG: C
 
-    WRITES: potential_phi(everywhere)
-    WRITES: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
-    WRITES: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
-    WRITES: current_rho(everywhere)
-    WRITES: current_jx(everywhere) current_jy(everywhere) current_jz(everywhere)
+    WRITES: potential_phi(interior)
+    WRITES: potential_ax(interior) potential_ay(interior) potential_az(interior)
+    WRITES: field_ex(interior) field_ey(interior) field_ez(interior)
+    WRITES: current_rho(interior)
+    WRITES: current_jx(interior) current_jy(interior) current_jz(interior)
  
     SYNC: potential_phi
     SYNC: potential_ax potential_ay potential_az
@@ -41,10 +44,12 @@ if (evolve_b) {
   {
     LANG: C
 
-    WRITES: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
+    READS: potential_ax(interior) potential_ay(interior) potential_az(interior)
+    WRITES: field_bx(interior) field_by(interior) field_bz(interior)
 
     SYNC: field_bx field_by field_bz
   } "Calculate the magnetic field"
+
 }
 
 SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
@@ -61,6 +66,20 @@ SCHEDULE MaxwellToyAMReX_EstimateError AT postinitial
 
 
 
+SCHEDULE MaxwellToyAMReX_EstimateError AT poststep
+{
+  LANG: C
+
+  READS: potential_phi(everywhere)
+  READS: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
+  READS: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
+  READS: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
+
+  WRITES: AMReX::regrid_error(interior)
+} "Estimate local error for regridding during evolution"
+
+
+
 SCHEDULE MaxwellToyAMReX_Boundaries AT postregrid
 {
   LANG: C
@@ -73,7 +92,10 @@ SCHEDULE MaxwellToyAMReX_Boundaries AT postregrid
   SYNC: current_jx current_jy current_jz
 } "Apply boundary conditions for the Maxwell equations"
 
+
+
 if (evolve_b) {
+
   SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
   {
     LANG: C
@@ -93,7 +115,9 @@ if (evolve_b) {
     SYNC: field_bx field_by field_bz
     SYNC: current_jx current_jy current_jz
   } "Evolve the Maxwell equations, step 1"
+
 } else {
+
   SCHEDULE MaxwellToyAMReX_Evolve1 AT evol
   {
     LANG: C
@@ -115,6 +139,7 @@ if (evolve_b) {
   {
     LANG: C
 
+    READS: potential_ax(interior) potential_ay(interior) potential_az(interior)
     WRITES: field_bx(interior) field_by(interior) field_bz(interior)
 
     SYNC: field_bx field_by field_bz
@@ -142,6 +167,8 @@ SCHEDULE MaxwellToyAMReX_Evolve2 AT evol AFTER (MaxwellToyAMReX_Evolve1, Maxwell
   SYNC: current_rho
 } "Evolve the Maxwell equations step 2"
 
+
+
 SCHEDULE MaxwellToyAMReX_Boundaries AT postrestrict
 {
   LANG: C
@@ -154,17 +181,7 @@ SCHEDULE MaxwellToyAMReX_Boundaries AT postrestrict
   SYNC: current_jx current_jy current_jz
 } "Apply boundary conditions for the Maxwell equations"
 
-SCHEDULE MaxwellToyAMReX_EstimateError AT poststep
-{
-  LANG: C
 
-  READS: potential_phi(everywhere)
-  READS: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
-  READS: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
-  READS: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
-
-  WRITES: AMReX::regrid_error(interior)
-} "Estimate local error for regridding during evolution"
 
 SCHEDULE MaxwellToyAMReX_Constraints AT analysis
 {
@@ -215,14 +232,16 @@ SCHEDULE MaxwellToyAMReX_Error AT analysis
   # TRIGGERS: errors_current_jx errors_current_jy errors_current_jz
 } "Calculate error for the Maxwell equations"
 
-SCHEDULE MaxwellToyAMReX_NaNCheck AT analysis AS zzz_MaxwellToyAMReX_NaNCheck
-{
-  LANG: C
-
-  READS: potential_phi(everywhere)
-  READS: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
-  READS: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
-  READS: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
-  READS: current_rho(everywhere)
-  READS: current_jx(everywhere) current_jy(everywhere) current_jz(everywhere)
-} "Check for NaNs"
+# SCHEDULE MaxwellToyAMReX_NaNCheck AT analysis AS zzz_MaxwellToyAMReX_NaNCheck
+# {
+#   LANG: C
+# 
+#   READS: potential_phi(everywhere)
+#   READS: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
+#   READS: field_ex(everywhere) field_ey(everywhere) field_ez(everywhere)
+#   READS: field_bx(everywhere) field_by(everywhere) field_bz(everywhere)
+#   READS: current_rho(everywhere)
+#   READS: current_jx(everywhere) current_jy(everywhere) current_jz(everywhere)
+#   READS: dive(everywhere)
+#   READS: divb(everywhere)
+# } "Check for NaNs"

@@ -1,7 +1,7 @@
 #include <loop.hxx>
 
 #include <cctk.h>
-#include <cctk_Arguments.h>
+#include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
 #include <cassert>
@@ -115,7 +115,7 @@ template <typename T, typename R> auto zderiv(R f(T t, T x, T y, T z), T dz) {
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void MaxwellToyAMReX_Initialize(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -330,7 +330,7 @@ extern "C" void MaxwellToyAMReX_Initialize(CCTK_ARGUMENTS) {
 }
 
 extern "C" void MaxwellToyAMReX_Dependents1(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Dependents1;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
@@ -359,321 +359,8 @@ extern "C" void MaxwellToyAMReX_Dependents1(CCTK_ARGUMENTS) {
   });
 }
 
-extern "C" void MaxwellToyAMReX_Evolve1(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  const CCTK_REAL dt = CCTK_DELTA_TIME;
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_p_(cctkGH, phi_p);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_p_(cctkGH, ax_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_p_(cctkGH, ay_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_p_(cctkGH, az_p);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_p_(cctkGH, ex_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_p_(cctkGH, ey_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_p_(cctkGH, ez_p);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_p_(cctkGH, bx_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_p_(cctkGH, by_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_p_(cctkGH, bz_p);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_p_(cctkGH, rho_p);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_p_(cctkGH, jx_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_p_(cctkGH, jy_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_p_(cctkGH, jz_p);
-
-  const Loop::GF3D<CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
-  const Loop::GF3D<CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
-
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
-
-  const Loop::GF3D<CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
-  const Loop::GF3D<CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
-
-#if 1
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    jx_(p.i, p.j, p.k) = jx_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    jy_(p.i, p.j, p.k) = jy_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    jz_(p.i, p.j, p.k) = jz_p_(p.i, p.j, p.k);
-  });
-
-  if (evolve_b) {
-    Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      bx_(p.i, p.j, p.k) =
-          bx_p_(p.i, p.j, p.k) +
-          dt * ((ey_p_(p.i, p.j, p.k + 1) - ey_p_(p.i, p.j, p.k)) / dz -
-                (ez_p_(p.i, p.j + 1, p.k) - ez_p_(p.i, p.j, p.k)) / dy);
-    });
-    Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      by_(p.i, p.j, p.k) =
-          by_p_(p.i, p.j, p.k) +
-          dt * ((ez_p_(p.i + 1, p.j, p.k) - ez_p_(p.i, p.j, p.k)) / dx -
-                (ex_p_(p.i, p.j, p.k + 1) - ex_p_(p.i, p.j, p.k)) / dz);
-    });
-    Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      bz_(p.i, p.j, p.k) =
-          bz_p_(p.i, p.j, p.k) +
-          dt * ((ex_p_(p.i, p.j + 1, p.k) - ex_p_(p.i, p.j, p.k)) / dy -
-                (ey_p_(p.i + 1, p.j, p.k) - ey_p_(p.i, p.j, p.k)) / dx);
-    });
-  }
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ax_(p.i, p.j, p.k) =
-        ax_p_(p.i, p.j, p.k) -
-        dt * ((phi_p_(p.i + 1, p.j, p.k) - phi_p_(p.i, p.j, p.k)) / dx +
-              ex_p_(p.i, p.j, p.k));
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ay_(p.i, p.j, p.k) =
-        ay_p_(p.i, p.j, p.k) -
-        dt * ((phi_p_(p.i, p.j + 1, p.k) - phi_p_(p.i, p.j, p.k)) / dy +
-              ey_p_(p.i, p.j, p.k));
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    az_(p.i, p.j, p.k) =
-        az_p_(p.i, p.j, p.k) -
-        dt * ((phi_p_(p.i, p.j, p.k + 1) - phi_p_(p.i, p.j, p.k)) / dz +
-              ez_p_(p.i, p.j, p.k));
-  });
-
-#else
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    jx_(p.i, p.j, p.k) = jx_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    jy_(p.i, p.j, p.k) = jy_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    jz_(p.i, p.j, p.k) = jz_p_(p.i, p.j, p.k);
-  });
-
-  if (evolve_b) {
-    Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      bx_(p.i, p.j, p.k) = bx_p_(p.i, p.j, p.k);
-    });
-    Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      by_(p.i, p.j, p.k) = by_p_(p.i, p.j, p.k);
-    });
-    Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      bz_(p.i, p.j, p.k) = bz_p_(p.i, p.j, p.k);
-    });
-  }
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ax_(p.i, p.j, p.k) = ax_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ay_(p.i, p.j, p.k) = ay_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    az_(p.i, p.j, p.k) = az_p_(p.i, p.j, p.k);
-  });
-
-#endif
-}
-
-extern "C" void MaxwellToyAMReX_Evolve2(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  const CCTK_REAL dt = CCTK_DELTA_TIME;
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_p_(cctkGH, phi_p);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_p_(cctkGH, ex_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_p_(cctkGH, ey_p);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_p_(cctkGH, ez_p);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_p_(cctkGH, rho_p);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
-
-  const Loop::GF3D<CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
-
-  const Loop::GF3D<CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
-  const Loop::GF3D<CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
-
-  const Loop::GF3D<CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
-
-#if 1
-
-  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    rho_(p.i, p.j, p.k) =
-        rho_p_(p.i, p.j, p.k) -
-        dt * ((jx_(p.i, p.j, p.k) - jx_(p.i - 1, p.j, p.k)) / dx +
-              (jy_(p.i, p.j, p.k) - jy_(p.i, p.j - 1, p.k)) / dy +
-              (jz_(p.i, p.j, p.k) - jz_(p.i, p.j, p.k - 1)) / dz);
-  });
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ex_(p.i, p.j, p.k) =
-        ex_p_(p.i, p.j, p.k) -
-        dt * ((by_(p.i, p.j, p.k) - by_(p.i, p.j, p.k - 1)) / dz -
-              (bz_(p.i, p.j, p.k) - bz_(p.i, p.j - 1, p.k)) / dy +
-              jx_(p.i, p.j, p.k));
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ey_(p.i, p.j, p.k) =
-        ey_p_(p.i, p.j, p.k) -
-        dt * ((bz_(p.i, p.j, p.k) - bz_(p.i - 1, p.j, p.k)) / dx -
-              (bx_(p.i, p.j, p.k) - bx_(p.i, p.j, p.k - 1)) / dz +
-              jy_(p.i, p.j, p.k));
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    ez_(p.i, p.j, p.k) =
-        ez_p_(p.i, p.j, p.k) -
-        dt * ((bx_(p.i, p.j, p.k) - bx_(p.i, p.j - 1, p.k)) / dy -
-              (by_(p.i, p.j, p.k) - by_(p.i - 1, p.j, p.k)) / dx +
-              jz_(p.i, p.j, p.k));
-  });
-
-  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    phi_(p.i, p.j, p.k) =
-        phi_p_(p.i, p.j, p.k) -
-        dt * ((ax_(p.i, p.j, p.k) - ax_(p.i - 1, p.j, p.k)) / dx +
-              (ay_(p.i, p.j, p.k) - ay_(p.i, p.j - 1, p.k)) / dy +
-              (az_(p.i, p.j, p.k) - az_(p.i, p.j, p.k - 1)) / dz);
-  });
-
-#else
-
-  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    rho_(p.i, p.j, p.k) = rho_p_(p.i, p.j, p.k);
-  });
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ex_(p.i, p.j, p.k) = ex_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    ey_(p.i, p.j, p.k) = ey_p_(p.i, p.j, p.k);
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    ez_(p.i, p.j, p.k) = ez_p_(p.i, p.j, p.k);
-  });
-
-  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    phi_(p.i, p.j, p.k) = phi_p_(p.i, p.j, p.k);
-  });
-
-#endif
-}
-
-extern "C" void MaxwellToyAMReX_Boundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-
-  // Do nothing; boundary conditions consist of synchronization only
-}
-
-extern "C" void MaxwellToyAMReX_NaNCheck(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
-
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
-
-  const auto nancheck = [&](const CCTK_REAL *restrict var,
-                            const Loop::PointDesc &p) {
-    if (CCTK_isnan(var[p.idx]))
-      CCTK_VERROR("Found nan at [%d,%d,%d]", p.i, p.j, p.k);
-  };
-
-  Loop::loop_all<0, 0, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(phi, p); });
-
-  Loop::loop_all<1, 0, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(ax, p); });
-  Loop::loop_all<0, 1, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(ay, p); });
-  Loop::loop_all<0, 0, 1>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(az, p); });
-
-  Loop::loop_all<1, 0, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(ex, p); });
-  Loop::loop_all<0, 1, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(ey, p); });
-  Loop::loop_all<0, 0, 1>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(ez, p); });
-
-  Loop::loop_all<0, 1, 1>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(bx, p); });
-  Loop::loop_all<1, 0, 1>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(by, p); });
-  Loop::loop_all<1, 1, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(bz, p); });
-
-  Loop::loop_all<0, 0, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(rho, p); });
-
-  Loop::loop_all<1, 0, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(jx, p); });
-  Loop::loop_all<0, 1, 0>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(jy, p); });
-  Loop::loop_all<0, 0, 1>(cctkGH,
-                          [&](const Loop::PointDesc &p) { nancheck(jz, p); });
-
-  // Loop::loop_all<0, 0, 0>(cctkGH,
-  //                         [&](const Loop::PointDesc &p) { nancheck(dive, p);
-  //                         });
-
-  // Loop::loop_all<1, 1, 1>(cctkGH,
-  //                         [&](const Loop::PointDesc &p) { nancheck(divb, p);
-  //                         });
-}
-
 extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
   const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
@@ -810,8 +497,284 @@ extern "C" void MaxwellToyAMReX_EstimateError(CCTK_ARGUMENTS) {
 #endif
 }
 
+extern "C" void MaxwellToyAMReX_Boundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Boundaries;
+  DECLARE_CCTK_PARAMETERS;
+
+  // Do nothing; boundary conditions consist of synchronization only
+}
+
+extern "C" void MaxwellToyAMReX_Evolve1(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Evolve1;
+  DECLARE_CCTK_PARAMETERS;
+
+  const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_p_(cctkGH, phi_p);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_p_(cctkGH, ax_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_p_(cctkGH, ay_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_p_(cctkGH, az_p);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_p_(cctkGH, ex_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_p_(cctkGH, ey_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_p_(cctkGH, ez_p);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_p_(cctkGH, bx_p);
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_p_(cctkGH, by_p);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_p_(cctkGH, bz_p);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_p_(cctkGH, rho_p);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_p_(cctkGH, jx_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_p_(cctkGH, jy_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_p_(cctkGH, jz_p);
+
+  const Loop::GF3D<CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
+  const Loop::GF3D<CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
+  const Loop::GF3D<CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
+
+  const Loop::GF3D<CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
+  const Loop::GF3D<CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
+
+  const Loop::GF3D<CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
+  const Loop::GF3D<CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
+  const Loop::GF3D<CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
+
+#if 1
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    jx_(p.i, p.j, p.k) = jx_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    jy_(p.i, p.j, p.k) = jy_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    jz_(p.i, p.j, p.k) = jz_p_(p.i, p.j, p.k);
+  });
+
+  if (evolve_b) {
+    Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      bx_(p.i, p.j, p.k) =
+          bx_p_(p.i, p.j, p.k) +
+          dt * ((ey_p_(p.i, p.j, p.k + 1) - ey_p_(p.i, p.j, p.k)) / dz -
+                (ez_p_(p.i, p.j + 1, p.k) - ez_p_(p.i, p.j, p.k)) / dy);
+    });
+    Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      by_(p.i, p.j, p.k) =
+          by_p_(p.i, p.j, p.k) +
+          dt * ((ez_p_(p.i + 1, p.j, p.k) - ez_p_(p.i, p.j, p.k)) / dx -
+                (ex_p_(p.i, p.j, p.k + 1) - ex_p_(p.i, p.j, p.k)) / dz);
+    });
+    Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      bz_(p.i, p.j, p.k) =
+          bz_p_(p.i, p.j, p.k) +
+          dt * ((ex_p_(p.i, p.j + 1, p.k) - ex_p_(p.i, p.j, p.k)) / dy -
+                (ey_p_(p.i + 1, p.j, p.k) - ey_p_(p.i, p.j, p.k)) / dx);
+    });
+  }
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ax_(p.i, p.j, p.k) =
+        ax_p_(p.i, p.j, p.k) -
+        dt * ((phi_p_(p.i + 1, p.j, p.k) - phi_p_(p.i, p.j, p.k)) / dx +
+              ex_p_(p.i, p.j, p.k));
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ay_(p.i, p.j, p.k) =
+        ay_p_(p.i, p.j, p.k) -
+        dt * ((phi_p_(p.i, p.j + 1, p.k) - phi_p_(p.i, p.j, p.k)) / dy +
+              ey_p_(p.i, p.j, p.k));
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    az_(p.i, p.j, p.k) =
+        az_p_(p.i, p.j, p.k) -
+        dt * ((phi_p_(p.i, p.j, p.k + 1) - phi_p_(p.i, p.j, p.k)) / dz +
+              ez_p_(p.i, p.j, p.k));
+  });
+
+#else
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    jx_(p.i, p.j, p.k) = jx_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    jy_(p.i, p.j, p.k) = jy_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    jz_(p.i, p.j, p.k) = jz_p_(p.i, p.j, p.k);
+  });
+
+  if (evolve_b) {
+    Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      bx_(p.i, p.j, p.k) = bx_p_(p.i, p.j, p.k);
+    });
+    Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+      by_(p.i, p.j, p.k) = by_p_(p.i, p.j, p.k);
+    });
+    Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+      bz_(p.i, p.j, p.k) = bz_p_(p.i, p.j, p.k);
+    });
+  }
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ax_(p.i, p.j, p.k) = ax_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ay_(p.i, p.j, p.k) = ay_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    az_(p.i, p.j, p.k) = az_p_(p.i, p.j, p.k);
+  });
+
+#endif
+}
+
+extern "C" void MaxwellToyAMReX_Evolve2(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Evolve2;
+  DECLARE_CCTK_PARAMETERS;
+
+  const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_p_(cctkGH, phi_p);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_p_(cctkGH, ex_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_p_(cctkGH, ey_p);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_p_(cctkGH, ez_p);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_p_(cctkGH, rho_p);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
+
+  const Loop::GF3D<CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
+
+  const Loop::GF3D<CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
+  const Loop::GF3D<CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
+  const Loop::GF3D<CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
+
+  const Loop::GF3D<CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
+
+#if 1
+
+  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    rho_(p.i, p.j, p.k) =
+        rho_p_(p.i, p.j, p.k) -
+        dt * ((jx_(p.i, p.j, p.k) - jx_(p.i - 1, p.j, p.k)) / dx +
+              (jy_(p.i, p.j, p.k) - jy_(p.i, p.j - 1, p.k)) / dy +
+              (jz_(p.i, p.j, p.k) - jz_(p.i, p.j, p.k - 1)) / dz);
+  });
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ex_(p.i, p.j, p.k) =
+        ex_p_(p.i, p.j, p.k) -
+        dt * ((by_(p.i, p.j, p.k) - by_(p.i, p.j, p.k - 1)) / dz -
+              (bz_(p.i, p.j, p.k) - bz_(p.i, p.j - 1, p.k)) / dy +
+              jx_(p.i, p.j, p.k));
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ey_(p.i, p.j, p.k) =
+        ey_p_(p.i, p.j, p.k) -
+        dt * ((bz_(p.i, p.j, p.k) - bz_(p.i - 1, p.j, p.k)) / dx -
+              (bx_(p.i, p.j, p.k) - bx_(p.i, p.j, p.k - 1)) / dz +
+              jy_(p.i, p.j, p.k));
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    ez_(p.i, p.j, p.k) =
+        ez_p_(p.i, p.j, p.k) -
+        dt * ((bx_(p.i, p.j, p.k) - bx_(p.i, p.j - 1, p.k)) / dy -
+              (by_(p.i, p.j, p.k) - by_(p.i - 1, p.j, p.k)) / dx +
+              jz_(p.i, p.j, p.k));
+  });
+
+  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    phi_(p.i, p.j, p.k) =
+        phi_p_(p.i, p.j, p.k) -
+        dt * ((ax_(p.i, p.j, p.k) - ax_(p.i - 1, p.j, p.k)) / dx +
+              (ay_(p.i, p.j, p.k) - ay_(p.i, p.j - 1, p.k)) / dy +
+              (az_(p.i, p.j, p.k) - az_(p.i, p.j, p.k - 1)) / dz);
+  });
+
+#else
+
+  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    rho_(p.i, p.j, p.k) = rho_p_(p.i, p.j, p.k);
+  });
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ex_(p.i, p.j, p.k) = ex_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ey_(p.i, p.j, p.k) = ey_p_(p.i, p.j, p.k);
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    ez_(p.i, p.j, p.k) = ez_p_(p.i, p.j, p.k);
+  });
+
+  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    phi_(p.i, p.j, p.k) = phi_p_(p.i, p.j, p.k);
+  });
+
+#endif
+}
+
+extern "C" void MaxwellToyAMReX_Constraints(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Constraints;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (analyse_every <= 0 || cctk_iteration % analyse_every != 0)
+    return;
+
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
+
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
+
+  const Loop::GF3D<CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
+
+  const Loop::GF3D<CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
+
+  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    dive_(p.i, p.j, p.k) = (ex_(p.i, p.j, p.k) - ex_(p.i - 1, p.j, p.k)) / dx +
+                           (ey_(p.i, p.j, p.k) - ey_(p.i, p.j - 1, p.k)) / dy +
+                           (ez_(p.i, p.j, p.k) - ez_(p.i, p.j, p.k - 1)) / dz -
+                           rho_(p.i, p.j, p.k);
+  });
+
+  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    divb_(p.i, p.j, p.k) = (bx_(p.i + 1, p.j, p.k) - bx_(p.i, p.j, p.k)) / dx +
+                           (by_(p.i, p.j + 1, p.k) - by_(p.i, p.j, p.k)) / dy +
+                           (bz_(p.i, p.j, p.k + 1) - bz_(p.i, p.j, p.k)) / dz;
+  });
+}
+
 extern "C" void MaxwellToyAMReX_Error(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_Error;
   DECLARE_CCTK_PARAMETERS;
 
   if (analyse_every <= 0 || cctk_iteration % analyse_every != 0)
@@ -1075,16 +1038,16 @@ extern "C" void MaxwellToyAMReX_Error(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void MaxwellToyAMReX_Constraints(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+#if 0
+extern "C" void MaxwellToyAMReX_NaNCheck(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyAMReX_NaNCheck;
   DECLARE_CCTK_PARAMETERS;
 
-  if (analyse_every <= 0 || cctk_iteration % analyse_every != 0)
-    return;
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
 
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
 
   const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
@@ -1096,22 +1059,62 @@ extern "C" void MaxwellToyAMReX_Constraints(CCTK_ARGUMENTS) {
 
   const Loop::GF3D<const CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
 
-  const Loop::GF3D<CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> jx_(cctkGH, jx);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> jy_(cctkGH, jy);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> jz_(cctkGH, jz);
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
 
-  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dive_(p.i, p.j, p.k) = (ex_(p.i, p.j, p.k) - ex_(p.i - 1, p.j, p.k)) / dx +
-                           (ey_(p.i, p.j, p.k) - ey_(p.i, p.j - 1, p.k)) / dy +
-                           (ez_(p.i, p.j, p.k) - ez_(p.i, p.j, p.k - 1)) / dz -
-                           rho_(p.i, p.j, p.k);
-  });
+  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
 
-  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    divb_(p.i, p.j, p.k) = (bx_(p.i + 1, p.j, p.k) - bx_(p.i, p.j, p.k)) / dx +
-                           (by_(p.i, p.j + 1, p.k) - by_(p.i, p.j, p.k)) / dy +
-                           (bz_(p.i, p.j, p.k + 1) - bz_(p.i, p.j, p.k)) / dz;
-  });
+  const auto nancheck = [&](const CCTK_REAL *restrict var,
+                            const Loop::PointDesc &p) {
+    if (CCTK_isnan(var[p.idx]))
+      CCTK_VERROR("Found nan at [%d,%d,%d]", p.i, p.j, p.k);
+  };
+
+  Loop::loop_all<0, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(phi, p); });
+
+  Loop::loop_all<1, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ax, p); });
+  Loop::loop_all<0, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ay, p); });
+  Loop::loop_all<0, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(az, p); });
+
+  Loop::loop_all<1, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ex, p); });
+  Loop::loop_all<0, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ey, p); });
+  Loop::loop_all<0, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(ez, p); });
+
+  Loop::loop_all<0, 1, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(bx, p); });
+  Loop::loop_all<1, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(by, p); });
+  Loop::loop_all<1, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(bz, p); });
+
+  Loop::loop_all<0, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(rho, p); });
+
+  Loop::loop_all<1, 0, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(jx, p); });
+  Loop::loop_all<0, 1, 0>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(jy, p); });
+  Loop::loop_all<0, 0, 1>(cctkGH,
+                          [&](const Loop::PointDesc &p) { nancheck(jz, p); });
+
+  // Loop::loop_all<0, 0, 0>(cctkGH,
+  //                         [&](const Loop::PointDesc &p) { nancheck(dive, p);
+  //                         });
+
+  // Loop::loop_all<1, 1, 1>(cctkGH,
+  //                         [&](const Loop::PointDesc &p) { nancheck(divb, p);
+  //                         });
 }
+#endif
 
 } // namespace MaxwellToyAMReX

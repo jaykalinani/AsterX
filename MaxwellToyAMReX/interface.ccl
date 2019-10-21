@@ -134,6 +134,17 @@ CCTK_REAL current_jz TYPE=gf TIMELEVELS=2 TAGS='index={0 0 1}'
 
 
 
+CCTK_REAL constraints_dive TYPE=gf TAGS='index={0 0 0} checkpoint="no"'
+{
+  dive
+} "Electric constraint"
+CCTK_REAL constraints_divb TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
+{
+  divb
+} "Magnetic constraint"
+
+
+
 CCTK_REAL errors_potential_phi TYPE=gf TAGS='index={0 0 0} checkpoint="no"'
 {
   phierr
@@ -195,17 +206,6 @@ CCTK_REAL errors_current_jz TYPE=gf TAGS='index={0 0 1} checkpoint="no"'
 {
   jzerr
 } "Electric charge current"
-
-
-
-CCTK_REAL constraints_dive TYPE=gf TAGS='index={0 0 0} checkpoint="no"'
-{
-  dive
-} "Constraints"
-CCTK_REAL constraints_divb TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
-{
-  divb
-} "Constraints"
 
 
 
