@@ -47,6 +47,8 @@ USER root
 COPY amrex.cfg /amrex.cfg
 COPY setmeup.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/setmeup.sh
-USER jovyan
+RUN dnf install -y gdb
+#ENV container docker
 COPY Dockerfile /Dockerfile
+USER jovyan
 CMD ["/usr/sbin/init"]
