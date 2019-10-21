@@ -32,6 +32,8 @@ AMReX::ncells_x = $ncells
 AMReX::ncells_y = $ncells
 AMReX::ncells_z = $ncells
 
+AMReX::prolongation_type = "ddf"
+
 AMReX::max_num_levels = $nlevels
 AMReX::regrid_every = 16
 AMReX::regrid_error_threshold = 0.01

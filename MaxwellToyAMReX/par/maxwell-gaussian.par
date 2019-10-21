@@ -32,6 +32,8 @@ AMReX::ncells_x = $ncells
 AMReX::ncells_y = $ncells
 AMReX::ncells_z = $ncells
 
+AMReX::prolongation_type = "ddf"
+
 AMReX::max_num_levels = $nlevels
 AMReX::regrid_every = 16
 AMReX::regrid_error_threshold = 0.01
@@ -46,7 +48,7 @@ MaxwellToyAMReX::spatial_frequency_x = 0.5
 MaxwellToyAMReX::spatial_frequency_y = 0.0
 MaxwellToyAMReX::spatial_frequency_z = 0.0
 
-MaxwellToyAMReX::analyse_every = $ncells * 2 ** ($nlevels - 1) / 32
+MaxwellToyAMReX::analyse_every = 1   # TODO $ncells * 2 ** ($nlevels - 1) / 32
 
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
