@@ -4,7 +4,6 @@ IMPLEMENTS: CarpetX
 
 INHERITS: IO
 
-USES INCLUDE HEADER: vectors.h
 
 
 INCLUDES HEADER: loop.hxx IN loop.hxx
