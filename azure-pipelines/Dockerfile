@@ -30,27 +30,32 @@ RUN apt-get update && \
 
 # Install cmake
 # (AMReX 19.10 requires at least cmake 3.14)
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz && \
+RUN mkdir dist && \
+    cd dist && \
+    wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz && \
     tar xzf cmake-3.14.5-Linux-x86_64.tar.gz -C /usr/local --strip-components=1 && \
-    rm cmake-3.14.5-Linux-x86_64.tar.gz
+    cd .. && \
+    rm -rf dist
 
 # Install NSIMD
 # Note: This assumes that the system has x86_64 CPUs with AVX2 and FMA
-RUN git clone -b eschnett/storeu_masked https://github.com/eschnett/nsimd.git && \
+RUN mkdir src && \
+    cd src && \
+    git clone -b eschnett/storeu_masked https://github.com/eschnett/nsimd.git && \
     cd nsimd && \
-    python3 egg/hatch.py --archis --base-apis --cxx-api --friendly-but-not-optimized --src --tests --force --simd=avx2 --disable-clang-format && \
+    python3 egg/hatch.py --all --force --disable-clang-format && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DSIMD=AVX2 -DSIMD_OPTIONALS=FMA -DCMAKE_INSTALL_PREFIX=/cactus/nsimd .. && \
     make -j2 && \
-    make -j2 tests && \
-    ctest . -V && \
     cmake --install . && \
-    cd ../.. && \
-    rm -rf nsimd
+    cd ../../.. && \
+    rm -rf src
 
 # Install AMReX
-RUN wget https://github.com/AMReX-Codes/amrex/archive/19.10.tar.gz && \
+RUN mkdir src && \
+    cd src && \
+    wget https://github.com/AMReX-Codes/amrex/archive/19.10.tar.gz && \
     tar xzf 19.10.tar.gz && \
     cd amrex-19.10 && \
     mkdir build && \
@@ -58,8 +63,8 @@ RUN wget https://github.com/AMReX-Codes/amrex/archive/19.10.tar.gz && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/cactus/amrex .. && \
     make -j2 && \
     make -j2 install && \
-    cd ../.. && \
-    rm -rf 19.10.tar.gz amrex-19.10
+    cd ../../.. && \
+    rm -rf src
 
 # As documentation
 COPY Dockerfile /Dockerfile
