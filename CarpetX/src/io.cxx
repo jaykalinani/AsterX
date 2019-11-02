@@ -34,12 +34,18 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
   Interval interval(timer);
 
   const int numgroups = CCTK_NumGroups();
-  for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
+  vector<bool> group_enabled(numgroups, false);
+  auto enable_group{[](int index, const char *optstring, void *callback) {
+    vector<bool> &group_enabled = *static_cast<vector<bool> *>(callback);
+    group_enabled.at(index) = true;
+  }};
+  CCTK_TraverseString(out_plotfile_groups, enable_group, &group_enabled,
+                      CCTK_GROUP);
 
-    if (group.grouptype != CCTK_GF)
+  for (int gi = 0; gi < numgroups; ++gi) {
+    if (!group_enabled.at(gi))
+      continue;
+    if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
 
     auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);

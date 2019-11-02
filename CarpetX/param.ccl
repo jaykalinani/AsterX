@@ -179,6 +179,11 @@ CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 
 
 
+STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
 BOOLEAN out_tsv "Output in TSV (tab-separated values) format?" STEERABLE=always
 {
 } no
