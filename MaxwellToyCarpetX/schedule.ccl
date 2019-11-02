@@ -1,56 +1,34 @@
 # Schedule definitions for thorn MaxwellToyCarpetX
 
-if (evolve_b) {
+SCHEDULE MaxwellToyCarpetX_Initialize AT initial
+{
+  LANG: C
 
-  SCHEDULE MaxwellToyCarpetX_Initialize AT initial
-  {
-    LANG: C
+  WRITES: potential_phi(interior)
+  WRITES: potential_ax(interior) potential_ay(interior) potential_az(interior)
+  WRITES: current_rho(interior)
+  WRITES: current_jx(interior) current_jy(interior) current_jz(interior)
 
-    WRITES: potential_phi(interior)
-    WRITES: potential_ax(interior) potential_ay(interior) potential_az(interior)
-    WRITES: field_ex(interior) field_ey(interior) field_ez(interior)
-    WRITES: field_bx(interior) field_by(interior) field_bz(interior)
-    WRITES: current_rho(interior)
-    WRITES: current_jx(interior) current_jy(interior) current_jz(interior)
+  SYNC: potential_phi
+  SYNC: potential_ax potential_ay potential_az
+  SYNC: current_rho
+  SYNC: current_jx current_jy current_jz
+} "Set up initial conditions for the Maxwell equations"
 
-    SYNC: potential_phi
-    SYNC: potential_ax potential_ay potential_az
-    SYNC: field_ex field_ey field_ez
-    SYNC: field_bx field_by field_bz
-    SYNC: current_rho
-    SYNC: current_jx current_jy current_jz
-  } "Set up initial conditions for the Maxwell equations"
+SCHEDULE MaxwellToyCarpetX_InitializeFields AT initial AFTER MaxwellToyCarpetX_Initialize
+{
+  LANG: C
 
-} else {
+  READS: potential_phi(everywhere)
+  READS: potential_ax(everywhere) potential_ay(everywhere) potential_az(everywhere)
+  READS: current_rho(everywhere)
+  READS: current_jx(everywhere) current_jy(everywhere) current_jz(everywhere)
+  WRITES: field_ex(interior) field_ey(interior) field_ez(interior)
+  WRITES: field_bx(interior) field_by(interior) field_bz(interior)
 
-  SCHEDULE MaxwellToyCarpetX_Initialize AT initial
-  {
-    LANG: C
-
-    WRITES: potential_phi(interior)
-    WRITES: potential_ax(interior) potential_ay(interior) potential_az(interior)
-    WRITES: field_ex(interior) field_ey(interior) field_ez(interior)
-    WRITES: current_rho(interior)
-    WRITES: current_jx(interior) current_jy(interior) current_jz(interior)
- 
-    SYNC: potential_phi
-    SYNC: potential_ax potential_ay potential_az
-    SYNC: field_ex field_ey field_ez
-    SYNC: current_rho
-    SYNC: current_jx current_jy current_jz
-  } "Set up initial conditions for the Maxwell equations"
-
-  SCHEDULE MaxwellToyCarpetX_Dependents1 AT initial AFTER MaxwellToyCarpetX_Initialize
-  {
-    LANG: C
-
-    READS: potential_ax(interior) potential_ay(interior) potential_az(interior)
-    WRITES: field_bx(interior) field_by(interior) field_bz(interior)
-
-    SYNC: field_bx field_by field_bz
-  } "Calculate the magnetic field"
-
-}
+  SYNC: field_ex field_ey field_ez
+  SYNC: field_bx field_by field_bz
+} "Calculate Maxwell fields from initial conditions"
 
 SCHEDULE MaxwellToyCarpetX_EstimateError AT postinitial
 {

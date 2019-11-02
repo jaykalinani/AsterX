@@ -120,23 +120,12 @@ extern "C" void MaxwellToyCarpetX_Initialize(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
-  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
-  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
-  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   const Loop::GF3D<CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
 
   const Loop::GF3D<CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
   const Loop::GF3D<CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
   const Loop::GF3D<CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
-
-  const Loop::GF3D<CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
-  const Loop::GF3D<CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
-
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
 
   const Loop::GF3D<CCTK_REAL, 0, 0, 0> rho_(cctkGH, rho);
 
@@ -159,40 +148,6 @@ extern "C" void MaxwellToyCarpetX_Initialize(CCTK_ARGUMENTS) {
     Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       az_(p.i, p.j, p.k) = linear(t, p.x, p.y, p.z).az;
     });
-
-    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ex_(p.i, p.j, p.k) =
-          -xderiv(linear<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(linear<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax;
-    });
-    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ey_(p.i, p.j, p.k) =
-          -yderiv(linear<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(linear<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay;
-    });
-    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      ez_(p.i, p.j, p.k) =
-          -zderiv(linear<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(linear<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az;
-    });
-
-    if (evolve_b) {
-      Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        bx_(p.i, p.j, p.k) =
-            yderiv(linear<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
-            zderiv(linear<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay;
-      });
-      Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        by_(p.i, p.j, p.k) =
-            zderiv(linear<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
-            xderiv(linear<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az;
-      });
-      Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-        bz_(p.i, p.j, p.k) =
-            xderiv(linear<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
-            yderiv(linear<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax;
-      });
-    }
 
     Loop::loop_all<0, 0, 0>(
         cctkGH, [&](const Loop::PointDesc &p) { rho_(p.i, p.j, p.k) = 0.0; });
@@ -220,40 +175,6 @@ extern "C" void MaxwellToyCarpetX_Initialize(CCTK_ARGUMENTS) {
       az_(p.i, p.j, p.k) = plane_wave(t, p.x, p.y, p.z).az;
     });
 
-    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ex_(p.i, p.j, p.k) =
-          -xderiv(plane_wave<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax;
-    });
-    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ey_(p.i, p.j, p.k) =
-          -yderiv(plane_wave<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay;
-    });
-    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      ez_(p.i, p.j, p.k) =
-          -zderiv(plane_wave<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(plane_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az;
-    });
-
-    if (evolve_b) {
-      Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        bx_(p.i, p.j, p.k) =
-            yderiv(plane_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
-            zderiv(plane_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay;
-      });
-      Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        by_(p.i, p.j, p.k) =
-            zderiv(plane_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
-            xderiv(plane_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az;
-      });
-      Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-        bz_(p.i, p.j, p.k) =
-            xderiv(plane_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
-            yderiv(plane_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax;
-      });
-    }
-
     Loop::loop_all<0, 0, 0>(
         cctkGH, [&](const Loop::PointDesc &p) { rho_(p.i, p.j, p.k) = 0.0; });
 
@@ -280,40 +201,6 @@ extern "C" void MaxwellToyCarpetX_Initialize(CCTK_ARGUMENTS) {
       az_(p.i, p.j, p.k) = gaussian_wave(t, p.x, p.y, p.z).az;
     });
 
-    Loop::loop_all<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ex_(p.i, p.j, p.k) =
-          -xderiv(gaussian_wave<CCTK_REAL>, dx)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ax;
-    });
-    Loop::loop_all<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ey_(p.i, p.j, p.k) =
-          -yderiv(gaussian_wave<CCTK_REAL>, dy)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).ay;
-    });
-    Loop::loop_all<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      ez_(p.i, p.j, p.k) =
-          -zderiv(gaussian_wave<CCTK_REAL>, dz)(t + dt / 2, p.x, p.y, p.z).phi -
-          tderiv(gaussian_wave<CCTK_REAL>, dt)(t + dt / 2, p.x, p.y, p.z).az;
-    });
-
-    if (evolve_b) {
-      Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        bx_(p.i, p.j, p.k) =
-            yderiv(gaussian_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).az -
-            zderiv(gaussian_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ay;
-      });
-      Loop::loop_all<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        by_(p.i, p.j, p.k) =
-            zderiv(gaussian_wave<CCTK_REAL>, dz)(t, p.x, p.y, p.z).ax -
-            xderiv(gaussian_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).az;
-      });
-      Loop::loop_all<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-        bz_(p.i, p.j, p.k) =
-            xderiv(gaussian_wave<CCTK_REAL>, dx)(t, p.x, p.y, p.z).ay -
-            yderiv(gaussian_wave<CCTK_REAL>, dy)(t, p.x, p.y, p.z).ax;
-      });
-    }
-
     Loop::loop_all<0, 0, 0>(
         cctkGH, [&](const Loop::PointDesc &p) { rho_(p.i, p.j, p.k) = 0.0; });
 
@@ -329,21 +216,37 @@ extern "C" void MaxwellToyCarpetX_Initialize(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void MaxwellToyCarpetX_Dependents1(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_MaxwellToyCarpetX_Dependents1;
+extern "C" void MaxwellToyCarpetX_InitializeFields(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyCarpetX_InitializeFields;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
+
   const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
   const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
   const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
 
+  const Loop::GF3D<CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
+  const Loop::GF3D<CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
+  const Loop::GF3D<CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
+
   const Loop::GF3D<CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
   const Loop::GF3D<CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
   const Loop::GF3D<CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
+
+  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ex_(p.i, p.j, p.k) = (phi_(p.i + 1, p.j, p.k) - phi_(p.i, p.j, p.k)) / dx;
+  });
+  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    ey_(p.i, p.j, p.k) = (phi_(p.i, p.j + 1, p.k) - phi_(p.i, p.j, p.k)) / dy;
+  });
+  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    ez_(p.i, p.j, p.k) = (phi_(p.i, p.j, p.k + 1) - phi_(p.i, p.j, p.k)) / dz;
+  });
 
   Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     bx_(p.i, p.j, p.k) = (az_(p.i, p.j + 1, p.k) - az_(p.i, p.j, p.k)) / dy -
@@ -732,6 +635,36 @@ extern "C" void MaxwellToyCarpetX_Evolve2(CCTK_ARGUMENTS) {
   });
 
 #endif
+}
+
+extern "C" void MaxwellToyCarpetX_Dependents1(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MaxwellToyCarpetX_Dependents1;
+  DECLARE_CCTK_PARAMETERS;
+
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+
+  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
+  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
+  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
+
+  const Loop::GF3D<CCTK_REAL, 0, 1, 1> bx_(cctkGH, bx);
+  const Loop::GF3D<CCTK_REAL, 1, 0, 1> by_(cctkGH, by);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 0> bz_(cctkGH, bz);
+
+  Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    bx_(p.i, p.j, p.k) = (az_(p.i, p.j + 1, p.k) - az_(p.i, p.j, p.k)) / dy -
+                         (ay_(p.i, p.j, p.k + 1) - ay_(p.i, p.j, p.k)) / dz;
+  });
+  Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    by_(p.i, p.j, p.k) = (ax_(p.i, p.j, p.k + 1) - ax_(p.i, p.j, p.k)) / dz -
+                         (az_(p.i + 1, p.j, p.k) - az_(p.i, p.j, p.k)) / dx;
+  });
+  Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
+    bz_(p.i, p.j, p.k) = (ay_(p.i + 1, p.j, p.k) - ay_(p.i, p.j, p.k)) / dx -
+                         (ax_(p.i, p.j + 1, p.k) - ax_(p.i, p.j, p.k)) / dy;
+  });
 }
 
 extern "C" void MaxwellToyCarpetX_Constraints(CCTK_ARGUMENTS) {

@@ -1,8 +1,8 @@
 ActiveThorns = "
-    AMReX
+    CarpetX
     Formaline
     IOUtil
-    MaxwellToyAMReX
+    MaxwellToyCarpetX
     SystemTopology
     # TerminationTrigger
     TimerReport
@@ -18,41 +18,46 @@ Cactus::cctk_show_schedule = no
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 2.0
 
-AMReX::verbose = no
+CarpetX::verbose = no
 
-AMReX::xmin = -1.0
-AMReX::ymin = -1.0
-AMReX::zmin = -1.0
+CarpetX::xmin = -1.0
+CarpetX::ymin = -1.0
+CarpetX::zmin = -1.0
 
-AMReX::xmax = +1.0
-AMReX::ymax = +1.0
-AMReX::zmax = +1.0
+CarpetX::xmax = +1.0
+CarpetX::ymax = +1.0
+CarpetX::zmax = +1.0
 
-AMReX::ncells_x = $ncells
-AMReX::ncells_y = $ncells
-AMReX::ncells_z = $ncells
+CarpetX::ncells_x = $ncells
+CarpetX::ncells_y = $ncells
+CarpetX::ncells_z = $ncells
 
-AMReX::prolongation_type = "ddf"
+CarpetX::prolongation_type = "ddf"
 
-AMReX::max_num_levels = $nlevels
-AMReX::regrid_every = 16
-AMReX::regrid_error_threshold = 0.01
+CarpetX::max_num_levels = $nlevels
+CarpetX::regrid_every = 16
+CarpetX::regrid_error_threshold = 0.01
 
-AMReX::dtfac = 0.5
+CarpetX::dtfac = 0.5
 
-MaxwellToyAMReX::evolve_b = yes
+MaxwellToyCarpetX::evolve_b = yes
 
-MaxwellToyAMReX::initial_condition = "Gaussian wave"
+MaxwellToyCarpetX::initial_condition = "Gaussian wave"
 
-MaxwellToyAMReX::spatial_frequency_x = 0.5
-MaxwellToyAMReX::spatial_frequency_y = 0.0
-MaxwellToyAMReX::spatial_frequency_z = 0.0
+MaxwellToyCarpetX::spatial_frequency_x = 0.5
+MaxwellToyCarpetX::spatial_frequency_y = 0.0
+MaxwellToyCarpetX::spatial_frequency_z = 0.0
 
-MaxwellToyAMReX::analyse_every = 1   # TODO $ncells * 2 ** ($nlevels - 1) / 32
+MaxwellToyCarpetX::analyse_every = 1   # TODO $ncells * 2 ** ($nlevels - 1) / 32
 
 IO::out_dir = $parfile
 IO::out_every = 1   # TODO $ncells * 2 ** ($nlevels - 1) / 32
 
+CarpetX::out_plotfile_groups = "
+    MaxwellToyCarpetX::potential_phi
+    MaxwellToyCarpetX::constraints_dive
+    MaxwellToyCarpetX::constraints_divb
+"
 CarpetX::out_tsv = no
 
 TimerReport::out_every = $ncells * 2 ** ($nlevels - 1) / 32
