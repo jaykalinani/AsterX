@@ -1,10 +1,3 @@
 # Configuration definitions for thorn CarpetX
 
-PROVIDES AMReX
-{
-  SCRIPT configure.sh
-  LANG bash
-  OPTIONS AMREX_DIR
-}
-
-REQUIRES AMReX MPI Vectors
+REQUIRES AMReX MPI

@@ -124,8 +124,10 @@ ExternalLibraries/zlib
 !URL      = https://bitbucket.org/eschnett/cactusamrex.git
 !REPO_PATH= $2
 !CHECKOUT =
+CarpetX/AMReX
 CarpetX/CarpetX
 CarpetX/HydroToyCarpetX
 CarpetX/MaxwellToyCarpetX
+CarpetX/NSIMD
 CarpetX/TestProlongate
 CarpetX/WaveToyCarpetX
