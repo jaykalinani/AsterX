@@ -29,11 +29,11 @@ extern "C" void HydroToyCarpetX_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
   if (CCTK_EQUALS(setup, "equilibrium")) {
 
@@ -107,17 +107,22 @@ extern "C" void HydroToyCarpetX_CopyConserved(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_CopyConserved;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_p_(cctkGH, rho_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_p_(cctkGH, momx_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_p_(cctkGH, momy_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_p_(cctkGH, momz_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_p_(cctkGH, etot_p);
+  const Loop::GF3D1<const CCTK_REAL> rho_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                            rho_p);
+  const Loop::GF3D1<const CCTK_REAL> momx_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             momx_p);
+  const Loop::GF3D1<const CCTK_REAL> momy_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             momy_p);
+  const Loop::GF3D1<const CCTK_REAL> momz_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             momz_p);
+  const Loop::GF3D1<const CCTK_REAL> etot_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             etot_p);
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
   Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     rho_(p.I) = rho_p_(p.I);
@@ -128,21 +133,22 @@ extern "C" void HydroToyCarpetX_CopyConserved(CCTK_ARGUMENTS) {
   });
 }
 
+#if 0
 extern "C" void HydroToyCarpetX_Pressure(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Pressure;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<const CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<const CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> press_(cctkGH, press);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> velx_(cctkGH, velx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> vely_(cctkGH, vely);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> velz_(cctkGH, velz);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> eint_(cctkGH, eint);
+  const Loop::GF3D1<CCTK_REAL> press_(cctkGH, {1, 1, 1}, {1, 1, 1}, press);
+  const Loop::GF3D1<CCTK_REAL> velx_(cctkGH, {1, 1, 1}, {1, 1, 1}, velx);
+  const Loop::GF3D1<CCTK_REAL> vely_(cctkGH, {1, 1, 1}, {1, 1, 1}, vely);
+  const Loop::GF3D1<CCTK_REAL> velz_(cctkGH, {1, 1, 1}, {1, 1, 1}, velz);
+  const Loop::GF3D1<CCTK_REAL> eint_(cctkGH, {1, 1, 1}, {1, 1, 1}, eint);
 
   // Equation of state: p = (gamma - 1) e
 
@@ -161,6 +167,7 @@ extern "C" void HydroToyCarpetX_Pressure(CCTK_ARGUMENTS) {
     velz_(p.I) = momz_(p.I) / rho_(p.I);
   });
 }
+#endif
 
 // Minmod slope limiter
 template <typename T> T minmod(T a, T b) {
@@ -203,59 +210,40 @@ T hlle(T lambda_m, T lambda_p, T var_m, T var_p, T flux_m, T flux_p) {
          (lambda_p - lambda_m);
 }
 
+#if 0
 extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<const CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<const CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> press_(cctkGH, press);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> velx_(cctkGH, velx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> vely_(cctkGH, vely);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> velz_(cctkGH, velz);
+  const Loop::GF3D1<const CCTK_REAL> press_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                            press);
+  const Loop::GF3D1<const CCTK_REAL> velx_(cctkGH, {1, 1, 1}, {1, 1, 1}, velx);
+  const Loop::GF3D1<const CCTK_REAL> vely_(cctkGH, {1, 1, 1}, {1, 1, 1}, vely);
+  const Loop::GF3D1<const CCTK_REAL> velz_(cctkGH, {1, 1, 1}, {1, 1, 1}, velz);
 
-#if 0
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxmomz_(cctkGH, fxmomz);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> fxetot_(cctkGH, fxetot);
+  const Loop::GF3D1<CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, {0, 0, 0}, fxrho);
+  const Loop::GF3D1<CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, {0, 0, 0}, fxmomx);
+  const Loop::GF3D1<CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, {0, 0, 0}, fxmomy);
+  const Loop::GF3D1<CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, {0, 0, 0}, fxmomz);
+  const Loop::GF3D1<CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, {0, 0, 0}, fxetot);
 
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> fyrho_(cctkGH, fyrho);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> fymomx_(cctkGH, fymomx);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> fymomy_(cctkGH, fymomy);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> fymomz_(cctkGH, fymomz);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> fyetot_(cctkGH, fyetot);
+  const Loop::GF3D1<CCTK_REAL> fyrho_(cctkGH, {1, 0, 1}, {0, 0, 0}, fyrho);
+  const Loop::GF3D1<CCTK_REAL> fymomx_(cctkGH, {1, 0, 1}, {0, 0, 0}, fymomx);
+  const Loop::GF3D1<CCTK_REAL> fymomy_(cctkGH, {1, 0, 1}, {0, 0, 0}, fymomy);
+  const Loop::GF3D1<CCTK_REAL> fymomz_(cctkGH, {1, 0, 1}, {0, 0, 0}, fymomz);
+  const Loop::GF3D1<CCTK_REAL> fyetot_(cctkGH, {1, 0, 1}, {0, 0, 0}, fyetot);
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzrho_(cctkGH, fzrho);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzmomx_(cctkGH, fzmomx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzmomy_(cctkGH, fzmomy);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzmomz_(cctkGH, fzmomz);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> fzetot_(cctkGH, fzetot);
-#else
-  const array<int, dim> nghosts{0, 0, 0};
-  const Loop::GF3D1<CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, nghosts, fxrho);
-  const Loop::GF3D1<CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, nghosts, fxmomx);
-  const Loop::GF3D1<CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, nghosts, fxmomy);
-  const Loop::GF3D1<CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, nghosts, fxmomz);
-  const Loop::GF3D1<CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, nghosts, fxetot);
-
-  const Loop::GF3D1<CCTK_REAL> fyrho_(cctkGH, {1, 0, 1}, nghosts, fyrho);
-  const Loop::GF3D1<CCTK_REAL> fymomx_(cctkGH, {1, 0, 1}, nghosts, fymomx);
-  const Loop::GF3D1<CCTK_REAL> fymomy_(cctkGH, {1, 0, 1}, nghosts, fymomy);
-  const Loop::GF3D1<CCTK_REAL> fymomz_(cctkGH, {1, 0, 1}, nghosts, fymomz);
-  const Loop::GF3D1<CCTK_REAL> fyetot_(cctkGH, {1, 0, 1}, nghosts, fyetot);
-
-  const Loop::GF3D1<CCTK_REAL> fzrho_(cctkGH, {1, 1, 0}, nghosts, fzrho);
-  const Loop::GF3D1<CCTK_REAL> fzmomx_(cctkGH, {1, 1, 0}, nghosts, fzmomx);
-  const Loop::GF3D1<CCTK_REAL> fzmomy_(cctkGH, {1, 1, 0}, nghosts, fzmomy);
-  const Loop::GF3D1<CCTK_REAL> fzmomz_(cctkGH, {1, 1, 0}, nghosts, fzmomz);
-  const Loop::GF3D1<CCTK_REAL> fzetot_(cctkGH, {1, 1, 0}, nghosts, fzetot);
-#endif
+  const Loop::GF3D1<CCTK_REAL> fzrho_(cctkGH, {1, 1, 0}, {0, 0, 0}, fzrho);
+  const Loop::GF3D1<CCTK_REAL> fzmomx_(cctkGH, {1, 1, 0}, {0, 0, 0}, fzmomx);
+  const Loop::GF3D1<CCTK_REAL> fzmomy_(cctkGH, {1, 1, 0}, {0, 0, 0}, fzmomy);
+  const Loop::GF3D1<CCTK_REAL> fzmomz_(cctkGH, {1, 1, 0}, {0, 0, 0}, fzmomz);
+  const Loop::GF3D1<CCTK_REAL> fzetot_(cctkGH, {1, 1, 0}, {0, 0, 0}, fzetot);
 
   // frho^i = rho vel^i
   // fmom^i_j = mom_j vel^i + delta^i_j press
@@ -333,7 +321,9 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
         etot_, [&](auto I) { return (etot_(I) + press_(I)) * velz_(I); });
   });
 }
+#endif
 
+#if 0
 extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Evolve;
   DECLARE_CCTK_PARAMETERS;
@@ -343,68 +333,55 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_p_(cctkGH, rho_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_p_(cctkGH, momx_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_p_(cctkGH, momy_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_p_(cctkGH, momz_p);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_p_(cctkGH, etot_p);
+  const Loop::GF3D1<const CCTK_REAL> rho_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                            rho_p);
+  const Loop::GF3D1<const CCTK_REAL> momx_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             momx_p);
+  const Loop::GF3D1<const CCTK_REAL> momy_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             momy_p);
+  const Loop::GF3D1<const CCTK_REAL> momz_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             momz_p);
+  const Loop::GF3D1<const CCTK_REAL> etot_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             etot_p);
 
-#if 0
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomz_(cctkGH, fxmomz);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxetot_(cctkGH, fxetot);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fyrho_(cctkGH, fyrho);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fymomx_(cctkGH, fymomx);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fymomy_(cctkGH, fymomy);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fymomz_(cctkGH, fymomz);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> fyetot_(cctkGH, fyetot);
-
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzrho_(cctkGH, fzrho);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomx_(cctkGH, fzmomx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomy_(cctkGH, fzmomy);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzmomz_(cctkGH, fzmomz);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> fzetot_(cctkGH, fzetot);
-#else
-  const array<int, dim> nghosts{0, 0, 0};
-  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, nghosts, fxrho);
-  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, {0, 0, 0},
+                                            fxrho);
+  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxmomx);
-  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxmomy);
-  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxmomz);
-  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxetot);
 
-  const Loop::GF3D1<const CCTK_REAL> fyrho_(cctkGH, {1, 0, 1}, nghosts, fyrho);
-  const Loop::GF3D1<const CCTK_REAL> fymomx_(cctkGH, {1, 0, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fyrho_(cctkGH, {1, 0, 1}, {0, 0, 0},
+                                            fyrho);
+  const Loop::GF3D1<const CCTK_REAL> fymomx_(cctkGH, {1, 0, 1}, {0, 0, 0},
                                              fymomx);
-  const Loop::GF3D1<const CCTK_REAL> fymomy_(cctkGH, {1, 0, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fymomy_(cctkGH, {1, 0, 1}, {0, 0, 0},
                                              fymomy);
-  const Loop::GF3D1<const CCTK_REAL> fymomz_(cctkGH, {1, 0, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fymomz_(cctkGH, {1, 0, 1}, {0, 0, 0},
                                              fymomz);
-  const Loop::GF3D1<const CCTK_REAL> fyetot_(cctkGH, {1, 0, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fyetot_(cctkGH, {1, 0, 1}, {0, 0, 0},
                                              fyetot);
 
-  const Loop::GF3D1<const CCTK_REAL> fzrho_(cctkGH, {1, 1, 0}, nghosts, fzrho);
-  const Loop::GF3D1<const CCTK_REAL> fzmomx_(cctkGH, {1, 1, 0}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fzrho_(cctkGH, {1, 1, 0}, {0, 0, 0},
+                                            fzrho);
+  const Loop::GF3D1<const CCTK_REAL> fzmomx_(cctkGH, {1, 1, 0}, {0, 0, 0},
                                              fzmomx);
-  const Loop::GF3D1<const CCTK_REAL> fzmomy_(cctkGH, {1, 1, 0}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fzmomy_(cctkGH, {1, 1, 0}, {0, 0, 0},
                                              fzmomy);
-  const Loop::GF3D1<const CCTK_REAL> fzmomz_(cctkGH, {1, 1, 0}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fzmomz_(cctkGH, {1, 1, 0}, {0, 0, 0},
                                              fzmomz);
-  const Loop::GF3D1<const CCTK_REAL> fzetot_(cctkGH, {1, 1, 0}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fzetot_(cctkGH, {1, 1, 0}, {0, 0, 0},
                                              fzetot);
-#endif
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
   // Transport
   // dt rho + d_i (rho vel^i) = 0
@@ -427,18 +404,20 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
     etot_(p.I) = etot_p_(p.I) - calcupdate(fxetot_, fyetot_, fzetot_);
   });
 }
+#endif
 
 extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
+  const Loop::GF3D1<CCTK_REAL> regrid_error_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                             regrid_error);
 
   if (false) {
     Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
@@ -467,33 +446,25 @@ extern "C" void HydroToyCarpetX_Output(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Output;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> rho_(cctkGH, rho);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momx_(cctkGH, momx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momy_(cctkGH, momy);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> momz_(cctkGH, momz);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> etot_(cctkGH, etot);
+  const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<const CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<const CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH,
-                                                           regrid_error);
+  const Loop::GF3D1<const CCTK_REAL> regrid_error_(cctkGH, {1, 1, 1}, {1, 1, 1},
+                                                   regrid_error);
 
-#if 0
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxrho_(cctkGH, fxrho);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomx_(cctkGH, fxmomx);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomy_(cctkGH, fxmomy);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxmomz_(cctkGH, fxmomz);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> fxetot_(cctkGH, fxetot);
-#else
-  const array<int, dim> nghosts{0, 0, 0};
-  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, nghosts, fxrho);
-  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, {0, 0, 0},
+                                            fxrho);
+  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxmomx);
-  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxmomy);
-  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxmomz);
-  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, nghosts,
+  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, {0, 0, 0},
                                              fxetot);
-#endif
 
   int levfac = cctk_levfac[0];
   int lev = 0;
