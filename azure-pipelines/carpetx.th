@@ -123,7 +123,7 @@ ExternalLibraries/zlib
 !TYPE     = git
 !URL      = https://bitbucket.org/eschnett/cactusamrex.git
 !REPO_PATH= $2
-!CHECKOUT =
+!CHECKOUT = CarpetX/NSIMD
 CarpetX/AMReX
 CarpetX/CarpetX
 CarpetX/HydroToyCarpetX
