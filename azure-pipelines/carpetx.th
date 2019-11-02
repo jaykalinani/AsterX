@@ -128,6 +128,6 @@ CarpetX/AMReX
 CarpetX/CarpetX
 CarpetX/HydroToyCarpetX
 CarpetX/MaxwellToyCarpetX
-# CarpetX/NSIMD
+#DISABLED CarpetX/NSIMD
 CarpetX/TestProlongate
 CarpetX/WaveToyCarpetX
