@@ -66,5 +66,9 @@ RUN mkdir src && \
     cd ../../.. && \
     rm -rf src
 
+RUN apt-get update && \
+    apt-get --yes --no-install-recommends install \
+        zlib1g-dev
+
 # As documentation
 COPY Dockerfile /Dockerfile
