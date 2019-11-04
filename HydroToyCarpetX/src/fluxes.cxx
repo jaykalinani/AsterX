@@ -20,11 +20,13 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
-#warning "TODO: scale fluxes"
   const CCTK_REAL dt = CCTK_DELTA_TIME;
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+  const CCTK_REAL dAx = dt * dy * dz;
+  const CCTK_REAL dAy = dt * dx * dz;
+  const CCTK_REAL dAz = dt * dx * dy;
 
   const Loop::vect<int, dim> zero{{0, 0, 0}};
   const Loop::vect<int, dim> di{{1, 0, 0}};
@@ -89,6 +91,10 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   // assert((imax_fy[0] - imin_fy[0]) % VS == 0);
   // assert((imax_fz[0] - imin_fz[0]) % VS == 0);
 
+  const auto vec_dAx = CCTK_VEC_REAL::set1(dAx);
+  const auto vec_dAy = CCTK_VEC_REAL::set1(dAy);
+  const auto vec_dAz = CCTK_VEC_REAL::set1(dAz);
+
   // LLF (local Lax-Friedrichs) Riemann solver
   const auto llf{[](auto lambda_m, auto lambda_p, auto var_m, auto var_p,
                     auto flux_m, auto flux_p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -101,6 +107,9 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   // frho^i = rho vel^i
   // fmom^i_j = mom_j vel^i + delta^i_j press
   // fetot^i = (etot + press) vel^i
+
+  // For refluxing, AMReX expects fluxes to be integrated over the
+  // faces both in space and time.
 
   const auto calcflux_x{[&](auto &fx_, const auto &u_, const auto &flux_x) {
     for (int k = imin_fx[2]; k < imax_fx[2]; ++k) {
@@ -117,7 +126,8 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
           auto var_p = CCTK_VEC_REAL::loadu(u_[idx]);
           auto flux_m = flux_x(idx - str[0]);
           auto flux_p = flux_x(idx);
-          auto fx = llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
+          auto fx =
+              vec_dAx * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
           fx.storeu_partial(fx_[idx_fx], i, i, imax_fx[0]);
         }
       }
@@ -158,7 +168,8 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
           auto var_p = CCTK_VEC_REAL::loadu(u_[idx]);
           auto flux_m = flux_y(idx - str[1]);
           auto flux_p = flux_y(idx);
-          auto fy = llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
+          auto fy =
+              vec_dAy * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
           fy.storeu_partial(fy_[idx_fy], i, i, imax_fy[0]);
         }
       }
@@ -199,7 +210,8 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
           auto var_p = CCTK_VEC_REAL::loadu(u_[idx]);
           auto flux_m = flux_z(idx - str[2]);
           auto flux_p = flux_z(idx);
-          auto fz = llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
+          auto fz =
+              vec_dAz * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
           fz.storeu_partial(fz_[idx_fz], i, i, imax_fz[0]);
         }
       }

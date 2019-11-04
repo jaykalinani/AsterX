@@ -1689,20 +1689,14 @@ void Reflux(int level) {
         }
       }
 
-#warning "TODO: scale fluxes correctly"
-      const Geometry &geom0 = ghext->amrcore->Geom(level);
-      const CCTK_REAL *restrict gdx = geom0.CellSize();
-      CCTK_REAL dt = 0.25 * pow(0.5, 2) * gdx[0];
-      CCTK_REAL dx = 1.0 * pow(0.5, level) * gdx[0];
       for (int d = 0; d < dim; ++d) {
         int flux_gi = finegroupdata.fluxes[d];
         const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
         const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
         finegroupdata.freg->CrseInit(*flux_groupdata.mfab.at(tl), d, 0, 0,
-                                     flux_groupdata.numvars, -dt * dx * dx);
+                                     flux_groupdata.numvars, -1);
         finegroupdata.freg->FineAdd(*flux_finegroupdata.mfab.at(tl), d, 0, 0,
-                                    flux_finegroupdata.numvars,
-                                    dt * (0.5 * dx) * (0.5 * dx));
+                                    flux_finegroupdata.numvars, 1);
       }
       const Geometry &geom = ghext->amrcore->Geom(level);
       finegroupdata.freg->Reflux(*groupdata.mfab.at(tl), 1.0, 0, 0,

@@ -215,6 +215,14 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
+  const CCTK_REAL dt = CCTK_DELTA_TIME;
+  const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
+  const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
+  const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+  const CCTK_REAL dAx = dt * dy * dz;
+  const CCTK_REAL dAy = dt * dx * dz;
+  const CCTK_REAL dAz = dt * dx * dy;
+
   const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
   const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
   const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
@@ -259,7 +267,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto var_p = u(I_p);
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
-      return llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
+      return dAx * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
     }};
 
     fxrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velx_(I); });
@@ -283,7 +291,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto var_p = u(I_p);
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
-      return llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
+      return dAy * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
     }};
 
     fyrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * vely_(I); });
@@ -307,7 +315,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto var_p = u(I_p);
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
-      return llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
+      return dAz * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
     }};
 
     fzrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velz_(I); });
@@ -328,10 +336,10 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Evolve;
   DECLARE_CCTK_PARAMETERS;
 
-  const CCTK_REAL dt = CCTK_DELTA_TIME;
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
+  const CCTK_REAL dV1 = 1 / (dx * dy * dz);
 
   const Loop::GF3D1<const CCTK_REAL> rho_p_(cctkGH, {1, 1, 1}, {1, 1, 1},
                                             rho_p);
@@ -390,9 +398,9 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     auto calcupdate{[&](auto &fx, auto &fy, auto &fz) {
-      return dt * ((fx(p.I + p.DI(0)) - fx(p.I)) / dx +
-                   (fy(p.I + p.DI(1)) - fy(p.I)) / dy +
-                   (fz(p.I + p.DI(2)) - fz(p.I)) / dz);
+      return dV1 *
+             ((fx(p.I + p.DI(0)) - fx(p.I)) + (fy(p.I + p.DI(1)) - fy(p.I)) +
+              (fz(p.I + p.DI(2)) - fz(p.I)));
     }};
 
     rho_(p.I) = rho_p_(p.I) - calcupdate(fxrho_, fyrho_, fzrho_);

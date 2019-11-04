@@ -20,14 +20,10 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Evolve;
   DECLARE_CCTK_PARAMETERS;
 
-  const CCTK_REAL dt = CCTK_DELTA_TIME;
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
-
-  const CCTK_REAL dt_dx = dt / dx;
-  const CCTK_REAL dt_dy = dt / dy;
-  const CCTK_REAL dt_dz = dt / dz;
+  const CCTK_REAL dV1 = 1 / (dx * dy * dz);
 
   const Loop::vect<int, dim> di{{1, 0, 0}};
   const Loop::vect<int, dim> dj{{0, 1, 0}};
@@ -79,9 +75,7 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   constexpr int VS = vecprops<CCTK_REAL>::size();
   // assert((imax[0] - imin[0]) % VS == 0);
 
-  auto vec_dt_dx = CCTK_VEC_REAL::set1(dt_dx);
-  auto vec_dt_dy = CCTK_VEC_REAL::set1(dt_dy);
-  auto vec_dt_dz = CCTK_VEC_REAL::set1(dt_dz);
+  const auto vec_dV1 = CCTK_VEC_REAL::set1(dV1);
 
   // Transport
   // dt rho + d_i (rho vel^i) = 0
@@ -108,8 +102,7 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
           auto fy0 = CCTK_VEC_REAL::loadu(fy_[idx_fy]);
           auto fz1 = CCTK_VEC_REAL::loadu(fz_[idx_fz + str_fz[2]]);
           auto fz0 = CCTK_VEC_REAL::loadu(fz_[idx_fz]);
-          auto u = u_p - (vec_dt_dx * (fx1 - fx0) + vec_dt_dy * (fy1 - fy0) +
-                          vec_dt_dz * (fz1 - fz0));
+          auto u = u_p - vec_dV1 * ((fx1 - fx0) + (fy1 - fy0) + (fz1 - fz0));
           u.storeu_partial(u_[idx], i, i, imax[0]);
         }
       }
