@@ -1,3 +1,4 @@
 # Configuration definitions for thorn HydroToyCarpetX
 
-REQUIRES NSIMD Vectors
+# REQUIRES NSIMD
+REQUIRES Vectors
