@@ -128,6 +128,10 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
   buf << filename << ".tsv";
   ofstream file(buf.str());
 
+  // get more precision for floats, could also use
+  // https://stackoverflow.com/a/30968371
+  file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
+
   // Output header
   file << "# 1:iteration"
        << "\t"
@@ -152,10 +156,6 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
   for (const auto &varname : varnames)
     file << "\t" << col++ << ":" << varname;
   file << "\n";
-
-  // get more precision for floats, could also use
-  // https://stackoverflow.com/a/30968371
-  file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
 
   for (const auto &leveldata : ghext->leveldata) {
     enter_level_mode(const_cast<cGH *>(cctkGH), leveldata);
@@ -257,6 +257,11 @@ void OutputNorms(const cGH *restrict cctkGH) {
         << ".tsv";
     const string filename = buf.str();
     file = ofstream(filename);
+
+    // get more precision for floats, could also use
+    // https://stackoverflow.com/a/30968371
+    file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
+
     file << "# 1:iteration"
          << "\t"
          << "2:time"
