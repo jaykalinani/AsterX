@@ -13,21 +13,33 @@
 #include <mpi.h>
 
 #include <cmath>
+#include <ostream>
 
 namespace CarpetX {
 using namespace std;
 
+template <typename T> struct mpi_datatype;
+template <> struct mpi_datatype<float> {
+  static constexpr MPI_Datatype value = MPI_FLOAT;
+};
+template <> struct mpi_datatype<double> {
+  static constexpr MPI_Datatype value = MPI_DOUBLE;
+};
+template <> struct mpi_datatype<long double> {
+  static constexpr MPI_Datatype value = MPI_LONG_DOUBLE;
+};
+
 template <typename T> T fmax1(T x, T y) {
-  if (CCTK_isnan(x))
+  if (CCTK_isnan(CCTK_REAL(x)))
     return x;
-  if (CCTK_isnan(y))
+  if (CCTK_isnan(CCTK_REAL(y)))
     return y;
   return fmax(x, y);
 }
 template <typename T> T fmin1(T x, T y) {
-  if (CCTK_isnan(x))
+  if (CCTK_isnan(CCTK_REAL(x)))
     return x;
-  if (CCTK_isnan(y))
+  if (CCTK_isnan(CCTK_REAL(y)))
     return y;
   return fmin(x, y);
 }
@@ -49,6 +61,13 @@ template <typename T> struct reduction {
   T norm1() const { return sumabs / vol; }
   T norm2() const { return sqrt(sum2abs / vol); }
   T norm_inf() const { return maxabs; }
+
+  friend ostream &operator<<(ostream &os, const reduction &red) {
+    return os << "reduction{min:" << red.min << ",max:" << red.max
+              << ",sum:" << red.sum << ",sum2:" << red.sum2
+              << ",vol:" << red.vol << ",maxabs:" << red.maxabs
+              << ",sumabs:" << red.sumabs << ",sum2abs:" << red.sum2abs << "}";
+  }
 };
 
 template <typename T>
@@ -71,6 +90,7 @@ reduction<T>::reduction(const reduction &x, const reduction &y)
 typedef reduction<CCTK_REAL> reduction_CCTK_REAL;
 #pragma omp declare reduction(reduction:reduction_CCTK_REAL : omp_out += omp_in)
 
+MPI_Datatype reduction_mpi_datatype_CCTK_REAL();
 MPI_Op reduction_mpi_op();
 
 reduction<CCTK_REAL> reduce(int gi, int vi, int tl);
