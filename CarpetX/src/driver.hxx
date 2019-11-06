@@ -17,8 +17,8 @@
 #include <AMReX_MultiFab.H>
 
 #include <array>
-#include <iostream>
 #include <memory>
+#include <ostream>
 #include <tuple>
 #include <type_traits>
 #include <vector>

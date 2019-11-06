@@ -18,8 +18,8 @@
 #include <mpi.h>
 
 #include <cmath>
-#include <iostream>
 #include <memory>
+#include <ostream>
 #include <string>
 
 namespace CarpetX {

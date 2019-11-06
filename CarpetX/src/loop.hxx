@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
-#include <iostream>
+#include <ostream>
 #include <string>
 #include <tuple>
 
