@@ -105,90 +105,54 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
   }
 }
 
-#warning "TODO: Get these from schedule.cxx"
-struct TileBox {
-  array<int, dim> tile_min;
-  array<int, dim> tile_max;
-};
-
-void enter_level_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata);
-void leave_level_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata);
-void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
-                      const GHExt::LevelData &restrict leveldata,
-                      const MFIter &mfi);
-void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
-                      const GHExt::LevelData &restrict leveldata,
-                      const MFIter &mfi);
-
 void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
                 const vector<string> &varnames) {
   ostringstream buf;
   buf << filename << ".tsv";
   ofstream file(buf.str());
+  const string sep = "\t";
 
   // get more precision for floats, could also use
   // https://stackoverflow.com/a/30968371
   file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
 
   // Output header
-  file << "# 1:iteration"
-       << "\t"
-       << "2:time"
-       << "\t"
-       << "3:level"
-       << "\t"
-       << "4:component"
-       << "\t"
-       << "5:i"
-       << "\t"
-       << "6:j"
-       << "\t"
-       << "7:k"
-       << "\t"
-       << "8:x"
-       << "\t"
-       << "9:y"
-       << "\t"
-       << "10:z";
+  file << "# 1:iteration" << sep << "2:time" << sep << "3:level" << sep
+       << "4:component" << sep << "5:i" << sep << "6:j" << sep << "7:k" << sep
+       << "8:x" << sep << "9:y" << sep << "10:z";
   int col = 11;
   for (const auto &varname : varnames)
-    file << "\t" << col++ << ":" << varname;
+    file << sep << col++ << ":" << varname;
   file << "\n";
 
   for (const auto &leveldata : ghext->leveldata) {
-    enter_level_mode(const_cast<cGH *>(cctkGH), leveldata);
     const auto &groupdata = leveldata.groupdata.at(gi);
     const int tl = 0;
-    for (MFIter mfi(*leveldata.mfab0); mfi.isValid(); ++mfi) {
-      TileBox tilebox;
-      enter_local_mode(const_cast<cGH *>(cctkGH), tilebox, leveldata, mfi);
-      GridPtrDesc1 grid(leveldata, groupdata, mfi);
-      const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-      vector<GF3D1<const CCTK_REAL> > ptrs_;
-      ptrs_.reserve(groupdata.numvars);
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
-        ptrs_.push_back(grid.gf3d(vars, vi));
-      // write_arrays(file, cctkGH, leveldata.level, mfi.index(), ptrs, grid);
-      Loop::loop_idx(cctkGH, where_t::everywhere, groupdata.indextype,
-                     [&](const Loop::PointDesc &p) {
-                       file << cctkGH->cctk_iteration << "\t"
-                            << cctkGH->cctk_time << "\t" << leveldata.level
-                            << "\t"
-                            << mfi.index()
-                            // << "\t" << isghost
-                            << "\t" << (grid.lbnd[0] + p.i) << "\t"
-                            << (grid.lbnd[1] + p.j) << "\t"
-                            << (grid.lbnd[2] + p.k) << "\t" << p.x << "\t"
-                            << p.y << "\t" << p.z;
-                       for (const auto &ptr_ : ptrs_)
-                         file << "\t" << ptr_(p.I);
-                       file << "\n";
-                     });
-      leave_local_mode(const_cast<cGH *>(cctkGH), tilebox, leveldata, mfi);
+    const auto &geom = ghext->amrcore->Geom(leveldata.level);
+    const auto &mfab = *groupdata.mfab.at(tl);
+    for (MFIter mfi(mfab); mfi.isValid(); ++mfi) {
+      const Array4<const CCTK_REAL> &vars = mfab.array(mfi);
+      const auto &imin = vars.begin;
+      const auto &imax = vars.end;
+      for (int k = imin.z; k < imax.z; ++k) {
+        for (int j = imin.y; j < imax.y; ++j) {
+          for (int i = imin.x; i < imax.x; ++i) {
+            const array<int, dim> I{i, j, k};
+            array<CCTK_REAL, dim> x;
+            for (int d = 0; d < dim; ++d)
+              x[d] = geom.ProbLo(d) +
+                     (I[d] + 0.5 * groupdata.indextype[d]) * geom.CellSize(d);
+            file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time << sep
+                 << leveldata.level << sep << mfi.index() << sep << I[0] << sep
+                 << I[1] << sep << I[2] << sep << x[0] << sep << x[1] << sep
+                 << x[2];
+            for (int n = 0; n < groupdata.numvars; ++n)
+              file << sep << vars(i, j, k, n);
+            file << "\n";
+          }
+        }
+      }
     }
-    leave_level_mode(const_cast<cGH *>(cctkGH), leveldata);
   }
 
   file.close();
@@ -249,6 +213,7 @@ void OutputNorms(const cGH *restrict cctkGH) {
   Interval interval(timer);
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
+  const string sep = "\t";
 
   ofstream file;
   if (is_root) {
@@ -262,29 +227,10 @@ void OutputNorms(const cGH *restrict cctkGH) {
     // https://stackoverflow.com/a/30968371
     file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
 
-    file << "# 1:iteration"
-         << "\t"
-         << "2:time"
-         << "\t"
-         << "3:varname"
-         << "\t"
-         << "4:min"
-         << "\t"
-         << "5:max"
-         << "\t"
-         << "6:sum"
-         << "\t"
-         << "7:avg"
-         << "\t"
-         << "8:stddev"
-         << "\t"
-         << "9:volume"
-         << "\t"
-         << "10:maxabs"
-         << "\t"
-         << "11:L1norm"
-         << "\t"
-         << "12:L2norm"
+    file << "# 1:iteration" << sep << "2:time" << sep << "3:varname" << sep
+         << "4:min" << sep << "5:max" << sep << "6:sum" << sep << "7:avg" << sep
+         << "8:stddev" << sep << "9:volume" << sep << "10:maxabs" << sep
+         << "11:L1norm" << sep << "12:L2norm"
          << "\n";
   }
 
@@ -322,12 +268,11 @@ void OutputNorms(const cGH *restrict cctkGH) {
 #endif
 
       if (is_root)
-        file << cctk_iteration << "\t" << cctk_time << "\t"
-             << CCTK_FullVarName(groupdata.firstvarindex + vi) << "\t"
-             << red.min << "\t" << red.max << "\t" << red.sum << "\t"
-             << red.avg() << "\t" << red.sdv() << "\t" << red.norm0() << "\t"
-             << red.norm1() << "\t" << red.norm2() << "\t" << red.norm_inf()
-             << "\n";
+        file << cctk_iteration << sep << cctk_time << sep
+             << CCTK_FullVarName(groupdata.firstvarindex + vi) << sep << red.min
+             << sep << red.max << sep << red.sum << sep << red.avg() << sep
+             << red.sdv() << sep << red.norm0() << sep << red.norm1() << sep
+             << red.norm2() << sep << red.norm_inf() << "\n";
     }
   }
 
@@ -345,6 +290,7 @@ void OutputScalars(const cGH *restrict cctkGH) {
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (!is_root)
     return;
+  const string sep = "\t";
 
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
@@ -369,12 +315,12 @@ void OutputScalars(const cGH *restrict cctkGH) {
 #if 0
     // Output header
     file << "#"
-         << "\t"
+         << sep
          << "iteration"
-         << "\t"
+         << sep
          << "time";
     for (int vi = 0; vi < groupdata.numvars; ++vi) {
-      file << "\t" << CCTK_VarName(group.firstvarindex + vi);
+      file << sep << CCTK_VarName(group.firstvarindex + vi);
     file << "\n";
 #endif
 
@@ -383,9 +329,9 @@ void OutputScalars(const cGH *restrict cctkGH) {
     const GHExt::GlobalData::ScalarGroupData &restrict scalargroupdata =
         globaldata.scalargroupdata.at(gi);
     const int tl = 0;
-    file << cctkGH->cctk_iteration << "\t" << cctkGH->cctk_time;
+    file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
     for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-      file << "\t" << scalargroupdata.data.at(tl).at(vi);
+      file << sep << scalargroupdata.data.at(tl).at(vi);
     }
     file << "\n";
   }
