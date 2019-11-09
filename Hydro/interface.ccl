@@ -1,0 +1,60 @@
+# Interface definition for thorn Hydro
+
+IMPLEMENTS: Hydro
+
+
+
+USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: vectors.h
+
+
+
+void FUNCTION GetTileExtent(
+  CCTK_POINTER_TO_CONST IN cctkGH,
+  CCTK_INT ARRAY OUT tile_min,
+  CCTK_INT ARRAY OUT tile_max)
+REQUIRES FUNCTION GetTileExtent
+
+
+
+CCTK_REAL conserved TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1}'
+{
+  rho
+  momx momy momz
+  etot
+} "Conserved variables"
+
+CCTK_REAL conserved_rhs TYPE=gf TAGS='index={1 1 1} fluxes="HydroToyCarpetX::flux_x HydroToyCarpetX::flux_y HydroToyCarpetX::flux_z"'
+{
+  dtrho
+  dtmomx dtmomy dtmomz
+  dtetot
+} "Time derivatives of conserved variables"
+
+CCTK_REAL primitive TYPE=gf TAGS='index={1 1 1} checkpoint="no" restrict="no"'
+{
+  press
+  velx vely velz
+  eint
+} "Primitive variables"
+
+CCTK_REAL flux_x TYPE=gf TAGS='index={0 1 1} checkpoint="no" restrict="no" nghostzones={0 0 0}'
+{
+  fxrho
+  fxmomx fxmomy fxmomz
+  fxetot
+} "Fluxes in x direction"
+
+CCTK_REAL flux_y TYPE=gf TAGS='index={1 0 1} checkpoint="no" restrict="no" nghostzones={0 0 0}'
+{
+  fyrho
+  fymomx fymomy fymomz
+  fyetot
+} "Fluxes in y direction"
+
+CCTK_REAL flux_z TYPE=gf TAGS='index={1 1 0} checkpoint="no" restrict="no" nghostzones={0 0 0}'
+{
+  fzrho
+  fzmomx fzmomy fzmomz
+  fzetot
+} "Fluxes in z direction"

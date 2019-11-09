@@ -126,6 +126,7 @@ ExternalLibraries/zlib
 !CHECKOUT = CarpetX/NSIMD
 CarpetX/AMReX
 CarpetX/CarpetX
+CarpetX/Hydro
 CarpetX/HydroToyCarpetX
 CarpetX/MaxwellToyCarpetX
 #DISABLED CarpetX/NSIMD
