@@ -130,5 +130,6 @@ CarpetX/Hydro
 CarpetX/HydroToyCarpetX
 CarpetX/MaxwellToyCarpetX
 #DISABLED CarpetX/NSIMD
+CarpetX/ODESolvers
 CarpetX/TestProlongate
 CarpetX/WaveToyCarpetX
