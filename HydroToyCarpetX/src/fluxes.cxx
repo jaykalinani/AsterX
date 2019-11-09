@@ -60,7 +60,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   // variables without ghosts
   const Loop::vect<int, dim> ash_ng = ash - 2 * nghostzones;
 
-  // fluxes :face-centred without ghosts
+  // fluxes: face-centred without ghosts
   const Loop::vect<int, dim> ash_fx = ash_ng + di;
   const Loop::vect<int, dim> ash_fy = ash_ng + dj;
   const Loop::vect<int, dim> ash_fz = ash_ng + dk;
