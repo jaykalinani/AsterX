@@ -1,3 +1,7 @@
 # Configuration definitions for thorn CarpetX
 
 REQUIRES AMReX MPI
+
+PROVIDES CarpetX
+{
+}

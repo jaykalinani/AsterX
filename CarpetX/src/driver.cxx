@@ -45,6 +45,10 @@ int Exit(cGH *cctkGH, int retval);
 int Abort(cGH *cctkGH, int retval);
 int Barrier(const cGH *cctkGHa);
 
+// Aliased functions
+
+extern "C" void CarpetX_CallScheduleGroup(void *cctkGH, const char *groupname);
+
 // Local functions
 void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm);
 void SetupGlobals();
@@ -1009,6 +1013,12 @@ int Abort(cGH *cctkGH, int retval) {
 int Barrier(const cGH *restrict cctkGH) {
   ParallelDescriptor::Barrier();
   return 0;
+}
+
+void CarpetX_CallScheduleGroup(void *cctkGH_, const char *groupname) {
+  cGH *cctkGH = static_cast<cGH *>(cctkGH_);
+  int ierr = CCTK_ScheduleTraverse(groupname, cctkGH, CallFunction);
+  assert(!ierr);
 }
 
 } // namespace CarpetX

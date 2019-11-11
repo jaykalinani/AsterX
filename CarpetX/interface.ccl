@@ -16,6 +16,11 @@ void FUNCTION GetTileExtent(
   CCTK_INT ARRAY OUT tile_max)
 PROVIDES FUNCTION GetTileExtent WITH CarpetX_GetTileExtent LANGUAGE C
 
+void FUNCTION CallScheduleGroup(
+  CCTK_POINTER IN cctkGH,
+  CCTK_STRING IN groupname)
+PROVIDES FUNCTION CallScheduleGroup WITH CarpetX_CallScheduleGroup LANGUAGE C
+
 
 
 PUBLIC:
