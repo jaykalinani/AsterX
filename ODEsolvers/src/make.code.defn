@@ -1,7 +1,7 @@
 # Main make.code.defn file for thorn ODESolvers
 
 # Source files in this directory
-SRCS =
+SRCS = solve.cxx
 
 # Subdirectories containing source files
 SUBDIRS =

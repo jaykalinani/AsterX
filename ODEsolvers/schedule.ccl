@@ -1,1 +1,15 @@
 # Schedule definitions for thorn ODESolvers
+
+SCHEDULE ODESolvers_solve AT evol
+{
+  LANG: C
+  OPTIONS: level
+} "Solve ODEs loop"
+
+
+
+# This group is not scheduled explicitly here; it will be scheduled dynamically
+# from  ODESolvers_solve
+SCHEDULE GROUP ODESolvers_RHS
+{
+} "Evaluate ODE RHS"

@@ -1,3 +1,10 @@
 # Interface definition for thorn ODESolvers
 
 IMPLEMENTS: ODESolvers
+
+
+
+void FUNCTION CallScheduleGroup(
+  CCTK_POINTER IN cctkGH,
+  CCTK_STRING IN groupname)
+REQUIRES FUNCTION CallScheduleGroup
