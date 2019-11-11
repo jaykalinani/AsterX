@@ -1,0 +1,11 @@
+# Interface definition for thorn TestODESolvers
+
+IMPLEMENTS: TestODESolvers
+
+
+
+CCTK_REAL state TYPE=gf TAGS='rhs="TestODESolvers::rhs"' "State vector"
+
+CCTK_REAL rhs TYPE=gf "RHS of state vector"
+
+CCTK_REAL error TYPE=gf "Error in state vector"
