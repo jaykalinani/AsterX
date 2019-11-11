@@ -338,7 +338,7 @@ void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
   if (valid.valid_int && valid.valid_bnd)
     return;
 
-  // scalar have no boundary so we expect it to alway be valid
+  // scalars have no boundary so we expect them to alway be valid
   assert(valid.valid_bnd);
 
   if (!valid.valid_int) {
@@ -359,7 +359,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
   if (!valid.valid_int && !valid.valid_bnd)
     return;
 
-  // scalar have no boundary so we expect it to alway be valid
+  // scalars have no boundary so we expect them to alway be valid
   assert(valid.valid_bnd);
 
   atomic<bool> found_nan{false};
