@@ -616,9 +616,22 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
           groupdata.valid.at(tl).at(vi).valid_bnd = false;
         }
       } else {
+        // Expext coarse grid data to be valid
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          if (!(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_bnd)) {
+            valid_t all_valid;
+            all_valid.valid_int = true;
+            all_valid.valid_bnd = true;
+            CCTK_VERROR(
+                "MakeNewLevelFromCoarse before prolongation: Grid function "
+                "\"%s\" is invalid on refinement level %d, time "
+                "level %d; expected valid %s, found valid %s",
+                CCTK_FullVarName(coarsegroupdata.firstvarindex + vi),
+                coarseleveldata.level, tl, string(all_valid).c_str(),
+                string(coarsegroupdata.valid.at(tl).at(vi)).c_str());
+          }
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                 coarsegroupdata.valid.at(tl).at(vi).valid_bnd);
           check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
