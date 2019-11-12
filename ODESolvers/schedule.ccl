@@ -1,6 +1,6 @@
 # Schedule definitions for thorn ODESolvers
 
-SCHEDULE ODESolvers_solve AT evol
+SCHEDULE ODESolvers_Solve AT evol
 {
   LANG: C
   OPTIONS: level

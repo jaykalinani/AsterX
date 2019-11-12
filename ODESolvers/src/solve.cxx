@@ -88,8 +88,8 @@ void statecomp_t::lincomb(const statecomp_t &z, CCTK_REAL alpha,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void ODESolvers_solve(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_ODESolvers_solve;
+extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_ODESolvers_Solve;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
