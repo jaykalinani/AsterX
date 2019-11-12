@@ -67,6 +67,7 @@ cGH *saved_cctkGH = nullptr;
 int current_level = -1;
 
 void Reflux(int level);
+void Restrict(int level, const vector<int> &groups);
 void Restrict(int level);
 
 namespace {
@@ -1501,7 +1502,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 }
 
 int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
-                     const int *groups, const int *directions) {
+                     const int *groups0, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
 
   assert(in_global_mode(cctkGH));
@@ -1511,16 +1512,41 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   assert(cctkGH);
   assert(numgroups >= 0);
-  assert(groups);
+  assert(groups0);
 
   if (verbose) {
     ostringstream buf;
     for (int n = 0; n < numgroups; ++n) {
       if (n != 0)
         buf << ", ";
-      buf << unique_ptr<char>(CCTK_GroupName(groups[n])).get();
+      buf << unique_ptr<char>(CCTK_GroupName(groups0[n])).get();
     }
     CCTK_VINFO("SyncGroups %s", buf.str().c_str());
+  }
+
+  const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
+  assert(gi_regrid_error >= 0);
+  const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
+  assert(gi_refinement_level >= 0);
+
+  vector<int> groups;
+  for (int n = 0; n < numgroups; ++n) {
+    int gi = groups0[n];
+    if (CCTK_GroupTypeI(gi) != CCTK_GF)
+      continue;
+    // Don't restrict the regridding error nor the refinement level
+    if (gi == gi_regrid_error || gi == gi_refinement_level)
+      continue;
+    // Don't restrict groups that have restriction disabled
+    groups.push_back(gi);
+  }
+
+  if (restrict_during_sync) {
+    if (current_level == -1)
+      for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+        Restrict(level, groups);
+    else
+      Restrict(current_level, groups);
   }
 
   const int min_level = current_level == -1 ? 0 : current_level;
@@ -1528,14 +1554,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       current_level == -1 ? ghext->leveldata.size() : current_level + 1;
   for (int level = min_level; level < max_level; ++level) {
     auto &restrict leveldata = ghext->leveldata.at(level);
-    for (int n = 0; n < numgroups; ++n) {
-      int gi = groups[n];
+    for (const int gi : groups) {
       cGroup group;
       int ierr = CCTK_GroupData(gi, &group);
       assert(!ierr);
 
-      if (group.grouptype != CCTK_GF)
-        continue;
+      assert(group.grouptype == CCTK_GF);
 
       auto &restrict groupdata = leveldata.groupdata.at(gi);
       // We always sync all directions.
@@ -1728,8 +1752,11 @@ bool get_group_restrict_flag(const int gi) {
 }
 } // namespace
 
-void Restrict(int level) {
+void Restrict(int level, const vector<int> &groups) {
   DECLARE_CCTK_PARAMETERS;
+
+  if (!do_restrict)
+    return;
 
   static Timer timer("Restrict");
   Interval interval(timer);
@@ -1741,13 +1768,12 @@ void Restrict(int level) {
 
   auto &leveldata = ghext->leveldata.at(level);
   const auto &fineleveldata = ghext->leveldata.at(level + 1);
-  for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
+  for (const int gi : groups) {
     cGroup group;
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    if (group.grouptype != CCTK_GF)
-      continue;
+    assert(group.grouptype == CCTK_GF);
 
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
@@ -1834,6 +1860,30 @@ void Restrict(int level) {
       }
     }
   }
+}
+
+void Restrict(int level) {
+  const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
+  assert(gi_regrid_error >= 0);
+  const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
+  assert(gi_refinement_level >= 0);
+
+  const int numgroups = CCTK_NumGroups();
+  vector<int> groups;
+  groups.reserve(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    if (CCTK_GroupTypeI(gi) != CCTK_GF)
+      continue;
+    // Don't restrict the regridding error nor the refinement level
+    if (gi == gi_regrid_error || gi == gi_refinement_level)
+      continue;
+    // Don't restrict groups that have restriction disabled
+    const bool do_restrict = get_group_restrict_flag(gi);
+    if (!do_restrict)
+      continue;
+    groups.push_back(gi);
+  }
+  Restrict(level, groups);
 }
 
 // storage handling

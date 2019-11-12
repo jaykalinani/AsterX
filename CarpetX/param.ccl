@@ -172,6 +172,18 @@ BOOLEAN do_reflux "Manage flux registers to ensure conservation"
 
 
 
+BOOLEAN do_restrict "Automatically restrict fine to coarse grid functions"
+{
+} yes
+
+
+
+BOOLEAN restrict_during_sync "Restrict fine to coarse grid functions when syncing"
+{
+} no
+
+
+
 CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 {
   *:* :: ""
