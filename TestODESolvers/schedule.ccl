@@ -4,7 +4,7 @@ STORAGE: state rhs
 
 
 
-SCHEDULE TestODESolvers_initial AT initial
+SCHEDULE TestODESolvers_Initial AT initial
 {
   LANG: C
   WRITES: state
@@ -17,13 +17,13 @@ SCHEDULE TestODESolvers_RHS IN ODESolvers_RHS
   WRITES: rhs
 } "RHS function"
 
-SCHEDULE TestODESolvers_boundary AT poststep
+SCHEDULE TestODESolvers_Boundary AT poststep
 {
   LANG: C
   SYNC: state
 } "Apply boundary conditions to state vector"
 
-SCHEDULE TestODESolvers_error AT analysis
+SCHEDULE TestODESolvers_Error AT analysis
 {
   LANG: C
   READS: state

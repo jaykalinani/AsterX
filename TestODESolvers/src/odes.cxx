@@ -7,8 +7,8 @@
 namespace TestODESolvers {
 using namespace std;
 
-extern "C" void TestODESolvers_initial(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_TestODESolvers_initial;
+extern "C" void TestODESolvers_Initial(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_TestODESolvers_Initial;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL u0 = pow(1 + cctk_time, order);
@@ -24,8 +24,8 @@ extern "C" void TestODESolvers_initial(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void TestODESolvers_boundary(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_TestODESolvers_boundary;
+extern "C" void TestODESolvers_Boundary(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_TestODESolvers_Boundary;
   DECLARE_CCTK_PARAMETERS;
 
   // do nothing
@@ -49,8 +49,8 @@ extern "C" void TestODESolvers_RHS(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void TestODESolvers_error(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_TestODESolvers_error;
+extern "C" void TestODESolvers_Error(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_TestODESolvers_Error;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL u0 = pow(1 + cctk_time, order);
