@@ -6,6 +6,7 @@ SRCS =	boundaries.cxx				\
 	estimateerror.cxx			\
 	fluxes.cxx				\
 	initialize.cxx				\
+	prim2con.cxx				\
 	rhs.cxx
 
 # Subdirectories containing source files

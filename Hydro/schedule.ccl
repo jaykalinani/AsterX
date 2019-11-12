@@ -1,9 +1,9 @@
 # Schedule definitions for thorn Hydro
 
-STORAGE: conserved[2]
-STORAGE: conserved_rhs
 STORAGE: primitive
 STORAGE: flux_x flux_y flux_z
+STORAGE: conserved_rhs
+STORAGE: conserved
 
 
 
@@ -12,13 +12,23 @@ STORAGE: flux_x flux_y flux_z
 SCHEDULE Hydro_Initialize AT initial
 {
   LANG: C
-  WRITES: conserved(interior)
-  INVALIDATES: primitive(everywhere)
+  WRITES: primitive(interior)
+  INVALIDATES: conserved(everywhere)
   INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
-  SYNC: conserved
+  INVALIDATES: conserved_rhs(everywhere)
+  SYNC: primitive
 } "Set up hydro initial conditions"
 
-SCHEDULE Hydro_EstimateError AT postinitial
+SCHEDULE Hydro_Prim2Con AT postinitial
+{
+  LANG: C
+  READS: primitive(everywhere)
+  WRITES: conserved(everywhere)
+  INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
+  INVALIDATES: conserved_rhs(everywhere)
+} "Calculate conserved variables"
+
+SCHEDULE Hydro_EstimateError AT postinitial AFTER Hydro_Prim2Con
 {
   LANG: C
   READS: conserved(everywhere)
@@ -33,6 +43,7 @@ SCHEDULE Hydro_Boundaries AT postregrid
 {
   LANG: C
   SYNC: conserved
+  INVALIDATES: primitive(everywhere)
 } "Apply boundary conditions after regridding"
 
 
@@ -51,7 +62,8 @@ if (output_every > 0) {
       READS: conserved(everywhere)
       WRITES: primitive(everywhere)
       INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
-    } "Calculate pressure"
+      INVALIDATES: conserved_rhs(everywhere)
+    } "Calculate primitive variables"
 
     SCHEDULE Hydro_Fluxes IN Hydro_OutputGroup AFTER Hydro_Con2prim
     {
@@ -59,7 +71,16 @@ if (output_every > 0) {
       READS: conserved(everywhere)
       READS: primitive(everywhere)
       WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+      INVALIDATES: conserved_rhs(everywhere)
     } "Calculate the hydro fluxes"
+
+    SCHEDULE Hydro_RHS IN Hydro_OutputGroup AFTER Hydro_Fluxes
+    {
+      LANG: C
+      READS: flux_x(interior) flux_y(interior) flux_z(interior)
+      WRITES: conserved_rhs(interior)
+      SYNC: conserved_rhs           # sync and restrict
+    } "Calculate RHS of the hydro equations"
 }
 
 SCHEDULE Hydro_EstimateError AT poststep
@@ -73,24 +94,26 @@ SCHEDULE Hydro_EstimateError AT poststep
 
 # Time stepping
 
-SCHEDULE Hydro_Con2prim AT evol
+SCHEDULE Hydro_Con2prim IN ODESolvers_RHS
 {
   LANG: C
   READS: conserved(everywhere)
   WRITES: primitive(everywhere)
   INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
+  INVALIDATES: conserved_rhs(everywhere)
 } "Calculate pressure"
 
-SCHEDULE Hydro_Fluxes AT evol AFTER Hydro_Con2prim
+SCHEDULE Hydro_Fluxes IN ODESolvers_RHS AFTER Hydro_Con2prim
 {
   LANG: C
   READS: conserved(everywhere)
   READS: primitive(everywhere)
   WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+  INVALIDATES: conserved_rhs(everywhere)
   SYNC: flux_x flux_y flux_z    # restrict
 } "Calculate the hydro fluxes"
 
-SCHEDULE Hydro_RHS AT evol AFTER Hydro_Fluxes
+SCHEDULE Hydro_RHS IN ODESolvers_RHS AFTER Hydro_Fluxes
 {
   LANG: C
   READS: flux_x(interior) flux_y(interior) flux_z(interior)

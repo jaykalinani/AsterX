@@ -36,7 +36,7 @@ extern "C" void Hydro_EstimateError(CCTK_ARGUMENTS) {
 
   for (int k = imin[2]; k < imax[2]; ++k) {
     for (int j = imin[1]; j < imax[1]; ++j) {
-      for (int i = imin[0]; i < imax[0]; i += VS) {
+      for (int i = imin[0]; i < imax[0]; i += vsize) {
         ptrdiff_t ind = i + dj * j + dk * k;
 
         auto calcerr{[&](const CCTK_REAL *restrict var) {
@@ -53,7 +53,7 @@ extern "C" void Hydro_EstimateError(CCTK_ARGUMENTS) {
         }};
 
         CCTK_REALVEC regrid_error1 =
-            fmax5(calcerr(rho), calcerr(momx), calcerr(momy), calcerr(momz),
+            fmax5(calcerr(dens), calcerr(momx), calcerr(momy), calcerr(momz),
                   calcerr(etot));
         regrid_error1.storeu_partial(regrid_error[ind], i, imin[0], imax[0]);
       }

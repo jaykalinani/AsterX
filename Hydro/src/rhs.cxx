@@ -48,6 +48,8 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
   constexpr ptrdiff_t dix = 1;
   const ptrdiff_t djx = dix * ashx[0];
   const ptrdiff_t dkx = djx * ashx[1];
+  const ptrdiff_t offx =
+      nghostzones[0] * dix + nghostzones[1] * djx + nghostzones[2] * dkx;
 
   // y
   // fluxes: face-centred without ghosts
@@ -55,6 +57,8 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
   constexpr ptrdiff_t diy = 1;
   const ptrdiff_t djy = diy * ashy[0];
   const ptrdiff_t dky = djy * ashy[1];
+  const ptrdiff_t offy =
+      nghostzones[0] * diy + nghostzones[1] * djy + nghostzones[2] * dky;
 
   // z
   // fluxes: face-centred without ghosts
@@ -62,6 +66,8 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
   constexpr ptrdiff_t diz = 1;
   const ptrdiff_t djz = diz * ashz[0];
   const ptrdiff_t dkz = djz * ashz[1];
+  const ptrdiff_t offz =
+      nghostzones[0] * diz + nghostzones[1] * djz + nghostzones[2] * dkz;
 
   const auto calcrhs{
       [&](const CCTK_REAL *restrict const fxvar,
@@ -70,24 +76,24 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
           CCTK_REAL *restrict const dtvar) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         for (int k = imin[2]; k < imax[2]; ++k) {
           for (int j = imin[1]; j < imax[1]; ++j) {
-            for (int i = imin[0]; i < imax[0]; i += VS) {
+            for (int i = imin[0]; i < imax[0]; i += vsize) {
               ptrdiff_t ind = i + dj * j + dk * k;
-              ptrdiff_t indx = i + djx * j + dkx * k;
-              ptrdiff_t indy = i + djy * j + dky * k;
-              ptrdiff_t indz = i + djz * j + dkz * k;
+              ptrdiff_t indx = i + djx * j + dkx * k - offx;
+              ptrdiff_t indy = i + djy * j + dky * k - offy;
+              ptrdiff_t indz = i + djz * j + dkz * k - offz;
 
               CCTK_REALVEC dtvar1 =
                   dV1 * ((vloadu(fxvar[indx + dix]) - vloadu(fxvar[indx])) +
                          (vloadu(fyvar[indy + djy]) - vloadu(fyvar[indy])) +
                          (vloadu(fzvar[indz + dkz]) - vloadu(fzvar[indz])));
 
-              dtvar1.store_partial(dtvar[ind], i, imin[0], imax[0]);
+              dtvar1.storeu_partial(dtvar[ind], i, imin[0], imax[0]);
             }
           }
         }
       }};
 
-  calcrhs(fxrho, fyrho, fzrho, dtrho);
+  calcrhs(fxdens, fydens, fzdens, dtdens);
   calcrhs(fxmomx, fymomx, fzmomx, dtmomx);
   calcrhs(fxmomy, fymomy, fzmomy, dtmomy);
   calcrhs(fxmomz, fymomz, fzmomz, dtmomz);
