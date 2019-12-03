@@ -34,7 +34,7 @@ RUN wget https://github.com/AMReX-Codes/amrex/archive/19.08.tar.gz && \
 RUN dnf install -y svn perl-Thread-Queue
 RUN dnf install -y python2
 RUN curl -kLO https://raw.githubusercontent.com/nds-org/jupyter-et/master/et-pkg-installer.py
-RUN python et-pkg-installer.py
+RUN python2 et-pkg-installer.py
 RUN sh install-for-cactus.sh
 RUN dnf install -y file
 RUN useradd -m jovyan
@@ -50,5 +50,7 @@ RUN chmod 755 /usr/local/bin/setmeup.sh
 RUN dnf install -y gdb
 #ENV container docker
 COPY Dockerfile /Dockerfile
+RUN dnf install -y diffutils
 USER jovyan
-CMD ["/usr/sbin/init"]
+#CMD ["/usr/sbin/init"]
+CMD ["sleep","infinity"]
