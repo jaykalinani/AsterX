@@ -53,4 +53,5 @@ COPY Dockerfile /Dockerfile
 RUN dnf install -y diffutils
 USER jovyan
 #CMD ["/usr/sbin/init"]
+RUN setmeup.sh
 CMD ["sleep","infinity"]

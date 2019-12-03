@@ -15,7 +15,7 @@ if [ ! -x GetComponents ]
 then
   curl -kLO https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_03/GetComponents
   chmod a+x GetComponents
-  ./GetComponents --parallel azure-pipelines/amrex.th
+  ./GetComponents --parallel azure-pipelines/carpetx.th
 fi
 mkdir -p /home/jovyan/cactusamrex/Cactus
 cd /home/jovyan/cactusamrex/Cactus
@@ -25,5 +25,5 @@ then
   ./simfactory/bin/sim setup-silent
 fi
 #COPY amrex.cfg ./
-./simfactory/bin/sim build -j2 --thornlist ../azure-pipelines/amrex.th --optionlist /amrex.cfg
+./simfactory/bin/sim build -j2 --thornlist ../azure-pipelines/carpetx.th --optionlist /amrex.cfg
 #./exe/cactus_sim ./repos/cactusamrex/AMReX/par/amrex.par
