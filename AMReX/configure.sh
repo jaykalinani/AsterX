@@ -34,10 +34,13 @@ echo "END MESSAGE"
 
 AMREX_GIT_VERSION_MAJOR=$(
     echo "${AMREX_GIT_VERSION}" |
-        sed -e 's/[.].*$//')
+        sed -e 's/(\d+)/\1/')
 AMREX_GIT_VERSION_MINOR=$(
     echo "${AMREX_GIT_VERSION}" |
-        sed -e 's/^.*[.]//')
+        sed -e 's/\d+[.](\d+)/\1/')
+echo "BEGIN MESSAGE"
+echo "Found AMReX version [$AMREX_GIT_VERSION_MAJOR] [$AMREX_GIT_VERSION_MINOR]"
+echo "END MESSAGE"
 
 AMREX_GIT_VERSION_NUMERIC=$(
     printf "%d%02d" "${AMREX_GIT_VERSION_MAJOR}" "${AMREX_GIT_VERSION_MINOR}")
