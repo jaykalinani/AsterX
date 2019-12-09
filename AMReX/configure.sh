@@ -23,6 +23,26 @@ if [ -z "${AMREX_DIR}" ]; then
     exit 1
 fi
 
+# Check version
+AMREX_GIT_VERSION=$(
+    grep 'AMREX_GIT_VERSION' "${AMREX_DIR}/include/AMReX_Config.H" |
+        cut -d' ' -f 3 |
+        tr -d '"')
+echo "BEGIN MESSAGE"
+echo "Found AMReX version $AMREX_GIT_VERSION"
+echo "END MESSAGE"
+
+AMREX_GIT_VERSION_NUMERIC=$(
+    echo "${AMREX_GIT_VERSION}" |
+        tr -d '.')
+
+if [ ${AMREX_GIT_VERSION_NUMERIC} -lt 1912 ]; then
+    echo "BEGIN ERROR"
+    echo "Need at least AMReX version 19.12"
+    echo "END ERROR"
+    exit 1
+fi
+
 # Set options
 : ${AMREX_INC_DIRS="${AMREX_DIR}/include"}
 : ${AMREX_LIB_DIRS="${AMREX_DIR}/lib"}
