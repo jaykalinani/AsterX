@@ -1,0 +1,65 @@
+# Interface definition for thorn Maxwell
+
+IMPLEMENTS: Maxwell
+
+
+
+USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: vectors.h
+
+
+
+void FUNCTION GetTileExtent(
+  CCTK_POINTER_TO_CONST IN cctkGH,
+  CCTK_INT ARRAY OUT tile_min,
+  CCTK_INT ARRAY OUT tile_max)
+REQUIRES FUNCTION GetTileExtent
+
+
+
+# State vector
+
+# TODO: phi needs no ghost zones
+CCTK_REAL phi TYPE=gf TAGS='index={0 0 0} rhs="dtphi"' "Electric potential"
+
+CCTK_REAL ax TYPE=gf TAGS='index={1 0 0} rhs="dtax"' "Magnetic potential"
+CCTK_REAL ay TYPE=gf TAGS='index={0 1 0} rhs="dtay"' "Magnetic potential"
+CCTK_REAL az TYPE=gf TAGS='index={0 0 1} rhs="dtaz"' "Magnetic potential"
+
+CCTK_REAL ex TYPE=gf TAGS='index={1 0 0} rhs="dtex"' "Electric field"
+CCTK_REAL ey TYPE=gf TAGS='index={0 1 0} rhs="dtey"' "Electric field"
+CCTK_REAL ez TYPE=gf TAGS='index={0 0 1} rhs="dtez"' "Electric field"
+
+CCTK_REAL byz TYPE=gf TAGS='index={0 1 1} rhs="dtbyz"' "Magnetic field"
+CCTK_REAL bzx TYPE=gf TAGS='index={1 0 1} rhs="dtbzx"' "Magnetic field"
+CCTK_REAL bxy TYPE=gf TAGS='index={1 1 0} rhs="dtbxy"' "Magnetic field"
+
+
+
+# RHS
+
+CCTK_REAL dtphi TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Electric potential"
+
+CCTK_REAL dtax TYPE=gf TAGS='index={1 0 0} checkpoint="no"' "Magnetic potential"
+CCTK_REAL dtay TYPE=gf TAGS='index={0 1 0} checkpoint="no"' "Magnetic potential"
+CCTK_REAL dtaz TYPE=gf TAGS='index={0 0 1} checkpoint="no"' "Magnetic potential"
+
+CCTK_REAL dtex TYPE=gf TAGS='index={1 0 0} checkpoint="no"' "Electric field"
+CCTK_REAL dtey TYPE=gf TAGS='index={0 1 0} checkpoint="no"' "Electric field"
+CCTK_REAL dtez TYPE=gf TAGS='index={0 0 1} checkpoint="no"' "Electric field"
+
+CCTK_REAL dtbyz TYPE=gf TAGS='index={0 1 1} checkpoint="no"' "Magnetic field"
+CCTK_REAL dtbzx TYPE=gf TAGS='index={1 0 1} checkpoint="no"' "Magnetic field"
+CCTK_REAL dtbxy TYPE=gf TAGS='index={1 1 0} checkpoint="no"' "Magnetic field"
+
+
+
+# Constraints
+
+CCTK_REAL curlax TYPE=gf TAGS='index={0 1 1} checkpoint="no"' "Magnetic potential constraint"
+CCTK_REAL curlay TYPE=gf TAGS='index={1 0 1} checkpoint="no"' "Magnetic potential constraint"
+CCTK_REAL curlaz TYPE=gf TAGS='index={1 1 0} checkpoint="no"' "Magnetic potential constraint"
+
+CCTK_REAL dive TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Electric constraint"
+
+CCTK_REAL divb TYPE=gf TAGS='index={1 1 1} checkpoint="no"' "Magnetic constraint"

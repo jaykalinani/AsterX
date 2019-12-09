@@ -1,0 +1,56 @@
+Cactus Code Thorn Maxwell
+Author(s)    : Erik Schnetter <schnetter@gmail.com>
+Maintainer(s): Erik Schnetter <schnetter@gmail.com>
+Licence      : LGPL
+--------------------------------------------------------------------------
+
+1. Purpose
+
+Solve the Maxwell equations
+
+
+
+2. Formulation (see <https://en.wikipedia.org/wiki/Maxwell%27s_equations>)
+
+Electric potential: phi
+Magnetic potential: A
+Lorenz gauge:       div A = - dt phi
+
+Electric field: E = - grad phi - dt A
+Magnetic field: B = curl A
+
+Homogeneous electric equation: curl E + dt B = 0
+Homogeneous magnetic equation: div B = 0
+
+Inhomogeneous electric equation: div E = rho
+Inhomogeneous magnetic equation: curl B - dt E = J
+
+Charge density:  rho
+Current density: J
+
+Charge conservation: dt rho + div J = 0
+
+
+
+State vector:        phi
+                     A
+                     E
+                     B
+Equations of motion: dt phi = - div A
+                     dt A   = - grad phi - E
+                     dt E   = curl B - J
+                     dt B   = - curl E
+Constraints:         div E = rho
+                     div B = 0
+                     B     = curl A
+
+
+
+Ansatz for initial conditions:
+
+phi = aphi cos (omega t - k x)
+A = aA cos (omega t - k x)
+
+Lorenz gauge: omega = aA k / aphi
+
+zero charge: aphi = aA k omega / k^2

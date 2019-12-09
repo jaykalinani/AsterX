@@ -1,0 +1,80 @@
+# Schedule definitions for thorn Maxwell
+
+STORAGE: phi
+STORAGE: ax ay az
+STORAGE: ex ey ez
+STORAGE: byz bzx bxy
+
+STORAGE: dtphi
+STORAGE: dtax dtay dtaz
+STORAGE: dtex dtey dtez
+STORAGE: dtbyz dtbzx dtbxy
+
+STORAGE: dive
+STORAGE: divb
+
+
+
+# Initial conditions
+
+SCHEDULE Maxwell_Initial AT initial
+{
+  LANG: C
+  WRITES: phi(interior)
+  WRITES: ax(interior) ay(interior) az(interior)
+  WRITES: ex(interior) ey(interior) ez(interior)
+  WRITES: byz(interior) bzx(interior) bxy(interior)
+  SYNC: phi
+  SYNC: ax ay az
+  SYNC: ex ey ez
+  SYNC: byz bzx bxy
+} "Set up hydro initial conditions"
+
+
+
+# Regridding
+
+SCHEDULE Maxwell_Boundaries AT postregrid
+{
+  LANG: C
+  SYNC: phi
+  SYNC: ax ay az
+  SYNC: ex ey ez
+  SYNC: byz bzx bxy
+} "Apply boundary conditions"
+
+
+
+# Time evolution
+
+SCHEDULE Maxwell_RHS IN ODESolvers_RHS
+{
+  LANG: C
+  READS: phi(interior)
+  READS: ax(everywhere) ay(everywhere) az(everywhere)
+  READS: ex(interior) ey(interior) ez(interior)
+  READS: byz(everywhere) bzx(everywhere) bxy(everywhere)
+  WRITES: dtphi(interior)
+  WRITES: dtax(interior) dtay(interior) dtaz(interior)
+  WRITES: dtex(interior) dtey(interior) dtez(interior)
+  WRITES: dtbyz(interior) dtbzx(interior) dtbxy(interior)
+  SYNC: dtphi
+  SYNC: dtax dtay dtaz
+  SYNC: dtex dtey dtez
+  SYNC: dtbyz dtbzx dtbxy       # we could calculate B everywhere
+} "Calculate RHS"
+
+
+
+# Analysis
+
+SCHEDULE Maxwell_Constraints AT poststep
+{
+  LANG: C
+  READS: ax(interior) ay(interior) az(interior)
+  READS: ex(everywhere) ey(everywhere) ez(everywhere)
+  READS: byz(interior) bzx(interior) bxy(interior)
+  WRITES: curlax(interior) curlay(interior) curlaz(interior)
+  WRITES: dive(interior)
+  WRITES: divb(interior)
+} "Calculate constraints"
