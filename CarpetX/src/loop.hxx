@@ -27,127 +27,127 @@ constexpr int dim = 3;
 template <typename T, int D> struct vect {
   array<T, D> elts;
 
-  vect() {
-    for (int d = 0; d < D; ++d)
-      elts[d] = 0;
-  }
+  // initializes all elts to zero
+  constexpr vect() : elts() {}
 
-  vect(const array<T, D> &arr) : elts(arr) {}
+  constexpr vect(const array<T, D> &arr) : elts(arr) {}
 
-  static vect unit(int dir) {
+  static constexpr vect unit(int dir) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = d == dir;
     return r;
   }
 
-  const T &operator[](int d) const { return elts[d]; }
+  constexpr const T &operator[](int d) const { return elts[d]; }
   T &operator[](int d) { return elts[d]; }
 
-  friend vect operator+(const vect &x) {
+  friend constexpr vect operator+(const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = +x.elts[d];
     return r;
   }
-  friend vect operator-(const vect &x) {
+  friend constexpr vect operator-(const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = -x.elts[d];
     return r;
   }
 
-  friend vect operator+(const vect &x, const vect &y) {
+  friend constexpr vect operator+(const vect &x, const vect &y) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] + y.elts[d];
     return r;
   }
-  friend vect operator-(const vect &x, const vect &y) {
+  friend constexpr vect operator-(const vect &x, const vect &y) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] - y.elts[d];
     return r;
   }
 
-  // friend vect operator+(const vect &x, const array<T, D> &y) {
+  // friend constexpr vect operator+(const vect &x, const array<T, D> &y) {
   //   return x + vect(y);
   // }
-  // friend vect operator-(const vect &x, const array<T, D> &y) {
+  // friend constexpr vect operator-(const vect &x, const array<T, D> &y) {
   //   return x - vect(y);
   // }
 
-  // friend vect operator+(const vect &x, T a) {
+  // friend constexpr vect operator+(const vect &x, T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] + a;
   //   return r;
   // }
-  // friend vect operator-(const vect &x, T a) {
+  // friend constexpr vect operator-(const vect &x, T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] - a;
   //   return r;
   // }
 
-  friend vect operator*(T a, const vect &x) {
+  friend constexpr vect operator*(T a, const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = a * x.elts[d];
     return r;
   }
-  friend vect operator*(const vect &x, T a) {
+  friend constexpr vect operator*(const vect &x, T a) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] * a;
     return r;
   }
 
-  friend vect<bool, D> operator!(const vect &x) {
+  friend constexpr vect<bool, D> operator!(const vect &x) {
     vect<bool, D> r;
     for (int d = 0; d < dim; ++d)
       r.elts[d] = !x.elts[d];
     return r;
   }
-  friend vect<bool, D> operator&&(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator&&(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] && y.elts[d];
     return r;
   }
-  friend vect<bool, D> operator||(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator||(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] || y.elts[d];
     return r;
   }
 
-  friend vect<bool, D> operator==(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator==(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] == y.elts[d];
     return r;
   }
-  friend vect<bool, D> operator!=(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator!=(const vect &x, const vect &y) {
     return !(x == y);
   }
-  friend vect<bool, D> operator<(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator<(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] < y.elts[d];
     return r;
   }
-  friend vect<bool, D> operator>(const vect &x, const vect &y) { return y < x; }
-  friend vect<bool, D> operator<=(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator>(const vect &x, const vect &y) {
+    return y < x;
+  }
+  friend constexpr vect<bool, D> operator<=(const vect &x, const vect &y) {
     return !(x > y);
   }
-  friend vect<bool, D> operator>=(const vect &x, const vect &y) {
+  friend constexpr vect<bool, D> operator>=(const vect &x, const vect &y) {
     return !(x < y);
   }
 
   template <typename U>
-  vect<U, D> ifelse(const Loop::vect<U, D> &x,
-                    const Loop::vect<U, D> &y) const {
+  constexpr vect<U, D> ifelse(const Loop::vect<U, D> &x,
+                              const Loop::vect<U, D> &y) const {
     vect<U, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = elts[d] ? x.elts[d] : y.elts[d];
@@ -184,7 +184,8 @@ template <typename T, int D> struct less<Loop::vect<T, D> > {
 };
 
 template <typename T, int D>
-Loop::vect<T, D> max(const Loop::vect<T, D> &x, const Loop::vect<T, D> &y) {
+constexpr Loop::vect<T, D> max(const Loop::vect<T, D> &x,
+                               const Loop::vect<T, D> &y) {
   Loop::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = max(x.elts[d], y.elts[d]);
@@ -192,7 +193,8 @@ Loop::vect<T, D> max(const Loop::vect<T, D> &x, const Loop::vect<T, D> &y) {
 }
 
 template <typename T, int D>
-Loop::vect<T, D> min(const Loop::vect<T, D> &x, const Loop::vect<T, D> &y) {
+constexpr Loop::vect<T, D> min(const Loop::vect<T, D> &x,
+                               const Loop::vect<T, D> &y) {
   Loop::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = min(x.elts[d], y.elts[d]);
