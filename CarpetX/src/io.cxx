@@ -229,8 +229,8 @@ void OutputNorms(const cGH *restrict cctkGH) {
 
     file << "# 1:iteration" << sep << "2:time" << sep << "3:varname" << sep
          << "4:min" << sep << "5:max" << sep << "6:sum" << sep << "7:avg" << sep
-         << "8:stddev" << sep << "9:volume" << sep << "10:maxabs" << sep
-         << "11:L1norm" << sep << "12:L2norm"
+         << "8:stddev" << sep << "9:volume" << sep << "10:L1norm" << sep
+         << "11:L2norm" << sep << "12:maxabs"
          << "\n";
   }
 
