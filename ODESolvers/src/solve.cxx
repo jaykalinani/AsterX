@@ -156,17 +156,17 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   statecomp_t var, rhs;
   for (const auto &leveldata : CarpetX::ghext->leveldata) {
     for (const auto &groupdata : leveldata.groupdata) {
-      const int rhs_gi = get_group_rhs(groupdata.groupindex);
+      const int rhs_gi = get_group_rhs(groupdata->groupindex);
       if (rhs_gi >= 0) {
         const auto &rhs_groupdata = leveldata.groupdata.at(rhs_gi);
-        assert(rhs_groupdata.numvars == groupdata.numvars);
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+        assert(rhs_groupdata->numvars == groupdata->numvars);
+        for (int vi = 0; vi < groupdata->numvars; ++vi) {
           var.varnames.push_back(
-              CCTK_FullVarName(groupdata.firstvarindex + vi));
-          var.mfabs.push_back(groupdata.mfab.at(tl).get());
+              CCTK_FullVarName(groupdata->firstvarindex + vi));
+          var.mfabs.push_back(groupdata->mfab.at(tl).get());
           rhs.varnames.push_back(
-              CCTK_FullVarName(rhs_groupdata.firstvarindex + vi));
-          rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
+              CCTK_FullVarName(rhs_groupdata->firstvarindex + vi));
+          rhs.mfabs.push_back(rhs_groupdata->mfab.at(tl).get());
         }
       }
     }
