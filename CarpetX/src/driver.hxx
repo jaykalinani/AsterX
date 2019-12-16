@@ -109,7 +109,7 @@ struct GHExt {
       vector<vector<CCTK_REAL> > data; // [time level][var index]
     };
     // TODO: right now this is sized for the total number of groups
-    vector<ScalarGroupData> scalargroupdata; // [group index]
+    vector<unique_ptr<ScalarGroupData> > scalargroupdata; // [group index]
   };
   GlobalData globaldata;
 
@@ -137,7 +137,7 @@ struct GHExt {
       array<int, dim> fluxes; // [dir]
     };
     // TODO: right now this is sized for the total number of groups
-    vector<GroupData> groupdata; // [group index]
+    vector<unique_ptr<GroupData> > groupdata; // [group index]
   };
   vector<LevelData> leveldata; // [reflevel]
 };

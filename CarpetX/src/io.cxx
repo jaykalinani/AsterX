@@ -48,7 +48,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
 
-    auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
+    auto &restrict groupdata0 = *ghext->leveldata.at(0).groupdata.at(gi);
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
@@ -77,7 +77,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
       Vector<int> iters(ghext->leveldata.size());
       Vector<IntVect> reffacts(ghext->leveldata.size());
       for (const auto &restrict leveldata : ghext->leveldata) {
-        mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi).mfab.at(tl);
+        mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi)->mfab.at(tl);
         geoms.at(leveldata.level) = ghext->amrcore->Geom(leveldata.level);
         iters.at(leveldata.level) = cctk_iteration;
         reffacts.at(leveldata.level) = IntVect{2, 2, 2};
@@ -126,7 +126,7 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
   file << "\n";
 
   for (const auto &leveldata : ghext->leveldata) {
-    const auto &groupdata = leveldata.groupdata.at(gi);
+    const auto &groupdata = *leveldata.groupdata.at(gi);
     const int tl = 0;
     const auto &geom = ghext->amrcore->Geom(leveldata.level);
     const auto &mfab = *groupdata.mfab.at(tl);
@@ -177,7 +177,7 @@ void OutputASCII(const cGH *restrict cctkGH) {
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &restrict groupdata0 = ghext->leveldata.at(0).groupdata.at(gi);
+    auto &restrict groupdata0 = *ghext->leveldata.at(0).groupdata.at(gi);
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
@@ -242,7 +242,7 @@ void OutputNorms(const cGH *restrict cctkGH) {
     const int level = 0;
     const GHExt::LevelData &restrict leveldata = ghext->leveldata.at(level);
     const GHExt::LevelData::GroupData &restrict groupdata =
-        leveldata.groupdata.at(gi);
+        *leveldata.groupdata.at(gi);
 
     const int tl = 0;
     for (int vi = 0; vi < groupdata.numvars; ++vi) {
@@ -252,7 +252,7 @@ void OutputNorms(const cGH *restrict cctkGH) {
 #else
       reduction<CCTK_REAL> red;
       for (auto &restrict leveldata : ghext->leveldata) {
-        auto &restrict groupdata = leveldata.groupdata.at(gi);
+        auto &restrict groupdata = *leveldata.groupdata.at(gi);
         MultiFab &mfab = *groupdata.mfab.at(tl);
         reduction<CCTK_REAL> red1;
         red1.min = mfab.min(vi);
@@ -327,7 +327,7 @@ void OutputScalars(const cGH *restrict cctkGH) {
     // Output data
     const GHExt::GlobalData &restrict globaldata = ghext->globaldata;
     const GHExt::GlobalData::ScalarGroupData &restrict scalargroupdata =
-        globaldata.scalargroupdata.at(gi);
+        *globaldata.scalargroupdata.at(gi);
     const int tl = 0;
     file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
     for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {

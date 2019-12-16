@@ -111,7 +111,7 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
 
   reduction<CCTK_REAL> red;
   for (auto &restrict leveldata : ghext->leveldata) {
-    const auto &restrict groupdata = leveldata.groupdata.at(gi);
+    const auto &restrict groupdata = *leveldata.groupdata.at(gi);
     const MultiFab &mfab = *groupdata.mfab.at(tl);
     unique_ptr<iMultiFab> finemask_imfab;
 
@@ -130,7 +130,7 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
       const auto &restrict fine_leveldata = ghext->leveldata.at(fine_level);
-      const auto &restrict fine_groupdata = fine_leveldata.groupdata.at(gi);
+      const auto &restrict fine_groupdata = *fine_leveldata.groupdata.at(gi);
       const MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
 
       const IntVect reffact{2, 2, 2};
