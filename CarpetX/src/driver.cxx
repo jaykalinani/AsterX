@@ -336,6 +336,13 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 
   // Check flux register consistency
   for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if (group.grouptype != CCTK_GF)
+      continue;
     const auto &groupdata = *leveldata.groupdata.at(gi);
     if (groupdata.freg) {
       for (int d = 0; d < dim; ++d) {
