@@ -149,9 +149,10 @@ void SetupGlobals() {
     assert(group.disttype == CCTK_DISTRIB_CONSTANT);
     assert(group.dim == 0);
 
+    globaldata.scalargroupdata.at(gi) =
+      make_unique<GHExt::GlobalData::ScalarGroupData>();
     GHExt::GlobalData::ScalarGroupData &scalargroupdata =
-        *(globaldata.scalargroupdata.at(gi) =
-          make_unique<GHExt::GlobalData::ScalarGroupData>());
+      *globaldata.scalargroupdata.at(gi);
     scalargroupdata.groupindex = gi;
     scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     scalargroupdata.numvars = group.numvars;
@@ -294,9 +295,8 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     assert(group.disttype == CCTK_DISTRIB_DEFAULT);
     assert(group.dim == dim);
 
-    GHExt::LevelData::GroupData &groupdata =
-      *(leveldata.groupdata.at(gi) =
-        make_unique<GHExt::LevelData::GroupData>());
+    leveldata.groupdata.at(gi) = make_unique<GHExt::LevelData::GroupData>();
+    GHExt::LevelData::GroupData &groupdata = *leveldata.groupdata.at(gi);
     groupdata.groupindex = gi;
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
