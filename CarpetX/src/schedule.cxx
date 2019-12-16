@@ -519,7 +519,7 @@ void enter_global_mode(cGH *restrict cctkGH) {
       if (group.grouptype != CCTK_SCALAR)
         continue;
 
-      auto &restrict scalargroupdata = globaldata.scalargroupdata.at(gi);
+      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
       for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
         const auto &restrict vars = scalargroupdata.data.at(tl);
         for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
@@ -545,7 +545,7 @@ void leave_global_mode(cGH *restrict cctkGH) {
       if (group.grouptype != CCTK_SCALAR)
         continue;
 
-      auto &restrict scalargroupdata = globaldata.scalargroupdata.at(gi);
+      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
       for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
         for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
           cctkGH->data[scalargroupdata.firstvarindex + vi][tl] = nullptr;
@@ -628,7 +628,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &restrict groupdata = leveldata.groupdata.at(gi);
+    auto &restrict groupdata = *leveldata.groupdata.at(gi);
     GridPtrDesc1 grid1(leveldata, groupdata, mfi);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
@@ -691,7 +691,7 @@ void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &restrict groupdata = leveldata.groupdata.at(gi);
+    auto &restrict groupdata = *leveldata.groupdata.at(gi);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         cctkGH->data[groupdata.firstvarindex + vi][tl] = nullptr;
@@ -1034,7 +1034,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
       if (group.grouptype != CCTK_GF)
         continue;
 
-      auto &restrict groupdata = leveldata.groupdata.at(gi);
+      auto &restrict groupdata = *leveldata.groupdata.at(gi);
       const bool checkpoint = get_group_checkpoint_flag(groupdata.groupindex);
       if (!checkpoint) {
         // Invalidate all time levels
@@ -1061,7 +1061,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
       if (group.grouptype != CCTK_SCALAR)
         continue;
 
-      auto &restrict scalargroupdata = globaldata.scalargroupdata.at(gi);
+      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
       const bool checkpoint =
           get_group_checkpoint_flag(scalargroupdata.groupindex);
       if (!checkpoint) {
@@ -1096,7 +1096,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       if (group.grouptype != CCTK_GF)
         continue;
 
-      auto &restrict groupdata = leveldata.groupdata.at(gi);
+      auto &restrict groupdata = *leveldata.groupdata.at(gi);
       const int ntls = groupdata.mfab.size();
       // Rotate time levels and invalidate current time level
       if (ntls > 1) {
@@ -1132,7 +1132,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       if (group.grouptype != CCTK_SCALAR)
         continue;
 
-      auto &restrict scalargroupdata = globaldata.scalargroupdata.at(gi);
+      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
       const int ntls = scalargroupdata.data.size();
       // Rotate time levels and invalidate current time level
       if (ntls > 1) {
@@ -1268,7 +1268,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         for (int level = min_level; level < max_level; ++level) {
           const auto &restrict leveldata = ghext->leveldata.at(level);
-          const auto &restrict groupdata = leveldata.groupdata.at(rd.gi);
+          const auto &restrict groupdata = *leveldata.groupdata.at(rd.gi);
           const valid_t &need = rd.valid;
           const valid_t &have = groupdata.valid.at(rd.tl).at(rd.vi);
           // "x <= y" for booleans means "x implies y"
@@ -1295,7 +1295,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       } else { // CCTK_SCALAR
 
         const auto &restrict scalargroupdata =
-            ghext->globaldata.scalargroupdata.at(rd.gi);
+            *ghext->globaldata.scalargroupdata.at(rd.gi);
         const valid_t &need = rd.valid;
         const valid_t &have = scalargroupdata.valid.at(rd.tl).at(rd.vi);
         // "x <= y" for booleans means "x implies y"
@@ -1342,7 +1342,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         for (int level = min_level; level < max_level; ++level) {
           auto &restrict leveldata = ghext->leveldata.at(level);
-          auto &restrict groupdata = leveldata.groupdata.at(wr.gi);
+          auto &restrict groupdata = *leveldata.groupdata.at(wr.gi);
           const valid_t &provided = wr.valid;
           valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
           have.valid_int &= need.valid_int || !provided.valid_int;
@@ -1353,7 +1353,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       } else { // CCTK_SCALAR
 
         auto &restrict scalargroupdata =
-            ghext->globaldata.scalargroupdata.at(wr.gi);
+            *ghext->globaldata.scalargroupdata.at(wr.gi);
         const valid_t &provided = wr.valid;
         valid_t &have = scalargroupdata.valid.at(wr.tl).at(wr.vi);
         have.valid_int &= need.valid_int || !provided.valid_int;
@@ -1422,7 +1422,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         for (int level = min_level; level < max_level; ++level) {
           auto &restrict leveldata = ghext->leveldata.at(level);
-          auto &restrict groupdata = leveldata.groupdata.at(wr.gi);
+          auto &restrict groupdata = *leveldata.groupdata.at(wr.gi);
           const valid_t &provided = wr.valid;
           valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
           have.valid_int |= provided.valid_int;
@@ -1439,7 +1439,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       } else { // CCTK_SCALAR
 
         auto &restrict scalargroupdata =
-            ghext->globaldata.scalargroupdata.at(wr.gi);
+            *ghext->globaldata.scalargroupdata.at(wr.gi);
         const valid_t &provided = wr.valid;
         valid_t &have = scalargroupdata.valid.at(wr.tl).at(wr.vi);
         have.valid_int |= provided.valid_int;
@@ -1464,7 +1464,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         for (int level = min_level; level < max_level; ++level) {
           auto &restrict leveldata = ghext->leveldata.at(level);
-          auto &restrict groupdata = leveldata.groupdata.at(inv.gi);
+          auto &restrict groupdata = *leveldata.groupdata.at(inv.gi);
           const valid_t &provided = inv.valid;
           valid_t &have = groupdata.valid.at(inv.tl).at(inv.vi);
           have.valid_int &= !provided.valid_int;
@@ -1481,7 +1481,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       } else { // CCTK_SCALAR
 
         auto &restrict scalargroupdata =
-            ghext->globaldata.scalargroupdata.at(inv.gi);
+            *ghext->globaldata.scalargroupdata.at(inv.gi);
         const valid_t &provided = inv.valid;
         valid_t &have = scalargroupdata.valid.at(inv.tl).at(inv.vi);
         have.valid_int &= !provided.valid_int;
@@ -1561,7 +1561,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
       assert(group.grouptype == CCTK_GF);
 
-      auto &restrict groupdata = leveldata.groupdata.at(gi);
+      auto &restrict groupdata = *leveldata.groupdata.at(gi);
       // We always sync all directions.
       // If there is more than one time level, then we don't sync the
       // oldest.
@@ -1595,7 +1595,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         const int level = leveldata.level;
         const auto &restrict coarseleveldata = ghext->leveldata.at(level - 1);
-        auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
+        auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
         assert(coarsegroupdata.numvars == groupdata.numvars);
 
         Interpolater *const interpolator =
@@ -1604,12 +1604,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         PhysBCFunctNoOp fphysbc;
         const IntVect reffact{2, 2, 2};
         // boundary conditions
-        const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_z ? BCType::int_dir : BCType::reflect_odd);
+        const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
 
@@ -1692,8 +1692,8 @@ void Reflux(int level) {
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &groupdata = leveldata.groupdata.at(gi);
-    const auto &finegroupdata = fineleveldata.groupdata.at(gi);
+    auto &groupdata = *leveldata.groupdata.at(gi);
+    const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
 
     // If the group has associated fluxes
     if (finegroupdata.freg) {
@@ -1705,8 +1705,8 @@ void Reflux(int level) {
       }
       for (int d = 0; d < dim; ++d) {
         int flux_gi = finegroupdata.fluxes[d];
-        const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
-        const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
+        const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
+        const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
         for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
           assert(flux_finegroupdata.valid.at(tl).at(vi).valid_int);
           assert(flux_groupdata.valid.at(tl).at(vi).valid_int);
@@ -1715,8 +1715,8 @@ void Reflux(int level) {
 
       for (int d = 0; d < dim; ++d) {
         int flux_gi = finegroupdata.fluxes[d];
-        const auto &flux_finegroupdata = fineleveldata.groupdata.at(flux_gi);
-        const auto &flux_groupdata = leveldata.groupdata.at(flux_gi);
+        const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
+        const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
         finegroupdata.freg->CrseInit(*flux_groupdata.mfab.at(tl), d, 0, 0,
                                      flux_groupdata.numvars, -1);
         finegroupdata.freg->FineAdd(*flux_finegroupdata.mfab.at(tl), d, 0, 0,
@@ -1783,8 +1783,8 @@ void Restrict(int level, const vector<int> &groups) {
     if (!do_restrict)
       continue;
 
-    auto &groupdata = leveldata.groupdata.at(gi);
-    const auto &finegroupdata = fineleveldata.groupdata.at(gi);
+    auto &groupdata = *leveldata.groupdata.at(gi);
+    const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
     // If there is more than one time level, then we don't restrict the oldest.
     // TODO: during evolution, restrict only one time level
     int ntls = groupdata.mfab.size();

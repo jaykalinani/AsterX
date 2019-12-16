@@ -92,7 +92,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
   const int tl = 0;
 
   auto &restrict leveldata = ghext->leveldata.at(level);
-  auto &restrict groupdata = leveldata.groupdata.at(gi);
+  auto &restrict groupdata = *leveldata.groupdata.at(gi);
   // Ensure the error estimate has been set
   assert(groupdata.valid.at(tl).at(vi).valid_int);
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -149,8 +149,10 @@ void SetupGlobals() {
     assert(group.disttype == CCTK_DISTRIB_CONSTANT);
     assert(group.dim == 0);
 
+    globaldata.scalargroupdata.at(gi) =
+      make_unique<GHExt::GlobalData::ScalarGroupData>();
     GHExt::GlobalData::ScalarGroupData &scalargroupdata =
-        globaldata.scalargroupdata.at(gi);
+      *globaldata.scalargroupdata.at(gi);
     scalargroupdata.groupindex = gi;
     scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     scalargroupdata.numvars = group.numvars;
@@ -293,7 +295,8 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     assert(group.disttype == CCTK_DISTRIB_DEFAULT);
     assert(group.dim == dim);
 
-    GHExt::LevelData::GroupData &groupdata = leveldata.groupdata.at(gi);
+    leveldata.groupdata.at(gi) = make_unique<GHExt::LevelData::GroupData>();
+    GHExt::LevelData::GroupData &groupdata = *leveldata.groupdata.at(gi);
     groupdata.groupindex = gi;
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
@@ -333,12 +336,19 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
 
   // Check flux register consistency
   for (int gi = 0; gi < numgroups; ++gi) {
-    const auto &groupdata = leveldata.groupdata.at(gi);
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if (group.grouptype != CCTK_GF)
+      continue;
+    const auto &groupdata = *leveldata.groupdata.at(gi);
     if (groupdata.freg) {
       for (int d = 0; d < dim; ++d) {
         assert(groupdata.fluxes[d] != groupdata.groupindex);
         const auto &flux_groupdata =
-            leveldata.groupdata.at(groupdata.fluxes[d]);
+            *leveldata.groupdata.at(groupdata.fluxes[d]);
         array<int, dim> flux_indextype{1, 1, 1};
         flux_indextype[d] = 0;
         assert(flux_groupdata.indextype == flux_indextype);
@@ -582,20 +592,20 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &restrict groupdata = leveldata.groupdata.at(gi);
-    auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
+    auto &restrict groupdata = *leveldata.groupdata.at(gi);
+    auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
     Interpolater *const interpolator = get_interpolator(groupdata.indextype);
     PhysBCFunctNoOp cphysbc;
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
     // boundary conditions
-    const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd);
+    const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
 
     // If there is more than one time level, then we don't prolongate
@@ -688,7 +698,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &restrict groupdata = leveldata.groupdata.at(gi);
+    auto &restrict groupdata = *leveldata.groupdata.at(gi);
 
     const BoxArray &gba = convert(
         ba,
@@ -706,7 +716,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
     // Copy from same level and/or prolongate from next coarser level
     auto &coarseleveldata = ghext->leveldata.at(level - 1);
-    auto &restrict coarsegroupdata = coarseleveldata.groupdata.at(gi);
+    auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
     Interpolater *const interpolator = get_interpolator(groupdata.indextype);
 
@@ -714,12 +724,12 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
     // boundary conditions
-    const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd);
+    const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
@@ -940,7 +950,7 @@ int InitGH(cGH *restrict cctkGH) {
   const Vector<IntVect> reffacts; // empty
 
   // Periodicity
-  const Array<int, dim> is_periodic{periodic_x, periodic_y, periodic_z};
+  const Array<int, dim> is_periodic{periodic_x || periodic, periodic_y || periodic, periodic_z || periodic};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no

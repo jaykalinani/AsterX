@@ -61,11 +61,11 @@ extern "C" void CarpetX_SolvePoisson() {
   Vector<const MultiFab *> rhss(ghext->leveldata.size());
   for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
     const auto &restrict leveldata = ghext->leveldata.at(level);
-    const auto &restrict groupdata_rhs = leveldata.groupdata.at(gi_rhs);
+    const auto &restrict groupdata_rhs = *leveldata.groupdata.at(gi_rhs);
     rhss.at(level) = groupdata_rhs.mfab.at(tl).get();
-    const auto &restrict groupdata_sol = leveldata.groupdata.at(gi_sol);
+    const auto &restrict groupdata_sol = *leveldata.groupdata.at(gi_sol);
     sols.at(level) = groupdata_sol.mfab.at(tl).get();
-    const auto &restrict groupdata_res = leveldata.groupdata.at(gi_res);
+    const auto &restrict groupdata_res = *leveldata.groupdata.at(gi_res);
     ress.at(level) = groupdata_res.mfab.at(tl).get();
   }
 
