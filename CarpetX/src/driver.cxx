@@ -593,12 +593,12 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
     // boundary conditions
-    const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd);
+    const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
 
     // If there is more than one time level, then we don't prolongate
@@ -717,12 +717,12 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
     // boundary conditions
-    const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z ? BCType::int_dir : BCType::reflect_odd);
+    const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
@@ -943,7 +943,7 @@ int InitGH(cGH *restrict cctkGH) {
   const Vector<IntVect> reffacts; // empty
 
   // Periodicity
-  const Array<int, dim> is_periodic{periodic_x, periodic_y, periodic_z};
+  const Array<int, dim> is_periodic{periodic_x || periodic, periodic_y || periodic, periodic_z || periodic};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no

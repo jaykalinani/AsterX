@@ -1604,12 +1604,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         PhysBCFunctNoOp fphysbc;
         const IntVect reffact{2, 2, 2};
         // boundary conditions
-        const BCRec bcrec(periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_z ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_x ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_y ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_z ? BCType::int_dir : BCType::reflect_odd);
+        const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+                          periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
 
