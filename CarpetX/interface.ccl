@@ -21,6 +21,9 @@ void FUNCTION CallScheduleGroup(
   CCTK_STRING IN groupname)
 PROVIDES FUNCTION CallScheduleGroup WITH CarpetX_CallScheduleGroup LANGUAGE C
 
+void FUNCTION SolvePoisson()
+PROVIDES FUNCTION SolvePoisson WITH CarpetX_SolvePoisson LANGUAGE C
+
 
 
 PUBLIC:
