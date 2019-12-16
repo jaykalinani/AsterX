@@ -1,0 +1,41 @@
+# Schedule definitions for thorn ADMBase
+
+if (CCTK_EQUALS(initial_data, "Cartesian Minkowski")) {
+  SCHEDULE ADMBase_initial_data IN initial
+  {
+    LANG: C
+    WRITES: metric(everywhere) curv(everywhere)
+  } "Set up Cartesian Minkowski initial data"
+}
+
+if (CCTK_EQUALS(initial_lapse, "one")) {
+  SCHEDULE ADMBase_initial_lapse IN initial
+  {
+    LANG: C
+    WRITES: lapse(everywhere)
+  } "Set lapse to one"
+}
+
+if (CCTK_EQUALS(initial_dtlapse, "zero")) {
+  SCHEDULE ADMBase_initial_dtlapse IN initial
+  {
+    LANG: C
+    WRITES: dtlapse(everywhere)
+  } "Set dtlapse to zero"
+}
+
+if (CCTK_EQUALS(initial_shift, "zero")) {
+  SCHEDULE ADMBase_initial_shift IN initial
+  {
+    LANG: C
+    WRITES: shift(everywhere)
+  } "Set shift to zero"
+}
+
+if (CCTK_EQUALS(initial_dtshift, "zero")) {
+  SCHEDULE ADMBase_initial_dtshift IN initial
+  {
+    LANG: C
+    WRITES: dtshift(everywhere)
+  } "Set dtshift to zero"
+}

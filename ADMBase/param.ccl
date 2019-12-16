@@ -1,0 +1,28 @@
+# Parameter definitions for thorn ADMBase
+
+RESTRICTED:
+
+KEYWORD initial_data "Initial metric and extrinsic curvature datasets"
+{
+  "Cartesian Minkowski" :: "Minkowski geometry in Cartesian coordinates"
+} "Cartesian Minkowski"
+
+KEYWORD initial_lapse "Initial lapse value"
+{
+  "one" :: "Uniform lapse"
+} "one"
+
+KEYWORD initial_shift "Initial shift value"
+{
+  "zero" :: "Shift is zero"
+} "zero"
+
+KEYWORD initial_dtlapse "Initial dtlapse value"
+{
+  "zero" :: "Dtlapse is zero"
+} "zero"
+
+KEYWORD initial_dtshift "Initial dtshift value"
+{
+  "zero" :: "Dtshift is zero"
+} "zero"
