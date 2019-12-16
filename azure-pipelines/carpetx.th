@@ -73,7 +73,7 @@
 !REPO_PATH= $2
 !CHECKOUT =
 CactusBase/Boundary
-# CactusBase/CartGrid3D
+CactusBase/CartGrid3D
 CactusBase/CoordBase
 CactusBase/Fortran
 CactusBase/InitBase
