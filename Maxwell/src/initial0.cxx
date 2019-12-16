@@ -8,48 +8,42 @@
 
 #include <cassert>
 #include <cmath>
+#include <complex>
 
 namespace Maxwell {
 using namespace std;
 
 namespace {
-inline int bitsign(bool s) { return s ? -1 : +1; }
+int bitsign(bool s) { return s ? -1 : +1; }
 
 template <typename T> T pow2(T x) { return x * x; }
 template <typename T> T sinc(T x) { return x == T(0) ? T(1) : sin(x) / x; }
+template <typename T> complex<T> cis(T x) { return {cos(x), sin(x)}; }
 } // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T> struct potential {
-  // Electric scalar potential
-  T phi;
-  // Electric vector potential (to ensure div E = 0)
-  T cyz, czx, cxy;
-  // Magnetic vector potential
-  T ax, ay, az;
-};
+template <typename T> struct potential { T phi, ax, ay, az; };
 
 // Continuous derivative
 template <typename F, typename T>
 potential<T> calc_dt(const F &f, T t, T x, T y, T z) {
-  auto fd = f(dual<T>(t, 1), dual<T>(x), dual<T>(y), dual<T>(z));
+  auto ff = f(dual<T>(t, 1), dual<T>(x), dual<T>(y), dual<T>(z));
   return {
-      fd.phi.eps, fd.cyz.eps, fd.czx.eps, fd.cxy.eps,
-      fd.ax.eps,  fd.ay.eps,  fd.az.eps,
+      ff.phi.eps,
+      ff.ax.eps,
+      ff.ay.eps,
+      ff.az.eps,
   };
 }
 
-// Discrete derivatives (centred)
+// Discrete derivative
 template <typename F, typename T>
 potential<T> calc_dxc(const F &f, T t, T x, T y, T z, T dx) {
   auto fm = f(t, x - dx / 2, y, z);
   auto fp = f(t, x + dx / 2, y, z);
   return {
       .phi = (fp.phi - fm.phi) / dx,
-      .cyz = (fp.cyz - fm.cyz) / dx,
-      .czx = (fp.czx - fm.czx) / dx,
-      .cxy = (fp.cxy - fm.cxy) / dx,
       .ax = (fp.ax - fm.ax) / dx,
       .ay = (fp.ay - fm.ay) / dx,
       .az = (fp.az - fm.az) / dx,
@@ -62,9 +56,6 @@ potential<T> calc_dyc(const F &f, T t, T x, T y, T z, T dy) {
   auto fp = f(t, x, y + dy / 2, z);
   return {
       .phi = (fp.phi - fm.phi) / dy,
-      .cyz = (fp.cyz - fm.cyz) / dy,
-      .czx = (fp.czx - fm.czx) / dy,
-      .cxy = (fp.cxy - fm.cxy) / dy,
       .ax = (fp.ax - fm.ax) / dy,
       .ay = (fp.ay - fm.ay) / dy,
       .az = (fp.az - fm.az) / dy,
@@ -77,9 +68,6 @@ potential<T> calc_dzc(const F &f, T t, T x, T y, T z, T dz) {
   auto fp = f(t, x, y, z + dz / 2);
   return {
       .phi = (fp.phi - fm.phi) / dz,
-      .cyz = (fp.cyz - fm.cyz) / dz,
-      .czx = (fp.czx - fm.czx) / dz,
-      .cxy = (fp.cxy - fm.cxy) / dz,
       .ax = (fp.ax - fm.ax) / dz,
       .ay = (fp.ay - fm.ay) / dz,
       .az = (fp.az - fm.az) / dz,
@@ -88,34 +76,97 @@ potential<T> calc_dzc(const F &f, T t, T x, T y, T z, T dz) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Plane wave implementation
+template <typename T>
+potential<complex<T> > plane_wave_impl(T t, T x, T y, T z, T dx, T dy, T dz,
+                                       T kx, T ky, T kz, T hx, T hy, T hz) {
+  DECLARE_CCTK_PARAMETERS;
+  typedef complex<T> CT;
+  // choose frequency to ensure div E = 0
+  T omega = sqrt(pow2(sinc(kx * dx / 2) * kx) + pow2(sinc(ky * dy / 2) * ky) +
+                 pow2(sinc(kz * dz / 2) * kz));
+  // choose amplitude to ensure Lorenz gauge
+  CT ht = (CT(hx * kx * sinc(kx * dx / 2)) * cis(kx * dx / 2) +
+           CT(hy * ky * sinc(ky * dy / 2)) * cis(ky * dy / 2) +
+           CT(hz * kz * sinc(kz * dz / 2)) * cis(kz * dz / 2)) /
+          CT(omega);
+  CT u = cis(omega * t - kx * x - ky * y - kz * z);
+  return {
+      .phi = ht * u,
+      .ax = hx * u,
+      .ay = hy * u,
+      .az = hz * u,
+  };
+}
+
 // Plane wave
 template <typename T>
-potential<T> plane_wave(const T t, const T x, const T y, const T z) {
+potential<T> plane_wave(T t, T x, T y, T z, T dx, T dy, T dz) {
   DECLARE_CCTK_PARAMETERS;
   // wave number
   T kx = M_PI * spatial_frequency_x;
   T ky = M_PI * spatial_frequency_y;
   T kz = M_PI * spatial_frequency_z;
-  assert(kx == 0);
-  assert(ky == 0);
-  T omega = sqrt(pow2(kx) + pow2(ky) + pow2(kz));
   // amplitude
   T hx = amplitude_x;
   T hy = amplitude_y;
   T hz = amplitude_z;
-  assert(hy == 0);
-  assert(hz == 0);
-  // solution
-  assert(t == 0);
-  T u = sin(omega * t - kz * z);
+  //
+  auto p = plane_wave_impl(t, x, y, z, dx, dy, dz, kx, ky, kz, hx, hy, hz);
   return {
-      .phi = 0,
-      .cyz = 0,
-      .czx = hx / kz * u,
-      .cxy = 0,
-      .ax = -hx / kz * u,
-      .ay = 0,
-      .az = 0,
+      .phi = real(p.phi),
+      .ax = real(p.ax),
+      .ay = real(p.ay),
+      .az = real(p.az),
+  };
+}
+
+// Plane wave with a triangle profile
+template <typename T>
+potential<T> triangle_wave(T t, T x, T y, T z, T dx, T dy, T dz) {
+  DECLARE_CCTK_PARAMETERS;
+  // wave number
+  T kx = M_PI * spatial_frequency_x;
+  T ky = M_PI * spatial_frequency_y;
+  T kz = M_PI * spatial_frequency_z;
+  // amplitude
+  T hx = amplitude_x;
+  T hy = amplitude_y;
+  T hz = amplitude_z;
+  //
+  potential<T> p{0, 0, 0, 0};
+  for (int i = 0; i < num_coefficients; ++i) {
+    const int k = 2 * i + 1;
+    const T kf = k;
+    const T hf = bitsign(i & 1) / pow2(kf);
+    const auto pk = plane_wave_impl(t, x, y, z, dx, dy, dz, kf * kx, kf * ky,
+                                    kf * kz, hf * hx, hf * hy, hf * hz);
+    p.phi += imag(pk.phi);
+    p.ax += imag(pk.ax);
+    p.ay += imag(pk.ay);
+    p.az += imag(pk.az);
+  }
+  return p;
+}
+
+// Plane wave with Gaussian profile (NOT WORKING)
+template <typename T> potential<T> gaussian_wave(T t, T x, T y, T z) {
+  DECLARE_CCTK_PARAMETERS;
+  T kx = M_PI * spatial_frequency_x;
+  T ky = M_PI * spatial_frequency_y;
+  T kz = M_PI * spatial_frequency_z;
+  T omega = sqrt(pow2(kx) + pow2(ky) + pow2(kz));
+  T hx = amplitude_x;
+  T hy = amplitude_y;
+  T hz = amplitude_z;
+  T ht =
+      omega * (hx * kx + hy * ky + hz * kz) / (pow2(kx) + pow2(ky) + pow2(kz));
+  T u = exp(-pow2(sin(omega * t - kx * x - ky * y - kz * z) / width) / 2);
+  return {
+      .phi = ht * u,
+      .ax = hx * u,
+      .ay = hy * u,
+      .az = hz * u,
   };
 }
 
@@ -127,6 +178,7 @@ extern "C" void Maxwell_Initial(CCTK_ARGUMENTS) {
 
   const CCTK_REAL t = cctk_time;
 
+  // const CCTK_REAL dt = CCTK_DELTA_TIME;
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
@@ -179,17 +231,14 @@ extern "C" void Maxwell_Initial(CCTK_ARGUMENTS) {
         cctkGH, [&](const Loop::PointDesc &p) { az_(p.I) = f(p).az; });
 
     Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ex_(p.I) = -dxf(p).phi + dyf(p).cxy - dzf(p).czx;
+      ex_(p.I) = -dxf(p).phi - dtf(p).ax;
     });
     Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-      ey_(p.I) = -dyf(p).phi + dzf(p).cyz - dxf(p).cxy;
+      ey_(p.I) = -dyf(p).phi - dtf(p).ay;
     });
     Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      ez_(p.I) = -dzf(p).phi + dxf(p).czx - dyf(p).cyz;
+      ez_(p.I) = -dzf(p).phi - dtf(p).az;
     });
-    // Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    //   dive_(p.I) = dxm(ex_, p) /*+ dym(ey_, p) + dzm(ez_, p)*/;
-    // });
 
     Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
       byz_(p.I) = dyf(p).az - dzf(p).ay;
@@ -203,8 +252,19 @@ extern "C" void Maxwell_Initial(CCTK_ARGUMENTS) {
   }};
 
   if (CCTK_EQUALS(setup, "plane wave")) {
-    loop_setup(
-        [&](auto t, auto x, auto y, auto z) { return plane_wave(t, x, y, z); });
+    loop_setup([&](auto t, auto x, auto y, auto z) {
+      typedef decltype(t) T;
+      return plane_wave(t, x, y, z, T(dx), T(dy), T(dz));
+    });
+  } else if (CCTK_EQUALS(setup, "triangle wave")) {
+    loop_setup([&](auto t, auto x, auto y, auto z) {
+      typedef decltype(t) T;
+      return triangle_wave(t, x, y, z, T(dx), T(dy), T(dz));
+    });
+    // } else if (CCTK_EQUALS(setup, "Gaussian wave")) {
+    //   loop_setup([&](auto t, auto x, auto y, auto z) {
+    //     return gaussian_wave(t, x, y, z);
+    //   });
   } else {
     assert(0);
   }

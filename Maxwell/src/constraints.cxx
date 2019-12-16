@@ -50,22 +50,22 @@ extern "C" void Maxwell_Constraints(CCTK_ARGUMENTS) {
   const Loop::GF3D<CCTK_REAL, 1, 0, 1> bzx_(cctkGH, bzx);
   const Loop::GF3D<CCTK_REAL, 1, 1, 0> bxy_(cctkGH, bxy);
 
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> curlax_(cctkGH, curlax);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> curlay_(cctkGH, curlay);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> curlaz_(cctkGH, curlaz);
+  const Loop::GF3D<CCTK_REAL, 0, 1, 1> curlayz_(cctkGH, curlayz);
+  const Loop::GF3D<CCTK_REAL, 1, 0, 1> curlazx_(cctkGH, curlazx);
+  const Loop::GF3D<CCTK_REAL, 1, 1, 0> curlaxy_(cctkGH, curlaxy);
 
   const Loop::GF3D<CCTK_REAL, 0, 0, 0> dive_(cctkGH, dive);
 
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
 
   Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    curlax_(p.I) = byz_(p.I) - (dyp(az_, p) - dzp(ay_, p));
+    curlayz_(p.I) = byz_(p.I) - (dyp(az_, p) - dzp(ay_, p));
   });
   Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    curlay_(p.I) = bzx_(p.I) - (dzp(ax_, p) - dxp(az_, p));
+    curlazx_(p.I) = bzx_(p.I) - (dzp(ax_, p) - dxp(az_, p));
   });
   Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    curlaz_(p.I) = bxy_(p.I) - (dxp(ay_, p) - dyp(ax_, p));
+    curlaxy_(p.I) = bxy_(p.I) - (dxp(ay_, p) - dyp(ax_, p));
   });
 
   Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {

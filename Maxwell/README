@@ -30,6 +30,11 @@ Current density: J
 
 Charge conservation: dt rho + div J = 0
 
+Poynting vector:     S    = E cross B
+                     S_j  = E^i B_ij
+Energy density:      u    = 1/2 (E^2 + B^2)
+Energy conservation: dt u = - grad S - J E
+
 
 
 State vector:        phi
@@ -44,13 +49,56 @@ Constraints:         div E = rho
                      div B = 0
                      B     = curl A
 
+DECIDE WHICH VARIABLES NEED TO BE HANDLED WELL (FOR EVOLUTION) AND
+WHICH NOT (ONLY USED FOR ANALYSIS)
+
+PROLONGATE VIA STAR-PROLONGATE-STAR (BUT ONLY DELTA-A)
 
 
-Ansatz for initial conditions:
 
-phi = aphi cos (omega t - k x)
-A = aA cos (omega t - k x)
+3. Ansatz for initial conditions:
 
-Lorenz gauge: omega = aA k / aphi
+phi = ht exp i (omega t - kx x - ky y - kz z)
+Ax  = hx exp i (omega t - kx x - ky y - kz z)
+Ay  = hy exp i (omega t - kx x - ky y - kz z)
+Az  = hz exp i (omega t - kx x - ky y - kz z)
 
-zero charge: aphi = aA k omega / k^2
+Lorenz gauge:
+
+sinc x = sin x / x
+
+omega^2 = sinc(kx dx/2)^2 kx^2 + sinc(ky dy/2)^2 ky^2 + sinc(kz dz/2)^2 kz^2
+
+discrete div E constraint:
+
+ht omega = -I (ax/dx (-1 + E^(I dx kx)) + ay/dy (-1 + E^(I dy ky)) +  az/dz (-1 + E^(I dz kz)))
+ht omega = -i (ax/dx (exp i kx dx/2) (2 i sin (kx dx/2)) + ay/dy (exp i ky dy/2) (2 i sin (ky dy/2)) + az/dz (exp i kz dz/2) (2 i sin (kz dz/2)))
+ht omega = ax kx (exp i kx dx/2) sinc(kx dx/2) + ay ky (exp i ky dy/2) sinc(ky dy/2)) + az kz (exp i kz dz/2) sinc(kz dz/2)
+
+
+
+4. Discrete ansatz:
+
+- Choose E and B field
+- Choose phi and A analytically
+- Calculate E and B discretely to ensure constraints
+
+Ex = cos (omega t - kz z)
+Ey = 0
+Ez = 0
+
+Byz = 0
+Bzx = cos (omega t - kz z)
+Bxy = 0
+
+phi = 0
+
+E = curl C
+
+Cx = 0
+Cy = 1/kz sin (omega t - kz z)
+Cz = 0
+
+Ax = -1/kz sin (omega t - kz z)
+Ay = 0
+Az = 0

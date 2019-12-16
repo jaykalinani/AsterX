@@ -15,6 +15,9 @@ void FUNCTION GetTileExtent(
   CCTK_INT ARRAY OUT tile_max)
 REQUIRES FUNCTION GetTileExtent
 
+void FUNCTION SolvePoisson()
+REQUIRES FUNCTION SolvePoisson
+
 
 
 # State vector
@@ -56,10 +59,27 @@ CCTK_REAL dtbxy TYPE=gf TAGS='index={1 1 0} checkpoint="no"' "Magnetic field"
 
 # Constraints
 
-CCTK_REAL curlax TYPE=gf TAGS='index={0 1 1} checkpoint="no"' "Magnetic potential constraint"
-CCTK_REAL curlay TYPE=gf TAGS='index={1 0 1} checkpoint="no"' "Magnetic potential constraint"
-CCTK_REAL curlaz TYPE=gf TAGS='index={1 1 0} checkpoint="no"' "Magnetic potential constraint"
+CCTK_REAL curlayz TYPE=gf TAGS='index={0 1 1} checkpoint="no"' "Magnetic potential constraint"
+CCTK_REAL curlazx TYPE=gf TAGS='index={1 0 1} checkpoint="no"' "Magnetic potential constraint"
+CCTK_REAL curlaxy TYPE=gf TAGS='index={1 1 0} checkpoint="no"' "Magnetic potential constraint"
 
 CCTK_REAL dive TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Electric constraint"
 
 CCTK_REAL divb TYPE=gf TAGS='index={1 1 1} checkpoint="no"' "Magnetic constraint"
+
+
+
+# Cell-centred variables
+
+CCTK_REAL avgphi TYPE=gf TAGS='checkpoint="no"' "Averaged electric potential"
+CCTK_REAL avga TYPE=gf TAGS='checkpoint="no"' { avgax avgay avgaz } "Averaged magnetic potential"
+CCTK_REAL avge TYPE=gf TAGS='checkpoint="no"' { avgex avgey avgez } "Averaged electric field"
+CCTK_REAL avgb TYPE=gf TAGS='checkpoint="no"' { avgbyz avgbzx avgbxy } "Averaged magnetic field"
+CCTK_REAL avgcurla TYPE=gf TAGS='checkpoint="no"'  { avgcurlyz avgcurlzx avgcurlxy } "Averaged magnetic potential constraint"
+CCTK_REAL avgdive TYPE=gf TAGS='checkpoint="no"' "Averaged electric constraint"
+CCTK_REAL avgdivb TYPE=gf TAGS='checkpoint="no"' "Averaged magnetic constraint"
+
+
+
+# CCTK_REAL phi1 TYPE=gf TAGS='index={0 0 0}' "Electric potential"
+# CCTK_REAL dive1 TYPE=gf TAGS='index={0 0 0}' "Electric constraint"

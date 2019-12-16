@@ -12,6 +12,15 @@ STORAGE: dtbyz dtbzx dtbxy
 
 STORAGE: dive
 STORAGE: divb
+STORAGE: curlayz curlazx curlaxy
+
+STORAGE: avgphi
+STORAGE: avga
+STORAGE: avge
+STORAGE: avgb
+STORAGE: avgcurla
+STORAGE: avgdive
+STORAGE: avgdivb
 
 
 
@@ -29,6 +38,89 @@ SCHEDULE Maxwell_Initial AT initial
   SYNC: ex ey ez
   SYNC: byz bzx bxy
 } "Set up hydro initial conditions"
+
+# SCHEDULE Maxwell_EstimateError AT postinitial
+# {
+#   LANG: C
+#   READS: phi(everywhere)
+#   READS: ax(everywhere) ay(everywhere) az(everywhere)
+#   READS: ex(everywhere) ey(everywhere) ez(everywhere)
+#   READS: byz(everywhere) bzx(everywhere) bxy(everywhere)
+#   WRITES: CarpetX::regrid_error(interior)
+# } "Estimate local error for regridding initial conditions"
+
+# SCHEDULE Maxwell_Constraints AT postinitial
+# {
+#   LANG: C
+#   READS: ax(interior) ay(interior) az(interior)
+#   READS: ex(everywhere) ey(everywhere) ez(everywhere)
+#   READS: byz(interior) bzx(interior) bxy(interior)
+#   WRITES: curlayz(interior) curlazx(interior) curlaxy(interior)
+#   WRITES: dive(interior)
+#   WRITES: divb(interior)
+#   SYNC: curlayz curlazx curlaxy
+#   SYNC: dive
+#   SYNC: divb
+# } "Calculate constraints"
+# 
+# SCHEDULE Maxwell_Solve AT postinitial AFTER Maxwell_Constraints
+# {
+#   LANG: C
+#   OPTIONS: global
+#   READS: dive(interior)
+#   WRITES: phi1(interior)
+#   # WRITES: dive1(interior)
+# } "Solve div E constraint"
+# 
+# SCHEDULE Maxwell_UpdatePhi AT postinitial AFTER Maxwell_Solve
+# {
+#   LANG: C
+#   READS: phi(interior)
+#   READS: phi1(interior)
+#   WRITES: phi(interior)
+#   INVALIDATES: phi1(interior)
+#   # INVALIDATES: dive1(interior)
+#   INVALIDATES: curlayz(everywhere) curlazx(everywhere) curlaxy(everywhere)
+#   INVALIDATES: dive(everywhere)
+#   INVALIDATES: divb(everywhere)
+#   SYNC: phi
+# } "Update electric potential"
+
+# SCHEDULE Maxwell_Average AT postinitial AFTER Maxwell_Constraints
+# {
+#   LANG: C
+#   READS: phi(interior)
+#   READS: ax(interior) ay(interior) az(interior)
+#   READS: ex(interior) ey(interior) ez(interior)
+#   READS: byz(interior) bzx(interior) bxy(interior)
+#   READS: curlayz(interior) curlazx(interior) curlaxy(interior)
+#   READS: dive(interior)
+#   READS: divb(interior)
+#   WRITES: avgphi(interior)
+#   WRITES: avga(interior)
+#   WRITES: avge(interior)
+#   WRITES: avgb(interior)
+#   WRITES: avgcurla(interior)
+#   WRITES: avgdive(interior)
+#   WRITES: avgdivb(interior)
+#   SYNC: avgphi
+#   SYNC: avga
+#   SYNC: avge
+#   SYNC: avgb
+#   SYNC: avgcurla
+#   SYNC: avgdive
+#   SYNC: avgdivb
+# } "Average to cell-centred values"
+
+SCHEDULE Maxwell_EstimateError AT postinitial AFTER (Maxwell_Average, Maxwell_Solve)
+{
+  LANG: C
+  # READS: avgphi(everywhere)
+  # READS: avga(everywhere)
+  # READS: avge(everywhere)
+  # READS: avgb(everywhere)
+  WRITES: CarpetX::regrid_error(interior)
+} "Estimate local error for regridding during evolution"
 
 
 
@@ -74,7 +166,53 @@ SCHEDULE Maxwell_Constraints AT poststep
   READS: ax(interior) ay(interior) az(interior)
   READS: ex(everywhere) ey(everywhere) ez(everywhere)
   READS: byz(interior) bzx(interior) bxy(interior)
-  WRITES: curlax(interior) curlay(interior) curlaz(interior)
+  WRITES: curlayz(interior) curlazx(interior) curlaxy(interior)
   WRITES: dive(interior)
   WRITES: divb(interior)
 } "Calculate constraints"
+
+# SCHEDULE Maxwell_EstimateError AT poststep
+# {
+#   LANG: C
+#   READS: phi(everywhere)
+#   READS: ax(everywhere) ay(everywhere) az(everywhere)
+#   READS: ex(everywhere) ey(everywhere) ez(everywhere)
+#   READS: byz(everywhere) bzx(everywhere) bxy(everywhere)
+#   WRITES: CarpetX::regrid_error(interior)
+# } "Estimate local error for regridding during evolution"
+
+SCHEDULE Maxwell_Average AT poststep AFTER Maxwell_Constraints
+{
+  LANG: C
+  READS: phi(interior)
+  READS: ax(interior) ay(interior) az(interior)
+  READS: ex(interior) ey(interior) ez(interior)
+  READS: byz(interior) bzx(interior) bxy(interior)
+  READS: curlayz(interior) curlazx(interior) curlaxy(interior)
+  READS: dive(interior)
+  READS: divb(interior)
+  WRITES: avgphi(interior)
+  WRITES: avga(interior)
+  WRITES: avge(interior)
+  WRITES: avgb(interior)
+  WRITES: avgcurla(interior)
+  WRITES: avgdive(interior)
+  WRITES: avgdivb(interior)
+  SYNC: avgphi
+  SYNC: avga
+  SYNC: avge
+  SYNC: avgb
+  SYNC: avgcurla
+  SYNC: avgdive
+  SYNC: avgdivb
+} "Average to cell-centred values"
+
+SCHEDULE Maxwell_EstimateError AT poststep AFTER Maxwell_Average
+{
+  LANG: C
+  # READS: avgphi(everywhere)
+  # READS: avga(everywhere)
+  # READS: avge(everywhere)
+  # READS: avgb(everywhere)
+  WRITES: CarpetX::regrid_error(interior)
+} "Estimate local error for regridding during evolution"

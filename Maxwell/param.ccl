@@ -4,7 +4,8 @@ KEYWORD setup "Initial condition"
 {
   "plane wave" :: ""
   "Gaussian wave" :: ""
-} "Gaussian wave"
+  "triangle wave" :: ""
+} "plane wave"
 
 CCTK_REAL spatial_frequency_x "spatial frequency"
 {
@@ -40,6 +41,11 @@ CCTK_REAL width "width"
 {
   (0.0:* :: ""
 } 0.1
+
+CCTK_INT num_coefficients "number of coefficients"
+{
+  0:* :: ""
+} 3
 
 
 
