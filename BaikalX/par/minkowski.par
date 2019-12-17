@@ -30,7 +30,7 @@ CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
-CarpetX::ghost_size = 1
+CarpetX::ghost_size = 2
 
 CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
