@@ -1,0 +1,7 @@
+# Interface definition for thorn Coordinates
+
+IMPLEMENTS: Coordinates
+
+USES INCLUDE HEADER: loop.hxx
+
+CCTK_REAL coords TYPE=gf TAGS='index={0 0 0}' { coordx coordy coordz } "Coordinates"

@@ -1,0 +1,7 @@
+# Schedule definitions for thorn Coordinates
+
+SCHEDULE Coordinates_Setup AT basegrid
+{
+  LANG: C
+  WRITES: coords(everywhere)
+} "Set coordinate grid functions"
