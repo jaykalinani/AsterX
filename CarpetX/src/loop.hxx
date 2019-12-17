@@ -16,6 +16,7 @@
 #include <ostream>
 #include <string>
 #include <tuple>
+#include <type_traits>
 
 namespace Loop {
 using namespace std;
@@ -31,6 +32,15 @@ template <typename T, int D> struct vect {
   constexpr vect() : elts() {}
 
   constexpr vect(const array<T, D> &arr) : elts(arr) {}
+
+  template <int D1 = D, enable_if_t<D1 == 1, int> = 0>
+  explicit constexpr vect(T a0) : elts({a0}) {}
+  template <int D1 = D, enable_if_t<D1 == 2, int> = 0>
+  explicit constexpr vect(T a0, T a1) : elts({a0, a1}) {}
+  template <int D1 = D, enable_if_t<D1 == 3, int> = 0>
+  explicit constexpr vect(T a0, T a1, T a2) : elts({a0, a1, a2}) {}
+  template <int D1 = D, enable_if_t<D1 == 4, int> = 0>
+  explicit constexpr vect(T a0, T a1, T a2, T a3) : elts({a0, a1, a2, a3}) {}
 
   static constexpr vect unit(int dir) {
     vect r;

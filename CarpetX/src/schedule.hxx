@@ -100,6 +100,11 @@ struct GridPtrDesc1 : GridDesc {
   }
 };
 
+bool in_local_mode(const cGH *restrict cctkGH);
+bool in_level_mode(const cGH *restrict cctkGH);
+bool in_global_mode(const cGH *restrict cctkGH);
+bool in_meta_mode(const cGH *restrict cctkGH);
+
 void poison_invalid(const GHExt::LevelData &leveldata,
                     const GHExt::LevelData::GroupData &groupdata, int vi,
                     int tl);

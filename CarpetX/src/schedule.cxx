@@ -599,7 +599,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFIter &mfi) {
   assert(in_level_mode(cctkGH));
-  GridPtrDesc grid(leveldata, mfi);
+  const GridPtrDesc grid(leveldata, mfi);
 
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = grid.lsh[d];
@@ -629,7 +629,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
       continue;
 
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
-    GridPtrDesc1 grid1(leveldata, groupdata, mfi);
+    const GridPtrDesc1 grid1(leveldata, groupdata, mfi);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
@@ -1604,12 +1604,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         PhysBCFunctNoOp fphysbc;
         const IntVect reffact{2, 2, 2};
         // boundary conditions
-        const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-                          periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
+        const BCRec bcrec(
+            periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+            periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+            periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
+            periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
+            periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
+            periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
 
