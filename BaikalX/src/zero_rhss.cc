@@ -6,9 +6,9 @@
 #include "cctk_Parameters.h"
 #include "Symmetry.h"
 
-void BaikalETK_zero_rhss(CCTK_ARGUMENTS)
+void BaikalX_zero_rhss(CCTK_ARGUMENTS)
 {
-  DECLARE_CCTK_ARGUMENTS_BaikalETK_zero_rhss;
+  DECLARE_CCTK_ARGUMENTS_BaikalX_zero_rhss;
   DECLARE_CCTK_PARAMETERS;
 Loop::GF3D<CCTK_REAL, 0, 0, 0> aDD00_rhsGF_(cctkGH, aDD00_rhsGF);
 Loop::GF3D<CCTK_REAL, 0, 0, 0> aDD01_rhsGF_(cctkGH, aDD01_rhsGF);

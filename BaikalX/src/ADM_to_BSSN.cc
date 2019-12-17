@@ -7,11 +7,10 @@
 #include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 
-void BaikalETK_ADM_to_BSSN(CCTK_ARGUMENTS) {
-    DECLARE_CCTK_ARGUMENTS_BaikalETK_ADM_to_BSSN;
+void BaikalX_ADM_to_BSSN_all_but_lambdaU(CCTK_ARGUMENTS) {
+    DECLARE_CCTK_ARGUMENTS_BaikalX_ADM_to_BSSN_all_but_lambdaU;
     DECLARE_CCTK_PARAMETERS;
     
-
 CCTK_REAL *alphaSphorCartGF = alp;
     CCTK_REAL *BSphorCartU0GF = dtbetax;
     CCTK_REAL *BSphorCartU1GF = dtbetay;
@@ -39,7 +38,6 @@ Loop::GF3D<CCTK_REAL,0,0,0> betaSphorCartU0GF_(cctkGH,betaSphorCartU0GF);
 Loop::GF3D<CCTK_REAL,0,0,0> BSphorCartU0GF_(cctkGH,BSphorCartU0GF);
 Loop::GF3D<CCTK_REAL,0,0,0> vetU0GF_(cctkGH,vetU0GF);
 Loop::GF3D<CCTK_REAL,0,0,0> betU0GF_(cctkGH,betU0GF);
-Loop::GF3D<CCTK_REAL,0,0,0> lambdaU0GF_(cctkGH,lambdaU0GF);
 Loop::GF3D<CCTK_REAL,0,0,0> gammaSphorCartDD00GF_(cctkGH,gammaSphorCartDD00GF);
 Loop::GF3D<CCTK_REAL,0,0,0> KSphorCartDD00GF_(cctkGH,KSphorCartDD00GF);
 Loop::GF3D<CCTK_REAL,0,0,0> hDD00GF_(cctkGH,hDD00GF);
@@ -56,7 +54,6 @@ Loop::GF3D<CCTK_REAL,0,0,0> betaSphorCartU1GF_(cctkGH,betaSphorCartU1GF);
 Loop::GF3D<CCTK_REAL,0,0,0> BSphorCartU1GF_(cctkGH,BSphorCartU1GF);
 Loop::GF3D<CCTK_REAL,0,0,0> vetU1GF_(cctkGH,vetU1GF);
 Loop::GF3D<CCTK_REAL,0,0,0> betU1GF_(cctkGH,betU1GF);
-Loop::GF3D<CCTK_REAL,0,0,0> lambdaU1GF_(cctkGH,lambdaU1GF);
 Loop::GF3D<CCTK_REAL,0,0,0> gammaSphorCartDD11GF_(cctkGH,gammaSphorCartDD11GF);
 Loop::GF3D<CCTK_REAL,0,0,0> KSphorCartDD11GF_(cctkGH,KSphorCartDD11GF);
 Loop::GF3D<CCTK_REAL,0,0,0> hDD11GF_(cctkGH,hDD11GF);
@@ -69,16 +66,12 @@ Loop::GF3D<CCTK_REAL,0,0,0> betaSphorCartU2GF_(cctkGH,betaSphorCartU2GF);
 Loop::GF3D<CCTK_REAL,0,0,0> BSphorCartU2GF_(cctkGH,BSphorCartU2GF);
 Loop::GF3D<CCTK_REAL,0,0,0> vetU2GF_(cctkGH,vetU2GF);
 Loop::GF3D<CCTK_REAL,0,0,0> betU2GF_(cctkGH,betU2GF);
-Loop::GF3D<CCTK_REAL,0,0,0> lambdaU2GF_(cctkGH,lambdaU2GF);
 Loop::GF3D<CCTK_REAL,0,0,0> gammaSphorCartDD22GF_(cctkGH,gammaSphorCartDD22GF);
 Loop::GF3D<CCTK_REAL,0,0,0> KSphorCartDD22GF_(cctkGH,KSphorCartDD22GF);
 Loop::GF3D<CCTK_REAL,0,0,0> hDD22GF_(cctkGH,hDD22GF);
 Loop::GF3D<CCTK_REAL,0,0,0> aDD22GF_(cctkGH,aDD22GF);
 
 
-    const CCTK_REAL invdx0 = 1.0/CCTK_DELTA_SPACE(0);
-    const CCTK_REAL invdx1 = 1.0/CCTK_DELTA_SPACE(1);
-    const CCTK_REAL invdx2 = 1.0/CCTK_DELTA_SPACE(2);
 Loop::loop_all<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
     const int i0 = p.i;
     const int i1 = p.j;
@@ -148,6 +141,28 @@ Loop::loop_all<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
 
 
 });
+
+}
+
+void BaikalX_ADM_to_BSSN_lambdaU(CCTK_ARGUMENTS) {
+    DECLARE_CCTK_ARGUMENTS_BaikalX_ADM_to_BSSN_lambdaU;
+    DECLARE_CCTK_PARAMETERS;
+    
+
+Loop::GF3D<CCTK_REAL,0,0,0> lambdaU0GF_(cctkGH,lambdaU0GF);
+Loop::GF3D<CCTK_REAL,0,0,0> hDD00GF_(cctkGH,hDD00GF);
+Loop::GF3D<CCTK_REAL,0,0,0> hDD01GF_(cctkGH,hDD01GF);
+Loop::GF3D<CCTK_REAL,0,0,0> hDD02GF_(cctkGH,hDD02GF);
+Loop::GF3D<CCTK_REAL,0,0,0> lambdaU1GF_(cctkGH,lambdaU1GF);
+Loop::GF3D<CCTK_REAL,0,0,0> hDD11GF_(cctkGH,hDD11GF);
+Loop::GF3D<CCTK_REAL,0,0,0> hDD12GF_(cctkGH,hDD12GF);
+Loop::GF3D<CCTK_REAL,0,0,0> lambdaU2GF_(cctkGH,lambdaU2GF);
+Loop::GF3D<CCTK_REAL,0,0,0> hDD22GF_(cctkGH,hDD22GF);
+
+
+    const CCTK_REAL invdx0 = 1.0/CCTK_DELTA_SPACE(0);
+    const CCTK_REAL invdx1 = 1.0/CCTK_DELTA_SPACE(1);
+    const CCTK_REAL invdx2 = 1.0/CCTK_DELTA_SPACE(2);
 Loop::loop_int<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
     const int i0 = p.i;
     const int i1 = p.j;

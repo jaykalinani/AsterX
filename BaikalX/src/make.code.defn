@@ -1,5 +1,5 @@
 
-# Main make.code.defn file for thorn BaikalETK
+# Main make.code.defn file for thorn BaikalX
 
 # Source files in this directory
 SRCS =      Banner.cc \

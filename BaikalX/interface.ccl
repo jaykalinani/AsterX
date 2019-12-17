@@ -1,6 +1,6 @@
 
 # With "implements", we give our thorn its unique name.
-implements: BaikalETK
+implements: BaikalX
 
 # By "inheriting" other thorns, we tell the Toolkit that we 
 #   will rely on variables/function that exist within those
