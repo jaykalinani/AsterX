@@ -1,0 +1,59 @@
+
+# First allocate storage for all ADMBase gridfunctions, which are needed by NRPy+
+STORAGE: ADMBase::metric, ADMBase::curv, ADMBase::lapse, ADMBase::shift
+
+# Next allocate storage for all 3 gridfunction groups used in BaikalETK
+STORAGE: evol_variables[3]     # Evolution variables
+STORAGE: evol_variables_rhs[1] # Variables storing right-hand-sides
+STORAGE: aux_variables[3]      # Diagnostics variables
+STORAGE: auxevol_variables[1]  # Single-timelevel storage of variables needed for evolutions.
+
+# The following scheduler is based on Lean/LeanBSSNMoL/schedule.ccl
+
+schedule BaikalETK_Banner at STARTUP
+{
+  LANG: C
+  OPTIONS: meta
+} "Output ASCII art banner"
+
+schedule BaikalETK_ADM_to_BSSN at CCTK_INITIAL after ADMBase_PostInitial
+{
+  LANG: C
+  OPTIONS: Local
+  SYNC: evol_variables
+} "Convert initial data into BSSN variables"
+
+# MoL: compute RHSs, etc
+
+schedule driver_pt1_BSSN_Ricci in ODESolvers_RHS as BaikalETK_Ricci before BaikalETK_RHS
+{
+  LANG: C
+} "MoL: Compute Ricci tensor"
+
+schedule driver_pt2_BSSN_RHSs in ODESolvers_RHS as BaikalETK_RHS after BaikalETK_Ricci
+{
+  LANG: C
+} "MoL: Evaluate BSSN RHSs"
+
+schedule enforce_detgammabar_constraint in MoL_PostStep before BC_Update
+{
+  LANG: C
+} "Enforce detgammabar = detgammahat (= 1 in Cartesian)"
+
+# Next update ADM quantities
+
+schedule BaikalETK_BSSN_to_ADM in MoL_PostStep after BaikalETK_ApplyBCs before ADMBase_SetADMVars
+{
+  LANG: C
+  OPTIONS: Local
+} "Perform BSSN-to-ADM conversion. Useful for diagnostics."
+
+# Compute Hamiltonian & momentum constraints
+
+
+schedule BaikalETK_BSSN_constraints in MoL_PseudoEvolution
+{
+  LANG: C
+  OPTIONS: Local
+} "Compute BSSN (Hamiltonian and momentum) constraints"
+
