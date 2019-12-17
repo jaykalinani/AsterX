@@ -125,8 +125,11 @@ ExternalLibraries/zlib
 !REPO_PATH= $2
 !CHECKOUT = CarpetX/Kokkos CarpetX/NSIMD
 CarpetX/ADMBase
+CarpetX/AHFinder
 CarpetX/AMReX
 CarpetX/CarpetX
+CarpetX/Coordinates
+CarpetX/ErrorEstimator
 CarpetX/Hydro
 CarpetX/HydroToyCarpetX
 #DISABLED CarpetX/Kokkos

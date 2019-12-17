@@ -1,14 +1,16 @@
 ActiveThorns = "
+    ADMBase
+    AHFinder
     CarpetX
+    Coordinates
     Formaline
     IOUtil
-    Maxwell
     ODESolvers
     SystemTopology
     TimerReport
 "
  
-$nlevels = 2   #TODO 3
+$nlevels = 3
 $ncells = 32
 
 Cactus::cctk_show_schedule = no
@@ -16,7 +18,7 @@ Cactus::cctk_show_schedule = no
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 0   #TODO 1.0
 
-CarpetX::verbose = no   #TODO no
+CarpetX::verbose = no
 
 CarpetX::xmin = -1.0
 CarpetX::ymin = -1.0
@@ -40,16 +42,6 @@ CarpetX::do_restrict = no
 CarpetX::restrict_during_sync = yes
 
 CarpetX::dtfac = 0.25
-
-Maxwell::setup = "plane wave"
-Maxwell::spatial_frequency_x = 0.0
-Maxwell::spatial_frequency_y = 0.0
-Maxwell::spatial_frequency_z = 1.0
-Maxwell::amplitude_x = 1.0
-Maxwell::amplitude_y = 0.0
-Maxwell::amplitude_z = 0.0
-
-Maxwell::output_every = 1
 
 IO::out_dir = $parfile
 IO::out_every = 1   #TODO $ncells * 2 ** ($nlevels - 1) / 32

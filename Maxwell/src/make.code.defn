@@ -1,14 +1,11 @@
 # Main make.code.defn file for thorn Maxwell
 
 # Source files in this directory
-SRCS =						\
-	average.cxx				\
+SRCS =	average.cxx				\
 	boundaries.cxx				\
 	constraints.cxx				\
-	dual.cxx				\
-	error.cxx				\
 	initial.cxx				\
-	rhs.cxx
+        rhs.cxx
 
 # Subdirectories containing source files
 SUBDIRS =

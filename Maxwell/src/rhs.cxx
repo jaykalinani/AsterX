@@ -5,99 +5,90 @@
 #include <cctk_Parameters.h>
 
 namespace Maxwell {
+using namespace Loop;
+using namespace std;
+
+namespace {
+
+template <int CI, int CJ, int CK, typename T>
+T star(const GF3D<const T, CI, CJ, CK> &u, const vect<int, dim> &I) {
+  constexpr int SI = CI == 0 ? +1 : -1;
+  constexpr int SJ = CJ == 0 ? +1 : -1;
+  constexpr int SK = CK == 0 ? +1 : -1;
+  const auto DI = vect<int, dim>::unit(0);
+  const auto DJ = vect<int, dim>::unit(1);
+  const auto DK = vect<int, dim>::unit(2);
+  const auto SDI = SI * DI;
+  const auto SDJ = SJ * DJ;
+  const auto SDK = SK * DK;
+  return (u(I) + u(I + SDI) + u(I + SDJ) + u(I + SDI + SDJ) + u(I + SDK) +
+          u(I + SDI + SDK) + u(I + SDJ + SDK) + u(I + SDI + SDJ + SDK)) /
+         8;
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void Maxwell_RHS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Maxwell_RHS;
   DECLARE_CCTK_PARAMETERS;
 
-  const auto DI = Loop::vect<int, Loop::dim>::unit(0);
-  const auto DJ = Loop::vect<int, Loop::dim>::unit(1);
-  const auto DK = Loop::vect<int, Loop::dim>::unit(2);
+  const auto DI = vect<int, dim>::unit(0);
+  const auto DJ = vect<int, dim>::unit(1);
+  const auto DK = vect<int, dim>::unit(2);
 
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
-  const auto dxm{[&](const auto &u, const auto &p) {
-    return (u(p.I) - u(p.I - DI)) / dx;
-  }};
-  const auto dym{[&](const auto &u, const auto &p) {
-    return (u(p.I) - u(p.I - DJ)) / dy;
-  }};
-  const auto dzm{[&](const auto &u, const auto &p) {
-    return (u(p.I) - u(p.I - DK)) / dz;
-  }};
+  const auto dxp{
+      [&](const auto &u, const auto &I) { return (u(I + DI) - u(I)) / dx; }};
+  const auto dyp{
+      [&](const auto &u, const auto &I) { return (u(I + DJ) - u(I)) / dy; }};
+  const auto dzp{
+      [&](const auto &u, const auto &I) { return (u(I + DK) - u(I)) / dz; }};
 
-  const auto dxp{[&](const auto &u, const auto &p) {
-    return (u(p.I + DI) - u(p.I)) / dx;
-  }};
-  const auto dyp{[&](const auto &u, const auto &p) {
-    return (u(p.I + DJ) - u(p.I)) / dy;
-  }};
-  const auto dzp{[&](const auto &u, const auto &p) {
-    return (u(p.I + DK) - u(p.I)) / dz;
-  }};
+  const GF3D<const CCTK_REAL, 0, 1, 1> dyz_(cctkGH, dyz);
+  const GF3D<const CCTK_REAL, 1, 0, 1> dzx_(cctkGH, dzx);
+  const GF3D<const CCTK_REAL, 1, 1, 0> dxy_(cctkGH, dxy);
 
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
+  const GF3D<const CCTK_REAL, 0, 1, 1> byz_(cctkGH, byz);
+  const GF3D<const CCTK_REAL, 1, 0, 1> bzx_(cctkGH, bzx);
+  const GF3D<const CCTK_REAL, 1, 1, 0> bxy_(cctkGH, bxy);
 
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ax_(cctkGH, ax);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ay_(cctkGH, ay);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> az_(cctkGH, az);
+  const GF3D<CCTK_REAL, 0, 1, 1> dtdyz_(cctkGH, dtdyz);
+  const GF3D<CCTK_REAL, 1, 0, 1> dtdzx_(cctkGH, dtdzx);
+  const GF3D<CCTK_REAL, 1, 1, 0> dtdxy_(cctkGH, dtdxy);
 
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 0> ex_(cctkGH, ex);
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 0> ey_(cctkGH, ey);
-  const Loop::GF3D<const CCTK_REAL, 0, 0, 1> ez_(cctkGH, ez);
+  const GF3D<CCTK_REAL, 0, 1, 1> dtbyz_(cctkGH, dtbyz);
+  const GF3D<CCTK_REAL, 1, 0, 1> dtbzx_(cctkGH, dtbzx);
+  const GF3D<CCTK_REAL, 1, 1, 0> dtbxy_(cctkGH, dtbxy);
 
-  const Loop::GF3D<const CCTK_REAL, 0, 1, 1> byz_(cctkGH, byz);
-  const Loop::GF3D<const CCTK_REAL, 1, 0, 1> bzx_(cctkGH, bzx);
-  const Loop::GF3D<const CCTK_REAL, 1, 1, 0> bxy_(cctkGH, bxy);
-
-  const Loop::GF3D<CCTK_REAL, 0, 0, 0> dtphi_(cctkGH, dtphi);
-
-  const Loop::GF3D<CCTK_REAL, 1, 0, 0> dtax_(cctkGH, dtax);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 0> dtay_(cctkGH, dtay);
-  const Loop::GF3D<CCTK_REAL, 0, 0, 1> dtaz_(cctkGH, dtaz);
-
-  const Loop::GF3D<CCTK_REAL, 1, 0, 0> dtex_(cctkGH, dtex);
-  const Loop::GF3D<CCTK_REAL, 0, 1, 0> dtey_(cctkGH, dtey);
-  const Loop::GF3D<CCTK_REAL, 0, 0, 1> dtez_(cctkGH, dtez);
-
-  const Loop::GF3D<CCTK_REAL, 0, 1, 1> dtbyz_(cctkGH, dtbyz);
-  const Loop::GF3D<CCTK_REAL, 1, 0, 1> dtbzx_(cctkGH, dtbzx);
-  const Loop::GF3D<CCTK_REAL, 1, 1, 0> dtbxy_(cctkGH, dtbxy);
-
-  Loop::loop_int<0, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtphi_(p.I) = -(dxm(ax_, p) + dym(ay_, p) + dzm(az_, p));
+  loop_int<0, 1, 1>(cctkGH, [&](const PointDesc &p) {
+    dtdyz_(p.I) = (star(bxy_, p.I + DJ) - star(bxy_, p.I)) / dy -
+                  (star(bzx_, p.I + DK) - star(bzx_, p.I)) / dz;
+  });
+  loop_int<1, 0, 1>(cctkGH, [&](const PointDesc &p) {
+    dtdzx_(p.I) = (star(byz_, p.I + DK) - star(byz_, p.I)) / dz -
+                  (star(bxy_, p.I + DI) - star(bxy_, p.I)) / dx;
+  });
+  loop_int<1, 1, 0>(cctkGH, [&](const PointDesc &p) {
+    dtdxy_(p.I) = (star(bzx_, p.I + DI) - star(bzx_, p.I)) / dx -
+                  (star(byz_, p.I + DJ) - star(byz_, p.I)) / dy;
   });
 
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtax_(p.I) = -dxp(phi_, p) - ex_(p.I);
+  loop_int<0, 1, 1>(cctkGH, [&](const PointDesc &p) {
+    dtbyz_(p.I) = (star(dzx_, p.I + DK) - star(dzx_, p.I)) / dz -
+                  (star(dxy_, p.I + DJ) - star(dxy_, p.I)) / dy;
   });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtay_(p.I) = -dyp(phi_, p) - ey_(p.I);
+  loop_int<1, 0, 1>(cctkGH, [&](const PointDesc &p) {
+    dtbzx_(p.I) = (star(dxy_, p.I + DI) - star(dxy_, p.I)) / dx -
+                  (star(dyz_, p.I + DK) - star(dyz_, p.I)) / dz;
   });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtaz_(p.I) = -dzp(phi_, p) - ez_(p.I);
-  });
-
-  Loop::loop_int<1, 0, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtex_(p.I) = -(dzm(bzx_, p) - dym(bxy_, p));
-  });
-  Loop::loop_int<0, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtey_(p.I) = -(dxm(bxy_, p) - dzm(byz_, p));
-  });
-  Loop::loop_int<0, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtez_(p.I) = -(dym(byz_, p) - dxm(bzx_, p));
-  });
-
-  Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtbyz_(p.i, p.j, p.k) = dzp(ey_, p) - dyp(ez_, p);
-  });
-  Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtbzx_(p.i, p.j, p.k) = dxp(ez_, p) - dzp(ex_, p);
-  });
-  Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    dtbxy_(p.i, p.j, p.k) = dyp(ex_, p) - dxp(ey_, p);
+  loop_int<1, 1, 0>(cctkGH, [&](const PointDesc &p) {
+    dtbxy_(p.I) = (star(dyz_, p.I + DJ) - star(dyz_, p.I)) / dy -
+                  (star(dzx_, p.I + DI) - star(dzx_, p.I)) / dx;
   });
 }
 

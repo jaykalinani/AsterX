@@ -1,7 +1,7 @@
-# Main make.code.defn file for thorn ADMBase
+# Main make.code.defn file for thorn ErrorEstimator
 
 # Source files in this directory
-SRCS = admbase.cxx
+SRCS =	error.cxx
 
 # Subdirectories containing source files
 SUBDIRS =

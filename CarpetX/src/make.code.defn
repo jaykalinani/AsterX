@@ -3,6 +3,7 @@
 # Source files in this directory
 SRCS =						\
 	driver.cxx				\
+        interpolate.cxx				\
 	io.cxx					\
 	level.cxx				\
         linsolve.cxx                            \
