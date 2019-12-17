@@ -1543,7 +1543,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   if (restrict_during_sync) {
     if (current_level == -1)
-      for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
         Restrict(level, groups);
     else
       Restrict(current_level, groups);
