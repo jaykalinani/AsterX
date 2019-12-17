@@ -1573,8 +1573,18 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         // Coarsest level: Copy from adjacent boxes on same level
 
         for (int tl = 0; tl < sync_tl; ++tl) {
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            assert(groupdata.valid.at(tl).at(vi).valid_int);
+          bool all_valid = true;
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            if(!groupdata.valid.at(tl).at(vi).valid_int) {
+              CCTK_VWARN(CCTK_WARN_ALERT,
+                         "Grid function '%s' interior not valid before restrict",
+                         CCTK_FullVarName(vi));
+              all_valid = false;
+            }
+          }
+          if (!all_valid) {
+            CCTK_ERROR("Found grid functions that are not valid in the interior");
+          }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).valid_bnd = false;
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
