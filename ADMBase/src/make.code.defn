@@ -1,7 +1,7 @@
 # Main make.code.defn file for thorn ADMBase
 
 # Source files in this directory
-SRCS = initial.cxx
+SRCS = admbase.cxx
 
 # Subdirectories containing source files
 SUBDIRS =
