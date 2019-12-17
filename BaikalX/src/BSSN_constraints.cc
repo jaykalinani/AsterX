@@ -4,11 +4,11 @@
 #include <loop.hxx>
 
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 
 void BaikalETK_BSSN_constraints(CCTK_ARGUMENTS) {
-    DECLARE_CCTK_ARGUMENTS;
+    DECLARE_CCTK_ARGUMENTS_BaikalETK_BSSN_constraints;
     DECLARE_CCTK_PARAMETERS;
 
     const CCTK_REAL invdx0 = 1.0/CCTK_DELTA_SPACE(0);

@@ -4,11 +4,11 @@
 #include <loop.hxx>
 
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 
 void driver_pt1_BSSN_Ricci(CCTK_ARGUMENTS) {
-    DECLARE_CCTK_ARGUMENTS;
+    DECLARE_CCTK_ARGUMENTS_driver_pt1_BSSN_Ricci;
     
     const CCTK_REAL invdx0 = 1.0/CCTK_DELTA_SPACE(0);
     const CCTK_REAL invdx1 = 1.0/CCTK_DELTA_SPACE(1);

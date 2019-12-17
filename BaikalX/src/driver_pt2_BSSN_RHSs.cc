@@ -4,7 +4,7 @@
 #include <loop.hxx>
 
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 
 //void BSSN_RHSs()
@@ -12,7 +12,7 @@
 #define UPWIND_ALG(UpwindVecU) UpwindVecU > 0.0 ? 1.0 : 0.0
 
 void driver_pt2_BSSN_RHSs(CCTK_ARGUMENTS) {
-    DECLARE_CCTK_ARGUMENTS;
+    DECLARE_CCTK_ARGUMENTS_driver_pt2_BSSN_RHSs;
     DECLARE_CCTK_PARAMETERS;
 
     const CCTK_REAL invdx0 = 1.0/CCTK_DELTA_SPACE(0);

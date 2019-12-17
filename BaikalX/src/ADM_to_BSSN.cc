@@ -4,11 +4,11 @@
 #include <loop.hxx>
 
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 
 void BaikalETK_ADM_to_BSSN(CCTK_ARGUMENTS) {
-    DECLARE_CCTK_ARGUMENTS;
+    DECLARE_CCTK_ARGUMENTS_BaikalETK_ADM_to_BSSN;
     DECLARE_CCTK_PARAMETERS;
     
 
@@ -148,109 +148,73 @@ Loop::loop_all<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
 
 
 });
-Loop::loop_all<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
+Loop::loop_int<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
     const int i0 = p.i;
     const int i1 = p.j;
     const int i2 = p.k;
    /* 
     * NRPy+ Finite Difference Code Generation, Step 1 of 2: Read from main memory and compute finite difference stencils:
     */
-   const double hDD00_i0_i1_i2m2 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1,i2-2)];
    const double hDD00_i0_i1_i2m1 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1,i2-1)];
-   const double hDD00_i0_i1m2_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1-2,i2)];
    const double hDD00_i0_i1m1_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1-1,i2)];
-   const double hDD00_i0m2_i1_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0-2,i1,i2)];
    const double hDD00_i0m1_i1_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0-1,i1,i2)];
    const double hDD00 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1,i2)];
    const double hDD00_i0p1_i1_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0+1,i1,i2)];
-   const double hDD00_i0p2_i1_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0+2,i1,i2)];
    const double hDD00_i0_i1p1_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1+1,i2)];
-   const double hDD00_i0_i1p2_i2 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1+2,i2)];
    const double hDD00_i0_i1_i2p1 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1,i2+1)];
-   const double hDD00_i0_i1_i2p2 = hDD00GF_.ptr[hDD00GF_.offset(i0,i1,i2+2)];
-   const double hDD01_i0_i1_i2m2 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1,i2-2)];
    const double hDD01_i0_i1_i2m1 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1,i2-1)];
-   const double hDD01_i0_i1m2_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1-2,i2)];
    const double hDD01_i0_i1m1_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1-1,i2)];
-   const double hDD01_i0m2_i1_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0-2,i1,i2)];
    const double hDD01_i0m1_i1_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0-1,i1,i2)];
    const double hDD01 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1,i2)];
    const double hDD01_i0p1_i1_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0+1,i1,i2)];
-   const double hDD01_i0p2_i1_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0+2,i1,i2)];
    const double hDD01_i0_i1p1_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1+1,i2)];
-   const double hDD01_i0_i1p2_i2 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1+2,i2)];
    const double hDD01_i0_i1_i2p1 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1,i2+1)];
-   const double hDD01_i0_i1_i2p2 = hDD01GF_.ptr[hDD01GF_.offset(i0,i1,i2+2)];
-   const double hDD02_i0_i1_i2m2 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1,i2-2)];
    const double hDD02_i0_i1_i2m1 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1,i2-1)];
-   const double hDD02_i0_i1m2_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1-2,i2)];
    const double hDD02_i0_i1m1_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1-1,i2)];
-   const double hDD02_i0m2_i1_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0-2,i1,i2)];
    const double hDD02_i0m1_i1_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0-1,i1,i2)];
    const double hDD02 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1,i2)];
    const double hDD02_i0p1_i1_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0+1,i1,i2)];
-   const double hDD02_i0p2_i1_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0+2,i1,i2)];
    const double hDD02_i0_i1p1_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1+1,i2)];
-   const double hDD02_i0_i1p2_i2 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1+2,i2)];
    const double hDD02_i0_i1_i2p1 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1,i2+1)];
-   const double hDD02_i0_i1_i2p2 = hDD02GF_.ptr[hDD02GF_.offset(i0,i1,i2+2)];
-   const double hDD11_i0_i1_i2m2 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1,i2-2)];
    const double hDD11_i0_i1_i2m1 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1,i2-1)];
-   const double hDD11_i0_i1m2_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1-2,i2)];
    const double hDD11_i0_i1m1_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1-1,i2)];
-   const double hDD11_i0m2_i1_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0-2,i1,i2)];
    const double hDD11_i0m1_i1_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0-1,i1,i2)];
    const double hDD11 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1,i2)];
    const double hDD11_i0p1_i1_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0+1,i1,i2)];
-   const double hDD11_i0p2_i1_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0+2,i1,i2)];
    const double hDD11_i0_i1p1_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1+1,i2)];
-   const double hDD11_i0_i1p2_i2 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1+2,i2)];
    const double hDD11_i0_i1_i2p1 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1,i2+1)];
-   const double hDD11_i0_i1_i2p2 = hDD11GF_.ptr[hDD11GF_.offset(i0,i1,i2+2)];
-   const double hDD12_i0_i1_i2m2 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1,i2-2)];
    const double hDD12_i0_i1_i2m1 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1,i2-1)];
-   const double hDD12_i0_i1m2_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1-2,i2)];
    const double hDD12_i0_i1m1_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1-1,i2)];
-   const double hDD12_i0m2_i1_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0-2,i1,i2)];
    const double hDD12_i0m1_i1_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0-1,i1,i2)];
    const double hDD12 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1,i2)];
    const double hDD12_i0p1_i1_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0+1,i1,i2)];
-   const double hDD12_i0p2_i1_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0+2,i1,i2)];
    const double hDD12_i0_i1p1_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1+1,i2)];
-   const double hDD12_i0_i1p2_i2 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1+2,i2)];
    const double hDD12_i0_i1_i2p1 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1,i2+1)];
-   const double hDD12_i0_i1_i2p2 = hDD12GF_.ptr[hDD12GF_.offset(i0,i1,i2+2)];
-   const double hDD22_i0_i1_i2m2 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1,i2-2)];
    const double hDD22_i0_i1_i2m1 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1,i2-1)];
-   const double hDD22_i0_i1m2_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1-2,i2)];
    const double hDD22_i0_i1m1_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1-1,i2)];
-   const double hDD22_i0m2_i1_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0-2,i1,i2)];
    const double hDD22_i0m1_i1_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0-1,i1,i2)];
    const double hDD22 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1,i2)];
    const double hDD22_i0p1_i1_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0+1,i1,i2)];
-   const double hDD22_i0p2_i1_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0+2,i1,i2)];
    const double hDD22_i0_i1p1_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1+1,i2)];
-   const double hDD22_i0_i1p2_i2 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1+2,i2)];
    const double hDD22_i0_i1_i2p1 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1,i2+1)];
-   const double hDD22_i0_i1_i2p2 = hDD22GF_.ptr[hDD22GF_.offset(i0,i1,i2+2)];
-         const double hDD_dD000 = invdx0*(-2.0/3.0*hDD00_i0m1_i1_i2 + (1.0/12.0)*hDD00_i0m2_i1_i2 + (2.0/3.0)*hDD00_i0p1_i1_i2 - 1.0/12.0*hDD00_i0p2_i1_i2);
-         const double hDD_dD001 = invdx1*(-2.0/3.0*hDD00_i0_i1m1_i2 + (1.0/12.0)*hDD00_i0_i1m2_i2 + (2.0/3.0)*hDD00_i0_i1p1_i2 - 1.0/12.0*hDD00_i0_i1p2_i2);
-         const double hDD_dD002 = invdx2*(-2.0/3.0*hDD00_i0_i1_i2m1 + (1.0/12.0)*hDD00_i0_i1_i2m2 + (2.0/3.0)*hDD00_i0_i1_i2p1 - 1.0/12.0*hDD00_i0_i1_i2p2);
-         const double hDD_dD010 = invdx0*(-2.0/3.0*hDD01_i0m1_i1_i2 + (1.0/12.0)*hDD01_i0m2_i1_i2 + (2.0/3.0)*hDD01_i0p1_i1_i2 - 1.0/12.0*hDD01_i0p2_i1_i2);
-         const double hDD_dD011 = invdx1*(-2.0/3.0*hDD01_i0_i1m1_i2 + (1.0/12.0)*hDD01_i0_i1m2_i2 + (2.0/3.0)*hDD01_i0_i1p1_i2 - 1.0/12.0*hDD01_i0_i1p2_i2);
-         const double hDD_dD012 = invdx2*(-2.0/3.0*hDD01_i0_i1_i2m1 + (1.0/12.0)*hDD01_i0_i1_i2m2 + (2.0/3.0)*hDD01_i0_i1_i2p1 - 1.0/12.0*hDD01_i0_i1_i2p2);
-         const double hDD_dD020 = invdx0*(-2.0/3.0*hDD02_i0m1_i1_i2 + (1.0/12.0)*hDD02_i0m2_i1_i2 + (2.0/3.0)*hDD02_i0p1_i1_i2 - 1.0/12.0*hDD02_i0p2_i1_i2);
-         const double hDD_dD021 = invdx1*(-2.0/3.0*hDD02_i0_i1m1_i2 + (1.0/12.0)*hDD02_i0_i1m2_i2 + (2.0/3.0)*hDD02_i0_i1p1_i2 - 1.0/12.0*hDD02_i0_i1p2_i2);
-         const double hDD_dD022 = invdx2*(-2.0/3.0*hDD02_i0_i1_i2m1 + (1.0/12.0)*hDD02_i0_i1_i2m2 + (2.0/3.0)*hDD02_i0_i1_i2p1 - 1.0/12.0*hDD02_i0_i1_i2p2);
-         const double hDD_dD110 = invdx0*(-2.0/3.0*hDD11_i0m1_i1_i2 + (1.0/12.0)*hDD11_i0m2_i1_i2 + (2.0/3.0)*hDD11_i0p1_i1_i2 - 1.0/12.0*hDD11_i0p2_i1_i2);
-         const double hDD_dD111 = invdx1*(-2.0/3.0*hDD11_i0_i1m1_i2 + (1.0/12.0)*hDD11_i0_i1m2_i2 + (2.0/3.0)*hDD11_i0_i1p1_i2 - 1.0/12.0*hDD11_i0_i1p2_i2);
-         const double hDD_dD112 = invdx2*(-2.0/3.0*hDD11_i0_i1_i2m1 + (1.0/12.0)*hDD11_i0_i1_i2m2 + (2.0/3.0)*hDD11_i0_i1_i2p1 - 1.0/12.0*hDD11_i0_i1_i2p2);
-         const double hDD_dD120 = invdx0*(-2.0/3.0*hDD12_i0m1_i1_i2 + (1.0/12.0)*hDD12_i0m2_i1_i2 + (2.0/3.0)*hDD12_i0p1_i1_i2 - 1.0/12.0*hDD12_i0p2_i1_i2);
-         const double hDD_dD121 = invdx1*(-2.0/3.0*hDD12_i0_i1m1_i2 + (1.0/12.0)*hDD12_i0_i1m2_i2 + (2.0/3.0)*hDD12_i0_i1p1_i2 - 1.0/12.0*hDD12_i0_i1p2_i2);
-         const double hDD_dD122 = invdx2*(-2.0/3.0*hDD12_i0_i1_i2m1 + (1.0/12.0)*hDD12_i0_i1_i2m2 + (2.0/3.0)*hDD12_i0_i1_i2p1 - 1.0/12.0*hDD12_i0_i1_i2p2);
-         const double hDD_dD220 = invdx0*(-2.0/3.0*hDD22_i0m1_i1_i2 + (1.0/12.0)*hDD22_i0m2_i1_i2 + (2.0/3.0)*hDD22_i0p1_i1_i2 - 1.0/12.0*hDD22_i0p2_i1_i2);
-         const double hDD_dD221 = invdx1*(-2.0/3.0*hDD22_i0_i1m1_i2 + (1.0/12.0)*hDD22_i0_i1m2_i2 + (2.0/3.0)*hDD22_i0_i1p1_i2 - 1.0/12.0*hDD22_i0_i1p2_i2);
-         const double hDD_dD222 = invdx2*(-2.0/3.0*hDD22_i0_i1_i2m1 + (1.0/12.0)*hDD22_i0_i1_i2m2 + (2.0/3.0)*hDD22_i0_i1_i2p1 - 1.0/12.0*hDD22_i0_i1_i2p2);
+         const double hDD_dD000 = invdx0*(-1.0/2.0*hDD00_i0m1_i1_i2 + (1.0/2.0)*hDD00_i0p1_i1_i2);
+         const double hDD_dD001 = invdx1*(-1.0/2.0*hDD00_i0_i1m1_i2 + (1.0/2.0)*hDD00_i0_i1p1_i2);
+         const double hDD_dD002 = invdx2*(-1.0/2.0*hDD00_i0_i1_i2m1 + (1.0/2.0)*hDD00_i0_i1_i2p1);
+         const double hDD_dD010 = invdx0*(-1.0/2.0*hDD01_i0m1_i1_i2 + (1.0/2.0)*hDD01_i0p1_i1_i2);
+         const double hDD_dD011 = invdx1*(-1.0/2.0*hDD01_i0_i1m1_i2 + (1.0/2.0)*hDD01_i0_i1p1_i2);
+         const double hDD_dD012 = invdx2*(-1.0/2.0*hDD01_i0_i1_i2m1 + (1.0/2.0)*hDD01_i0_i1_i2p1);
+         const double hDD_dD020 = invdx0*(-1.0/2.0*hDD02_i0m1_i1_i2 + (1.0/2.0)*hDD02_i0p1_i1_i2);
+         const double hDD_dD021 = invdx1*(-1.0/2.0*hDD02_i0_i1m1_i2 + (1.0/2.0)*hDD02_i0_i1p1_i2);
+         const double hDD_dD022 = invdx2*(-1.0/2.0*hDD02_i0_i1_i2m1 + (1.0/2.0)*hDD02_i0_i1_i2p1);
+         const double hDD_dD110 = invdx0*(-1.0/2.0*hDD11_i0m1_i1_i2 + (1.0/2.0)*hDD11_i0p1_i1_i2);
+         const double hDD_dD111 = invdx1*(-1.0/2.0*hDD11_i0_i1m1_i2 + (1.0/2.0)*hDD11_i0_i1p1_i2);
+         const double hDD_dD112 = invdx2*(-1.0/2.0*hDD11_i0_i1_i2m1 + (1.0/2.0)*hDD11_i0_i1_i2p1);
+         const double hDD_dD120 = invdx0*(-1.0/2.0*hDD12_i0m1_i1_i2 + (1.0/2.0)*hDD12_i0p1_i1_i2);
+         const double hDD_dD121 = invdx1*(-1.0/2.0*hDD12_i0_i1m1_i2 + (1.0/2.0)*hDD12_i0_i1p1_i2);
+         const double hDD_dD122 = invdx2*(-1.0/2.0*hDD12_i0_i1_i2m1 + (1.0/2.0)*hDD12_i0_i1_i2p1);
+         const double hDD_dD220 = invdx0*(-1.0/2.0*hDD22_i0m1_i1_i2 + (1.0/2.0)*hDD22_i0p1_i1_i2);
+         const double hDD_dD221 = invdx1*(-1.0/2.0*hDD22_i0_i1m1_i2 + (1.0/2.0)*hDD22_i0_i1p1_i2);
+         const double hDD_dD222 = invdx2*(-1.0/2.0*hDD22_i0_i1_i2m1 + (1.0/2.0)*hDD22_i0_i1_i2p1);
    /* 
     * NRPy+ Finite Difference Code Generation, Step 2 of 2: Evaluate SymPy expressions and write to main memory:
     */

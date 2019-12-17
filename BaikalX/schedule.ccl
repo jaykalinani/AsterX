@@ -3,10 +3,10 @@
 STORAGE: ADMBase::metric, ADMBase::curv, ADMBase::lapse, ADMBase::shift
 
 # Next allocate storage for all 3 gridfunction groups used in BaikalETK
-STORAGE: evol_variables[3]     # Evolution variables
-STORAGE: evol_variables_rhs[1] # Variables storing right-hand-sides
-STORAGE: aux_variables[3]      # Diagnostics variables
-STORAGE: auxevol_variables[1]  # Single-timelevel storage of variables needed for evolutions.
+STORAGE: evol_variables        # Evolution variables
+STORAGE: evol_variables_rhs    # Variables storing right-hand-sides
+STORAGE: aux_variables         # Diagnostics variables
+STORAGE: auxevol_variables     # Single-timelevel storage of variables needed for evolutions.
 
 # The following scheduler is based on Lean/LeanBSSNMoL/schedule.ccl
 
@@ -19,7 +19,6 @@ schedule BaikalETK_Banner at STARTUP
 schedule BaikalETK_ADM_to_BSSN at CCTK_INITIAL after ADMBase_PostInitial
 {
   LANG: C
-  OPTIONS: Local
   SYNC: BaikalETK::evol_variables
   WRITES: BaikalETK::evol_variables(interior)
   READS: ADMBase::metric(everywhere)
@@ -42,6 +41,12 @@ schedule BaikalETK_BSSN_to_ADM in ODESolvers_RHS after BaikalETK_T4UU before Bai
   WRITES: ADMBase::dtshift(interior)
   WRITES: ADMBase::dtlapse(interior)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
+
+schedule BaikalETK_zero_rhss in ODESolvers_RHS as BaikalETK_ZeroRHS before BaikalETK_Ricci
+{
+  LANG: C
+  WRITES: BaikalETK::evol_variables_rhs(interior)
+} "Zero out Baikal RHS"
 
 schedule driver_pt1_BSSN_Ricci in ODESolvers_RHS as BaikalETK_Ricci before BaikalETK_RHS
 {
@@ -70,7 +75,6 @@ schedule enforce_detgammabar_constraint in MoL_PostStep before BC_Update
 schedule BaikalETK_BSSN_to_ADM in MoL_PostStep after BaikalETK_ApplyBCs before ADMBase_SetADMVars
 {
   LANG: C
-  OPTIONS: Local
   WRITES: BaikalETK::evol_variables(everywhere)
   READS: ADMBase::metric(everywhere)
   READS: ADMBase::curv(everywhere)
@@ -89,7 +93,6 @@ schedule group MoL_PseudoEvolution in POSTSTEP
 schedule BaikalETK_BSSN_constraints in MoL_PseudoEvolution
 {
   LANG: C
-  OPTIONS: Local
   READS: BaikalETK::evol_variables(everywhere)
   WRITES: BaikalETK::aux_variables(interior)
 } "Compute BSSN (Hamiltonian and momentum) constraints"

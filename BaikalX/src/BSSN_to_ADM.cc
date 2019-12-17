@@ -4,11 +4,11 @@
 #include <math.h>
 
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 
 void BaikalETK_BSSN_to_ADM(CCTK_ARGUMENTS) {
-    DECLARE_CCTK_ARGUMENTS;
+    DECLARE_CCTK_ARGUMENTS_BaikalETK_BSSN_to_ADM;
     DECLARE_CCTK_PARAMETERS;
     
 Loop::GF3D<CCTK_REAL,0,0,0> trKGF_(cctkGH,trKGF);
