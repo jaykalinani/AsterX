@@ -20,24 +20,49 @@ schedule BaikalETK_ADM_to_BSSN at CCTK_INITIAL after ADMBase_PostInitial
 {
   LANG: C
   OPTIONS: Local
-  SYNC: evol_variables
+  SYNC: BaikalETK::evol_variables
+  WRITES: BaikalETK::evol_variables(interior)
+  READS: ADMBase::metric(everywhere)
+  READS: ADMBase::curv(everywhere)
+  READS: ADMBASE::shift(everywhere)
+  READS: ADMBASE::lapse(everywhere)
+  READS: ADMBase::dtshift(everywhere)
+  READS: ADMBase::dtlapse(everywhere)
 } "Convert initial data into BSSN variables"
 
 # MoL: compute RHSs, etc
+schedule BaikalETK_BSSN_to_ADM in ODESolvers_RHS after BaikalETK_T4UU before BaikalETK_Ricci
+{
+  LANG: C
+  READS: BaikalETK::evol_variables(everywhere)
+  WRITES: ADMBase::metric(interior)
+  WRITES: ADMBase::curv(interior)
+  WRITES: ADMBASE::shift(interior)
+  WRITES: ADMBASE::lapse(interior)
+  WRITES: ADMBase::dtshift(interior)
+  WRITES: ADMBase::dtlapse(interior)
+} "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
 schedule driver_pt1_BSSN_Ricci in ODESolvers_RHS as BaikalETK_Ricci before BaikalETK_RHS
 {
   LANG: C
+  READS: BaikalETK::evol_variables(everywhere)
+  WRITES: BaikalETK::auxevol_variables(interior)
 } "MoL: Compute Ricci tensor"
 
 schedule driver_pt2_BSSN_RHSs in ODESolvers_RHS as BaikalETK_RHS after BaikalETK_Ricci
 {
   LANG: C
+  READS: BaikalETK::auxevol_variables(interior)
+  READS: BaikalETK::evol_variables(everywhere)
+  WRITES: BaikalETK::evol_variables_rhs(interior)
 } "MoL: Evaluate BSSN RHSs"
 
 schedule enforce_detgammabar_constraint in MoL_PostStep before BC_Update
 {
   LANG: C
+  READS: hDD00GF(interior) hDD01GF(interior) hDD02GF(interior) hDD11GF(interior) hDD12GF(interior) hDD22GF(interior)
+  WRITES: hDD00GF(interior) hDD01GF(interior) hDD02GF(interior) hDD11GF(interior) hDD12GF(interior) hDD22GF(interior)
 } "Enforce detgammabar = detgammahat (= 1 in Cartesian)"
 
 # Next update ADM quantities
@@ -46,14 +71,26 @@ schedule BaikalETK_BSSN_to_ADM in MoL_PostStep after BaikalETK_ApplyBCs before A
 {
   LANG: C
   OPTIONS: Local
+  WRITES: BaikalETK::evol_variables(everywhere)
+  READS: ADMBase::metric(everywhere)
+  READS: ADMBase::curv(everywhere)
+  READS: ADMBASE::shift(everywhere)
+  READS: ADMBASE::lapse(everywhere)
+  READS: ADMBASE::dtlapse(everywhere)
+  # these run everywhere so thy cannot set dtshift since vet and beta differ by an advection term
 } "Perform BSSN-to-ADM conversion. Useful for diagnostics."
 
 # Compute Hamiltonian & momentum constraints
+schedule group MoL_PseudoEvolution in POSTSTEP
+{
+} "Compute constraints etc."
 
 
 schedule BaikalETK_BSSN_constraints in MoL_PseudoEvolution
 {
   LANG: C
   OPTIONS: Local
+  READS: BaikalETK::evol_variables(everywhere)
+  WRITES: BaikalETK::aux_variables(interior)
 } "Compute BSSN (Hamiltonian and momentum) constraints"
 
