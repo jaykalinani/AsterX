@@ -1,5 +1,6 @@
 ActiveThorns = "
     CarpetX
+    ErrorEstimator
     Formaline
     IOUtil
     Maxwell
@@ -8,15 +9,15 @@ ActiveThorns = "
     TimerReport
 "
  
-$nlevels = 2   #TODO 3
+$nlevels = 3
 $ncells = 32
 
 Cactus::cctk_show_schedule = no
 
 Cactus::terminate = "time"
-Cactus::cctk_final_time = 0   #TODO 1.0
+Cactus::cctk_final_time = 1.0
 
-CarpetX::verbose = no   #TODO no
+CarpetX::verbose = no
 
 CarpetX::xmin = -1.0
 CarpetX::ymin = -1.0
@@ -34,7 +35,7 @@ CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = 5.0
 
-CarpetX::prolongation_type = "ddf"   # was "conservative"
+CarpetX::prolongation_type = "ddf"
 CarpetX::do_reflux = no
 CarpetX::do_restrict = no
 CarpetX::restrict_during_sync = yes
@@ -52,11 +53,11 @@ Maxwell::amplitude_z = 0.0
 Maxwell::output_every = 1
 
 IO::out_dir = $parfile
-IO::out_every = 1   #TODO $ncells * 2 ** ($nlevels - 1) / 32
+IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
 
-CarpetX::out_tsv = yes   #TODO no
+CarpetX::out_tsv = no
 
-TimerReport::out_every = 0   #TODO $ncells * 2 ** ($nlevels - 1) / 32
+TimerReport::out_every = $ncells * 2 ** ($nlevels - 1) / 32
 TimerReport::out_filename = "TimerReport"
 TimerReport::output_all_timers_together = yes
 TimerReport::output_all_timers_readable = yes
