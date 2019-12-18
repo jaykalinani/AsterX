@@ -6,4 +6,8 @@ Licence      : NCSA
 
 1. Purpose
 
-not documented
+To generate the source code, change into the doc directory and run the
+notebook:
+
+cd docs
+jupyter-nbconvert --to python --stdout BaikalX.ipynb | python3
