@@ -216,99 +216,6 @@ namespace Loop {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: remove this
-template <typename T, int CI, int CJ, int CK> struct GF3D {
-  static_assert(CI == 0 || CI == 1, "");
-  static_assert(CJ == 0 || CJ == 1, "");
-  static_assert(CK == 0 || CK == 1, "");
-  typedef T value_type;
-  T *restrict ptr;
-  static constexpr int di = 1;
-  int dj, dk;
-  int ni, nj, nk;
-  static constexpr array<int, dim> indextype() { return {CI, CJ, CK}; }
-  inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
-      : ptr(ptr), dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
-        dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),
-        ni(cctkGH->cctk_lsh[0] + 1 - CI), nj(cctkGH->cctk_lsh[1] + 1 - CJ),
-        nk(cctkGH->cctk_lsh[2] + 1 - CK) {}
-  inline int offset(int i, int j, int k) const {
-    // These index checks prevent vectorization. We thus only enable
-    // them in debug mode.
-#ifdef CCTK_DEBUG
-    assert(i >= 0 && i < ni);
-    assert(j >= 0 && j < nj);
-    assert(k >= 0 && k < nk);
-#endif
-    return i * di + j * dj + k * dk;
-  }
-  inline T &restrict operator()(int i, int j, int k) const {
-    return ptr[offset(i, j, k)];
-  }
-  inline T &restrict operator()(const vect<int, dim> &I) const {
-    return ptr[offset(I[0], I[1], I[2])];
-  }
-};
-
-template <typename T> struct GF3D1 {
-  typedef T value_type;
-  T *restrict ptr;
-#ifdef CCTK_DEBUG
-  array<int, dim> imin, imax;
-  array<int, dim> ash;
-#endif
-  static constexpr int di = 1;
-  int dj, dk;
-  int off;
-  inline GF3D1(T *restrict ptr, const array<int, dim> &imin,
-               const array<int, dim> &imax, const array<int, dim> &ash)
-      : ptr(ptr),
-#ifdef CCTK_DEBUG
-        imin(imin), imax(imax), ash(ash),
-#endif
-        dj(di * ash[0]), dk(dj * ash[1]),
-        off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
-  }
-  inline GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
-               const array<int, dim> &nghostzones, T *restrict ptr) {
-    for (int d = 0; d < dim; ++d)
-      assert(indextype[d] == 0 || indextype[d] == 1);
-    for (int d = 0; d < dim; ++d) {
-      assert(nghostzones[d] >= 0);
-      assert(nghostzones[d] <= cctkGH->cctk_nghostzones[d]);
-    }
-    array<int, dim> imin, imax;
-    for (int d = 0; d < dim; ++d) {
-      imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
-      imax[d] = cctkGH->cctk_lsh[d] + (1 - indextype[d]) -
-                (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
-    }
-    array<int, dim> ash;
-    for (int d = 0; d < dim; ++d)
-      ash[d] = cctkGH->cctk_ash[d] + (1 - indextype[d]) -
-               2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
-    *this = GF3D1(ptr, imin, imax, ash);
-  }
-  inline int offset(int i, int j, int k) const {
-    // These index checks prevent vectorization. We thus only enable
-    // them in debug mode.
-#ifdef CCTK_DEBUG
-    assert(i >= imin[0] && i < imax[0]);
-    assert(j >= imin[1] && j < imax[1]);
-    assert(k >= imin[2] && k < imax[2]);
-#endif
-    return i * di + j * dj + k * dk - off;
-  }
-  inline T &restrict operator()(int i, int j, int k) const {
-    return ptr[offset(i, j, k)];
-  }
-  inline T &restrict operator()(const vect<int, dim> &I) const {
-    return ptr[offset(I[0], I[1], I[2])];
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-
 enum class where_t { everywhere, interior, boundary, ghosts };
 
 struct PointDesc {
@@ -636,6 +543,102 @@ template <int CI, int CJ, int CK, typename F>
 void loop_ghosts(const cGH *cctkGH, const F &f) {
   loop<CI, CJ, CK>(cctkGH, where_t::ghosts, f);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+// TODO: remove this
+template <typename T, int CI, int CJ, int CK> struct GF3D {
+  static_assert(CI == 0 || CI == 1, "");
+  static_assert(CJ == 0 || CJ == 1, "");
+  static_assert(CK == 0 || CK == 1, "");
+  typedef T value_type;
+  T *restrict ptr;
+  static constexpr int di = 1;
+  int dj, dk;
+  int ni, nj, nk;
+  static constexpr array<int, dim> indextype() { return {CI, CJ, CK}; }
+  inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
+      : ptr(ptr), dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
+        dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),
+        ni(cctkGH->cctk_lsh[0] + 1 - CI), nj(cctkGH->cctk_lsh[1] + 1 - CJ),
+        nk(cctkGH->cctk_lsh[2] + 1 - CK) {}
+  inline int offset(int i, int j, int k) const {
+    // These index checks prevent vectorization. We thus only enable
+    // them in debug mode.
+#ifdef CCTK_DEBUG
+    assert(i >= 0 && i < ni);
+    assert(j >= 0 && j < nj);
+    assert(k >= 0 && k < nk);
+#endif
+    return i * di + j * dj + k * dk;
+  }
+  inline T &restrict operator()(int i, int j, int k) const {
+    return ptr[offset(i, j, k)];
+  }
+  inline T &restrict operator()(const vect<int, dim> &I) const {
+    return ptr[offset(I[0], I[1], I[2])];
+  }
+};
+
+template <typename T> struct GF3D1 {
+  typedef T value_type;
+  T *restrict ptr;
+#ifdef CCTK_DEBUG
+  array<int, dim> imin, imax;
+  array<int, dim> ash;
+#endif
+  static constexpr int di = 1;
+  int dj, dk;
+  int off;
+  inline GF3D1(T *restrict ptr, const array<int, dim> &imin,
+               const array<int, dim> &imax, const array<int, dim> &ash)
+      : ptr(ptr),
+#ifdef CCTK_DEBUG
+        imin(imin), imax(imax), ash(ash),
+#endif
+        dj(di * ash[0]), dk(dj * ash[1]),
+        off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
+  }
+  inline GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
+               const array<int, dim> &nghostzones, T *restrict ptr) {
+    for (int d = 0; d < dim; ++d)
+      assert(indextype[d] == 0 || indextype[d] == 1);
+    for (int d = 0; d < dim; ++d) {
+      assert(nghostzones[d] >= 0);
+      assert(nghostzones[d] <= cctkGH->cctk_nghostzones[d]);
+    }
+    array<int, dim> imin, imax;
+    for (int d = 0; d < dim; ++d) {
+      imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
+      imax[d] = cctkGH->cctk_lsh[d] + (1 - indextype[d]) -
+                (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    }
+    array<int, dim> ash;
+    for (int d = 0; d < dim; ++d)
+      ash[d] = cctkGH->cctk_ash[d] + (1 - indextype[d]) -
+               2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    *this = GF3D1(ptr, imin, imax, ash);
+  }
+  inline int offset(int i, int j, int k) const {
+    // These index checks prevent vectorization. We thus only enable
+    // them in debug mode.
+#ifdef CCTK_DEBUG
+    assert(i >= imin[0] && i < imax[0]);
+    assert(j >= imin[1] && j < imax[1]);
+    assert(k >= imin[2] && k < imax[2]);
+#endif
+    return i * di + j * dj + k * dk - off;
+  }
+  inline T &restrict operator()(int i, int j, int k) const {
+    return ptr[offset(i, j, k)];
+  }
+  inline T &restrict operator()(const vect<int, dim> &I) const {
+    return ptr[offset(I[0], I[1], I[2])];
+  }
+  inline T &restrict operator()(const PointDesc &p) const {
+    return (*this)(p.I);
+  }
+};
 
 } // namespace Loop
 
