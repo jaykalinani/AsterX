@@ -484,6 +484,9 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
                                     vi, tl};
 
             const auto &valid = groupdata.valid.at(tl).at(vi);
+            // No information given for this timelevel; assume not written
+            if (tl >= int(will_write.at(groupdata.groupindex).at(vi).size()))
+              continue;
             const auto &wr = will_write.at(groupdata.groupindex).at(vi).at(tl);
             valid_t to_check = valid & ~wr;
 
@@ -1587,8 +1590,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         gfs.at(gi).at(vi).resize(numtimelevels);
       }
     }
-    for (const auto &wr : writes)
+    for (const auto &wr : writes) {
+      if (wr.tl >= int(gfs.at(wr.gi).at(wr.vi).size()))
+        gfs.at(wr.gi).at(wr.vi).resize(wr.tl + 1);
       gfs.at(wr.gi).at(wr.vi).at(wr.tl) |= wr.valid;
+    }
 
     checksums = calculate_checksums(gfs, min_level, max_level);
   }
