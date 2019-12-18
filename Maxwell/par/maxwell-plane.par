@@ -40,7 +40,7 @@ CarpetX::do_reflux = no
 CarpetX::do_restrict = no
 CarpetX::restrict_during_sync = yes
 
-CarpetX::dtfac = 0.25
+CarpetX::dtfac = 0.5
 
 Maxwell::setup = "plane wave"
 Maxwell::spatial_frequency_x = 0.0
