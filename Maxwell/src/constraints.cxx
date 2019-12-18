@@ -39,11 +39,11 @@ extern "C" void Maxwell_Constraints(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 1, 1, 1> divb_(cctkGH, divb);
 
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     divd_(p.I) = dxp(dyz_, p.I) + dyp(dzx_, p.I) + dzp(dxy_, p.I);
   });
 
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     divb_(p.I) = dxp(byz_, p.I) + dyp(bzx_, p.I) + dzp(bxy_, p.I);
   });
 }

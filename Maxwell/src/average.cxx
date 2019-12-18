@@ -32,23 +32,23 @@ extern "C" void Maxwell_Average(CCTK_ARGUMENTS) {
   const GF3D<CCTK_REAL, 1, 1, 1> avgbzx_(cctkGH, avgbzx);
   const GF3D<CCTK_REAL, 1, 1, 1> avgbxy_(cctkGH, avgbxy);
 
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     avgdyz_(p.I) = (dyz_(p.I) + dyz_(p.I + DI)) / 2;
   });
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     avgdzx_(p.I) = (dzx_(p.I) + dzx_(p.I + DJ)) / 2;
   });
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     avgdxy_(p.I) = (dxy_(p.I) + dxy_(p.I + DK)) / 2;
   });
 
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     avgbyz_(p.I) = (byz_(p.I) + byz_(p.I + DI)) / 2;
   });
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     avgbzx_(p.I) = (bzx_(p.I) + bzx_(p.I + DJ)) / 2;
   });
-  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
+  loop_all<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     avgbxy_(p.I) = (bxy_(p.I) + bxy_(p.I + DK)) / 2;
   });
 }

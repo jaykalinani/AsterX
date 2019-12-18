@@ -63,6 +63,44 @@ extern "C" void Maxwell_Initial(CCTK_ARGUMENTS) {
       bxy_(p.I) = hy * cos(omega * t - kx * p.x - ky * p.y - kz * p.z);
     });
 
+  } else if (CCTK_EQUALS(setup, "standing wave")) {
+
+    // wave number
+    const CCTK_REAL kx = CCTK_REAL(M_PI) * spatial_frequency_x;
+    const CCTK_REAL ky = CCTK_REAL(M_PI) * spatial_frequency_y;
+    const CCTK_REAL kz = CCTK_REAL(M_PI) * spatial_frequency_z;
+    const CCTK_REAL omega = sqrt(pow2(kx) + pow2(ky) + pow2(kz));
+    // amplitude
+    const CCTK_REAL hx = amplitude_x;
+    const CCTK_REAL hy = amplitude_y;
+    const CCTK_REAL hz = amplitude_z;
+
+    loop_int<0, 1, 1>(cctkGH, [&](const PointDesc &p) {
+      dyz_(p.I) =
+          hx * cos(omega * t) * sin(kx * p.x) * sin(ky * p.y) * sin(kz * p.z);
+    });
+    loop_int<1, 0, 1>(cctkGH, [&](const PointDesc &p) {
+      dzx_(p.I) =
+          hy * cos(omega * t) * sin(kx * p.x) * sin(ky * p.y) * sin(kz * p.z);
+    });
+    loop_int<1, 1, 0>(cctkGH, [&](const PointDesc &p) {
+      dxy_(p.I) =
+          hz * cos(omega * t) * sin(kx * p.x) * sin(ky * p.y) * sin(kz * p.z);
+    });
+
+    loop_int<0, 1, 1>(cctkGH, [&](const PointDesc &p) {
+      byz_(p.I) =
+          hz * cos(omega * t) * cos(kx * p.x) * cos(ky * p.y) * cos(kz * p.z);
+    });
+    loop_int<1, 0, 1>(cctkGH, [&](const PointDesc &p) {
+      bzx_(p.I) =
+          hx * cos(omega * t) * cos(kx * p.x) * cos(ky * p.y) * cos(kz * p.z);
+    });
+    loop_int<1, 1, 0>(cctkGH, [&](const PointDesc &p) {
+      bxy_(p.I) =
+          hy * cos(omega * t) * cos(kx * p.x) * cos(ky * p.y) * cos(kz * p.z);
+    });
+
   } else {
     assert(0);
   }

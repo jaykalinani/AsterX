@@ -21,9 +21,18 @@ SCHEDULE Maxwell_Initial AT initial
   LANG: C
   WRITES: dyz(interior) dzx(interior) dxy(interior)
   WRITES: byz(interior) bzx(interior) bxy(interior)
+} "Set up initial conditions"
+
+SCHEDULE Maxwell_Boundaries AT initial AFTER Maxwell_Initial
+{
+  LANG: C
+  READS: dyz(interior) dzx(interior) dxy(interior)
+  READS: byz(interior) bzx(interior) bxy(interior)
+  WRITES: dyz(boundary) dzx(boundary) dxy(boundary)
+  WRITES: byz(boundary) bzx(boundary) bxy(boundary)
   SYNC: dyz dzx dxy
   SYNC: byz bzx bxy
-} "Set up initial conditions"
+} "Apply boundary conditions"
 
 
 
@@ -32,6 +41,10 @@ SCHEDULE Maxwell_Initial AT initial
 SCHEDULE Maxwell_Boundaries AT postregrid
 {
   LANG: C
+  READS: dyz(interior) dzx(interior) dxy(interior)
+  READS: byz(interior) bzx(interior) bxy(interior)
+  WRITES: dyz(boundary) dzx(boundary) dxy(boundary)
+  WRITES: byz(boundary) bzx(boundary) bxy(boundary)
   SYNC: dyz dzx dxy
   SYNC: byz bzx bxy
 } "Apply boundary conditions"
@@ -47,9 +60,18 @@ SCHEDULE Maxwell_RHS IN ODESolvers_RHS
   READS: byz(everywhere) bzx(everywhere) bxy(everywhere)
   WRITES: dtdyz(interior) dtdzx(interior) dtdxy(interior)
   WRITES: dtbyz(interior) dtbzx(interior) dtbxy(interior)
+} "Calculate RHS"
+
+SCHEDULE Maxwell_RHSBoundaries IN ODESolvers_RHS AFTER Maxwell_RHS
+{
+  LANG: C
+  READS: dtdyz(interior) dtdzx(interior) dtdxy(interior)
+  READS: dtbyz(interior) dtbzx(interior) dtbxy(interior)
+  WRITES: dtdyz(boundary) dtdzx(boundary) dtdxy(boundary)
+  WRITES: dtbyz(boundary) dtbzx(boundary) dtbxy(boundary)
   SYNC: dtdyz dtdzx dtdxy
   SYNC: dtbyz dtbzx dtbxy
-} "Calculate RHS"
+} "Apply RHS boundary conditions"
 
 
 
@@ -60,10 +82,8 @@ SCHEDULE Maxwell_Constraints AT poststep
   LANG: C
   READS: dyz(everywhere) dzx(everywhere) dxy(everywhere)
   READS: byz(everywhere) bzx(everywhere) bxy(everywhere)
-  WRITES: divd(interior)
-  WRITES: divb(interior)
-  SYNC: divd
-  SYNC: divb
+  WRITES: divd(everywhere)
+  WRITES: divb(everywhere)
 } "Calculate constraints"
 
 SCHEDULE Maxwell_Average AT analysis
@@ -71,8 +91,6 @@ SCHEDULE Maxwell_Average AT analysis
   LANG: C
   READS: dyz(everywhere) dzx(everywhere) dxy(everywhere)
   READS: byz(everywhere) bzx(everywhere) bxy(everywhere)
-  WRITES: avgdyz(interior) avgdzx(interior) avgdxy(interior)
-  WRITES: avgbyz(interior) avgbzx(interior) avgbxy(interior)
-  SYNC: avgd
-  SYNC: avgb
+  WRITES: avgdyz(everywhere) avgdzx(everywhere) avgdxy(everywhere)
+  WRITES: avgbyz(everywhere) avgbzx(everywhere) avgbxy(everywhere)
 } "Average fluxes"

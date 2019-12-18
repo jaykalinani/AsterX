@@ -3,6 +3,7 @@
 KEYWORD setup "Initial condition"
 {
   "plane wave" :: ""
+  "standing wave" :: ""
   "Gaussian wave" :: ""
 } "plane wave"
 

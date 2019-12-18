@@ -5,6 +5,7 @@ SRCS =	average.cxx				\
 	boundaries.cxx				\
 	constraints.cxx				\
 	initial.cxx				\
+	rhsboundaries.cxx			\
         rhs.cxx
 
 # Subdirectories containing source files
