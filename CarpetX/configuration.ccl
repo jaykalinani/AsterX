@@ -1,6 +1,6 @@
 # Configuration definitions for thorn CarpetX
 
-REQUIRES AMReX MPI
+REQUIRES AMReX MPI zlib
 
 PROVIDES CarpetX
 {

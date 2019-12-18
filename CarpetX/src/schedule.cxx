@@ -20,6 +20,7 @@
 
 #include <omp.h>
 #include <mpi.h>
+#include <zlib.h>
 
 #include <sys/time.h>
 
@@ -1368,6 +1369,71 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         poison_invalid(scalargroupdata, wr.vi, wr.tl);
       }
     }
+  }
+
+  // Calculate checksum over all variables that are not written
+  if (poison_undefined_values) {
+    const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
+    const int numgroups = CCTK_NumGroups();
+    vector<vector<vector<valid_t> > > gfs(numgroups);
+    for (int gi = 0; gi < numgroups; ++gi) {
+      const int numvars = CCTK_NumVarsInGroupI(gi);
+      gfs.at(gi).resize(numvars);
+      for (int vi = 0; vi < numvars; ++vi) {
+        const int numtimelevels = 1; // TODO
+        gfs.at(gi).at(vi).resize(numtimelevels);
+      }
+    }
+    for (const auto &wr : writes)
+      gfs.at(wr.gi).at(wr.vi).at(wr.tl) |= wr.valid;
+
+    uLong crc = crc32_z(0, nullptr, 0);
+    for (int level = min_level; level < max_level; ++level) {
+      auto &restrict leveldata = ghext->leveldata.at(level);
+      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+
+        for (const auto &groupdataptr : leveldata.groupdata) {
+          auto &restrict groupdata = *groupdataptr;
+          const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            for (int tl = 0; tl < int(groupdata.valid.size()); ++tl) {
+
+              const auto &gf = gfs.at(groupdata.groupindex).at(vi).at(tl);
+              // Check only those variables where some part is written
+              if (gf.any()) {
+
+                const Array4<const CCTK_REAL> &vars =
+                    groupdata.mfab.at(tl)->array(mfi);
+                const GF3D1<const CCTK_REAL> var_ = grid.gf3d(vars, vi);
+
+                const auto addcrc{[&](const Loop::PointDesc &p) {
+                  crc = crc32_z(crc,
+                                static_cast<const Bytef *>(
+                                    static_cast<const void *>(&var_(p.I))),
+                                sizeof var_(p.I));
+                }};
+
+                if (!gf.valid_int)
+                  grid.loop_idx(where_t::interior, groupdata.indextype,
+                                groupdata.nghostzones, addcrc);
+
+                if (!gf.valid_outer)
+                  grid.loop_idx(where_t::boundary, groupdata.indextype,
+                                groupdata.nghostzones, addcrc);
+
+                if (!gf.valid_ghosts)
+                  grid.loop_idx(where_t::ghosts, groupdata.indextype,
+                                groupdata.nghostzones, addcrc);
+              }
+            }
+          }
+        }
+      }
+    }
+    CCTK_VINFO("CRC-32: 0x%08lx", (unsigned long)crc);
   }
 
   const mode_t mode = decode_mode(attribute);
