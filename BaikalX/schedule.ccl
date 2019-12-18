@@ -36,7 +36,9 @@ schedule BaikalX_ADM_to_BSSN_lambdaU at CCTK_INITIAL after ADMBase_PostInitial a
 {
   LANG: C
   SYNC: BaikalX::evol_variables
-  WRITES: lambdaU0GF(interior) lambdaU1GF(interior) lambdaU2GF(interior)
+  # I don't really write to the outer boundary but for periodic boundaries the 
+  # SYNC above took care of them (and CarpetX does not yet realize this)
+  WRITES: lambdaU0GF(interiorwithboundary) lambdaU1GF(interiorwithboundary) lambdaU2GF(interiorwithboundary)
   READS: hDD00GF(everywhere) hDD01GF(everywhere) hDD02GF(everywhere) hDD11GF(everywhere) hDD12GF(everywhere) hDD22GF(everywhere)
 } "Convert initial data into BSSN variables"
 
@@ -58,6 +60,8 @@ schedule BaikalX_zero_rhss in ODESolvers_RHS as BaikalX_ZeroRHS before BaikalX_R
   WRITES: BaikalX::evol_variables_rhs(everywhere)
   # this applies boundary conditions and since ODESolvers_RHS is called after ODESolver's
   # ADD, this is the equivalent of MoL_PostStep
+  # I do not really write to the boundary, but for periodic ones used, the SYNC does
+  WRITES: BaikalX::evol_variables(boundary)
   SYNC: BaikalX::evol_variables
 } "Zero out Baikal RHS"
 

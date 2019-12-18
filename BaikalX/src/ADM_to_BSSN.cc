@@ -274,6 +274,16 @@ Loop::loop_int<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
 
 
 });
+Loop::loop_bnd<0,0,0>(cctkGH, [&](const Loop::PointDesc &p){
+    const int i0 = p.i;
+    const int i1 = p.j;
+    const int i2 = p.k;
+
+    lambdaU0GF_(i0,i1,i2) = 0.;
+    lambdaU1GF_(i0,i1,i2) = 0.;
+    lambdaU2GF_(i0,i1,i2) = 0.;
+    
+});
 
     //ExtrapolateGammas(cctkGH,lambdaU0GF);
     //ExtrapolateGammas(cctkGH,lambdaU1GF);
