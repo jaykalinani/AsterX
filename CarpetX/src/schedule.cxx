@@ -1652,15 +1652,17 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int tl = 0; tl < sync_tl; ++tl) {
           bool all_valid = true;
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            if(!groupdata.valid.at(tl).at(vi).valid_int) {
-              CCTK_VWARN(CCTK_WARN_ALERT,
-                         "Grid function '%s' interior not valid before restrict",
-                         CCTK_FullVarName(vi));
+            if (!groupdata.valid.at(tl).at(vi).valid_int) {
+              CCTK_VWARN(
+                  CCTK_WARN_ALERT,
+                  "Grid function '%s' interior not valid before restrict",
+                  CCTK_FullVarName(vi));
               all_valid = false;
             }
           }
           if (!all_valid) {
-            CCTK_ERROR("Found grid functions that are not valid in the interior");
+            CCTK_ERROR(
+                "Found grid functions that are not valid in the interior");
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).valid_ghosts = false;
