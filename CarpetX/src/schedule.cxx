@@ -265,7 +265,7 @@ void poison_invalid(const GHExt::LevelData &leveldata,
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-    if (!valid.valid_int && !valid.valid_outer && !valid.valid_ghosts) {
+    if (!valid.any()) {
       grid.loop_idx(where_t::everywhere, groupdata.indextype,
                     groupdata.nghostzones,
                     [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
@@ -309,7 +309,7 @@ void check_valid(const GHExt::LevelData &leveldata,
     const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-    if (valid.valid_int && valid.valid_outer && valid.valid_ghosts) {
+    if (valid.all()) {
       grid.loop_idx(where_t::everywhere, groupdata.indextype,
                     groupdata.nghostzones, [&](const Loop::PointDesc &p) {
                       if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
@@ -353,7 +353,7 @@ void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
     return;
 
   const valid_t &valid = scalargroupdata.valid.at(tl).at(vi);
-  if (valid.valid_int && valid.valid_outer && valid.valid_ghosts)
+  if (valid.all())
     return;
 
   // scalars have no boundary so we expect them to alway be valid
@@ -374,7 +374,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
     return;
 
   const valid_t &valid = scalargroupdata.valid.at(tl).at(vi);
-  if (!valid.valid_int && !valid.valid_outer && !valid.valid_ghosts)
+  if (!valid.any())
     return;
 
   // scalars have no boundary so we expect them to alway be valid
