@@ -269,7 +269,7 @@ void poison_invalid(const GHExt::LevelData &leveldata,
       if (!valid.valid_outer)
         grid.loop_idx(where_t::boundary, groupdata.indextype,
                       groupdata.nghostzones,
-                  [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
+                      [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
       if (!valid.valid_ghosts)
         grid.loop_idx(where_t::ghosts, groupdata.indextype,
                       groupdata.nghostzones,
@@ -324,9 +324,9 @@ void check_valid(const GHExt::LevelData &leveldata,
         grid.loop_idx(where_t::ghosts, groupdata.indextype,
                       groupdata.nghostzones, [&](const Loop::PointDesc &p) {
                         if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                      found_nan = true;
-                  });
-  }
+                          found_nan = true;
+                      });
+    }
   }
 
   if (CCTK_BUILTIN_EXPECT(found_nan, false))
@@ -1626,12 +1626,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         const IntVect reffact{2, 2, 2};
         // boundary conditions
         const BCRec bcrec(
-            periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-            periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-            periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
-            periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-            periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-            periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
+            periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
+            periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
+            periodic || periodic_z ? BCType::int_dir : BCType::ext_dir,
+            periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
+            periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
+            periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
         for (int tl = 0; tl < sync_tl; ++tl) {
 
@@ -1689,7 +1689,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           poison_invalid(leveldata, groupdata, vi, tl);
           check_valid(leveldata, groupdata, vi, tl,
-                      [&]() { return "SyncGroupsByDirI after prolongation"; });
+                      [&]() { return "SyncGroupsByDirI after syncing"; });
         }
       }
     }

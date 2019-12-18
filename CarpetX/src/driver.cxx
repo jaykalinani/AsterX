@@ -150,9 +150,9 @@ void SetupGlobals() {
     assert(group.dim == 0);
 
     globaldata.scalargroupdata.at(gi) =
-      make_unique<GHExt::GlobalData::ScalarGroupData>();
+        make_unique<GHExt::GlobalData::ScalarGroupData>();
     GHExt::GlobalData::ScalarGroupData &scalargroupdata =
-      *globaldata.scalargroupdata.at(gi);
+        *globaldata.scalargroupdata.at(gi);
     scalargroupdata.groupindex = gi;
     scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     scalargroupdata.numvars = group.numvars;
@@ -601,12 +601,13 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
     // boundary conditions
-    const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
+    const BCRec bcrec(
+        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
 
     // If there is more than one time level, then we don't prolongate
@@ -731,12 +732,13 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
     // boundary conditions
-    const BCRec bcrec(periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_x || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_y || periodic ? BCType::int_dir : BCType::reflect_odd,
-                      periodic_z || periodic ? BCType::int_dir : BCType::reflect_odd);
+    const BCRec bcrec(
+        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
+        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
@@ -777,7 +779,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                 coarsegroupdata.valid.at(tl).at(vi).valid_int &&
                 coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
                 coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
-                              groupdata.valid.at(tl).at(vi).valid_int &&
+                groupdata.valid.at(tl).at(vi).valid_int &&
                 groupdata.valid.at(tl).at(vi).valid_outer &&
                 groupdata.valid.at(tl).at(vi).valid_ghosts;
             if (!cond)
@@ -965,7 +967,8 @@ int InitGH(cGH *restrict cctkGH) {
   const Vector<IntVect> reffacts; // empty
 
   // Periodicity
-  const Array<int, dim> is_periodic{periodic_x || periodic, periodic_y || periodic, periodic_z || periodic};
+  const Array<int, dim> is_periodic{
+      periodic || periodic_x, periodic || periodic_y, periodic || periodic_z};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no

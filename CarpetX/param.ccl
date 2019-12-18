@@ -62,6 +62,7 @@ CCTK_INT ncells_z "Number of grid cells"
 
 
 RESTRICTED:
+
 BOOLEAN periodic_x "Periodic"
 {
 } yes
@@ -80,6 +81,7 @@ BOOLEAN periodic "Periodic"
 
 
 PRIVATE:
+
 CCTK_INT blocking_factor_x "Blocking factor"
 {
   1:* :: ""
