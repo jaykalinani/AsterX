@@ -1,4 +1,5 @@
 #include <../../CarpetX/src/driver.hxx>
+#include <../../CarpetX/src/schedule.hxx>
 
 #include <cctk.h>
 #include <cctk_Parameters.h>
@@ -20,9 +21,16 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+struct varid_t {
+  int gi, vi, tl;
+  varid_t() = delete;
+};
+
 // A state vector component, with mfabs for each level, group, and variable
 struct statecomp_t {
+
   vector<string> varnames;
+  vector<varid_t> varids;
   vector<MultiFab *> mfabs;
 
 private:
@@ -30,6 +38,8 @@ private:
   vector<unique_ptr<MultiFab> > owned_stuff;
 
 public:
+  void check_valid() const;
+
   statecomp_t copy() const;
 
   static void axpy(const statecomp_t &y, CCTK_REAL alpha, const statecomp_t &x);
@@ -40,11 +50,28 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Ensure a state vector has valid data everywhere
+void statecomp_t::check_valid() const {
+  for (const varid_t &varid : varids) {
+    if (varid.gi >= 0) {
+      assert(varid.vi >= 0 && varid.tl >= 0);
+      for (const auto &leveldata : CarpetX::ghext->leveldata) {
+        const auto &groupdata = *leveldata.groupdata.at(varid.gi);
+        CarpetX::check_valid(leveldata, groupdata, varid.vi, varid.tl, [&]() {
+          return "ODESolver before calculating state vector";
+        });
+      }
+    }
+  }
+}
+
 // Copy state vector into newly allocate memory
 statecomp_t statecomp_t::copy() const {
+  check_valid();
   const size_t size = mfabs.size();
   statecomp_t result;
   result.varnames = varnames;
+  result.varids.resize(size, {-1, -1, -1});
   result.mfabs.reserve(size);
   result.owned_stuff.reserve(size);
   for (size_t n = 0; n < size; ++n) {
@@ -61,12 +88,15 @@ statecomp_t statecomp_t::copy() const {
     result.mfabs.push_back(y.get());
     result.owned_stuff.push_back(move(y));
   }
+  result.check_valid();
   return result;
 }
 
 // y += alpha * x
 void statecomp_t::axpy(const statecomp_t &y, CCTK_REAL alpha,
                        const statecomp_t &x) {
+  x.check_valid();
+  y.check_valid();
   const size_t size = y.mfabs.size();
   assert(x.mfabs.size() == size);
   for (size_t n = 0; n < size; ++n) {
@@ -80,12 +110,15 @@ void statecomp_t::axpy(const statecomp_t &y, CCTK_REAL alpha,
       CCTK_VERROR("statecomp_t::axpy.y: Variable %s contains nans",
                   y.varnames.at(n).c_str());
   }
+  y.check_valid();
 }
 
 // z = alpha * x + beta * y
 void statecomp_t::lincomb(const statecomp_t &z, CCTK_REAL alpha,
                           const statecomp_t &x, CCTK_REAL beta,
                           const statecomp_t &y) {
+  x.check_valid();
+  y.check_valid();
   const size_t size = z.mfabs.size();
   assert(x.mfabs.size() == size);
   assert(y.mfabs.size() == size);
@@ -105,6 +138,7 @@ void statecomp_t::lincomb(const statecomp_t &z, CCTK_REAL alpha,
       CCTK_VERROR("statecomp_t::lincomb.z %s contains nans",
                   z.varnames.at(n).c_str());
   }
+  z.check_valid();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,18 +189,21 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
   statecomp_t var, rhs;
   for (const auto &leveldata : CarpetX::ghext->leveldata) {
-    for (const auto &groupdata : leveldata.groupdata) {
-      const int rhs_gi = get_group_rhs(groupdata->groupindex);
+    for (const auto &groupdataptr : leveldata.groupdata) {
+      const auto &groupdata = *groupdataptr;
+      const int rhs_gi = get_group_rhs(groupdata.groupindex);
       if (rhs_gi >= 0) {
-        const auto &rhs_groupdata = leveldata.groupdata.at(rhs_gi);
-        assert(rhs_groupdata->numvars == groupdata->numvars);
-        for (int vi = 0; vi < groupdata->numvars; ++vi) {
+        const auto &rhs_groupdata = *leveldata.groupdata.at(rhs_gi);
+        assert(rhs_groupdata.numvars == groupdata.numvars);
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
           var.varnames.push_back(
-              CCTK_FullVarName(groupdata->firstvarindex + vi));
-          var.mfabs.push_back(groupdata->mfab.at(tl).get());
+              CCTK_FullVarName(groupdata.firstvarindex + vi));
+          var.varids.push_back(varid_t{groupdata.groupindex, vi, tl});
+          var.mfabs.push_back(groupdata.mfab.at(tl).get());
           rhs.varnames.push_back(
-              CCTK_FullVarName(rhs_groupdata->firstvarindex + vi));
-          rhs.mfabs.push_back(rhs_groupdata->mfab.at(tl).get());
+              CCTK_FullVarName(rhs_groupdata.firstvarindex + vi));
+          rhs.varids.push_back(varid_t{rhs_groupdata.groupindex, vi, tl});
+          rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
         }
       }
     }
