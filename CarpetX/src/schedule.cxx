@@ -395,6 +395,201 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
         string(valid).c_str());
 }
 
+struct tiletag_t {
+  int level;
+  Box tilebox;
+  int gi, vi, tl;
+  tiletag_t() = delete;
+
+  friend bool operator==(const tiletag_t &x, const tiletag_t &y) {
+    return make_tuple(x.level, x.tilebox, x.gi, x.vi, x.tl) ==
+           make_tuple(y.level, y.tilebox, y.gi, y.vi, y.tl);
+  }
+  friend bool operator<(const tiletag_t &x, const tiletag_t &y) {
+    return make_tuple(x.level, x.tilebox, x.gi, x.vi, x.tl) <
+           make_tuple(y.level, y.tilebox, y.gi, y.vi, y.tl);
+  }
+
+  friend ostream &operator<<(ostream &os, const tiletag_t &x) {
+    return os << "tiletag_t{"
+              << "level:" << x.level << ","
+              << "tilebox:" << x.tilebox << ","
+              << "gi:" << x.gi << ","
+              << "vi:" << x.vi << ","
+              << "tl:" << x.tl << "}";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
+struct checksum_t {
+  valid_t where;
+  uLong crc;
+  checksum_t() = default;
+  inline checksum_t(const valid_t &where)
+      : where(where), crc(crc32_z(0, nullptr, 0)) {}
+  template <typename T> inline void add(const T &x) {
+    crc =
+        crc32_z(crc, static_cast<const Bytef *>(static_cast<const void *>(&x)),
+                sizeof x);
+  }
+
+  friend bool operator==(const checksum_t &x, const checksum_t &y) {
+    return x.where == y.where && x.crc == y.crc;
+  }
+  friend bool operator!=(const checksum_t &x, const checksum_t &y) {
+    return !(x == y);
+  }
+
+  friend ostream &operator<<(ostream &os, const checksum_t &x) {
+    return os << "checksum_t{where:" << x.where << ",crc:0x" << hex
+              << setfill('0') << setw(8) << x.crc << "}";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
+typedef map<tiletag_t, checksum_t> checksums_t;
+
+checksums_t
+calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
+                    const int min_level, const int max_level) {
+  DECLARE_CCTK_PARAMETERS;
+
+  checksums_t checksums;
+
+  if (!poison_undefined_values)
+    return checksums;
+
+  for (int level = min_level; level < max_level; ++level) {
+    auto &restrict leveldata = ghext->leveldata.at(level);
+    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+        {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+    for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+
+      for (const auto &groupdataptr : leveldata.groupdata) {
+        auto &restrict groupdata = *groupdataptr;
+        const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          for (int tl = 0; tl < int(groupdata.valid.size()); ++tl) {
+            const tiletag_t tiletag{level, mfi.tilebox(), groupdata.groupindex,
+                                    vi, tl};
+
+            const auto &valid = groupdata.valid.at(tl).at(vi);
+            const auto &wr = will_write.at(groupdata.groupindex).at(vi).at(tl);
+            valid_t to_check = valid & ~wr;
+
+            // Check only those variables which are valid, and where
+            // some part (but not everything) is written
+            if (!(wr.any() && to_check.any()))
+              continue;
+
+            const Array4<const CCTK_REAL> &vars =
+                groupdata.mfab.at(tl)->array(mfi);
+            const GF3D1<const CCTK_REAL> var_ = grid.gf3d(vars, vi);
+
+            checksum_t checksum(to_check);
+            checksum.add(tiletag);
+            const auto add_point{
+                [&](const Loop::PointDesc &p) { checksum.add(var_(p.I)); }};
+
+            if (to_check.valid_int)
+              grid.loop_idx(where_t::interior, groupdata.indextype,
+                            groupdata.nghostzones, add_point);
+
+            if (to_check.valid_outer)
+              grid.loop_idx(where_t::boundary, groupdata.indextype,
+                            groupdata.nghostzones, add_point);
+
+            if (to_check.valid_ghosts)
+              grid.loop_idx(where_t::ghosts, groupdata.indextype,
+                            groupdata.nghostzones, add_point);
+
+#pragma omp critical
+            checksums[tiletag] = checksum;
+          }
+        }
+      }
+    }
+  }
+  return checksums;
+}
+
+void check_checksums(const checksums_t checksums, const int min_level,
+                     const int max_level) {
+  DECLARE_CCTK_PARAMETERS;
+
+  if (!poison_undefined_values)
+    return;
+  if (checksums.empty())
+    return;
+
+  for (int level = min_level; level < max_level; ++level) {
+    auto &restrict leveldata = ghext->leveldata.at(level);
+    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+        {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+    for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+
+      for (const auto &groupdataptr : leveldata.groupdata) {
+        auto &restrict groupdata = *groupdataptr;
+        const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          for (int tl = 0; tl < int(groupdata.valid.size()); ++tl) {
+            const tiletag_t tiletag{level, mfi.tilebox(), groupdata.groupindex,
+                                    vi, tl};
+
+            if (!checksums.count(tiletag))
+              continue;
+
+            const auto &old_checksum = checksums.at(tiletag);
+            const auto &did_check = old_checksum.where;
+            assert(did_check.any());
+
+            const Array4<const CCTK_REAL> &vars =
+                groupdata.mfab.at(tl)->array(mfi);
+            const GF3D1<const CCTK_REAL> var_ = grid.gf3d(vars, vi);
+
+            checksum_t checksum(did_check);
+            checksum.add(tiletag);
+            const auto add_point{
+                [&](const Loop::PointDesc &p) { checksum.add(var_(p.I)); }};
+
+            if (did_check.valid_int)
+              grid.loop_idx(where_t::interior, groupdata.indextype,
+                            groupdata.nghostzones, add_point);
+
+            if (did_check.valid_outer)
+              grid.loop_idx(where_t::boundary, groupdata.indextype,
+                            groupdata.nghostzones, add_point);
+
+            if (did_check.valid_ghosts)
+              grid.loop_idx(where_t::ghosts, groupdata.indextype,
+                            groupdata.nghostzones, add_point);
+
+            if (checksum != old_checksum)
+              CCTK_VERROR(
+                  "Checksum mismatch: variable %s, tile %s, old checksum %s, "
+                  "new checksum %s",
+                  CCTK_FullVarName(groupdata.firstvarindex + tiletag.vi),
+                  string(tiletag).c_str(), string(old_checksum).c_str(),
+                  string(checksum).c_str());
+          }
+        }
+      }
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Create a new cGH, copying those data that are set by the flesh, and
@@ -587,8 +782,8 @@ void enter_level_mode(cGH *restrict cctkGH,
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levfac[d] = 1 << leveldata.level;
 
-  // Offset between this level's and the coarsest level's origin as multiple of
-  // the grid spacing
+  // Offset between this level's and the coarsest level's origin as multiple
+  // of the grid spacing
   for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_levoff[d] = 1 - 2 * cctkGH->cctk_nghostzones[d];
     cctkGH->cctk_levoffdenom[d] = 2;
@@ -1287,14 +1482,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                             need.valid_outer <= have.valid_outer &&
                             need.valid_ghosts <= have.valid_ghosts;
           if (!cond)
-            CCTK_VERROR(
-                "Found invalid input data: iteration %d %s: %s::%s, level %d, "
-                "variable %s%s: need %s, have %s",
-                cctkGH->cctk_iteration, attribute->where, attribute->thorn,
-                attribute->routine, leveldata.level,
-                CCTK_FullVarName(groupdata.firstvarindex + rd.vi),
-                string("_p", rd.tl).c_str(), string(need).c_str(),
-                string(have).c_str());
+            CCTK_VERROR("Found invalid input data: iteration %d %s: %s::%s, "
+                        "level %d, "
+                        "variable %s%s: need %s, have %s",
+                        cctkGH->cctk_iteration, attribute->where,
+                        attribute->thorn, attribute->routine, leveldata.level,
+                        CCTK_FullVarName(groupdata.firstvarindex + rd.vi),
+                        string("_p", rd.tl).c_str(), string(need).c_str(),
+                        string(have).c_str());
           check_valid(leveldata, groupdata, rd.vi, rd.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
@@ -1378,7 +1573,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     }
   }
 
-  // Calculate checksum over all variables that are not written
+  // Calculate checksums over variables that are not written
+  checksums_t checksums;
   if (poison_undefined_values) {
     const vector<clause_t> &writes = decode_clauses(attribute, rdwr_t::write);
     const int numgroups = CCTK_NumGroups();
@@ -1394,53 +1590,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     for (const auto &wr : writes)
       gfs.at(wr.gi).at(wr.vi).at(wr.tl) |= wr.valid;
 
-    uLong crc = crc32_z(0, nullptr, 0);
-    for (int level = min_level; level < max_level; ++level) {
-      auto &restrict leveldata = ghext->leveldata.at(level);
-      auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
-          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-
-        for (const auto &groupdataptr : leveldata.groupdata) {
-          auto &restrict groupdata = *groupdataptr;
-          const GridPtrDesc1 grid(leveldata, groupdata, mfi);
-
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            for (int tl = 0; tl < int(groupdata.valid.size()); ++tl) {
-
-              const auto &gf = gfs.at(groupdata.groupindex).at(vi).at(tl);
-              // Check only those variables where some part is written
-              if (gf.any()) {
-
-                const Array4<const CCTK_REAL> &vars =
-                    groupdata.mfab.at(tl)->array(mfi);
-                const GF3D1<const CCTK_REAL> var_ = grid.gf3d(vars, vi);
-
-                const auto addcrc{[&](const Loop::PointDesc &p) {
-                  crc = crc32_z(crc,
-                                static_cast<const Bytef *>(
-                                    static_cast<const void *>(&var_(p.I))),
-                                sizeof var_(p.I));
-                }};
-
-                if (!gf.valid_int)
-                  grid.loop_idx(where_t::interior, groupdata.indextype,
-                                groupdata.nghostzones, addcrc);
-
-                if (!gf.valid_outer)
-                  grid.loop_idx(where_t::boundary, groupdata.indextype,
-                                groupdata.nghostzones, addcrc);
-
-                if (!gf.valid_ghosts)
-                  grid.loop_idx(where_t::ghosts, groupdata.indextype,
-                                groupdata.nghostzones, addcrc);
-              }
-            }
-          }
-        }
-      }
-    }
-    CCTK_VINFO("CRC-32: 0x%08lx", (unsigned long)crc);
+    checksums = calculate_checksums(gfs, min_level, max_level);
   }
 
   const mode_t mode = decode_mode(attribute);
@@ -1492,6 +1642,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   default:
     assert(0);
+  }
+
+  // Check checksums
+  if (poison_undefined_values) {
+    check_checksums(checksums, min_level, max_level);
   }
 
   // Mark output variables as having valid data
@@ -1886,14 +2041,16 @@ void Restrict(int level, const vector<int> &groups) {
 
     auto &groupdata = *leveldata.groupdata.at(gi);
     const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
-    // If there is more than one time level, then we don't restrict the oldest.
+    // If there is more than one time level, then we don't restrict the
+    // oldest.
     // TODO: during evolution, restrict only one time level
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
     const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      // Only restrict valid grid functions. Restriction only uses the interior.
+      // Only restrict valid grid functions. Restriction only uses the
+      // interior.
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         all_invalid &= !finegroupdata.valid.at(tl).at(vi).valid_int &&
