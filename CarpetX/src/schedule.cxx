@@ -133,6 +133,8 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
 namespace CarpetX {
 
 GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
+  DECLARE_CCTK_PARAMETERS;
+
   const Box &fbx = mfi.fabbox();   // allocated array
   const Box &vbx = mfi.validbox(); // interior region (without ghosts)
   // const Box &bx = mfi.tilebox();       // current region (without ghosts)
@@ -163,9 +165,14 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
   }
 
   // Boundaries
+  const array<bool, dim> per{
+      periodic || periodic_x,
+      periodic || periodic_y,
+      periodic || periodic_z,
+  };
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)];
+      bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)] && !per[d];
 
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
