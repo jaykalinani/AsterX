@@ -9,7 +9,7 @@ ActiveThorns = "
     TimerReport
 "
  
-$nlevels = 1   #TODO 3
+$nlevels = 3
 $ncells = 32
 
 Cactus::cctk_show_schedule = no
@@ -17,7 +17,7 @@ Cactus::cctk_show_schedule = no
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 1.0
 
-CarpetX::verbose = yes   #TODO no
+CarpetX::verbose = no
 
 CarpetX::xmin = -1.0
 CarpetX::ymin = -1.0
