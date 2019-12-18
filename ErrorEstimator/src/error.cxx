@@ -8,18 +8,20 @@
 #include <cmath>
 
 namespace ErrorEstimator {
+using namespace Loop;
+using namespace std;
 
 namespace {
 template <typename T> T pow2(T x) { return x * x; }
 
-template <typename T>
-T lap(const Loop::GF3D<const T, 1, 1, 1> &var, const Loop::PointDesc &p) {
-  const auto DI = Loop::vect<int, Loop::dim>::unit(0);
-  const auto DJ = Loop::vect<int, Loop::dim>::unit(1);
-  const auto DK = Loop::vect<int, Loop::dim>::unit(2);
-  return fabs(var(p.I - DI) - 2 * var(p.I) + var(p.I + DI)) +
-         fabs(var(p.I - DJ) - 2 * var(p.I) + var(p.I + DJ)) +
-         fabs(var(p.I - DK) - 2 * var(p.I) + var(p.I + DK));
+template <typename T, int CI, int CJ, int CK>
+T lap(const GF3D<const T, CI, CJ, CK> &var, const vect<int, dim> &I) {
+  const auto DI = vect<int, dim>::unit(0);
+  const auto DJ = vect<int, dim>::unit(1);
+  const auto DK = vect<int, dim>::unit(2);
+  return fabs(var(I - DI) - 2 * var(I) + var(I + DI)) +
+         fabs(var(I - DJ) - 2 * var(I) + var(I + DJ)) +
+         fabs(var(I - DK) - 2 * var(I) + var(I + DK));
 }
 } // namespace
 
@@ -27,9 +29,9 @@ extern "C" void ErrorEstimator_Estimate(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_ErrorEstimator_Estimate;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
+  const GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
 
-  Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+  loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     auto r = sqrt(pow2(p.x) + pow2(p.y) + pow2(p.z));
     regrid_error_(p.I) = 1 / fmax(r, CCTK_REAL(1.0e-10));
   });
