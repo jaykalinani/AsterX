@@ -3,6 +3,7 @@ ActiveThorns = "
     IOUtil
     ADMBase
     BaikalX
+    ErrorEstimator
     ODESolvers
 "
  
