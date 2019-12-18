@@ -167,7 +167,8 @@ void SetupGlobals() {
         // TODO: decide that valid_bnd == false always and rely on
         // initialization magic?
         scalargroupdata.valid.at(tl).at(vi).valid_int = false;
-        scalargroupdata.valid.at(tl).at(vi).valid_bnd = true;
+        scalargroupdata.valid.at(tl).at(vi).valid_outer = true;
+        scalargroupdata.valid.at(tl).at(vi).valid_ghosts = true;
 
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
@@ -619,20 +620,24 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                       !coarsegroupdata.valid.at(tl).at(vi).valid_bnd;
+                       !coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                       !coarsegroupdata.valid.at(tl).at(vi).valid_ghosts;
       if (all_invalid) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int = false;
-          groupdata.valid.at(tl).at(vi).valid_bnd = false;
+          groupdata.valid.at(tl).at(vi).valid_outer = false;
+          groupdata.valid.at(tl).at(vi).valid_ghosts = false;
         }
       } else {
         // Expext coarse grid data to be valid
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           if (!(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                coarsegroupdata.valid.at(tl).at(vi).valid_bnd)) {
+                coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_ghosts)) {
             valid_t all_valid;
             all_valid.valid_int = true;
-            all_valid.valid_bnd = true;
+            all_valid.valid_outer = true;
+            all_valid.valid_ghosts = true;
             CCTK_VERROR("MakeNewLevelFromCoarse before prolongation: Grid "
                         "function \"%s\" is invalid on refinement level %d, "
                         "time level %d; expected valid %s, found valid %s",
@@ -654,8 +659,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int =
               coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-              coarsegroupdata.valid.at(tl).at(vi).valid_bnd;
-          groupdata.valid.at(tl).at(vi).valid_bnd = false;
+              coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+              coarsegroupdata.valid.at(tl).at(vi).valid_ghosts;
+          groupdata.valid.at(tl).at(vi).valid_outer = false;
+          groupdata.valid.at(tl).at(vi).valid_ghosts = false;
         }
       }
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
@@ -756,18 +763,23 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
         bool all_invalid = true;
         for (int vi = 0; vi < groupdata.numvars; ++vi)
           all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                         !coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                         !coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                         !coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
                          !groupdata.valid.at(tl).at(vi).valid_int &&
-                         !groupdata.valid.at(tl).at(vi).valid_bnd;
+                         !groupdata.valid.at(tl).at(vi).valid_outer &&
+                         !groupdata.valid.at(tl).at(vi).valid_ghosts;
 
         if (all_invalid) {
           // do nothing
         } else {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            const bool cond = coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                              coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+            const bool cond =
+                coarsegroupdata.valid.at(tl).at(vi).valid_int &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
                               groupdata.valid.at(tl).at(vi).valid_int &&
-                              groupdata.valid.at(tl).at(vi).valid_bnd;
+                groupdata.valid.at(tl).at(vi).valid_outer &&
+                groupdata.valid.at(tl).at(vi).valid_ghosts;
             if (!cond)
               CCTK_VERROR("Found invalid input data: RemakeLevel level %d, "
                           "variable %s%s: need everything defined, have coarse "
@@ -795,10 +807,13 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             valid.at(vi).valid_int =
                 coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
                 groupdata.valid.at(tl).at(vi).valid_int &&
-                groupdata.valid.at(tl).at(vi).valid_bnd;
-            valid.at(vi).valid_bnd = false;
+                groupdata.valid.at(tl).at(vi).valid_outer &&
+                groupdata.valid.at(tl).at(vi).valid_ghosts;
+            valid.at(vi).valid_outer = false;
+            valid.at(vi).valid_ghosts = false;
           }
         }
       }

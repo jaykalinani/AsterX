@@ -246,7 +246,7 @@ void poison_invalid(const GHExt::LevelData &leveldata,
     return;
 
   const valid_t &valid = groupdata.valid.at(tl).at(vi);
-  if (valid.valid_int && valid.valid_bnd)
+  if (valid.valid_int && valid.valid_outer && valid.valid_ghosts)
     return;
 
   const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -257,20 +257,24 @@ void poison_invalid(const GHExt::LevelData &leveldata,
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-    where_t where;
-    if (!valid.valid_int) {
-      if (!valid.valid_bnd)
-        where = where_t::everywhere;
-      else
-        where = where_t::interior;
+    if (!valid.valid_int && !valid.valid_outer && !valid.valid_ghosts) {
+      grid.loop_idx(where_t::everywhere, groupdata.indextype,
+                    groupdata.nghostzones,
+                    [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
     } else {
-      if (!valid.valid_bnd)
-        where = where_t::boundary;
-      else
-        assert(0);
-    }
-    grid.loop_idx(where, groupdata.indextype, groupdata.nghostzones,
+      if (!valid.valid_int)
+        grid.loop_idx(where_t::interior, groupdata.indextype,
+                      groupdata.nghostzones,
+                      [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
+      if (!valid.valid_outer)
+        grid.loop_idx(where_t::boundary, groupdata.indextype,
+                      groupdata.nghostzones,
                   [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
+      if (!valid.valid_ghosts)
+        grid.loop_idx(where_t::ghosts, groupdata.indextype,
+                      groupdata.nghostzones,
+                      [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
+    }
   }
 }
 
@@ -285,7 +289,7 @@ void check_valid(const GHExt::LevelData &leveldata,
     return;
 
   const valid_t &valid = groupdata.valid.at(tl).at(vi);
-  if (!valid.valid_int && !valid.valid_bnd)
+  if (!valid.valid_int && !valid.valid_outer && !valid.valid_ghosts)
     return;
 
   atomic<bool> found_nan{false};
@@ -297,35 +301,40 @@ void check_valid(const GHExt::LevelData &leveldata,
     const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-    where_t where;
-    if (valid.valid_int) {
-      if (valid.valid_bnd)
-        where = where_t::everywhere;
-      else
-        where = where_t::interior;
+    if (valid.valid_int && valid.valid_outer && valid.valid_ghosts) {
+      grid.loop_idx(where_t::everywhere, groupdata.indextype,
+                    groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                      if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+                        found_nan = true;
+                    });
     } else {
-      if (valid.valid_bnd)
-        where = where_t::boundary;
-      else
-        assert(0);
-    }
-    grid.loop_idx(where, groupdata.indextype, groupdata.nghostzones,
-                  [&](const Loop::PointDesc &p) {
-                    if (CCTK_BUILTIN_EXPECT(isnan(ptr_(p.I)), false))
+      if (valid.valid_int)
+        grid.loop_idx(where_t::interior, groupdata.indextype,
+                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+                          found_nan = true;
+                      });
+      if (valid.valid_outer)
+        grid.loop_idx(where_t::boundary, groupdata.indextype,
+                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+                          found_nan = true;
+                      });
+      if (valid.valid_ghosts)
+        grid.loop_idx(where_t::ghosts, groupdata.indextype,
+                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
                       found_nan = true;
                   });
   }
+  }
 
-  if (CCTK_BUILTIN_EXPECT(found_nan, false)) {
-    const char *where = valid.valid_int && valid.valid_bnd
-                            ? "interior and boundary"
-                            : valid.valid_int ? "interior" : "boundary";
+  if (CCTK_BUILTIN_EXPECT(found_nan, false))
     CCTK_VERROR(
         "%s: Grid function \"%s\" has nans on refinement level %d, time "
         "level %d; expected valid %s",
         msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-        leveldata.level, tl, where);
-  }
+        leveldata.level, tl, string(valid).c_str());
 }
 
 // Set grid scalars to nan
@@ -336,11 +345,11 @@ void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
     return;
 
   const valid_t &valid = scalargroupdata.valid.at(tl).at(vi);
-  if (valid.valid_int && valid.valid_bnd)
+  if (valid.valid_int && valid.valid_outer && valid.valid_ghosts)
     return;
 
   // scalars have no boundary so we expect them to alway be valid
-  assert(valid.valid_bnd);
+  assert(valid.valid_outer && valid.valid_ghosts);
 
   if (!valid.valid_int) {
     CCTK_REAL *restrict const ptr =
@@ -357,29 +366,25 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
     return;
 
   const valid_t &valid = scalargroupdata.valid.at(tl).at(vi);
-  if (!valid.valid_int && !valid.valid_bnd)
+  if (!valid.valid_int && !valid.valid_outer && !valid.valid_ghosts)
     return;
 
   // scalars have no boundary so we expect them to alway be valid
-  assert(valid.valid_bnd);
+  assert(valid.valid_outer && valid.valid_ghosts);
 
   atomic<bool> found_nan{false};
   if (valid.valid_int) {
     const CCTK_REAL *restrict const ptr = &scalargroupdata.data.at(tl).at(vi);
-    if (CCTK_BUILTIN_EXPECT(isnan(*ptr), false)) {
+    if (CCTK_BUILTIN_EXPECT(CCTK_isnan(*ptr), false)) {
       found_nan = true;
     }
   }
 
-  if (CCTK_BUILTIN_EXPECT(found_nan, false)) {
-    const char *where = valid.valid_int && valid.valid_bnd
-                            ? "interior and boundary"
-                            : valid.valid_int ? "interior" : "boundary";
+  if (CCTK_BUILTIN_EXPECT(found_nan, false))
     CCTK_VERROR(
         "%s: Grid Scalar \"%s\" has nans on time level %d; expected valid %s",
         msg().c_str(), CCTK_FullVarName(scalargroupdata.firstvarindex + vi), tl,
-        where);
-  }
+        string(valid).c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -784,11 +789,9 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
       assert(0);
     }
     valid_t valid;
-    if (where & WH_INTERIOR)
-      valid.valid_int = true;
-    // We treat "ghost" and "boundary" as the same
-    if (where & (WH_GHOSTS | WH_BOUNDARY))
-      valid.valid_bnd = true;
+    valid.valid_int = where & WH_INTERIOR;
+    valid.valid_outer = where & WH_BOUNDARY;
+    valid.valid_ghosts = where & WH_GHOSTS;
     result.push_back({gi, vi, tl, valid});
   }
   return result;
@@ -1273,7 +1276,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           const valid_t &have = groupdata.valid.at(rd.tl).at(rd.vi);
           // "x <= y" for booleans means "x implies y"
           const bool cond = need.valid_int <= have.valid_int &&
-                            need.valid_bnd <= have.valid_bnd;
+                            need.valid_outer <= have.valid_outer &&
+                            need.valid_ghosts <= have.valid_ghosts;
           if (!cond)
             CCTK_VERROR(
                 "Found invalid input data: iteration %d %s: %s::%s, level %d, "
@@ -1300,7 +1304,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         const valid_t &have = scalargroupdata.valid.at(rd.tl).at(rd.vi);
         // "x <= y" for booleans means "x implies y"
         const bool cond = need.valid_int <= have.valid_int &&
-                          need.valid_bnd <= have.valid_bnd;
+                          need.valid_outer <= have.valid_outer &&
+                          need.valid_ghosts <= have.valid_ghosts;
         if (!cond)
           CCTK_VERROR("Found invalid input data: iteration %d %s: %s::%s, "
                       "variable %s%s: need %s, have %s",
@@ -1346,7 +1351,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           const valid_t &provided = wr.valid;
           valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
           have.valid_int &= need.valid_int || !provided.valid_int;
-          have.valid_bnd &= need.valid_bnd || !provided.valid_bnd;
+          have.valid_outer &= need.valid_outer || !provided.valid_outer;
+          have.valid_ghosts &= need.valid_ghosts || !provided.valid_ghosts;
           poison_invalid(leveldata, groupdata, wr.vi, wr.tl);
         }
 
@@ -1357,7 +1363,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         const valid_t &provided = wr.valid;
         valid_t &have = scalargroupdata.valid.at(wr.tl).at(wr.vi);
         have.valid_int &= need.valid_int || !provided.valid_int;
-        have.valid_bnd &= need.valid_bnd || !provided.valid_bnd;
+        have.valid_outer &= need.valid_outer || !provided.valid_outer;
+        have.valid_ghosts &= need.valid_ghosts || !provided.valid_ghosts;
         poison_invalid(scalargroupdata, wr.vi, wr.tl);
       }
     }
@@ -1426,7 +1433,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           const valid_t &provided = wr.valid;
           valid_t &have = groupdata.valid.at(wr.tl).at(wr.vi);
           have.valid_int |= provided.valid_int;
-          have.valid_bnd |= provided.valid_bnd;
+          have.valid_outer |= provided.valid_outer;
+          have.valid_ghosts |= provided.valid_ghosts;
           check_valid(leveldata, groupdata, wr.vi, wr.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
@@ -1443,7 +1451,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         const valid_t &provided = wr.valid;
         valid_t &have = scalargroupdata.valid.at(wr.tl).at(wr.vi);
         have.valid_int |= provided.valid_int;
-        have.valid_bnd |= provided.valid_bnd;
+        have.valid_outer |= provided.valid_outer;
+        have.valid_ghosts |= provided.valid_ghosts;
         check_valid(scalargroupdata, wr.vi, wr.tl, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
@@ -1468,7 +1477,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           const valid_t &provided = inv.valid;
           valid_t &have = groupdata.valid.at(inv.tl).at(inv.vi);
           have.valid_int &= !provided.valid_int;
-          have.valid_bnd &= !provided.valid_bnd;
+          have.valid_outer &= !provided.valid_outer;
+          have.valid_ghosts &= !provided.valid_ghosts;
           check_valid(leveldata, groupdata, inv.vi, inv.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
@@ -1485,7 +1495,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         const valid_t &provided = inv.valid;
         valid_t &have = scalargroupdata.valid.at(inv.tl).at(inv.vi);
         have.valid_int &= !provided.valid_int;
-        have.valid_bnd &= !provided.valid_bnd;
+        have.valid_outer &= !provided.valid_outer;
+        have.valid_ghosts &= !provided.valid_ghosts;
         check_valid(scalargroupdata, inv.vi, inv.tl, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
@@ -1586,7 +1597,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             CCTK_ERROR("Found grid functions that are not valid in the interior");
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).valid_bnd = false;
+            groupdata.valid.at(tl).at(vi).valid_ghosts = false;
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             poison_invalid(leveldata, groupdata, vi, tl);
             check_valid(leveldata, groupdata, vi, tl,
@@ -1595,7 +1606,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           groupdata.mfab.at(tl)->FillBoundary(
               ghext->amrcore->Geom(leveldata.level).periodicity());
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).valid_bnd =
+            groupdata.valid.at(tl).at(vi).valid_ghosts =
                 groupdata.valid.at(tl).at(vi).valid_int;
         }
 
@@ -1628,24 +1639,27 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           bool all_invalid = true;
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                           !coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                           !coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                           !coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
                            !groupdata.valid.at(tl).at(vi).valid_int;
 
           if (all_invalid) {
 
             for (int vi = 0; vi < groupdata.numvars; ++vi) {
               groupdata.valid.at(tl).at(vi).valid_int = false;
-              groupdata.valid.at(tl).at(vi).valid_bnd = false;
+              groupdata.valid.at(tl).at(vi).valid_outer = false;
+              groupdata.valid.at(tl).at(vi).valid_ghosts = false;
             }
 
           } else {
 
             for (int vi = 0; vi < groupdata.numvars; ++vi)
               assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                     coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                     coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                     coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
                      groupdata.valid.at(tl).at(vi).valid_int);
             for (int vi = 0; vi < groupdata.numvars; ++vi)
-              groupdata.valid.at(tl).at(vi).valid_bnd = false;
+              groupdata.valid.at(tl).at(vi).valid_ghosts = false;
             for (int vi = 0; vi < groupdata.numvars; ++vi) {
               poison_invalid(leveldata, groupdata, vi, tl);
               check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
@@ -1662,9 +1676,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                 ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
                 interpolator, bcs, 0);
             for (int vi = 0; vi < groupdata.numvars; ++vi)
-              groupdata.valid.at(tl).at(vi).valid_bnd =
+              groupdata.valid.at(tl).at(vi).valid_ghosts =
                   coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                  coarsegroupdata.valid.at(tl).at(vi).valid_bnd &&
+                  coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
+                  coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
                   groupdata.valid.at(tl).at(vi).valid_int;
           } // if all_invalid
         }   // for tl
@@ -1811,8 +1826,10 @@ void Restrict(int level, const vector<int> &groups) {
 
       if (all_invalid) {
 
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(tl).at(vi).valid_bnd = false;
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          groupdata.valid.at(tl).at(vi).valid_outer = false;
+          groupdata.valid.at(tl).at(vi).valid_ghosts = false;
+        }
 
       } else {
 
@@ -1859,7 +1876,8 @@ void Restrict(int level, const vector<int> &groups) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).valid_int &=
               finegroupdata.valid.at(tl).at(vi).valid_int;
-          groupdata.valid.at(tl).at(vi).valid_bnd = false;
+          groupdata.valid.at(tl).at(vi).valid_outer = false;
+          groupdata.valid.at(tl).at(vi).valid_ghosts = false;
         }
       }
 

@@ -63,21 +63,21 @@ public:
 };
 
 struct valid_t {
-  bool valid_int, valid_bnd;
-  valid_t() : valid_int(false), valid_bnd(false) {}
+  bool valid_int, valid_outer, valid_ghosts;
+  valid_t() : valid_int(false), valid_outer(false), valid_ghosts(false) {}
 
   friend bool operator==(const valid_t &x, const valid_t &y) {
-    return make_tuple(x.valid_int, x.valid_bnd) ==
-           make_tuple(y.valid_int, y.valid_bnd);
+    return make_tuple(x.valid_int, x.valid_outer, x.valid_ghosts) ==
+           make_tuple(y.valid_int, y.valid_outer, y.valid_ghosts);
   }
   friend bool operator<(const valid_t &x, const valid_t &y) {
-    return make_tuple(x.valid_int, x.valid_bnd) <
-           make_tuple(y.valid_int, y.valid_bnd);
+    return make_tuple(x.valid_int, x.valid_outer, x.valid_ghosts) <
+           make_tuple(y.valid_int, y.valid_outer, y.valid_ghosts);
   }
   friend ostream &operator<<(ostream &os, const valid_t v) {
     auto str = [](bool v) { return v ? "VAL" : "INV"; };
-    return os << "[int:" << str(v.valid_int) << ",bnd:" << str(v.valid_bnd)
-              << "]";
+    return os << "[int:" << str(v.valid_int) << ",outer:" << str(v.valid_outer)
+              << ",ghosts:" << str(v.valid_ghosts) << "]";
   }
   operator string() const {
     ostringstream buf;

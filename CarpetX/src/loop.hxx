@@ -309,7 +309,7 @@ template <typename T> struct GF3D1 {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-enum class where_t { everywhere, interior, boundary };
+enum class where_t { everywhere, interior, boundary, ghosts };
 
 struct PointDesc {
   int i, j, k;
@@ -318,6 +318,7 @@ struct PointDesc {
   static constexpr int di = 1;
   int dj, dk;
   vect<int, dim> I;
+  vect<int, dim> NI; // outward boundary normal, or zero
   vect<int, dim> DI(int d) const { return vect<int, dim>::unit(d); }
   friend ostream &operator<<(ostream &os, const PointDesc &p) {
     os << "PointDesc{"
@@ -328,6 +329,8 @@ struct PointDesc {
        << "idx:" << p.idx << ", "
        << "dijk:"
        << "{" << p.di << "," << p.dj << "," << p.dk << "}"
+       << "nijk:"
+       << "{" << p.NI[0] << "," << p.NI[1] << "," << p.NI[2] << "}"
        << "}";
     return os;
   }
@@ -378,7 +381,8 @@ public:
   // Loop over a given box
   template <int CI, int CJ, int CK, typename F>
   void loop_box(const F &f, const array<int, dim> &restrict imin,
-                const array<int, dim> &restrict imax) const {
+                const array<int, dim> &restrict imax,
+                const array<int, dim> &restrict inormal) const {
     static_assert(CI == 0 || CI == 1, "");
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");
@@ -400,7 +404,7 @@ public:
           CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
           int idx = i * di + j * dj + k * dk;
           vect<int, dim> I{{i, j, k}};
-          const PointDesc p{i, j, k, x, y, z, idx, dj, dk, I};
+          const PointDesc p{i, j, k, x, y, z, idx, dj, dk, I, inormal};
           f(p);
         }
       }
@@ -418,8 +422,9 @@ public:
       imax[d] = min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
                     lsh[d] + offset[d] - ghost_offset);
     }
+    constexpr array<int, dim> inormal{0, 0, 0};
 
-    loop_box<CI, CJ, CK>(f, imin, imax);
+    loop_box<CI, CJ, CK>(f, imin, imax, inormal);
   }
 
   // Loop over all interior points
@@ -432,8 +437,9 @@ public:
       imax[d] = min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
                     lsh[d] + offset[d] - nghostzones[d]);
     }
+    constexpr array<int, dim> inormal{0, 0, 0};
 
-    loop_box<CI, CJ, CK>(f, imin, imax);
+    loop_box<CI, CJ, CK>(f, imin, imax, inormal);
   }
 
   // Loop over all outer boundary points. This excludes ghost faces, but
@@ -442,38 +448,97 @@ public:
   void loop_bnd(const array<int, dim> &group_nghostzones, const F &f) const {
     constexpr array<int, dim> offset{!CI, !CJ, !CK};
 
-    for (int dir = 0; dir < dim; ++dir) {
-      for (int face = 0; face < 2; ++face) {
-        if (bbox[2 * dir + face]) {
+    for (int nk = -1; nk <= +1; ++nk) {
+      for (int nj = -1; nj <= +1; ++nj) {
+        for (int ni = -1; ni <= +1; ++ni) {
+          if ((ni != 0 && bbox[0 + (ni == -1 ? 0 : 1)]) ||
+              (nj != 0 && bbox[2 + (nj == -1 ? 0 : 1)]) ||
+              (nk != 0 && bbox[4 + (nk == -1 ? 0 : 1)])) {
 
-          array<int, dim> imin, imax;
-          for (int d = 0; d < dim; ++d) {
-            // by default, include interior and outer boundaries and ghosts
-            int ghost_offset = nghostzones[d] - group_nghostzones[d];
-            imin[d] = ghost_offset;
-            imax[d] = lsh[d] + offset[d] - ghost_offset;
+            const array<int, dim> inormal{ni, nj, nk};
 
-            // avoid covering edges and corners multiple times
-            if (d < dir) {
-              if (bbox[2 * d])
-                imin[d] = nghostzones[d]; // only interior
-              if (bbox[2 * d + 1])
-                imax[d] = lsh[d] + offset[d] - nghostzones[d]; // only interior
+            array<int, dim> imin, imax;
+            for (int d = 0; d < dim; ++d) {
+              const int ghost_offset = nghostzones[d] - group_nghostzones[d];
+              const int begin_bnd = ghost_offset;
+              const int begin_int = nghostzones[d];
+              const int end_int = lsh[d] + offset[d] - nghostzones[d];
+              const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+              switch (inormal[d]) {
+              case -1: // lower boundary
+                imin[d] = begin_bnd;
+                imax[d] = begin_int;
+                break;
+              case 0: // interior
+                imin[d] = begin_int;
+                imax[d] = end_int;
+                break;
+              case +1: // upper boundary
+                imin[d] = end_int;
+                imax[d] = end_bnd;
+                break;
+              default:
+                assert(0);
+              }
+
+              imin[d] = max(tmin[d], imin[d]);
+              imax[d] =
+                  min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
             }
-          }
-          // only one face on outer boundary
-          if (face == 0)
-            imax[dir] = nghostzones[dir];
-          else
-            imin[dir] = lsh[dir] + offset[dir] - nghostzones[dir];
 
-          for (int d = 0; d < dim; ++d) {
-            imin[d] = max(tmin[d], imin[d]);
-            imax[d] =
-                min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+            loop_box<CI, CJ, CK>(f, imin, imax, inormal);
           }
+        }
+      }
+    }
+  }
 
-          loop_box<CI, CJ, CK>(f, imin, imax);
+  // Loop over all outer ghost points. This includes ghost edges/corners on
+  // non-ghost faces.
+  template <int CI, int CJ, int CK, typename F>
+  void loop_ghosts(const array<int, dim> &group_nghostzones, const F &f) const {
+    constexpr array<int, dim> offset{!CI, !CJ, !CK};
+
+    for (int nk = -1; nk <= +1; ++nk) {
+      for (int nj = -1; nj <= +1; ++nj) {
+        for (int ni = -1; ni <= +1; ++ni) {
+          if ((ni != 0 && !bbox[0 + (ni == -1 ? 0 : 1)]) ||
+              (nj != 0 && !bbox[2 + (nj == -1 ? 0 : 1)]) ||
+              (nk != 0 && !bbox[4 + (nk == -1 ? 0 : 1)])) {
+
+            const array<int, dim> inormal{ni, nj, nk};
+
+            array<int, dim> imin, imax;
+            for (int d = 0; d < dim; ++d) {
+              const int ghost_offset = nghostzones[d] - group_nghostzones[d];
+              const int begin_bnd = ghost_offset;
+              const int begin_int = nghostzones[d];
+              const int end_int = lsh[d] + offset[d] - nghostzones[d];
+              const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+              switch (inormal[d]) {
+              case -1: // lower boundary
+                imin[d] = begin_bnd;
+                imax[d] = begin_int;
+                break;
+              case 0: // interior
+                imin[d] = begin_int;
+                imax[d] = end_int;
+                break;
+              case +1: // upper boundary
+                imin[d] = end_int;
+                imax[d] = end_bnd;
+                break;
+              default:
+                assert(0);
+              }
+
+              imin[d] = max(tmin[d], imin[d]);
+              imax[d] =
+                  min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+            }
+
+            loop_box<CI, CJ, CK>(f, imin, imax, inormal);
+          }
         }
       }
     }
@@ -489,6 +554,8 @@ public:
       return loop_int<CI, CJ, CK>(group_nghostzones, f);
     case where_t::boundary:
       return loop_bnd<CI, CJ, CK>(group_nghostzones, f);
+    case where_t::ghosts:
+      return loop_ghosts<CI, CJ, CK>(group_nghostzones, f);
     default:
       assert(0);
     }
@@ -563,6 +630,11 @@ void loop_int(const cGH *cctkGH, const F &f) {
 template <int CI, int CJ, int CK, typename F>
 void loop_bnd(const cGH *cctkGH, const F &f) {
   loop<CI, CJ, CK>(cctkGH, where_t::boundary, f);
+}
+
+template <int CI, int CJ, int CK, typename F>
+void loop_ghosts(const cGH *cctkGH, const F &f) {
+  loop<CI, CJ, CK>(cctkGH, where_t::ghosts, f);
 }
 
 } // namespace Loop
