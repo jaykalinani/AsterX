@@ -265,7 +265,7 @@ void poison_invalid(const GHExt::LevelData &leveldata,
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-    if (!valid.any()) {
+    if (!valid.valid_any()) {
       grid.loop_idx(where_t::everywhere, groupdata.indextype,
                     groupdata.nghostzones,
                     [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
@@ -309,7 +309,7 @@ void check_valid(const GHExt::LevelData &leveldata,
     const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-    if (valid.all()) {
+    if (valid.valid_all()) {
       grid.loop_idx(where_t::everywhere, groupdata.indextype,
                     groupdata.nghostzones, [&](const Loop::PointDesc &p) {
                       if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
@@ -353,7 +353,7 @@ void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
     return;
 
   const valid_t &valid = scalargroupdata.valid.at(tl).at(vi);
-  if (valid.all())
+  if (valid.valid_all())
     return;
 
   // scalars have no boundary so we expect them to alway be valid
@@ -374,7 +374,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
     return;
 
   const valid_t &valid = scalargroupdata.valid.at(tl).at(vi);
-  if (!valid.any())
+  if (!valid.valid_any())
     return;
 
   // scalars have no boundary so we expect them to alway be valid
@@ -492,7 +492,7 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
 
             // Check only those variables which are valid, and where
             // some part (but not everything) is written
-            if (!(wr.any() && to_check.any()))
+            if (!(wr.valid_any() && to_check.valid_any()))
               continue;
 
             const Array4<const CCTK_REAL> &vars =
@@ -556,7 +556,7 @@ void check_checksums(const checksums_t checksums, const int min_level,
 
             const auto &old_checksum = checksums.at(tiletag);
             const auto &did_check = old_checksum.where;
-            assert(did_check.any());
+            assert(did_check.valid_any());
 
             const Array4<const CCTK_REAL> &vars =
                 groupdata.mfab.at(tl)->array(mfi);

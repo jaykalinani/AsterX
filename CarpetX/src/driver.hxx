@@ -93,10 +93,10 @@ struct valid_t {
   valid_t &operator&=(const valid_t &x) { return *this = *this & x; }
   valid_t &operator|=(const valid_t &x) { return *this = *this | x; }
 
-  constexpr bool all() const {
+  constexpr bool valid_all() const {
     return valid_int && valid_outer && valid_ghosts;
   }
-  constexpr bool any() const {
+  constexpr bool valid_any() const {
     return valid_int || valid_outer || valid_ghosts;
   }
 
@@ -113,6 +113,24 @@ struct valid_t {
     auto str = [](bool v) { return v ? "VAL" : "INV"; };
     return os << "[int:" << str(v.valid_int) << ",outer:" << str(v.valid_outer)
               << ",ghosts:" << str(v.valid_ghosts) << "]";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
+struct why_valid_t {
+  string why_int, why_outer, why_ghosts;
+  why_valid_t() : why_valid_t("<unknown reason>") {}
+  why_valid_t(const string &why)
+      : why_int(why), why_outer(why), why_ghosts(why) {}
+
+  friend ostream &operator<<(ostream &os, const why_valid_t why) {
+    return os << "why_valid_t{int:" << why.why_int << ","
+              << "outer:" << why.why_outer << ","
+              << "ghosts:" << why.why_ghosts << "}";
   }
   operator string() const {
     ostringstream buf;
@@ -151,7 +169,8 @@ struct GHExt {
     int firstvarindex;
     int numvars;
 
-    vector<vector<valid_t> > valid; // [time level][var index]
+    vector<vector<valid_t> > valid;         // [time level][var index]
+    vector<vector<why_valid_t> > why_valid; // [time level][var index]
     // TODO: add poison_invalid and check_valid functions
   };
 
