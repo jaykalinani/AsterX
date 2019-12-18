@@ -39,6 +39,8 @@ template <typename T, int order> struct interpolator {
   const vect<int, dim> &derivs;
   const T *restrict const dx;
 
+#warning "TODO: Check whether interpolated variables are valid"
+
   // Base case: only access a grid point
   template <int dir>
   enable_if_t<(dir == -1), T>
