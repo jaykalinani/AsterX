@@ -16,6 +16,7 @@
 #include <AMReX_Interpolater.H>
 #include <AMReX_MultiFab.H>
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <ostream>
@@ -64,7 +65,40 @@ public:
 
 struct valid_t {
   bool valid_int, valid_outer, valid_ghosts;
-  valid_t() : valid_int(false), valid_outer(false), valid_ghosts(false) {}
+  constexpr valid_t() : valid_t(false) {}
+
+  explicit constexpr valid_t(bool b)
+      : valid_int(b), valid_outer(b), valid_ghosts(b) {}
+  friend constexpr valid_t operator~(const valid_t &x) {
+    valid_t r;
+    r.valid_int = !x.valid_int;
+    r.valid_outer = !x.valid_outer;
+    r.valid_ghosts = !x.valid_ghosts;
+    return r;
+  }
+  friend constexpr valid_t operator&(const valid_t &x, const valid_t &y) {
+    valid_t r;
+    r.valid_int = x.valid_int && y.valid_int;
+    r.valid_outer = x.valid_outer && y.valid_outer;
+    r.valid_ghosts = x.valid_ghosts && y.valid_ghosts;
+    return r;
+  }
+  friend constexpr valid_t operator|(const valid_t &x, const valid_t &y) {
+    valid_t r;
+    r.valid_int = x.valid_int || y.valid_int;
+    r.valid_outer = x.valid_outer || y.valid_outer;
+    r.valid_ghosts = x.valid_ghosts || y.valid_ghosts;
+    return r;
+  }
+  valid_t &operator&=(const valid_t &x) { return *this = *this & x; }
+  valid_t &operator|=(const valid_t &x) { return *this = *this | x; }
+
+  constexpr bool all() const {
+    return valid_int && valid_outer && valid_ghosts;
+  }
+  constexpr bool any() const {
+    return valid_int || valid_outer || valid_ghosts;
+  }
 
   friend bool operator==(const valid_t &x, const valid_t &y) {
     return make_tuple(x.valid_int, x.valid_outer, x.valid_ghosts) ==
@@ -74,6 +108,7 @@ struct valid_t {
     return make_tuple(x.valid_int, x.valid_outer, x.valid_ghosts) <
            make_tuple(y.valid_int, y.valid_outer, y.valid_ghosts);
   }
+
   friend ostream &operator<<(ostream &os, const valid_t v) {
     auto str = [](bool v) { return v ? "VAL" : "INV"; };
     return os << "[int:" << str(v.valid_int) << ",outer:" << str(v.valid_outer)
@@ -85,6 +120,24 @@ struct valid_t {
     return buf.str();
   }
 };
+
+} // namespace CarpetX
+namespace std {
+using namespace CarpetX;
+template <> struct equal_to<valid_t> {
+  constexpr bool operator()(const valid_t &x, const valid_t &y) const {
+    return make_tuple(x.valid_int, x.valid_outer, x.valid_ghosts) ==
+           make_tuple(y.valid_int, y.valid_outer, y.valid_ghosts);
+  }
+};
+template <> struct less<valid_t> {
+  constexpr bool operator()(const valid_t &x, const valid_t &y) const {
+    return make_tuple(x.valid_int, x.valid_outer, x.valid_ghosts) <
+           make_tuple(y.valid_int, y.valid_outer, y.valid_ghosts);
+  }
+};
+} // namespace std
+namespace CarpetX {
 
 // Cactus grid hierarchy extension
 struct GHExt {
