@@ -3,7 +3,7 @@
 SCHEDULE WaveToyCarpetX_Initialize AT initial
 {
   LANG: C
-  WRITES: phi(interior) psi(interior)
+  WRITES: phi(interiorwithboundary) psi(interiorwithboundary)
 } "Set up initial conditions for the wave equation"
 
 SCHEDULE WaveToyCarpetX_InitializeParticle AT initial AFTER WaveToyCarpetX_Initialize
@@ -82,7 +82,7 @@ SCHEDULE WaveToyCarpetX_Evolve AT evol
 {
   LANG: C
   READS: phi_p(everywhere) psi_p(everywhere)
-  WRITES: phi(interior) psi(interior)
+  WRITES: phi(interiorwithboundary) psi(interiorwithboundary)
 } "Evolve the wave equation"
 
 SCHEDULE WaveToyCarpetX_EvolveParticle AT evol AFTER WaveToyCarpetX_Evolve

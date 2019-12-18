@@ -167,6 +167,12 @@ extern "C" void WaveToyCarpetX_Initialize(CCTK_ARGUMENTS) {
   } else {
     assert(0);
   }
+
+  // Dirichlet boundary conditions
+  Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    psi[p.idx] = 0;
+    phi[p.idx] = 0;
+  });
 }
 
 extern "C" void WaveToyCarpetX_InitializeParticle(CCTK_ARGUMENTS) {
@@ -237,6 +243,12 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
         dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[p.idx] +
               4 * M_PI * central_potential(t, p.x, p.y, p.z));
     phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
+  });
+
+  // Dirichlet boundary conditions
+  Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    psi[p.idx] = 0;
+    phi[p.idx] = 0;
   });
 }
 
