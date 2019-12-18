@@ -35,10 +35,12 @@ CarpetX::ghost_size = 2
 
 CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
-CarpetX::regrid_error_threshold = 0.01
+CarpetX::regrid_error_threshold = 2.
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::restrict_during_sync = yes
+# inconsistent, but "yes" cannot be done due to interaction between boundary
+# conditions and restrict / prolongate
+CarpetX::restrict_during_sync = no
 
 CarpetX::dtfac = 0.25
 

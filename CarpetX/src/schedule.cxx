@@ -1790,8 +1790,11 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     if (current_level == -1)
       for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
         Restrict(level, groups);
-    else
-      Restrict(current_level, groups);
+    else {
+      if (current_level < int(ghext->leveldata.size()) - 1) {
+        Restrict(current_level, groups);
+      }
+    }
   }
 
   const int min_level = current_level == -1 ? 0 : current_level;
@@ -1889,11 +1892,35 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
           } else {
 
-            for (int vi = 0; vi < groupdata.numvars; ++vi)
-              assert(coarsegroupdata.valid.at(tl).at(vi).valid_int &&
-                     coarsegroupdata.valid.at(tl).at(vi).valid_outer &&
-                     coarsegroupdata.valid.at(tl).at(vi).valid_ghosts &&
-                     groupdata.valid.at(tl).at(vi).valid_int);
+            bool some_sources_invalid = false;
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              if (!coarsegroupdata.valid.at(tl).at(vi).valid_int) {
+                CCTK_VWARN(CCTK_WARN_ALERT,
+                  "Prolongation requires valid interior in coarse grid (level = %d), but found it invalid for '%s' on timelevel %d",
+                  level - 1, CCTK_FullVarName(vi), tl);
+                some_sources_invalid = true;
+              }
+              if (!coarsegroupdata.valid.at(tl).at(vi).valid_outer) {
+                CCTK_VWARN(CCTK_WARN_ALERT,
+                  "Prolongation requires valid boundary in coarse grid (level = %d), but found it invalid for '%s' on timelevel %d",
+                  level - 1, CCTK_FullVarName(vi), tl);
+                some_sources_invalid = true;
+              }
+              if (!coarsegroupdata.valid.at(tl).at(vi).valid_ghosts) {
+                CCTK_VWARN(CCTK_WARN_ALERT,
+                  "Prolongation requires valid ghosts in coarse grid (level = %d), but found it invalid for '%s' on timelevel %d",
+                  level - 1, CCTK_FullVarName(vi), tl);
+                some_sources_invalid = true;
+              }
+              if (!groupdata.valid.at(tl).at(vi).valid_int) {
+                CCTK_VWARN(CCTK_WARN_ALERT,
+                  "Prolongation expects valid interior in fine grid (level = %d), but found it invalid for '%s' on timelevel %d",
+                  level, CCTK_FullVarName(vi), tl);
+                some_sources_invalid = true;
+              }
+            }
+            if (some_sources_invalid)
+              CCTK_ERROR("Some sources for prolongation were invalid");
             for (int vi = 0; vi < groupdata.numvars; ++vi)
               groupdata.valid.at(tl).at(vi).valid_ghosts = false;
             for (int vi = 0; vi < groupdata.numvars; ++vi) {
