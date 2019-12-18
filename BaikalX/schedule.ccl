@@ -54,6 +54,50 @@ schedule BaikalX_BSSN_to_ADM in ODESolvers_RHS after BaikalX_zero_rhss after Bai
   WRITES: ADMBASE::lapse(everywhere)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
+schedule BaikalX_zero_rhss at PostRestrict as BaikalX_ZeroRHS
+{
+  LANG: C
+  WRITES: BaikalX::evol_variables_rhs(everywhere)
+  # this applies boundary conditions and since ODESolvers_RHS is called after ODESolver's
+  # ADD, this is the equivalent of MoL_PostStep
+  # I do not really write to the boundary, but for periodic ones used, the SYNC does
+  WRITES: BaikalX::evol_variables(boundary)
+  # must not SYNC here since this becomes an infinite loop otherwise
+} "Zero out Baikal RHS"
+
+schedule BaikalX_BSSN_to_ADM at PostRestrict after BaikalX_zero_rhss before BaikalX_Ricci
+{
+  LANG: C
+  READS: BaikalX::evol_variables(everywhere)
+  WRITES: ADMBase::metric(everywhere)
+  WRITES: ADMBase::curv(everywhere)
+  WRITES: ADMBASE::shift(everywhere)
+  WRITES: ADMBase::dtshift(everywhere)
+  WRITES: ADMBASE::lapse(everywhere)
+} "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
+
+schedule BaikalX_zero_rhss at PostRegrid as BaikalX_ZeroRHS
+{
+  LANG: C
+  WRITES: BaikalX::evol_variables_rhs(everywhere)
+  # this applies boundary conditions and since ODESolvers_RHS is called after ODESolver's
+  # ADD, this is the equivalent of MoL_PostStep
+  # I do not really write to the boundary, but for periodic ones used, the SYNC does
+  WRITES: BaikalX::evol_variables(boundary)
+  SYNC: BaikalX::evol_variables
+} "Zero out Baikal RHS"
+
+schedule BaikalX_BSSN_to_ADM at PostRegrid after BaikalX_zero_rhss before BaikalX_Ricci
+{
+  LANG: C
+  READS: BaikalX::evol_variables(everywhere)
+  WRITES: ADMBase::metric(everywhere)
+  WRITES: ADMBase::curv(everywhere)
+  WRITES: ADMBASE::shift(everywhere)
+  WRITES: ADMBase::dtshift(everywhere)
+  WRITES: ADMBASE::lapse(everywhere)
+} "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
+
 schedule BaikalX_zero_rhss in ODESolvers_RHS as BaikalX_ZeroRHS before BaikalX_Ricci
 {
   LANG: C
