@@ -127,6 +127,7 @@ ExternalLibraries/zlib
 CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
+CarpetX/BaikalX
 CarpetX/CarpetX
 CarpetX/Coordinates
 CarpetX/ErrorEstimator
