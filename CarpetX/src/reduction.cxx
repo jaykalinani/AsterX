@@ -115,11 +115,8 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
     const MultiFab &mfab = *groupdata.mfab.at(tl);
     unique_ptr<iMultiFab> finemask_imfab;
 
-    if (!groupdata.valid.at(tl).at(vi).valid_int)
-      CCTK_VWARN(CCTK_WARN_ALERT,
-                 "Variable %s has invalid data in the interior of level %d",
-                 CCTK_FullVarName(groupdata.firstvarindex + vi),
-                 leveldata.level);
+    warn_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
+                    [] { return "Before reduction"; });
 
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
     const CCTK_REAL *restrict dx = geom.CellSize();

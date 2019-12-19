@@ -6,7 +6,8 @@ SRCS =						\
         interpolate.cxx				\
 	io.cxx					\
 	level.cxx				\
-        linsolve.cxx                            \
+        linsolve.cxx				\
+        logo.cxx				\
 	prolongate_3d_rf2.cxx			\
 	reduction.cxx				\
 	schedule.cxx				\

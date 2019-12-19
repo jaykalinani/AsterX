@@ -95,7 +95,8 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
   auto &restrict leveldata = ghext->leveldata.at(level);
   auto &restrict groupdata = *leveldata.groupdata.at(gi);
   // Ensure the error estimate has been set
-  assert(groupdata.valid.at(tl).at(vi).valid_int);
+  error_if_invalid(leveldata, groupdata, tl, vi, make_valid_int(),
+                   [] { return "ErrorEst"; });
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
@@ -161,24 +162,23 @@ void SetupGlobals() {
     // Allocate data
     scalargroupdata.data.resize(group.numtimelevels);
     scalargroupdata.valid.resize(group.numtimelevels);
-    scalargroupdata.why_valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
       scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
       scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars);
-      scalargroupdata.why_valid.at(tl).resize(scalargroupdata.numvars);
       for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
         // TODO: decide that valid_bnd == false always and rely on
         // initialization magic?
-        auto &valid = scalargroupdata.valid.at(tl).at(vi);
+        valid_t valid;
         valid.valid_int = false;
         valid.valid_outer = true;
         valid.valid_ghosts = true;
-        scalargroupdata.why_valid.at(tl).at(vi) = {"SetupGlobals"};
+        scalargroupdata.valid.at(tl).at(vi).set(valid,
+                                                [] { return "SetupGlobals"; });
 
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
         poison_invalid(scalargroupdata, vi, tl);
-        check_valid(scalargroupdata, vi, tl, [&]() { return "SetupGlobals"; });
+        check_valid(scalargroupdata, vi, tl, [] { return "SetupGlobals"; });
       }
     }
   }
@@ -317,15 +317,15 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
                   groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
     groupdata.mfab.resize(group.numtimelevels);
     groupdata.valid.resize(group.numtimelevels);
-    groupdata.why_valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) = make_unique<MultiFab>(
           gba, dm, groupdata.numvars, IntVect(groupdata.nghostzones));
-      groupdata.valid.at(tl) = vector<valid_t>(groupdata.numvars);
-      groupdata.why_valid.at(tl) =
-          vector<why_valid_t>(groupdata.numvars, {"SetupLevel"});
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
+      groupdata.valid.at(tl).resize(groupdata.numvars);
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
+        groupdata.valid.at(tl).at(vi).set(valid_t(false),
+                                          [] { return "SetupLevel"; });
         poison_invalid(leveldata, groupdata, vi, tl);
+      }
     }
 
     if (level > 0) {
@@ -622,37 +622,30 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     // the oldest.
     int ntls = groupdata.mfab.size();
     int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
+    groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
-      groupdata.valid.at(tl) = vector<valid_t>(groupdata.numvars);
-      groupdata.why_valid.at(tl) =
-          vector<why_valid_t>(groupdata.numvars, {"MakeNewLevelFromCoarse"});
+      groupdata.valid.at(tl).resize(groupdata.numvars);
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        groupdata.valid.at(tl).at(vi).set(
+            valid_t(false), [] { return "MakeNewLevelFromCoarse"; });
     }
     for (int tl = 0; tl < prolongate_tl; ++tl) {
       // Only interpolate if coarse grid data are valid
       bool all_invalid = true;
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_any();
+        all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).get().valid_any();
       if (all_invalid) {
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          groupdata.valid.at(tl).at(vi) = valid_t(false);
-          groupdata.why_valid.at(tl).at(vi) = {
-              "MakeNewLevelFromCoarse: coarse grid is all invalid"};
-        }
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
+            return "MakeNewLevelFromCoarse: coarse grid is invalid";
+          });
       } else {
-        // Expext coarse grid data to be valid
+        // Expect coarse grid data to be valid
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          if (!coarsegroupdata.valid.at(tl).at(vi).valid_all()) {
-            valid_t all_valid(true);
-            CCTK_VERROR("MakeNewLevelFromCoarse before prolongation: Grid "
-                        "function \"%s\" is invalid on refinement level %d, "
-                        "time level %d; expected valid %s, found valid %s",
-                        CCTK_FullVarName(coarsegroupdata.firstvarindex + vi),
-                        coarseleveldata.level, tl, string(all_valid).c_str(),
-                        string(coarsegroupdata.valid.at(tl).at(vi)).c_str());
-          }
-        }
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          check_valid(coarseleveldata, coarsegroupdata, vi, tl, [&]() {
+          error_if_invalid(
+              coarseleveldata, coarsegroupdata, vi, tl, make_valid_all(),
+              [] { return "MakeNewLevelFromCoarse before prolongation"; });
+          check_valid(coarseleveldata, coarsegroupdata, vi, tl, [] {
             return "MakeNewLevelFromCoarse before prolongation";
           });
         }
@@ -662,19 +655,15 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
             interpolator, bcs, 0);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          auto &valid = groupdata.valid.at(tl).at(vi);
-          valid.valid_int = coarsegroupdata.valid.at(tl).at(vi).valid_all();
-          valid.valid_outer = false;
-          valid.valid_ghosts = false;
-          groupdata.why_valid.at(tl).at(vi) = {
-              "MakeNewLevelFromCoarse: prolongated"};
+          groupdata.valid.at(tl).at(vi).set(make_valid_int(), [] {
+            return "MakeNewLevelFromCoarse after prolongation";
+          });
         }
       }
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl, [&]() {
-          return "MakeNewLevelFromCoarse after prolongation";
-        });
+        check_valid(leveldata, groupdata, vi, tl,
+                    [] { return "MakeNewLevelFromCoarse after prolongation"; });
       }
     }
   }
@@ -747,8 +736,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
                                         IntVect(groupdata.nghostzones));
-      auto valid = vector<valid_t>(groupdata.numvars);
-      auto why_valid = vector<why_valid_t>(groupdata.numvars, {"RemakeLevel"});
+      auto valid = vector<why_valid_t>(
+          groupdata.numvars, why_valid_t([] { return "RemakeLevel"; }));
       if (poison_undefined_values) {
         // Set new grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -769,28 +758,20 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
         // Only interpolate if coarse grid data are valid
         bool all_invalid = true;
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).valid_any() &&
-                         !groupdata.valid.at(tl).at(vi).valid_any();
+          all_invalid &=
+              !coarsegroupdata.valid.at(tl).at(vi).get().valid_any() &&
+              !groupdata.valid.at(tl).at(vi).get().valid_any();
         if (all_invalid) {
           // do nothing
         } else {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            const bool cond = coarsegroupdata.valid.at(tl).at(vi).valid_all() &&
-                              groupdata.valid.at(tl).at(vi).valid_all();
-            if (!cond)
-              CCTK_VERROR(
-                  "Found invalid input data: RemakeLevel level %d, "
-                  "variable %s%s: need everything defined, have coarse "
-                  "%s (%s), have current %s (%s)",
-                  leveldata.level,
-                  CCTK_FullVarName(groupdata.firstvarindex + vi),
-                  string("_p", tl).c_str(),
-                  string(coarsegroupdata.valid.at(tl).at(vi)).c_str(),
-                  string(coarsegroupdata.why_valid.at(tl).at(vi)).c_str(),
-                  string(groupdata.valid.at(tl).at(vi)).c_str(),
-                  string(groupdata.why_valid.at(tl).at(vi)).c_str());
+            error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
+                             make_valid_all(),
+                             [] { return "RemakeLevel before prolongation"; });
+            error_if_invalid(leveldata, groupdata, vi, tl, make_valid_all(),
+                             [] { return "RemakeLevel before prolongation"; });
             check_valid(coarseleveldata, coarsegroupdata, vi, tl,
-                        [&]() { return "RemakeLevel before prolongation"; });
+                        [] { return "RemakeLevel before prolongation"; });
             // We cannot call this function since it would try to
             // traverse the old grid function with the new grid
             // structure.
@@ -804,19 +785,14 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                              ghext->amrcore->Geom(level), cphysbc, 0, fphysbc,
                              0, reffact, interpolator, bcs, 0);
 
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            valid.at(vi).valid_int =
-                coarsegroupdata.valid.at(tl).at(vi).valid_all() &&
-                groupdata.valid.at(tl).at(vi).valid_all();
-            valid.at(vi).valid_outer = false;
-            valid.at(vi).valid_ghosts = false;
-            why_valid.at(vi) = {"RemakeLevel: copied and prolongated"};
-          }
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            valid.at(vi) = why_valid_t(make_valid_int(), [] {
+              return "RemakeLevel after prolongation";
+            });
         }
       }
       groupdata.mfab.at(tl) = move(mfab);
       groupdata.valid.at(tl) = move(valid);
-      groupdata.why_valid.at(tl) = move(why_valid);
 
       if (groupdata.freg)
         groupdata.freg = make_unique<FluxRegister>(
@@ -826,7 +802,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
         check_valid(leveldata, groupdata, vi, tl,
-                    [&]() { return "RemakeLevel after prolongation"; });
+                    [] { return "RemakeLevel after prolongation"; });
       }
     }
   }
@@ -850,8 +826,6 @@ void CactusAmrCore::ClearLevel(int level) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-#warning "CONTINUE HERE: why_valid"
 
 // Start driver
 extern "C" int CarpetX_Startup() {

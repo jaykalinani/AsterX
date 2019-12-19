@@ -105,6 +105,12 @@ bool in_level_mode(const cGH *restrict cctkGH);
 bool in_global_mode(const cGH *restrict cctkGH);
 bool in_meta_mode(const cGH *restrict cctkGH);
 
+void error_if_invalid(const GHExt::LevelData &leveldata,
+                      const GHExt::CommonGroupData &groupdata, int vi, int tl,
+                      const valid_t &required, const function<string()> &msg);
+void warn_if_invalid(const GHExt::LevelData &leveldata,
+                     const GHExt::CommonGroupData &groupdata, int vi, int tl,
+                     const valid_t &required, const function<string()> &msg);
 void poison_invalid(const GHExt::LevelData &leveldata,
                     const GHExt::LevelData::GroupData &groupdata, int vi,
                     int tl);
@@ -112,6 +118,10 @@ void check_valid(const GHExt::LevelData &leveldata,
                  const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
                  const function<string()> &msg);
 
+void error_if_invalid(const GHExt::CommonGroupData &groupdata, int vi, int tl,
+                      const valid_t &required, const function<string()> &msg);
+void warn_if_invalid(const GHExt::CommonGroupData &groupdata, int vi, int tl,
+                     const valid_t &required, const function<string()> &msg);
 void poison_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata, int vi,
                     int tl);
 void check_valid(const GHExt::GlobalData::ScalarGroupData &groupdata, int vi,

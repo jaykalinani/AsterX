@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <memory>
 #include <ostream>
 #include <tuple>
@@ -121,23 +122,22 @@ struct valid_t {
   }
 };
 
-struct why_valid_t {
-  string why_int, why_outer, why_ghosts;
-  why_valid_t() : why_valid_t("<unknown reason>") {}
-  why_valid_t(const string &why)
-      : why_int(why), why_outer(why), why_ghosts(why) {}
-
-  friend ostream &operator<<(ostream &os, const why_valid_t why) {
-    return os << "why_valid_t{int:" << why.why_int << ","
-              << "outer:" << why.why_outer << ","
-              << "ghosts:" << why.why_ghosts << "}";
-  }
-  operator string() const {
-    ostringstream buf;
-    buf << *this;
-    return buf.str();
-  }
-};
+inline constexpr valid_t make_valid_int() {
+  valid_t valid;
+  valid.valid_int = true;
+  return valid;
+}
+inline constexpr valid_t make_valid_outer() {
+  valid_t valid;
+  valid.valid_outer = true;
+  return valid;
+}
+inline constexpr valid_t make_valid_ghosts() {
+  valid_t valid;
+  valid.valid_ghosts = true;
+  return valid;
+}
+inline constexpr valid_t make_valid_all() { return ~valid_t(); }
 
 } // namespace CarpetX
 namespace std {
@@ -157,6 +157,66 @@ template <> struct less<valid_t> {
 } // namespace std
 namespace CarpetX {
 
+class why_valid_t {
+  valid_t valid;
+  function<string()> why_int, why_outer, why_ghosts;
+
+public:
+  why_valid_t() : why_valid_t([] { return "<unknown reason>"; }) {}
+  why_valid_t(const function<string()> &why) : why_valid_t(false, why) {}
+  why_valid_t(bool b, const function<string()> &why)
+      : why_valid_t(valid_t(b), why) {}
+  why_valid_t(const valid_t &val, const function<string()> &why)
+      : valid(val), why_int(why), why_outer(why), why_ghosts(why) {}
+
+  const valid_t &get() const { return valid; }
+
+  void set(const valid_t &val, const function<string()> &why) {
+    auto old_valid = valid;
+    valid = val;
+    auto new_valid = valid;
+    if (new_valid.valid_int != old_valid.valid_int)
+      why_int = why;
+    if (new_valid.valid_outer != old_valid.valid_outer)
+      why_outer = why;
+    if (new_valid.valid_ghosts != old_valid.valid_ghosts)
+      why_ghosts = why;
+  }
+  void set_int(bool b, const function<string()> &why) {
+    auto val = valid;
+    val.valid_int = b;
+    set(val, why);
+  }
+  void set_outer(bool b, const function<string()> &why) {
+    auto val = valid;
+    val.valid_outer = b;
+    set(val, why);
+  }
+  void set_ghosts(bool b, const function<string()> &why) {
+    auto val = valid;
+    val.valid_ghosts = b;
+    set(val, why);
+  }
+  void set_and(const valid_t &val, const function<string()> &why) {
+    set(valid & val, why);
+  }
+  void set_or(const valid_t &val, const function<string()> &why) {
+    set(valid | val, why);
+  }
+
+  friend ostream &operator<<(ostream &os, const why_valid_t why) {
+    return os << why.valid << ","
+              << "why{int:" << why.why_int() << ","
+              << "outer:" << why.why_outer() << ","
+              << "ghosts:" << why.why_ghosts() << "}";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
 // Cactus grid hierarchy extension
 struct GHExt {
 
@@ -169,8 +229,8 @@ struct GHExt {
     int firstvarindex;
     int numvars;
 
-    vector<vector<valid_t> > valid;         // [time level][var index]
-    vector<vector<why_valid_t> > why_valid; // [time level][var index]
+    vector<vector<why_valid_t> > valid; // [time level][var index]
+
     // TODO: add poison_invalid and check_valid functions
   };
 
