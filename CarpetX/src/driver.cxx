@@ -1,5 +1,6 @@
 #include "driver.hxx"
 #include "io.hxx"
+#include "logo.hxx"
 #include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
 
@@ -859,31 +860,39 @@ extern "C" int CarpetX_Startup() {
     CCTK_VINFO("Startup");
 
   // Output a startup message
-  string banner = "AMR driver provided by CarpetX, using AMReX " +
-                  amrex::Version() +
-                  " ("
+  const vector<string> features{
 #ifdef AMREX_USE_MPI
-                  "MPI, "
+      "MPI",
 #else
-                  "no MPI, "
+      "no MPI",
 #endif
 #ifdef AMREX_USE_OMP
-                  "OpenMP, "
+      "OpenMP",
 #else
-                  "no OpenMP, "
+      "no OpenMP",
 #endif
 #ifdef AMREX_USE_GPU
-                  "Accelerators, "
+      "Accelerators",
 #else
-                  "no Accelerators, "
+      "no Accelerators",
 #endif
 #ifdef AMREX_USE_ASSERTION
-                  "DEBUG, "
+      "DEBUG",
 #else
-                  "OPTIMIZED, "
+      "OPTIMIZED",
 #endif
-                  ")";
-  int ierr = CCTK_RegisterBanner(banner.c_str());
+  };
+  ostringstream buf;
+  buf << logo();
+  buf << "AMR driver provided by CarpetX, using AMReX " << amrex::Version()
+      << " (";
+  auto sep = "";
+  for (const auto &feature : features) {
+    buf << sep << feature;
+    sep = ", ";
+  }
+  buf << ")";
+  int ierr = CCTK_RegisterBanner(buf.str().c_str());
   assert(!ierr);
 
   // Register a GH extension
