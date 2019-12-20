@@ -1367,15 +1367,12 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       const int ntls = groupdata.mfab.size();
       // Rotate time levels and invalidate current time level
       if (ntls > 1) {
-        unique_ptr<MultiFab> tmp = move(groupdata.mfab.at(ntls - 1));
-        for (int tl = ntls - 1; tl > 0; --tl)
-          groupdata.mfab.at(tl) = move(groupdata.mfab.at(tl - 1));
-        auto tmp_valid = move(groupdata.valid.at(ntls - 1));
-        for (int tl = ntls - 1; tl > 0; --tl)
-          groupdata.valid.at(tl) = move(groupdata.valid.at(tl - 1));
-        groupdata.valid.at(0) = move(tmp_valid);
+        rotate(groupdata.mfab.begin(), groupdata.mfab.end() - 1,
+               groupdata.mfab.end());
+        rotate(groupdata.valid.begin(), groupdata.valid.end() - 1,
+               groupdata.valid.end());
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(0).at(vi) = why_valid_t(valid_t(), [] {
+          groupdata.valid.at(0).at(vi).set(valid_t(), [] {
             return "CycletimeLevels (invalidate current time level)";
           });
         for (int vi = 0; vi < groupdata.numvars; ++vi)
@@ -1404,14 +1401,10 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       const int ntls = scalargroupdata.data.size();
       // Rotate time levels and invalidate current time level
       if (ntls > 1) {
-        auto tmp = move(scalargroupdata.data.at(ntls - 1));
-        for (int tl = ntls - 1; tl > 0; --tl)
-          scalargroupdata.data.at(tl) = scalargroupdata.data.at(tl - 1);
-        scalargroupdata.data.at(0) = tmp;
-        auto tmp_valid = move(scalargroupdata.valid.at(ntls - 1));
-        for (int tl = ntls - 1; tl > 0; --tl)
-          scalargroupdata.valid.at(tl) = move(scalargroupdata.valid.at(tl - 1));
-        scalargroupdata.valid.at(0) = move(tmp_valid);
+        rotate(scalargroupdata.data.begin(), scalargroupdata.data.end() - 1,
+               scalargroupdata.data.end());
+        rotate(scalargroupdata.valid.begin(), scalargroupdata.valid.end() - 1,
+               scalargroupdata.valid.end());
         for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
           scalargroupdata.valid.at(0).at(vi).set_int(false, [] {
             return "CycletimeLevels (invalidate current time level)";
@@ -1906,7 +1899,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            error_if_invalid(leveldata, groupdata, tl, vi, make_valid_int(),
+            error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
                              [] { return "SyncGroupsByDirI before syncing"; });
             groupdata.valid.at(tl).at(vi).set_and(~make_valid_ghosts(), [] {
               return "SyncGroupsByDirI before syncing: Mark ghost zones as "

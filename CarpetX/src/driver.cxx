@@ -95,7 +95,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
   auto &restrict leveldata = ghext->leveldata.at(level);
   auto &restrict groupdata = *leveldata.groupdata.at(gi);
   // Ensure the error estimate has been set
-  error_if_invalid(leveldata, groupdata, tl, vi, make_valid_int(),
+  error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
                    [] { return "ErrorEst"; });
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
@@ -320,12 +320,10 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) = make_unique<MultiFab>(
           gba, dm, groupdata.numvars, IntVect(groupdata.nghostzones));
-      groupdata.valid.at(tl).resize(groupdata.numvars);
-      for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        groupdata.valid.at(tl).at(vi).set(valid_t(false),
-                                          [] { return "SetupLevel"; });
+      groupdata.valid.at(tl).resize(groupdata.numvars,
+                                    why_valid_t([] { return "SetupLevel"; }));
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
         poison_invalid(leveldata, groupdata, vi, tl);
-      }
     }
 
     if (level > 0) {
@@ -736,8 +734,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
                                         IntVect(groupdata.nghostzones));
-      auto valid = vector<why_valid_t>(
-          groupdata.numvars, why_valid_t([] { return "RemakeLevel"; }));
+      vector<why_valid_t> valid(groupdata.numvars,
+                                why_valid_t([] { return "RemakeLevel"; }));
       if (poison_undefined_values) {
         // Set new grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
