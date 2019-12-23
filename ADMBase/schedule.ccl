@@ -1,7 +1,21 @@
 # Schedule definitions for thorn ADMBase
 
+SCHEDULE GROUP ADMBase_InitialData AT initial
+{
+} "Schedule group for calculating ADM initial data"
+
+SCHEDULE GROUP ADMBase_InitialGauge AT initial AFTER ADMBase_InitialData
+{
+} "Schedule group for the ADM initial gauge condition"
+
+SCHEDULE GROUP ADMBase_PostInitial AT initial AFTER (ADMBase_InitialData ADMBase_InitialGauge)
+{
+} "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
+
+
+
 if (CCTK_EQUALS(initial_data, "Cartesian Minkowski")) {
-  SCHEDULE ADMBase_initial_data AT initial
+  SCHEDULE ADMBase_initial_data IN ADMBase_InitialData
   {
     LANG: C
     WRITES: metric(everywhere) curv(everywhere)
@@ -9,7 +23,7 @@ if (CCTK_EQUALS(initial_data, "Cartesian Minkowski")) {
 }
 
 if (CCTK_EQUALS(initial_lapse, "one")) {
-  SCHEDULE ADMBase_initial_lapse AT initial
+  SCHEDULE ADMBase_initial_lapse IN ADMBase_InitialGauge
   {
     LANG: C
     WRITES: lapse(everywhere)
@@ -17,7 +31,7 @@ if (CCTK_EQUALS(initial_lapse, "one")) {
 }
 
 if (CCTK_EQUALS(initial_dtlapse, "zero")) {
-  SCHEDULE ADMBase_initial_dtlapse AT initial
+  SCHEDULE ADMBase_initial_dtlapse IN ADMBase_InitialGauge
   {
     LANG: C
     WRITES: dtlapse(everywhere)
@@ -25,7 +39,7 @@ if (CCTK_EQUALS(initial_dtlapse, "zero")) {
 }
 
 if (CCTK_EQUALS(initial_shift, "zero")) {
-  SCHEDULE ADMBase_initial_shift AT initial
+  SCHEDULE ADMBase_initial_shift IN ADMBase_InitialGauge
   {
     LANG: C
     WRITES: shift(everywhere)
@@ -33,7 +47,7 @@ if (CCTK_EQUALS(initial_shift, "zero")) {
 }
 
 if (CCTK_EQUALS(initial_dtshift, "zero")) {
-  SCHEDULE ADMBase_initial_dtshift AT initial
+  SCHEDULE ADMBase_initial_dtshift IN ADMBase_InitialGauge
   {
     LANG: C
     WRITES: dtshift(everywhere)
