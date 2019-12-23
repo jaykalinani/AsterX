@@ -51,8 +51,140 @@ int Barrier(const cGH *cctkGHa);
 extern "C" void CarpetX_CallScheduleGroup(void *cctkGH, const char *groupname);
 
 // Local functions
-void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm);
+void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
+                const function<string()> &why);
 void SetupGlobals();
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool get_group_checkpoint_flag(const int gi) {
+  int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  char buf[100];
+  int iret = Util_TableGetString(tags, sizeof buf, buf, "checkpoint");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    return true;
+  } else if (iret >= 0) {
+    string str(buf);
+    for (auto &c : str)
+      c = tolower(c);
+    if (str == "yes")
+      return true;
+    if (str == "no")
+      return false;
+    assert(0);
+  } else {
+    assert(0);
+  }
+}
+
+bool get_group_restrict_flag(const int gi) {
+  int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  char buf[100];
+  int iret = Util_TableGetString(tags, sizeof buf, buf, "restrict");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    return true;
+  } else if (iret >= 0) {
+    string str(buf);
+    for (auto &c : str)
+      c = tolower(c);
+    if (str == "yes")
+      return true;
+    if (str == "no")
+      return false;
+    assert(0);
+  } else {
+    assert(0);
+  }
+}
+
+array<int, dim> get_group_indextype(const int gi) {
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  array<CCTK_INT, dim> index;
+  int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    index = {1, 1, 1}; // default: cell-centred
+  } else if (iret >= 0) {
+    assert(iret == dim);
+  } else {
+    assert(0);
+  }
+  array<int, dim> indextype;
+  for (int d = 0; d < dim; ++d)
+    indextype[d] = index[d];
+  return indextype;
+}
+
+array<int, dim> get_group_fluxes(const int gi) {
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  vector<char> fluxes_buf(1000);
+  const int iret =
+      Util_TableGetString(tags, fluxes_buf.size(), fluxes_buf.data(), "fluxes");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    fluxes_buf[0] = '\0'; // default: empty (no fluxes)
+  } else if (iret >= 0) {
+    // do nothing
+  } else {
+    assert(0);
+  }
+
+  const string str(fluxes_buf.data());
+  vector<string> strs;
+  size_t end = 0;
+  while (end < str.size()) {
+    size_t begin = str.find_first_not_of(' ', end);
+    if (begin == string::npos)
+      break;
+    end = str.find(' ', begin);
+    strs.push_back(str.substr(begin, end - begin));
+  }
+
+  array<int, dim> fluxes;
+  fluxes.fill(-1);
+  if (strs.empty())
+    return fluxes; // No fluxes specified
+
+  assert(strs.size() == dim); // Check number of fluxes
+  for (int d = 0; d < dim; ++d) {
+    auto str1 = strs[d];
+    if (str1.find(':') == string::npos) {
+      const char *impl = CCTK_GroupImplementationI(gi);
+      str1 = string(impl) + "::" + str1;
+    }
+    int gi1 = CCTK_GroupIndex(str1.c_str());
+    assert(gi1 >= 0); // Check fluxes are valid groups
+    fluxes[d] = gi1;
+  }
+
+  for (int d = 0; d < dim; ++d)
+    for (int d1 = d + 1; d1 < dim; ++d1)
+      assert(fluxes[d] != fluxes[d1]); // Check groups are all different
+  return fluxes;
+}
+
+array<int, dim> get_group_nghostzones(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  array<CCTK_INT, dim> nghostzones;
+  int iret =
+      Util_TableGetIntArray(tags, dim, nghostzones.data(), "nghostzones");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    // default: use driver parameter
+    nghostzones = {ghost_size, ghost_size, ghost_size};
+  } else if (iret >= 0) {
+    assert(iret == dim);
+  } else {
+    assert(0);
+  }
+  return nghostzones;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,6 +290,8 @@ void SetupGlobals() {
     scalargroupdata.groupindex = gi;
     scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     scalargroupdata.numvars = group.numvars;
+    scalargroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+    scalargroupdata.do_restrict = get_group_restrict_flag(gi);
 
     // Allocate data
     scalargroupdata.data.resize(group.numtimelevels);
@@ -184,94 +318,8 @@ void SetupGlobals() {
   }
 }
 
-array<int, dim> get_group_indextype(const int gi) {
-  assert(gi >= 0);
-  const int tags = CCTK_GroupTagsTableI(gi);
-  assert(tags >= 0);
-  array<CCTK_INT, dim> index;
-  int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
-  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    index = {1, 1, 1}; // default: cell-centred
-  } else if (iret >= 0) {
-    assert(iret == dim);
-  } else {
-    assert(0);
-  }
-  array<int, dim> indextype;
-  for (int d = 0; d < dim; ++d)
-    indextype[d] = index[d];
-  return indextype;
-}
-
-array<int, dim> get_group_fluxes(const int gi) {
-  assert(gi >= 0);
-  const int tags = CCTK_GroupTagsTableI(gi);
-  assert(tags >= 0);
-  vector<char> fluxes_buf(1000);
-  const int iret =
-      Util_TableGetString(tags, fluxes_buf.size(), fluxes_buf.data(), "fluxes");
-  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    fluxes_buf[0] = '\0'; // default: empty (no fluxes)
-  } else if (iret >= 0) {
-    // do nothing
-  } else {
-    assert(0);
-  }
-
-  const string str(fluxes_buf.data());
-  vector<string> strs;
-  size_t end = 0;
-  while (end < str.size()) {
-    size_t begin = str.find_first_not_of(' ', end);
-    if (begin == string::npos)
-      break;
-    end = str.find(' ', begin);
-    strs.push_back(str.substr(begin, end - begin));
-  }
-
-  array<int, dim> fluxes;
-  fluxes.fill(-1);
-  if (strs.empty())
-    return fluxes; // No fluxes specified
-
-  assert(strs.size() == dim); // Check number of fluxes
-  for (int d = 0; d < dim; ++d) {
-    auto str1 = strs[d];
-    if (str1.find(':') == string::npos) {
-      const char *impl = CCTK_GroupImplementationI(gi);
-      str1 = string(impl) + "::" + str1;
-    }
-    int gi1 = CCTK_GroupIndex(str1.c_str());
-    assert(gi1 >= 0); // Check fluxes are valid groups
-    fluxes[d] = gi1;
-  }
-
-  for (int d = 0; d < dim; ++d)
-    for (int d1 = d + 1; d1 < dim; ++d1)
-      assert(fluxes[d] != fluxes[d1]); // Check groups are all different
-  return fluxes;
-}
-
-array<int, dim> get_group_nghostzones(const int gi) {
-  DECLARE_CCTK_PARAMETERS;
-  assert(gi >= 0);
-  const int tags = CCTK_GroupTagsTableI(gi);
-  assert(tags >= 0);
-  array<CCTK_INT, dim> nghostzones;
-  int iret =
-      Util_TableGetIntArray(tags, dim, nghostzones.data(), "nghostzones");
-  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    // default: use driver parameter
-    nghostzones = {ghost_size, ghost_size, ghost_size};
-  } else if (iret >= 0) {
-    assert(iret == dim);
-  } else {
-    assert(0);
-  }
-  return nghostzones;
-}
-
-void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
+void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
+                const function<string()> &why) {
   DECLARE_CCTK_PARAMETERS;
   if (verbose)
     CCTK_VINFO("SetupLevel level %d", level);
@@ -306,6 +354,8 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     groupdata.groupindex = gi;
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
+    groupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+    groupdata.do_restrict = get_group_restrict_flag(gi);
     groupdata.indextype = get_group_indextype(gi);
     groupdata.nghostzones = get_group_nghostzones(gi);
 
@@ -320,8 +370,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm) {
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       groupdata.mfab.at(tl) = make_unique<MultiFab>(
           gba, dm, groupdata.numvars, IntVect(groupdata.nghostzones));
-      groupdata.valid.at(tl).resize(groupdata.numvars,
-                                    why_valid_t([] { return "SetupLevel"; }));
+      groupdata.valid.at(tl).resize(groupdata.numvars, why_valid_t(why));
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         poison_invalid(leveldata, groupdata, vi, tl);
     }
@@ -566,7 +615,7 @@ void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
   if (verbose)
     CCTK_VINFO("MakeNewLevelFromScratch level %d", level);
 
-  SetupLevel(level, ba, dm);
+  SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromScratch"; });
 
   if (saved_cctkGH) {
     assert(current_level == -1);
@@ -585,7 +634,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     CCTK_VINFO("MakeNewLevelFromCoarse level %d", level);
   assert(level > 0);
 
-  SetupLevel(level, ba, dm);
+  SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromCoarse"; });
 
   // Prolongate
   auto &leveldata = ghext->leveldata.at(level);
@@ -603,6 +652,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
     Interpolater *const interpolator = get_interpolator(groupdata.indextype);
+
     PhysBCFunctNoOp cphysbc;
     PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
@@ -616,28 +666,22 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
         periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
 
-    // If there is more than one time level, then we don't prolongate
-    // the oldest.
-    int ntls = groupdata.mfab.size();
-    int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
+    const int ntls = groupdata.mfab.size();
+    // We only prolongate the state vector. And if there is more than
+    // one time level, then we don't prolongate the oldest.
+    const int prolongate_tl =
+        groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+
     groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
       groupdata.valid.at(tl).resize(groupdata.numvars);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        groupdata.valid.at(tl).at(vi).set(
-            valid_t(false), [] { return "MakeNewLevelFromCoarse"; });
-    }
-    for (int tl = 0; tl < prolongate_tl; ++tl) {
-      // Only interpolate if coarse grid data are valid
-      bool all_invalid = true;
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
-        all_invalid &= !coarsegroupdata.valid.at(tl).at(vi).get().valid_any();
-      if (all_invalid) {
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
-            return "MakeNewLevelFromCoarse: coarse grid is invalid";
-          });
-      } else {
+        groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
+          return "MakeNewLevelFromCoarse: not prolongated because variable is "
+                 "not evolved";
+        });
+
+      if (tl < prolongate_tl) {
         // Expect coarse grid data to be valid
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           error_if_invalid(
@@ -652,19 +696,20 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
             groupdata.numvars, ghext->amrcore->Geom(level - 1),
             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
             interpolator, bcs, 0);
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
           groupdata.valid.at(tl).at(vi).set(make_valid_int(), [] {
             return "MakeNewLevelFromCoarse after prolongation";
           });
-        }
       }
+
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(leveldata, groupdata, vi, tl);
         check_valid(leveldata, groupdata, vi, tl,
                     [] { return "MakeNewLevelFromCoarse after prolongation"; });
       }
-    }
-  }
+    } // for tl
+
+  } // for gi
 
   if (saved_cctkGH) {
     assert(current_level == -1);
@@ -683,6 +728,9 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
   // Copy or prolongate
   auto &leveldata = ghext->leveldata.at(level);
+  assert(leveldata.level > 0);
+  auto &coarseleveldata = ghext->leveldata.at(level - 1);
+
   // TODO: Make this an empty MultiFab
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
   assert(ba.ixType() ==
@@ -698,23 +746,6 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
       continue;
 
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
-
-    const BoxArray &gba = convert(
-        ba,
-        IndexType(groupdata.indextype[0] ? IndexType::CELL : IndexType::NODE,
-                  groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
-                  groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
-
-    // If there is more than one time level, then we don't
-    // prolongate the oldest.
-    int ntls = groupdata.mfab.size();
-    int prolongate_tl = ntls > 1 ? ntls - 1 : ntls;
-
-    // This must not happen
-    assert(leveldata.level > 0);
-
-    // Copy from same level and/or prolongate from next coarser level
-    auto &coarseleveldata = ghext->leveldata.at(level - 1);
     auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
     Interpolater *const interpolator = get_interpolator(groupdata.indextype);
@@ -731,11 +762,26 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
         periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
         periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
     const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+
+    const BoxArray &gba = convert(
+        ba,
+        IndexType(groupdata.indextype[0] ? IndexType::CELL : IndexType::NODE,
+                  groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
+                  groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
+
+    const int ntls = groupdata.mfab.size();
+    // We only prolongate the state vector. And if there is more than
+    // one time level, then we don't prolongate the oldest.
+    const int prolongate_tl =
+        groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
                                         IntVect(groupdata.nghostzones));
-      vector<why_valid_t> valid(groupdata.numvars,
-                                why_valid_t([] { return "RemakeLevel"; }));
+      vector<why_valid_t> valid(groupdata.numvars, why_valid_t([] {
+                                  return "RemakeLevel: not prolongated/copied "
+                                         "because variable is not evolved";
+                                }));
       if (poison_undefined_values) {
         // Set new grid functions to nan
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -752,46 +798,38 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
           }
         }
       }
+
       if (tl < prolongate_tl) {
-        // Only interpolate if coarse grid data are valid
-        bool all_invalid = true;
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          all_invalid &=
-              !coarsegroupdata.valid.at(tl).at(vi).get().valid_any() &&
-              !groupdata.valid.at(tl).at(vi).get().valid_any();
-        if (all_invalid) {
-          // do nothing
-        } else {
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
-                             make_valid_all(),
-                             [] { return "RemakeLevel before prolongation"; });
-            error_if_invalid(leveldata, groupdata, vi, tl, make_valid_all(),
-                             [] { return "RemakeLevel before prolongation"; });
-            check_valid(coarseleveldata, coarsegroupdata, vi, tl,
-                        [] { return "RemakeLevel before prolongation"; });
-            // We cannot call this function since it would try to
-            // traverse the old grid function with the new grid
-            // structure.
-            // TODO: Use explicit loop instead (see above)
-            // check_valid(leveldata, groupdata, vi, tl);
-          }
-
-          FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
-                             {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                             groupdata.numvars, ghext->amrcore->Geom(level - 1),
-                             ghext->amrcore->Geom(level), cphysbc, 0, fphysbc,
-                             0, reffact, interpolator, bcs, 0);
-
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            valid.at(vi) = why_valid_t(make_valid_int(), [] {
-              return "RemakeLevel after prolongation";
-            });
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
+                           make_valid_all(),
+                           [] { return "RemakeLevel before prolongation"; });
+          error_if_invalid(leveldata, groupdata, vi, tl, make_valid_all(),
+                           [] { return "RemakeLevel before prolongation"; });
+          check_valid(coarseleveldata, coarsegroupdata, vi, tl,
+                      [] { return "RemakeLevel before prolongation"; });
+          // We cannot call this function since it would try to
+          // traverse the old grid function with the new grid
+          // structure.
+          // TODO: Use explicit loop instead (see above)
+          // check_valid(leveldata, groupdata, vi, tl);
         }
+
+        // Copy from same level and/or prolongate from next coarser level
+        FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
+                           {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                           groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                           ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
+                           reffact, interpolator, bcs, 0);
+
+        for (int vi = 0; vi < groupdata.numvars; ++vi)
+          valid.at(vi) = why_valid_t(make_valid_int(), [] {
+            return "RemakeLevel after prolongation";
+          });
       }
+
       groupdata.mfab.at(tl) = move(mfab);
       groupdata.valid.at(tl) = move(valid);
-
       if (groupdata.freg)
         groupdata.freg = make_unique<FluxRegister>(
             gba, dm, ghext->amrcore->refRatio(level - 1), level,
@@ -802,8 +840,9 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
         check_valid(leveldata, groupdata, vi, tl,
                     [] { return "RemakeLevel after prolongation"; });
       }
-    }
-  }
+    } // for tl
+
+  } // for gi
 
   if (saved_cctkGH) {
     assert(current_level == -1);
@@ -856,8 +895,8 @@ extern "C" int CarpetX_Startup() {
   };
   ostringstream buf;
   buf << logo();
-  buf << "AMR driver provided by CarpetX, using AMReX " << amrex::Version()
-      << " (";
+  buf << "AMR driver provided by CarpetX,\n"
+      << "using AMReX " << amrex::Version() << " (";
   auto sep = "";
   for (const auto &feature : features) {
     buf << sep << feature;
@@ -998,10 +1037,12 @@ extern "C" int CarpetX_Shutdown() {
   if (verbose)
     CCTK_VINFO("Shutdown");
 
-  // Should we really do this? Cactus's extension handling mechanism
-  // becomes inconsistent once extensions have been unregistered.
-  int iret = CCTK_UnregisterGHExtension("CarpetX");
-  assert(iret == 0);
+  if (false) {
+    // Should we really do this? Cactus's extension handling mechanism
+    // becomes inconsistent once extensions have been unregistered.
+    int iret = CCTK_UnregisterGHExtension("CarpetX");
+    assert(iret == 0);
+  }
 
   // Deallocate grid hierarchy
   ghext = nullptr;

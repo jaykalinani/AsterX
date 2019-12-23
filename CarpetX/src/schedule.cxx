@@ -1258,77 +1258,42 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
   assert(0);
 }
 
-namespace {
-bool get_group_checkpoint_flag(const int gi) {
-  int tags = CCTK_GroupTagsTableI(gi);
-  assert(tags >= 0);
-  char buf[100];
-  int iret = Util_TableGetString(tags, sizeof buf, buf, "checkpoint");
-  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    return true;
-  } else if (iret >= 0) {
-    string str(buf);
-    for (auto &c : str)
-      c = tolower(c);
-    if (str == "yes")
-      return true;
-    if (str == "no")
-      return false;
-    assert(0);
-  } else {
-    assert(0);
-  }
-}
-} // namespace
-
 void InvalidateTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
-  assert(current_level == -1);
-  for (auto &restrict leveldata : ghext->leveldata) {
-    const int num_groups = CCTK_NumGroups();
-    for (int gi = 0; gi < num_groups; ++gi) {
-      cGroup group;
-      int ierr = CCTK_GroupData(gi, &group);
-      assert(!ierr);
+  const int num_groups = CCTK_NumGroups();
+  for (int gi = 0; gi < num_groups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
 
-      if (group.grouptype != CCTK_GF)
-        continue;
+    if (group.grouptype == CCTK_GF) {
 
-      auto &restrict groupdata = *leveldata.groupdata.at(gi);
-      const bool checkpoint = get_group_checkpoint_flag(groupdata.groupindex);
-      if (!checkpoint) {
-        // Invalidate all time levels
-        const int ntls = groupdata.mfab.size();
-        for (int tl = 0; tl < ntls; ++tl) {
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            groupdata.valid.at(tl).at(vi).set(valid_t(), [] {
-              return "InvalidateTimelevels (invalidate all "
-                     "non-checkpointed variables)";
-            });
-            poison_invalid(leveldata, groupdata, vi, tl);
+      assert(current_level == -1);
+      for (auto &restrict leveldata : ghext->leveldata) {
+        auto &restrict groupdata = *leveldata.groupdata.at(gi);
+        if (!groupdata.do_checkpoint) {
+          // Invalidate all time levels
+          const int ntls = groupdata.mfab.size();
+          for (int tl = 0; tl < ntls; ++tl) {
+            for (int vi = 0; vi < groupdata.numvars; ++vi) {
+              groupdata.valid.at(tl).at(vi).set(valid_t(), [] {
+                return "InvalidateTimelevels (invalidate all "
+                       "non-checkpointed variables)";
+              });
+              poison_invalid(leveldata, groupdata, vi, tl);
+            }
           }
         }
       }
     }
-  }
 
-  // invalidate scalars
-  {
-    auto &restrict globaldata = ghext->globaldata;
-    const int num_groups = CCTK_NumGroups();
-    for (int gi = 0; gi < num_groups; ++gi) {
-      cGroup group;
-      int ierr = CCTK_GroupData(gi, &group);
-      assert(!ierr);
+    // Invalidate scalars
+    if (group.grouptype == CCTK_SCALAR) {
 
-      if (group.grouptype != CCTK_SCALAR)
-        continue;
-
+      auto &restrict globaldata = ghext->globaldata;
       auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
-      const bool checkpoint =
-          get_group_checkpoint_flag(scalargroupdata.groupindex);
-      if (!checkpoint) {
+      if (!scalargroupdata.do_checkpoint) {
         // Invalidate all time levels
         const int ntls = scalargroupdata.data.size();
         for (int tl = 0; tl < ntls; ++tl) {
@@ -1343,7 +1308,8 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
         }
       }
     }
-  }
+
+  } // for gi
 }
 
 void CycleTimelevels(cGH *restrict const cctkGH) {
@@ -1352,51 +1318,42 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
 
-  assert(current_level == -1);
-  for (auto &restrict leveldata : ghext->leveldata) {
-    const int num_groups = CCTK_NumGroups();
-    for (int gi = 0; gi < num_groups; ++gi) {
-      cGroup group;
-      int ierr = CCTK_GroupData(gi, &group);
-      assert(!ierr);
+  const int num_groups = CCTK_NumGroups();
+  for (int gi = 0; gi < num_groups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
 
-      if (group.grouptype != CCTK_GF)
-        continue;
+    if (group.grouptype == CCTK_GF) {
 
-      auto &restrict groupdata = *leveldata.groupdata.at(gi);
-      const int ntls = groupdata.mfab.size();
-      // Rotate time levels and invalidate current time level
-      if (ntls > 1) {
-        rotate(groupdata.mfab.begin(), groupdata.mfab.end() - 1,
-               groupdata.mfab.end());
-        rotate(groupdata.valid.begin(), groupdata.valid.end() - 1,
-               groupdata.valid.end());
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(0).at(vi).set(valid_t(), [] {
-            return "CycletimeLevels (invalidate current time level)";
-          });
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          poison_invalid(leveldata, groupdata, vi, 0);
+      assert(current_level == -1);
+      for (auto &restrict leveldata : ghext->leveldata) {
+        auto &restrict groupdata = *leveldata.groupdata.at(gi);
+        const int ntls = groupdata.mfab.size();
+        // Rotate time levels and invalidate current time level
+        if (ntls > 1) {
+          rotate(groupdata.mfab.begin(), groupdata.mfab.end() - 1,
+                 groupdata.mfab.end());
+          rotate(groupdata.valid.begin(), groupdata.valid.end() - 1,
+                 groupdata.valid.end());
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            groupdata.valid.at(0).at(vi).set(valid_t(), [] {
+              return "CycletimeLevels (invalidate current time level)";
+            });
+            poison_invalid(leveldata, groupdata, vi, 0);
+          }
+        }
+        for (int tl = 0; tl < ntls; ++tl)
+          for (int vi = 0; vi < groupdata.numvars; ++vi)
+            check_valid(leveldata, groupdata, vi, tl,
+                        [&]() { return "CycleTimelevels"; });
       }
-      for (int tl = 0; tl < ntls; ++tl)
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          check_valid(leveldata, groupdata, vi, tl,
-                      [&]() { return "CycleTimelevels"; });
     }
-  }
 
-  // cycle scalars
-  {
-    auto &restrict globaldata = ghext->globaldata;
-    const int num_groups = CCTK_NumGroups();
-    for (int gi = 0; gi < num_groups; ++gi) {
-      cGroup group;
-      int ierr = CCTK_GroupData(gi, &group);
-      assert(!ierr);
+    // cycle scalars
+    if (group.grouptype == CCTK_SCALAR) {
 
-      if (group.grouptype != CCTK_SCALAR)
-        continue;
-
+      auto &restrict globaldata = ghext->globaldata;
       auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
       const int ntls = scalargroupdata.data.size();
       // Rotate time levels and invalidate current time level
@@ -1405,15 +1362,20 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
                scalargroupdata.data.end());
         rotate(scalargroupdata.valid.begin(), scalargroupdata.valid.end() - 1,
                scalargroupdata.valid.end());
-        for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
+        for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
           scalargroupdata.valid.at(0).at(vi).set_int(false, [] {
             return "CycletimeLevels (invalidate current time level)";
           });
-        for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
           poison_invalid(scalargroupdata, vi, 0);
+        }
       }
+      for (int tl = 0; tl < ntls; ++tl)
+        for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
+          check_valid(scalargroupdata, vi, tl,
+                      [&]() { return "CycleTimelevels"; });
     }
-  }
+
+  } // for gi
 } // namespace CarpetX
 
 // Schedule evolution
@@ -1859,18 +1821,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
       continue;
-    // Don't restrict groups that have restriction disabled
     groups.push_back(gi);
   }
 
   if (restrict_during_sync) {
-    if (current_level == -1)
+    if (current_level == -1) {
       for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
         Restrict(level, groups);
-    else {
-      if (current_level < int(ghext->leveldata.size()) - 1) {
+    } else {
+      if (current_level < int(ghext->leveldata.size()) - 1)
         Restrict(current_level, groups);
-      }
     }
   }
 
@@ -1899,6 +1859,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            // Synchronization only uses the interior
             error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
                              [] { return "SyncGroupsByDirI before syncing"; });
             groupdata.valid.at(tl).at(vi).set_and(~make_valid_ghosts(), [] {
@@ -1941,60 +1902,62 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
             periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
         const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+
         for (int tl = 0; tl < sync_tl; ++tl) {
 
-          // Only prolongate valid grid functions
-          bool all_invalid = true;
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
-            all_invalid &=
-                !coarsegroupdata.valid.at(tl).at(vi).get().valid_any() &&
-                !groupdata.valid.at(tl).at(vi).get().valid_int;
+          // // Only prolongate valid grid functions
+          // bool all_invalid = true;
+          // for (int vi = 0; vi < groupdata.numvars; ++vi)
+          //   all_invalid &=
+          //       !coarsegroupdata.valid.at(tl).at(vi).get().valid_any() &&
+          //       !groupdata.valid.at(tl).at(vi).get().valid_int;
 
-          if (all_invalid) {
+          // if (all_invalid) {
 
-            for (int vi = 0; vi < groupdata.numvars; ++vi)
-              groupdata.valid.at(tl).at(vi).set(valid_t(), [] {
-                return "SyncGroupsByDirI skipping prolongation: Mark as "
-                       "invalid because neither coarse grid nor fine grid "
-                       "interior are valid";
-              });
+          //   for (int vi = 0; vi < groupdata.numvars; ++vi)
+          //     groupdata.valid.at(tl).at(vi).set(valid_t(), [] {
+          //       return "SyncGroupsByDirI skipping prolongation: Mark as "
+          //              "invalid because neither coarse grid nor fine grid "
+          //              "interior are valid";
+          //     });
 
-          } else {
+          // } else {
 
-            for (int vi = 0; vi < groupdata.numvars; ++vi) {
-              groupdata.valid.at(tl).at(vi).set_ghosts(false, [] {
-                return "SyncGroupsByDirI before prolongation: Mark ghosts as "
-                       "invalid";
-              });
-              poison_invalid(leveldata, groupdata, vi, tl);
-              error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
-                               make_valid_all(), [] {
-                                 return "SyncGroupsByDirI on coarse level "
-                                        "before prolongation";
-                               });
-              error_if_invalid(
-                  leveldata, groupdata, vi, tl, make_valid_int(), [] {
-                    return "SyncGroupsByDirI on fine level before prolongation";
-                  });
-              check_valid(coarseleveldata, coarsegroupdata, vi, tl, [] {
-                return "SyncGroupsByDirI on coarse level before prolongation";
-              });
-              check_valid(leveldata, groupdata, vi, tl, [] {
-                return "SyncGroupsByDirI on fine level before prolongation";
-              });
-            }
-            FillPatchTwoLevels(
-                *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
-                {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                groupdata.numvars, ghext->amrcore->Geom(level - 1),
-                ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
-                interpolator, bcs, 0);
-            for (int vi = 0; vi < groupdata.numvars; ++vi)
-              groupdata.valid.at(tl).at(vi).set_ghosts(
-                  true, [] { return "SyncGroupsByDirI after prolongation"; });
-          } // if not all_invalid
-        }   // for tl
-      }
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
+                             make_valid_all(), [] {
+                               return "SyncGroupsByDirI on coarse level "
+                                      "before prolongation";
+                             });
+            error_if_invalid(
+                leveldata, groupdata, vi, tl, make_valid_int(), [] {
+                  return "SyncGroupsByDirI on fine level before prolongation";
+                });
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(coarseleveldata, coarsegroupdata, vi, tl, [] {
+              return "SyncGroupsByDirI on coarse level before prolongation";
+            });
+            check_valid(leveldata, groupdata, vi, tl, [] {
+              return "SyncGroupsByDirI on fine level before prolongation";
+            });
+            groupdata.valid.at(tl).at(vi).set_ghosts(false, [] {
+              return "SyncGroupsByDirI before prolongation: Mark ghosts as "
+                     "invalid";
+            });
+          }
+          FillPatchTwoLevels(
+              *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+              {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
+              ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
+              cphysbc, 0, fphysbc, 0, reffact, interpolator, bcs, 0);
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            groupdata.valid.at(tl).at(vi).set_ghosts(
+                true, [] { return "SyncGroupsByDirI after prolongation"; });
+          }
+        } // if not all_invalid
+      }   // for tl
+
+      // }
 
       for (int tl = 0; tl < sync_tl; ++tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
@@ -2037,10 +2000,12 @@ void Reflux(int level) {
 
       // Check coarse and fine data and fluxes are valid
       for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        error_if_invalid(fineleveldata, finegroupdata, vi, tl, make_valid_int(),
-                         [] { return "Reflux: Fine level data"; });
-        error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
-                         [] { return "Reflux: Coarse level data"; });
+        error_if_invalid(
+            fineleveldata, finegroupdata, vi, tl, make_valid_int(),
+            [] { return "Reflux before refluxing: Fine level data"; });
+        error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(), [] {
+          return "Reflux before refluxing: Coarse level data";
+        });
       }
       for (int d = 0; d < dim; ++d) {
         int flux_gi = finegroupdata.fluxes[d];
@@ -2074,32 +2039,15 @@ void Reflux(int level) {
       const Geometry &geom = ghext->amrcore->Geom(level);
       finegroupdata.freg->Reflux(*groupdata.mfab.at(tl), 1.0, 0, 0,
                                  groupdata.numvars, geom);
-    }
-  }
-}
 
-namespace {
-bool get_group_restrict_flag(const int gi) {
-  int tags = CCTK_GroupTagsTableI(gi);
-  assert(tags >= 0);
-  char buf[100];
-  int iret = Util_TableGetString(tags, sizeof buf, buf, "restrict");
-  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    return true;
-  } else if (iret >= 0) {
-    string str(buf);
-    for (auto &c : str)
-      c = tolower(c);
-    if (str == "yes")
-      return true;
-    if (str == "no")
-      return false;
-    assert(0);
-  } else {
-    assert(0);
-  }
+      for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
+        check_valid(fineleveldata, finegroupdata, vi, tl, [&]() {
+          return "Reflux after refluxing: Fine level data";
+        });
+      }
+    }
+  } // for gi
 }
-} // namespace
 
 void Restrict(int level, const vector<int> &groups) {
   DECLARE_CCTK_PARAMETERS;
@@ -2124,100 +2072,80 @@ void Restrict(int level, const vector<int> &groups) {
 
     assert(group.grouptype == CCTK_GF);
 
+    auto &groupdata = *leveldata.groupdata.at(gi);
+    const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
+    const IntVect reffact{2, 2, 2};
+
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)
       continue;
     // Don't restrict groups that have restriction disabled
-    const bool do_restrict = get_group_restrict_flag(gi);
-    if (!do_restrict)
+    if (!groupdata.do_restrict)
       continue;
 
-    auto &groupdata = *leveldata.groupdata.at(gi);
-    const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
-    // If there is more than one time level, then we don't restrict the
-    // oldest.
+    // If there is more than one time level, then we don't restrict the oldest.
     // TODO: during evolution, restrict only one time level
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
-    const IntVect reffact{2, 2, 2};
     for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      // Only restrict valid grid functions. Restriction only uses the
-      // interior.
-      bool all_invalid = true;
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
-        all_invalid &= !finegroupdata.valid.at(tl).at(vi).get().valid_int &&
-                       !groupdata.valid.at(tl).at(vi).get().valid_int;
+      for (int vi = 0; vi < groupdata.numvars; ++vi) {
 
-      if (all_invalid) {
-
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          groupdata.valid.at(tl).at(vi).set_and(make_valid_int(), [] {
-            return "Restrict on fine level skipping restricting (both fine and "
-                   "coarse level data are invalid)";
-          });
-        }
-
-      } else {
-
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-
-          error_if_invalid(
-              fineleveldata, finegroupdata, vi, tl, make_valid_int(),
-              [] { return "Restrict on fine level before restricting"; });
-          poison_invalid(fineleveldata, finegroupdata, vi, tl);
-          check_valid(fineleveldata, finegroupdata, vi, tl, [] {
-            return "Restrict on fine level before restricting";
-          });
-          error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(), [] {
-            return "Restrict on coarse level before restricting";
-          });
-          poison_invalid(leveldata, groupdata, vi, tl);
-          check_valid(leveldata, groupdata, vi, tl, [] {
-            return "Restrict on coarse level before restricting";
-          });
-        }
+        // Restriction only uses the interior
+        error_if_invalid(
+            fineleveldata, finegroupdata, vi, tl, make_valid_int(),
+            [] { return "Restrict on fine level before restricting"; });
+        poison_invalid(fineleveldata, finegroupdata, vi, tl);
+        check_valid(fineleveldata, finegroupdata, vi, tl,
+                    [] { return "Restrict on fine level before restricting"; });
+        error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(), [] {
+          return "Restrict on coarse level before restricting";
+        });
+        poison_invalid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl, [] {
+          return "Restrict on coarse level before restricting";
+        });
+      }
 
 #warning                                                                       \
     "TODO: Allow different restriction operators, and ensure this is conservative"
-        // rank: 0: vertex, 1: edge, 2: face, 3: volume
-        int rank = 0;
-        for (int d = 0; d < dim; ++d)
-          rank += groupdata.indextype[d];
-        switch (rank) {
-        case 0:
-          average_down_nodal(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                             reffact);
-          break;
-        case 1:
-          average_down_edges(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                             reffact);
-          break;
-        case 2:
-          average_down_faces(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                             reffact);
-          break;
-        case 3:
-          average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
-                       groupdata.numvars, reffact);
-          break;
-        default:
-          assert(0);
-        }
-
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(tl).at(vi).set(make_valid_int(),
-                                            [] { return "Restrict"; });
+      // rank: 0: vertex, 1: edge, 2: face, 3: volume
+      int rank = 0;
+      for (int d = 0; d < dim; ++d)
+        rank += groupdata.indextype[d];
+      switch (rank) {
+      case 0:
+        average_down_nodal(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           reffact);
+        break;
+      case 1:
+        average_down_edges(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           reffact);
+        break;
+      case 2:
+        average_down_faces(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           reffact);
+        break;
+      case 3:
+        average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
+                     groupdata.numvars, reffact);
+        break;
+      default:
+        assert(0);
       }
 
+      // TODO: Also remember old why_valid for interior?
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
+        groupdata.valid.at(tl).at(vi).set(make_valid_int(),
+                                          [] { return "Restrict"; });
         poison_invalid(leveldata, groupdata, vi, tl);
         check_valid(leveldata, groupdata, vi, tl, [&]() {
           return "Restrict on coarse level after restricting";
         });
       }
-    }
-  }
+
+    } // for tl
+  }   // for gi
 }
 
 void Restrict(int level) {
@@ -2231,13 +2159,6 @@ void Restrict(int level) {
   groups.reserve(numgroups);
   for (int gi = 0; gi < numgroups; ++gi) {
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
-      continue;
-    // Don't restrict the regridding error nor the refinement level
-    if (gi == gi_regrid_error || gi == gi_refinement_level)
-      continue;
-    // Don't restrict groups that have restriction disabled
-    const bool do_restrict = get_group_restrict_flag(gi);
-    if (!do_restrict)
       continue;
     groups.push_back(gi);
   }

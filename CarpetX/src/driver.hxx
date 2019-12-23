@@ -231,6 +231,9 @@ struct GHExt {
     int firstvarindex;
     int numvars;
 
+    bool do_checkpoint; // whether to checkpoint
+    bool do_restrict;   // whether to restrict
+
     vector<vector<why_valid_t> > valid; // [time level][var index]
 
     // TODO: add poison_invalid and check_valid functions
