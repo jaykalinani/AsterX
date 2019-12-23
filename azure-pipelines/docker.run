@@ -34,22 +34,9 @@ echo "Starting:"
 # Disabling TCP BTL
 export CACTUS_STARTTIME=$(date +%s)
 time                                            \
-    /usr/bin/mpirun                             \
-    -np @NUM_PROCS@                             \
-    --mca btl self,vader                        \
-    -x CACTUS_NUM_PROCS                         \
-    -x CACTUS_NUM_THREADS                       \
-    -x CACTUS_SET_THREAD_BINDINGS               \
-    -x CACTUS_STARTTIME                         \
-    -x CXX_MAX_TASKS                            \
-    -x GLIBCXX_FORCE_NEW                        \
-    -x GMON_OUT_PREFIX                          \
-    -x OMP_DISPLAY_ENV                          \
-    -x OMP_MAX_TASKS                            \
-    -x OMP_NUM_THREADS                          \
-    -x OMP_PLACES                               \
-    -x OMP_PROC_BIND                            \
-    -x OMP_STACKSIZE                            \
+    /usr/bin/mpiexec                            \
+    -n @NUM_PROCS@                              \
+    -l                                          \
     @EXECUTABLE@ -L 3 @PARFILE@                 \
     >@SIMULATION_NAME@.out                      \
     2>@SIMULATION_NAME@.err

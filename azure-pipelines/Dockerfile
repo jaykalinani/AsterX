@@ -16,7 +16,7 @@ RUN apt-get update && \
         g++ \
         gfortran \
         git \
-        libopenmpi-dev \
+        libmpich-dev \
         perl \
         pkg-config \
         python \
