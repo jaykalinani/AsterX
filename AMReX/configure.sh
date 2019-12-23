@@ -37,7 +37,7 @@ AMREX_GIT_VERSION_MAJOR=$(
         sed -e 's/[.].*$//')
 AMREX_GIT_VERSION_MINOR=$(
     echo "${AMREX_GIT_VERSION}" |
-        sed -e 's/^[^.]*[.]//;s/[.].*$//')
+        sed -e 's/^[^.]*[.]//;s/[-.].*$//')
 
 AMREX_GIT_VERSION_NUMERIC=$(
     printf "%d%02d" "${AMREX_GIT_VERSION_MAJOR}" "${AMREX_GIT_VERSION_MINOR}")
