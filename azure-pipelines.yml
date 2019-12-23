@@ -21,12 +21,12 @@ steps:
 - script: |
     set -euxo pipefail
     cd Cactus
-    ./simfactory/bin/sim build -j2 --thornlist=../azure-pipelines/carpetx.th
+    ./simfactory/bin/sim build -j$(nproc) --thornlist=../azure-pipelines/carpetx.th
   displayName: Build Cactus
 - script: |
     set -euxo pipefail
     cd Cactus
-    mpirun -np 2 -x OMP_NUM_THREADS=2 ./exe/cactus_sim ../azure-pipelines/carpetx.par
+    env OMP_NUM_THREADS=2 mpiexec -n 2 ./exe/cactus_sim ../azure-pipelines/carpetx.par
   displayName: Run example
 - script: |
     set -euxo pipefail
