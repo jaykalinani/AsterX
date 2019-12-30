@@ -5,7 +5,9 @@ IMPLEMENTS: ADMBase
 USES INCLUDE HEADER: loop.hxx
 
 
-public:
+
+PUBLIC:
+
 CCTK_REAL metric TYPE=gf TAGS='index={0 0 0}' { gxx gxy gxz gyy gyz gzz } "ADM 3-metric g_ij"
 
 CCTK_REAL curv TYPE=gf TAGS='index={0 0 0}' { kxx kxy kxz kyy kyz kzz } "ADM extrinsic curvature K_ij"
