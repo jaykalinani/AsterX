@@ -1825,6 +1825,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   }
 
   if (restrict_during_sync) {
+#warning "TODO"
+    assert(false);
     if (current_level == -1) {
       for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
         Restrict(level, groups);
@@ -2052,6 +2054,8 @@ void Reflux(int level) {
 void Restrict(int level, const vector<int> &groups) {
   DECLARE_CCTK_PARAMETERS;
 
+#warning "TODO"
+  assert(do_restrict);
   if (!do_restrict)
     return;
 
@@ -2149,18 +2153,18 @@ void Restrict(int level, const vector<int> &groups) {
 }
 
 void Restrict(int level) {
-  const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
-  assert(gi_regrid_error >= 0);
-  const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
-  assert(gi_refinement_level >= 0);
-
   const int numgroups = CCTK_NumGroups();
   vector<int> groups;
   groups.reserve(numgroups);
-  for (int gi = 0; gi < numgroups; ++gi) {
-    if (CCTK_GroupTypeI(gi) != CCTK_GF)
-      continue;
-    groups.push_back(gi);
+  const auto &leveldata = ghext->leveldata.at(level);
+  for (const auto &groupdataptr : leveldata.groupdata) {
+    // Restrict only grid functions
+    if (groupdataptr) {
+      auto &restrict groupdata = *groupdataptr;
+      // Restrict only evolved grid functions
+      if (groupdata.do_checkpoint)
+        groups.push_back(groupdata.groupindex);
+    }
   }
   Restrict(level, groups);
 }
