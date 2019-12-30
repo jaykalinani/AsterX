@@ -141,3 +141,4 @@ CarpetX/ODESolvers
 CarpetX/TestODESolvers
 CarpetX/TestProlongate
 CarpetX/WaveToyCarpetX
+CarpetX/googletest
