@@ -61,7 +61,7 @@ schedule BaikalX_zero_rhss at PostRestrict as BaikalX_ZeroRHS
   # ADD, this is the equivalent of MoL_PostStep
   # I do not really write to the boundary, but for periodic ones used, the SYNC does
   WRITES: BaikalX::evol_variables(boundary)
-  # must not SYNC here since this becomes an infinite loop otherwise
+  SYNC: BaikalX::evol_variables
 } "Zero out Baikal RHS"
 
 schedule BaikalX_BSSN_to_ADM at PostRestrict after BaikalX_zero_rhss before BaikalX_Ricci
