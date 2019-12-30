@@ -14,7 +14,10 @@ CCTK_REAL curv TYPE=gf TAGS='index={0 0 0}' { kxx kxy kxz kyy kyz kzz } "ADM ext
 
 CCTK_REAL lapse TYPE=gf TAGS='index={0 0 0}' { alp } "ADM lapse function alpha"
 
-CCTK_REAL dtlapse TYPE=gf TAGS='index={0 0 0}' { dtalp } "Time derivative of ADM lapse function"
+# TODO: This is temporarily deactivated since BaikalX doesn't handle this
+# variable correctly. Other respective parts of ADMBase have also been
+# deactivated. We need to update BaikalX to set this variable as well.
+# CCTK_REAL dtlapse TYPE=gf TAGS='index={0 0 0}' { dtalp } "Time derivative of ADM lapse function"
 
 CCTK_REAL shift TYPE=gf TAGS='index={0 0 0}' { betax betay betaz } "ADM shift vector beta^i"
 

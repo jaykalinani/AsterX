@@ -30,13 +30,13 @@ if (CCTK_EQUALS(initial_lapse, "one")) {
   } "Set lapse to one"
 }
 
-if (CCTK_EQUALS(initial_dtlapse, "zero")) {
-  SCHEDULE ADMBase_initial_dtlapse IN ADMBase_InitialGauge
-  {
-    LANG: C
-    WRITES: dtlapse(everywhere)
-  } "Set dtlapse to zero"
-}
+# if (CCTK_EQUALS(initial_dtlapse, "zero")) {
+#   SCHEDULE ADMBase_initial_dtlapse IN ADMBase_InitialGauge
+#   {
+#     LANG: C
+#     WRITES: dtlapse(everywhere)
+#   } "Set dtlapse to zero"
+# }
 
 if (CCTK_EQUALS(initial_shift, "zero")) {
   SCHEDULE ADMBase_initial_shift IN ADMBase_InitialGauge

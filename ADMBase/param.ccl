@@ -17,10 +17,10 @@ KEYWORD initial_shift "Initial shift value"
   "zero" :: "Shift is zero"
 } "zero"
 
-KEYWORD initial_dtlapse "Initial dtlapse value"
-{
-  "zero" :: "Dtlapse is zero"
-} "zero"
+# KEYWORD initial_dtlapse "Initial dtlapse value"
+# {
+#   "zero" :: "Dtlapse is zero"
+# } "zero"
 
 KEYWORD initial_dtshift "Initial dtshift value"
 {
