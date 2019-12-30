@@ -26,10 +26,9 @@ schedule BaikalX_ADM_to_BSSN_all_but_lambdaU at CCTK_INITIAL after ADMBase_PostI
 
   READS: ADMBase::metric(everywhere)
   READS: ADMBase::curv(everywhere)
-  READS: ADMBASE::shift(everywhere)
-  READS: ADMBASE::lapse(everywhere)
+  READS: ADMBase::shift(everywhere)
+  READS: ADMBase::lapse(everywhere)
   READS: ADMBase::dtshift(everywhere)
-  READS: ADMBase::dtlapse(everywhere)
 } "Convert initial data into BSSN variables"
 
 schedule BaikalX_ADM_to_BSSN_lambdaU at CCTK_INITIAL after ADMBase_PostInitial after BaikalX_ADM_to_BSSN_all_but_lambdaU
@@ -49,9 +48,9 @@ schedule BaikalX_BSSN_to_ADM in ODESolvers_RHS after BaikalX_zero_rhss after Bai
   READS: BaikalX::evol_variables(everywhere)
   WRITES: ADMBase::metric(everywhere)
   WRITES: ADMBase::curv(everywhere)
-  WRITES: ADMBASE::shift(everywhere)
+  WRITES: ADMBase::shift(everywhere)
   WRITES: ADMBase::dtshift(everywhere)
-  WRITES: ADMBASE::lapse(everywhere)
+  WRITES: ADMBase::lapse(everywhere)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
 schedule BaikalX_zero_rhss at PostRestrict as BaikalX_ZeroRHS
@@ -71,9 +70,9 @@ schedule BaikalX_BSSN_to_ADM at PostRestrict after BaikalX_zero_rhss before Baik
   READS: BaikalX::evol_variables(everywhere)
   WRITES: ADMBase::metric(everywhere)
   WRITES: ADMBase::curv(everywhere)
-  WRITES: ADMBASE::shift(everywhere)
+  WRITES: ADMBase::shift(everywhere)
   WRITES: ADMBase::dtshift(everywhere)
-  WRITES: ADMBASE::lapse(everywhere)
+  WRITES: ADMBase::lapse(everywhere)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
 schedule BaikalX_zero_rhss at PostRegrid as BaikalX_ZeroRHS
@@ -93,9 +92,9 @@ schedule BaikalX_BSSN_to_ADM at PostRegrid after BaikalX_zero_rhss before Baikal
   READS: BaikalX::evol_variables(everywhere)
   WRITES: ADMBase::metric(everywhere)
   WRITES: ADMBase::curv(everywhere)
-  WRITES: ADMBASE::shift(everywhere)
+  WRITES: ADMBase::shift(everywhere)
   WRITES: ADMBase::dtshift(everywhere)
-  WRITES: ADMBASE::lapse(everywhere)
+  WRITES: ADMBase::lapse(everywhere)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
 schedule BaikalX_zero_rhss in ODESolvers_RHS as BaikalX_ZeroRHS before BaikalX_Ricci
