@@ -1,9 +1,9 @@
 ActiveThorns = "
-    CarpetX
-    IOUtil
     ADMBase
     BaikalX
+    CarpetX
     ErrorEstimator
+    IOUtil
     ODESolvers
 "
  
@@ -12,8 +12,6 @@ $ncells = 32
 
 Cactus::cctk_show_schedule = yes
 
-# Cactus::terminate = "iteration"
-# Cactus::cctk_itlast = 0
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 1.0
 
@@ -35,12 +33,9 @@ CarpetX::ghost_size = 2
 
 CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
-CarpetX::regrid_error_threshold = 2.
+CarpetX::regrid_error_threshold = 2.0
 
 CarpetX::prolongation_type = "ddf"
-# inconsistent, but "yes" cannot be done due to interaction between boundary
-# conditions and restrict / prolongate
-CarpetX::restrict_during_sync = no
 
 CarpetX::dtfac = 0.25
 
