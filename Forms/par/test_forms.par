@@ -1,0 +1,3 @@
+ActiveThorns = "Forms"
+
+Forms::test_forms = yes

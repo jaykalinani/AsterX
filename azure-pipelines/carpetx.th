@@ -131,6 +131,7 @@ CarpetX/BaikalX
 CarpetX/CarpetX
 CarpetX/Coordinates
 CarpetX/ErrorEstimator
+CarpetX/Forms
 CarpetX/Hydro
 CarpetX/HydroToyCarpetX
 #DISABLED CarpetX/Kokkos
