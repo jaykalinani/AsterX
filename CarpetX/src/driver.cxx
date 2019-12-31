@@ -1056,21 +1056,46 @@ extern "C" int CarpetX_Shutdown() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int MyProc(const cGH *restrict cctkGH) { return ParallelDescriptor::MyProc(); }
+int MyProc(const cGH *restrict cctkGH) {
+  if (pamrex) {
+    return ParallelDescriptor::MyProc();
+  } else {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    return rank;
+  }
+}
 
-int nProcs(const cGH *restrict cctkGH) { return ParallelDescriptor::NProcs(); }
+int nProcs(const cGH *restrict cctkGH) {
+  if (pamrex) {
+    return ParallelDescriptor::NProcs();
+  } else {
+    int size;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    return size;
+  }
+}
 
 int Exit(cGH *cctkGH, int retval) {
+  if (pamrex) {
   ParallelDescriptor::Abort(retval);
+  } else {
+    MPI_Abort(MPI_COMM_WORLD, retval);
+  }
   return 0; // unreachable
 }
 
 int Abort(cGH *cctkGH, int retval) {
+  if (pamrex) {
   ParallelDescriptor::Abort(retval);
+  } else {
+    MPI_Abort(MPI_COMM_WORLD, retval);
+  }
   return 0; // unreachable
 }
 
 int Barrier(const cGH *restrict cctkGH) {
+  assert(pamrex);
   ParallelDescriptor::Barrier();
   return 0;
 }
