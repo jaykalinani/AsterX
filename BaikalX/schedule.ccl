@@ -16,7 +16,7 @@ schedule BaikalX_Banner at STARTUP
   OPTIONS: meta
 } "Output ASCII art banner"
 
-schedule BaikalX_ADM_to_BSSN_all_but_lambdaU at CCTK_INITIAL after ADMBase_PostInitial
+schedule BaikalX_ADM_to_BSSN_all_but_lambdaU at INITIAL after ADMBase_PostInitial
 {
   LANG: C
   WRITES: aDD00GF(everywhere) aDD01GF(everywhere) aDD02GF(everywhere) aDD11GF(everywhere) aDD12GF(everywhere) aDD22GF(everywhere) 
@@ -31,7 +31,7 @@ schedule BaikalX_ADM_to_BSSN_all_but_lambdaU at CCTK_INITIAL after ADMBase_PostI
   READS: ADMBase::dtshift(everywhere)
 } "Convert initial data into BSSN variables"
 
-schedule BaikalX_ADM_to_BSSN_lambdaU at CCTK_INITIAL after ADMBase_PostInitial after BaikalX_ADM_to_BSSN_all_but_lambdaU
+schedule BaikalX_ADM_to_BSSN_lambdaU at INITIAL after ADMBase_PostInitial after BaikalX_ADM_to_BSSN_all_but_lambdaU
 {
   LANG: C
   SYNC: BaikalX::evol_variables
@@ -53,7 +53,7 @@ schedule BaikalX_BSSN_to_ADM in ODESolvers_RHS after BaikalX_zero_rhss after Bai
   WRITES: ADMBase::lapse(everywhere)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
-schedule BaikalX_zero_rhss at PostRestrict as BaikalX_ZeroRHS
+schedule BaikalX_zero_rhss at POSTRESTRICT as BaikalX_ZeroRHS
 {
   LANG: C
   WRITES: BaikalX::evol_variables_rhs(everywhere)
@@ -64,7 +64,7 @@ schedule BaikalX_zero_rhss at PostRestrict as BaikalX_ZeroRHS
   SYNC: BaikalX::evol_variables
 } "Zero out Baikal RHS"
 
-schedule BaikalX_BSSN_to_ADM at PostRestrict after BaikalX_zero_rhss before BaikalX_Ricci
+schedule BaikalX_BSSN_to_ADM at POSTRESTRICT after BaikalX_zero_rhss before BaikalX_Ricci
 {
   LANG: C
   READS: BaikalX::evol_variables(everywhere)
@@ -75,7 +75,7 @@ schedule BaikalX_BSSN_to_ADM at PostRestrict after BaikalX_zero_rhss before Baik
   WRITES: ADMBase::lapse(everywhere)
 } "Perform BSSN-to-ADM conversion. Needed for HydroBase coupling."
 
-schedule BaikalX_zero_rhss at PostRegrid as BaikalX_ZeroRHS
+schedule BaikalX_zero_rhss at POSTREGRID as BaikalX_ZeroRHS
 {
   LANG: C
   WRITES: BaikalX::evol_variables_rhs(everywhere)
@@ -86,7 +86,7 @@ schedule BaikalX_zero_rhss at PostRegrid as BaikalX_ZeroRHS
   SYNC: BaikalX::evol_variables
 } "Zero out Baikal RHS"
 
-schedule BaikalX_BSSN_to_ADM at PostRegrid after BaikalX_zero_rhss before BaikalX_Ricci
+schedule BaikalX_BSSN_to_ADM at POSTREGRID after BaikalX_zero_rhss before BaikalX_Ricci
 {
   LANG: C
   READS: BaikalX::evol_variables(everywhere)
@@ -120,7 +120,8 @@ schedule driver_pt2_BSSN_RHSs in ODESolvers_RHS as BaikalX_RHS after BaikalX_Ric
   LANG: C
   READS: BaikalX::auxevol_variables(interior)
   READS: BaikalX::evol_variables(everywhere)
-  WRITES: BaikalX::evol_variables_rhs(interior)
+  WRITES: BaikalX::evol_variables_rhs(interiorwithboundary)
+  SYNC: BaikalX::evol_variables_rhs
 } "MoL: Evaluate BSSN RHSs"
 
 schedule enforce_detgammabar_constraint in ODESolvers_RHS before BaikalX_zero_rhss
@@ -131,7 +132,7 @@ schedule enforce_detgammabar_constraint in ODESolvers_RHS before BaikalX_zero_rh
 } "Enforce detgammabar = detgammahat (= 1 in Cartesian)"
 
 # Compute Hamiltonian & momentum constraints
-schedule group MoL_PseudoEvolution in POSTSTEP
+schedule group MoL_PseudoEvolution at POSTSTEP
 {
 } "Compute constraints etc."
 
