@@ -2,8 +2,6 @@
 
 SHARES: ADMBase
 
-USES KEYWORD metric_type
-
 EXTENDS KEYWORD initial_data 
 {
   "twopunctures" :: "two puncture black holes"
@@ -18,10 +16,6 @@ EXTENDS KEYWORD initial_lapse
 }
 
 
-
-SHARES: StaticConformal
-
-USES KEYWORD conformal_storage
 
 SHARES: IO
 

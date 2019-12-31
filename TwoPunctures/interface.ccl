@@ -2,7 +2,7 @@
 
 IMPLEMENTS: TwoPunctures
 
-INHERITS: ADMBase StaticConformal grid
+INHERITS: ADMBase grid
 
 REAL puncture_u TYPE=gf tags='prolongation="none"'
 

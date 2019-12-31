@@ -398,17 +398,6 @@ TwoPunctures (CCTK_ARGUMENTS)
                (double)initial_lapse_psi_exponent);
 
   CCTK_INFO ("Interpolating result");
-  if (CCTK_EQUALS(metric_type, "static conformal")) {
-    if (CCTK_EQUALS(conformal_storage, "factor")) {
-      *conformal_state = 1;
-    } else if (CCTK_EQUALS(conformal_storage, "factor+derivs")) {
-      *conformal_state = 2;
-    } else if (CCTK_EQUALS(conformal_storage, "factor+derivs+2nd derivs")) {
-      *conformal_state = 3;
-    }
-  } else {
-    *conformal_state = 0;
-  }
 
   for (int d = 0; d < 3; ++ d)
   {
@@ -506,103 +495,6 @@ TwoPunctures (CCTK_ARGUMENTS)
         if (multiply_old_lapse)
             old_alp = alp[ind];
 
-        if ((*conformal_state > 0) || (pmn_lapse) || (brownsville_lapse)) {
-
-          CCTK_REAL xp, yp, zp, rp, ir;
-          CCTK_REAL s1, s3, s5;
-          CCTK_REAL p, px, py, pz, pxx, pxy, pxz, pyy, pyz, pzz;
-          p = 1.0;
-          px = py = pz = 0.0;
-          pxx = pxy = pxz = 0.0;
-          pyy = pyz = pzz = 0.0;
-
-          /* first puncture */
-          xp = xx - par_b;
-          yp = yy;
-          zp = zz;
-          rp = sqrt (xp*xp + yp*yp + zp*zp);
-          rp = pow (pow (rp, 4) + pow (TP_epsilon, 4), 0.25);
-          if (rp < TP_Tiny)
-              rp = TP_Tiny;
-          ir = 1.0/rp;
-
-          if (rp < TP_Extend_Radius) {
-            ir = EXTEND(1., rp);
-          }
-
-          s1 = 0.5* *mp *ir;
-          s3 = -s1*ir*ir;
-          s5 = -3.0*s3*ir*ir;
-
-          p += s1;
-
-          px += xp*s3;
-          py += yp*s3;
-          pz += zp*s3;
-
-          pxx += xp*xp*s5 + s3;
-          pxy += xp*yp*s5;
-          pxz += xp*zp*s5;
-          pyy += yp*yp*s5 + s3;
-          pyz += yp*zp*s5;
-          pzz += zp*zp*s5 + s3;
-
-          /* second puncture */
-          xp = xx + par_b;
-          yp = yy;
-          zp = zz;
-          rp = sqrt (xp*xp + yp*yp + zp*zp);
-          rp = pow (pow (rp, 4) + pow (TP_epsilon, 4), 0.25);
-          if (rp < TP_Tiny)
-              rp = TP_Tiny;
-          ir = 1.0/rp;
-
-          if (rp < TP_Extend_Radius) {
-            ir = EXTEND(1., rp);
-          }
-
-          s1 = 0.5* *mm *ir;
-          s3 = -s1*ir*ir;
-          s5 = -3.0*s3*ir*ir;
-
-          p += s1;
-
-          px += xp*s3;
-          py += yp*s3;
-          pz += zp*s3;
-
-          pxx += xp*xp*s5 + s3;
-          pxy += xp*yp*s5;
-          pxz += xp*zp*s5;
-          pyy += yp*yp*s5 + s3;
-          pyz += yp*zp*s5;
-          pzz += zp*zp*s5 + s3;
-
-          if (*conformal_state >= 1) {
-            static_psi = p;
-            psi[ind] = static_psi;
-          }
-          if (*conformal_state >= 2) {
-            psix[ind] = px / static_psi;
-            psiy[ind] = py / static_psi;
-            psiz[ind] = pz / static_psi;
-          }
-          if (*conformal_state >= 3) {
-            psixx[ind] = pxx / static_psi;
-            psixy[ind] = pxy / static_psi;
-            psixz[ind] = pxz / static_psi;
-            psiyy[ind] = pyy / static_psi;
-            psiyz[ind] = pyz / static_psi;
-            psizz[ind] = pzz / static_psi;
-          }
-
-          if (pmn_lapse)
-            alp[ind] = pow(p, initial_lapse_psi_exponent);
-          if (brownsville_lapse)
-            alp[ind] = 2.0/(1.0+pow(p, initial_lapse_psi_exponent));
-
-        } /* if conformal-state > 0 */
-          
         puncture_u[ind] = U;
 
         gxx[ind] = pow (psi1 / static_psi, 4);
@@ -644,13 +536,6 @@ TwoPunctures (CCTK_ARGUMENTS)
 
         if (swap_xz) {
           /* Swap the x and z components of all tensors */
-          if (*conformal_state >= 2) {
-            SWAP (psix[ind], psiz[ind]);
-          }
-          if (*conformal_state >= 3) {
-            SWAP (psixx[ind], psizz[ind]);
-            SWAP (psixy[ind], psiyz[ind]);
-          }
           SWAP (gxx[ind], gzz[ind]);
           SWAP (gxy[ind], gyz[ind]);
           SWAP (kxx[ind], kzz[ind]);
@@ -666,7 +551,7 @@ TwoPunctures (CCTK_ARGUMENTS)
     Rescale_Sources(cctkGH,
                     cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2],
                     x, y, z,
-                    (*conformal_state > 0) ? psi : NULL,
+                    NULL,
                     gxx, gyy, gzz,
                     gxy, gxz, gyz);
   }
