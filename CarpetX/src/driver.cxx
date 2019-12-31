@@ -1078,7 +1078,7 @@ int nProcs(const cGH *restrict cctkGH) {
 
 int Exit(cGH *cctkGH, int retval) {
   if (pamrex) {
-  ParallelDescriptor::Abort(retval);
+    ParallelDescriptor::Abort(retval);
   } else {
     MPI_Abort(MPI_COMM_WORLD, retval);
   }
@@ -1087,7 +1087,7 @@ int Exit(cGH *cctkGH, int retval) {
 
 int Abort(cGH *cctkGH, int retval) {
   if (pamrex) {
-  ParallelDescriptor::Abort(retval);
+    ParallelDescriptor::Abort(retval);
   } else {
     MPI_Abort(MPI_COMM_WORLD, retval);
   }

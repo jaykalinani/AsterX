@@ -366,12 +366,50 @@ void check_valid(const GHExt::LevelData &leveldata,
     }
   }
 
-  if (CCTK_BUILTIN_EXPECT(found_nan, false))
+  if (CCTK_BUILTIN_EXPECT(found_nan, false)) {
+    CCTK_VINFO("%s: Grid function \"%s\" has nans on refinement level %d, time "
+               "level %d; expected valid %s",
+               msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+               leveldata.level, tl,
+               string(groupdata.valid.at(tl).at(vi)).c_str());
+
+    for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+      const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+      const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+      const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
+
+      if (valid.valid_int)
+        grid.loop_idx(where_t::interior, groupdata.indextype,
+                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+                          CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
+                                     double(p.x), double(p.y), double(p.z),
+                                     double(ptr_(p.I)));
+                      });
+      if (valid.valid_outer)
+        grid.loop_idx(where_t::boundary, groupdata.indextype,
+                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+                          CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
+                                     double(p.x), double(p.y), double(p.z),
+                                     double(ptr_(p.I)));
+                      });
+      if (valid.valid_ghosts)
+        grid.loop_idx(where_t::ghosts, groupdata.indextype,
+                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
+                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+                          CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
+                                     double(p.x), double(p.y), double(p.z),
+                                     double(ptr_(p.I)));
+                      });
+    }
+
     CCTK_VERROR(
         "%s: Grid function \"%s\" has nans on refinement level %d, time "
         "level %d; expected valid %s",
         msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
         leveldata.level, tl, string(groupdata.valid.at(tl).at(vi)).c_str());
+  }
 }
 
 // Ensure grid functions are valid
@@ -1186,7 +1224,7 @@ int Initialise(tFleshConfig *config) {
         if (leveldata.level == 0) {
           CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
                      leveldata.level, sz, pts,
-                   100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
         } else {
           const double ptsc = ghext->leveldata.at(leveldata.level - 1)
                                   .mfab0->boxArray()
@@ -1430,7 +1468,7 @@ int Evolve(tFleshConfig *config) {
         if (leveldata.level == 0) {
           CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
                      leveldata.level, sz, pts,
-                   100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
         } else {
           const double ptsc = ghext->leveldata.at(leveldata.level - 1)
                                   .mfab0->boxArray()
