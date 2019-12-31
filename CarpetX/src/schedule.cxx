@@ -1170,7 +1170,7 @@ int Initialise(tFleshConfig *config) {
         Interval interval(timer);
         assert(saved_cctkGH == nullptr);
         saved_cctkGH = cctkGH;
-        CCTK_REAL time = 0.0; // dummy time
+        const CCTK_REAL time = 0.0; // dummy time
         ghext->amrcore->regrid(0, time);
         saved_cctkGH = nullptr;
       }
