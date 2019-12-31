@@ -1179,13 +1179,23 @@ int Initialise(tFleshConfig *config) {
       assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
-      double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+      const double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
       for (const auto &leveldata : ghext->leveldata) {
-        int sz = leveldata.mfab0->size();
-        double pts = leveldata.mfab0->boxArray().d_numPts();
-        CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)", leveldata.level,
-                   sz, pts,
+        const int sz = leveldata.mfab0->size();
+        const double pts = leveldata.mfab0->boxArray().d_numPts();
+        if (leveldata.level == 0) {
+          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                     leveldata.level, sz, pts,
                    100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+        } else {
+          const double ptsc = ghext->leveldata.at(leveldata.level - 1)
+                                  .mfab0->boxArray()
+                                  .d_numPts();
+          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                     leveldata.level, sz, pts,
+                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                     100 * pts / (pow(2.0, dim) * ptsc));
+        }
       }
 
       // Did we create a new level?
@@ -1415,11 +1425,21 @@ int Evolve(tFleshConfig *config) {
       double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
       assert(current_level == -1);
       for (const auto &leveldata : ghext->leveldata) {
-        int sz = leveldata.mfab0->size();
-        double pts = leveldata.mfab0->boxArray().d_numPts();
-        CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)", leveldata.level,
-                   sz, pts,
+        const int sz = leveldata.mfab0->size();
+        const double pts = leveldata.mfab0->boxArray().d_numPts();
+        if (leveldata.level == 0) {
+          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                     leveldata.level, sz, pts,
                    100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+        } else {
+          const double ptsc = ghext->leveldata.at(leveldata.level - 1)
+                                  .mfab0->boxArray()
+                                  .d_numPts();
+          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                     leveldata.level, sz, pts,
+                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                     100 * pts / (pow(2.0, dim) * ptsc));
+        }
       }
     }
 
