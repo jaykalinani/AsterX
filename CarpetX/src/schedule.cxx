@@ -482,10 +482,9 @@ struct checksum_t {
   uLong crc;
   checksum_t() = default;
   inline checksum_t(const valid_t &where)
-      : where(where), crc(crc32_z(0, nullptr, 0)) {}
+      : where(where), crc(crc32(0, nullptr, 0)) {}
   template <typename T> inline void add(const T &x) {
-    crc =
-        crc32_z(crc, static_cast<const Bytef *>(static_cast<const void *>(&x)),
+    crc = crc32(crc, static_cast<const Bytef *>(static_cast<const void *>(&x)),
                 sizeof x);
   }
 
