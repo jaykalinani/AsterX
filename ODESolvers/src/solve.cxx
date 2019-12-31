@@ -188,6 +188,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   const int tl = 0;
 
   statecomp_t var, rhs;
+  int nvars = 0;
   for (const auto &leveldata : CarpetX::ghext->leveldata) {
     for (const auto &groupdataptr : leveldata.groupdata) {
       const auto &groupdata = *groupdataptr;
@@ -204,11 +205,12 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
               CCTK_FullVarName(rhs_groupdata.firstvarindex + vi));
           rhs.varids.push_back(varid_t{rhs_groupdata.groupindex, vi, tl});
           rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
+          if (leveldata.level == 0)
+            ++nvars;
         }
       }
     }
   }
-  const int nvars = int(var.mfabs.size());
   CCTK_VINFO("  Integrating %d variables", nvars);
   if (nvars == 0)
     CCTK_VWARN(CCTK_WARN_ALERT, "Integrating %d variables", nvars);
