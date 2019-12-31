@@ -217,14 +217,15 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
   const CCTK_REAL saved_time = cctkGH->cctk_time;
   *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) -= dt;
+  // Calculate first RHS
+  CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+  CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
   if (CCTK_EQUALS(method, "constant")) {
 
     // do nothing
 
   } else if (CCTK_EQUALS(method, "Euler")) {
-
-    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt, rhs);
@@ -233,12 +234,10 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     const auto old = var.copy();
 
-    CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
-    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
-
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt / 2, rhs);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) += dt / 2;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
     CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
@@ -252,6 +251,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
   // Reset current time
   *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = saved_time;
+  // Apply last boundary conditions
+  CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
   CCTK_VINFO("Calculated new state at t=%g", double(cctkGH->cctk_time));
 
   // TODO: Update time here, and not during time level cycling in the driver
