@@ -98,9 +98,9 @@ template <typename T, int D, int R> void TestVector() {
     // Right Unit
     EXPECT_EQ(x * sone, x);
 
-    // Left Zero
+    // Left zero
     EXPECT_EQ(szero * x, zero);
-    // Right Zero
+    // Right zero
     EXPECT_EQ(x * szero, zero);
 
     // Commutativity
@@ -139,9 +139,11 @@ template <typename T, int D, int Rx, int Ry> void TestWedge() {
     form<T, D, Rx> x;
     for (int c = 0; c < Nx; ++c)
       x.comps[c] = arb.next();
-    form<T, D, Ry> y;
+    form<T, D, Ry> y, y2;
     for (int c = 0; c < Ny; ++c)
       y.comps[c] = arb.next();
+    for (int c = 0; c < Ny; ++c)
+      y2.comps[c] = arb.next();
 
     const auto xzero = form<T, D, Rx>();
     const auto yzero = form<T, D, Ry>();
@@ -155,16 +157,45 @@ template <typename T, int D, int Rx, int Ry> void TestWedge() {
     // Scaling:
 
     // Associativity
-    EXPECT_EQ(a * wedge(x, y), wedge(a * x, y));
+    EXPECT_EQ(a * wedge(x, y), wedge(x, a * y));
 
-    // Left Zero
+    // Left zero
     EXPECT_EQ(wedge(xzero, y), rzero);
-    // Right Zero
+    // Right zero
     EXPECT_EQ(wedge(x, yzero), rzero);
+
+    // Distributivity
+    EXPECT_EQ(wedge(x, y + y2), wedge(x, y) + wedge(x, y2));
 
     // Anti-commutativity
     constexpr bool s = (Rx & Ry) & 1;
     EXPECT_EQ(wedge(x, y), bitsign(s) * wedge(y, x));
+  }
+}
+
+template <typename T, int D, int Rx, int Ry, int Rz> void TestWedge3() {
+  constexpr int R = Rx + Ry + Rz;
+
+  arbitrary<T> arb;
+
+  const int n = 100;
+  for (int i = 0; i < n; ++i) {
+
+    constexpr int Nx = form<T, D, Rx>::N;
+    constexpr int Ny = form<T, D, Ry>::N;
+    constexpr int Nz = form<T, D, Rz>::N;
+    form<T, D, Rx> x;
+    for (int c = 0; c < Nx; ++c)
+      x.comps[c] = arb.next();
+    form<T, D, Ry> y;
+    for (int c = 0; c < Ny; ++c)
+      y.comps[c] = arb.next();
+    form<T, D, Rz> z;
+    for (int c = 0; c < Nz; ++c)
+      z.comps[c] = arb.next();
+
+    // Associativity
+    EXPECT_EQ(wedge(wedge(x, y), z), wedge(x, wedge(y, z)));
   }
 }
 
@@ -188,15 +219,33 @@ extern "C" void TestForms_Test(CCTK_ARGUMENTS) {
   TestVector<val_t, 3, 3>();
 
   TestWedge<val_t, 0, 0, 0>();
+  TestWedge3<val_t, 0, 0, 0, 0>();
+
   TestWedge<val_t, 1, 0, 0>();
   TestWedge<val_t, 1, 0, 1>();
   TestWedge<val_t, 1, 1, 0>();
+  TestWedge3<val_t, 1, 0, 0, 0>();
+  TestWedge3<val_t, 1, 0, 0, 1>();
+  TestWedge3<val_t, 1, 0, 1, 0>();
+  TestWedge3<val_t, 1, 1, 0, 0>();
+
   TestWedge<val_t, 2, 0, 0>();
   TestWedge<val_t, 2, 0, 1>();
   TestWedge<val_t, 2, 0, 2>();
   TestWedge<val_t, 2, 1, 0>();
   TestWedge<val_t, 2, 1, 1>();
   TestWedge<val_t, 2, 2, 0>();
+  TestWedge3<val_t, 2, 0, 0, 0>();
+  TestWedge3<val_t, 2, 0, 0, 1>();
+  TestWedge3<val_t, 2, 0, 0, 2>();
+  TestWedge3<val_t, 2, 0, 1, 0>();
+  TestWedge3<val_t, 2, 0, 1, 1>();
+  TestWedge3<val_t, 2, 0, 2, 0>();
+  TestWedge3<val_t, 2, 1, 0, 0>();
+  TestWedge3<val_t, 2, 1, 0, 1>();
+  TestWedge3<val_t, 2, 1, 1, 0>();
+  TestWedge3<val_t, 2, 2, 0, 0>();
+
   TestWedge<val_t, 3, 0, 0>();
   TestWedge<val_t, 3, 0, 1>();
   TestWedge<val_t, 3, 0, 2>();
@@ -207,6 +256,24 @@ extern "C" void TestForms_Test(CCTK_ARGUMENTS) {
   TestWedge<val_t, 3, 2, 0>();
   TestWedge<val_t, 3, 2, 1>();
   TestWedge<val_t, 3, 3, 0>();
+  TestWedge3<val_t, 3, 0, 0, 0>();
+  TestWedge3<val_t, 3, 0, 0, 1>();
+  TestWedge3<val_t, 3, 0, 0, 2>();
+  TestWedge3<val_t, 3, 0, 0, 3>();
+  TestWedge3<val_t, 3, 0, 1, 0>();
+  TestWedge3<val_t, 3, 0, 1, 1>();
+  TestWedge3<val_t, 3, 0, 1, 2>();
+  TestWedge3<val_t, 3, 0, 2, 0>();
+  TestWedge3<val_t, 3, 0, 2, 1>();
+  TestWedge3<val_t, 3, 1, 0, 0>();
+  TestWedge3<val_t, 3, 1, 0, 1>();
+  TestWedge3<val_t, 3, 1, 0, 2>();
+  TestWedge3<val_t, 3, 1, 1, 0>();
+  TestWedge3<val_t, 3, 1, 1, 1>();
+  TestWedge3<val_t, 3, 2, 0, 0>();
+  TestWedge3<val_t, 3, 2, 0, 1>();
+  TestWedge3<val_t, 3, 2, 1, 0>();
+  TestWedge3<val_t, 3, 3, 0, 0>();
 
   CCTK_VINFO("Done.");
 }
