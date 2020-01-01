@@ -52,7 +52,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
-      string groupname = unique_ptr<char[],decltype(std::free)*>(CCTK_GroupName(gi), std::free).get();
+      string groupname = unique_C_ptr<char>(CCTK_GroupName(gi)).get();
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &c : groupname)
         c = tolower(c);
@@ -181,7 +181,7 @@ void OutputASCII(const cGH *restrict cctkGH) {
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
-      string groupname = unique_ptr<char[],decltype(std::free)*>(CCTK_GroupName(gi), std::free).get();
+      string groupname = unique_C_ptr<char>(CCTK_GroupName(gi)).get();
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &c : groupname)
         c = tolower(c);
@@ -301,7 +301,7 @@ void OutputScalars(const cGH *restrict cctkGH) {
     if (group.grouptype != CCTK_SCALAR)
       continue;
 
-    string groupname = unique_ptr<char[],decltype(std::free)*>(CCTK_GroupName(gi),std::free).get();
+    string groupname = unique_C_ptr<char>(CCTK_GroupName(gi)).get();
     groupname = regex_replace(groupname, regex("::"), "-");
     for (auto &c : groupname)
       c = tolower(c);
