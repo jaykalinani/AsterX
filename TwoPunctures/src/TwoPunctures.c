@@ -7,7 +7,7 @@
 #include <math.h>
 #include <ctype.h>
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 #include "TP_utilities.h"
 #include "TwoPunctures.h"
@@ -198,7 +198,7 @@ void TwoPunctures(CCTK_ARGUMENTS);
 void
 TwoPunctures (CCTK_ARGUMENTS)
 {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_TwoPunctures;
   DECLARE_CCTK_PARAMETERS;
 
   * mp = par_m_plus;
