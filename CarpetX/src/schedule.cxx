@@ -1866,7 +1866,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     for (int n = 0; n < numgroups; ++n) {
       if (n != 0)
         buf << ", ";
-      buf << unique_ptr<char>(CCTK_GroupName(groups0[n])).get();
+      buf << unique_ptr<char[]>(CCTK_GroupName(groups0[n])).get();
     }
     CCTK_VINFO("SyncGroups %s", buf.str().c_str());
   }
