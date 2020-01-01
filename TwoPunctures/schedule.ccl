@@ -31,6 +31,10 @@ if (CCTK_Equals(initial_data, "twopunctures"))
     LANG: C
     STORAGE: puncture_u
     # SYNC: ADMBase::metric ADMBase::curv ADMBase::lapse
+    # TODO: these WRITES are conditional on parameters
+    WRITES: ADMBase::metric(everywhere)
+    WRITES: ADMBase::curv(everywhere)
+    WRITES: ADMBase::lapse(everywhere)
   } "Create puncture black hole initial data"
 
   SCHEDULE TwoPunctures_Metadata IN TwoPunctures_Group after TwoPunctures
