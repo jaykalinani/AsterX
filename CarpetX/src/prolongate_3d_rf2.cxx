@@ -475,7 +475,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   assert(target_region == fine_region);
 
   // We prolongate first in the x, then y, then the z direction. Each
-  // direction changes the target from corse-plus-ghosts to fine.
+  // direction changes the target from coarse-plus-ghosts to fine.
   const Box source_region = CoarseBox(target_region, 2);
   array<Box, dim> targets;
   for (int d = 0; d < dim; ++d) {
