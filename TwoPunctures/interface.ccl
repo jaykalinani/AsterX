@@ -47,24 +47,24 @@ USES FUNCTION Rescale_Sources
 
 PRIVATE:
 
-CCTK_REAL energy TYPE=scalar
+CCTK_REAL energy TYPE=scalar tags='checkpoint="no"'
 {
   E
 } "ADM energy of the Bowen-York spacetime"
 
-CCTK_REAL angular_momentum TYPE=scalar
+CCTK_REAL angular_momentum TYPE=scalar tags='checkpoint="no"'
 {
   J1, J2, J3
 } "Angular momentum of the Bowen-York spacetime"
 
 PUBLIC:
 
-CCTK_REAL bare_mass TYPE=scalar
+CCTK_REAL bare_mass TYPE=scalar tags='checkpoint="no"'
 {
   mp mm
 } "Bare masses of the punctures"
 
-CCTK_REAL puncture_adm_mass TYPE=scalar
+CCTK_REAL puncture_adm_mass TYPE=scalar tags='checkpoint="no"'
 {
   mp_adm mm_adm
 } "ADM masses of the punctures (measured at the other spatial infinities)"

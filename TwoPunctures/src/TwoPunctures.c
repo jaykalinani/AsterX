@@ -217,6 +217,7 @@ TwoPunctures (CCTK_ARGUMENTS)
 #endif
   static CCTK_REAL *F = NULL;
   static derivs u, v, cf_v;
+  static CCTK_REAL mp_saved, mm_saved, mp_adm_saved, mm_adm_saved, E_saved, J1_saved, J2_saved, J3_saved;
   CCTK_REAL admMass;
 
 #pragma omp critical (TwoPunctures)
@@ -370,6 +371,27 @@ TwoPunctures (CCTK_ARGUMENTS)
     *J1 = -(center_offset[2]*par_P_minus[1]) + center_offset[1]*par_P_minus[2] - center_offset[2]*par_P_plus[1] + center_offset[1]*par_P_plus[2] + par_S_minus[0] + par_S_plus[0];
     *J2 = center_offset[2]*par_P_minus[0] - center_offset[0]*par_P_minus[2] + par_b*par_P_minus[2] + center_offset[2]*par_P_plus[0] - center_offset[0]*par_P_plus[2] - par_b*par_P_plus[2] + par_S_minus[1] + par_S_plus[1];
     *J3 = -(center_offset[1]*par_P_minus[0]) + center_offset[0]*par_P_minus[1] - par_b*par_P_minus[1] - center_offset[1]*par_P_plus[0] + center_offset[0]*par_P_plus[1] + par_b*par_P_plus[1] + par_S_minus[2] + par_S_plus[2];
+
+    // store these in local variables so that we can restore them once CarpetX
+    // can wipes the grid scalars
+    mp_saved = *mp;
+    mm_saved = *mm;
+    mp_adm_saved = *mp_adm;
+    mm_adm_saved = *mm_adm;
+    E_saved = *E;
+    J1_saved = *J1;
+    J2_saved = *J2;
+    J3_saved = *J3;
+  } else {
+    // before each call CarpetX wipes the grid scalars so I need to restore them
+    *mp = mp_saved;
+    *mm = mm_saved;
+    *mp_adm = mp_adm_saved;
+    *mm_adm = mm_adm_saved;
+    *E = E_saved;
+    *J1 = J1_saved;
+    *J2 = J2_saved;
+    *J3 = J3_saved;
   }
 
   if (CCTK_EQUALS(grid_setup_method, "Taylor expansion"))
