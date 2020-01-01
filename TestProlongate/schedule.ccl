@@ -1,48 +1,102 @@
 # Schedule definitions for thorn TestProlongate
 
-#STORAGE: data[1]
+STORAGE: data
+# STORAGE: gf000
+# STORAGE: gf001
+# STORAGE: gf010
+# STORAGE: gf011
+# STORAGE: gf100
+# STORAGE: gf101
+# STORAGE: gf110
+# STORAGE: gf111
 
-SCHEDULE TestProlongate_Regrid AT CCTK_POSTINITIAL
+
+
+SCHEDULE TestProlongate_Regrid AT postinitial
 {
   LANG: C
-  WRITES: CarpetX::regrid_error(everywhere)
+  WRITES: CarpetX::regrid_error(interior)
 } "Set up test grid"
 
-SCHEDULE TestProlongate_Regrid AT CCTK_POSTSTEP
+SCHEDULE TestProlongate_Regrid AT poststep
 {
   LANG: C
-  WRITES: CarpetX::regrid_error(everywhere)
+  WRITES: CarpetX::regrid_error(interior)
 } "Set up test grid"
 
 
-SCHEDULE GROUP TestProlongate_SetValue AT CCTK_INITIAL
+
+SCHEDULE GROUP TestProlongate_SetValue AT initial
 {
 } "Set up test data"
 
-SCHEDULE GROUP TestProlongate_SetValue AT CCTK_EVOL
+SCHEDULE GROUP TestProlongate_SetValue AT evol
 {
 } "Set up test data"
 
-SCHEDULE TestProlongate_Test IN TestProlongate_SetValue
+SCHEDULE TestProlongate_Set IN TestProlongate_SetValue
 {
   LANG: C
-  WRITES: data(interior) max_diff(interior)
+  WRITES: max_diff(interior)
+  WRITES: data(interior)
+  # WRITES: gf000(interior)
+  # WRITES: gf001(interior)
+  # WRITES: gf010(interior)
+  # WRITES: gf011(interior)
+  # WRITES: gf100(interior)
+  # WRITES: gf101(interior)
+  # WRITES: gf110(interior)
+  # WRITES: gf111(interior)
 } "Set up test data"
 
-SCHEDULE TestProlongate_Sync IN TestProlongate_SetValue AFTER TestProlongate_Test
+SCHEDULE TestProlongate_Sync IN TestProlongate_SetValue AFTER TestProlongate_Set
 {
   LANG: C
+  WRITES: data(boundary)
   SYNC: data
+  # SYNC: gf000
+  # SYNC: gf001
+  # SYNC: gf010
+  # SYNC: gf011
+  # SYNC: gf100
+  # SYNC: gf101
+  # SYNC: gf110
+  # SYNC: gf111
 } "Sync up test data"
 
-# need to apply b/c in POSTRESTRICT
-SCHEDULE TestProlongate_Sync IN CCTK_POSTRESTRICT
+SCHEDULE TestProlongate_Sync IN postregrid
 {
   LANG: C
+  WRITES: data(boundary)
   SYNC: data
+  # SYNC: gf000
+  # SYNC: gf001
+  # SYNC: gf010
+  # SYNC: gf011
+  # SYNC: gf100
+  # SYNC: gf101
+  # SYNC: gf110
+  # SYNC: gf111
 } "Sync up test data"
 
-SCHEDULE TestProlongate_Check IN CCTK_ANALYSIS
+SCHEDULE TestProlongate_Sync IN postrestrict
+{
+  LANG: C
+  WRITES: data(boundary)
+  SYNC: data
+  # SYNC: gf000
+  # SYNC: gf001
+  # SYNC: gf010
+  # SYNC: gf011
+  # SYNC: gf100
+  # SYNC: gf101
+  # SYNC: gf110
+  # SYNC: gf111
+} "Sync up test data"
+
+
+
+SCHEDULE TestProlongate_Check IN analysis
 {
   LANG: C
   READS: max_diff(interior)
