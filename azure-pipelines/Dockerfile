@@ -31,7 +31,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install cmake
-# (AMReX 19.12 requires at least cmake 3.14)
+# (AMReX 20.01 requires at least cmake 3.14)
 RUN mkdir dist && \
     ( cd dist && \
     wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz && \
@@ -57,9 +57,9 @@ RUN mkdir src && \
 # Install AMReX
 RUN mkdir src && \
     ( cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/19.12.tar.gz && \
-    tar xzf 19.12.tar.gz && \
-    cd amrex-19.12 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/20.01.tar.gz && \
+    tar xzf 20.01.tar.gz && \
+    cd amrex-20.01 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/cactus/amrex .. && \
