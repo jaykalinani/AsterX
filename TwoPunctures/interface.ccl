@@ -9,7 +9,7 @@ INHERITS: ADMBase grid
 # TODO: this ought to be checkpointed since we are not recomputing it on
 # recovery and it is not just a temp, but is is also not evolved or changing
 # with time
-REAL puncture_u TYPE=gf tags='checkpoint="no" prolongation="none"'
+REAL puncture_u TYPE=gf tags='checkpoint="no" prolongation="none" index={0 0 0}'
 
 CCTK_INT FUNCTION Set_Rho_ADM(              \
     CCTK_POINTER_TO_CONST IN  cctkGH,       \
