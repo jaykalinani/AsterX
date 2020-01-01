@@ -400,6 +400,9 @@ TwoPunctures (CCTK_ARGUMENTS)
 
   CCTK_INFO ("Interpolating result");
 
+  const int di = 1;
+  const int dj = di * (cctk_ash[0] + 1); // one extra grid point for vertex centering
+  const int dk = dj * (cctk_ash[1] + 1); // one extra grid point for vertex centering
   CCTK_LOOP3_ALL(TwoPunctures, cctkGH, i,j,k)
       {
 #if 0
@@ -413,7 +416,7 @@ TwoPunctures (CCTK_ARGUMENTS)
         }
 #endif
 
-        const int ind = CCTK_GFINDEX3D (cctkGH, i, j, k);
+        const int ind = i*di + j*dj + k*dk;
 
         CCTK_REAL xx, yy, zz;
         xx = x[ind] - center_offset[0];
