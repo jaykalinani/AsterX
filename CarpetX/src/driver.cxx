@@ -298,7 +298,8 @@ void SetupGlobals() {
     scalargroupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
       scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
-      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars);
+      why_valid_t why([] { return "SetupGlobals";});
+      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars, why);
       for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
         // TODO: decide that valid_bnd == false always and rely on
         // initialization magic?
@@ -674,7 +675,8 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
 
     groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
-      groupdata.valid.at(tl).resize(groupdata.numvars);
+      why_valid_t why([]{return "MakeNewLevelFromCoarse";});
+      groupdata.valid.at(tl).resize(groupdata.numvars, why);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
           return "MakeNewLevelFromCoarse: not prolongated because variable is "
