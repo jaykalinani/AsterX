@@ -16,6 +16,7 @@ RUN apt-get update && \
         g++ \
         gfortran \
         git \
+        libgsl-dev \
         libhwloc-dev \
         libmpich-dev \
         perl \

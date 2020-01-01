@@ -112,6 +112,7 @@ CactusUtils/Vectors
 !TYPE     = svn
 !URL      = https://svn.cactuscode.org/projects/$1/$2/trunk
 !CHECKOUT =
+ExternalLibraries/GSL
 ExternalLibraries/MPI
 ExternalLibraries/hwloc
 ExternalLibraries/zlib
@@ -142,5 +143,6 @@ CarpetX/MaxwellToyCarpetX
 CarpetX/ODESolvers
 CarpetX/TestODESolvers
 CarpetX/TestProlongate
+# CarpetX/TwoPunctures
 CarpetX/WaveToyCarpetX
 CarpetX/googletest
