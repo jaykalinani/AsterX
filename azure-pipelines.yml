@@ -27,6 +27,7 @@ steps:
     set -euxo pipefail
     cd Cactus
     env OMP_NUM_THREADS=2 ./simfactory/bin/sim submit ./simfactory/etc/parfiles/empty.par
+    ./simfactory/bin/sim show-output empty
     env OMP_NUM_THREADS=2 mpiexec -n 2 ./exe/cactus_sim ../azure-pipelines/carpetx.par
   displayName: Run example
 - script: |
