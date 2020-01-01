@@ -12,6 +12,7 @@
 #include "TP_utilities.h"
 #include "TwoPunctures.h"
 
+#include "loopcontrol.h"
 
 
 /* Swap two variables */
