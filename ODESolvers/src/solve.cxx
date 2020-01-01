@@ -191,6 +191,10 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   int nvars = 0;
   for (const auto &leveldata : CarpetX::ghext->leveldata) {
     for (const auto &groupdataptr : leveldata.groupdata) {
+      // TODO: add support for evolving grid scalars
+      if (groupdataptr == nullptr)
+        continue;
+
       const auto &groupdata = *groupdataptr;
       const int rhs_gi = get_group_rhs(groupdata.groupindex);
       if (rhs_gi >= 0) {
