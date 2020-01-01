@@ -564,6 +564,9 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
     for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
 
       for (const auto &groupdataptr : leveldata.groupdata) {
+        if (groupdataptr == nullptr)
+          continue;
+
         auto &restrict groupdata = *groupdataptr;
         const GridPtrDesc1 grid(leveldata, groupdata, mfi);
 
@@ -632,6 +635,9 @@ void check_checksums(const checksums_t checksums, const int min_level,
     for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
 
       for (const auto &groupdataptr : leveldata.groupdata) {
+        if (groupdataptr == nullptr)
+          continue;
+
         auto &restrict groupdata = *groupdataptr;
         const GridPtrDesc1 grid(leveldata, groupdata, mfi);
 
