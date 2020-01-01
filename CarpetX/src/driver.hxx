@@ -162,9 +162,8 @@ class why_valid_t {
   function<string()> why_int, why_outer, why_ghosts;
 
 public:
-  // The constructor that doesn't give a reason should never be called. We need
-  // to define it because several container types require such a constructor.
-  why_valid_t() : why_valid_t([] { return "<unknown reason>"; }) { assert(0); }
+  // The constructor that doesn't give a reason should never be called
+  why_valid_t() = delete;
   why_valid_t(const function<string()> &why) : why_valid_t(false, why) {}
   why_valid_t(bool b, const function<string()> &why)
       : why_valid_t(valid_t(b), why) {}
