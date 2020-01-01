@@ -210,7 +210,6 @@ TwoPunctures (CCTK_ARGUMENTS)
 
   int const nvar = 1, n1 = npoints_A, n2 = npoints_B, n3 = npoints_phi;
 
-  int imin[3], imax[3];
   int const ntotal = n1 * n2 * n3 * nvar;
 #if 0
   int percent10 = 0;
@@ -399,22 +398,7 @@ TwoPunctures (CCTK_ARGUMENTS)
 
   CCTK_INFO ("Interpolating result");
 
-  for (int d = 0; d < 3; ++ d)
-  {
-    /*
-    imin[d] = 0           + (cctk_bbox[2*d  ] ? 0 : cctk_nghostzones[d]);
-    imax[d] = cctk_lsh[d] - (cctk_bbox[2*d+1] ? 0 : cctk_nghostzones[d]);
-    */
-    imin[d] = 0;
-    imax[d] = cctk_lsh[d];
-  }
-
-#pragma omp parallel for
-  for (int k = imin[2]; k < imax[2]; ++k)
-  {
-    for (int j = imin[1]; j < imax[1]; ++j)
-    {
-      for (int i = imin[0]; i < imax[0]; ++i)
+  CCTK_LOOP3_ALL(TwoPunctures, cctkGH, i,j,k)
       {
 #if 0
         /* We can't output this when running in parallel */
@@ -542,9 +526,7 @@ TwoPunctures (CCTK_ARGUMENTS)
           SWAP (kxy[ind], kyz[ind]);
         } /* if swap_xz */
 
-      } /* for i */
-    }   /* for j */
-  }     /* for k */
+      } CCTK_ENDLOOP3_ALL(TwoPunctures);
 
   if (use_sources && rescale_sources)
   {
