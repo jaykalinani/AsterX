@@ -1,7 +1,7 @@
 # Parameter definitions for thorn CartGrid3D
 # $Header$
 
-shares: driver
+shares: CarpetX
 
 USES BOOLEAN periodic
 USES BOOLEAN periodic_x

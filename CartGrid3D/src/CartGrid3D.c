@@ -19,6 +19,7 @@
 
 #include "Symmetry.h"
 #include "CoordBase.h"
+#include "loopcontrol.h"
 
 static const char *rcsid = "$Header$";
 
@@ -470,18 +471,15 @@ void CartGrid3D_SetCoordinates(CCTK_ARGUMENTS) {
 
   /* CCTK_VInfo(CCTK_THORNSTRING,"Resetting coordinates after regridding."); */
 
-  for (int k = 0; k < cctk_lsh[2]; k++) {
-    for (int j = 0; j < cctk_lsh[1]; j++) {
-      for (int i = 0; i < cctk_lsh[0]; i++) {
-        int idx = CCTK_GFINDEX3D(cctkGH, i, j, k);
-        x[idx] =
-            CCTK_DELTA_SPACE(0) * (i + cctk_lbnd[0]) + CCTK_ORIGIN_SPACE(0);
-        y[idx] =
-            CCTK_DELTA_SPACE(1) * (j + cctk_lbnd[1]) + CCTK_ORIGIN_SPACE(1);
-        z[idx] =
-            CCTK_DELTA_SPACE(2) * (k + cctk_lbnd[2]) + CCTK_ORIGIN_SPACE(2);
-        r[idx] = sqrt(SQR(x[idx]) + SQR(y[idx]) + SQR(z[idx]));
-      }
-    }
-  }
+  const int di = 1;
+  const int dj = di * (cctk_ash[0] + 1);
+  const int dk = dj * (cctk_ash[1] + 1);
+
+  CCTK_LOOP3_ALL(CartGrid3D, cctkGH, i,j,k) {
+    int idx = i*di + j*dj + k*dk;
+    x[idx] = CCTK_DELTA_SPACE(0) * (i + cctk_lbnd[0]) + CCTK_ORIGIN_SPACE(0);
+    y[idx] = CCTK_DELTA_SPACE(1) * (j + cctk_lbnd[1]) + CCTK_ORIGIN_SPACE(1);
+    z[idx] = CCTK_DELTA_SPACE(2) * (k + cctk_lbnd[2]) + CCTK_ORIGIN_SPACE(2);
+    r[idx] = sqrt(SQR(x[idx]) + SQR(y[idx]) + SQR(z[idx]));
+  } CCTK_ENDLOOP3_ALL(CartGrid3D);
 }

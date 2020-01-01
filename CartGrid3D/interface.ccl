@@ -6,6 +6,7 @@ inherits: coordbase
 
 INCLUDE HEADER: Symmetry.h in Symmetry.h
 uses include header: CoordBase.h
+uses include header: loopcontrol.h
 
 # The overall size of the domain
 CCTK_INT FUNCTION GetDomainSpecification \
@@ -99,7 +100,7 @@ REAL gridspacings type=SCALAR tags='Checkpoint="no"'
   coarse_dx, coarse_dy, coarse_dz
 } "3D Cartesian grid spacings"
 
-REAL coordinates type=GF tags='Prolongation="None" Checkpoint="no"'
+REAL coordinates type=GF tags='Prolongation="None" Checkpoint="no" index={0 0 0}'
 {
   x, y, z, r
 # will become:
