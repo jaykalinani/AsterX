@@ -8,6 +8,7 @@ SRCS =						\
 	level.cxx				\
         linsolve.cxx				\
         logo.cxx				\
+        loopcontrol.cxx                         \
 	prolongate_3d_rf2.cxx			\
 	reduction.cxx				\
 	schedule.cxx				\
