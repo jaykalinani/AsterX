@@ -219,6 +219,7 @@ TwoPunctures (CCTK_ARGUMENTS)
   static derivs u, v, cf_v;
   CCTK_REAL admMass;
 
+#pragma omp critical (TwoPunctures)
   if (! F) {
     CCTK_REAL up, um;
     /* Solve only when called for the first time */
