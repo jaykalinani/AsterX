@@ -56,6 +56,11 @@ for (int k = imin[2]; k < imax[2]; ++k) {                   \
 #undef CCTK_LOOP3_ALL
 #undef CCTK_ENDLOOP3_ALL
 
+// TODO: consider changing CarpetX so that cctk_ash is the size of a vertex
+// based grid function rather than a cell based one
+#undef CCTK_GFINDEX3D
+#define CCTK_GFINDEX3D(cctkGH, i,j,k) ((i) + (j) * (cctk_ash[0] + 1) + (k) * (cctk_ash[0] + 1) * (cctk_ash[1] + 1))
+
 #define CCTK_LOOP3_ALL(name, cctki3_cctkGH_, i,j,k)                             \
 do {                                                                            \
   GridDescBase_t grid = LC_CreateGridDesc(cctki3_cctkGH_);                      \
