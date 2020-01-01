@@ -33,7 +33,7 @@ GridDescBase_t LC_CreateGridDesc(const cGH *cctkGH);
 // no idea about tiles
 
 #define LC_LOOP3_BOX(name, i,j,k, grid, imin,imax, inormal) \
-for (int d = 0; d < dim; ++d)                               \
+for (int d = 0; d < LC_DIM; ++d)                            \
   if (imin[d] >= imax[d])                                   \
     return;                                                 \
                                                             \
@@ -60,19 +60,20 @@ for (int k = imin[2]; k < imax[2]; ++k) {                   \
 do {                                                                            \
   GridDescBase_t grid = LC_CreateGridDesc(cctki3_cctkGH_);                      \
   int imin[LC_DIM], imax[LC_DIM], inormal[LC_DIM];                              \
-  for (int d = 0; d < dim; ++d) {                                               \
+  const int offset[LC_DIM] = {1, 1, 1};                                         \
+  for (int d = 0; d < LC_DIM; ++d) {                                            \
     imin[d] = grid.tmin[d];                                                     \
-    imax[d] = grid.tmax[d] + (grid.tmax[d] >= grid.lsh[d] ? grid.offset[d] : 0);\
-    if(imax[d] > grid.lsh[d] + grid.offset[d]) {                                \
-      imax[d] = grid.lsh[d] + grid.offset[d];                                   \
+    imax[d] = grid.tmax[d] + (grid.tmax[d] >= grid.lsh[d] ? offset[d] : 0);     \
+    if(imax[d] > grid.lsh[d] + offset[d]) {                                     \
+      imax[d] = grid.lsh[d] + offset[d];                                        \
     }                                                                           \
+    inormal[d] = 0;                                                             \
   }                                                                             \
-  int inormal[3] = {0, 0, 0};                                                   \
   LC_LOOP3_BOX(name, i,j,k, grid, imin,imax, inormal)
 
 #define CCTK_ENDLOOP3_ALL(name)                                                 \
   LC_ENDLOOP3_BOX(name)                                                         \
-}
+} while(0)
 
 #ifdef __cplusplus
 }

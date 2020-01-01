@@ -7,11 +7,12 @@
 #include <math.h>
 #include <ctype.h>
 #include "cctk.h"
-#include "cctk_Arguments.h"
+#include "cctk_Arguments_Checked.h"
 #include "cctk_Parameters.h"
 #include "TP_utilities.h"
 #include "TwoPunctures.h"
 
+#include "loopcontrol.h"
 
 
 /* Swap two variables */
@@ -197,7 +198,7 @@ void TwoPunctures(CCTK_ARGUMENTS);
 void
 TwoPunctures (CCTK_ARGUMENTS)
 {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTS_TwoPunctures;
   DECLARE_CCTK_PARAMETERS;
 
   * mp = par_m_plus;
@@ -218,6 +219,7 @@ TwoPunctures (CCTK_ARGUMENTS)
   static derivs u, v, cf_v;
   CCTK_REAL admMass;
 
+#pragma omp critical (TwoPunctures)
   if (! F) {
     CCTK_REAL up, um;
     /* Solve only when called for the first time */
@@ -398,6 +400,9 @@ TwoPunctures (CCTK_ARGUMENTS)
 
   CCTK_INFO ("Interpolating result");
 
+  const int di = 1;
+  const int dj = di * (cctk_ash[0] + 1); // one extra grid point for vertex centering
+  const int dk = dj * (cctk_ash[1] + 1); // one extra grid point for vertex centering
   CCTK_LOOP3_ALL(TwoPunctures, cctkGH, i,j,k)
       {
 #if 0
@@ -411,7 +416,7 @@ TwoPunctures (CCTK_ARGUMENTS)
         }
 #endif
 
-        const int ind = CCTK_GFINDEX3D (cctkGH, i, j, k);
+        const int ind = i*di + j*dj + k*dk;
 
         CCTK_REAL xx, yy, zz;
         xx = x[ind] - center_offset[0];
@@ -478,6 +483,85 @@ TwoPunctures (CCTK_ARGUMENTS)
         CCTK_REAL old_alp=1.0;
         if (multiply_old_lapse)
             old_alp = alp[ind];
+
+        if ((pmn_lapse) || (brownsville_lapse)) {
+
+          CCTK_REAL xp, yp, zp, rp, ir;
+          CCTK_REAL s1, s3, s5;
+          CCTK_REAL p, px, py, pz, pxx, pxy, pxz, pyy, pyz, pzz;
+          p = 1.0;
+          px = py = pz = 0.0;
+          pxx = pxy = pxz = 0.0;
+          pyy = pyz = pzz = 0.0;
+
+          /* first puncture */
+          xp = xx - par_b;
+          yp = yy;
+          zp = zz;
+          rp = sqrt (xp*xp + yp*yp + zp*zp);
+          rp = pow (pow (rp, 4) + pow (TP_epsilon, 4), 0.25);
+          if (rp < TP_Tiny)
+              rp = TP_Tiny;
+          ir = 1.0/rp;
+
+          if (rp < TP_Extend_Radius) {
+            ir = EXTEND(1., rp);
+          }
+
+          s1 = 0.5* *mp *ir;
+          s3 = -s1*ir*ir;
+          s5 = -3.0*s3*ir*ir;
+
+          p += s1;
+
+          px += xp*s3;
+          py += yp*s3;
+          pz += zp*s3;
+
+          pxx += xp*xp*s5 + s3;
+          pxy += xp*yp*s5;
+          pxz += xp*zp*s5;
+          pyy += yp*yp*s5 + s3;
+          pyz += yp*zp*s5;
+          pzz += zp*zp*s5 + s3;
+
+          /* second puncture */
+          xp = xx + par_b;
+          yp = yy;
+          zp = zz;
+          rp = sqrt (xp*xp + yp*yp + zp*zp);
+          rp = pow (pow (rp, 4) + pow (TP_epsilon, 4), 0.25);
+          if (rp < TP_Tiny)
+              rp = TP_Tiny;
+          ir = 1.0/rp;
+
+          if (rp < TP_Extend_Radius) {
+            ir = EXTEND(1., rp);
+          }
+
+          s1 = 0.5* *mm *ir;
+          s3 = -s1*ir*ir;
+          s5 = -3.0*s3*ir*ir;
+
+          p += s1;
+
+          px += xp*s3;
+          py += yp*s3;
+          pz += zp*s3;
+
+          pxx += xp*xp*s5 + s3;
+          pxy += xp*yp*s5;
+          pxz += xp*zp*s5;
+          pyy += yp*yp*s5 + s3;
+          pyz += yp*zp*s5;
+          pzz += zp*zp*s5 + s3;
+
+          if (pmn_lapse)
+            alp[ind] = pow(p, initial_lapse_psi_exponent);
+          if (brownsville_lapse)
+            alp[ind] = 2.0/(1.0+pow(p, initial_lapse_psi_exponent));
+
+        } /* if brownsville_lapse */
 
         puncture_u[ind] = U;
 
