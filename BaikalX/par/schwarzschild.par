@@ -60,4 +60,6 @@ IO::out_every = 2 ** ($nlevels - 1)
 
 CarpetX::out_plotfile_groups = "ADMBase::lapse ADMBase::metric"
 
+ErrorEstimator::scale_by_resolution = yes
+
 CarpetX::out_tsv = no
