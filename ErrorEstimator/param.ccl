@@ -1,5 +1,10 @@
 # Parameter definitions for thorn ErrorEstimator
 
-boolean scale_by_resolution "scale error estimate by geometric mean of grid spacing"
+BOOLEAN scale_by_resolution "Scale error estimate by geometric mean of grid spacing"
 {
 } "no"
+
+CCTK_REAL epsilon "Epsilon to avoid infinity when dividing by zero"
+{
+  0.0:* :: ""
+} 1.0e-10
