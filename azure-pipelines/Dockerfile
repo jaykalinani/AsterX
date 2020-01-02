@@ -3,7 +3,7 @@
 #     docker push eschnett/cactus-amrex
 
 # Use Ubuntu
-FROM ubuntu:19.04
+FROM ubuntu:19.10
 
 RUN mkdir /cactus
 WORKDIR /cactus
@@ -34,8 +34,8 @@ RUN apt-get update && \
 # (AMReX 20.01 requires at least cmake 3.14)
 RUN mkdir dist && \
     ( cd dist && \
-    wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz && \
-    tar xzf cmake-3.14.5-Linux-x86_64.tar.gz -C /usr/local --strip-components=1 && \
+    wget https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2-Linux-x86_64.tar.gz && \
+    tar xzf cmake-3.16.2-Linux-x86_64.tar.gz -C /usr/local --strip-components=1 && \
     true ) && \
     rm -rf dist
 
