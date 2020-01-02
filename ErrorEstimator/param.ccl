@@ -1,1 +1,5 @@
 # Parameter definitions for thorn ErrorEstimator
+
+boolean scale_by_resolution "scale error estimate by geometric mean of grid spacing"
+{
+} "no"

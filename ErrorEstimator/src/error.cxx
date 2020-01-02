@@ -31,9 +31,13 @@ extern "C" void ErrorEstimator_Estimate(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
 
+  const CCTK_REAL scalefactor = scale_by_resolution ?
+    pow(CCTK_DELTA_SPACE(0)*CCTK_DELTA_SPACE(1)*CCTK_DELTA_SPACE(2), 1./3.) :
+    1.;
+
   loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     auto r = sqrt(pow2(p.x) + pow2(p.y) + pow2(p.z));
-    regrid_error_(p.I) = 1 / fmax(r, CCTK_REAL(1.0e-10));
+    regrid_error_(p.I) = scalefactor / fmax(r, CCTK_REAL(1.0e-10));
   });
 }
 
