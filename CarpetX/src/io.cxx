@@ -37,7 +37,9 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
   vector<bool> group_enabled(numgroups, false);
   auto enable_group{[](int index, const char *optstring, void *callback) {
     vector<bool> &group_enabled = *static_cast<vector<bool> *>(callback);
-    group_enabled.at(index) = true;
+    // CCTK_TraverseString expands the given groups into their variables
+    // so I condense it down again to groups only
+    group_enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
   }};
   CCTK_TraverseString(out_plotfile_groups, enable_group, &group_enabled,
                       CCTK_GROUP);
