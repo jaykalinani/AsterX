@@ -282,7 +282,7 @@ struct test_interp1d;
 template <int CENTERING, int ORDER, typename T>
 struct test_interp1d<CENTERING, POLY, ORDER, T> {
   test_interp1d() {
-    for (int order = 0; order < ORDER; ++order) {
+    for (int order = 0; order <= ORDER; ++order) {
       auto f = [&](T x) { return order == 0 ? T(1) : pow(x, order); };
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       array<T, n + 2> ys;
