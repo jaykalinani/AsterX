@@ -9,26 +9,18 @@ namespace CarpetX {
 using namespace amrex;
 using namespace std;
 
-namespace {
-constexpr int VC = 0; // centering
-constexpr int CC = 1;
-constexpr bool NOCONS = false; // conservative
-constexpr bool CONS = true;
-} // namespace
-
 // 1D interpolation coefficients
 
 template <int CENTERING, bool CONSERVATIVE, int ORDER, typename T>
 struct coeffs1d;
-//  static constexpr const T coeffs[];
 
-template <typename T> struct coeffs1d<VC, NOCONS, /*order*/ 1, T> {
+template <typename T> struct coeffs1d<VC, POLY, /*order*/ 1, T> {
   static constexpr array<T, 2> coeffs = {
       +1 / T(2),
       +1 / T(2),
   };
 };
-template <typename T> struct coeffs1d<VC, NOCONS, /*order*/ 3, T> {
+template <typename T> struct coeffs1d<VC, POLY, /*order*/ 3, T> {
   static constexpr array<T, 4> coeffs = {
       -1 / T(16),
       +9 / T(16),
@@ -36,38 +28,38 @@ template <typename T> struct coeffs1d<VC, NOCONS, /*order*/ 3, T> {
       -1 / T(16),
   };
 };
-template <typename T> struct coeffs1d<VC, NOCONS, /*order*/ 5, T> {
+template <typename T> struct coeffs1d<VC, POLY, /*order*/ 5, T> {
   static constexpr array<T, 6> coeffs = {
       +3 / T(256),  -25 / T(256), +75 / T(128),
       +75 / T(128), -25 / T(256), +3 / T(256),
   };
 };
-template <typename T> struct coeffs1d<VC, NOCONS, /*order*/ 7, T> {
+template <typename T> struct coeffs1d<VC, POLY, /*order*/ 7, T> {
   static constexpr array<T, 8> coeffs = {
       -5 / T(2048),    +49 / T(2048),  -245 / T(2048), +1225 / T(2048),
       +1225 / T(2048), -245 / T(2048), +49 / T(2048),  -5 / T(2048),
   };
 };
 
-template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 0, T> {
+template <typename T> struct coeffs1d<CC, POLY, /*order*/ 0, T> {
   static constexpr array<T, 1> coeffs = {
       +1 / T(1),
   };
 };
-template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 1, T> {
+template <typename T> struct coeffs1d<CC, POLY, /*order*/ 1, T> {
   static constexpr array<T, 2> coeffs = {
       +1 / T(4),
       +3 / T(4),
   };
 };
-template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 2, T> {
+template <typename T> struct coeffs1d<CC, POLY, /*order*/ 2, T> {
   static constexpr array<T, 3> coeffs = {
       +5 / T(32),
       +15 / T(16),
       -3 / T(32),
   };
 };
-template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 3, T> {
+template <typename T> struct coeffs1d<CC, POLY, /*order*/ 3, T> {
   static constexpr array<T, 4> coeffs = {
       -5 / T(128),
       +35 / T(128),
@@ -75,7 +67,7 @@ template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 3, T> {
       -7 / T(128),
   };
 };
-template <typename T> struct coeffs1d<CC, NOCONS, /*order*/ 4, T> {
+template <typename T> struct coeffs1d<CC, POLY, /*order*/ 4, T> {
   static constexpr array<T, 5> coeffs = {
       -45 / T(2048), +105 / T(512), +945 / T(1024), -63 / T(512), +35 / T(2048),
   };
@@ -146,7 +138,7 @@ template <int CENTERING, bool CONSERVATIVE, int ORDER> struct interp1d;
 
 // off=0: on coarse point
 // off=1: between coarse points
-template <int ORDER> struct interp1d<VC, NOCONS, ORDER> {
+template <int ORDER> struct interp1d<VC, POLY, ORDER> {
   static_assert(ORDER % 2 == 1);
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
@@ -156,8 +148,8 @@ template <int ORDER> struct interp1d<VC, NOCONS, ORDER> {
 #endif
     if (off == 0)
       return crseptr[0];
-    constexpr array<T, ORDER + 1> cs = coeffs1d<VC, NOCONS, ORDER, T>::coeffs;
     constexpr int i0 = (ORDER + 1) / 2;
+    constexpr array<T, ORDER + 1> cs = coeffs1d<VC, POLY, ORDER, T>::coeffs;
     T y = 0;
     // for (int i = 0; i < ORDER + 1; ++i)
     //   y += cs[i] * crseptr[(i - i0) * di];
@@ -173,14 +165,14 @@ template <int ORDER> struct interp1d<VC, NOCONS, ORDER> {
 
 // off=0: left sub-cell
 // off=1: right sub-cell
-template <int ORDER> struct interp1d<CC, NOCONS, ORDER> {
+template <int ORDER> struct interp1d<CC, POLY, ORDER> {
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
                       const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
-    constexpr array<T, ORDER + 1> cs = coeffs1d<CC, NOCONS, ORDER, T>::coeffs;
+    constexpr array<T, ORDER + 1> cs = coeffs1d<CC, POLY, ORDER, T>::coeffs;
     constexpr int i0 = (ORDER + 1) / 2;
     T y = 0;
     if (off == 0)
@@ -277,7 +269,7 @@ template <int CENTERING, bool CONSERVATIVE, int ORDER, typename T>
 struct test_interp1d;
 
 template <int CENTERING, int ORDER, typename T>
-struct test_interp1d<CENTERING, NOCONS, ORDER, T> {
+struct test_interp1d<CENTERING, POLY, ORDER, T> {
   test_interp1d() {
     for (int order = 0; order < ORDER; ++order) {
       auto f = [&](T x) { return order == 0 ? T(1) : pow(x, order); };
@@ -293,7 +285,7 @@ struct test_interp1d<CENTERING, NOCONS, ORDER, T> {
       for (int off = 0; off < 2; ++off) {
         T x = CENTERING / T(4) + off / T(2);
         T y = f(x);
-        T y1 = interp1d<CENTERING, NOCONS, ORDER>()(&ys[i0 + 1], 1, off);
+        T y1 = interp1d<CENTERING, POLY, ORDER>()(&ys[i0 + 1], 1, off);
         assert(!CCTK_isnan(y1));
         assert(y1 == y);
       }
@@ -565,89 +557,91 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   }
 }
 
-prolongate_3d_rf2<0, 0, 0, false, false, false, 1, 1, 1>
+////////////////////////////////////////////////////////////////////////////////
+
+prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c000_o1;
-prolongate_3d_rf2<0, 0, 1, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<VC, VC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c001_o1;
-prolongate_3d_rf2<0, 1, 0, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<VC, CC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c010_o1;
-prolongate_3d_rf2<0, 1, 1, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<VC, CC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c011_o1;
-prolongate_3d_rf2<1, 0, 0, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<CC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c100_o1;
-prolongate_3d_rf2<1, 0, 1, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<CC, VC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c101_o1;
-prolongate_3d_rf2<1, 1, 0, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<CC, CC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c110_o1;
-prolongate_3d_rf2<1, 1, 1, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<CC, CC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c111_o1;
 
-prolongate_3d_rf2<0, 0, 0, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c000_o3;
-prolongate_3d_rf2<0, 0, 1, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<VC, VC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c001_o3;
-prolongate_3d_rf2<0, 1, 0, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<VC, CC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c010_o3;
-prolongate_3d_rf2<0, 1, 1, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<VC, CC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c011_o3;
-prolongate_3d_rf2<1, 0, 0, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<CC, VC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c100_o3;
-prolongate_3d_rf2<1, 0, 1, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<CC, VC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c101_o3;
-prolongate_3d_rf2<1, 1, 0, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<CC, CC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c110_o3;
-prolongate_3d_rf2<1, 1, 1, false, false, false, 3, 3, 3>
+prolongate_3d_rf2<CC, CC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c111_o3;
 
-prolongate_3d_rf2<0, 0, 0, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<VC, VC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c000_o0;
-prolongate_3d_rf2<0, 0, 1, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<VC, VC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c001_o0;
-prolongate_3d_rf2<0, 1, 0, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<VC, CC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c010_o0;
-prolongate_3d_rf2<0, 1, 1, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<VC, CC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c011_o0;
-prolongate_3d_rf2<1, 0, 0, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<CC, VC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c100_o0;
-prolongate_3d_rf2<1, 0, 1, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<CC, VC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c101_o0;
-prolongate_3d_rf2<1, 1, 0, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<CC, CC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c110_o0;
-prolongate_3d_rf2<1, 1, 1, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c111_o0;
 
-prolongate_3d_rf2<0, 0, 0, true, true, true, 1, 1, 1>
+prolongate_3d_rf2<VC, VC, VC, CONS, CONS, CONS, 1, 1, 1>
     prolongate_cons_3d_rf2_c000_o1;
-prolongate_3d_rf2<0, 0, 1, true, true, true, 1, 1, 2>
+prolongate_3d_rf2<VC, VC, CC, CONS, CONS, CONS, 1, 1, 2>
     prolongate_cons_3d_rf2_c001_o1;
-prolongate_3d_rf2<0, 1, 0, true, true, true, 1, 2, 1>
+prolongate_3d_rf2<VC, CC, VC, CONS, CONS, CONS, 1, 2, 1>
     prolongate_cons_3d_rf2_c010_o1;
-prolongate_3d_rf2<0, 1, 1, true, true, true, 1, 2, 2>
+prolongate_3d_rf2<VC, CC, CC, CONS, CONS, CONS, 1, 2, 2>
     prolongate_cons_3d_rf2_c011_o1;
-prolongate_3d_rf2<1, 0, 0, true, true, true, 2, 1, 1>
+prolongate_3d_rf2<CC, VC, VC, CONS, CONS, CONS, 2, 1, 1>
     prolongate_cons_3d_rf2_c100_o1;
-prolongate_3d_rf2<1, 0, 1, true, true, true, 2, 1, 2>
+prolongate_3d_rf2<CC, VC, CC, CONS, CONS, CONS, 2, 1, 2>
     prolongate_cons_3d_rf2_c101_o1;
-prolongate_3d_rf2<1, 1, 0, true, true, true, 2, 2, 1>
+prolongate_3d_rf2<CC, CC, VC, CONS, CONS, CONS, 2, 2, 1>
     prolongate_cons_3d_rf2_c110_o1;
-prolongate_3d_rf2<1, 1, 1, true, true, true, 2, 2, 2>
+prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 2, 2, 2>
     prolongate_cons_3d_rf2_c111_o1;
 
-prolongate_3d_rf2<0, 0, 0, false, false, false, 1, 1, 1>
+prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_ddf_3d_rf2_c000_o1;
-prolongate_3d_rf2<0, 0, 1, false, false, true, 1, 1, 0>
+prolongate_3d_rf2<VC, VC, CC, POLY, POLY, CONS, 1, 1, 0>
     prolongate_ddf_3d_rf2_c001_o1;
-prolongate_3d_rf2<0, 1, 0, false, true, false, 1, 0, 1>
+prolongate_3d_rf2<VC, CC, VC, POLY, CONS, POLY, 1, 0, 1>
     prolongate_ddf_3d_rf2_c010_o1;
-prolongate_3d_rf2<0, 1, 1, false, true, true, 1, 0, 0>
+prolongate_3d_rf2<VC, CC, CC, POLY, CONS, CONS, 1, 0, 0>
     prolongate_ddf_3d_rf2_c011_o1;
-prolongate_3d_rf2<1, 0, 0, true, false, false, 0, 1, 1>
+prolongate_3d_rf2<CC, VC, VC, CONS, POLY, POLY, 0, 1, 1>
     prolongate_ddf_3d_rf2_c100_o1;
-prolongate_3d_rf2<1, 0, 1, true, false, true, 0, 1, 0>
+prolongate_3d_rf2<CC, VC, CC, CONS, POLY, CONS, 0, 1, 0>
     prolongate_ddf_3d_rf2_c101_o1;
-prolongate_3d_rf2<1, 1, 0, true, true, false, 0, 0, 1>
+prolongate_3d_rf2<CC, CC, VC, CONS, CONS, POLY, 0, 0, 1>
     prolongate_ddf_3d_rf2_c110_o1;
-prolongate_3d_rf2<1, 1, 1, true, true, true, 0, 0, 0>
+prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_ddf_3d_rf2_c111_o1;
 
 } // namespace CarpetX

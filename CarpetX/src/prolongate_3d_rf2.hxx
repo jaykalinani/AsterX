@@ -11,6 +11,11 @@ namespace CarpetX {
 using namespace amrex;
 using namespace std;
 
+constexpr int VC = 0;        // vertex centering
+constexpr int CC = 1;        // cell centering
+constexpr bool POLY = false; // polynomial interpolation (non-conservative)
+constexpr bool CONS = true;  // conservative
+
 template <int CENTI, int CENTJ, int CENTK, bool CONSI, bool CONSJ, bool CONSK,
           int ORDERI, int ORDERJ, int ORDERK>
 class prolongate_3d_rf2 final : public Interpolater {
@@ -45,72 +50,74 @@ public:
                       RunOn gpu_or_cpu) override;
 };
 
-extern prolongate_3d_rf2<0, 0, 0, false, false, false, 1, 1, 1>
+////////////////////////////////////////////////////////////////////////////////
+
+extern prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c000_o1;
-extern prolongate_3d_rf2<0, 0, 1, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<VC, VC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c001_o1;
-extern prolongate_3d_rf2<0, 1, 0, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<VC, CC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c010_o1;
-extern prolongate_3d_rf2<0, 1, 1, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<VC, CC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c011_o1;
-extern prolongate_3d_rf2<1, 0, 0, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<CC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c100_o1;
-extern prolongate_3d_rf2<1, 0, 1, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<CC, VC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c101_o1;
-extern prolongate_3d_rf2<1, 1, 0, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<CC, CC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c110_o1;
-extern prolongate_3d_rf2<1, 1, 1, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<CC, CC, CC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c111_o1;
 
-extern prolongate_3d_rf2<0, 0, 0, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c000_o3;
-extern prolongate_3d_rf2<0, 0, 1, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<VC, VC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c001_o3;
-extern prolongate_3d_rf2<0, 1, 0, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<VC, CC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c010_o3;
-extern prolongate_3d_rf2<0, 1, 1, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<VC, CC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c011_o3;
-extern prolongate_3d_rf2<1, 0, 0, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<CC, VC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c100_o3;
-extern prolongate_3d_rf2<1, 0, 1, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<CC, VC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c101_o3;
-extern prolongate_3d_rf2<1, 1, 0, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<CC, CC, VC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c110_o3;
-extern prolongate_3d_rf2<1, 1, 1, false, false, false, 3, 3, 3>
+extern prolongate_3d_rf2<CC, CC, CC, POLY, POLY, POLY, 3, 3, 3>
     prolongate_3d_rf2_c111_o3;
 
-extern prolongate_3d_rf2<0, 0, 0, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<VC, VC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c000_o0;
-extern prolongate_3d_rf2<0, 0, 1, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<VC, VC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c001_o0;
-extern prolongate_3d_rf2<0, 1, 0, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<VC, CC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c010_o0;
-extern prolongate_3d_rf2<0, 1, 1, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<VC, CC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c011_o0;
-extern prolongate_3d_rf2<1, 0, 0, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<CC, VC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c100_o0;
-extern prolongate_3d_rf2<1, 0, 1, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<CC, VC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c101_o0;
-extern prolongate_3d_rf2<1, 1, 0, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<CC, CC, VC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c110_o0;
-extern prolongate_3d_rf2<1, 1, 1, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_cons_3d_rf2_c111_o0;
 
-extern prolongate_3d_rf2<0, 0, 0, true, true, true, 1, 1, 1>
+extern prolongate_3d_rf2<VC, VC, VC, CONS, CONS, CONS, 1, 1, 1>
     prolongate_cons_3d_rf2_c000_o1;
-extern prolongate_3d_rf2<0, 0, 1, true, true, true, 1, 1, 2>
+extern prolongate_3d_rf2<VC, VC, CC, CONS, CONS, CONS, 1, 1, 2>
     prolongate_cons_3d_rf2_c001_o1;
-extern prolongate_3d_rf2<0, 1, 0, true, true, true, 1, 2, 1>
+extern prolongate_3d_rf2<VC, CC, VC, CONS, CONS, CONS, 1, 2, 1>
     prolongate_cons_3d_rf2_c010_o1;
-extern prolongate_3d_rf2<0, 1, 1, true, true, true, 1, 2, 2>
+extern prolongate_3d_rf2<VC, CC, CC, CONS, CONS, CONS, 1, 2, 2>
     prolongate_cons_3d_rf2_c011_o1;
-extern prolongate_3d_rf2<1, 0, 0, true, true, true, 2, 1, 1>
+extern prolongate_3d_rf2<CC, VC, VC, CONS, CONS, CONS, 2, 1, 1>
     prolongate_cons_3d_rf2_c100_o1;
-extern prolongate_3d_rf2<1, 0, 1, true, true, true, 2, 1, 2>
+extern prolongate_3d_rf2<CC, VC, CC, CONS, CONS, CONS, 2, 1, 2>
     prolongate_cons_3d_rf2_c101_o1;
-extern prolongate_3d_rf2<1, 1, 0, true, true, true, 2, 2, 1>
+extern prolongate_3d_rf2<CC, CC, VC, CONS, CONS, CONS, 2, 2, 1>
     prolongate_cons_3d_rf2_c110_o1;
-extern prolongate_3d_rf2<1, 1, 1, true, true, true, 2, 2, 2>
+extern prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 2, 2, 2>
     prolongate_cons_3d_rf2_c111_o1;
 
 // Prolongation operators for discrete differential forms:
@@ -118,21 +125,21 @@ extern prolongate_3d_rf2<1, 1, 1, true, true, true, 2, 2, 2>
 // conservative for cell centred directions. We use linear
 // interpolation for vertex centred and constant interpolation for
 // cell centred directions.
-extern prolongate_3d_rf2<0, 0, 0, false, false, false, 1, 1, 1>
+extern prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_ddf_3d_rf2_c000_o1;
-extern prolongate_3d_rf2<0, 0, 1, false, false, true, 1, 1, 0>
+extern prolongate_3d_rf2<VC, VC, CC, POLY, POLY, CONS, 1, 1, 0>
     prolongate_ddf_3d_rf2_c001_o1;
-extern prolongate_3d_rf2<0, 1, 0, false, true, false, 1, 0, 1>
+extern prolongate_3d_rf2<VC, CC, VC, POLY, CONS, POLY, 1, 0, 1>
     prolongate_ddf_3d_rf2_c010_o1;
-extern prolongate_3d_rf2<0, 1, 1, false, true, true, 1, 0, 0>
+extern prolongate_3d_rf2<VC, CC, CC, POLY, CONS, CONS, 1, 0, 0>
     prolongate_ddf_3d_rf2_c011_o1;
-extern prolongate_3d_rf2<1, 0, 0, true, false, false, 0, 1, 1>
+extern prolongate_3d_rf2<CC, VC, VC, CONS, POLY, POLY, 0, 1, 1>
     prolongate_ddf_3d_rf2_c100_o1;
-extern prolongate_3d_rf2<1, 0, 1, true, false, true, 0, 1, 0>
+extern prolongate_3d_rf2<CC, VC, CC, CONS, POLY, CONS, 0, 1, 0>
     prolongate_ddf_3d_rf2_c101_o1;
-extern prolongate_3d_rf2<1, 1, 0, true, true, false, 0, 0, 1>
+extern prolongate_3d_rf2<CC, CC, VC, CONS, CONS, POLY, 0, 0, 1>
     prolongate_ddf_3d_rf2_c110_o1;
-extern prolongate_3d_rf2<1, 1, 1, true, true, true, 0, 0, 0>
+extern prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 0, 0, 0>
     prolongate_ddf_3d_rf2_c111_o1;
 
 } // namespace CarpetX
