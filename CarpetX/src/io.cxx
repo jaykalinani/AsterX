@@ -42,7 +42,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
     group_enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
   }};
   CCTK_TraverseString(out_plotfile_groups, enable_group, &group_enabled,
-                      CCTK_GROUP);
+                      CCTK_GROUP_OR_VAR);
 
   for (int gi = 0; gi < numgroups; ++gi) {
     if (!group_enabled.at(gi))
