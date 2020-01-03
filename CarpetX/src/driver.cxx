@@ -298,7 +298,7 @@ void SetupGlobals() {
     scalargroupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
       scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
-      why_valid_t why([] { return "SetupGlobals";});
+      why_valid_t why([] { return "SetupGlobals"; });
       scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars, why);
       for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
         // TODO: decide that valid_bnd == false always and rely on
@@ -576,23 +576,49 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
 
   case interp_t::ddf:
 
-    switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
-    case 0b000:
-      return &prolongate_ddf_3d_rf2_c000_o1;
-    case 0b001:
-      return &prolongate_ddf_3d_rf2_c001_o1;
-    case 0b010:
-      return &prolongate_ddf_3d_rf2_c010_o1;
-    case 0b011:
-      return &prolongate_ddf_3d_rf2_c011_o1;
-    case 0b100:
-      return &prolongate_ddf_3d_rf2_c100_o1;
-    case 0b101:
-      return &prolongate_ddf_3d_rf2_c101_o1;
-    case 0b110:
-      return &prolongate_ddf_3d_rf2_c110_o1;
-    case 0b111:
-      return &prolongate_ddf_3d_rf2_c111_o1;
+    switch (prolongation_order) {
+
+    case 1:
+      switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
+      case 0b000:
+        return &prolongate_ddf_3d_rf2_c000_o1;
+      case 0b001:
+        return &prolongate_ddf_3d_rf2_c001_o1;
+      case 0b010:
+        return &prolongate_ddf_3d_rf2_c010_o1;
+      case 0b011:
+        return &prolongate_ddf_3d_rf2_c011_o1;
+      case 0b100:
+        return &prolongate_ddf_3d_rf2_c100_o1;
+      case 0b101:
+        return &prolongate_ddf_3d_rf2_c101_o1;
+      case 0b110:
+        return &prolongate_ddf_3d_rf2_c110_o1;
+      case 0b111:
+        return &prolongate_ddf_3d_rf2_c111_o1;
+      }
+      break;
+
+    case 3:
+      switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
+      case 0b000:
+        return &prolongate_ddf_3d_rf2_c000_o3;
+      case 0b001:
+        return &prolongate_ddf_3d_rf2_c001_o3;
+      case 0b010:
+        return &prolongate_ddf_3d_rf2_c010_o3;
+      case 0b011:
+        return &prolongate_ddf_3d_rf2_c011_o3;
+      case 0b100:
+        return &prolongate_ddf_3d_rf2_c100_o3;
+      case 0b101:
+        return &prolongate_ddf_3d_rf2_c101_o3;
+      case 0b110:
+        return &prolongate_ddf_3d_rf2_c110_o3;
+      case 0b111:
+        return &prolongate_ddf_3d_rf2_c111_o3;
+      }
+      break;
     }
     break;
 
@@ -675,7 +701,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
 
     groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
-      why_valid_t why([]{return "MakeNewLevelFromCoarse";});
+      why_valid_t why([] { return "MakeNewLevelFromCoarse"; });
       groupdata.valid.at(tl).resize(groupdata.numvars, why);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
