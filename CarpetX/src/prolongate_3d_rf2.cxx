@@ -148,16 +148,27 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
 #endif
     if (off == 0)
       return crseptr[0];
-    constexpr int i0 = (ORDER + 1) / 2;
     constexpr array<T, ORDER + 1> cs = coeffs1d<VC, POLY, ORDER, T>::coeffs;
+    const int i0 = (ORDER + 1) / 2 - off;
     T y = 0;
-    // for (int i = 0; i < ORDER + 1; ++i)
-    //   y += cs[i] * crseptr[(i - i0) * di];
     // Make use of symmetry in coefficients
-    for (int i = 0; i < i0; ++i)
-      y += cs[i] * (crseptr[(i - i0) * di] + crseptr[(i0 - 1 - i) * di]);
+    for (int i = 0; i < (ORDER + 1) / 2; ++i) {
+      const int i1 = ORDER - i;
+#ifdef CCTK_DEBUG
+      assert(cs[i1] == cs[i]);
+#endif
+      y += cs[i] * (crseptr[(i - i0) * di] + crseptr[(i1 - i0) * di]);
+    }
 #ifdef CCTK_DEBUG
     assert(!CCTK_isnan(y));
+#endif
+#ifdef CCTK_DEBUG
+    T y1 = 0;
+    for (int i = 0; i < ORDER + 1; ++i)
+      y1 += cs[i] * crseptr[(i - i0) * di];
+    assert(!CCTK_isnan(y1));
+    // Don't check for equality; there can be round-off errors
+    // assert(y1 == y);
 #endif
     return y;
   }
