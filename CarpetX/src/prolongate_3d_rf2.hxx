@@ -159,6 +159,23 @@ extern prolongate_3d_rf2<CC, CC, VC, CONS, CONS, POLY, 2, 2, 3>
 extern prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 2, 2, 2>
     prolongate_ddf_3d_rf2_c111_o3;
 
+extern prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 5, 5, 5>
+    prolongate_ddf_3d_rf2_c000_o5;
+extern prolongate_3d_rf2<VC, VC, CC, POLY, POLY, CONS, 5, 5, 4>
+    prolongate_ddf_3d_rf2_c001_o5;
+extern prolongate_3d_rf2<VC, CC, VC, POLY, CONS, POLY, 5, 4, 5>
+    prolongate_ddf_3d_rf2_c010_o5;
+extern prolongate_3d_rf2<VC, CC, CC, POLY, CONS, CONS, 5, 4, 4>
+    prolongate_ddf_3d_rf2_c011_o5;
+extern prolongate_3d_rf2<CC, VC, VC, CONS, POLY, POLY, 4, 5, 5>
+    prolongate_ddf_3d_rf2_c100_o5;
+extern prolongate_3d_rf2<CC, VC, CC, CONS, POLY, CONS, 4, 5, 4>
+    prolongate_ddf_3d_rf2_c101_o5;
+extern prolongate_3d_rf2<CC, CC, VC, CONS, CONS, POLY, 4, 4, 5>
+    prolongate_ddf_3d_rf2_c110_o5;
+extern prolongate_3d_rf2<CC, CC, CC, CONS, CONS, CONS, 4, 4, 4>
+    prolongate_ddf_3d_rf2_c111_o5;
+
 } // namespace CarpetX
 
 #endif // #ifndef PROLONGATE_3D_RF2_HXX

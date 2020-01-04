@@ -619,6 +619,27 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
         return &prolongate_ddf_3d_rf2_c111_o3;
       }
       break;
+
+    case 5:
+      switch ((indextype[0] << 2) | (indextype[1] << 1) | (indextype[2] << 0)) {
+      case 0b000:
+        return &prolongate_ddf_3d_rf2_c000_o5;
+      case 0b001:
+        return &prolongate_ddf_3d_rf2_c001_o5;
+      case 0b010:
+        return &prolongate_ddf_3d_rf2_c010_o5;
+      case 0b011:
+        return &prolongate_ddf_3d_rf2_c011_o5;
+      case 0b100:
+        return &prolongate_ddf_3d_rf2_c100_o5;
+      case 0b101:
+        return &prolongate_ddf_3d_rf2_c101_o5;
+      case 0b110:
+        return &prolongate_ddf_3d_rf2_c110_o5;
+      case 0b111:
+        return &prolongate_ddf_3d_rf2_c111_o5;
+      }
+      break;
     }
     break;
 
