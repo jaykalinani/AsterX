@@ -309,17 +309,23 @@ struct test_interp1d<CENTERING, POLY, ORDER, T> {
 template <int CENTERING, int ORDER, typename T>
 struct test_interp1d<CENTERING, CONS, ORDER, T> {
   test_interp1d() {
-    for (int order = 0; order < ORDER; ++order) {
-      auto f = [&](T x) { return order == 0 ? T(1) : pow(x, order); };
-      auto fint = [&](T x) { return pow(x, order + 1) / (order + 1); };
+    for (int order = 0; order <= ORDER; ++order) {
+      // const auto f{[&](T x) {
+      //   return (order + 1) * (order == 0 ? T(1) : pow(x, order));
+      // }};
+      const auto fint{[&](T x) { return pow(x, order + 1); }};
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       if (CENTERING == CC) {
         array<T, n + 2> ys;
         ys[0] = ys[n + 1] = 0 / T(0);
         const int i0 = n / 2;
         for (int i = 0; i < n; ++i) {
-          T x = (i - i0) + CENTERING / T(2);
-          T y = f(x);
+          const T x = (i - i0) + CENTERING / T(2);
+          // T y = f(x);
+          const T dx = 1;
+          const T xlo = x - dx / 2;
+          const T xhi = x + dx / 2;
+          const T y = fint(xhi) - fint(xlo);
           ys[i + 1] = y;
         }
         array<T, 2> x1;
@@ -330,52 +336,59 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
           assert(!CCTK_isnan(y1[off]));
         }
         assert(y1[0] / 2 + y1[1] / 2 == ys[i0 + 1]);
-        T dx = x1[1] - x1[0];
-        T xlo = x1[0] - dx / 2;
-        T xhi = x1[1] + dx / 2;
-        T yint = fint(xhi) - fint(xlo);
+        const T dx = x1[1] - x1[0];
+        const T xlo = x1[0] - dx / 2;
+        const T xhi = x1[1] + dx / 2;
+        const T yint = fint(xhi) - fint(xlo);
         assert(y1[0] * dx + y1[1] * dx == yint);
       } else {
-        array<T, n + 3> xs, ys;
-        xs[0] = xs[n + 2] = 0 / T(0);
-        ys[0] = ys[n + 2] = 0 / T(0);
-        const int i0 = n / 2;
-        for (int i = -1; i < n; ++i) {
-          T x = (i - i0) + CENTERING / T(2);
-          T y = f(x);
-          xs[i + 2] = x;
-          ys[i + 2] = y;
+        // Don't test this, the case (VC,CONS) should not be used
+        if (false) {
+          array<T, n + 3> xs, ys;
+          xs[0] = xs[n + 2] = 0 / T(0);
+          ys[0] = ys[n + 2] = 0 / T(0);
+          const int i0 = n / 2;
+          for (int i = -1; i < n; ++i) {
+            const T x = (i - i0) + CENTERING / T(2);
+            // T y = f(x);
+            const T dx = 1;
+            const T xlo = x - dx / 2;
+            const T xhi = x + dx / 2;
+            const T y = fint(xhi) - fint(xlo);
+            xs[i + 2] = x;
+            ys[i + 2] = y;
+          }
+          array<T, 3> x1;
+          array<T, 3> y1;
+          for (int off = -1; off < 2; ++off) {
+            x1[off + 1] = CENTERING / T(4) + off / T(2);
+            if (off < 0)
+              y1[off + 1] =
+                  interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off + 2);
+            else
+              y1[off + 1] =
+                  interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 2], 1, off);
+            assert(!CCTK_isnan(y1[off + 1]));
+          }
+          const T dx = x1[1] - x1[0];
+          const T xlo = x1[0];
+          const T xhi = x1[2];
+          const T yint = fint(xhi) - fint(xlo);
+          if (!(y1[0] / 4 + y1[1] / 2 + y1[2] / 4 == ys[i0 + 2]) ||
+              !(y1[0] * dx / 2 + y1[1] * dx + y1[2] * dx / 2 == yint)) {
+            cerr << "settings: CENTERING=" << CENTERING << " ORDER=" << ORDER
+                 << " order=" << order << "\n";
+            cerr << "input:\n";
+            for (int i = -1; i < n; ++i)
+              cerr << "  xs=" << xs[i + 2] << " ys=" << ys[i + 2] << "\n";
+            cerr << "output:\n";
+            for (int off = -1; off < 2; ++off)
+              cerr << "  x1=" << x1[off + 1] << " y1=" << y1[off + 1] << "\n";
+            cerr << "xlo=" << xlo << " xhi=" << xhi << " yint=" << yint << "\n";
+          }
+          assert(y1[0] / 4 + y1[1] / 2 + y1[2] / 4 == ys[i0 + 2]);
+          assert(y1[0] * dx / 2 + y1[1] * dx + y1[2] * dx / 2 == yint);
         }
-        array<T, 3> x1;
-        array<T, 3> y1;
-        for (int off = -1; off < 2; ++off) {
-          x1[off + 1] = CENTERING / T(4) + off / T(2);
-          if (off < 0)
-            y1[off + 1] =
-                interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off + 2);
-          else
-            y1[off + 1] =
-                interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 2], 1, off);
-          assert(!CCTK_isnan(y1[off + 1]));
-        }
-        T dx = x1[1] - x1[0];
-        T xlo = x1[0];
-        T xhi = x1[2];
-        T yint = fint(xhi) - fint(xlo);
-        if (!(y1[0] / 4 + y1[1] / 2 + y1[2] / 4 == ys[i0 + 2]) ||
-            !(y1[0] * dx / 2 + y1[1] * dx + y1[2] * dx / 2 == yint)) {
-          cerr << "settings: CENTERING=" << CENTERING << " ORDER=" << ORDER
-               << " order=" << order << "\n";
-          cerr << "input:\n";
-          for (int i = -1; i < n; ++i)
-            cerr << "  xs=" << xs[i + 2] << " ys=" << ys[i + 2] << "\n";
-          cerr << "output:\n";
-          for (int off = -1; off < 2; ++off)
-            cerr << "  x1=" << x1[off + 1] << " y1=" << y1[off + 1] << "\n";
-          cerr << "xlo=" << xlo << " xhi=" << xhi << " yint=" << yint << "\n";
-        }
-        assert(y1[0] / 4 + y1[1] / 2 + y1[2] / 4 == ys[i0 + 2]);
-        assert(y1[0] * dx / 2 + y1[1] * dx + y1[2] * dx / 2 == yint);
       }
     }
   }
