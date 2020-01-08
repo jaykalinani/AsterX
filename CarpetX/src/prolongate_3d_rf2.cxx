@@ -9,6 +9,26 @@ namespace CarpetX {
 using namespace amrex;
 using namespace std;
 
+template <typename T> constexpr T pown(const T x, const int n0) {
+  if (n0 < 0)
+    return 1 / pown(x, -n0);
+  T r{1};
+  int n{n0};
+  // while (n) {
+  //   // invariant: x^n0 = r * x^n
+  //   r *= x;
+  //   --n;
+  // }
+  T y{x};
+  while (n) {
+    if (n & 1)
+      r *= y;
+    y *= y;
+    n >>= 1;
+  }
+  return r;
+}
+
 // 1D interpolation coefficients
 
 template <int CENTERING, bool CONSERVATIVE, int ORDER, typename T>
@@ -283,7 +303,7 @@ template <int CENTERING, int ORDER, typename T>
 struct test_interp1d<CENTERING, POLY, ORDER, T> {
   test_interp1d() {
     for (int order = 0; order <= ORDER; ++order) {
-      auto f = [&](T x) { return order == 0 ? T(1) : pow(x, order); };
+      auto f = [&](T x) { return pown(x, order); };
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       array<T, n + 2> ys;
       ys[0] = ys[n + 1] = 0 / T(0);
@@ -311,9 +331,9 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
   test_interp1d() {
     for (int order = 0; order <= ORDER; ++order) {
       // const auto f{[&](T x) {
-      //   return (order + 1) * (order == 0 ? T(1) : pow(x, order));
+      //   return (order + 1) * pown(x, order);
       // }};
-      const auto fint{[&](T x) { return pow(x, order + 1); }};
+      const auto fint{[&](T x) { return pown(x, order + 1); }};
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       if (CENTERING == CC) {
         array<T, n + 2> ys;
