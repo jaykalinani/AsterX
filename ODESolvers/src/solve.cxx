@@ -220,7 +220,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CCTK_VWARN(CCTK_WARN_ALERT, "Integrating %d variables", nvars);
 
   const CCTK_REAL saved_time = cctkGH->cctk_time;
-  *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) -= dt;
+  const CCTK_REAL old_time = cctkGH->cctk_time - dt;
+  *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
   // Calculate first RHS
   CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
   CallScheduleGroup(cctkGH, "ODESolvers_RHS");
@@ -248,6 +249,53 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Calculate new state vector
     statecomp_t::lincomb(var, 1, old, dt, rhs);
+
+  } else if (CCTK_EQUALS(method, "RK4")) {
+
+    const auto old = var.copy();
+    const auto k1 = rhs.copy();
+
+    // Step 2
+
+    // Add scaled RHS to state vector
+    statecomp_t::axpy(var, dt / 2, rhs);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto k2 = rhs.copy();
+
+    // Step 3
+
+    // Add scaled RHS to state vector
+    statecomp_t::lincomb(var, 1, old, dt / 2, rhs);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    CCTK_VINFO("Calculating RHS #3 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto k3 = rhs.copy();
+
+    // Step 4
+
+    // Add scaled RHS to state vector
+    statecomp_t::lincomb(var, 1, old, dt, rhs);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    CCTK_VINFO("Calculating RHS #4 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto& k4 = rhs;
+
+    // Calculate new state vector
+    statecomp_t::lincomb(var, 1, old, dt / 6, k1);
+    statecomp_t::axpy(var, dt / 3, k2);
+    statecomp_t::axpy(var, dt / 3, k3);
+    statecomp_t::axpy(var, dt / 6, k4);
 
   } else {
     assert(0);

@@ -2,7 +2,8 @@
 
 KEYWORD method "ODE solver method" STEERABLE=always
 {
-  "Constant" :: ""
-  "Euler" :: ""
-  "RK2" :: ""
+  "constant" :: "state vector is kept constant in time"
+  "Euler" :: "forward Euler"
+  "RK2" :: "midpoint rule"
+  "RK4" :: "classic RK4"
 } "RK2"
