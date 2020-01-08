@@ -17,9 +17,9 @@ CarpetX::ghost_size = 0
 
 CarpetX::dtfac = 0.1
 
-ODESolvers::method = "RK2"
+ODESolvers::method = "constant"
 
-TestODESolvers::order = 2
+TestODESolvers::order = 0
 
 CarpetX::out_plotfile_groups = ""
 CarpetX::out_tsv = no

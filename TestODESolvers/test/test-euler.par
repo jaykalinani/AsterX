@@ -22,7 +22,7 @@ ODESolvers::method = "Euler"
 TestODESolvers::order = 1
 
 CarpetX::out_plotfile_groups = ""
-CarpetX::out_tsv = yes
+CarpetX::out_tsv = no
 
 IO::out_dir = $parfile
 IO::out_every = 1

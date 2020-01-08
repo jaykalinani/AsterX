@@ -7,7 +7,7 @@ STORAGE: state rhs
 SCHEDULE TestODESolvers_Initial AT initial
 {
   LANG: C
-  WRITES: state
+  WRITES: state(everywhere)
 } "Initialize state vector"
 
 SCHEDULE TestODESolvers_RHS IN ODESolvers_RHS
