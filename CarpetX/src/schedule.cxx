@@ -28,6 +28,7 @@
 #include <atomic>
 #include <cctype>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <set>
@@ -329,7 +330,40 @@ void check_valid(const GHExt::LevelData &leveldata,
   if (!valid.valid_any())
     return;
 
-  atomic<bool> found_nan{false};
+  size_t nan_count{0};
+  array<int, 3> nan_imin, nan_imax;
+  array<CCTK_REAL, 3> nan_xmin, nan_xmax;
+  for (int d = 0; d < 3; ++d) {
+    nan_imin[d] = numeric_limits<int>::max();
+    nan_imax[d] = numeric_limits<int>::min();
+    nan_xmin[d] = +1.0 / 0.0;
+    nan_xmax[d] = -1.0 / 0.0;
+  }
+  const auto nan_update{
+      [&](const GridDescBase &grid, const Loop::PointDesc &p) {
+#pragma omp critical
+        {
+          ++nan_count;
+          nan_imin[0] = min(nan_imin[0], grid.lbnd[0] + p.i);
+          nan_imin[1] = min(nan_imin[1], grid.lbnd[1] + p.j);
+          nan_imin[2] = min(nan_imin[2], grid.lbnd[2] + p.k);
+          nan_imax[0] = max(nan_imax[0], grid.lbnd[0] + p.i);
+          nan_imax[1] = max(nan_imax[1], grid.lbnd[1] + p.j);
+          nan_imax[2] = max(nan_imax[2], grid.lbnd[2] + p.k);
+          nan_xmin[0] = fmin(nan_xmin[0], p.x);
+          nan_xmin[1] = fmin(nan_xmin[1], p.y);
+          nan_xmin[2] = fmin(nan_xmin[2], p.z);
+          nan_xmax[0] = fmax(nan_xmax[0], p.x);
+          nan_xmax[1] = fmax(nan_xmax[1], p.y);
+          nan_xmax[2] = fmax(nan_xmax[2], p.z);
+        }
+      }};
+  const auto nan_check{[&](const GridDescBase &grid,
+                           const GF3D1<const CCTK_REAL> &ptr_,
+                           const Loop::PointDesc &p) {
+    if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+      nan_update(grid, p);
+  }};
   const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
@@ -339,38 +373,35 @@ void check_valid(const GHExt::LevelData &leveldata,
     const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
     if (valid.valid_all()) {
-      grid.loop_idx(where_t::everywhere, groupdata.indextype,
-                    groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                      if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                        found_nan = true;
-                    });
+      grid.loop_idx(
+          where_t::everywhere, groupdata.indextype, groupdata.nghostzones,
+          [&](const Loop::PointDesc &p) { nan_check(grid, ptr_, p); });
     } else {
       if (valid.valid_int)
-        grid.loop_idx(where_t::interior, groupdata.indextype,
-                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                          found_nan = true;
-                      });
+        grid.loop_idx(
+            where_t::interior, groupdata.indextype, groupdata.nghostzones,
+            [&](const Loop::PointDesc &p) { nan_check(grid, ptr_, p); });
       if (valid.valid_outer)
-        grid.loop_idx(where_t::boundary, groupdata.indextype,
-                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                          found_nan = true;
-                      });
+        grid.loop_idx(
+            where_t::boundary, groupdata.indextype, groupdata.nghostzones,
+            [&](const Loop::PointDesc &p) { nan_check(grid, ptr_, p); });
       if (valid.valid_ghosts)
-        grid.loop_idx(where_t::ghosts, groupdata.indextype,
-                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                          found_nan = true;
-                      });
+        grid.loop_idx(
+            where_t::ghosts, groupdata.indextype, groupdata.nghostzones,
+            [&](const Loop::PointDesc &p) { nan_check(grid, ptr_, p); });
     }
   }
 
-  if (CCTK_BUILTIN_EXPECT(found_nan, false)) {
-    CCTK_VINFO("%s: Grid function \"%s\" has nans on refinement level %d, time "
-               "level %d; expected valid %s",
+  if (CCTK_BUILTIN_EXPECT(nan_count > 0, false)) {
+    CCTK_VINFO(
+        "%s: Grid function \"%s\" has %td nans on refinement level %d, time "
+        "level %d, in box [%d,%d,%d]:[%d,%d,%d] (%g,%g,%g):(%g,%g,%g); "
+        "expected valid %s",
                msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-               leveldata.level, tl,
+        size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
+        nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2], double(nan_xmin[0]),
+        double(nan_xmin[1]), double(nan_xmin[2]), double(nan_xmax[0]),
+        double(nan_xmax[1]), double(nan_xmax[2]),
                string(groupdata.valid.at(tl).at(vi)).c_str());
 
     for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
@@ -470,18 +501,20 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
   // scalars have no boundary so we expect them to alway be valid
   assert(valid.valid_outer && valid.valid_ghosts);
 
-  atomic<bool> found_nan{false};
+  atomic<size_t> nan_count{0};
   if (valid.valid_int) {
     const CCTK_REAL *restrict const ptr = &scalargroupdata.data.at(tl).at(vi);
     if (CCTK_BUILTIN_EXPECT(CCTK_isnan(*ptr), false)) {
-      found_nan = true;
+      ++nan_count;
     }
   }
 
-  if (CCTK_BUILTIN_EXPECT(found_nan, false))
-    CCTK_VERROR(
-        "%s: Grid Scalar \"%s\" has nans on time level %d; expected valid %s",
-        msg().c_str(), CCTK_FullVarName(scalargroupdata.firstvarindex + vi), tl,
+  if (CCTK_BUILTIN_EXPECT(nan_count > 0, false))
+    CCTK_VERROR("%s: Grid Scalar \"%s\" has %td nans on time level %d; "
+                "expected valid %s",
+                msg().c_str(),
+                CCTK_FullVarName(scalargroupdata.firstvarindex + vi),
+                size_t(nan_count), tl,
         string(scalargroupdata.valid.at(tl).at(vi)).c_str());
 }
 
