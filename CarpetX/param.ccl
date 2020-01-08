@@ -80,7 +80,34 @@ BOOLEAN periodic "Periodic"
 } no
 
 
+
 PRIVATE:
+
+BOOLEAN reflection_x "Reflection symmetry at the lower x boundary"
+{
+} "no"
+
+BOOLEAN reflection_y "Reflection symmetry at the lower y boundary"
+{
+} "no"
+
+BOOLEAN reflection_z "Reflection symmetry at the lower z boundary"
+{
+} "no"
+
+BOOLEAN reflection_upper_x "Reflection symmetry at the upper x boundary"
+{
+} "no"
+
+BOOLEAN reflection_upper_y "Reflection symmetry at the upper y boundary"
+{
+} "no"
+
+BOOLEAN reflection_upper_z "Reflection symmetry at the upper z boundary"
+{
+} "no"
+
+
 
 CCTK_INT blocking_factor_x "Blocking factor"
 {

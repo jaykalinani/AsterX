@@ -22,6 +22,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <utility>
 
 namespace CarpetX {
 using namespace amrex;
@@ -184,6 +185,32 @@ array<int, dim> get_group_nghostzones(const int gi) {
     assert(0);
   }
   return nghostzones;
+}
+
+vector<array<int, dim> > get_group_parities(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  const int nelems = Util_TableGetIntArray(tags, 0, nullptr, "parities");
+  if (nelems == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    // unset (will use index type)
+    return {};
+  } else if (nelems >= 0) {
+    // do nothing
+  } else {
+    assert(0);
+  }
+  vector<CCTK_INT> parities1(nelems);
+  const int iret =
+      Util_TableGetIntArray(tags, nelems, parities1.data(), "parities");
+  assert(iret == nelems);
+  assert(nelems % dim == 0);
+  vector<array<int, dim> > parities(nelems / dim);
+  for (size_t n = 0; n < parities.size(); ++n)
+    for (int d = 0; d < dim; ++d)
+      parities.at(n)[d] = parities1.at(dim * n + d);
+  return parities;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,6 +386,17 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
     groupdata.do_restrict = get_group_restrict_flag(gi);
     groupdata.indextype = get_group_indextype(gi);
     groupdata.nghostzones = get_group_nghostzones(gi);
+    groupdata.parities = get_group_parities(gi);
+    if (groupdata.parities.empty()) {
+      array<int, dim> parity;
+      for (int d = 0; d < dim; ++d)
+        parity[d] = groupdata.indextype[d] == 0 ? +1 : -1;
+      groupdata.parities.resize(groupdata.numvars, parity);
+    }
+    assert(int(groupdata.parities.size()) == groupdata.numvars);
+    for (int vi = 0; vi < groupdata.numvars; ++vi)
+      for (int d = 0; d < dim; ++d)
+        assert(abs(groupdata.parities.at(vi)[d]) == 1);
 
     // Allocate grid hierarchies
     const BoxArray &gba = convert(
@@ -656,6 +694,63 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
   assert(0);
 }
 
+void apply_physbcs(const Box &, const FArrayBox &, int, int, const Geometry &,
+                   CCTK_REAL, const Vector<BCRec> &, int, int) { // do nothing
+}
+
+tuple<CarpetXPhysBCFunct, Vector<BCRec> >
+get_boundaries(const GHExt::LevelData &leveldata,
+               const GHExt::LevelData::GroupData &groupdata) {
+  DECLARE_CCTK_PARAMETERS;
+
+  const array<array<bool, 3>, 2> is_periodic{{
+      {{
+          periodic || periodic_x,
+          periodic || periodic_y,
+          periodic || periodic_z,
+      }},
+      {{
+          periodic || periodic_x,
+          periodic || periodic_y,
+          periodic || periodic_z,
+      }},
+  }};
+  const array<array<bool, 3>, 2> is_reflect{{
+      {{
+          !!reflection_x,
+          !!reflection_y,
+          !!reflection_z,
+      }},
+      {{
+          !!reflection_upper_x,
+          !!reflection_upper_y,
+          !!reflection_upper_z,
+      }},
+  }};
+  const auto makebc{[&](const int vi, const int dir, const int face) {
+    assert(dir >= 0 && dir < dim);
+    assert(face >= 0 && face < 2);
+    if (is_periodic[face][dir])
+      return BCType::int_dir;
+    if (is_reflect[face][dir])
+      return groupdata.parities.at(vi)[dir] > 0 ? BCType::reflect_even
+                                                : BCType::reflect_odd;
+    return BCType::ext_dir;
+  }};
+
+  Vector<BCRec> bcs(groupdata.numvars);
+  for (int vi = 0; vi < groupdata.numvars; ++vi)
+    bcs.at(vi) = BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
+                       makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
+  const auto apply_physbc{[](const Box &, const FArrayBox &, int, int,
+                             const Geometry &, CCTK_REAL, const Vector<BCRec> &,
+                             int, int) {}};
+  CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(leveldata.level), bcs,
+                            apply_physbcs);
+
+  return {move(physbc), move(bcs)};
+}
+
 void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
                                             const BoxArray &ba,
                                             const DistributionMapping &dm) {
@@ -701,18 +796,11 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
     assert(coarsegroupdata.numvars == groupdata.numvars);
     Interpolater *const interpolator = get_interpolator(groupdata.indextype);
 
-    PhysBCFunctNoOp cphysbc;
-    PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
-    // boundary conditions
-    const BCRec bcrec(
-        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
-    const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+
+    auto physbc_bcs = get_boundaries(leveldata, groupdata);
+    CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
+    const Vector<BCRec> &bcs = get<1>(physbc_bcs);
 
     const int ntls = groupdata.mfab.size();
     // We only prolongate the state vector. And if there is more than
@@ -743,7 +831,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
         InterpFromCoarseLevel(
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
             groupdata.numvars, ghext->amrcore->Geom(level - 1),
-            ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0, reffact,
+            ghext->amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
             interpolator, bcs, 0);
         for (int vi = 0; vi < groupdata.numvars; ++vi)
           groupdata.valid.at(tl).at(vi).set(make_valid_int(), [] {
@@ -799,18 +887,11 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
     assert(coarsegroupdata.numvars == groupdata.numvars);
     Interpolater *const interpolator = get_interpolator(groupdata.indextype);
 
-    PhysBCFunctNoOp cphysbc;
-    PhysBCFunctNoOp fphysbc;
     const IntVect reffact{2, 2, 2};
-    // boundary conditions
-    const BCRec bcrec(
-        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
-        periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
-    const Vector<BCRec> bcs(groupdata.numvars, bcrec);
+
+    auto physbc_bcs = get_boundaries(leveldata, groupdata);
+    CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
+    const Vector<BCRec> &bcs = get<1>(physbc_bcs);
 
     const BoxArray &gba = convert(
         ba,
@@ -868,7 +949,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
         FillPatchTwoLevels(*mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
                            {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                            groupdata.numvars, ghext->amrcore->Geom(level - 1),
-                           ghext->amrcore->Geom(level), cphysbc, 0, fphysbc, 0,
+                           ghext->amrcore->Geom(level), physbc, 0, physbc, 0,
                            reffact, interpolator, bcs, 0);
 
         for (int vi = 0; vi < groupdata.numvars; ++vi)

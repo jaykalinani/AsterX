@@ -398,12 +398,12 @@ void check_valid(const GHExt::LevelData &leveldata,
         "%s: Grid function \"%s\" has %td nans on refinement level %d, time "
         "level %d, in box [%d,%d,%d]:[%d,%d,%d] (%g,%g,%g):(%g,%g,%g); "
         "expected valid %s",
-               msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
         size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
         nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2], double(nan_xmin[0]),
         double(nan_xmin[1]), double(nan_xmin[2]), double(nan_xmax[0]),
         double(nan_xmax[1]), double(nan_xmax[2]),
-               string(groupdata.valid.at(tl).at(vi)).c_str());
+        string(groupdata.valid.at(tl).at(vi)).c_str());
 
     for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
       const GridPtrDesc1 grid(leveldata, groupdata, mfi);
@@ -516,7 +516,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
                 msg().c_str(),
                 CCTK_FullVarName(scalargroupdata.firstvarindex + vi),
                 size_t(nan_count), tl,
-        string(scalargroupdata.valid.at(tl).at(vi)).c_str());
+                string(scalargroupdata.valid.at(tl).at(vi)).c_str());
 }
 
 struct tiletag_t {
@@ -1953,6 +1953,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       const int ntls = groupdata.mfab.size();
       const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
 
+      auto physbc_bcs = get_boundaries(leveldata, groupdata);
+      CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
+      const Vector<BCRec> &bcs = get<1>(physbc_bcs);
+
       if (leveldata.level == 0) {
         // Coarsest level: Copy from adjacent boxes on same level
 
@@ -1969,8 +1973,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             check_valid(leveldata, groupdata, vi, tl,
                         [] { return "SyncGroupsByDirI before syncing"; });
           }
-          groupdata.mfab.at(tl)->FillBoundary(
-              ghext->amrcore->Geom(leveldata.level).periodicity());
+          FillPatchSingleLevel(
+              *groupdata.mfab.at(tl), 0.0, {&*groupdata.mfab.at(tl)}, {0.0}, 0,
+              0, groupdata.numvars, ghext->amrcore->Geom(level), physbc, 0);
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).set_ghosts(true, [] {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
@@ -1989,40 +1994,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         Interpolater *const interpolator =
             get_interpolator(groupdata.indextype);
-        PhysBCFunctNoOp cphysbc;
-        PhysBCFunctNoOp fphysbc;
+
         const IntVect reffact{2, 2, 2};
-        // boundary conditions
-        const BCRec bcrec(
-            periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
-            periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
-            periodic || periodic_z ? BCType::int_dir : BCType::ext_dir,
-            periodic || periodic_x ? BCType::int_dir : BCType::ext_dir,
-            periodic || periodic_y ? BCType::int_dir : BCType::ext_dir,
-            periodic || periodic_z ? BCType::int_dir : BCType::ext_dir);
-        const Vector<BCRec> bcs(groupdata.numvars, bcrec);
 
         for (int tl = 0; tl < sync_tl; ++tl) {
-
-          // // Only prolongate valid grid functions
-          // bool all_invalid = true;
-          // for (int vi = 0; vi < groupdata.numvars; ++vi)
-          //   all_invalid &=
-          //       !coarsegroupdata.valid.at(tl).at(vi).get().valid_any() &&
-          //       !groupdata.valid.at(tl).at(vi).get().valid_int;
-
-          // if (all_invalid) {
-
-          //   for (int vi = 0; vi < groupdata.numvars; ++vi)
-          //     groupdata.valid.at(tl).at(vi).set(valid_t(), [] {
-          //       return "SyncGroupsByDirI skipping prolongation: Mark as "
-          //              "invalid because neither coarse grid nor fine grid "
-          //              "interior are valid";
-          //     });
-
-          // } else {
-
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
+#warning "TODO: interpolation does not require boundaries (nor ghosts?)"
+#warning "TODO: also for regridding?"
             error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
                              make_valid_all(), [] {
                                return "SyncGroupsByDirI on coarse level "
@@ -2048,7 +2026,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
               {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
               ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
-              cphysbc, 0, fphysbc, 0, reffact, interpolator, bcs, 0);
+              physbc, 0, physbc, 0, reffact, interpolator, bcs, 0);
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(
                 true, [] { return "SyncGroupsByDirI after prolongation"; });

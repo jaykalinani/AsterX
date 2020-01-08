@@ -12,6 +12,7 @@
 
 #include <AMReX.H>
 #include <AMReX_AmrCore.H>
+#include <AMReX_FillPatchUtil.H>
 #include <AMReX_FluxRegister.H>
 #include <AMReX_Interpolater.H>
 #include <AMReX_MultiFab.H>
@@ -274,6 +275,7 @@ struct GHExt {
     struct GroupData : public CommonGroupData {
       array<int, dim> indextype;
       array<int, dim> nghostzones;
+      vector<array<int, dim> > parities;
 
       // each MultiFab has numvars components
       vector<unique_ptr<MultiFab> > mfab; // [time level]
@@ -292,6 +294,14 @@ struct GHExt {
 extern unique_ptr<GHExt> ghext;
 
 Interpolater *get_interpolator(const array<int, dim> indextype);
+
+typedef void apply_physbcs_t(const Box &, const FArrayBox &, int, int,
+                             const Geometry &, CCTK_REAL, const Vector<BCRec> &,
+                             int, int);
+typedef PhysBCFunct<apply_physbcs_t *> CarpetXPhysBCFunct;
+tuple<CarpetXPhysBCFunct, Vector<BCRec> >
+get_boundaries(const GHExt::LevelData &leveldata,
+               const GHExt::LevelData::GroupData &groupdata);
 
 } // namespace CarpetX
 
