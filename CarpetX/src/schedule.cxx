@@ -166,14 +166,15 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
   }
 
   // Boundaries
-  const array<bool, dim> per{
+  const array<bool, dim> is_periodic{
       periodic || periodic_x,
       periodic || periodic_y,
       periodic || periodic_z,
   };
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)] && !per[d];
+      bbox[2 * d + f] =
+          vbx[orient(d, f)] == domain[orient(d, f)] && !is_periodic[d];
 
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
@@ -1877,7 +1878,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     }
   }
 
-  int didsync = 0;
+  constexpr int didsync = 0;
   return didsync;
 }
 
@@ -1949,8 +1950,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       // If there is more than one time level, then we don't sync the
       // oldest.
       // TODO: during evolution, sync only one time level
-      int ntls = groupdata.mfab.size();
-      int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+      const int ntls = groupdata.mfab.size();
+      const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
 
       if (leveldata.level == 0) {
         // Coarsest level: Copy from adjacent boxes on same level
@@ -2055,8 +2056,6 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         } // if not all_invalid
       }   // for tl
 
-      // }
-
       for (int tl = 0; tl < sync_tl; ++tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           poison_invalid(leveldata, groupdata, vi, tl);
@@ -2106,7 +2105,7 @@ void Reflux(int level) {
         });
       }
       for (int d = 0; d < dim; ++d) {
-        int flux_gi = finegroupdata.fluxes[d];
+        const int flux_gi = finegroupdata.fluxes[d];
         const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
         const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
         for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
@@ -2126,7 +2125,7 @@ void Reflux(int level) {
       }
 
       for (int d = 0; d < dim; ++d) {
-        int flux_gi = finegroupdata.fluxes[d];
+        const int flux_gi = finegroupdata.fluxes[d];
         const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
         const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
         finegroupdata.freg->CrseInit(*flux_groupdata.mfab.at(tl), d, 0, 0,
