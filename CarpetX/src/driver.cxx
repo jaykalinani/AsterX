@@ -1013,14 +1013,14 @@ extern "C" int CarpetX_Startup() {
       "no OpenMP",
 #endif
 #ifdef AMREX_USE_GPU
-      "Accelerators",
+      "accelerators",
 #else
-      "no Accelerators",
+      "no accelerators",
 #endif
 #ifdef AMREX_USE_ASSERTION
-      "DEBUG",
+      "debug",
 #else
-      "OPTIMIZED",
+      "optimized",
 #endif
   };
   ostringstream buf;
