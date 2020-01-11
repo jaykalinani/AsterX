@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <initializer_list>
 #include <ostream>
 #include <string>
 #include <tuple>
@@ -25,6 +26,28 @@ constexpr int dim = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace {
+template <typename T, size_t N, typename... Ts>
+constexpr enable_if_t<(sizeof...(Ts) == N), array<T, N> >
+array_from_initializer_list(const T *const beg, const T *const end,
+                            const Ts &... xs) {
+  return array<T, N>{xs...};
+}
+
+template <typename T, size_t N, typename... Ts>
+constexpr enable_if_t<(sizeof...(Ts) < N), array<T, N> >
+array_from_initializer_list(const T *const beg, const T *const end,
+                            const Ts &... xs) {
+  return array_from_initializer_list<T, N>(beg + 1, end, xs...,
+                                           beg < end ? *beg : T{});
+}
+} // namespace
+
+template <typename T, size_t N>
+constexpr array<T, N> array_from_initializer_list(initializer_list<T> l) {
+  return array_from_initializer_list<T, N>(l.begin(), l.end());
+}
+
 template <typename T, int D> struct vect {
   array<T, D> elts;
 
@@ -32,15 +55,19 @@ template <typename T, int D> struct vect {
   constexpr vect() : elts() {}
 
   constexpr vect(const array<T, D> &arr) : elts(arr) {}
+  constexpr vect(initializer_list<T> arr)
+      : elts(array_from_initializer_list<T, D>(arr)) {
+#ifdef CCTK_DEBUG
+    assert(arr.size() == D);
+#endif
+  }
 
-  template <int D1 = D, enable_if_t<D1 == 1, int> = 0>
-  explicit constexpr vect(T a0) : elts({a0}) {}
-  template <int D1 = D, enable_if_t<D1 == 2, int> = 0>
-  explicit constexpr vect(T a0, T a1) : elts({a0, a1}) {}
-  template <int D1 = D, enable_if_t<D1 == 3, int> = 0>
-  explicit constexpr vect(T a0, T a1, T a2) : elts({a0, a1, a2}) {}
-  template <int D1 = D, enable_if_t<D1 == 4, int> = 0>
-  explicit constexpr vect(T a0, T a1, T a2, T a3) : elts({a0, a1, a2, a3}) {}
+  static constexpr vect pure(T a) {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = a;
+    return r;
+  }
 
   static constexpr vect unit(int dir) {
     vect r;
