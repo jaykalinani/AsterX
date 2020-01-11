@@ -145,4 +145,5 @@ CarpetX/TestODESolvers
 CarpetX/TestProlongate
 # CarpetX/TwoPunctures
 CarpetX/WaveToyCarpetX
+CarpetX/Z4c
 CarpetX/googletest
