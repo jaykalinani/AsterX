@@ -166,15 +166,22 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
   }
 
   // Boundaries
-  const array<bool, dim> is_periodic{
-      periodic || periodic_x,
-      periodic || periodic_y,
-      periodic || periodic_z,
-  };
+  const array<array<bool, 3>, 2> is_symmetry{{
+      {{
+          periodic || periodic_x || reflection_x,
+          periodic || periodic_y || reflection_y,
+          periodic || periodic_z || reflection_z,
+      }},
+      {{
+          periodic || periodic_x || reflection_upper_x,
+          periodic || periodic_y || reflection_upper_y,
+          periodic || periodic_z || reflection_upper_z,
+      }},
+  }};
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       bbox[2 * d + f] =
-          vbx[orient(d, f)] == domain[orient(d, f)] && !is_periodic[d];
+          vbx[orient(d, f)] == domain[orient(d, f)] && !is_symmetry[f][d];
 
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
