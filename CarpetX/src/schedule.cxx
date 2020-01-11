@@ -2006,10 +2006,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-#warning "TODO: interpolation does not require boundaries (nor ghosts?)"
-#warning "TODO: also for regridding?"
+#warning "TODO: interpolation does not require boundaries: also for regridding!"
             error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
-                             make_valid_all(), [] {
+                             make_valid_int(), [] {
                                return "SyncGroupsByDirI on coarse level "
                                       "before prolongation";
                              });
