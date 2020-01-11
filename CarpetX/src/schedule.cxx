@@ -1912,7 +1912,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   vector<int> groups;
   for (int n = 0; n < numgroups; ++n) {
-    int gi = groups0[n];
+    const int gi = groups0[n];
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
     // Don't restrict the regridding error nor the refinement level

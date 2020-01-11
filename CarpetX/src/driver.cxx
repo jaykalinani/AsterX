@@ -138,7 +138,7 @@ array<int, dim> get_group_fluxes(const int gi) {
   vector<string> strs;
   size_t end = 0;
   while (end < str.size()) {
-    size_t begin = str.find_first_not_of(' ', end);
+    const size_t begin = str.find_first_not_of(' ', end);
     if (begin == string::npos)
       break;
     end = str.find(' ', begin);
@@ -154,7 +154,7 @@ array<int, dim> get_group_fluxes(const int gi) {
   for (int d = 0; d < dim; ++d) {
     auto str1 = strs[d];
     if (str1.find(':') == string::npos) {
-      const char *impl = CCTK_GroupImplementationI(gi);
+      const char *const impl = CCTK_GroupImplementationI(gi);
       str1 = string(impl) + "::" + str1;
     }
     int gi1 = CCTK_GroupIndex(str1.c_str());
