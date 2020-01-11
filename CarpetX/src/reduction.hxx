@@ -29,6 +29,8 @@ template <> struct mpi_datatype<long double> {
   static constexpr MPI_Datatype value = MPI_LONG_DOUBLE;
 };
 
+template <typename T> T pow21(T x) { return x * x; }
+
 template <typename T> T fmax1(T x, T y) {
   if (CCTK_isnan(CCTK_REAL(x)))
     return x;
@@ -56,7 +58,7 @@ template <typename T> struct reduction {
   reduction &operator+=(const reduction &y) { return *this = *this + y; }
 
   T avg() const { return sum / vol; }
-  T sdv() const { return sqrt(fmax1(T(0.0), vol * sum2 - pow(sum, 2))); }
+  T sdv() const { return sqrt(fmax1(T(0), vol * sum2 - pow21(sum))); }
   T norm0() const { return vol; }
   T norm1() const { return sumabs / vol; }
   T norm2() const { return sqrt(sum2abs / vol); }
@@ -77,8 +79,8 @@ reduction<T>::reduction()
 
 template <typename T>
 reduction<T>::reduction(const T &V, const T &x)
-    : min(x), max(x), sum(V * x), sum2(pow(V * x, 2)), vol(V), maxabs(fabs(x)),
-      sumabs(fabs(V * x)), sum2abs(pow(fabs(V * x), 2)) {}
+    : min(x), max(x), sum(V * x), sum2(V * pow21(x)), vol(V), maxabs(fabs(x)),
+      sumabs(V * fabs(x)), sum2abs(V * pow21(fabs(x))) {}
 
 template <typename T>
 reduction<T>::reduction(const reduction &x, const reduction &y)
