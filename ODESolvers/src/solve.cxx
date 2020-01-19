@@ -182,7 +182,10 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_ODESolvers_Solve;
   DECLARE_CCTK_PARAMETERS;
 
-  CCTK_VINFO("Integrator is %s", method);
+  static bool did_output = false;
+  if (verbose || !did_output)
+    CCTK_VINFO("Integrator is %s", method);
+  did_output = true;
 
   const CCTK_REAL dt = CCTK_DELTA_TIME;
   const int tl = 0;
@@ -215,7 +218,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       }
     }
   }
-  CCTK_VINFO("  Integrating %d variables", nvars);
+  if (verbose)
+    CCTK_VINFO("  Integrating %d variables", nvars);
   if (nvars == 0)
     CCTK_VWARN(CCTK_WARN_ALERT, "Integrating %d variables", nvars);
 
@@ -223,7 +227,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   const CCTK_REAL old_time = cctkGH->cctk_time - dt;
   *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
   // Calculate first RHS
-  CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+  if (verbose)
+    CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
   CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
   if (CCTK_EQUALS(method, "constant")) {
@@ -244,7 +249,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) += dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
-    CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     // Calculate new state vector
@@ -262,7 +268,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
-    CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     const auto k2 = rhs.copy();
@@ -274,7 +281,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
-    CCTK_VINFO("Calculating RHS #3 at t=%g", double(cctkGH->cctk_time));
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #3 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     const auto k3 = rhs.copy();
@@ -286,10 +294,11 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
-    CCTK_VINFO("Calculating RHS #4 at t=%g", double(cctkGH->cctk_time));
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #4 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
-    const auto& k4 = rhs;
+    const auto &k4 = rhs;
 
     // Calculate new state vector
     statecomp_t::lincomb(var, 1, old, dt / 6, k1);
@@ -305,7 +314,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = saved_time;
   // Apply last boundary conditions
   CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
-  CCTK_VINFO("Calculated new state at t=%g", double(cctkGH->cctk_time));
+  if (verbose)
+    CCTK_VINFO("Calculated new state at t=%g", double(cctkGH->cctk_time));
 
   // TODO: Update time here, and not during time level cycling in the driver
 }
