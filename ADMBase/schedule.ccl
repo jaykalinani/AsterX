@@ -53,3 +53,24 @@ if (CCTK_EQUALS(initial_dtshift, "zero")) {
     WRITES: dtshift(everywhere)
   } "Set dtshift to zero"
 }
+
+
+
+if (noise_amplitude != 0) {
+  SCHEDULE ADMBase_add_noise IN ADMBase_PostInitial
+  {
+    LANG: C
+    READS: metric(everywhere)
+    READS: curv(everywhere)
+    READS: lapse(everywhere)
+    # READS: dtlapse(everywhere)
+    READS: shift(everywhere)
+    READS: dtshift(everywhere)
+    WRITES: metric(everywhere)
+    WRITES: curv(everywhere)
+    WRITES: lapse(everywhere)
+    # WRITES: dtlapse(everywhere)
+    WRITES: shift(everywhere)
+    WRITES: dtshift(everywhere)
+  } "Add noise to ADMBase variables"
+}

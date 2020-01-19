@@ -26,3 +26,12 @@ KEYWORD initial_dtshift "Initial dtshift value"
 {
   "zero" :: "Dtshift is zero"
 } "zero"
+
+
+
+PRIVATE:
+
+CCTK_REAL noise_amplitude "Noise amplitude"
+{
+  0.0:* :: ""
+} 0.0
