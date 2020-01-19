@@ -63,41 +63,32 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     // Load
     const mat3<CCTK_REAL> g(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_,
-                            gf_gzz_, p);
+                            gf_gzz_, p.I);
     const mat3<CCTK_REAL> k(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_,
-                            gf_kzz_, p);
+                            gf_kzz_, p.I);
     const CCTK_REAL alp = gf_alp_(p.I);
-    const vec3<CCTK_REAL> beta(gf_betax_, gf_betay_, gf_betaz_, p);
+    const vec3<CCTK_REAL> beta(gf_betax_, gf_betay_, gf_betaz_, p.I);
 
     // Calculate Z4c variables (all except Gammat)
     const CCTK_REAL detg = g.det();
     const mat3<CCTK_REAL> gu = g.inv(detg);
 
-    const CCTK_REAL chi = cbrt(detg);
-    const CCTK_REAL chi1 = 1 / chi;
+    const CCTK_REAL chi = 1 / cbrt(detg);
 
-    mat3<CCTK_REAL> gammat;
-    for (int a = 0; a < 3; ++a)
-      for (int b = a; b < 3; ++b)
-        gammat(a, b) = chi1 * g(a, b);
+    const mat3<CCTK_REAL> gammat([&](int a, int b) { return chi * g(a, b); });
 
-    CCTK_REAL K = 0;
-    for (int x = 0; x < 3; ++x)
-      for (int y = 0; y < 3; ++y)
-        K += gu(x, y) * k(x, y);
+    const CCTK_REAL K = sum2([&](int x, int y) { return gu(x, y) * k(x, y); });
 
     const CCTK_REAL Theta = 0;
+
     const CCTK_REAL Kh = K - 2 * Theta;
 
-    mat3<CCTK_REAL> At;
-    for (int a = 0; a < 3; ++a)
-      for (int b = a; b < 3; ++b)
-        At(a, b) = chi1 * (k(a, b) - K / 3 * g(a, b));
+    const mat3<CCTK_REAL> At(
+        [&](int a, int b) { return chi * (k(a, b) - K / 3 * g(a, b)); });
 
     const CCTK_REAL alphaG = alp;
-    vec3<CCTK_REAL> betaG;
-    for (int a = 0; a < 3; ++a)
-      betaG(a) = beta(a);
+
+    const vec3<CCTK_REAL> betaG([&](int a) { return beta(a); });
 
     // Store
     gf_chi_(p.I) = chi;

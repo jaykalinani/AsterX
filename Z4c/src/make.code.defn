@@ -8,7 +8,9 @@ SRCS =						\
 	enforce.cxx				\
 	initial1.cxx				\
 	initial2.cxx				\
-	rhs.cxx
+	rhs.cxx					\
+	rhsboundaries.cxx			\
+	test.cxx
 
 # Subdirectories containing source files
 SUBDIRS =

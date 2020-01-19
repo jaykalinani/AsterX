@@ -1,9 +1,11 @@
 #include "tensor.hxx"
+#include "z4c_vars.hxx"
 
 #include <loop.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
+#include <cctk_Parameters.h>
 
 #include <cmath>
 
@@ -13,6 +15,7 @@ using namespace std;
 
 extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_ADM;
+  DECLARE_CCTK_PARAMETERS;
 
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_chi_(cctkGH, chi);
 
@@ -65,41 +68,24 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D<CCTK_REAL, 0, 0, 0> gf_dtbetaz_(cctkGH, dtbetaz);
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
-    // Load
-    const CCTK_REAL chi = gf_chi_(p.I);
-    const mat3<CCTK_REAL> gammat(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_,
-                                 gf_gammatyy_, gf_gammatyz_, gf_gammatzz_, p);
-    const CCTK_REAL Kh = gf_Kh_(p.I);
-    const mat3<CCTK_REAL> At(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_,
-                             gf_Atzz_, p);
-    const CCTK_REAL Theta = gf_Theta_(p.I);
-    const CCTK_REAL alphaG = gf_alphaG_(p.I);
-    const vec3<CCTK_REAL> betaG(gf_betaGx_, gf_betaGy_, gf_betaGz_, p);
-
-    // Calculate ADM variables
-    mat3<CCTK_REAL> g;
-    for (int a = 0; a < 3; ++a)
-      for (int b = a; b < 3; ++b)
-        g(a, b) = chi * gammat(a, b);
-
-    const CCTK_REAL K = Kh - 2 * Theta;
-
-    mat3<CCTK_REAL> k;
-    for (int a = 0; a < 3; ++a)
-      for (int b = a; b < 3; ++b)
-        k(a, b) = chi * At(a, b) + K / 3 * g(a, b);
-
-    const CCTK_REAL alp = alphaG;
-
-    vec3<CCTK_REAL> beta;
-    for (int a = 0; a < 3; ++a)
-      beta(a) = betaG(a);
+    // Load and calculate
+    const z4c_vars_noderivs<CCTK_REAL> vars(
+        kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+        gf_chi_, gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
+        gf_gammatyz_, gf_gammatzz_, gf_Kh_, gf_Atxx_, gf_Atxy_, gf_Atxz_,
+        gf_Atyy_, gf_Atyz_, gf_Atzz_,
+        //
+        // gf_Gamtx_, gf_Gamty_, gf_Gamtz_,
+        gf_chi_, gf_chi_, gf_chi_,
+        //
+        gf_Theta_, gf_alphaG_, gf_betaGx_, gf_betaGy_, gf_betaGz_, //
+        p.I);
 
     // Store
-    g.store(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_, gf_gzz_, p);
-    k.store(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_, gf_kzz_, p);
-    gf_alp_(p.I) = alp;
-    beta.store(gf_betax_, gf_betay_, gf_betaz_, p);
+    vars.g.store(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_, gf_gzz_, p);
+    vars.k.store(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_, gf_kzz_, p);
+    gf_alp_(p.I) = vars.alp;
+    vars.beta.store(gf_betax_, gf_betay_, gf_betaz_, p);
   });
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtbetax_(p.I) = 0; });

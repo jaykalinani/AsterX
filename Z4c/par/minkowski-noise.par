@@ -59,8 +59,9 @@ CarpetX::dtfac = 0.25
 ADMBase::initial_data = "Cartesian Minkowski"
 ADMBase::initial_lapse = "one"
 ADMBase::initial_shift = "zero"
+ADMBase::noise_amplitude = 1.0e-10
 
 IO::out_dir = $parfile
-IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
+IO::out_every = 1   #TODO $ncells * 2 ** ($nlevels - 1) / 32
 
 CarpetX::out_tsv = no

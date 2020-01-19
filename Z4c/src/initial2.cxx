@@ -1,3 +1,4 @@
+#include "field.hxx"
 #include "physics.hxx"
 #include "tensor.hxx"
 
@@ -35,7 +36,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     // Load
     const mat3<CCTK_REAL> gammat(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_,
-                                 gf_gammatyy_, gf_gammatyz_, gf_gammatzz_, p);
+                                 gf_gammatyy_, gf_gammatyz_, gf_gammatzz_, p.I);
 
     // Calculate Z4c variables (only Gamt)
     const mat3<CCTK_REAL> gammatu = gammat.inv(1);
@@ -46,10 +47,12 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
         deriv(gf_gammatyz_, p.I, dx), deriv(gf_gammatzz_, p.I, dx),
     };
 
-    vec3<mat3<CCTK_REAL> > Gammatl;
-    vec3<mat3<CCTK_REAL> > Gammat;
-    vec3<CCTK_REAL> Gamt;
-    calc_gamma(gammat, gammatu, dgammat, Gammatl, Gammat, Gamt);
+    const vec3<mat3<CCTK_REAL> > Gammatl = calc_gammal(dgammat);
+    const vec3<mat3<CCTK_REAL> > Gammat = calc_gamma(gammatu, Gammatl);
+    const vec3<CCTK_REAL> Gamt([&](int a) {
+      return sum2(
+          [&](int x, int y) { return gammatu(x, y) * Gammat(a)(x, y); });
+    });
 
     // Store
     Gamt.store(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, p);

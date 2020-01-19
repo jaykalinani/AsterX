@@ -12,6 +12,7 @@ STORAGE: betaG
 STORAGE: ZtC
 STORAGE: HC
 STORAGE: MtC
+STORAGE: allC
 
 STORAGE: chi_rhs
 STORAGE: gamma_tilde_rhs
@@ -24,7 +25,23 @@ STORAGE: betaG_rhs
 
 
 
-SCHEDULE Z4c_Initial1 AT initial AFTER ADMBase_PostInitial
+SCHEDULE Z4c_Test AT wragh
+{
+  LANG: C
+  OPTIONS: meta
+} "Self-test"
+
+
+
+# We have 4 schedule groups:
+# 1. initial: set up core Z4c variables from ADM variables
+# 2. poststep: post-process core Z4c variables and calculate other variables
+# 3. analysis: calculate constraints etc.
+# 4. rhs: calculate RHS of Z4c variables
+
+
+
+SCHEDULE Z4c_Initial1 IN Z4c_Initial
 {
   LANG: C
   READS: ADMBase::metric(everywhere)
@@ -38,24 +55,18 @@ SCHEDULE Z4c_Initial1 AT initial AFTER ADMBase_PostInitial
   WRITES: Theta(everywhere)
   WRITES: alphaG(everywhere)
   WRITES: betaG(everywhere)
-  SYNC: chi
-  SYNC: gamma_tilde
-  SYNC: K_hat
-  SYNC: A_tilde
-  SYNC: Theta
-  SYNC: alphaG
-  SYNC: betaG
 } "Convert ADM to Z4c variables, part 1"
 
-SCHEDULE Z4c_Initial2 AT initial AFTER Z4c_Initial1
+SCHEDULE Z4c_Initial2 IN Z4c_Initial AFTER Z4c_Initial1
 {
   LANG: C
   READS: gamma_tilde(everywhere)
   WRITES: Gam_tilde(interior)
-  SYNC: Gam_tilde
 } "Convert ADM to Z4c variables, part 2"
 
-SCHEDULE Z4c_Boundaries AT initial AFTER Z4c_Initial2
+
+
+SCHEDULE Z4c_Boundaries IN Z4c_PostStep
 {
   LANG: C
   WRITES: chi(boundary)
@@ -66,9 +77,17 @@ SCHEDULE Z4c_Boundaries AT initial AFTER Z4c_Initial2
   WRITES: Theta(boundary)
   WRITES: alphaG(boundary)
   WRITES: betaG(boundary)
+  SYNC: chi
+  SYNC: gamma_tilde
+  SYNC: K_hat
+  SYNC: A_tilde
+  SYNC: Gam_tilde
+  SYNC: Theta
+  SYNC: alphaG
+  SYNC: betaG
 } "Apply boundary conditions to Z4c variables"
 
-SCHEDULE Z4c_Enforce AT initial AFTER Z4c_Boundaries
+SCHEDULE Z4c_Enforce IN Z4c_PostStep AFTER Z4c_Boundaries
 {
   LANG: C
   READS: gamma_tilde(everywhere)
@@ -77,23 +96,7 @@ SCHEDULE Z4c_Enforce AT initial AFTER Z4c_Boundaries
   WRITES: A_tilde(everywhere)
 } "Enforce algebraic Z4c constraints"
 
-
-
-SCHEDULE Z4c_Constraints AT poststep
-{
-  LANG: C
-  READS: chi(everywhere)
-  READS: gamma_tilde(everywhere)
-  READS: K_hat(everywhere)
-  READS: A_tilde(everywhere)
-  READS: Gam_tilde(everywhere)
-  READS: Theta(everywhere)
-  WRITES: ZtC(interior)
-  WRITES: HC(interior)
-  WRITES: MtC(interior)
-} "Calculate Z4c constraints"
-
-SCHEDULE Z4c_ADM AT poststep
+SCHEDULE Z4c_ADM IN Z4c_PostStep AFTER Z4c_Enforce
 {
   LANG: C
   READS: chi(everywhere)
@@ -110,7 +113,26 @@ SCHEDULE Z4c_ADM AT poststep
   WRITES: ADMBase::dtshift(everywhere)
 } "Convert Z4c to ADM variables"
 
-SCHEDULE Z4c_RHS AT poststep
+
+
+SCHEDULE Z4c_Constraints IN Z4c_Analysis
+{
+  LANG: C
+  READS: chi(everywhere)
+  READS: gamma_tilde(everywhere)
+  READS: K_hat(everywhere)
+  READS: A_tilde(everywhere)
+  READS: Gam_tilde(everywhere)
+  READS: Theta(everywhere)
+  WRITES: ZtC(interior)
+  WRITES: HC(interior)
+  WRITES: MtC(interior)
+  WRITES: allC(interior)
+} "Calculate Z4c constraints"
+
+
+
+SCHEDULE Z4c_RHS IN Z4c_RHS
 {
   LANG: C
   READS: chi(everywhere)
@@ -138,3 +160,58 @@ SCHEDULE Z4c_RHS AT poststep
   SYNC: alphaG_rhs
   SYNC: betaG_rhs
 } "Calculate Z4c RHS"
+
+SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
+{
+  LANG: C
+  WRITES: chi_rhs(boundary)
+  WRITES: gamma_tilde_rhs(boundary)
+  WRITES: K_hat_rhs(boundary)
+  WRITES: A_tilde_rhs(boundary)
+  WRITES: Gam_tilde_rhs(boundary)
+  WRITES: Theta_rhs(boundary)
+  WRITES: alphaG_rhs(boundary)
+  WRITES: betaG_rhs(boundary)
+} "Apply boundary conditions to Z4c RHS variables"
+
+
+
+################################################################################
+
+
+
+SCHEDULE GROUP Z4c_Initial AT initial AFTER ADMBase_PostInitial
+{
+} "Convert ADM to Z4c variables"
+
+SCHEDULE GROUP Z4c_PostStep AT initial AFTER Z4c_Initial
+{
+} "Post-process Z4c variables"
+
+
+
+SCHEDULE GROUP Z4c_PostStep AT postregrid
+{
+} "Post-process Z4c variables"
+
+
+
+SCHEDULE GROUP Z4c_Analysis AT analysis
+{
+} "Analyse Z4c variables"
+
+
+
+SCHEDULE GROUP Z4c_PostStep IN ODESolvers_PostStep
+{
+} "Post-process Z4c variables"
+
+SCHEDULE GROUP Z4c_RHS IN ODESolvers_RHS
+{
+} "Calculate Z4c RHS"
+
+
+
+SCHEDULE GROUP Z4c_PostSTep AT postrestrict
+{
+} "Post-process Z4c variables"

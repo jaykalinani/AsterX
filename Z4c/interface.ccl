@@ -22,6 +22,7 @@ CCTK_REAL betaG TYPE=gf TAGS='index={0 0 0} rhs="betaG_rhs"' { betaGx betaGy bet
 CCTK_REAL ZtC TYPE=gf TAGS='index={0 0 0} checkpoint="no"' { ZtCx ZtCy ZtCz } "Z-tilde"
 CCTK_REAL HC TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "H"
 CCTK_REAL MtC TYPE=gf TAGS='index={0 0 0} checkpoint="no"' { MtCx MtCy MtCz } "M-tilde"
+CCTK_REAL allC TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "constraint monitor"
 
 
 
