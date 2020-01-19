@@ -446,6 +446,33 @@ public:
     }
   }
 
+  // Box including all points
+  template <int CI, int CJ, int CK>
+  void box_all(const array<int, dim> &group_nghostzones,
+               vect<int, dim> &restrict imin,
+               vect<int, dim> &restrict imax) const {
+    constexpr array<int, dim> offset{!CI, !CJ, !CK};
+    for (int d = 0; d < dim; ++d) {
+      int ghost_offset = nghostzones[d] - group_nghostzones[d];
+      imin[d] = std::max(tmin[d], ghost_offset);
+      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] + offset[d] - ghost_offset);
+    }
+  }
+
+  // Box including all interior points
+  template <int CI, int CJ, int CK>
+  void box_int(const array<int, dim> &group_nghostzones,
+               vect<int, dim> &restrict imin,
+               vect<int, dim> &restrict imax) const {
+    constexpr array<int, dim> offset{!CI, !CJ, !CK};
+    for (int d = 0; d < dim; ++d) {
+      imin[d] = std::max(tmin[d], nghostzones[d]);
+      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] + offset[d] - nghostzones[d]);
+    }
+  }
+
   // Loop over all points
   template <int CI, int CJ, int CK, typename F>
   void loop_all(const array<int, dim> &group_nghostzones, const F &f) const {
