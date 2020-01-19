@@ -20,6 +20,12 @@ if (CCTK_EQUALS(initial_data, "Cartesian Minkowski")) {
     LANG: C
     WRITES: metric(everywhere) curv(everywhere)
   } "Set up Cartesian Minkowski initial data"
+} else if (CCTK_EQUALS(initial_data, "linear wave")) {
+  SCHEDULE ADMBase_linear_wave IN ADMBase_InitialData
+  {
+    LANG: C
+    WRITES: metric(everywhere) curv(everywhere)
+  } "Set up linear wave initial data"
 }
 
 if (CCTK_EQUALS(initial_lapse, "one")) {

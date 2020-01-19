@@ -5,6 +5,7 @@ RESTRICTED:
 KEYWORD initial_data "Initial metric and extrinsic curvature datasets"
 {
   "Cartesian Minkowski" :: "Minkowski geometry in Cartesian coordinates"
+  "linear wave" :: "linear wave"
 } "Cartesian Minkowski"
 
 KEYWORD initial_lapse "Initial lapse value"
@@ -30,6 +31,16 @@ KEYWORD initial_dtshift "Initial dtshift value"
 
 
 PRIVATE:
+
+CCTK_REAL linear_wave_amplitude "Linear wave amplitude"
+{
+  0.0:* :: ""
+} 1.0e-8
+
+CCTK_REAL linear_wave_wavelength "Linear wave wavelength"
+{
+  0.0:* :: ""
+} 1.0
 
 CCTK_REAL noise_amplitude "Noise amplitude"
 {
