@@ -28,6 +28,7 @@ constexpr int dim = 3;
 
 namespace {
 template <typename T, size_t N, typename... Ts>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
 constexpr enable_if_t<(sizeof...(Ts) == N), array<T, N> >
 array_from_initializer_list(const T *const beg, const T *const end,
                             const Ts &... xs) {
@@ -35,6 +36,7 @@ array_from_initializer_list(const T *const beg, const T *const end,
 }
 
 template <typename T, size_t N, typename... Ts>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
 constexpr enable_if_t<(sizeof...(Ts) < N), array<T, N> >
 array_from_initializer_list(const T *const beg, const T *const end,
                             const Ts &... xs) {
@@ -44,7 +46,8 @@ array_from_initializer_list(const T *const beg, const T *const end,
 } // namespace
 
 template <typename T, size_t N>
-constexpr array<T, N> array_from_initializer_list(initializer_list<T> l) {
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr array<T, N>
+array_from_initializer_list(initializer_list<T> l) {
   return array_from_initializer_list<T, N>(l.begin(), l.end());
 }
 
@@ -52,139 +55,161 @@ template <typename T, int D> struct vect {
   array<T, D> elts;
 
   // initializes all elts to zero
-  constexpr vect() : elts() {}
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect() : elts() {}
 
-  constexpr vect(const array<T, D> &arr) : elts(arr) {}
-  constexpr vect(initializer_list<T> arr)
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect(const array<T, D> &arr)
+      : elts(arr) {}
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect(initializer_list<T> arr)
       : elts(array_from_initializer_list<T, D>(arr)) {
 #ifdef CCTK_DEBUG
     assert(arr.size() == D);
 #endif
   }
 
-  static constexpr vect pure(T a) {
+  static /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect pure(T a) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = a;
     return r;
   }
 
-  static constexpr vect unit(int dir) {
+  static /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect unit(int dir) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = d == dir;
     return r;
   }
 
-  constexpr const T &operator[](int d) const { return elts[d]; }
-  T &operator[](int d) { return elts[d]; }
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr const T &operator[](int d) const {
+    return elts[d];
+  }
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T &operator[](int d) { return elts[d]; }
 
-  friend constexpr vect operator+(const vect &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
+  operator+(const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = +x.elts[d];
     return r;
   }
-  friend constexpr vect operator-(const vect &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
+  operator-(const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = -x.elts[d];
     return r;
   }
 
-  friend constexpr vect operator+(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
+  operator+(const vect &x, const vect &y) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] + y.elts[d];
     return r;
   }
-  friend constexpr vect operator-(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
+  operator-(const vect &x, const vect &y) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] - y.elts[d];
     return r;
   }
 
-  // friend constexpr vect operator+(const vect &x, const array<T, D> &y) {
+  // friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect operator+(const vect
+  // &x, const array<T, D> &y) {
   //   return x + vect(y);
   // }
-  // friend constexpr vect operator-(const vect &x, const array<T, D> &y) {
+  // friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect operator-(const vect
+  // &x, const array<T, D> &y) {
   //   return x - vect(y);
   // }
 
-  // friend constexpr vect operator+(const vect &x, T a) {
+  // friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect operator+(const vect
+  // &x, T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] + a;
   //   return r;
   // }
-  // friend constexpr vect operator-(const vect &x, T a) {
+  // friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect operator-(const vect
+  // &x, T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] - a;
   //   return r;
   // }
 
-  friend constexpr vect operator*(T a, const vect &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
+  operator*(T a, const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = a * x.elts[d];
     return r;
   }
-  friend constexpr vect operator*(const vect &x, T a) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
+  operator*(const vect &x, T a) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] * a;
     return r;
   }
 
-  friend constexpr vect<bool, D> operator!(const vect &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D> operator!(
+      const vect &x) {
     vect<bool, D> r;
     for (int d = 0; d < dim; ++d)
       r.elts[d] = !x.elts[d];
     return r;
   }
-  friend constexpr vect<bool, D> operator&&(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator&&(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] && y.elts[d];
     return r;
   }
-  friend constexpr vect<bool, D> operator||(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator||(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] || y.elts[d];
     return r;
   }
 
-  friend constexpr vect<bool, D> operator==(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator==(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] == y.elts[d];
     return r;
   }
-  friend constexpr vect<bool, D> operator!=(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator!=(const vect &x, const vect &y) {
     return !(x == y);
   }
-  friend constexpr vect<bool, D> operator<(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator<(const vect &x, const vect &y) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] < y.elts[d];
     return r;
   }
-  friend constexpr vect<bool, D> operator>(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator>(const vect &x, const vect &y) {
     return y < x;
   }
-  friend constexpr vect<bool, D> operator<=(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator<=(const vect &x, const vect &y) {
     return !(x > y);
   }
-  friend constexpr vect<bool, D> operator>=(const vect &x, const vect &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<bool, D>
+  operator>=(const vect &x, const vect &y) {
     return !(x < y);
   }
 
   template <typename U>
-  constexpr vect<U, D> ifelse(const Loop::vect<U, D> &x,
-                              const Loop::vect<U, D> &y) const {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<U, D>
+  ifelse(const Loop::vect<U, D> &x, const Loop::vect<U, D> &y) const {
     vect<U, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = elts[d] ? x.elts[d] : y.elts[d];
@@ -207,22 +232,31 @@ template <typename T, int D> struct vect {
 namespace std {
 
 template <typename T, int D> struct equal_to<Loop::vect<T, D> > {
-  constexpr bool operator()(const Loop::vect<T, D> &lhs,
-                            const Loop::vect<T, D> &rhs) const {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool
+  operator()(const Loop::vect<T, D> &lhs, const Loop::vect<T, D> &rhs) const {
     return equal_to<array<T, D> >()(lhs.elts, rhs.elts);
   }
 };
 
 template <typename T, int D> struct less<Loop::vect<T, D> > {
-  constexpr bool operator()(const Loop::vect<T, D> &lhs,
-                            const Loop::vect<T, D> &rhs) const {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool
+  operator()(const Loop::vect<T, D> &lhs, const Loop::vect<T, D> &rhs) const {
     return less<array<T, D> >(lhs.elts, rhs.elts);
   }
 };
 
 template <typename T, int D>
-constexpr Loop::vect<T, D> max(const Loop::vect<T, D> &x,
-                               const Loop::vect<T, D> &y) {
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr Loop::vect<T, D>
+abs(const Loop::vect<T, D> &x) {
+  Loop::vect<T, D> r;
+  for (int d = 0; d < D; ++d)
+    r.elts[d] = abs(x.elts[d]);
+  return r;
+}
+
+template <typename T, int D>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr Loop::vect<T, D>
+max(const Loop::vect<T, D> &x, const Loop::vect<T, D> &y) {
   Loop::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = max(x.elts[d], y.elts[d]);
@@ -230,8 +264,8 @@ constexpr Loop::vect<T, D> max(const Loop::vect<T, D> &x,
 }
 
 template <typename T, int D>
-constexpr Loop::vect<T, D> min(const Loop::vect<T, D> &x,
-                               const Loop::vect<T, D> &y) {
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr Loop::vect<T, D>
+min(const Loop::vect<T, D> &x, const Loop::vect<T, D> &y) {
   Loop::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = min(x.elts[d], y.elts[d]);
@@ -253,7 +287,9 @@ struct PointDesc {
   int dj, dk;
   vect<int, dim> I;
   vect<int, dim> NI; // outward boundary normal, or zero
-  vect<int, dim> DI(int d) const { return vect<int, dim>::unit(d); }
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect<int, dim> DI(int d) const {
+    return vect<int, dim>::unit(d);
+  }
   friend ostream &operator<<(ostream &os, const PointDesc &p) {
     os << "PointDesc{"
        << "ijk:"
@@ -330,7 +366,7 @@ public:
     const int dk = dj * (ash[1] + 1 - CJ);
 
     const auto kernel{[&](const int i, const int j,
-                          const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                          const int k) /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ {
       const CCTK_REAL x = x0[0] + (lbnd[0] + i + CCTK_REAL(CI - 1) / 2) * dx[0];
       const CCTK_REAL y = x0[1] + (lbnd[1] + j + CCTK_REAL(CJ - 1) / 2) * dx[1];
       const CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
@@ -695,7 +731,10 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   static constexpr int di = 1;
   int dj, dk;
   int ni, nj, nk;
-  static constexpr array<int, dim> indextype() { return {CI, CJ, CK}; }
+  static /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr array<int, dim>
+  indextype() {
+    return {CI, CJ, CK};
+  }
   inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
       : ptr(ptr), dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
         dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),
