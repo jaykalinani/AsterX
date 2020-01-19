@@ -216,6 +216,41 @@ template <typename T, int D> struct vect {
     return r;
   }
 
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool all() const {
+    bool r = true;
+    for (int d = 0; d < D; ++d)
+      r &= elts[d];
+    return r;
+  }
+
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool any() const {
+    bool r = false;
+    for (int d = 0; d < D; ++d)
+      r |= elts[d];
+    return r;
+  }
+
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T maxabs() const {
+    T r = 0;
+    for (int d = 0; d < D; ++d)
+      r = fmax(r, fabs(elts[d]));
+    return r;
+  }
+
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T prod() const {
+    T r = 1;
+    for (int d = 0; d < D; ++d)
+      r *= elts[d];
+    return r;
+  }
+
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T sum() const {
+    T r = 0;
+    for (int d = 0; d < D; ++d)
+      r += elts[d];
+    return r;
+  }
+
   friend ostream &operator<<(ostream &os, const vect &x) {
     os << "[";
     for (int d = 0; d < D; ++d) {
