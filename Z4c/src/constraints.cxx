@@ -22,7 +22,7 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
     if (cctk_nghostzones[d] < 2)
       CCTK_VERROR("Need at least 2 ghost zones");
 
-  const vec3<CCTK_REAL> dx{
+  const vec3<CCTK_REAL, UP> dx{
       CCTK_DELTA_SPACE(0),
       CCTK_DELTA_SPACE(1),
       CCTK_DELTA_SPACE(2),

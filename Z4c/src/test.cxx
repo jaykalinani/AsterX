@@ -1,6 +1,3 @@
-#warning "TODO"
-#include <iostream>
-
 #include "physics.hxx"
 #include "tensor.hxx"
 
@@ -27,18 +24,21 @@ extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
     for (int a = 0; a < 3; ++a)
       for (int b = 0; b < 3; ++b)
         arr[a][b] = rand10();
-    return mat3<double>(
+    return mat3<double, DN, DN>(
         [&](int a, int b) { return arr[min(a, b)][max(a, b)]; });
   }};
 
-  const mat3<double> Z([&](int a, int b) { return double(0); });
-  const mat3<double> I([&](int a, int b) { return double(a == b); });
+  const mat3<double, DN, DN> Z([&](int a, int b) { return double(0); });
+  const mat3<double, DN, DN> I([&](int a, int b) { return double(a == b); });
   assert(I != Z);
+  const mat3<double, UP, UP> Zup([&](int a, int b) { return double(0); });
+  const mat3<double, UP, UP> Iup([&](int a, int b) { return double(a == b); });
+  assert(Iup != Zup);
 
   for (int n = 0; n < 100; ++n) {
-    const mat3<double> A = randmat10();
-    const mat3<double> B = randmat10();
-    const mat3<double> C = randmat10();
+    const mat3<double, DN, DN> A = randmat10();
+    const mat3<double, DN, DN> B = randmat10();
+    const mat3<double, DN, DN> C = randmat10();
     const double a = rand10();
     const double b = rand10();
 
@@ -59,20 +59,20 @@ extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
     assert((a + b) * A == a * A + b * A);
 
     // assert(mul(mul(A, B), C) == mul(A, mul(B, C)));
-    assert(mul(I, A) == A);
-    assert(mul(A, I) == A);
-    assert(mul(Z, A) == Z);
-    assert(mul(A, Z) == Z);
+    // DNUP  assert(mul(I, A) == A);
+    // DNUP  assert(mul(A, I) == A);
+    // DNUP  assert(mul(Z, A) == Z);
+    // DNUP  assert(mul(A, Z) == Z);
 
     assert(Z.det() == 0);
     assert(I.det() == 1);
     assert((a * A).det() == pow3(a) * A.det());
 
-    assert(Z.inv(1) == Z);
-    assert(I.inv(1) == I);
+    assert(Z.inv(1) == Zup);
+    assert(I.inv(1) == Iup);
 
-    assert(mul(A.inv(1), A) == A.det() * I);
-    assert(mul(A, A.inv(1)) == A.det() * I);
+    // DNUP assert(mul(A.inv(1), A) == A.det() * Iup);
+    // DNUP assert(mul(A, A.inv(1)) == A.det() * Iup);
 
     assert((a * A).inv(1) == pow2(a) * A.inv(1));
   }

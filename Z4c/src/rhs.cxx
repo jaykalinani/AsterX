@@ -24,15 +24,15 @@ void apply_upwind(const cGH *restrict const cctkGH,
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  const vec3<CCTK_REAL> dx{
+  const vec3<CCTK_REAL, UP> dx{
       CCTK_DELTA_SPACE(0),
       CCTK_DELTA_SPACE(1),
       CCTK_DELTA_SPACE(2),
   };
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
-    const vec3<CCTK_REAL> betaG(gf_betaGx_, gf_betaGy_, gf_betaGz_, p.I);
-    const vec3<CCTK_REAL> dgf_upwind(deriv_upwind(gf_, p.I, betaG, dx));
+    const vec3<CCTK_REAL, UP> betaG(gf_betaGx_, gf_betaGy_, gf_betaGz_, p.I);
+    const vec3<CCTK_REAL, DN> dgf_upwind(deriv_upwind(gf_, p.I, betaG, dx));
     gf_rhs_(p.I) += sum1([&](int x) { return betaG(x) * dgf_upwind(x); });
   });
 }
@@ -44,7 +44,7 @@ void apply_diss(const cGH *restrict const cctkGH,
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  const vec3<CCTK_REAL> dx{
+  const vec3<CCTK_REAL, UP> dx{
       CCTK_DELTA_SPACE(0),
       CCTK_DELTA_SPACE(1),
       CCTK_DELTA_SPACE(2),
@@ -63,7 +63,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
     if (cctk_nghostzones[d] < 2)
       CCTK_VERROR("Need at least 2 ghost zones");
 
-  const vec3<CCTK_REAL> dx{
+  const vec3<CCTK_REAL, UP> dx{
       CCTK_DELTA_SPACE(0),
       CCTK_DELTA_SPACE(1),
       CCTK_DELTA_SPACE(2),

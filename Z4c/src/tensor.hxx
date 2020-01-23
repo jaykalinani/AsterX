@@ -62,8 +62,13 @@ template <typename T, int D> struct norm1<vect<T, D> > {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+enum class dnup_t : bool { dn, up };
+constexpr dnup_t DN = dnup_t::dn;
+constexpr dnup_t UP = dnup_t::up;
+constexpr dnup_t operator!(const dnup_t dnup) { return dnup_t(!bool(dnup)); }
+
 // 3-vector
-template <typename T> class vec3 {
+template <typename T, dnup_t dnup> class vec3 {
   vect<T, 3> elts;
 
   static /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr int ind(const int n) {
@@ -106,14 +111,15 @@ public:
                                               const PointDesc &p) const {
     const auto &v = *this;
 #ifdef CCTK_DEBUG
-    if (!((!CCTK_isnan(v(0))) && (!CCTK_isnan(v(1))) && (!CCTK_isnan(v(2))))) {
+    if (!((CCTK_isfinite(v(0))) && (CCTK_isfinite(v(1))) &&
+          (CCTK_isfinite(v(2))))) {
       ostringstream buf;
       buf << "v=" << v;
       CCTK_VERROR("nan found: %s", buf.str().c_str());
     }
-    assert(!CCTK_isnan(v(0)));
-    assert(!CCTK_isnan(v(1)));
-    assert(!CCTK_isnan(v(2)));
+    assert(CCTK_isfinite(v(0)));
+    assert(CCTK_isfinite(v(1)));
+    assert(CCTK_isfinite(v(2)));
 #endif
     gf_vx_(p.I) = v(0);
     gf_vy_(p.I) = v(1);
@@ -125,33 +131,33 @@ public:
   }
   T &operator()(int i) { return elts[ind(i)]; }
 
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T>
-  operator+(const vec3<T> &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T, dnup>
+  operator+(const vec3<T, dnup> &x) {
     return {+x.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T>
-  operator-(const vec3<T> &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T, dnup>
+  operator-(const vec3<T, dnup> &x) {
     return {-x.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T>
-  operator+(const vec3<T> &x, const vec3<T> &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T, dnup>
+  operator+(const vec3<T, dnup> &x, const vec3<T, dnup> &y) {
     return {x.elts + y.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T>
-  operator-(const vec3<T> &x, const vec3<T> &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T, dnup>
+  operator-(const vec3<T, dnup> &x, const vec3<T, dnup> &y) {
     return {x.elts - y.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T>
-  operator*(const T &a, const vec3<T> &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T, dnup>
+  operator*(const T &a, const vec3<T, dnup> &x) {
     return {a * x.elts};
   }
 
   friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool
-  operator==(const vec3<T> &x, const vec3<T> &y) {
+  operator==(const vec3<T, dnup> &x, const vec3<T, dnup> &y) {
     return equal_to<vect<T, 3> >()(x.elts, y.elts);
   }
   friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool
-  operator!=(const vec3<T> &x, const vec3<T> &y) {
+  operator!=(const vec3<T, dnup> &x, const vec3<T, dnup> &y) {
     return !(x == y);
   }
 
@@ -161,21 +167,21 @@ public:
 
   friend struct norm1<vec3>;
 
-  friend ostream &operator<<(ostream &os, const vec3<T> &v) {
+  friend ostream &operator<<(ostream &os, const vec3<T, dnup> &v) {
     return os << "[" << v(0) << "," << v(1) << "," << v(2) << "]";
   }
 };
 
-template <typename T> struct nan<vec3<T> > {
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T> operator()() const {
-    return vec3<T>();
+template <typename T, dnup_t dnup> struct nan<vec3<T, dnup> > {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vec3<T, dnup> operator()() const {
+    return vec3<T, dnup>();
   }
 };
 
-template <typename T> struct norm1<vec3<T> > {
+template <typename T, dnup_t dnup> struct norm1<vec3<T, dnup> > {
   typedef typename norm1<vect<T, 3> >::result_type result_type;
   /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr result_type
-  operator()(const vec3<T> &x) const {
+  operator()(const vec3<T, dnup> &x) const {
     return norm1<vect<T, 3> >()(x.elts);
   }
 };
@@ -183,7 +189,9 @@ template <typename T> struct norm1<vec3<T> > {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Symmetric 3-matrix
-template <typename T> class mat3 {
+template <typename T, dnup_t dnup1, dnup_t dnup2> class mat3 {
+  static_assert(dnup1 == dnup2, "");
+
   vect<T, 6> elts;
 
   static /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr int symind(const int i,
@@ -287,12 +295,12 @@ public:
         const PointDesc &p) const {
     const auto &A = *this;
 #ifdef CCTK_DEBUG
-    assert(!CCTK_isnan(A(0, 0)));
-    assert(!CCTK_isnan(A(0, 1)));
-    assert(!CCTK_isnan(A(0, 2)));
-    assert(!CCTK_isnan(A(1, 1)));
-    assert(!CCTK_isnan(A(1, 2)));
-    assert(!CCTK_isnan(A(2, 2)));
+    assert(CCTK_isfinite(A(0, 0)));
+    assert(CCTK_isfinite(A(0, 1)));
+    assert(CCTK_isfinite(A(0, 2)));
+    assert(CCTK_isfinite(A(1, 1)));
+    assert(CCTK_isfinite(A(1, 2)));
+    assert(CCTK_isfinite(A(2, 2)));
 #endif
     gf_Axx_(p.I) = A(0, 0);
     gf_Axy_(p.I) = A(0, 1);
@@ -311,33 +319,33 @@ public:
     return elts[ind(i, j)];
   }
 
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T>
-  operator+(const mat3<T> &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+  operator+(const mat3<T, dnup1, dnup2> &x) {
     return {+x.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T>
-  operator-(const mat3<T> &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+  operator-(const mat3<T, dnup1, dnup2> &x) {
     return {-x.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T>
-  operator+(const mat3<T> &x, const mat3<T> &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+  operator+(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
     return {x.elts + y.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T>
-  operator-(const mat3<T> &x, const mat3<T> &y) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+  operator-(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
     return {x.elts - y.elts};
   }
-  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T>
-  operator*(const T &a, const mat3<T> &x) {
+  friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+  operator*(const T &a, const mat3<T, dnup1, dnup2> &x) {
     return {a * x.elts};
   }
 
   friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool
-  operator==(const mat3<T> &x, const mat3<T> &y) {
+  operator==(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
     return equal_to<vect<T, 6> >()(x.elts, y.elts);
   }
   friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr bool
-  operator!=(const mat3<T> &x, const mat3<T> &y) {
+  operator!=(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
     return !(x == y);
   }
 
@@ -354,62 +362,83 @@ public:
            A(2, 0) * (A(0, 1) * A(1, 2) - A(0, 2) * A(1, 1));
   }
 
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3 inv(const T detA) const {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, !dnup1, !dnup2>
+  inv(const T detA) const {
     const auto &A = *this;
     const T detA1 = 1 / detA;
-    return mat3{detA1 * (A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1)),
-                detA1 * (A(1, 2) * A(2, 0) - A(1, 0) * A(2, 2)),
-                detA1 * (A(1, 0) * A(2, 1) - A(1, 1) * A(2, 0)),
-                detA1 * (A(2, 2) * A(0, 0) - A(2, 0) * A(0, 2)),
-                detA1 * (A(2, 0) * A(0, 1) - A(2, 1) * A(0, 0)),
-                detA1 * (A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0))};
+    return mat3<T, !dnup1, !dnup2>{
+        detA1 * (A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1)),
+        detA1 * (A(1, 2) * A(2, 0) - A(1, 0) * A(2, 2)),
+        detA1 * (A(1, 0) * A(2, 1) - A(1, 1) * A(2, 0)),
+        detA1 * (A(2, 2) * A(0, 0) - A(2, 0) * A(0, 2)),
+        detA1 * (A(2, 0) * A(0, 1) - A(2, 1) * A(0, 0)),
+        detA1 * (A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0))};
   }
 
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T trace(const mat3 &gu) const {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T
+  trace(const mat3<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
     return sum2([&](int x, int y) { return gu(x, y) * A(x, y); });
   }
 
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3
-  trace_free(const mat3 &g, const mat3 &gu) const {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3 trace_free(
+      const mat3<T, dnup1, dnup2> &g, const mat3<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
     const T trA = A.trace(gu);
     return mat3([&](int a, int b) { return A(a, b) - trA / 3 * g(a, b); });
   }
 
-  friend ostream &operator<<(ostream &os, const mat3<T> &A) {
+  friend ostream &operator<<(ostream &os, const mat3<T, dnup1, dnup2> &A) {
     return os << "[[" << A(0, 0) << "," << A(0, 1) << "," << A(0, 2) << "],["
               << A(1, 0) << "," << A(1, 1) << "," << A(1, 2) << "],[" << A(2, 0)
               << "," << A(2, 1) << "," << A(2, 2) << "]]";
   }
 };
-template <typename T> struct nan<mat3<T> > {
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T> operator()() const {
-    return mat3<T>();
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+struct nan<mat3<T, dnup1, dnup2> > {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+  operator()() const {
+    return mat3<T, dnup1, dnup2>();
   }
 };
 
-template <typename T> struct norm1<mat3<T> > {
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+struct norm1<mat3<T, dnup1, dnup2> > {
   typedef typename norm1<vect<T, 6> >::result_type result_type;
   /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr result_type
-  operator()(const mat3<T> &x) const {
+  operator()(const mat3<T, dnup1, dnup2> &x) const {
     return norm1<vect<T, 6> >()(x.elts);
   }
 };
 
-template <typename T>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T> mul(const mat3<T> &A,
-                                                       const mat3<T> &B) {
+template <typename T, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr mat3<T, dnup1, dnup2>
+mul(const mat3<T, dnup1, dnup3> &A, const mat3<T, !dnup3, dnup2> &B) {
   // C[a,b] = A[a,c] B[c,b]
-  return mat3<T>([&](int a, int b) {
+  return mat3<T, dnup1, dnup2>([&](int a, int b) {
     return sum1([&](int x) { return A(a, x) * B(x, b); });
   });
 }
 
-template <typename T>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T add(const T &x) {
+template <typename F, typename T>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T fold(const F &f, const T &x) {
   return x;
 }
+template <typename F, typename T, typename... Ts>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T fold(const F &f, const T &x0,
+                                                  const T &x1,
+                                                  const Ts &... xs) {
+  return fold(f, fold(f, x0, x1), xs...);
+}
+
+template <typename T>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T add() {
+  return T(0);
+}
+// template <typename T>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T add(const T &x) {
+//   return x;
+// }
 template <typename T, typename... Ts>
 /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T add(const T &x, const Ts &... xs) {
   return x + add(xs...);
@@ -450,7 +479,7 @@ sum3(const F &f) {
 template <typename T>
 /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T deriv(const GF3D<const T, 0, 0, 0> &gf_,
                                          const vect<int, dim> &I,
-                                         const vec3<T> &dx, const int dir) {
+                                         const vec3<T, UP> &dx, const int dir) {
   constexpr vect<vect<int, dim>, dim> DI{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   return (gf_(I + DI[dir]) - gf_(I - DI[dir])) / (2 * dx(dir));
 }
@@ -458,7 +487,7 @@ template <typename T>
 template <typename T>
 /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T
 deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-             const bool sign, const vec3<T> &dx, const int dir) {
+             const bool sign, const vec3<T, UP> &dx, const int dir) {
   constexpr vect<vect<int, dim>, dim> DI{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   // arXiv:1111.2177 [gr-qc], (71)
   if (sign)
@@ -482,21 +511,26 @@ deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 template <typename T>
 /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T
 deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-       const vec3<T> &dx, const int dir1, const int dir2) {
+       const vec3<T, UP> &dx, const int dir1, const int dir2) {
   constexpr vect<vect<int, dim>, dim> DI{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   if (dir1 == dir2)
     return ((gf_(I - DI[dir1]) + gf_(I + DI[dir1])) - 2 * gf_(I)) /
-           (dx(dir1) * dx(dir2));
+           pow2(dx(dir1));
   else
-    return (deriv(gf_, I + DI[dir2], dx, dir1) -
-            deriv(gf_, I - DI[dir2], dx, dir1)) /
-           (2 * dx(dir2));
+    // return (deriv(gf_, I + DI[dir2], dx, dir1) -
+    //         deriv(gf_, I - DI[dir2], dx, dir1)) /
+    //        (2 * dx(dir2));
+    return ((gf_(I + DI[dir1] + DI[dir2])       //
+             - gf_(I - DI[dir1] + DI[dir2]))    //
+            - (gf_(I + DI[dir1] - DI[dir2])     //
+               - gf_(I - DI[dir1] - DI[dir2]))) //
+           / (4 * dx(dir1) * dx(dir2));
 }
 
 template <typename T>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T deriv4(const GF3D<const T, 0, 0, 0> &gf_,
-                                          const vect<int, dim> &I,
-                                          const vec3<T> &dx, const int dir) {
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T
+deriv4(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
+       const vec3<T, UP> &dx, const int dir) {
   constexpr vect<vect<int, dim>, dim> DI{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   return ((gf_(I - 2 * DI[dir]) + gf_(I + 2 * DI[dir])) //
           - 4 * (gf_(I - DI[dir]) + gf_(I + DI[dir]))   //
@@ -505,9 +539,9 @@ template <typename T>
 }
 
 template <typename T>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ vec3<T>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ vec3<T, DN>
 deriv(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-      const vec3<T> &dx) {
+      const vec3<T, UP> &dx) {
   return {
       deriv(gf_, I, dx, 0),
       deriv(gf_, I, dx, 1),
@@ -516,9 +550,9 @@ deriv(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <typename T>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ vec3<T>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ vec3<T, DN>
 deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-             const vec3<T> &dir, const vec3<T> &dx) {
+             const vec3<T, UP> &dir, const vec3<T, UP> &dx) {
   return {
       deriv_upwind(gf_, I, signbit(dir(0)), dx, 0),
       deriv_upwind(gf_, I, signbit(dir(1)), dx, 1),
@@ -527,9 +561,9 @@ deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <typename T>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ mat3<T>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ mat3<T, DN, DN>
 deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-       const vec3<T> &dx) {
+       const vec3<T, UP> &dx) {
   return {
       deriv2(gf_, I, dx, 0, 0), deriv2(gf_, I, dx, 0, 1),
       deriv2(gf_, I, dx, 0, 2), deriv2(gf_, I, dx, 1, 1),
@@ -540,7 +574,7 @@ deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 template <typename T>
 /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T diss(const GF3D<const T, 0, 0, 0> &gf_,
                                         const vect<int, dim> &I,
-                                        const vec3<T> &dx) {
+                                        const vec3<T, UP> &dx) {
   // arXiv:gr-qc/0610128, (63), with r=2
   return -1 / T(16) *
          (pow3(dx(0)) * deriv4(gf_, I, dx, 0)   //

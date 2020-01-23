@@ -16,7 +16,7 @@ using namespace std;
 extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_Initial2;
 
-  const vec3<CCTK_REAL> dx{
+  const vec3<CCTK_REAL, UP> dx{
       CCTK_DELTA_SPACE(0),
       CCTK_DELTA_SPACE(1),
       CCTK_DELTA_SPACE(2),
@@ -35,21 +35,23 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     // Load
-    const mat3<CCTK_REAL> gammat(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_,
-                                 gf_gammatyy_, gf_gammatyz_, gf_gammatzz_, p.I);
+    const mat3<CCTK_REAL, DN, DN> gammat(gf_gammatxx_, gf_gammatxy_,
+                                         gf_gammatxz_, gf_gammatyy_,
+                                         gf_gammatyz_, gf_gammatzz_, p.I);
 
     // Calculate Z4c variables (only Gamt)
-    const mat3<CCTK_REAL> gammatu = gammat.inv(1);
+    const mat3<CCTK_REAL, UP, UP> gammatu = gammat.inv(1);
 
-    const mat3<vec3<CCTK_REAL> > dgammat{
+    const mat3<vec3<CCTK_REAL, DN>, DN, DN> dgammat{
         deriv(gf_gammatxx_, p.I, dx), deriv(gf_gammatxy_, p.I, dx),
         deriv(gf_gammatxz_, p.I, dx), deriv(gf_gammatyy_, p.I, dx),
         deriv(gf_gammatyz_, p.I, dx), deriv(gf_gammatzz_, p.I, dx),
     };
 
-    const vec3<mat3<CCTK_REAL> > Gammatl = calc_gammal(dgammat);
-    const vec3<mat3<CCTK_REAL> > Gammat = calc_gamma(gammatu, Gammatl);
-    const vec3<CCTK_REAL> Gamt([&](int a) {
+    const vec3<mat3<CCTK_REAL, DN, DN>, DN> Gammatl = calc_gammal(dgammat);
+    const vec3<mat3<CCTK_REAL, DN, DN>, UP> Gammat =
+        calc_gamma(gammatu, Gammatl);
+    const vec3<CCTK_REAL, UP> Gamt([&](int a) {
       return sum2(
           [&](int x, int y) { return gammatu(x, y) * Gammat(a)(x, y); });
     });

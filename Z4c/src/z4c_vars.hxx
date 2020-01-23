@@ -24,35 +24,36 @@ template <typename T> struct z4c_vars_noderivs {
   //                   W[sqrt detg] = +1
 
   // Z4c variables
-  const T chi;          // W = -2/3
-  const mat3<T> gammat; // W = -2/3
-  const T Kh;           // W = 0
-  const mat3<T> At;     // W = -2/3
-  const vec3<T> Gamt;   // W = +2/3
-  const T Theta;        // W = 0
-  const T alphaG;       // W = 0
-  const vec3<T> betaG;  // W = 0
+  const T chi;                  // W = -2/3
+  const mat3<T, DN, DN> gammat; // W = -2/3
+  const T Kh;                   // W = 0
+  const mat3<T, DN, DN> At;     // W = -2/3
+  const vec3<T, UP> Gamt;       // W = +2/3
+  const T Theta;                // W = 0
+  const T alphaG;               // W = 0
+  const vec3<T, UP> betaG;      // W = 0
 
   // Hydro variables
   const T rho;
-  const vec3<T> Si;
-  const mat3<T> Sij;
+  const vec3<T, DN> Si;
+  const mat3<T, DN, DN> Sij;
 
   // ADM variables
-  const mat3<T> g;    // W = 0
-  const mat3<T> k;    // W = 0
-  const T alp;        // W = 0
-  const vec3<T> beta; // W = 0
+  const mat3<T, DN, DN> g; // W = 0
+  const mat3<T, DN, DN> k; // W = 0
+  const T alp;             // W = 0
+  const vec3<T, UP> beta;  // W = 0
 
   /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
   z4c_vars_noderivs(const T &kappa1, const T &kappa2, const T &f_mu_L,
                     const T &f_mu_S, const T &eta,
                     //
-                    const T &chi, const mat3<T> &gammat, const T &Kh,
-                    const mat3<T> &At, const vec3<T> &Gamt, const T &Theta,
-                    const T &alphaG, const vec3<T> &betaG,
+                    const T &chi, const mat3<T, DN, DN> &gammat, const T &Kh,
+                    const mat3<T, DN, DN> &At, const vec3<T, UP> &Gamt,
+                    const T &Theta, const T &alphaG, const vec3<T, UP> &betaG,
                     //
-                    const T &rho, const vec3<T> &Si, const mat3<T> &Sij)
+                    const T &rho, const vec3<T, DN> &Si,
+                    const mat3<T, DN, DN> &Sij)
       : kappa1(kappa1), kappa2(kappa2), f_mu_L(f_mu_L), f_mu_S(f_mu_S),
         eta(eta),
         //
@@ -109,28 +110,28 @@ template <typename T> struct z4c_vars_noderivs {
                              //
                              gf_chi_(I),
                              //
-                             mat3<T>(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_,
-                                     gf_gammatyy_, gf_gammatyz_, gf_gammatzz_,
-                                     I),
+                             mat3<T, DN, DN>(gf_gammatxx_, gf_gammatxy_,
+                                             gf_gammatxz_, gf_gammatyy_,
+                                             gf_gammatyz_, gf_gammatzz_, I),
                              //
                              gf_Kh_(I),
                              //
-                             mat3<T>(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_,
-                                     gf_Atyz_, gf_Atzz_, I),
+                             mat3<T, DN, DN>(gf_Atxx_, gf_Atxy_, gf_Atxz_,
+                                             gf_Atyy_, gf_Atyz_, gf_Atzz_, I),
                              //
-                             vec3<T>(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, I),
+                             vec3<T, UP>(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, I),
                              //
                              gf_Theta_(I),
                              //
                              gf_alphaG_(I),
                              //
-                             vec3<T>(gf_betaGx_, gf_betaGy_, gf_betaGz_, I),
+                             vec3<T, UP>(gf_betaGx_, gf_betaGy_, gf_betaGz_, I),
                              //
                              0,
                              //
-                             vec3<T>{0, 0, 0},
+                             vec3<T, DN>{0, 0, 0},
                              //
-                             mat3<T>{0, 0, 0, 0, 0, 0})
+                             mat3<T, DN, DN>{0, 0, 0, 0, 0, 0})
   //
   {}
 };
@@ -168,72 +169,75 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   using z4c_vars_noderivs<T>::beta;
 
   // Derivatives of Z4c variables
-  const vec3<T> dchi;
-  const mat3<T> ddchi;
-  const mat3<vec3<T> > dgammat;
-  const mat3<mat3<T> > ddgammat;
-  const vec3<T> dKh;
-  const mat3<vec3<T> > dAt;
-  const vec3<vec3<T> > dGamt;
-  const vec3<T> dTheta;
-  const vec3<T> dalphaG;
-  const mat3<T> ddalphaG;
-  const vec3<vec3<T> > dbetaG;
-  const vec3<mat3<T> > ddbetaG;
+  const vec3<T, DN> dchi;
+  const mat3<T, DN, DN> ddchi;
+  const mat3<vec3<T, DN>, DN, DN> dgammat;
+  const mat3<mat3<T, DN, DN>, DN, DN> ddgammat;
+  const vec3<T, DN> dKh;
+  const mat3<vec3<T, DN>, DN, DN> dAt;
+  const vec3<vec3<T, DN>, UP> dGamt;
+  const vec3<T, DN> dTheta;
+  const vec3<T, DN> dalphaG;
+  const mat3<T, DN, DN> ddalphaG;
+  const vec3<vec3<T, DN>, UP> dbetaG;
+  const vec3<mat3<T, DN, DN>, UP> ddbetaG;
 
   // Intermediate variables
-  const mat3<T> gammatu;
-  const mat3<vec3<T> > dgammatu;
-  const vec3<mat3<T> > Gammatl;
-  const vec3<mat3<T> > Gammat;
-  const vec3<T> Gamtd;
-  const mat3<T> DDchi;
-  const mat3<T> gu;
-  const mat3<vec3<T> > dg;
-  const vec3<mat3<T> > Gammal;
-  const vec3<mat3<T> > Gamma;
-  const mat3<T> DDalphaG;
-  const mat3<T> Rchi;
-  const mat3<T> Rt;
-  const mat3<T> R;
+  const mat3<T, UP, UP> gammatu;
+  const mat3<vec3<T, DN>, UP, UP> dgammatu;
+  const vec3<mat3<T, DN, DN>, DN> Gammatl;
+  const vec3<mat3<T, DN, DN>, UP> Gammat;
+  const vec3<T, UP> Gamtd;
+  const mat3<T, DN, DN> DDchi;
+  const mat3<T, UP, UP> gu;
+  const mat3<vec3<T, DN>, DN, DN> dg;
+  const vec3<mat3<T, DN, DN>, DN> Gammal;
+  const vec3<mat3<T, DN, DN>, UP> Gamma;
+  const mat3<T, DN, DN> DDalphaG;
+  const mat3<T, DN, DN> Rchi;
+  const mat3<T, DN, DN> Rt;
+  const mat3<T, DN, DN> R;
   const T Rsc;
-  const mat3<T> Atu;
-  const mat3<vec3<T> > dAtu;
+  const mat3<T, UP, UP> Atu;
+  const mat3<vec3<T, DN>, UP, UP> dAtu;
   const T traceSij;
 
   // Constraints
-  const vec3<T> ZtC;
+  const vec3<T, UP> ZtC;
   const T HC;
-  const vec3<T> MtC;
+  const vec3<T, UP> MtC;
   const T allC;
 
   // RHS variables
   const T chi_rhs;
-  const mat3<T> gammat_rhs;
+  const mat3<T, DN, DN> gammat_rhs;
   const T Kh_rhs;
-  const mat3<T> At_rhs;
-  const vec3<T> Gamt_rhs;
+  const mat3<T, DN, DN> At_rhs;
+  const vec3<T, UP> Gamt_rhs;
   const T Theta_rhs;
   const T alphaG_rhs;
-  const vec3<T> betaG_rhs;
+  const vec3<T, UP> betaG_rhs;
 
   // See arXiv:1212.2901 [gr-qc]
   /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
   z4c_vars(const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
            const T &eta,
            //
-           const T &chi, const vec3<T> &dchi, const mat3<T> &ddchi, //
-           const mat3<T> &gammat, const mat3<vec3<T> > &dgammat,
-           const mat3<mat3<T> > &ddgammat,                                   //
-           const T &Kh, const vec3<T> &dKh,                                  //
-           const mat3<T> &At, const mat3<vec3<T> > &dAt,                     //
-           const vec3<T> &Gamt, const vec3<vec3<T> > &dGamt,                 //
-           const T &Theta, const vec3<T> &dTheta,                            //
-           const T &alphaG, const vec3<T> &dalphaG, const mat3<T> &ddalphaG, //
-           const vec3<T> &betaG, const vec3<vec3<T> > &dbetaG,
-           const vec3<mat3<T> > &ddbetaG,
+           const T &chi, const vec3<T, DN> &dchi,
+           const mat3<T, DN, DN> &ddchi, //
+           const mat3<T, DN, DN> &gammat,
+           const mat3<vec3<T, DN>, DN, DN> &dgammat,
+           const mat3<mat3<T, DN, DN>, DN, DN> &ddgammat,                   //
+           const T &Kh, const vec3<T, DN> &dKh,                             //
+           const mat3<T, DN, DN> &At, const mat3<vec3<T, DN>, DN, DN> &dAt, //
+           const vec3<T, UP> &Gamt, const vec3<vec3<T, DN>, UP> &dGamt,     //
+           const T &Theta, const vec3<T, DN> &dTheta,                       //
+           const T &alphaG, const vec3<T, DN> &dalphaG,
+           const mat3<T, DN, DN> &ddalphaG, //
+           const vec3<T, UP> &betaG, const vec3<vec3<T, DN>, UP> &dbetaG,
+           const vec3<mat3<T, DN, DN>, UP> &ddbetaG,
            //
-           const T &rho, const vec3<T> &Si, const mat3<T> &Sij)
+           const T &rho, const vec3<T, DN> &Si, const mat3<T, DN, DN> &Sij)
       : z4c_vars_noderivs<T>(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
                              chi, gammat, Kh, At, Gamt, Theta, alphaG, betaG,
                              rho, Si, Sij),
@@ -261,7 +265,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         }),                                                    //
         gu([&](int a, int b) { return chi * gammatu(a, b); }), //
         dg([&](int a, int b) {
-          return vec3<T>([&](int c) {
+          return vec3<T, DN>([&](int c) {
             return -dchi(c) / pow2(chi) * gammat(a, b) //
                    + 1 / chi * dgammat(a, b)(c);
           });
@@ -271,6 +275,20 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         DDalphaG([&](int a, int b) {
           return ddalphaG(a, b) //
                  - sum1([&](int x) { return Gamma(x)(a, b) * dalphaG(x); });
+          // return ddalphaG(a, b) //
+          //        - sum1([&](int x) { return Gammat(x)(a, b) * dalphaG(x); })
+          //        //
+          //        // chipsipower = -4
+          //        // oochipsipower = -1
+          //        // df = oochipsipower dchi(a) / chi
+          //        // ddf == oochipsipower ddchi / chi - (-4) df df
+          //        + 1 / (2 * chi) *
+          //              (dchi(a) * dalphaG(b)    //
+          //               + dchi(b) * dalphaG(a)) //
+          //        + 1 / (4 * chi) * sum2([&](int x, int y) {
+          //            return gammat(a, b) * gammatu(x, y) * dchi(x) *
+          //            dalphaG(y);
+          //          });
         }),
         // (8)
         Rchi([&](int a, int b) {
@@ -372,7 +390,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                    });
         }),
         // (3)
-        Kh_rhs(-sum2([&](int x, int y) { return gu(x, y) * DDalphaG(x, y); }) //
+        Kh_rhs(sum2([&](int x, int y) { return -gu(x, y) * DDalphaG(x, y); }) //
                + alphaG * (sum2([&](int x, int y) {
                              return At(x, y) * Atu(x, y);
                            })                                 //
@@ -404,7 +422,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         }),
         // (5)
         Gamt_rhs([&](int a) {
-          return -sum1([&](int x) { return 2 * Atu(a, x) * dalphaG(x); }) //
+          return sum1([&](int x) { return -2 * Atu(a, x) * dalphaG(x); }) //
                  + 2 * alphaG *
                        (sum2([&](int x, int y) {
                           return Gammat(a)(x, y) * Atu(x, y);
@@ -487,14 +505,14 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
            const GF3D<const T, 0, 0, 0> &gf_betaGy_,
            const GF3D<const T, 0, 0, 0> &gf_betaGz_,
            //
-           const vect<int, 3> &I, const vec3<T> &dx)
+           const vect<int, 3> &I, const vec3<T, UP> &dx)
       : z4c_vars(kappa1, kappa2, f_mu_L, f_mu_S, eta,
                  //
                  gf_chi_(I), deriv(gf_chi_, I, dx), deriv2(gf_chi_, I, dx),
                  //
-                 mat3<T>(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
-                         gf_gammatyz_, gf_gammatzz_, I),
-                 mat3<vec3<T> >{
+                 mat3<T, DN, DN>(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_,
+                                 gf_gammatyy_, gf_gammatyz_, gf_gammatzz_, I),
+                 mat3<vec3<T, DN>, DN, DN>{
                      deriv(gf_gammatxx_, I, dx),
                      deriv(gf_gammatxy_, I, dx),
                      deriv(gf_gammatxz_, I, dx),
@@ -502,7 +520,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                      deriv(gf_gammatyz_, I, dx),
                      deriv(gf_gammatzz_, I, dx),
                  },
-                 mat3<mat3<T> >{
+                 mat3<mat3<T, DN, DN>, DN, DN>{
                      deriv2(gf_gammatxx_, I, dx),
                      deriv2(gf_gammatxy_, I, dx),
                      deriv2(gf_gammatxz_, I, dx),
@@ -513,9 +531,9 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  //
                  gf_Kh_(I), deriv(gf_Kh_, I, dx),
                  //
-                 mat3<T>(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_,
-                         gf_Atzz_, I),
-                 mat3<vec3<T> >{
+                 mat3<T, DN, DN>(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_,
+                                 gf_Atyz_, gf_Atzz_, I),
+                 mat3<vec3<T, DN>, DN, DN>{
                      deriv(gf_Atxx_, I, dx),
                      deriv(gf_Atxy_, I, dx),
                      deriv(gf_Atxz_, I, dx),
@@ -524,8 +542,8 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                      deriv(gf_Atzz_, I, dx),
                  },
                  //
-                 vec3<T>(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, I),
-                 vec3<vec3<T> >{
+                 vec3<T, UP>(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, I),
+                 vec3<vec3<T, DN>, UP>{
                      deriv(gf_Gamtx_, I, dx),
                      deriv(gf_Gamty_, I, dx),
                      deriv(gf_Gamtz_, I, dx),
@@ -536,13 +554,13 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  gf_alphaG_(I), deriv(gf_alphaG_, I, dx),
                  deriv2(gf_alphaG_, I, dx),
                  //
-                 vec3<T>(gf_betaGx_, gf_betaGy_, gf_betaGz_, I),
-                 vec3<vec3<T> >{
+                 vec3<T, UP>(gf_betaGx_, gf_betaGy_, gf_betaGz_, I),
+                 vec3<vec3<T, DN>, UP>{
                      deriv(gf_betaGx_, I, dx),
                      deriv(gf_betaGy_, I, dx),
                      deriv(gf_betaGz_, I, dx),
                  },
-                 vec3<mat3<T> >{
+                 vec3<mat3<T, DN, DN>, UP>{
                      deriv2(gf_betaGx_, I, dx),
                      deriv2(gf_betaGy_, I, dx),
                      deriv2(gf_betaGz_, I, dx),
@@ -550,9 +568,9 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  //
                  0,
                  //
-                 vec3<T>{0, 0, 0},
+                 vec3<T, DN>{0, 0, 0},
                  //
-                 mat3<T>{0, 0, 0, 0, 0, 0})
+                 mat3<T, DN, DN>{0, 0, 0, 0, 0, 0})
   //
   {}
 }; // namespace Z4c
