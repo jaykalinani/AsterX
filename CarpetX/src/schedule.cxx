@@ -401,15 +401,17 @@ void check_valid(const GHExt::LevelData &leveldata,
   }
 
   if (CCTK_BUILTIN_EXPECT(nan_count > 0, false)) {
+#pragma omp critical
+    {
     CCTK_VINFO(
         "%s: Grid function \"%s\" has %td nans on refinement level %d, time "
         "level %d, in box [%d,%d,%d]:[%d,%d,%d] (%g,%g,%g):(%g,%g,%g); "
         "expected valid %s",
         msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
         size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
-        nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2], double(nan_xmin[0]),
-        double(nan_xmin[1]), double(nan_xmin[2]), double(nan_xmax[0]),
-        double(nan_xmax[1]), double(nan_xmax[2]),
+          nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2],
+          double(nan_xmin[0]), double(nan_xmin[1]), double(nan_xmin[2]),
+          double(nan_xmax[0]), double(nan_xmax[1]), double(nan_xmax[2]),
         string(groupdata.valid.at(tl).at(vi)).c_str());
 
     for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
@@ -823,7 +825,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   CCTK_REAL mindx = 1.0 / 0.0;
   for (int d = 0; d < dim; ++d)
     mindx = fmin(mindx, dx[d]);
-  mindx = mindx / (1 << (max_num_levels - 1));
+  mindx /= 1 << (max_num_levels - 1);
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
   // init into meta mode
@@ -1181,6 +1183,7 @@ int Initialise(tFleshConfig *config) {
 
   if (config->recovered) {
     // Recover
+#pragma omp critical
     CCTK_VINFO("Recovering from checkpoint...");
 
     const char *recovery_mode = *static_cast<const char *const *>(
@@ -1201,13 +1204,14 @@ int Initialise(tFleshConfig *config) {
 
   } else {
     // Set up initial conditions
+#pragma omp critical
     CCTK_VINFO("Setting up initial conditions...");
 
     // Create coarse grid
     {
       static Timer timer("InitialiseRegrid");
       Interval interval(timer);
-      CCTK_REAL time = 0.0; // dummy time
+      const CCTK_REAL time = 0.0; // dummy time
       assert(saved_cctkGH == nullptr);
       saved_cctkGH = cctkGH;
       ghext->amrcore->MakeNewGrids(time);
@@ -1217,28 +1221,35 @@ int Initialise(tFleshConfig *config) {
     // Output domain information
     if (CCTK_MyProc(nullptr) == 0) {
       enter_level_mode(cctkGH, ghext->leveldata.at(0));
-      const int *restrict gsh = cctkGH->cctk_gsh;
-      const int *restrict nghostzones = cctkGH->cctk_nghostzones;
+      const int *restrict const gsh = cctkGH->cctk_gsh;
+      const int *restrict const nghostzones = cctkGH->cctk_nghostzones;
       CCTK_REAL x0[dim], x1[dim], dx[dim];
       for (int d = 0; d < dim; ++d) {
         dx[d] = cctkGH->cctk_delta_space[d];
         x0[d] = cctkGH->cctk_origin_space[d];
         x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
       }
+#pragma omp critical
+      {
       CCTK_VINFO("Grid extent:");
       CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
       CCTK_VINFO("Domain extent:");
-      CCTK_VINFO("  xmin=[%g,%g,%g]", x0[0], x0[1], x0[2]);
-      CCTK_VINFO("  xmax=[%g,%g,%g]", x1[0], x1[1], x1[2]);
-      CCTK_VINFO("  base dx=[%g,%g,%g]", dx[0], dx[1], dx[2]);
+        CCTK_VINFO("  xmin=[%.17g,%.17g,%.17g]", double(x0[0]), double(x0[1]),
+                   double(x0[2]));
+        CCTK_VINFO("  xmax=[%.17g,%.17g,%.17g]", double(x1[0]), double(x1[1]),
+                   double(x1[2]));
+        CCTK_VINFO("  base dx=[%.17g,%.17g,%.17g]", double(dx[0]),
+                   double(dx[1]), double(dx[2]));
       CCTK_VINFO("Time stepping:");
-      CCTK_VINFO("  t0=%g", cctkGH->cctk_time);
-      CCTK_VINFO("  dt=%g", cctkGH->cctk_delta_time);
+        CCTK_VINFO("  t0=%.17g", double(cctkGH->cctk_time));
+        CCTK_VINFO("  dt=%.17g", double(cctkGH->cctk_delta_time));
+      }
       leave_level_mode(cctkGH, ghext->leveldata.at(0));
     }
 
     for (;;) {
       const int level = ghext->amrcore->finestLevel();
+#pragma omp critical
       CCTK_VINFO("Initializing level %d...", level);
 
       CCTK_Traverse(cctkGH, "CCTK_INITIAL");
@@ -1248,6 +1259,7 @@ int Initialise(tFleshConfig *config) {
       if (level >= ghext->amrcore->maxLevel())
         break;
 
+#pragma omp critical
       CCTK_VINFO("Regridding...");
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
       {
@@ -1264,6 +1276,8 @@ int Initialise(tFleshConfig *config) {
       assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
+#pragma omp critical
+      {
       const double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
       for (const auto &leveldata : ghext->leveldata) {
         const int sz = leveldata.mfab0->size();
@@ -1282,6 +1296,7 @@ int Initialise(tFleshConfig *config) {
                      100 * pts / (pow(2.0, dim) * ptsc));
         }
       }
+      }
 
       // Did we create a new level?
       const bool did_create_new_level = new_numlevels > old_numlevels;
@@ -1289,6 +1304,7 @@ int Initialise(tFleshConfig *config) {
         break;
     }
   }
+#pragma omp critical
   CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
 
   // Restrict
@@ -1483,6 +1499,7 @@ int Evolve(tFleshConfig *config) {
   cGH *restrict const cctkGH = config->GH[0];
   assert(cctkGH);
 
+#pragma omp critical
   CCTK_VINFO("Starting evolution...");
 
   while (!EvolutionIsDone(cctkGH)) {
@@ -1491,6 +1508,7 @@ int Evolve(tFleshConfig *config) {
 
     if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0 &&
         ghext->amrcore->maxLevel() > 0) {
+#pragma omp critical
       CCTK_VINFO("Regridding...");
       const int old_numlevels = ghext->amrcore->finestLevel() + 1;
       {
@@ -1505,6 +1523,8 @@ int Evolve(tFleshConfig *config) {
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       const int max_numlevels = ghext->amrcore->maxLevel() + 1;
       assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
+#pragma omp critical
+      {
       CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
                  new_numlevels);
       double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
@@ -1526,6 +1546,7 @@ int Evolve(tFleshConfig *config) {
                      100 * pts / (pow(2.0, dim) * ptsc));
         }
       }
+    }
     }
 
     CycleTimelevels(cctkGH);
@@ -1562,6 +1583,7 @@ int Shutdown(tFleshConfig *config) {
   static Timer timer("Shutdown");
   Interval interval(timer);
 
+#pragma omp critical
   CCTK_VINFO("Shutting down...");
 
   CCTK_Traverse(cctkGH, "CCTK_TERMINATE");
@@ -1582,6 +1604,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   cGH *restrict const cctkGH = static_cast<cGH *>(data);
 
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("CallFunction iteration %d %s: %s::%s", cctkGH->cctk_iteration,
                attribute->where, attribute->thorn, attribute->routine);
 
@@ -1909,6 +1932,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         buf << ", ";
       buf << unique_C_ptr<char>(CCTK_GroupName(groups0[n])).get();
     }
+#pragma omp critical
     CCTK_VINFO("SyncGroups %s", buf.str().c_str());
   }
 

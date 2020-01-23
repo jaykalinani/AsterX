@@ -81,15 +81,18 @@ extern "C" void CarpetX_SolvePoisson() {
   // Solve
 
   mlmg.compResidual(ress, sols, rhss);
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level)
-    CCTK_VINFO("norm_inf rhs[%d]: %g", level,
-               double(rhss.at(level)->norminf(0, 0, false, true)));
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level)
-    CCTK_VINFO("norm_inf sol[%d]: %g", level,
-               double(sols.at(level)->norminf(0, 0, false, true)));
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level)
-    CCTK_VINFO("norm_inf res[%d]: %g", level,
-               double(ress.at(level)->norminf(0, 0, false, true)));
+#pragma omp critical
+  {
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      CCTK_VINFO("norm_inf rhs[%d]: %g", level,
+                 double(rhss.at(level)->norminf(0, 0, false, true)));
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      CCTK_VINFO("norm_inf sol[%d]: %g", level,
+                 double(sols.at(level)->norminf(0, 0, false, true)));
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      CCTK_VINFO("norm_inf res[%d]: %g", level,
+                 double(ress.at(level)->norminf(0, 0, false, true)));
+  }
 
   const CCTK_REAL rtol = 0.0;
   const CCTK_REAL atol = 1.0e-12;

@@ -244,6 +244,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
     return;
 
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("ErrorEst level %d", level);
 
   const int gi = CCTK_GroupIndex("CarpetX::regrid_error");
@@ -289,7 +290,9 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
 
 void SetupGlobals() {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("SetupGlobals");
 
   GHExt::GlobalData &globaldata = ghext->globaldata;
@@ -349,7 +352,9 @@ void SetupGlobals() {
 void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
                 const function<string()> &why) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("SetupLevel level %d", level);
 
   assert(level == int(ghext->leveldata.size()));
@@ -755,7 +760,9 @@ void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
                                             const BoxArray &ba,
                                             const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("MakeNewLevelFromScratch level %d", level);
 
   SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromScratch"; });
@@ -773,8 +780,11 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
                                            const BoxArray &ba,
                                            const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("MakeNewLevelFromCoarse level %d", level);
+
   assert(level > 0);
 
   SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromCoarse"; });
@@ -860,7 +870,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
 void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
                                 const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("RemakeLevel level %d", level);
 
   // Copy or prolongate
@@ -985,7 +997,9 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
 void CactusAmrCore::ClearLevel(int level) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("ClearLevel level %d", level);
 
   // assert(level == int(ghext->leveldata.size()) - 1);
@@ -997,7 +1011,9 @@ void CactusAmrCore::ClearLevel(int level) {
 // Start driver
 extern "C" int CarpetX_Startup() {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("Startup");
 
   // Output a startup message
@@ -1071,7 +1087,9 @@ extern "C" int CarpetX_Startup() {
 // Set up GH extension
 void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("SetupGH");
 
   assert(fc);
@@ -1097,7 +1115,9 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
 // Initialize GH extension
 int InitGH(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("InitGH");
 
   assert(cctkGH);
@@ -1133,17 +1153,23 @@ int InitGH(cGH *restrict cctkGH) {
       domain, max_num_levels - 1, ncells, coord, reffacts, is_periodic);
 
   if (verbose) {
-    int maxnumlevels = ghext->amrcore->maxLevel() + 1;
-    for (int level = 0; level < maxnumlevels; ++level) {
-      CCTK_VINFO("Geometry level %d:", level);
-      cout << ghext->amrcore->Geom(level) << "\n";
+#pragma omp critical
+    {
+      const int maxnumlevels = ghext->amrcore->maxLevel() + 1;
+      for (int level = 0; level < maxnumlevels; ++level) {
+        CCTK_VINFO("Geometry level %d:", level);
+        cout << ghext->amrcore->Geom(level) << "\n";
+      }
     }
   }
 
+  // #pragma omp critical
+  // {
   // CCTK_VINFO("BoxArray level %d:", level);
   // cout << ghext->amrcore->boxArray(level) << "\n";
   // CCTK_VINFO("DistributionMap level %d:", level);
   // cout << ghext->amrcore->DistributionMap(level) << "\n";
+  // }
 
   return 0; // unused
 }
@@ -1151,7 +1177,9 @@ int InitGH(cGH *restrict cctkGH) {
 // Traverse schedule
 int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("ScheduleTraverseGH iteration %d %s", cctkGH->cctk_iteration,
                where);
 
@@ -1164,7 +1192,9 @@ int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
 // Shut down driver
 extern "C" int CarpetX_Shutdown() {
   DECLARE_CCTK_PARAMETERS;
+
   if (verbose)
+#pragma omp critical
     CCTK_VINFO("Shutdown");
 
   if (false) {
