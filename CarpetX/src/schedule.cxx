@@ -369,7 +369,7 @@ void check_valid(const GHExt::LevelData &leveldata,
   const auto nan_check{[&](const GridDescBase &grid,
                            const GF3D1<const CCTK_REAL> &ptr_,
                            const Loop::PointDesc &p) {
-    if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
+    if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr_(p.I)), false))
       nan_update(grid, p);
   }};
   const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
@@ -403,53 +403,57 @@ void check_valid(const GHExt::LevelData &leveldata,
   if (CCTK_BUILTIN_EXPECT(nan_count > 0, false)) {
 #pragma omp critical
     {
-    CCTK_VINFO(
-        "%s: Grid function \"%s\" has %td nans on refinement level %d, time "
-        "level %d, in box [%d,%d,%d]:[%d,%d,%d] (%g,%g,%g):(%g,%g,%g); "
-        "expected valid %s",
-        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-        size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
+      CCTK_VINFO(
+          "%s: Grid function \"%s\" has %td nans on refinement level %d, time "
+          "level %d, in box [%d,%d,%d]:[%d,%d,%d] (%g,%g,%g):(%g,%g,%g); "
+          "expected valid %s",
+          msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+          size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
           nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2],
           double(nan_xmin[0]), double(nan_xmin[1]), double(nan_xmin[2]),
           double(nan_xmax[0]), double(nan_xmax[1]), double(nan_xmax[2]),
-        string(groupdata.valid.at(tl).at(vi)).c_str());
+          string(groupdata.valid.at(tl).at(vi)).c_str());
 
-    for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-      const GridPtrDesc1 grid(leveldata, groupdata, mfi);
-      const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
-      const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
+      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+        const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+        const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+        const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
-      if (valid.valid_int)
-        grid.loop_idx(where_t::interior, groupdata.indextype,
-                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                          CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
-                                     double(p.x), double(p.y), double(p.z),
-                                     double(ptr_(p.I)));
-                      });
-      if (valid.valid_outer)
-        grid.loop_idx(where_t::boundary, groupdata.indextype,
-                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                          CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
-                                     double(p.x), double(p.y), double(p.z),
-                                     double(ptr_(p.I)));
-                      });
-      if (valid.valid_ghosts)
-        grid.loop_idx(where_t::ghosts, groupdata.indextype,
-                      groupdata.nghostzones, [&](const Loop::PointDesc &p) {
-                        if (CCTK_BUILTIN_EXPECT(CCTK_isnan(ptr_(p.I)), false))
-                          CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
-                                     double(p.x), double(p.y), double(p.z),
-                                     double(ptr_(p.I)));
-                      });
+        if (valid.valid_int)
+          grid.loop_idx(
+              where_t::interior, groupdata.indextype, groupdata.nghostzones,
+              [&](const Loop::PointDesc &p) {
+                if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr_(p.I)), false))
+                  CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
+                             double(p.x), double(p.y), double(p.z),
+                             double(ptr_(p.I)));
+              });
+        if (valid.valid_outer)
+          grid.loop_idx(
+              where_t::boundary, groupdata.indextype, groupdata.nghostzones,
+              [&](const Loop::PointDesc &p) {
+                if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr_(p.I)), false))
+                  CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
+                             double(p.x), double(p.y), double(p.z),
+                             double(ptr_(p.I)));
+              });
+        if (valid.valid_ghosts)
+          grid.loop_idx(
+              where_t::ghosts, groupdata.indextype, groupdata.nghostzones,
+              [&](const Loop::PointDesc &p) {
+                if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr_(p.I)), false))
+                  CCTK_VINFO("[%d,%d,%d] (%g,%g,%g) %g", p.i, p.j, p.k,
+                             double(p.x), double(p.y), double(p.z),
+                             double(ptr_(p.I)));
+              });
+      }
+
+      CCTK_VERROR(
+          "%s: Grid function \"%s\" has nans on refinement level %d, time "
+          "level %d; expected valid %s",
+          msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+          leveldata.level, tl, string(groupdata.valid.at(tl).at(vi)).c_str());
     }
-
-    CCTK_VERROR(
-        "%s: Grid function \"%s\" has nans on refinement level %d, time "
-        "level %d; expected valid %s",
-        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-        leveldata.level, tl, string(groupdata.valid.at(tl).at(vi)).c_str());
   }
 }
 
@@ -514,7 +518,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
   atomic<size_t> nan_count{0};
   if (valid.valid_int) {
     const CCTK_REAL *restrict const ptr = &scalargroupdata.data.at(tl).at(vi);
-    if (CCTK_BUILTIN_EXPECT(CCTK_isnan(*ptr), false)) {
+    if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(*ptr), false)) {
       ++nan_count;
     }
   }
@@ -1231,16 +1235,16 @@ int Initialise(tFleshConfig *config) {
       }
 #pragma omp critical
       {
-      CCTK_VINFO("Grid extent:");
-      CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
-      CCTK_VINFO("Domain extent:");
+        CCTK_VINFO("Grid extent:");
+        CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
+        CCTK_VINFO("Domain extent:");
         CCTK_VINFO("  xmin=[%.17g,%.17g,%.17g]", double(x0[0]), double(x0[1]),
                    double(x0[2]));
         CCTK_VINFO("  xmax=[%.17g,%.17g,%.17g]", double(x1[0]), double(x1[1]),
                    double(x1[2]));
         CCTK_VINFO("  base dx=[%.17g,%.17g,%.17g]", double(dx[0]),
                    double(dx[1]), double(dx[2]));
-      CCTK_VINFO("Time stepping:");
+        CCTK_VINFO("Time stepping:");
         CCTK_VINFO("  t0=%.17g", double(cctkGH->cctk_time));
         CCTK_VINFO("  dt=%.17g", double(cctkGH->cctk_delta_time));
       }
@@ -1278,24 +1282,24 @@ int Initialise(tFleshConfig *config) {
              new_numlevels == old_numlevels + 1);
 #pragma omp critical
       {
-      const double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
-      for (const auto &leveldata : ghext->leveldata) {
-        const int sz = leveldata.mfab0->size();
-        const double pts = leveldata.mfab0->boxArray().d_numPts();
-        if (leveldata.level == 0) {
-          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
-                     leveldata.level, sz, pts,
-                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
-        } else {
-          const double ptsc = ghext->leveldata.at(leveldata.level - 1)
-                                  .mfab0->boxArray()
-                                  .d_numPts();
-          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
-                     leveldata.level, sz, pts,
-                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
-                     100 * pts / (pow(2.0, dim) * ptsc));
+        const double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+        for (const auto &leveldata : ghext->leveldata) {
+          const int sz = leveldata.mfab0->size();
+          const double pts = leveldata.mfab0->boxArray().d_numPts();
+          if (leveldata.level == 0) {
+            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                       leveldata.level, sz, pts,
+                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+          } else {
+            const double ptsc = ghext->leveldata.at(leveldata.level - 1)
+                                    .mfab0->boxArray()
+                                    .d_numPts();
+            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                       leveldata.level, sz, pts,
+                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                       100 * pts / (pow(2.0, dim) * ptsc));
+          }
         }
-      }
       }
 
       // Did we create a new level?
@@ -1525,28 +1529,28 @@ int Evolve(tFleshConfig *config) {
       assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
 #pragma omp critical
       {
-      CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
-                 new_numlevels);
-      double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
-      assert(current_level == -1);
-      for (const auto &leveldata : ghext->leveldata) {
-        const int sz = leveldata.mfab0->size();
-        const double pts = leveldata.mfab0->boxArray().d_numPts();
-        if (leveldata.level == 0) {
-          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
-                     leveldata.level, sz, pts,
-                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
-        } else {
-          const double ptsc = ghext->leveldata.at(leveldata.level - 1)
-                                  .mfab0->boxArray()
-                                  .d_numPts();
-          CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
-                     leveldata.level, sz, pts,
-                     100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
-                     100 * pts / (pow(2.0, dim) * ptsc));
+        CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
+                   new_numlevels);
+        double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+        assert(current_level == -1);
+        for (const auto &leveldata : ghext->leveldata) {
+          const int sz = leveldata.mfab0->size();
+          const double pts = leveldata.mfab0->boxArray().d_numPts();
+          if (leveldata.level == 0) {
+            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                       leveldata.level, sz, pts,
+                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+          } else {
+            const double ptsc = ghext->leveldata.at(leveldata.level - 1)
+                                    .mfab0->boxArray()
+                                    .d_numPts();
+            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                       leveldata.level, sz, pts,
+                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                       100 * pts / (pow(2.0, dim) * ptsc));
+          }
         }
       }
-    }
     }
 
     CycleTimelevels(cctkGH);

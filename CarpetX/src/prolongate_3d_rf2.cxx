@@ -180,13 +180,13 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
       y += cs[i] * (crseptr[(i - i0) * di] + crseptr[(i1 - i0) * di]);
     }
 #ifdef CCTK_DEBUG
-    assert(!CCTK_isnan(y));
+    assert(CCTK_isfinite(y));
 #endif
 #ifdef CCTK_DEBUG
     T y1 = 0;
     for (int i = 0; i < ORDER + 1; ++i)
       y1 += cs[i] * crseptr[(i - i0) * di];
-    assert(!CCTK_isnan(y1));
+    assert(CCTK_isfinite(y1));
     // Don't check for equality; there can be round-off errors
     // assert(y1 == y);
 #endif
@@ -213,7 +213,7 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
       for (int i = 0; i < ORDER + 1; ++i)
         y += cs[i] * crseptr[-(i - i0) * di];
 #ifdef CCTK_DEBUG
-    assert(!CCTK_isnan(y));
+    assert(CCTK_isfinite(y));
 #endif
     return y;
   }
@@ -319,7 +319,7 @@ struct test_interp1d<CENTERING, POLY, ORDER, T> {
         T y1 = interp1d<CENTERING, POLY, ORDER>()(&ys[i0 + 1], 1, off);
         // We carefully choose the test problem so that round-off
         // cannot be a problem here
-        assert(!CCTK_isnan(y1));
+        assert(CCTK_isfinite(y1));
         assert(y1 == y);
       }
     }
@@ -353,7 +353,7 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
         for (int off = 0; off < 2; ++off) {
           x1[off] = CENTERING / T(4) + off / T(2);
           y1[off] = interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off);
-          assert(!CCTK_isnan(y1[off]));
+          assert(CCTK_isfinite(y1[off]));
         }
         assert(y1[0] / 2 + y1[1] / 2 == ys[i0 + 1]);
         const T dx = x1[1] - x1[0];
@@ -388,7 +388,7 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
             else
               y1[off + 1] =
                   interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 2], 1, off);
-            assert(!CCTK_isnan(y1[off + 1]));
+            assert(CCTK_isfinite(y1[off + 1]));
           }
           const T dx = x1[1] - x1[0];
           const T xlo = x1[0];
@@ -447,7 +447,7 @@ void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
             interp1d<CENTERING, CONSERVATIVE, ORDER>()(
                 &crseptr[crsebox.index(crseind)], di, off);
 #ifdef CCTK_DEBUG
-        assert(!CCTK_isnan(fineptr[finebox.index(fineind)]));
+        assert(CCTK_isfinite(fineptr[finebox.index(fineind)]));
 #endif
       }
     }
@@ -539,7 +539,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
              ++i) {
           const IntVect ind(i, j, k);
           assert(crse.box().contains(ind));
-          assert(!CCTK_isnan(crseptr[crse.box().index(ind)]));
+          assert(CCTK_isfinite(crseptr[crse.box().index(ind)]));
         }
       }
     }
@@ -552,7 +552,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
                                             targets[0], targets[0]);
 #ifdef CCTK_DEBUG
     for (auto x : tmps[0])
-      assert(!CCTK_isnan(x));
+      assert(CCTK_isfinite(x));
 #endif
 
 #ifdef CCTK_DEBUG
@@ -563,9 +563,9 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
         tmps[0].data(), targets[0], tmps[1].data(), targets[1], targets[1]);
 #ifdef CCTK_DEBUG
     // for (auto x : tmps[1])
-    //   assert(!CCTK_isnan(x));
+    //   assert(CCTK_isfinite(x));
     for (size_t i = 0; i < tmps[1].size(); ++i)
-      assert(!CCTK_isnan(tmps[1][i]));
+      assert(CCTK_isfinite(tmps[1][i]));
 #endif
 
 #ifdef CCTK_DEBUG
@@ -595,7 +595,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
              ++i) {
           const IntVect ind(i, j, k);
           assert(fine.box().contains(ind));
-          assert(!CCTK_isnan(fineptr[fine.box().index(ind)]));
+          assert(CCTK_isfinite(fineptr[fine.box().index(ind)]));
         }
       }
     }
