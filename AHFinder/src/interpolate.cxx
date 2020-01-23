@@ -37,6 +37,7 @@ extern "C" void AHFinder_interpolate(CCTK_ARGUMENTS) {
   Interpolate(cctkGH, npoints, coordsx.data(), coordsy.data(), coordsz.data(),
               nvars, varinds.data(), operations.data(), resultptrs.data());
 
+#pragma omp critical
   for (int v = 0; v < nvars; ++v)
     for (int n = 0; n < npoints; ++n)
       CCTK_VINFO("%d[%d]=%g", v, n, double(results.at(v).at(n)));
