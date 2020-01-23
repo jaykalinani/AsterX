@@ -26,30 +26,84 @@ constexpr int dim = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace {
-template <typename T, size_t N, typename... Ts>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
-constexpr enable_if_t<(sizeof...(Ts) == N), array<T, N> >
-array_from_initializer_list(const T *const beg, const T *const end,
-                            const Ts &... xs) {
-  return array<T, N>{xs...};
-}
+// TODO: This is broken (at least on MacOS, with gcc 9.2, with -O0).
 
-template <typename T, size_t N, typename... Ts>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
-constexpr enable_if_t<(sizeof...(Ts) < N), array<T, N> >
-array_from_initializer_list(const T *const beg, const T *const end,
-                            const Ts &... xs) {
-  return array_from_initializer_list<T, N>(beg + 1, end, xs...,
-                                           beg < end ? *beg : T{});
-}
-} // namespace
+// namespace {
+// template <typename T, size_t N, typename... Ts>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+// constexpr enable_if_t<(sizeof...(Ts) == N), array<T, N> >
+// array_from_initializer_list(const T *const beg, const T *const end,
+//                             const Ts &... xs) {
+//   return array<T, N>{xs...};
+// }
+//
+// template <typename T, size_t N, typename... Ts>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+// constexpr enable_if_t<(sizeof...(Ts) < N), array<T, N> >
+// array_from_initializer_list(const T *const beg, const T *const end,
+//                             const Ts &... xs) {
+//   return array_from_initializer_list<T, N>(beg + 1, end, xs...,
+//                                            beg < end ? *beg : T{});
+// }
+// } // namespace
+//
+// template <typename T, size_t N>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr array<T, N>
+// array_from_initializer_list(initializer_list<T> l) {
+//   return array_from_initializer_list<T, N>(l.begin(), l.end());
+// }
+
+// namespace {
+// template <typename T, size_t N, typename... Ts>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+// constexpr enable_if_t<(sizeof...(Ts) == N), array<T, N> >
+// array_from_initializer_list(const T *const beg, const T *const end,
+//                             const Ts &... xs) {
+//   return array<T, N>{xs...};
+// }
+
+// template <typename T, size_t N, typename... Ts>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+// constexpr enable_if_t<(sizeof...(Ts) < N), array<T, N> >
+// array_from_initializer_list(const T *const beg, const T *const end,
+//                             const Ts &... xs) {
+//   return array_from_initializer_list<T, N>(beg, end - 1,
+//                                            beg < end ? *(end - 1) : T{},
+//                                            xs...);
+// }
+// } // namespace
+//
+// template <typename T, size_t N>
+// /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr array<T, N>
+// array_from_initializer_list(initializer_list<T> l) {
+//   return array_from_initializer_list<T, N>(l.begin(), l.end());
+// }
 
 template <typename T, size_t N>
-/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr array<T, N>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr enable_if_t<(N == 3), array<T, N> >
 array_from_initializer_list(initializer_list<T> l) {
-  return array_from_initializer_list<T, N>(l.begin(), l.end());
+  assert(l.size() >= N);
+  const T *restrict const p = l.begin();
+  return {p[0], p[1], p[2]};
 }
+
+template <typename T, size_t N>
+/*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr enable_if_t<(N == 6), array<T, N> >
+array_from_initializer_list(initializer_list<T> l) {
+  assert(l.size() >= N);
+  const T *restrict const p = l.begin();
+  return {p[0], p[1], p[2], p[3], p[4], p[5]};
+}
+
+static_assert(static_cast<const array<int, 3> &>(
+                  array_from_initializer_list<int, 3>({0, 1, 2}))[0] == 0,
+              "");
+static_assert(static_cast<const array<int, 3> &>(
+                  array_from_initializer_list<int, 3>({0, 1, 2}))[1] == 1,
+              "");
+static_assert(static_cast<const array<int, 3> &>(
+                  array_from_initializer_list<int, 3>({0, 1, 2}))[2] == 2,
+              "");
 
 template <typename T, int D> struct vect {
   array<T, D> elts;
@@ -59,10 +113,10 @@ template <typename T, int D> struct vect {
 
   /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect(const array<T, D> &arr)
       : elts(arr) {}
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect(initializer_list<T> arr)
-      : elts(array_from_initializer_list<T, D>(arr)) {
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect(initializer_list<T> lst)
+      : elts(array_from_initializer_list<T, D>(lst)) {
 #ifdef CCTK_DEBUG
-    assert(arr.size() == D);
+    assert(lst.size() == D);
 #endif
   }
 
@@ -81,9 +135,17 @@ template <typename T, int D> struct vect {
   }
 
   /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr const T &operator[](int d) const {
+#ifdef CCTK_DEBUG
+    assert(d >= 0 && d < D);
+#endif
     return elts[d];
   }
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ T &operator[](int d) { return elts[d]; }
+  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr T &operator[](int d) {
+#ifdef CCTK_DEBUG
+    assert(d >= 0 && d < D);
+#endif
+    return elts[d];
+  }
 
   friend /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/ constexpr vect
   operator+(const vect &x) {
@@ -310,6 +372,29 @@ min(const Loop::vect<T, D> &x, const Loop::vect<T, D> &y) {
 } // namespace std
 namespace Loop {
 
+namespace static_test {
+constexpr vect<int, 3> vect1{0, 1, 2};
+static_assert(vect1[0] == 0, "");
+static_assert(vect1[1] == 1, "");
+static_assert(vect1[2] == 2, "");
+
+constexpr vect<vect<int, 3>, 3> vect2{
+    {100, 101, 102},
+    {110, 111, 112},
+    {120, 121, 122},
+};
+static_assert(vect2[0][0] == 100, "");
+static_assert(vect2[0][1] == 101, "");
+static_assert(vect2[0][2] == 102, "");
+static_assert(vect2[1][0] == 110, "");
+static_assert(vect2[1][1] == 111, "");
+static_assert(vect2[1][2] == 112, "");
+static_assert(vect2[2][0] == 120, "");
+static_assert(vect2[2][1] == 121, "");
+static_assert(vect2[2][2] == 122, "");
+
+} // namespace static_test
+
 ////////////////////////////////////////////////////////////////////////////////
 
 enum class where_t { everywhere, interior, boundary, ghosts_inclusive, ghosts };
@@ -406,7 +491,7 @@ public:
       const CCTK_REAL y = x0[1] + (lbnd[1] + j + CCTK_REAL(CJ - 1) / 2) * dx[1];
       const CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
       const int idx = i * di + j * dj + k * dk;
-      const vect<int, dim> I{{i, j, k}};
+      const vect<int, dim> I{i, j, k};
       const PointDesc p{i, j, k, x, y, z, idx, dj, dk, I, inormal};
       f(p);
     }};
