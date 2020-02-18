@@ -116,6 +116,8 @@ Z4c::epsdiss = 0.32
 
 IO::out_dir = $$parfile
 IO::out_every = $out_every
+IO::out_mode = "np"
+IO::out_proc_every = 2   # TODO
 
 CarpetX::out_plotfile_groups = "
     #TODO ADMBase::metric

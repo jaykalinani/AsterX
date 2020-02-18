@@ -5,6 +5,7 @@ SRCS =						\
 	driver.cxx				\
         interpolate.cxx				\
 	io.cxx					\
+	io_silo.cxx				\
 	level.cxx				\
         linsolve.cxx				\
         logo.cxx				\
