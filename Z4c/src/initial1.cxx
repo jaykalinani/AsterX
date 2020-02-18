@@ -94,12 +94,12 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
     // Store
     gf_chi_(p.I) = chi;
     gammat.store(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
-                 gf_gammatyz_, gf_gammatzz_, p);
+                 gf_gammatyz_, gf_gammatzz_, p.I);
     gf_Kh_(p.I) = Kh;
-    At.store(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_, gf_Atzz_, p);
+    At.store(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_, gf_Atzz_, p.I);
     gf_Theta_(p.I) = Theta;
     gf_alphaG_(p.I) = alphaG;
-    betaG.store(gf_betaGx_, gf_betaGy_, gf_betaGz_, p);
+    betaG.store(gf_betaGx_, gf_betaGy_, gf_betaGz_, p.I);
   });
 }
 

@@ -1,6 +1,8 @@
 #ifndef REDUCTION_HXX
 #define REDUCTION_HXX
 
+#include "vect.hxx"
+
 #include <cctk.h>
 #undef copysign
 #undef fpclassify
@@ -46,13 +48,13 @@ template <typename T> T fmin1(T x, T y) {
   return fmin(x, y);
 }
 
-template <typename T> struct reduction {
+template <typename T, int D> struct reduction {
   // TODO: contains_inf, contains_nan?
-  // TODO: minloc, maxloc
   T min, max, sum, sum2;
   T vol, maxabs, sumabs, sum2abs;
+  vect<T, D> minloc, maxloc;
   reduction();
-  reduction(const T &V, const T &x);
+  reduction(const vect<T, D> &p, const T &V, const T &x);
   reduction(const reduction &x, const reduction &y);
   reduction operator+(const reduction &y) const { return reduction(*this, y); }
   reduction &operator+=(const reduction &y) { return *this = *this + y; }
@@ -64,38 +66,47 @@ template <typename T> struct reduction {
   T norm2() const { return sqrt(sum2abs / vol); }
   T norm_inf() const { return maxabs; }
 
-  friend ostream &operator<<(ostream &os, const reduction &red) {
-    return os << "reduction{min:" << red.min << ",max:" << red.max
-              << ",sum:" << red.sum << ",sum2:" << red.sum2
-              << ",vol:" << red.vol << ",maxabs:" << red.maxabs
-              << ",sumabs:" << red.sumabs << ",sum2abs:" << red.sum2abs << "}";
-  }
+  template <typename T1, int D1>
+  friend ostream &operator<<(ostream &os, const reduction<T1, D1> &red);
 };
 
-template <typename T>
-reduction<T>::reduction()
+template <typename T, int D>
+reduction<T, D>::reduction()
     : min(1.0 / 0.0), max(-1.0 / 0.0), sum(0.0), sum2(0.0), vol(0.0),
-      maxabs(0.0), sumabs(0.0), sum2abs(0.0) {}
+      maxabs(0.0), sumabs(0.0), sum2abs(0.0),
+      minloc(vect<T, D>::pure(0.0 / 0.0)), maxloc(vect<T, D>::pure(0.0 / 0.0)) {
+}
 
-template <typename T>
-reduction<T>::reduction(const T &V, const T &x)
+template <typename T, int D>
+reduction<T, D>::reduction(const vect<T, D> &p, const T &V, const T &x)
     : min(x), max(x), sum(V * x), sum2(V * pow21(x)), vol(V), maxabs(fabs(x)),
-      sumabs(V * fabs(x)), sum2abs(V * pow21(fabs(x))) {}
+      sumabs(V * fabs(x)), sum2abs(V * pow21(fabs(x))), minloc(p), maxloc(p) {}
 
-template <typename T>
-reduction<T>::reduction(const reduction &x, const reduction &y)
+template <typename T, int D>
+reduction<T, D>::reduction(const reduction &x, const reduction &y)
     : min(fmin1(x.min, y.min)), max(fmax1(x.max, y.max)), sum(x.sum + y.sum),
       sum2(x.sum2 + y.sum2), vol(x.vol + y.vol),
       maxabs(fmax1(x.maxabs, y.maxabs)), sumabs(x.sumabs + y.sumabs),
-      sum2abs(x.sum2abs + y.sum2abs) {}
+      sum2abs(x.sum2abs + y.sum2abs),
+      minloc(x.min <= y.min ? x.minloc : y.minloc),
+      maxloc(x.max >= y.max ? x.maxloc : y.maxloc) {}
 
-typedef reduction<CCTK_REAL> reduction_CCTK_REAL;
+template <typename T, int D>
+ostream &operator<<(ostream &os, const reduction<T, D> &red) {
+  return os << "reduction{min:" << red.min << ",max:" << red.max
+            << ",sum:" << red.sum << ",sum2:" << red.sum2 << ",vol:" << red.vol
+            << ",maxabs:" << red.maxabs << ",sumabs:" << red.sumabs
+            << ",sum2abs:" << red.sum2abs << ",minloc:" << red.minloc
+            << ",maxloc:" << red.maxloc << "}";
+}
+
+typedef reduction<CCTK_REAL, dim> reduction_CCTK_REAL;
 #pragma omp declare reduction(reduction:reduction_CCTK_REAL : omp_out += omp_in)
 
 MPI_Datatype reduction_mpi_datatype_CCTK_REAL();
 MPI_Op reduction_mpi_op();
 
-reduction<CCTK_REAL> reduce(int gi, int vi, int tl);
+reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl);
 
 } // namespace CarpetX
 

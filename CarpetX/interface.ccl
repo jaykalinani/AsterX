@@ -4,10 +4,13 @@ IMPLEMENTS: CarpetX
 
 INHERITS: IO
 
+USES INCLUDE HEADER: silo.hxx
+
 
 
 INCLUDES HEADER: loop.hxx IN loop.hxx
 INCLUDES HEADER: loopcontrol.h IN loopcontrol.h
+
 
 
 void FUNCTION GetTileExtent(

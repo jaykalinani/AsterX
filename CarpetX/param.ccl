@@ -230,6 +230,11 @@ STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
   ".*" :: ""
 } "all"
 
+STRING out_silo_vars "Variables to output in Silo format" STEERABLE=always
+{
+  ".*" :: ""
+} "all"
+
 BOOLEAN out_tsv "Output in TSV (tab-separated values) format?" STEERABLE=always
 {
 } no
@@ -249,3 +254,5 @@ SHARES: IO
 
 USES STRING out_dir
 USES CCTK_INT out_every
+USES KEYWORD out_mode
+USES CCTK_INT out_proc_every

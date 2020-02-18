@@ -82,6 +82,9 @@ struct GridPtrDesc1 : GridDesc {
   array<int, dim> gash;
 
   GridPtrDesc1() = delete;
+  GridPtrDesc1(const GridPtrDesc1 &) = delete;
+  GridPtrDesc1 &operator=(const GridPtrDesc1 &) = delete;
+
   GridPtrDesc1(const GHExt::LevelData &leveldata,
                const GHExt::LevelData::GroupData &groupdata, const MFIter &mfi);
 

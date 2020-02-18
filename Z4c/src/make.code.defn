@@ -5,6 +5,7 @@ SRCS =						\
 	adm.cxx					\
 	boundaries.cxx				\
 	constraints.cxx				\
+	constraintboundaries.cxx		\
 	enforce.cxx				\
 	initial1.cxx				\
 	initial2.cxx				\

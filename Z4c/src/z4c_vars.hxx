@@ -1,6 +1,7 @@
 #ifndef Z4C_HXX
 #define Z4C_HXX
 
+#include "derivs.hxx"
 #include "physics.hxx"
 #include "tensor.hxx"
 
@@ -44,7 +45,7 @@ template <typename T> struct z4c_vars_noderivs {
   const T alp;             // W = 0
   const vec3<T, UP> beta;  // W = 0
 
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+  CCTK_ATTRIBUTE_ALWAYS_INLINE
   z4c_vars_noderivs(const T &kappa1, const T &kappa2, const T &f_mu_L,
                     const T &f_mu_S, const T &eta,
                     //
@@ -71,7 +72,7 @@ template <typename T> struct z4c_vars_noderivs {
   //
   {}
 
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+  CCTK_ATTRIBUTE_ALWAYS_INLINE
   z4c_vars_noderivs(const T &kappa1, const T &kappa2, const T &f_mu_L,
                     const T &f_mu_SL, const T &eta,
                     //
@@ -219,7 +220,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   const vec3<T, UP> betaG_rhs;
 
   // See arXiv:1212.2901 [gr-qc]
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+  CCTK_ATTRIBUTE_ALWAYS_INLINE
   z4c_vars(const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
            const T &eta,
            //
@@ -471,7 +472,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   //
   {}
 
-  /*CCTK_ATTRIBUTE_ALWAYS_INLINE*/
+  CCTK_ATTRIBUTE_ALWAYS_INLINE
   z4c_vars(const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_SL,
            const T &eta,
            //

@@ -1,0 +1,12 @@
+# Configuration definitions for thorn Silo
+
+REQUIRES HDF5
+
+PROVIDES Silo
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS SILO_DIR
+}
+
+REQUIRES Silo

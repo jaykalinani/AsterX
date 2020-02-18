@@ -1,3 +1,4 @@
+#include "derivs.hxx"
 #include "field.hxx"
 #include "physics.hxx"
 #include "tensor.hxx"
@@ -57,7 +58,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
     });
 
     // Store
-    Gamt.store(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, p);
+    Gamt.store(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, p.I);
   });
 }
 

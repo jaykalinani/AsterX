@@ -2008,9 +2008,14 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             check_valid(leveldata, groupdata, vi, tl,
                         [] { return "SyncGroupsByDirI before syncing"; });
           }
-          FillPatchSingleLevel(
-              *groupdata.mfab.at(tl), 0.0, {&*groupdata.mfab.at(tl)}, {0.0}, 0,
-              0, groupdata.numvars, ghext->amrcore->Geom(level), physbc, 0);
+          {
+            static Timer timer("Sync::FillPatchSingleLevel");
+            Interval interval(timer);
+            FillPatchSingleLevel(*groupdata.mfab.at(tl), 0.0,
+                                 {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                                 groupdata.numvars, ghext->amrcore->Geom(level),
+                                 physbc, 0);
+          }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).set_ghosts(true, [] {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
@@ -2056,11 +2061,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      "invalid";
             });
           }
-          FillPatchTwoLevels(
-              *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
-              {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
-              ghext->amrcore->Geom(level - 1), ghext->amrcore->Geom(level),
-              physbc, 0, physbc, 0, reffact, interpolator, bcs, 0);
+          {
+            static Timer timer("Sync::FillPatchTwoLevels");
+            Interval interval(timer);
+            FillPatchTwoLevels(
+                *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+                {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                groupdata.numvars, ghext->amrcore->Geom(level - 1),
+                ghext->amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
+                interpolator, bcs, 0);
+          }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(
                 true, [] { return "SyncGroupsByDirI after prolongation"; });

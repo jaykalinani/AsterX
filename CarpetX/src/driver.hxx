@@ -1,6 +1,8 @@
 #ifndef DRIVER_HXX
 #define DRIVER_HXX
 
+#include "vect.hxx"
+
 #include <cctk.h>
 #undef copysign
 #undef fpclassify
@@ -40,8 +42,6 @@ struct free_deleter {
 template <typename T> using unique_C_ptr = std::unique_ptr<T, free_deleter>;
 static_assert(sizeof(char *) == sizeof(unique_C_ptr<char>),
               ""); // ensure no overhead
-
-constexpr int dim = 3;
 
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");

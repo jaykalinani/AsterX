@@ -1,4 +1,7 @@
 #include "prolongate_3d_rf2.hxx"
+#include "timer.hxx"
+
+#include <omp.h>
 
 #include <array>
 #include <cassert>
@@ -152,6 +155,7 @@ template <typename T> struct coeffs1d<CC, CONS, /*order*/ 4, T> {
 // 1D interpolation operators
 
 template <int CENTERING, bool CONSERVATIVE, int ORDER> struct interp1d;
+// static constexpr int required_ghosts;
 // template <typename T>
 // inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
 //                     const int off) const;
@@ -160,6 +164,7 @@ template <int CENTERING, bool CONSERVATIVE, int ORDER> struct interp1d;
 // off=1: between coarse points
 template <int ORDER> struct interp1d<VC, POLY, ORDER> {
   static_assert(ORDER % 2 == 1);
+  static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
                       const int off) const {
@@ -170,6 +175,20 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
       return crseptr[0];
     constexpr array<T, ORDER + 1> cs = coeffs1d<VC, POLY, ORDER, T>::coeffs;
     const int i0 = (ORDER + 1) / 2 - off;
+    constexpr int i0min = (ORDER + 1) / 2 - 1;
+    constexpr int i0max = (ORDER + 1) / 2;
+    constexpr int imin = 0;
+    constexpr int imax = (ORDER + 1) / 2 - 1;
+    constexpr int i1min = ORDER - imax;
+    constexpr int i1max = ORDER - imin;
+    static_assert(abs(imin - i0min) <= required_ghosts, "");
+    static_assert(abs(imin - i0max) <= required_ghosts, "");
+    static_assert(abs(imax - i0min) <= required_ghosts, "");
+    static_assert(abs(imax - i0max) <= required_ghosts, "");
+    static_assert(abs(i1min - i0min) <= required_ghosts, "");
+    static_assert(abs(i1min - i0max) <= required_ghosts, "");
+    static_assert(abs(i1max - i0min) <= required_ghosts, "");
+    static_assert(abs(i1max - i0max) <= required_ghosts, "");
     T y = 0;
     // Make use of symmetry in coefficients
     for (int i = 0; i < (ORDER + 1) / 2; ++i) {
@@ -197,6 +216,7 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
 // off=0: left sub-cell
 // off=1: right sub-cell
 template <int ORDER> struct interp1d<CC, POLY, ORDER> {
+  static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
                       const int off) const {
@@ -205,6 +225,10 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
 #endif
     constexpr array<T, ORDER + 1> cs = coeffs1d<CC, POLY, ORDER, T>::coeffs;
     constexpr int i0 = (ORDER + 1) / 2;
+    constexpr int imin = 0;
+    constexpr int imax = ORDER;
+    static_assert(abs(imin - i0) <= required_ghosts, "");
+    static_assert(abs(imax - i0) <= required_ghosts, "");
     T y = 0;
     if (off == 0)
       for (int i = 0; i < ORDER + 1; ++i)
@@ -222,6 +246,7 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
 // off=0: on coarse point
 // off=1: between coarse points
 template <int ORDER> struct interp1d<VC, CONS, ORDER> {
+  static constexpr int required_ghosts = 0; // TODO: fix this
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
                       const int off) const {
@@ -275,6 +300,7 @@ template <int ORDER> struct interp1d<VC, CONS, ORDER> {
 // off=1: right sub-cell
 template <int ORDER> struct interp1d<CC, CONS, ORDER> {
   static_assert(ORDER % 2 == 0, "");
+  static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
   inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
                       const int off) const {
@@ -283,6 +309,10 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
 #endif
     constexpr array<T, ORDER + 1> cs = coeffs1d<CC, CONS, ORDER, T>::coeffs;
     constexpr int i0 = (ORDER + 1) / 2;
+    constexpr int imin = 0;
+    constexpr int imax = ORDER;
+    static_assert(abs(imin - i0) <= required_ghosts, "");
+    static_assert(abs(imax - i0) <= required_ghosts, "");
     T y = 0;
     if (off == 0)
       for (int i = 0; i < ORDER + 1; ++i)
@@ -307,7 +337,11 @@ struct test_interp1d<CENTERING, POLY, ORDER, T> {
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       array<T, n + 2> ys;
       ys[0] = ys[n + 1] = 0 / T(0);
-      const int i0 = n / 2;
+      constexpr int i0 = n / 2;
+      static_assert(interp1d<CENTERING, POLY, ORDER>::required_ghosts <= i0,
+                    "");
+      static_assert(interp1d<CENTERING, POLY, ORDER>::required_ghosts <= n - i0,
+                    "");
       for (int i = 0; i < n; ++i) {
         T x = (i - i0) + CENTERING / T(2);
         T y = f(x);
@@ -338,7 +372,11 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
       if (CENTERING == CC) {
         array<T, n + 2> ys;
         ys[0] = ys[n + 1] = 0 / T(0);
-        const int i0 = n / 2;
+        constexpr int i0 = n / 2;
+        static_assert(interp1d<CENTERING, CONS, ORDER>::required_ghosts <= i0,
+                      "");
+        static_assert(
+            interp1d<CENTERING, CONS, ORDER>::required_ghosts <= n - i0, "");
         for (int i = 0; i < n; ++i) {
           const T x = (i - i0) + CENTERING / T(2);
           // T y = f(x);
@@ -367,7 +405,15 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
           array<T, n + 3> xs, ys;
           xs[0] = xs[n + 2] = 0 / T(0);
           ys[0] = ys[n + 2] = 0 / T(0);
-          const int i0 = n / 2;
+          constexpr int i0 = n / 2;
+          // TODO
+          // static_assert(
+          //     interp1d<CENTERING, CONS, ORDER>::required_ghosts <= i0,
+          //     "");
+          // static_assert(interp1d<CENTERING, CONS, ORDER>::required_ghosts
+          // <=
+          //                   n - i0,
+          //               "");
           for (int i = -1; i < n; ++i) {
             const T x = (i - i0) + CENTERING / T(2);
             // T y = f(x);
@@ -422,6 +468,8 @@ void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
               const Box &restrict targetbox) {
   static test_interp1d<CENTERING, CONSERVATIVE, ORDER, T> test;
 
+  static_assert(D >= 0 && D < 3, "");
+
   assert(crseptr);
   assert(crsebox.ok());
   assert(fineptr);
@@ -435,19 +483,88 @@ void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
       crsebox.index(next_crseind) - crsebox.index(first_crseind);
   assert(di > 0);
 
-  for (int k = targetbox.loVect()[2]; k <= targetbox.hiVect()[2]; ++k) {
-    for (int j = targetbox.loVect()[1]; j <= targetbox.hiVect()[1]; ++j) {
+  constexpr int required_ghosts =
+      interp1d<CENTERING, CONSERVATIVE, ORDER>::required_ghosts;
+  {
+    const IntVect fineind(targetbox.loVect());
+    IntVect crseind = fineind;
+    crseind.getVect()[D] = coarsen(fineind.getVect()[D], 2) - required_ghosts;
+    for (int d = 0; d < 3; ++d)
+      assert(crseind.getVect()[d] >= crsebox.loVect()[d]);
+    for (int d = 0; d < 3; ++d)
+      assert(targetbox.loVect()[d] >= finebox.loVect()[d]);
+  }
+  {
+    const IntVect fineind(targetbox.hiVect());
+    IntVect crseind = fineind;
+    crseind.getVect()[D] = coarsen(fineind.getVect()[D], 2) + required_ghosts;
+    for (int d = 0; d < 3; ++d)
+      assert(crseind.getVect()[d] <= crsebox.hiVect()[d]);
+    for (int d = 0; d < 3; ++d)
+      assert(targetbox.hiVect()[d] <= finebox.hiVect()[d]);
+  }
+
+  const array<int, 3> imin{
+      targetbox.loVect()[0],
+      targetbox.loVect()[1],
+      targetbox.loVect()[2],
+  };
+  const array<int, 3> imax{
+      targetbox.hiVect()[0] + 1,
+      targetbox.hiVect()[1] + 1,
+      targetbox.hiVect()[2] + 1,
+  };
+
+  const ptrdiff_t fined0 = finebox.index(IntVect(0, 0, 0));
+  constexpr ptrdiff_t finedi = 1;
+  assert(finebox.index(IntVect(1, 0, 0)) - fined0 == finedi);
+  const ptrdiff_t finedj = finebox.index(IntVect(0, 1, 0)) - fined0;
+  const ptrdiff_t finedk = finebox.index(IntVect(0, 0, 1)) - fined0;
+
+  const ptrdiff_t crsed0 = crsebox.index(IntVect(0, 0, 0));
+  constexpr ptrdiff_t crsedi = 1;
+  assert(crsebox.index(IntVect(1, 0, 0)) - crsed0 == crsedi);
+  const ptrdiff_t crsedj = crsebox.index(IntVect(0, 1, 0)) - crsed0;
+  const ptrdiff_t crsedk = crsebox.index(IntVect(0, 0, 1)) - crsed0;
+
+  for (int k = imin[2]; k < imax[2]; ++k) {
+    for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
-      for (int i = targetbox.loVect()[0]; i <= targetbox.hiVect()[0]; ++i) {
+      for (int i = imin[0]; i < imax[0]; ++i) {
+#if 0
         const IntVect fineind(i, j, k);
         IntVect crseind = fineind;
-        crseind.getVect()[D] = coarsen(crseind.getVect()[D], 2);
+        crseind.getVect()[D] = coarsen(fineind.getVect()[D], 2);
         const int off = fineind.getVect()[D] - crseind.getVect()[D] * 2;
         fineptr[finebox.index(fineind)] =
             interp1d<CENTERING, CONSERVATIVE, ORDER>()(
                 &crseptr[crsebox.index(crseind)], di, off);
 #ifdef CCTK_DEBUG
         assert(CCTK_isfinite(fineptr[finebox.index(fineind)]));
+#endif
+#endif
+        // Note: fineind = 2 * coarseind + off
+        const int ci = D == 0 ? i >> 1 : i;
+        const int cj = D == 1 ? j >> 1 : j;
+        const int ck = D == 2 ? k >> 1 : k;
+        const int off = (D == 0 ? i : D == 1 ? j : k) & 0x1;
+        if (D == 0) {
+          // allow vectorization
+          const T *restrict const ptr =
+              &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi];
+          const T res0 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 0);
+          const T res1 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 1);
+          const T res = off == 0 ? res0 : res1;
+          fineptr[fined0 + k * finedk + j * finedj + i * finedi] = res;
+        } else {
+          fineptr[fined0 + k * finedk + j * finedj + i * finedi] =
+              interp1d<CENTERING, CONSERVATIVE, ORDER>()(
+                  &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi],
+                  di, off);
+        }
+#ifdef CCTK_DEBUG
+        assert(CCTK_isfinite(
+            fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
 #endif
       }
     }
@@ -496,12 +613,45 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
                                        Vector<BCRec> const &bcr,
                                        int actual_comp, int actual_state,
                                        RunOn gpu_or_cpu) {
+  static vector<Timer> timers;
+  static bool have_timers = false;
+
+  const int thread_num = omp_get_thread_num();
+
+  bool my_have_timers;
+#pragma omp atomic read
+  my_have_timers = have_timers;
+  if (!my_have_timers) {
+#pragma omp critical
+    {
+#pragma omp atomic read
+      my_have_timers = have_timers;
+      if (!my_have_timers) {
+        const int num_threads = omp_get_num_threads();
+        timers.reserve(num_threads);
+        for (int i = 0; i < num_threads; ++i) {
+          ostringstream buf;
+          buf << "prolongate_3d_rf2<CENT=" << CENTI << CENTJ << CENTK
+              << ",CONS=" << CONSI << CONSJ << CONSK << ",ORDER=" << ORDERI
+              << ORDERJ << ORDERK << ">[thread=" << i << "]";
+          timers.emplace_back(buf.str());
+        }
+#pragma omp atomic write
+        have_timers = true;
+      }
+    }
+  }
+
+  const Timer &timer = timers.at(thread_num);
+  Interval interval(timer);
+
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
 
   const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
                     BCType::int_dir, BCType::int_dir, BCType::int_dir);
+  assert(int(bcr.size()) >= ncomp);
   for (const auto &bc : bcr)
     assert(bc == bcrec);
 

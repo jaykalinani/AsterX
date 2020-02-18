@@ -17,16 +17,16 @@ namespace CarpetX {
 using namespace amrex;
 using namespace std;
 
-template <typename T> MPI_Datatype reduction_mpi_datatype() {
+template <typename T, int D> MPI_Datatype reduction_mpi_datatype() {
   static MPI_Datatype datatype = MPI_DATATYPE_NULL;
   if (datatype == MPI_DATATYPE_NULL) {
-    MPI_Type_contiguous(sizeof(reduction<T>) / sizeof(T),
+    MPI_Type_contiguous(sizeof(reduction<T, D>) / sizeof(T),
                         mpi_datatype<T>::value, &datatype);
     char name[MPI_MAX_OBJECT_NAME];
     int namelen;
     MPI_Type_get_name(mpi_datatype<T>::value, name, &namelen);
     ostringstream buf;
-    buf << "reduction<" << name << ">";
+    buf << "reduction<" << name << "," << D << ">";
     string newname = buf.str();
     MPI_Type_set_name(datatype, newname.c_str());
     MPI_Type_commit(&datatype);
@@ -62,11 +62,11 @@ void mpi_reduce(void *restrict x, void *restrict y, int *restrict length,
                         integers.data(), addresses.data(), datatypes.data());
   MPI_Datatype inner_datatype = datatypes.at(0);
   if (inner_datatype == MPI_FLOAT)
-    return mpi_reduce_typed<reduction<float> >(x, y, length);
+    return mpi_reduce_typed<reduction<float, dim> >(x, y, length);
   if (inner_datatype == MPI_DOUBLE)
-    return mpi_reduce_typed<reduction<double> >(x, y, length);
+    return mpi_reduce_typed<reduction<double, dim> >(x, y, length);
   if (inner_datatype == MPI_LONG_DOUBLE)
-    return mpi_reduce_typed<reduction<long double> >(x, y, length);
+    return mpi_reduce_typed<reduction<long double, dim> >(x, y, length);
   abort();
 }
 } // namespace
@@ -82,18 +82,25 @@ MPI_Op reduction_mpi_op() {
 
 namespace {
 template <typename T>
-reduction<T> reduce_array(const Array4<const T> &restrict vars, int n,
-                          const array<int, dim> &imin,
-                          const array<int, dim> &imax,
-                          const Array4<const int> *restrict finemask, T dV) {
-  reduction<T> red;
+reduction<T, dim> reduce_array(const Array4<const T> &restrict vars,
+                               const int n, const array<int, dim> &imin,
+                               const array<int, dim> &imax,
+                               const Array4<const int> *restrict const finemask,
+                               const vect<T, dim> &x0, const vect<T, dim> &dx) {
+  CCTK_REAL dV = 1.0;
+  for (int d = 0; d < dim; ++d)
+    dV *= dx[d];
+  reduction<T, dim> red;
   for (int k = imin[2]; k < imax[2]; ++k) {
     for (int j = imin[1]; j < imax[1]; ++j) {
       // #pragma omp simd reduction(red : reduction_CCTK_REAL)
       for (int i = imin[0]; i < imax[0]; ++i) {
-        bool is_masked = finemask && (*finemask)(i, j, k);
-        if (!is_masked)
-          red += reduction<T>(dV, vars(i, j, k, n));
+        const bool is_masked = finemask && (*finemask)(i, j, k);
+        if (!is_masked) {
+          const vect<T, dim> x{x0[0] + i * dx[0], x0[1] + j * dx[1],
+                               x0[2] + k * dx[2]};
+          red += reduction<T, dim>(x, dV, vars(i, j, k, n));
+        }
       }
     }
   }
@@ -101,7 +108,7 @@ reduction<T> reduce_array(const Array4<const T> &restrict vars, int n,
 }
 } // namespace
 
-reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
+reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
   DECLARE_CCTK_PARAMETERS;
 
   cGroup group;
@@ -109,7 +116,7 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
   assert(!ierr);
   assert(group.grouptype == CCTK_GF);
 
-  reduction<CCTK_REAL> red;
+  reduction<CCTK_REAL, dim> red;
   for (auto &restrict leveldata : ghext->leveldata) {
     const auto &restrict groupdata = *leveldata.groupdata.at(gi);
     const MultiFab &mfab = *groupdata.mfab.at(tl);
@@ -119,10 +126,10 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
                     [] { return "Before reduction"; });
 
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
-    const CCTK_REAL *restrict dx = geom.CellSize();
-    CCTK_REAL dV = 1.0;
-    for (int d = 0; d < dim; ++d)
-      dV *= dx[d];
+    const CCTK_REAL *restrict const x01 = geom.ProbLo();
+    const CCTK_REAL *restrict const dx1 = geom.CellSize();
+    const vect<CCTK_REAL, dim> x0{x01[0], x01[1], x01[2]};
+    const vect<CCTK_REAL, dim> dx{dx1[0], dx1[1], dx1[2]};
 
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
@@ -151,11 +158,11 @@ reduction<CCTK_REAL> reduce(int gi, int vi, int tl) {
       if (finemask_imfab)
         finemask = make_unique<Array4<const int> >(finemask_imfab->array(mfi));
 
-      red += reduce_array(vars, vi, imin, imax, finemask.get(), dV);
+      red += reduce_array(vars, vi, imin, imax, finemask.get(), x0, dx);
     }
   }
 
-  MPI_Datatype datatype = reduction_mpi_datatype<CCTK_REAL>();
+  MPI_Datatype datatype = reduction_mpi_datatype<CCTK_REAL, dim>();
   MPI_Op op = reduction_mpi_op();
   MPI_Allreduce(MPI_IN_PLACE, &red, 1, datatype, op, MPI_COMM_WORLD);
 

@@ -3,6 +3,7 @@
 #include "logo.hxx"
 #include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
+#include "timer.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -265,7 +266,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
 
     const Array4<const CCTK_REAL> &err_array4 =
         groupdata.mfab.at(tl)->array(mfi);
-    const GF3D1<const CCTK_REAL> err_ = grid.gf3d(err_array4, vi);
+    const GF3D1<const CCTK_REAL> &err_ = grid.gf3d(err_array4, vi);
     const Array4<char> &tags_array4 = tags.array(mfi);
 
     grid.loop_idx(
@@ -933,7 +934,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
           GridPtrDesc1 grid(leveldata, groupdata, mfi);
           const Array4<CCTK_REAL> &vars = mfab->array(mfi);
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
+            const GF3D1<CCTK_REAL> &ptr_ = grid.gf3d(vars, vi);
             grid.loop_idx(
                 where_t::everywhere, groupdata.indextype, groupdata.nghostzones,
                 [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
@@ -1262,6 +1263,8 @@ int Barrier(const cGH *restrict cctkGH) {
 
 void CarpetX_CallScheduleGroup(void *cctkGH_, const char *groupname) {
   cGH *cctkGH = static_cast<cGH *>(cctkGH_);
+  static Timer timer("CallScheduleGroup");
+  Interval interval(timer);
   int ierr = CCTK_ScheduleTraverse(groupname, cctkGH, CallFunction);
   assert(!ierr);
 }

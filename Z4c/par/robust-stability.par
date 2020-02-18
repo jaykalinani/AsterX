@@ -1,14 +1,12 @@
 ActiveThorns = "
     ADMBase
     CarpetX
-    ErrorEstimator
     Formaline
     IOUtil
     ODESolvers
     Z4c
 "
  
-$nlevels = 1
 $rho = 1
 $ncells = 64 * $rho
 
@@ -24,8 +22,8 @@ CarpetX::ymin = 0.0
 CarpetX::zmin = 0.0
 
 CarpetX::xmax = 1.0
-CarpetX::ymax = 5.0 / $ncells
-CarpetX::zmax = 5.0 / $ncells
+CarpetX::ymax = 2.0 / $ncells
+CarpetX::zmax = 2.0 / $ncells
 
 CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = 2
@@ -35,39 +33,20 @@ CarpetX::blocking_factor_x = 64
 CarpetX::blocking_factor_y = 2
 CarpetX::blocking_factor_z = 2
 
-# CarpetX::periodic_x = no
-# CarpetX::periodic_y = no
-# CarpetX::periodic_z = no
-# CarpetX::periodic = no
-# CarpetX::reflection_x = yes
-# CarpetX::reflection_y = yes
-# CarpetX::reflection_z = yes
-# CarpetX::reflection_upper_x = yes
-# CarpetX::reflection_upper_y = yes
-# CarpetX::reflection_upper_z = yes
-
 CarpetX::ghost_size = 2
 
-CarpetX::max_num_levels = $nlevels
-CarpetX::regrid_every = 16
-CarpetX::regrid_error_threshold = 1.0 / 4.0
-
-ErrorEstimator::region_shape = "cube"
-ErrorEstimator::scale_by_resolution = yes
-
-CarpetX::prolongation_type = "ddf"
-CarpetX::prolongation_order = 1
-
 ODESolvers::method = "RK2"
-CarpetX::dtfac = 0.25
+CarpetX::dtfac = 1.0 / 4
 
 ADMBase::initial_data = "Cartesian Minkowski"
 ADMBase::initial_lapse = "one"
 ADMBase::initial_shift = "zero"
 ADMBase::noise_amplitude = 1.0e-10 / ($rho*$rho)
 
+Z4c::epsdiss = 0.32
+
 IO::out_dir = $parfile
-IO::out_every = $ncells * 2 ** ($nlevels - 1)
+IO::out_every = 4 * $ncells
 
 CarpetX::out_plotfile_groups = ""
-CarpetX::out_tsv = no
+CarpetX::out_tsv = yes

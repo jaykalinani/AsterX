@@ -2,6 +2,10 @@
 
 REQUIRES AMReX MPI zlib
 
+OPTIONAL Silo
+{
+}
+
 PROVIDES CarpetX
 {
 }

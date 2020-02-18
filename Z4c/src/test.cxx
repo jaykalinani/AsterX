@@ -1,3 +1,4 @@
+#include "derivs.hxx"
 #include "physics.hxx"
 #include "tensor.hxx"
 
@@ -6,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <random>
 
 namespace Z4c {
@@ -15,6 +17,8 @@ using namespace std;
 
 extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
+
+  // Test tensors
 
   mt19937 engine(42);
   uniform_int_distribution<int> dist(-10, 10);
@@ -75,6 +79,95 @@ extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
     // DNUP assert(mul(A, A.inv(1)) == A.det() * Iup);
 
     assert((a * A).inv(1) == pow2(a) * A.inv(1));
+  }
+
+  // Test derivatives
+
+  static_assert(deriv_order % 2 == 0, "");
+  constexpr int required_ghosts = deriv_order / 2 + 1;
+  const double eps = 1.0e-12;
+
+  // deriv
+  for (int order = 0; order <= deriv_order; ++order) {
+    // CCTK_VINFO("Testing deriv order=%d", order);
+    array<double, 2 * required_ghosts + 7> arr;
+    for (size_t i = 0; i < arr.size(); ++i)
+      arr[i] = NAN;
+    double *const var = &arr[arr.size() / 2];
+    for (int i = -deriv_order / 2; i <= deriv_order / 2; ++i)
+      var[i] = pown(i, order);
+    const double expected = order == 1 ? 1 : 0;
+    const double found = deriv1d(var, 1, 1.0);
+    assert(fabs(found - expected) <= eps);
+  }
+
+  // deriv (upwind)
+  for (int order = 0; order <= deriv_order; ++order) {
+    for (int sign = 0; sign <= 1; ++sign) {
+      // CCTK_VINFO("Testing deriv (upwind) order=%d sign=%d", order, sign);
+      array<double, 2 * required_ghosts + 7> arr;
+      for (size_t i = 0; i < arr.size(); ++i)
+        arr[i] = NAN;
+      double *const var = &arr[arr.size() / 2];
+      if (sign)
+        for (int i = -deriv_order / 2 - 1; i <= deriv_order / 2 - 1; ++i)
+          var[i] = pown(i, order);
+      else
+        for (int i = -deriv_order / 2 + 1; i <= deriv_order / 2 + 1; ++i)
+          var[i] = pown(i, order);
+      const double expected = order == 1 ? 1 : 0;
+      const double found = deriv1d_upwind(var, 1, sign, 1.0);
+      assert(fabs(found - expected) <= eps);
+    }
+  }
+
+  // deriv2
+  for (int order = 0; order <= deriv_order; ++order) {
+    // CCTK_VINFO("Testing deriv2 order=%d", order);
+    array<double, 2 * required_ghosts + 7> arr;
+    for (size_t i = 0; i < arr.size(); ++i)
+      arr[i] = NAN;
+    double *const var = &arr[arr.size() / 2];
+    for (int i = -deriv_order / 2; i <= deriv_order / 2; ++i)
+      var[i] = pown(i, order);
+    const double expected = order == 2 ? 2 : 0;
+    const double found = deriv2_1d(var, 1, 1.0);
+    assert(fabs(found - expected) <= eps);
+  }
+
+  // deriv2 (mixed)
+  for (int orderj = 0; orderj <= deriv_order; ++orderj) {
+    for (int orderi = 0; orderi <= deriv_order; ++orderi) {
+      // CCTK_VINFO("Testing deriv2 (mixed) order=%d,%d", orderi, orderj);
+      array<array<double, 2 * required_ghosts + 7>, 2 * required_ghosts + 7>
+          arr;
+      for (size_t j = 0; j < arr.size(); ++j)
+        for (size_t i = 0; i < arr[j].size(); ++i)
+          arr[j][i] = NAN;
+      const int di = 1;
+      const int dj = arr[0].size();
+      double *const var = &arr[arr.size() / 2][arr[0].size() / 2];
+      for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
+        for (int i = -deriv_order / 2; i <= deriv_order / 2; ++i)
+          var[j * dj + i * di] = pown(i, orderi) * pown(j, orderj);
+      const double expected = orderi == 1 && orderj == 1 ? 1 : 0;
+      const double found = deriv2_2d(var, di, dj, 1.0, 1.0);
+      assert(fabs(found - expected) <= eps);
+    }
+  }
+
+  // deriv (dissipation)
+  for (int order = 0; order <= deriv_order + 2; ++order) {
+    // CCTK_VINFO("Testing deriv (dissipation) order=%d", order);
+    array<double, 2 * required_ghosts + 7> arr;
+    for (size_t i = 0; i < arr.size(); ++i)
+      arr[i] = NAN;
+    double *const var = &arr[arr.size() / 2];
+    for (int i = -deriv_order / 2 - 1; i <= deriv_order / 2 + 1; ++i)
+      var[i] = pown(i, order);
+    const double expected = order == deriv_order + 2 ? factorial(order) : 0;
+    const double found = deriv1d_diss(var, 1, 1.0);
+    assert(fabs(found - expected) <= eps);
   }
 }
 

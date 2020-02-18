@@ -12,42 +12,55 @@
 namespace BrillLindquist {
 using namespace Loop;
 
-template <typename T> T pow2(T x) { return x * x; }
-template <typename T> T pow4(T x) { return pow2(x) * pow2(x); }
+template <typename T> constexpr T pow2(const T x) { return x * x; }
+template <typename T> constexpr T pow4(const T x) { return pow2(x) * pow2(x); }
 
-template <typename T> T smooth(T r) {
+template <typename T> constexpr T expand(const T x) {
+  constexpr T x0 = 5;
+  // return x;
+  return sinh(x / x0) * x0;
+}
+
+template <typename T> constexpr T smooth(const T r) {
   constexpr T rmin = 1.0e-2;
   return fmax(rmin, r);
 }
 
-template <typename T> T psi(T x, T y, T z) {
+template <typename T> constexpr T psi(const T x, const T y, const T z) {
   constexpr T m = 1.0;
-  T r = smooth(sqrt(pow2(x) + pow2(y) + pow2(z)));
-  T phi = 1 + m / (2 * r);
+  const T r = smooth(sqrt(pow2(expand(x)) + pow2(expand(y)) + pow2(expand(z))));
+  const T phi = 1 + m / (2 * r);
   return pow4(phi);
 }
 
-constexpr array<int, 3> CarpetX_widths{16, 5, 5};
+template <typename T> constexpr T lapse(const T x, const T y, const T z) {
+  constexpr T m = 1.0;
+  const T r = smooth(sqrt(pow2(expand(x)) + pow2(expand(y)) + pow2(expand(z))));
+  const T lapse1 = (1 - m / (2 * r)) / (1 + m / (2 * r));
+  return (1 + lapse1) / 2; // average
+}
+
+constexpr array<int, 3> CarpetX_widths{17, 5, 5};
 
 bool CarpetX(int i, int j, int k) {
   // Logo originally generated via
   // <http://patorjk.com/software/taag/#p=display&f=Alphabet&t=CAR%20PET%20X>,
   // then hand-modified
   const vector<string> CAR{
-      // width: 4 + 5 + 5, height: 5, XZ
-      " CCC  AAA  RRRR ", //
-      "C    A   A R   R", //
-      "C    AAAAA RRRR ", //
-      "C    A   A R R  ", //
-      " CCC A   A R  RR", //
+      // width: 5 + 5 + 5, height: 5, XZ
+      " CCCC  AAA  RRRR ", //
+      "C     A   A R   R", //
+      "C     AAAAA RRRR ", //
+      "C     A   A R R  ", //
+      " CCCC A   A R  RR", //
   };
   const vector<string> PET{
-      // widht: 5 + 4 + 5, height: 5, XY
-      "PPPP  EEEE TTTTT", //
-      "P   P E      T  ", //
-      "PPPP  EEE    T  ", //
-      "P     E      T  ", //
-      "P     EEEE   T  ", //
+      // widht: 5 + 5 + 5, height: 5, XY
+      "PPPP  EEEEE TTTTT", //
+      "P   P E       T  ", //
+      "PPPP  EEEE    T  ", //
+      "P     E       T  ", //
+      "P     EEEEE   T  ", //
   };
   const vector<string> X{
       // width: 5, height: 5, YZ
@@ -74,6 +87,7 @@ bool CarpetX(int i, int j, int k) {
 }
 
 inline CCTK_REAL psi(const PointDesc &p) { return psi(p.x, p.y, p.z); }
+inline CCTK_REAL lapse(const PointDesc &p) { return lapse(p.x, p.y, p.z); }
 
 extern "C" void BrillLindquist_initial_data(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_BrillLindquist_initial_data;
@@ -114,8 +128,10 @@ extern "C" void BrillLindquist_initial_lapse(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 0, 0, 0> alp_(cctkGH, alp);
 
-  loop_all<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { alp_(p.I) = 1 / psi(p); });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+    // alp_(p.I) = 1 / psi(p);
+    alp_(p.I) = lapse(p);
+  });
 }
 
 } // namespace BrillLindquist

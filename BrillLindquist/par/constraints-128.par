@@ -4,14 +4,12 @@ ActiveThorns = "
     BrillLindquist
     CarpetX
     ErrorEstimator
-    Formaline
     IOUtil
-    NewRad
     ODESolvers
 "
  
-$nlevels = 1   # 2   #TODO 8
-$ncells = 128   #TODO 256   #TODO 32
+$nlevels = 1
+$ncells = 32
 
 Cactus::cctk_show_schedule = yes
 
@@ -20,30 +18,19 @@ Cactus::cctk_final_time = 1.0
 
 CarpetX::verbose = yes
 
-CarpetX::xmin = -16.0
-CarpetX::ymin = -16.0
-CarpetX::zmin = -16.0
+CarpetX::xmin = -1.6   #TODO -16.0
+CarpetX::ymin = -1.6   #TODO -16.0
+CarpetX::zmin = -1.6   #TODO -16.0
 
-CarpetX::xmax = +16.0
-CarpetX::ymax = +16.0
-CarpetX::zmax = +16.0
+CarpetX::xmax = +1.6   #TODO +16.0
+CarpetX::ymax = +1.6   #TODO +16.0
+CarpetX::zmax = +1.6   #TODO +16.0
 
 CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
-CarpetX::periodic_x = no
-CarpetX::periodic_y = no
-CarpetX::periodic_z = no
-CarpetX::periodic = no
-# CarpetX::reflection_x = yes
-# CarpetX::reflection_y = yes
-# CarpetX::reflection_z = yes
-# CarpetX::reflection_upper_x = yes
-# CarpetX::reflection_upper_y = yes
-# CarpetX::reflection_upper_z = yes
-
-CarpetX::ghost_size = 4
+CarpetX::ghost_size = 2
 
 CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
@@ -53,9 +40,8 @@ ErrorEstimator::region_shape = "cube"
 ErrorEstimator::scale_by_resolution = no   #TODO yes
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::prolongation_order = 5
+CarpetX::prolongation_order = 3
 
-ODESolvers::method = "RK4"
 CarpetX::dtfac = 0.25
 
 ADMBase::initial_data = "Brill-Lindquist"
@@ -64,4 +50,4 @@ ADMBase::initial_lapse = "Brill-Lindquist"
 IO::out_dir = $parfile
 IO::out_every = 1   #TODO $ncells * 2 ** ($nlevels - 1) / 32
 
-CarpetX::out_tsv = no
+CarpetX::out_tsv = yes
