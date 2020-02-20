@@ -25,7 +25,7 @@ import sys
 # fine_box_size = 2.0
 # fine_box_spacing = 1/64.0
 
-domain_size = 16.0   #TODO 128.0
+domain_size = 128.0
 domain_spacing = 1.0
 fine_box_size = 1.0
 fine_box_spacing = 1/16.0
@@ -36,7 +36,7 @@ dtfac = 1/4.0
 
 xmin = -domain_size
 xmax = +domain_size
-nlevels = 2   #TODO round(log(1.0 * domain_spacing / fine_box_spacing, 2)) + 1
+nlevels = round(log(1.0 * domain_spacing / fine_box_spacing, 2)) + 1
 ncells = round(2.0 * domain_size / domain_spacing)
 
 large_box_size = fine_box_size * 2 ** (nlevels - 1)
@@ -66,7 +66,7 @@ ActiveThorns = "
 Cactus::cctk_show_schedule = yes
 
 Cactus::terminate = "time"
-Cactus::cctk_final_time = 0.0   #TODO 100.0
+Cactus::cctk_final_time = 100.0
 
 CarpetX::verbose = no
 CarpetX::poison_undefined_values = no
@@ -117,29 +117,27 @@ Z4c::epsdiss = 0.32
 IO::out_dir = $$parfile
 IO::out_every = $out_every
 IO::out_mode = "np"
-IO::out_proc_every = 2   # TODO
+IO::out_proc_every = 1
 
-CarpetX::out_plotfile_groups = "
-    #TODO ADMBase::metric
-    #TODO ADMBase::curv
-    #TODO ADMBase::lapse
-    #TODO ADMBase::shift
-    #TODO Z4c::chi
-    #TODO Z4c::gamma_tilde
-    #TODO Z4c::K_hat
-    #TODO Z4c::A_tilde
-    #TODO Z4c::Gam_tilde
-    #TODO Z4c::Theta
-    #TODO Z4c::alphaG
-    #TODO Z4c::betaG
-    #TODO Z4c::ZtC
-    #TODO Z4c::HC
-    #TODO Z4c::MtC
-    #TODO Z4c::allC
-"
+CarpetX::out_plotfile_groups = ""
 
 CarpetX::out_silo_vars = "
+    ADMBase::metric
+    ADMBase::curv
     ADMBase::lapse
+    ADMBase::shift
+    Z4c::chi
+    Z4c::gamma_tilde
+    Z4c::K_hat
+    Z4c::A_tilde
+    Z4c::Gam_tilde
+    Z4c::Theta
+    Z4c::alphaG
+    Z4c::betaG
+    Z4c::ZtC
+    Z4c::HC
+    Z4c::MtC
+    Z4c::allC
 "
 
 CarpetX::out_tsv = no
