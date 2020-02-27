@@ -1,0 +1,9 @@
+Cactus Code Thorn Dual
+Author(s)    : Erik Schnetter <schnetter@gmail.com>
+Maintainer(s): Erik Schnetter <schnetter@gmail.com>
+Licence      : LGPL
+--------------------------------------------------------------------------
+
+1. Purpose
+
+Implement dual numbers <https://en.wikipedia.org/wiki/Dual_number>.

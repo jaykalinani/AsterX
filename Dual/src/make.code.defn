@@ -1,0 +1,7 @@
+# Main make.code.defn file for thorn Dual
+
+# Source files in this directory
+SRCS = dual.cxx
+
+# Subdirectories containing source files
+SUBDIRS =
