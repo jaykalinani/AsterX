@@ -198,6 +198,11 @@ CCTK_INT prolongation_order "Prolongation order"
   0:* :: ""
 } 1
 
+CCTK_INT interpolation_order "Interpolation order" STEERABLE=always
+{
+  0:* :: ""
+} 1
+
 
 
 BOOLEAN do_reflux "Manage flux registers to ensure conservation"
