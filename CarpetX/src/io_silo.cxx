@@ -778,23 +778,23 @@ void OutputSilo(const cGH *restrict const cctkGH) {
           }
 
           ierr = DBPutMrgvar(metafile.get(), iextentsname.c_str(), "mrgTree",
-                             ndims, icompname_ptrs.data(), nlevels,
+                             2 * ndims, icompname_ptrs.data(), ncomps_total,
                              regionname_ptrs.data(), DB_INT, idata_ptrs.data(),
                              nullptr);
           assert(!ierr);
 
-          ierr =
-              DBPutMrgvar(metafile.get(), extentsname.c_str(), "mrgTree", ndims,
-                          compname_ptrs.data(), nlevels, regionname_ptrs.data(),
-                          DB_INT, data_ptrs.data(), nullptr);
+          ierr = DBPutMrgvar(metafile.get(), extentsname.c_str(), "mrgTree",
+                             2 * ndims, compname_ptrs.data(), ncomps_total,
+                             regionname_ptrs.data(), DB_DOUBLE,
+                             data_ptrs.data(), nullptr);
           assert(!ierr);
 
           // Write rank
-          const int rank = ndims;
-          const int *const rank_ptr = &rank;
+          const vector<int> ranks(ncomps_total, ndims);
+          const vector<const void *> rank_ptrs{ranks.data()};
           ierr = DBPutMrgvar(metafile.get(), "rank", "mrgTree", 1, nullptr,
                              ncomps_total, regionname_ptrs.data(), DB_INT,
-                             &rank_ptr, nullptr);
+                             rank_ptrs.data(), nullptr);
           assert(!ierr);
         }
 
