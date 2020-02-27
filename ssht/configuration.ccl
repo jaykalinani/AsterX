@@ -1,6 +1,6 @@
 # Configuration definitions for thorn ssht
 
-REQUIRES MPI
+REQUIRES FFTW3 MPI
 
 PROVIDES ssht
 {
