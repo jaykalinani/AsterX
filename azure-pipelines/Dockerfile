@@ -17,6 +17,7 @@ RUN apt-get update && \
         gfortran \
         git \
         hdf5-tools \
+        libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
         libhwloc-dev \
@@ -53,6 +54,18 @@ RUN mkdir src && \
     cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DSIMD=AVX2 -DSIMD_OPTIONALS=FMA -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
+    true) && \
+    rm -rf src
+
+# Install ssht
+RUN mkdir src && \
+    (cd src && \
+    git clone -n https://github.com/astro-informatics/ssht.git && \
+    cd ssht && \
+    git checkout 7378ce8853897cbd1b08adebf7ec088c1e40f860 && \
+    make -j$(nproc) default && \
+    cp src/c/*.h /usr/local/include && \
+    cp lib/c/* /usr/local/lib && \
     true) && \
     rm -rf src
 

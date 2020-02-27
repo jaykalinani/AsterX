@@ -112,9 +112,11 @@ CactusUtils/Vectors
 !TYPE     = svn
 !URL      = https://svn.cactuscode.org/projects/$1/$2/trunk
 !CHECKOUT =
+ExternalLibraries/FFTW3
 ExternalLibraries/GSL
 ExternalLibraries/HDF5
 ExternalLibraries/MPI
+ExternalLibraries/OpenBLAS
 ExternalLibraries/hwloc
 ExternalLibraries/zlib
 
@@ -125,7 +127,7 @@ ExternalLibraries/zlib
 !TYPE     = git
 !URL      = https://bitbucket.org/eschnett/cactusamrex.git
 !REPO_PATH= $2
-!CHECKOUT = CarpetX/Kokkos CarpetX/NSIMD CarpetX/Silo
+!CHECKOUT = CarpetX/Kokkos CarpetX/NSIMD CarpetX/SHTOOLS CarpetX/Silo CarpetX/libsharp
 CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
@@ -133,6 +135,7 @@ CarpetX/BaikalX
 CarpetX/BrillLindquist
 CarpetX/CarpetX
 CarpetX/Coordinates
+CarpetX/Dual
 CarpetX/ErrorEstimator
 CarpetX/Forms
 CarpetX/Hydro
@@ -143,11 +146,14 @@ CarpetX/MaxwellToyCarpetX
 #DISABLED CarpetX/NSIMD
 CarpetX/NewRad
 CarpetX/ODESolvers
+#DISABLED CarpetX/SHTOOLS
 #DISABLED CarpetX/Silo
 CarpetX/StaticTrumpet
 CarpetX/TestODESolvers
 CarpetX/TestProlongate
-# CarpetX/TwoPunctures
+CarpetX/TwoPunctures
 CarpetX/WaveToyCarpetX
 CarpetX/Z4c
 CarpetX/googletest
+#DISABLED CarpetX/libsharp
+CarpetX/ssht
