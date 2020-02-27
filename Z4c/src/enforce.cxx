@@ -5,6 +5,7 @@
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
+#include <cctk_Parameters.h>
 
 #include <cmath>
 #include <sstream>
@@ -15,6 +16,9 @@ using namespace std;
 
 extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_Enforce;
+  DECLARE_CCTK_PARAMETERS;
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_chi_(cctkGH, chi);
 
   const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxx_(cctkGH, gammatxx);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxy_(cctkGH, gammatxy);
@@ -30,22 +34,32 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
   const GF3D<CCTK_REAL, 0, 0, 0> gf_Atyz_(cctkGH, Atyz);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_Atzz_(cctkGH, Atzz);
 
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_alphaG_(cctkGH, alphaG);
+
   loop_all<0, 0, 0>(
       cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Load
+        const CCTK_REAL chi_old = gf_chi_(p.I);
+        const CCTK_REAL alphaG_old = gf_alphaG_(p.I);
+
         const mat3<CCTK_REAL, DN, DN> gammat_old(
             gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
             gf_gammatyz_, gf_gammatzz_, p.I);
         const mat3<CCTK_REAL, DN, DN> At_old(gf_Atxx_, gf_Atxy_, gf_Atxz_,
                                              gf_Atyy_, gf_Atyz_, gf_Atzz_, p.I);
 
+        // Enforce floors
+
+        const CCTK_REAL chi = fmax(chi_floor, chi_old);
+        const CCTK_REAL alphaG = fmax(alphaG_floor, alphaG_old);
+
         // Enforce algebraic constraints
         // See arXiv:1212.2901 [gr-qc].
 
         const CCTK_REAL detgammat_old = gammat_old.det();
-        const CCTK_REAL chi_old = 1 / cbrt(detgammat_old);
+        const CCTK_REAL chi1_old = 1 / cbrt(detgammat_old);
         const mat3<CCTK_REAL, DN, DN> gammat(
-            [&](int a, int b) { return chi_old * gammat_old(a, b); });
+            [&](int a, int b) { return chi1_old * gammat_old(a, b); });
 #ifdef CCTK_DEBUG
         const CCTK_REAL detgammat = gammat.det();
         const CCTK_REAL gammat_norm = gammat.maxabs();
@@ -82,10 +96,12 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 #endif
 
         // Store
+        gf_chi_(p.I) = chi;
         gammat.store(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
                      gf_gammatyz_, gf_gammatzz_, p.I);
         At.store(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_, gf_Atzz_,
                  p.I);
+        gf_alphaG_(p.I) = alphaG;
       });
 }
 

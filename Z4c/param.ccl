@@ -25,6 +25,16 @@ CCTK_REAL eta "eta" STEERABLE=always
   *:* :: ""
 } 2.0
 
+CCTK_REAL chi_floor "Floor for chi" STEERABLE=always
+{
+  (0:* :: ""
+} 1.0e-10
+
+CCTK_REAL alphaG_floor "Floor for alphaG" STEERABLE=always
+{
+  (0:* :: ""
+} 1.0e-10
+
 CCTK_REAL epsdiss "Dissipation coefficient <arXiv:gr-qc/0610128>" STEERABLE=always
 {
   0.0:* :: ""

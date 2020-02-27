@@ -90,10 +90,14 @@ SCHEDULE Z4c_Boundaries IN Z4c_PostStep
 SCHEDULE Z4c_Enforce IN Z4c_PostStep AFTER Z4c_Boundaries
 {
   LANG: C
+  READS: chi(everywhere)
   READS: gamma_tilde(everywhere)
   READS: A_tilde(everywhere)
+  READS: alphaG(everywhere)
+  WRITES: chi(everywhere)
   WRITES: gamma_tilde(everywhere)
   WRITES: A_tilde(everywhere)
+  WRITES: alphaG(everywhere)
 } "Enforce algebraic Z4c constraints"
 
 SCHEDULE Z4c_ADM IN Z4c_PostStep AFTER Z4c_Enforce
