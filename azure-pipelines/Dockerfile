@@ -22,6 +22,7 @@ RUN apt-get update && \
         libhdf5-dev \
         libhwloc-dev \
         libmpich-dev \
+        libopenblas-dev \
         perl \
         pkg-config \
         python \
