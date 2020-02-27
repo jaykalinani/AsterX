@@ -13,16 +13,16 @@ if (CCTK_Equals(initial_data, "twopunctures"))
     LANG: C
   } "Check parameters and thorn needs"
 
-      SCHEDULE GROUP TwoPunctures_Group IN ADMBase_InitialData
-      {
-      } "TwoPunctures initial data group"
+  SCHEDULE GROUP TwoPunctures_Group IN ADMBase_InitialData
+  {
+  } "TwoPunctures initial data group"
 
   SCHEDULE TwoPunctures IN TwoPunctures_Group
   {
     LANG: C
     STORAGE: puncture_u
     # TODO: these WRITES are conditional on parameters
-    READS: Grid::coordinates(everywhere)
+    READS: Coordinates::coords(everywhere)
     WRITES: ADMBase::metric(everywhere)
     WRITES: ADMBase::curv(everywhere)
     WRITES: ADMBase::lapse(everywhere)

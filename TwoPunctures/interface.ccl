@@ -2,9 +2,10 @@
 
 IMPLEMENTS: TwoPunctures
 
+INHERITS: ADMBase Coordinates
+
 USES INCLUDE HEADER: loopcontrol.h
 
-INHERITS: ADMBase grid
 
 
 CCTK_INT FUNCTION Set_Rho_ADM(              \

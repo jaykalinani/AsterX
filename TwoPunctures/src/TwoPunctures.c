@@ -428,9 +428,9 @@ TwoPunctures (CCTK_ARGUMENTS)
         const int ind = i*di + j*dj + k*dk;
 
         CCTK_REAL xx, yy, zz;
-        xx = x[ind] - center_offset[0];
-        yy = y[ind] - center_offset[1];
-        zz = z[ind] - center_offset[2];
+        xx = coordx[ind] - center_offset[0];
+        yy = coordy[ind] - center_offset[1];
+        zz = coordz[ind] - center_offset[2];
 
         /* We implement swapping the x and z coordinates as follows.
            The bulk of the code that performs the actual calculations
