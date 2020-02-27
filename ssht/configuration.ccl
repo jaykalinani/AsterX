@@ -1,0 +1,10 @@
+# Configuration definitions for thorn ssht
+
+REQUIRES MPI
+
+PROVIDES ssht
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS SSHT_DIR
+}
