@@ -7,24 +7,6 @@ import sys
 
 ################################################################################
 
-# domain_size = 16.0
-# domain_spacing = 1/2.0
-# fine_box_size = 1.0
-# fine_box_spacing = 1/16.0
-#GOOD fine_box_size = 1.0
-#GOOD fine_box_spacing = 1/16.0
-#GOOD fine_box_size = 1/2.0
-#GOOD fine_box_spacing = 1/32.0
-#GOOD fine_box_size = 1/4.0
-#GOOD fine_box_spacing = 1/64.0
-#GOOD fine_box_size = 1/4.0
-#GOOD fine_box_spacing = 1/128.0
-
-# domain_size = 128.0
-# domain_spacing = 1.0
-# fine_box_size = 2.0
-# fine_box_spacing = 1/64.0
-
 domain_size = 128.0
 domain_spacing = 1.0
 fine_box_size = 1.0
