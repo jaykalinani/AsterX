@@ -22,6 +22,7 @@ SHARES: IO
 USES STRING out_dir
 
 
+
 RESTRICTED:
 
 BOOLEAN verbose "Print screen output while solving"
@@ -177,11 +178,6 @@ BOOLEAN multiply_old_lapse "Multiply the old lapse with the new one"
 {
 } "no"
 
-BOOLEAN schedule_in_ADMBase_InitialData "Schedule in (instead of after) ADMBase_InitialData"
-{
-} "yes"
-
 BOOLEAN solve_momentum_constraint "Solve for momentum constraint?"
 {
 } "no"
-

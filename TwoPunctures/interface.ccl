@@ -6,10 +6,6 @@ USES INCLUDE HEADER: loopcontrol.h
 
 INHERITS: ADMBase grid
 
-# TODO: this ought to be checkpointed since we are not recomputing it on
-# recovery and it is not just a temp, but is is also not evolved or changing
-# with time
-REAL puncture_u TYPE=gf tags='checkpoint="no" prolongation="none" index={0 0 0}'
 
 CCTK_INT FUNCTION Set_Rho_ADM(              \
     CCTK_POINTER_TO_CONST IN  cctkGH,       \
@@ -45,7 +41,11 @@ USES FUNCTION Set_Rho_ADM
 USES FUNCTION Set_Initial_Guess_for_u
 USES FUNCTION Rescale_Sources
 
-PRIVATE:
+
+
+CCTK_REAL puncture_u TYPE=gf tags='index={0 0 0}'
+
+
 
 CCTK_REAL energy TYPE=scalar tags='checkpoint="no"'
 {
@@ -54,10 +54,8 @@ CCTK_REAL energy TYPE=scalar tags='checkpoint="no"'
 
 CCTK_REAL angular_momentum TYPE=scalar tags='checkpoint="no"'
 {
-  J1, J2, J3
+  J1 J2 J3
 } "Angular momentum of the Bowen-York spacetime"
-
-PUBLIC:
 
 CCTK_REAL bare_mass TYPE=scalar tags='checkpoint="no"'
 {
@@ -68,4 +66,3 @@ CCTK_REAL puncture_adm_mass TYPE=scalar tags='checkpoint="no"'
 {
   mp_adm mm_adm
 } "ADM masses of the punctures (measured at the other spatial infinities)"
-

@@ -6,23 +6,21 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
-#include "cctk.h"
-#include "cctk_Arguments_Checked.h"
-#include "cctk_Parameters.h"
+#include <cctk.h>
+#include <cctk_Arguments_Checked.h>
+#include <cctk_Parameters.h>
+#include <loopcontrol.h>
 #include "TP_utilities.h"
 #include "TwoPunctures.h"
 
-#include "loopcontrol.h"
-
-
 /* Swap two variables */
 static inline
-void swap (CCTK_REAL * restrict const a, CCTK_REAL * restrict const b)
+void tp_swap (CCTK_REAL * restrict const a, CCTK_REAL * restrict const b)
 {
   CCTK_REAL const t = *a; *a=*b; *b=t;
 }
 #undef SWAP
-#define SWAP(a,b) (swap(&(a),&(b)))
+#define SWAP(a,b) (tp_swap(&(a),&(b)))
 
 
 
@@ -220,7 +218,7 @@ TwoPunctures (CCTK_ARGUMENTS)
   static CCTK_REAL mp_saved, mm_saved, mp_adm_saved, mm_adm_saved, E_saved, J1_saved, J2_saved, J3_saved;
   CCTK_REAL admMass;
 
-#pragma omp critical (TwoPunctures)
+#pragma omp single
   if (! F) {
     CCTK_REAL up, um;
     /* Solve only when called for the first time */
@@ -234,7 +232,7 @@ TwoPunctures (CCTK_ARGUMENTS)
     } else {
       CCTK_INFO ("Solving puncture equation for BH-BH system");
     }
-    CCTK_VInfo (CCTK_THORNSTRING, "b = %g", par_b);
+    CCTK_VINFO ("b = %g", par_b);
     
     /* initialise to 0 */
     for (int j = 0; j < ntotal; j++)
@@ -276,14 +274,14 @@ TwoPunctures (CCTK_ARGUMENTS)
       CCTK_REAL M_p = target_M_plus;
       CCTK_REAL M_m = target_M_minus;
 
-      CCTK_VInfo (CCTK_THORNSTRING, "Attempting to find bare masses.");
-      CCTK_VInfo (CCTK_THORNSTRING, "Target ADM masses: M_p=%g and M_m=%g",
+      CCTK_VINFO ("Attempting to find bare masses.");
+      CCTK_VINFO ("Target ADM masses: M_p=%g and M_m=%g",
                   (double) M_p, (double) M_m);
-      CCTK_VInfo (CCTK_THORNSTRING, "ADM mass tolerance: %g", (double) adm_tol);
+      CCTK_VINFO ("ADM mass tolerance: %g", (double) adm_tol);
 
       /* Loop until both ADM masses are within adm_tol of their target */
       do {
-        CCTK_VInfo (CCTK_THORNSTRING, "Bare masses: mp=%.15g, mm=%.15g",
+        CCTK_VINFO ("Bare masses: mp=%.15g, mm=%.15g",
                     (double)*mp, (double)*mm);
         Newton (cctkGH, nvar, n1, n2, n3, v, Newton_tol, 1);
 
@@ -299,7 +297,7 @@ TwoPunctures (CCTK_ARGUMENTS)
         /* Check how far the current ADM masses are from the target */
         mp_adm_err = fabs(M_p-*mp_adm);
         mm_adm_err = fabs(M_m-*mm_adm);
-        CCTK_VInfo (CCTK_THORNSTRING, "ADM mass error: M_p_err=%.15g, M_m_err=%.15g",
+        CCTK_VINFO ("ADM mass error: M_p_err=%.15g, M_m_err=%.15g",
                     (double)mp_adm_err, (double)mm_adm_err);
         
         /* Invert the ADM mass equation and update the bare mass guess so that
@@ -320,7 +318,7 @@ TwoPunctures (CCTK_ARGUMENTS)
       } while ( (mp_adm_err > adm_tol) ||
                 (mm_adm_err > adm_tol) );
                 
-      CCTK_VInfo (CCTK_THORNSTRING, "Found bare masses.");
+      CCTK_VINFO ("Found bare masses.");
     }
 
     Newton (cctkGH, nvar, n1, n2, n3, v, Newton_tol, Newton_maxit);
@@ -329,8 +327,7 @@ TwoPunctures (CCTK_ARGUMENTS)
 
     SpecCoef(n1, n2, n3, 0, v.d0, cf_v.d0);
 
-    CCTK_VInfo (CCTK_THORNSTRING,
-		  "The two puncture masses are mp=%.17g and mm=%.17g",
+    CCTK_VINFO ("The two puncture masses are mp=%.17g and mm=%.17g",
                 (double) *mp, (double) *mm);
 
     up = PunctIntPolAtArbitPosition(0, nvar, n1, n2, n3, v, par_b, 0., 0.);
@@ -340,13 +337,13 @@ TwoPunctures (CCTK_ARGUMENTS)
     *mp_adm = (1 + up) * *mp + *mp * *mm / (4. * par_b);
     *mm_adm = (1 + um) * *mm + *mp * *mm / (4. * par_b);
 
-    CCTK_VInfo (CCTK_THORNSTRING, "Puncture 1 ADM mass is %g", (double) *mp_adm);
-    CCTK_VInfo (CCTK_THORNSTRING, "Puncture 2 ADM mass is %g", (double) *mm_adm);
+    CCTK_VINFO ("Puncture 1 ADM mass is %g", (double) *mp_adm);
+    CCTK_VINFO ("Puncture 2 ADM mass is %g", (double) *mm_adm);
 
     /* print out ADM mass, eq.: \Delta M_ADM=2*r*u=4*b*V for A=1,B=0,phi=0 */
     admMass = (*mp + *mm
                - 4*par_b*PunctEvalAtArbitPosition(v.d0, 0, 1, 0, 0, nvar, n1, n2, n3));
-    CCTK_VInfo (CCTK_THORNSTRING, "The total ADM mass is %g", (double) admMass);
+    CCTK_VINFO ("The total ADM mass is %g", (double) admMass);
     *E = admMass;
 
     /*
@@ -404,19 +401,18 @@ TwoPunctures (CCTK_ARGUMENTS)
   }
   else
   {
-    CCTK_WARN (0, "internal error");
+    CCTK_ERROR ("internal error");
   }
 
   antisymmetric_lapse = CCTK_EQUALS(initial_lapse, "twopunctures-antisymmetric");
   averaged_lapse = CCTK_EQUALS(initial_lapse, "twopunctures-averaged");
 	pmn_lapse = CCTK_EQUALS(initial_lapse, "psi^n");
   if (pmn_lapse)
-		CCTK_VInfo(CCTK_THORNSTRING, "Setting initial lapse to psi^%f profile.",
+		CCTK_VINFO("Setting initial lapse to psi^%f profile.",
                (double)initial_lapse_psi_exponent);
   brownsville_lapse = CCTK_EQUALS(initial_lapse, "brownsville");
   if (brownsville_lapse)
-    CCTK_VInfo(CCTK_THORNSTRING, 
-               "Setting initial lapse to a Brownsville-style profile "
+    CCTK_VINFO("Setting initial lapse to a Brownsville-style profile "
                "with exp %f.",
                (double)initial_lapse_psi_exponent);
 
@@ -427,16 +423,6 @@ TwoPunctures (CCTK_ARGUMENTS)
   const int dk = dj * (cctk_ash[1] + 1); // one extra grid point for vertex centering
   CCTK_LOOP3_ALL(TwoPunctures, cctkGH, i,j,k)
       {
-#if 0
-        /* We can't output this when running in parallel */
-        if (percent10 != 10*(i+j*cctk_lsh[0]+k*cctk_lsh[0]*cctk_lsh[1]) /
-                            (cctk_lsh[0] * cctk_lsh[1] * cctk_lsh[2]))
-        {
-            percent10 = 10*(i+j*cctk_lsh[0]+k*cctk_lsh[0]*cctk_lsh[1]) /
-                           (cctk_lsh[0] * cctk_lsh[1] * cctk_lsh[2]);
-            CCTK_VInfo(CCTK_THORNSTRING, "%3d%% done", percent10*10);
-        }
-#endif
 
         const int ind = i*di + j*dj + k*dk;
 
@@ -642,14 +628,6 @@ TwoPunctures (CCTK_ARGUMENTS)
                     NULL,
                     gxx, gyy, gzz,
                     gxy, gxz, gyz);
-  }
-
-  if (0) {
-    /* Keep the result around for the next time */
-    free_dvector (F, 0, ntotal - 1);
-    free_derivs (&u, ntotal);
-    free_derivs (&v, ntotal);
-    free_derivs (&cf_v, ntotal);
   }
 }
 
