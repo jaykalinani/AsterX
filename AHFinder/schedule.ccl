@@ -1,9 +1,24 @@
 # Schedule definitions for thorn AHFinder
 
-SCHEDULE AHFinder_interpolate AT poststep
+if (test_ah) {
+  SCHEDULE AHFinder_test_interpolation AT poststep
+  {
+    LANG: C
+    OPTIONS: global
+    READS: Coordinates::coords(everywhere)
+  } "Test interpolation operators"
+
+  SCHEDULE AHFinder_test_sht AT poststep
+  {
+    LANG: C
+    OPTIONS: global
+  } "Test spherical harmonic transformations"
+}
+
+SCHEDULE AHFinder_find AT poststep
 {
   LANG: C
   OPTIONS: global
   READS: ADMBase::metric(everywhere)
   READS: ADMBase::curv(everywhere)
-} "Interpolate ADM variables"
+} "Find apparent horizons"

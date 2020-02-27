@@ -4,6 +4,8 @@ IMPLEMENTS: AHFinder
 
 INHERITS: ADMBase
 
+USES INCLUDE HEADER: dual.hxx
+
 
 
 void FUNCTION Interpolate(

@@ -1,1 +1,20 @@
 # Parameter definitions for thorn AHFinder
+
+BOOLEAN test_ah "Test apparent horizon finder basics"
+{
+} "no"
+
+CCTK_REAL r0 "Initial horizon coordinate radius" STEERABLE=always
+{
+  (0.0:* :: ""
+} 0.5
+
+CCTK_INT lmax "Number of modes for horizon" STEERABLE=always
+{
+  1:* :: ""
+} 16
+
+CCTK_INT npoints "Number of sampling points (per direction) on the sphere" STEERABLE=always
+{
+  1:* :: "must be at least nmodes"
+} 76

@@ -5,9 +5,7 @@ ActiveThorns = "
     Coordinates
     Formaline
     IOUtil
-    ODESolvers
     SystemTopology
-    TimerReport
 "
  
 $nlevels = 3
@@ -16,7 +14,7 @@ $ncells = 32
 Cactus::cctk_show_schedule = no
 
 Cactus::terminate = "time"
-Cactus::cctk_final_time = 0   #TODO 1.0
+Cactus::cctk_final_time = 0
 
 CarpetX::verbose = no
 
@@ -41,15 +39,10 @@ CarpetX::do_reflux = no
 CarpetX::do_restrict = no
 CarpetX::restrict_during_sync = yes
 
-CarpetX::dtfac = 0.25
+AHFinder::test_ah = yes
 
 IO::out_dir = $parfile
 IO::out_every = 1   #TODO $ncells * 2 ** ($nlevels - 1) / 32
 
-CarpetX::out_tsv = yes   #TODO no
-
-TimerReport::out_every = 0   #TODO $ncells * 2 ** ($nlevels - 1) / 32
-TimerReport::out_filename = "TimerReport"
-TimerReport::output_all_timers_together = yes
-TimerReport::output_all_timers_readable = yes
-TimerReport::n_top_timers = 50
+CarpetX::out_plotfile_groups = ""
+CarpetX::out_silo_vars = ""
