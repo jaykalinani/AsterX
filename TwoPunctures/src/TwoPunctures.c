@@ -421,6 +421,7 @@ TwoPunctures (CCTK_ARGUMENTS)
   const int di = 1;
   const int dj = di * (cctk_ash[0] + 1); // one extra grid point for vertex centering
   const int dk = dj * (cctk_ash[1] + 1); // one extra grid point for vertex centering
+  const int np = dk * (cctk_ash[2] + 1); // one extra grid point for vertex centering
   CCTK_LOOP3_ALL(TwoPunctures, cctkGH, i,j,k)
       {
 
@@ -622,9 +623,10 @@ TwoPunctures (CCTK_ARGUMENTS)
 
   if (use_sources && rescale_sources)
   {
+#pragma omp single
     Rescale_Sources(cctkGH,
-                    cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2],
-                    x, y, z,
+                    np,
+                    coordx, coordy, coordz,
                     NULL,
                     gxx, gyy, gzz,
                     gxy, gxz, gyz);
