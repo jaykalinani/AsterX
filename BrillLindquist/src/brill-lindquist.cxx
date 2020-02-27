@@ -17,8 +17,8 @@ template <typename T> constexpr T pow4(const T x) { return pow2(x) * pow2(x); }
 
 template <typename T> constexpr T expand(const T x) {
   constexpr T x0 = 5;
-  // return x;
-  return sinh(x / x0) * x0;
+  return x;
+  // return sinh(x / x0) * x0;
 }
 
 template <typename T> constexpr T smooth(const T r) {
