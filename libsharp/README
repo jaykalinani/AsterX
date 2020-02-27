@@ -1,0 +1,20 @@
+Cactus Code Thorn libsharp
+Author(s)    : Erik Schnetter
+Maintainer(s): Cactus team
+Licence      : ?
+--------------------------------------------------------------------------
+
+1. Purpose
+
+Configure the libsharp library; see
+<https://github.com/Libsharp/libsharp>.
+
+
+
+From the web site:
+
+Library for fast spherical harmonic transforms, see
+<http://arxiv.org/abs/1303.4945>.
+
+See also <https://arxiv.org/abs/1010.2084> for sYlm definitions and
+conventions.
