@@ -22,19 +22,22 @@ template <typename T> constexpr T expand(const T x) {
 }
 
 template <typename T> constexpr T smooth(const T r) {
-  constexpr T rmin = 1.0e-2;
+  DECLARE_CCTK_PARAMETERS;
+  const T rmin = min_radius;
   return fmax(rmin, r);
 }
 
 template <typename T> constexpr T psi(const T x, const T y, const T z) {
-  constexpr T m = 1.0;
+  DECLARE_CCTK_PARAMETERS;
+  const T m = mass;
   const T r = smooth(sqrt(pow2(expand(x)) + pow2(expand(y)) + pow2(expand(z))));
   const T phi = 1 + m / (2 * r);
   return pow4(phi);
 }
 
 template <typename T> constexpr T lapse(const T x, const T y, const T z) {
-  constexpr T m = 1.0;
+  DECLARE_CCTK_PARAMETERS;
+  const T m = mass;
   const T r = smooth(sqrt(pow2(expand(x)) + pow2(expand(y)) + pow2(expand(z))));
   const T lapse1 = (1 - m / (2 * r)) / (1 + m / (2 * r));
   return (1 + lapse1) / 2; // average

@@ -11,3 +11,15 @@ EXTENDS KEYWORD initial_lapse "Initial lapse value"
 {
   "Brill-Lindquist" :: "Lapse suitable for Brill-Lindquist black hole"
 }
+
+PRIVATE:
+
+CCTK_REAL mass "Mass of black hole"
+{
+  0.0:* :: ""
+} 1.0
+
+CCTK_REAL min_radius "Minimum radius (to smooth data)"
+{
+  0.0:* :: ""
+} 1.0e-2
