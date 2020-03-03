@@ -42,12 +42,11 @@ template <typename T> struct dual {
   friend constexpr dual operator/(const dual &x, const T &y) {
     return {x.val / y, x.eps / y};
   }
-  friend constexpr dual operator/(const dual &x, const dual &y) {
-    return {x.val / y.val, (x.eps * y.val - x.val * y.eps) / (y.val * y.val)};
-  }
-
   friend constexpr dual operator*(const dual &x, const dual &y) {
     return {x.val * y.val, x.val * y.eps + x.eps * y.val};
+  }
+  friend constexpr dual operator/(const dual &x, const dual &y) {
+    return {x.val / y.val, (x.eps * y.val - x.val * y.eps) / (y.val * y.val)};
   }
 
   dual &operator+=(const dual &x) { return *this = *this + x; }
@@ -94,29 +93,50 @@ template <typename T> struct equal_to<dual<T> > {
 
 template <typename T> struct less<dual<T> > {
   constexpr bool operator()(const dual<T> &x, const dual<T> &y) const {
-    return less<T>(x.val, y.val) ||
-           (equal_to<T>(x.val, y.val) && less<T>(x.eps, y.eps));
+    if (less<T>(x.val, y.val))
+      return true;
+    if (less<T>(y.val, x.val))
+      return false;
+    if (less<T>(x.eps, y.eps))
+      return true;
+    if (less<T>(y.eps, x.eps))
+      return false;
+    return false;
   }
 };
 
+template <typename T> constexpr dual<T> cbrt(const dual<T> &x);
 template <typename T> constexpr dual<T> cos(const dual<T> &x);
 template <typename T> constexpr dual<T> exp(const dual<T> &x);
 template <typename T> constexpr dual<T> fabs(const dual<T> &x);
+template <typename T> constexpr dual<T> pow(const dual<T> &x, int n);
 template <typename T> constexpr dual<T> pow2(const dual<T> &x);
 template <typename T> constexpr dual<T> sin(const dual<T> &x);
 template <typename T> constexpr dual<T> sqrt(const dual<T> &x);
+
+template <typename T> constexpr dual<T> cbrt(const dual<T> &x) {
+  const T r = cbrt(x.val);
+  return {r, r / (3 * x.val) * x.eps};
+}
 
 template <typename T> constexpr dual<T> cos(const dual<T> &x) {
   return {cos(x.val), -sin(x.val) * x.eps};
 }
 
 template <typename T> constexpr dual<T> exp(const dual<T> &x) {
-  auto r = exp(x.val);
+  const T r = exp(x.val);
   return {r, r * x.eps};
 }
 
 template <typename T> constexpr dual<T> fabs(const dual<T> &x) {
-  return sqrt(pow2(x));
+  // return sqrt(pow2(x));
+  return {fabs(x.val), copysign(T{1}, x.val) * x.eps};
+}
+
+template <typename T> constexpr dual<T> pow(const dual<T> &x, const int n) {
+  if (n == 0)
+    return {1, 0};
+  return {pow(x.val, n), n * pow(x.val, n - 1) * x.eps};
 }
 
 template <typename T> constexpr dual<T> pow2(const dual<T> &x) { return x * x; }
@@ -126,7 +146,7 @@ template <typename T> constexpr dual<T> sin(const dual<T> &x) {
 }
 
 template <typename T> constexpr dual<T> sqrt(const dual<T> &x) {
-  auto r = sqrt(x.val);
+  const T r = sqrt(x.val);
   return {r, x.eps / (2 * r)};
 }
 } // namespace std
