@@ -3,7 +3,7 @@ ActiveThorns = "
     TwoPunctures
     BaikalX
     CarpetX
-    CartGrid3D
+    Coordinates
     CoordBase
     ErrorEstimator
     IOUtil
