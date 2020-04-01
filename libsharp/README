@@ -7,7 +7,8 @@ Licence      : ?
 1. Purpose
 
 Configure the libsharp library; see
-<https://github.com/Libsharp/libsharp>.
+<https://gitlab.mpcdf.mpg.de/mtr/libsharp> (previously
+<https://github.com/Libsharp/libsharp>).
 
 
 
@@ -16,5 +17,9 @@ From the web site:
 Library for fast spherical harmonic transforms, see
 <http://arxiv.org/abs/1303.4945>.
 
-See also <https://arxiv.org/abs/1010.2084> for sYlm definitions and
-conventions.
+For sYlm definitions and conventions: see
+<https://arxiv.org/abs/1010.2084>
+
+For storage conventions for real functions: see appendix of de
+Oliveira-Costa, A., Tegmark, M., Zaldarriaga, M., & Hamilton, A. 2004,
+Phys. Rev. D, 69, 063516, arXiv:astro-ph/0307282
