@@ -4,10 +4,30 @@ BOOLEAN test_ah "Test apparent horizon finder basics"
 {
 } "no"
 
+CCTK_REAL x0 "Horizon location" STEERABLE=always
+{
+  *:* :: ""
+} 0.0
+
+CCTK_REAL y0 "Horizon location" STEERABLE=always
+{
+  *:* :: ""
+} 0.0
+
+CCTK_REAL z0 "Horizon location" STEERABLE=always
+{
+  *:* :: ""
+} 0.0
+
 CCTK_REAL r0 "Initial horizon coordinate radius" STEERABLE=always
 {
   (0.0:* :: ""
 } 0.5
+
+CCTK_REAL r1z "Initial horizon coordinate radius" STEERABLE=always
+{
+  *:* :: ""
+} 0.0
 
 CCTK_INT lmax "Number of modes for horizon" STEERABLE=always
 {
@@ -18,3 +38,8 @@ CCTK_INT npoints "Number of sampling points (per direction) on the sphere" STEER
 {
   1:* :: "must be at least nmodes"
 } 76
+
+CCTK_INT maxiters "Maximum number of iterations to find horizon" STEERABLE=always
+{
+  1:* :: ""
+} 20

@@ -196,7 +196,7 @@ sYlm(const T theta, const T phi) {
          pow(sin(theta / 2), 2) * sin(theta);
 }
 
-// derivatives of s = 0
+// partial derivatives of s = 0: [\partial_theta, 1/\sin\theta \partial_\phi]
 
 template <int s, int l, int m, typename T>
 constexpr enable_if_t<(s == 0 && l == 0 && m == 0), array<complex<T>, 2> >

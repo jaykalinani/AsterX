@@ -1,15 +1,4 @@
-// Coefficients have a "sin(theta)" weight: The power of sin(theta)
-// that they contain. This sin(theta) power is not stored. For
-// example, [xyz]_t have a weight of 0, while [xyz]_p have a weight of
-// 1. The stored coefficients are thus never singular at the poles,
-// i.e. neither infinite nor always zero.
-//
-// We use a prefix "s_" to indicate a weight of 1, and a prefix "z_"
-// (an upside-down "s_") to indicate a weight of -1.
-//
-// Example: qpp = sin(theta)^2 * ss_qpp
-
-#include <ssht.h>
+#include "discretization.hxx"
 
 #include <dual.hxx>
 
@@ -17,673 +6,703 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
+#include <ssht.h>
+
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 namespace AHFinder {
 using namespace std;
 
+template <typename T> struct coords_t {
+  geom_t geom;
+  aij_t<T> x, y, z;
+
+  coords_t() = delete;
+  coords_t(const geom_t &geom) : geom(geom), x(geom), y(geom), z(geom) {}
+};
+
+template <typename T> coords_t<T> coords_from_shape(const aij_t<T> &h) {
+  DECLARE_CCTK_PARAMETERS;
+  const geom_t &geom = h.geom;
+  coords_t<T> coords(geom);
+  for (int i = 0; i < geom.ntheta; ++i) {
+    for (int j = 0; j < geom.nphi; ++j) {
+      const T r = h(i, j);
+      const T theta = geom.coord_theta(i, j);
+      const T phi = geom.coord_phi(i, j);
+      coords.x(i, j) = x0 + r * sin(theta) * cos(phi);
+      coords.y(i, j) = y0 + r * sin(theta) * sin(phi);
+      coords.z(i, j) = z0 + r * cos(theta);
+    }
+  }
+  return coords;
+}
+
+template <typename T> struct metric_t {
+  geom_t geom;
+  aij_t<T> gxx, gxy, gxz, gyy, gyz, gzz;
+  aij_t<T> gxx_x, gxy_x, gxz_x, gyy_x, gyz_x, gzz_x;
+  aij_t<T> gxx_y, gxy_y, gxz_y, gyy_y, gyz_y, gzz_y;
+  aij_t<T> gxx_z, gxy_z, gxz_z, gyy_z, gyz_z, gzz_z;
+  aij_t<T> kxx, kxy, kxz, kyy, kyz, kzz;
+
+  metric_t() = delete;
+  metric_t(const geom_t &geom)
+      : geom(geom), gxx(geom), gxy(geom), gxz(geom), gyy(geom), gyz(geom),
+        gzz(geom), gxx_x(geom), gxy_x(geom), gxz_x(geom), gyy_x(geom),
+        gyz_x(geom), gzz_x(geom), gxx_y(geom), gxy_y(geom), gxz_y(geom),
+        gyy_y(geom), gyz_y(geom), gzz_y(geom), gxx_z(geom), gxy_z(geom),
+        gxz_z(geom), gyy_z(geom), gyz_z(geom), gzz_z(geom), kxx(geom),
+        kxy(geom), kxz(geom), kyy(geom), kyz(geom), kzz(geom) {}
+};
+
+template <typename T>
+metric_t<T> interpolate_metric(const cGH *const cctkGH,
+                               const coords_t<T> &coords) {
+  const int gxx_ind = CCTK_VarIndex("ADMBase::gxx");
+  const int gxy_ind = CCTK_VarIndex("ADMBase::gxy");
+  const int gxz_ind = CCTK_VarIndex("ADMBase::gxz");
+  const int gyy_ind = CCTK_VarIndex("ADMBase::gyy");
+  const int gyz_ind = CCTK_VarIndex("ADMBase::gyz");
+  const int gzz_ind = CCTK_VarIndex("ADMBase::gzz");
+  const int kxx_ind = CCTK_VarIndex("ADMBase::kxx");
+  const int kxy_ind = CCTK_VarIndex("ADMBase::kxy");
+  const int kxz_ind = CCTK_VarIndex("ADMBase::kxz");
+  const int kyy_ind = CCTK_VarIndex("ADMBase::kyy");
+  const int kyz_ind = CCTK_VarIndex("ADMBase::kyz");
+  const int kzz_ind = CCTK_VarIndex("ADMBase::kzz");
+
+  constexpr int nvars = 6 * (1 + 3 + 1);
+  const array<CCTK_INT, nvars> varinds{
+      gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
+      gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
+      gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
+      gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
+      kxx_ind, kxy_ind, kxz_ind, kyy_ind, kyz_ind, kzz_ind, //
+  };
+  const array<CCTK_INT, nvars> operations{
+      0, 0, 0, 0, 0, 0, //
+      1, 1, 1, 1, 1, 1, //
+      2, 2, 2, 2, 2, 2, //
+      3, 3, 3, 3, 3, 3, //
+      0, 0, 0, 0, 0, 0, //
+  };
+
+  const geom_t &geom = coords.geom;
+  metric_t<T> metric(geom);
+  array<T *, nvars> ptrs{
+      metric.gxx.data(),   metric.gxy.data(),   metric.gxz.data(),
+      metric.gyy.data(),   metric.gyz.data(),   metric.gzz.data(),
+      metric.gxx_x.data(), metric.gxy_x.data(), metric.gxz_x.data(),
+      metric.gyy_x.data(), metric.gyz_x.data(), metric.gzz_x.data(),
+      metric.gxx_y.data(), metric.gxy_y.data(), metric.gxz_y.data(),
+      metric.gyy_y.data(), metric.gyz_y.data(), metric.gzz_y.data(),
+      metric.gxx_z.data(), metric.gxy_z.data(), metric.gxz_z.data(),
+      metric.gyy_z.data(), metric.gyz_z.data(), metric.gzz_z.data(),
+      metric.kxx.data(),   metric.kxy.data(),   metric.kxz.data(),
+      metric.kyy.data(),   metric.kyz.data(),   metric.kzz.data()};
+
+  Interpolate(cctkGH, geom.npoints, coords.x.data(), coords.y.data(),
+              coords.z.data(), nvars, varinds.data(), operations.data(),
+              ptrs.data());
+
+  return metric;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// Expansion and updated horizon shape; see [arXiv:gr-qc/0702038], (29)
+template <typename T> struct expansion_t {
+  alm_t<T> hlm;
+  T area;
+  alm_t<T> Thetalm, hlm_new;
+};
+
+template <typename T>
+expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
+  DECLARE_CCTK_PARAMETERS;
+
+  const geom_t &geom = hlm.geom;
+
+  // Evaluate h^ij and its derivatives
+  const aij_t<T> hij = evaluate(hlm);
+  const alm_t<T> dhlm = grad(hlm);
+  const aij_t<complex<T> > dhij = evaluate_grad(dhlm);
+
+  aij_t<T> surij(geom), sutij(geom), z_supij(geom);
+  aij_t<T> s_dsur_rij(geom);
+  aij_t<complex<T> > s_dsuij(geom);
+
+  aij_t<T> lambdaij(geom);
+
+  T area = 0;
+
+  for (int i = 0; i < geom.ntheta; ++i) {
+    for (int j = 0; j < geom.nphi; ++j) {
+
+      // Coordinates
+
+      const T h = hij(i, j);
+      // dX = d/d\theta X + i/\sin\theta d/d\phi X
+      const complex<T> dh = dhij(i, j);
+      const T h_t = real(dh);
+      const T s_h_p = imag(dh);
+
+      // Dual quantities for radial derivatives
+      const dual<T> r{h, 1};
+      const dual<T> theta{geom.coord_theta(i, j), 0};
+      const dual<T> phi{geom.coord_phi(i, j), 0};
+
+      // const dual<T> x = x0 + r * sin(theta) * cos(phi);
+      // const dual<T> y = y0 + r * sin(theta) * sin(phi);
+      // const dual<T> z = z0 + r * cos(theta);
+
+      const dual<T> x_r = sin(theta) * cos(phi);
+      const dual<T> y_r = sin(theta) * sin(phi);
+      const dual<T> z_r = cos(theta);
+      const dual<T> x_t = r * cos(theta) * cos(phi);
+      const dual<T> y_t = r * cos(theta) * sin(phi);
+      const dual<T> z_t = -r * sin(theta);
+      const dual<T> s_x_p = -r * sin(phi);
+      const dual<T> s_y_p = r * cos(phi);
+      const dual<T> s_z_p = 0;
+
+      // Metric
+
+      const T gxx0 = metric.gxx(i, j);
+      const T gxy0 = metric.gxy(i, j);
+      const T gxz0 = metric.gxz(i, j);
+      const T gyy0 = metric.gyy(i, j);
+      const T gyz0 = metric.gyz(i, j);
+      const T gzz0 = metric.gzz(i, j);
+
+      const T gxx0_x = metric.gxx_x(i, j);
+      const T gxy0_x = metric.gxy_x(i, j);
+      const T gxz0_x = metric.gxz_x(i, j);
+      const T gyy0_x = metric.gyy_x(i, j);
+      const T gyz0_x = metric.gyz_x(i, j);
+      const T gzz0_x = metric.gzz_x(i, j);
+      const T gxx0_y = metric.gxx_y(i, j);
+      const T gxy0_y = metric.gxy_y(i, j);
+      const T gxz0_y = metric.gxz_y(i, j);
+      const T gyy0_y = metric.gyy_y(i, j);
+      const T gyz0_y = metric.gyz_y(i, j);
+      const T gzz0_y = metric.gzz_y(i, j);
+      const T gxx0_z = metric.gxx_z(i, j);
+      const T gxy0_z = metric.gxy_z(i, j);
+      const T gxz0_z = metric.gxz_z(i, j);
+      const T gyy0_z = metric.gyy_z(i, j);
+      const T gyz0_z = metric.gyz_z(i, j);
+      const T gzz0_z = metric.gzz_z(i, j);
+
+      // Radial derivative of metric
+      const T gxx0_r = gxx0_x * x_r.val + gxx0_y * y_r.val + gxx0_z * z_r.val;
+      const T gxy0_r = gxy0_x * x_r.val + gxy0_y * y_r.val + gxy0_z * z_r.val;
+      const T gxz0_r = gxz0_x * x_r.val + gxz0_y * y_r.val + gxz0_z * z_r.val;
+      const T gyy0_r = gyy0_x * x_r.val + gyy0_y * y_r.val + gyy0_z * z_r.val;
+      const T gyz0_r = gyz0_x * x_r.val + gyz0_y * y_r.val + gyz0_z * z_r.val;
+      const T gzz0_r = gzz0_x * x_r.val + gzz0_y * y_r.val + gzz0_z * z_r.val;
+
+      const dual<T> gxx{gxx0, gxx0_r};
+      const dual<T> gxy{gxy0, gxy0_r};
+      const dual<T> gxz{gxz0, gxz0_r};
+      const dual<T> gyy{gyy0, gyy0_r};
+      const dual<T> gyz{gyz0, gyz0_r};
+      const dual<T> gzz{gzz0, gzz0_r};
+
+      // Metric in spherical coordinates
+      const dual<T> qrr = 0                 //
+                          + gxx * x_r * x_r //
+                          + gxy * x_r * y_r //
+                          + gxz * x_r * z_r //
+                          + gxy * y_r * x_r //
+                          + gyy * y_r * y_r //
+                          + gyz * y_r * z_r //
+                          + gxz * z_r * x_r //
+                          + gyz * z_r * y_r //
+                          + gzz * z_r * z_r;
+      const dual<T> qrt = 0                 //
+                          + gxx * x_r * x_t //
+                          + gxy * x_r * y_t //
+                          + gxz * x_r * z_t //
+                          + gxy * y_r * x_t //
+                          + gyy * y_r * y_t //
+                          + gyz * y_r * z_t //
+                          + gxz * z_r * x_t //
+                          + gyz * z_r * y_t //
+                          + gzz * z_r * z_t;
+      const dual<T> s_qrp = 0                   //
+                            + gxx * x_r * s_x_p //
+                            + gxy * x_r * s_y_p //
+                            + gxz * x_r * s_z_p //
+                            + gxy * y_r * s_x_p //
+                            + gyy * y_r * s_y_p //
+                            + gyz * y_r * s_z_p //
+                            + gxz * z_r * s_x_p //
+                            + gyz * z_r * s_y_p //
+                            + gzz * z_r * s_z_p;
+      const dual<T> qtt = 0                 //
+                          + gxx * x_t * x_t //
+                          + gxy * x_t * y_t //
+                          + gxz * x_t * z_t //
+                          + gxy * y_t * x_t //
+                          + gyy * y_t * y_t //
+                          + gyz * y_t * z_t //
+                          + gxz * z_t * x_t //
+                          + gyz * z_t * y_t //
+                          + gzz * z_t * z_t;
+      const dual<T> s_qtp = 0                   //
+                            + gxx * x_t * s_x_p //
+                            + gxy * x_t * s_y_p //
+                            + gxz * x_t * s_z_p //
+                            + gxy * y_t * s_x_p //
+                            + gyy * y_t * s_y_p //
+                            + gyz * y_t * s_z_p //
+                            + gxz * z_t * s_x_p //
+                            + gyz * z_t * s_y_p //
+                            + gzz * z_t * s_z_p;
+      const dual<T> ss_qpp = 0                     //
+                             + gxx * s_x_p * s_x_p //
+                             + gxy * s_x_p * s_y_p //
+                             + gxz * s_x_p * s_z_p //
+                             + gxy * s_y_p * s_x_p //
+                             + gyy * s_y_p * s_y_p //
+                             + gyz * s_y_p * s_z_p //
+                             + gxz * s_z_p * s_x_p //
+                             + gyz * s_z_p * s_y_p //
+                             + gzz * s_z_p * s_z_p;
+
+      const dual<T> ss_detq = 0                                      //
+                              + qrr * (qtt * ss_qpp - pow(s_qtp, 2)) //
+                              + qrt * (s_qtp * s_qrp - qrt * ss_qpp) //
+                              + s_qrp * (qrt * s_qtp - qtt * s_qrp);
+      const dual<T> s_sqrt_detq = sqrt(ss_detq);
+
+      const dual<T> qurr = (qtt * ss_qpp - pow(s_qtp, 2)) / ss_detq;
+      const dual<T> qurt = (s_qtp * s_qrp - ss_qpp * qrt) / ss_detq;
+      const dual<T> z_qurp = (qrt * s_qtp - s_qrp * qtt) / ss_detq;
+      const dual<T> qutt = (ss_qpp * qrr - pow(s_qrp, 2)) / ss_detq;
+      const dual<T> z_qutp = (s_qrp * qrt - qrr * s_qtp) / ss_detq;
+      const dual<T> zz_qupp = (qrr * qtt - pow(qrt, 2)) / ss_detq;
+
+#ifdef CCTK_DEBUG
+      const dual<T> q[3][3]{
+          {qrr, qrt, s_qrp}, {qrt, qtt, s_qtp}, {s_qrp, s_qtp, ss_qpp}};
+      const dual<T> qu[3][3]{{qurr, qurt, z_qurp},
+                             {qurt, qutt, z_qutp},
+                             {z_qurp, z_qutp, zz_qupp}};
+      for (int a = 0; a < 3; ++a) {
+        for (int b = 0; b < 3; ++b) {
+          assert(q[a][b] == q[b][a]);
+          assert(qu[a][b] == qu[b][a]);
+          dual<T> s = 0;
+          for (int c = 0; c < 3; ++c)
+            s += qu[a][c] * q[c][b];
+          assert(fabs(s - (a == b)) <= 1.0e-12);
+        }
+      }
+#endif
+
+      // Spacelike normal
+
+      // const T F = r.val - h;
+
+      const dual<T> F_r = {1, 0};
+      const dual<T> F_t = {-h_t, 0};
+      const dual<T> s_F_p = {-s_h_p, 0};
+
+      const dual<T> Fu_r = qurr * F_r + qurt * F_t + z_qurp * s_F_p;
+      const dual<T> Fu_t = qurt * F_r + qutt * F_t + z_qutp * s_F_p;
+      const dual<T> z_Fu_p = z_qurp * F_r + z_qutp * F_t + zz_qupp * s_F_p;
+
+      const dual<T> dF2 = F_r * Fu_r + F_t * Fu_t + s_F_p * z_Fu_p;
+      const dual<T> dF = sqrt(dF2);
+
+      // spacelike normal s_i
+      const dual<T> sr = F_r / dF;
+      const dual<T> st = F_t / dF;
+      const dual<T> s_sp = s_F_p / dF;
+
+      const dual<T> sur = qurr * sr + qurt * st + z_qurp * s_sp;
+      const dual<T> sut = qurt * sr + qutt * st + z_qutp * s_sp;
+      const dual<T> z_sup = z_qurp * sr + z_qutp * st + zz_qupp * s_sp;
+
+      const dual<T> s2 = sr * sur + st * sut + s_sp * z_sup;
+#ifdef CCTK_DEBUG
+      assert(fabs(s2 - 1) <= 1.0e-12);
+#endif
+
+      // densitized spacelike normal
+      const dual<T> s_dsur = s_sqrt_detq * sur;
+      const dual<T> s_dsut = s_sqrt_detq * sut;
+      const dual<T> dsup = s_sqrt_detq * z_sup;
+
+      const T Psi4 = cbrt(ss_detq.val / pow(r.val, 4));
+      // [arXiv:gr-qc/0702038], (26)
+      const T lambda = Psi4 * dF.val * pow(r.val, 2);
+
+      const T ss_detQ = (qtt * ss_qpp - pow(s_qtp, 2)).val;
+      const T s_sqrt_detQ = sqrt(ss_detQ);
+      const T darea = sin(theta.val) * s_sqrt_detQ * geom.coord_dtheta(i, j) *
+                      geom.coord_dphi(i, j);
+
+      // spacelike normal
+      surij(i, j) = sur.val;
+      sutij(i, j) = sut.val;
+      z_supij(i, j) = z_sup.val;
+
+      // densitized spacelike normal
+      // r derivative of r component
+      s_dsur_rij(i, j) = s_dsur.eps;
+      // theta and phi components (will calculate 2-divergence below)
+      s_dsuij(i, j) = complex<T>(s_dsut.val, dsup.val);
+
+      lambdaij(i, j) = lambda;
+
+      area += darea;
+    }
+  }
+
+  const alm_t<T> s_dsulm = expand_grad(s_dsuij);
+  const alm_t<T> s_lsulm = div(s_dsulm);
+  const aij_t<T> s_lsuij = evaluate(s_lsulm);
+
+  aij_t<T> Thetaij(geom);
+
+  for (int i = 0; i < geom.ntheta; ++i) {
+    for (int j = 0; j < geom.nphi; ++j) {
+
+      // Coordinates
+
+      const T h = hij(i, j);
+      // dX = d/d\theta X + i/\sin\theta d/d\phi X
+      // const complex<T> dh = dhij(i, j);
+      // const T h_t = real(dh);
+      // const T s_h_p = imag(dh);
+
+      const T r = h;
+      const T theta = geom.coord_theta(i, j);
+      const T phi = geom.coord_phi(i, j);
+
+      // const T x = x0 + r * sin(theta) * cos(phi);
+      // const T y = y0 + r * sin(theta) * sin(phi);
+      // const T z = z0 + r * cos(theta);
+
+      const T x_r = sin(theta) * cos(phi);
+      const T y_r = sin(theta) * sin(phi);
+      const T z_r = cos(theta);
+      const T x_t = r * cos(theta) * cos(phi);
+      const T y_t = r * cos(theta) * sin(phi);
+      const T z_t = -r * sin(theta);
+      const T s_x_p = -r * sin(phi);
+      const T s_y_p = r * cos(phi);
+      const T s_z_p = 0;
+
+      // Metric
+
+      const T gxx = metric.gxx(i, j);
+      const T gxy = metric.gxy(i, j);
+      const T gxz = metric.gxz(i, j);
+      const T gyy = metric.gyy(i, j);
+      const T gyz = metric.gyz(i, j);
+      const T gzz = metric.gzz(i, j);
+
+      // Metric in spherical coordinates
+      const T qrr = 0                 //
+                    + gxx * x_r * x_r //
+                    + gxy * x_r * y_r //
+                    + gxz * x_r * z_r //
+                    + gxy * y_r * x_r //
+                    + gyy * y_r * y_r //
+                    + gyz * y_r * z_r //
+                    + gxz * z_r * x_r //
+                    + gyz * z_r * y_r //
+                    + gzz * z_r * z_r;
+      const T qrt = 0                 //
+                    + gxx * x_r * x_t //
+                    + gxy * x_r * y_t //
+                    + gxz * x_r * z_t //
+                    + gxy * y_r * x_t //
+                    + gyy * y_r * y_t //
+                    + gyz * y_r * z_t //
+                    + gxz * z_r * x_t //
+                    + gyz * z_r * y_t //
+                    + gzz * z_r * z_t;
+      const T s_qrp = 0                   //
+                      + gxx * x_r * s_x_p //
+                      + gxy * x_r * s_y_p //
+                      + gxz * x_r * s_z_p //
+                      + gxy * y_r * s_x_p //
+                      + gyy * y_r * s_y_p //
+                      + gyz * y_r * s_z_p //
+                      + gxz * z_r * s_x_p //
+                      + gyz * z_r * s_y_p //
+                      + gzz * z_r * s_z_p;
+      const T qtt = 0                 //
+                    + gxx * x_t * x_t //
+                    + gxy * x_t * y_t //
+                    + gxz * x_t * z_t //
+                    + gxy * y_t * x_t //
+                    + gyy * y_t * y_t //
+                    + gyz * y_t * z_t //
+                    + gxz * z_t * x_t //
+                    + gyz * z_t * y_t //
+                    + gzz * z_t * z_t;
+      const T s_qtp = 0                   //
+                      + gxx * x_t * s_x_p //
+                      + gxy * x_t * s_y_p //
+                      + gxz * x_t * s_z_p //
+                      + gxy * y_t * s_x_p //
+                      + gyy * y_t * s_y_p //
+                      + gyz * y_t * s_z_p //
+                      + gxz * z_t * s_x_p //
+                      + gyz * z_t * s_y_p //
+                      + gzz * z_t * s_z_p;
+      const T ss_qpp = 0                     //
+                       + gxx * s_x_p * s_x_p //
+                       + gxy * s_x_p * s_y_p //
+                       + gxz * s_x_p * s_z_p //
+                       + gxy * s_y_p * s_x_p //
+                       + gyy * s_y_p * s_y_p //
+                       + gyz * s_y_p * s_z_p //
+                       + gxz * s_z_p * s_x_p //
+                       + gyz * s_z_p * s_y_p //
+                       + gzz * s_z_p * s_z_p;
+
+      const T ss_detq = 0                                      //
+                        + qrr * (qtt * ss_qpp - pow(s_qtp, 2)) //
+                        + qrt * (s_qtp * s_qrp - qrt * ss_qpp) //
+                        + s_qrp * (qrt * s_qtp - qtt * s_qrp);
+      const T s_sqrt_detq = sqrt(ss_detq);
+
+      const T qurr = (qtt * ss_qpp - pow(s_qtp, 2)) / ss_detq;
+      const T qurt = (s_qtp * s_qrp - ss_qpp * qrt) / ss_detq;
+      const T z_qurp = (qrt * s_qtp - s_qrp * qtt) / ss_detq;
+      const T qutt = (ss_qpp * qrr - pow(s_qrp, 2)) / ss_detq;
+      const T z_qutp = (s_qrp * qrt - qrr * s_qtp) / ss_detq;
+      const T zz_qupp = (qrr * qtt - pow(qrt, 2)) / ss_detq;
+
+#ifdef CCTK_DEBUG
+      const dual<T> q[3][3]{
+          {qrr, qrt, s_qrp}, {qrt, qtt, s_qtp}, {s_qrp, s_qtp, ss_qpp}};
+      const dual<T> qu[3][3]{{qurr, qurt, z_qurp},
+                             {qurt, qutt, z_qutp},
+                             {z_qurp, z_qutp, zz_qupp}};
+      for (int a = 0; a < 3; ++a) {
+        for (int b = 0; b < 3; ++b) {
+          assert(q[a][b] == q[b][a]);
+          assert(qu[a][b] == qu[b][a]);
+          dual<T> s = 0;
+          for (int c = 0; c < 3; ++c)
+            s += qu[a][c] * q[c][b];
+          assert(fabs(s - (a == b)) <= 1.0e-12);
+        }
+      }
+#endif
+
+      // Spacelike normal
+
+      const T sur = surij(i, j);
+      const T sut = sutij(i, j);
+      const T z_sup = z_supij(i, j);
+
+      const T s_dsur_r = s_dsur_rij(i, j);
+      const T s_lsu = s_lsuij(i, j);
+
+      // Extrinsic curvature
+
+      const T kxx = metric.kxx(i, j);
+      const T kxy = metric.kxy(i, j);
+      const T kxz = metric.kxz(i, j);
+      const T kyy = metric.kyy(i, j);
+      const T kyz = metric.kyz(i, j);
+      const T kzz = metric.kzz(i, j);
+
+      const T krr = 0                 //
+                    + kxx * x_r * x_r //
+                    + kxy * x_r * y_r //
+                    + kxz * x_r * z_r //
+                    + kxy * y_r * x_r //
+                    + kyy * y_r * y_r //
+                    + kyz * y_r * z_r //
+                    + kxz * z_r * x_r //
+                    + kyz * z_r * y_r //
+                    + kzz * z_r * z_r;
+      const T krt = 0                 //
+                    + kxx * x_r * x_t //
+                    + kxy * x_r * y_t //
+                    + kxz * x_r * z_t //
+                    + kxy * y_r * x_t //
+                    + kyy * y_r * y_t //
+                    + kyz * y_r * z_t //
+                    + kxz * z_r * x_t //
+                    + kyz * z_r * y_t //
+                    + kzz * z_r * z_t;
+      const T s_krp = 0                   //
+                      + kxx * x_r * s_x_p //
+                      + kxy * x_r * s_y_p //
+                      + kxz * x_r * s_z_p //
+                      + kxy * y_r * s_x_p //
+                      + kyy * y_r * s_y_p //
+                      + kyz * y_r * s_z_p //
+                      + kxz * z_r * s_x_p //
+                      + kyz * z_r * s_y_p //
+                      + kzz * z_r * s_z_p;
+      const T ktt = 0                 //
+                    + kxx * x_t * x_t //
+                    + kxy * x_t * y_t //
+                    + kxz * x_t * z_t //
+                    + kxy * y_t * x_t //
+                    + kyy * y_t * y_t //
+                    + kyz * y_t * z_t //
+                    + kxz * z_t * x_t //
+                    + kyz * z_t * y_t //
+                    + kzz * z_t * z_t;
+      const T s_ktp = 0                   //
+                      + kxx * x_t * s_x_p //
+                      + kxy * x_t * s_y_p //
+                      + kxz * x_t * s_z_p //
+                      + kxy * y_t * s_x_p //
+                      + kyy * y_t * s_y_p //
+                      + kyz * y_t * s_z_p //
+                      + kxz * z_t * s_x_p //
+                      + kyz * z_t * s_y_p //
+                      + kzz * z_t * s_z_p;
+      const T ss_kpp = 0                     //
+                       + kxx * s_x_p * s_x_p //
+                       + kxy * s_x_p * s_y_p //
+                       + kxz * s_x_p * s_z_p //
+                       + kxy * s_y_p * s_x_p //
+                       + kyy * s_y_p * s_y_p //
+                       + kyz * s_y_p * s_z_p //
+                       + kxz * s_z_p * s_x_p //
+                       + kyz * s_z_p * s_y_p //
+                       + kzz * s_z_p * s_z_p;
+
+      // Expansion
+
+      const T div_s = (s_dsur_r + s_lsu) / s_sqrt_detq;
+
+      const T kmm = 0                                //
+                    + krr * (qurr - sur * sur)       //
+                    + krt * (qurt - sur * sut)       //
+                    + s_krp * (z_qurp - sur * z_sup) //
+                    + krt * (qurt - sut * sur)       //
+                    + ktt * (qutt - sut * sut)       //
+                    + s_ktp * (z_qutp - sut * z_sup) //
+                    + s_krp * (z_qurp - z_sup * sur) //
+                    + s_ktp * (z_qutp - z_sup * sut) //
+                    + ss_kpp * (zz_qupp - z_sup * z_sup);
+
+      const T Theta = div_s - kmm;
+
+      Thetaij(i, j) = Theta;
+    }
+  }
+
+  const alm_t<T> Thetalm = expand(Thetaij);
+  // [arXiv:gr-qc/0702038], (28)
+  aij_t<T> Sij(geom);
+  for (int i = 0; i < geom.ntheta; ++i)
+    for (int j = 0; j < geom.nphi; ++j)
+      Sij(i, j) = lambdaij(i, j) * Thetaij(i, j);
+  const alm_t<T> Slm = expand(Sij);
+
+  alm_t<T> hlm_new(geom);
+  for (int l = 0; l <= geom.lmax; ++l) {
+    for (int m = -l; m <= l; ++m) {
+      hlm_new(l, m) = hlm(l, m) - 1 / T(l * (l + 1) + 2) * Slm(l, m);
+    }
+  }
+
+  return {hlm, area, Thetalm, hlm_new};
+} // namespace AHFinder
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+expansion_t<T> update(const cGH *const cctkGH, const alm_t<T> &hlm) {
+  const auto hij = evaluate(hlm);
+  const auto coords = coords_from_shape(hij);
+  const auto metric = interpolate_metric(cctkGH, coords);
+  const auto res = expansion(metric, hlm);
+  return res;
+}
+
+template <typename T>
+expansion_t<T> solve(const cGH *const cctkGH, const alm_t<T> &hlm_ini) {
+  DECLARE_CCTK_PARAMETERS;
+  int iter = 0;
+  unique_ptr<const alm_t<T> > hlm_ptr =
+      make_unique<alm_t<T> >(filter(hlm_ini, lmax));
+  for (;;) {
+    ++iter;
+    const auto &hlm = *hlm_ptr;
+    const geom_t &geom = hlm.geom;
+    const auto hij = evaluate(hlm);
+    const auto res = update(cctkGH, hlm);
+    const auto &Thetalm = res.Thetalm;
+    const auto hlm_new = filter(res.hlm_new, lmax);
+    const auto hij_new = evaluate(hlm_new);
+    T dh_maxabs{0};
+    for (int i = 0; i < geom.ntheta; ++i)
+      for (int j = 0; j < geom.nphi; ++j)
+        dh_maxabs = fmax(dh_maxabs, fabs(hij_new(i, j) - hij(i, j)));
+    T h_maxabs{0}; // ignoring l=0
+    for (int l = 1; l <= geom.lmax; ++l)
+      for (int m = -l; m <= l; ++m)
+        h_maxabs = fmax(h_maxabs, norm(hlm_new(l, m)));
+    h_maxabs = sqrt(h_maxabs);
+    const auto Thetaij = evaluate(Thetalm);
+    T Theta_maxabs{0};
+    for (int i = 0; i < geom.ntheta; ++i)
+      for (int j = 0; j < geom.nphi; ++j)
+        Theta_maxabs = fmax(Theta_maxabs, fabs(Thetaij(i, j)));
+    const T h = real(hlm(0, 0)) / sqrt(4 * M_PI);
+    const T R = sqrt(res.area / (4 * M_PI));
+    CCTK_VINFO("iter=%d, h=%g, R=%g |Θ|=%g, |∇h|=%g |Δh|=%g", iter, double(h),
+               double(R), double(Theta_maxabs), double(h_maxabs),
+               double(dh_maxabs));
+    // for (int l = 0; l <= lmax; ++l) {
+    //   T h_maxabs{0};
+    //   for (int m = -l; m <= l; ++m)
+    //     h_maxabs = fmax(h_maxabs, norm(hlm_new(l, m)));
+    //   h_maxabs = sqrt(h_maxabs);
+    //   CCTK_VINFO("l=%d |h|=%g", l, double(h_maxabs));
+    // }
+    // for (int l = 0; l <= lmax; ++l) {
+    //   printf("l=%d", l);
+    //   for (int m = -l; m <= l; ++m)
+    //     printf(" %g", double(abs(hlm_new(l, m))));
+    //   printf("\n");
+    // }
+    if (iter >= maxiters || dh_maxabs <= 1.0e-12)
+      return res;
+    hlm_ptr = make_unique<alm_t<T> >(move(hlm_new));
+    // alm_t<T> hlm_next(geom);
+    // for (int l = 0; l <= geom.lmax; ++l)
+    //   for (int m = -l; m <= l; ++m)
+    //     hlm_next(l, m) = hlm(l, m) - (hlm_new(l, m) - hlm(l, m));
+    // hlm_ptr = make_unique<alm_t<T> >(move(hlm_next));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 extern "C" void AHFinder_find(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AHFinder_find;
   DECLARE_CCTK_PARAMETERS;
 
-  // Rename parameters to avoid confusion
-  const int filter_lmax = lmax;
-  const int nmodes = npoints;
-  {
-
-    // Access grid and spectral information
-
-    const int ntheta = nmodes;
-    const int nphi = 2 * nmodes - 1;
-    const int npoints = ntheta * nphi;
-    const auto coord_theta{[&](const int i, const int j) -> CCTK_REAL {
-      assert(i >= 0 && i < ntheta);
-      assert(j >= 0 && j < nphi);
-      return ssht_sampling_mw_t2theta(i, nmodes);
-    }};
-    const auto coord_phi{[&](const int i, const int j) -> CCTK_REAL {
-      assert(i >= 0 && i < ntheta);
-      assert(j >= 0 && j < nphi);
-      return ssht_sampling_mw_p2phi(j, nmodes);
-    }};
-    const auto gind{[&](const int i, const int j) -> int {
-      // 0 <= i < ntheta
-      // 0 <= j < nphi
-      assert(i >= 0 && i < ntheta);
-      assert(j >= 0 && j < nphi);
-      const int ind = j + nphi * i;
-      assert(ind >= 0 && ind < npoints);
-      return ind;
-    }};
-
-    const int lmax = nmodes - 1;
-    const int ncoeffs = nmodes * nmodes;
-    const auto cind{[&](const int l, const int m) -> int {
-      // 0 <= l <= lmax
-      // -l <= m <= l
-      assert(l >= 0 && l <= lmax);
-      assert(m >= -l && m <= l);
-      int ind;
-      ssht_sampling_elm2ind(&ind, l, m);
-      assert(ind >= 0 && ind < ncoeffs);
-      return ind;
-    }};
-
-    const ssht_dl_method_t method = SSHT_DL_RISBO;
-    const int verbosity = 0; // [0..5]
-
-    ////////////////////////////////////////////////////////////////////////////
-
-    // Initial conditions for h^lm
-
-    vector<CCTK_COMPLEX> hlm(ncoeffs);
-    for (int l = 0; l <= lmax; ++l)
-      for (int m = -l; m <= l; ++m)
-        hlm.at(cind(l, m)) = l == 0 && m == 0 ? sqrt(4 * M_PI) * r0 : 0;
-
-    // Filter h^lm
-    for (int l = filter_lmax + 1; l <= lmax; ++l)
-      for (int m = -l; m <= l; ++m)
-        hlm.at(cind(l, m)) = 0;
-
-    // Evaluate h^ij
-
-    vector<CCTK_REAL> hij(npoints);
-    ssht_core_mw_inverse_sov_sym_real(hij.data(), hlm.data(), nmodes, method,
-                                      verbosity);
-
-    // Evaluate derivatives of h^ij
-
-    const int dh_spin = 1;
-    vector<CCTK_COMPLEX> dhlm(ncoeffs);
-    for (int l = 0; l <= lmax; ++l)
-      for (int m = -l; m <= l; ++m)
-        dhlm.at(cind(l, m)) = sqrt(CCTK_REAL(l * (l + 1))) * hlm.at(cind(l, m));
-
-    vector<CCTK_COMPLEX> dhij(npoints);
-    ssht_core_mw_inverse_sov_sym(dhij.data(), dhlm.data(), nmodes, dh_spin,
-                                 method, verbosity);
-
-    // Calculate interpolation coordinates
-
-    vector<CCTK_REAL> coordsx(npoints), coordsy(npoints), coordsz(npoints);
-    for (int i = 0; i < ntheta; ++i) {
-      for (int j = 0; j < nphi; ++j) {
-        const int ind2d = gind(i, j);
-        const CCTK_REAL r = hij[ind2d];
-        const CCTK_REAL theta = coord_theta(i, j);
-        const CCTK_REAL phi = coord_phi(i, j);
-        coordsx[ind2d] = r * sin(theta) * cos(phi);
-        coordsy[ind2d] = r * sin(theta) * sin(phi);
-        coordsz[ind2d] = r * cos(theta);
-      }
-    }
-
-    // Interpolate metric and extrinsic curvature
-
-    const int gxx_ind = CCTK_VarIndex("ADMBase::gxx");
-    const int gxy_ind = CCTK_VarIndex("ADMBase::gxy");
-    const int gxz_ind = CCTK_VarIndex("ADMBase::gxz");
-    const int gyy_ind = CCTK_VarIndex("ADMBase::gyy");
-    const int gyz_ind = CCTK_VarIndex("ADMBase::gyz");
-    const int gzz_ind = CCTK_VarIndex("ADMBase::gzz");
-    const int kxx_ind = CCTK_VarIndex("ADMBase::kxx");
-    const int kxy_ind = CCTK_VarIndex("ADMBase::kxy");
-    const int kxz_ind = CCTK_VarIndex("ADMBase::kxz");
-    const int kyy_ind = CCTK_VarIndex("ADMBase::kyy");
-    const int kyz_ind = CCTK_VarIndex("ADMBase::kyz");
-    const int kzz_ind = CCTK_VarIndex("ADMBase::kzz");
-    const vector<CCTK_INT> varinds{
-        gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
-        gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
-        gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
-        gxx_ind, gxy_ind, gxz_ind, gyy_ind, gyz_ind, gzz_ind, //
-        kxx_ind, kxy_ind, kxz_ind, kyy_ind, kyz_ind, kzz_ind, //
-    };
-    const vector<CCTK_INT> operations{
-        0, 0, 0, 0, 0, 0, //
-        1, 1, 1, 1, 1, 1, //
-        2, 2, 2, 2, 2, 2, //
-        3, 3, 3, 3, 3, 3, //
-        0, 0, 0, 0, 0, 0, //
-    };
-    constexpr int nvars = 6 * (1 + 3 + 1);
-    assert(int(varinds.size()) == nvars);
-    assert(int(operations.size()) == nvars);
-    int index = 0;
-    const int igxx = index++;
-    const int igxy = index++;
-    const int igxz = index++;
-    const int igyy = index++;
-    const int igyz = index++;
-    const int igzz = index++;
-    const int igxx_x = index++;
-    const int igxy_x = index++;
-    const int igxz_x = index++;
-    const int igyy_x = index++;
-    const int igyz_x = index++;
-    const int igzz_x = index++;
-    const int igxx_y = index++;
-    const int igxy_y = index++;
-    const int igxz_y = index++;
-    const int igyy_y = index++;
-    const int igyz_y = index++;
-    const int igzz_y = index++;
-    const int igxx_z = index++;
-    const int igxy_z = index++;
-    const int igxz_z = index++;
-    const int igyy_z = index++;
-    const int igyz_z = index++;
-    const int igzz_z = index++;
-    const int ikxx = index++;
-    const int ikxy = index++;
-    const int ikxz = index++;
-    const int ikyy = index++;
-    const int ikyz = index++;
-    const int ikzz = index++;
-    assert(index == nvars);
-
-    vector<vector<CCTK_REAL> > gij(nvars);
-    {
-      vector<CCTK_REAL *> gijptrs(nvars);
-      for (int n = 0; n < nvars; ++n) {
-        gij.at(n).resize(npoints);
-        gijptrs.at(n) = gij.at(n).data();
-      }
-      Interpolate(cctkGH, npoints, coordsx.data(), coordsy.data(),
-                  coordsz.data(), nvars, varinds.data(), operations.data(),
-                  gijptrs.data());
-    }
-
-    // Expand metric and extrinsic curvature
-
-    vector<vector<CCTK_COMPLEX> > glm(nvars);
-    for (int n = 0; n < nvars; ++n) {
-      glm.at(n).resize(ncoeffs);
-      ssht_core_mw_forward_sov_conv_sym_real(glm.at(n).data(), gij.at(n).data(),
-                                             nmodes, method, verbosity);
-    }
-
-    // Filter metric and extrinsic curvature
-
-    for (int n = 0; n < nvars; ++n)
-      for (int l = filter_lmax + 1; l <= lmax; ++l)
-        for (int m = -l; m <= l; ++m)
-          glm.at(n).at(cind(l, m)) = 0;
-
-    // Evaluate metric and extrinsic curvature
-
-    for (int n = 0; n < nvars; ++n)
-      ssht_core_mw_inverse_sov_sym_real(gij.at(n).data(), glm.at(n).data(),
-                                        nmodes, method, verbosity);
-
-    // Calculate spacelike normal s^i and its radial derivative s^i,r
-
-    vector<CCTK_REAL> sxij(npoints), syij(npoints), szij(npoints);
-    vector<CCTK_REAL> sqrtdetg_sxij(npoints), sqrtdetg_syij(npoints),
-        sqrtdetg_szij(npoints);
-    vector<CCTK_REAL> sqrtdetg_sx_rij(npoints), sqrtdetg_sy_rij(npoints),
-        sqrtdetg_sz_rij(npoints);
-
-    for (int i = 0; i < ntheta; ++i) {
-      for (int j = 0; j < nphi; ++j) {
-        const int ind2d = gind(i, j);
-
-        // Coordinates
-
-        // Cartesian: x y z
-        // spherical: R Theta Phi
-        // horizon:   r theta phi
-
-        // x = R * sin(Theta) * cos(Phi)
-        // y = R * sin(Theta) * sin(Phi)
-        // z = R * cos(Theta)
-
-        // r     = R - h(Theta, Phi)
-        // theta = Theta
-        // phi   = Phi
-
-        const CCTK_REAL h = hij[ind2d];
-        // dX = - \dh X = - (d/dTheta X + i/sin Theta d/dPhi X)
-        const CCTK_COMPLEX dh = dhij[ind2d];
-        const CCTK_REAL h_T = -real(dh);
-        const CCTK_REAL s_h_P = -imag(dh);
-
-        const CCTK_REAL R = h;
-        const CCTK_REAL Theta = coord_theta(i, j);
-        const CCTK_REAL Phi = coord_phi(i, j);
-
-        // const CCTK_REAL r = R - h;
-        // const CCTK_REAL theta = Theta;
-        // const CCTK_REAL phi = Phi;
-
-        // only non-zero terms
-        const CCTK_REAL r_R = 1;
-        const CCTK_REAL r_T = -h_T;
-        const CCTK_REAL s_r_P = -s_h_P;
-        const CCTK_REAL t_T = 1;
-        const CCTK_REAL p_P = 1;
-
-        // inverse
-        const CCTK_REAL R_r = r_R;
-        const CCTK_REAL R_t = r_T;
-        const CCTK_REAL s_R_p = s_r_P;
-        const CCTK_REAL T_t = t_T;
-        const CCTK_REAL P_p = p_P;
-
-        // x^i
-        // const CCTK_REAL x = R * sin(Theta) * cos(Phi);
-        // const CCTK_REAL y = R * sin(Theta) * sin(Phi);
-        // const CCTK_REAL z = R * cos(Theta);
-
-        // only non-zero terms
-        const CCTK_REAL x_R = sin(Theta) * cos(Phi);
-        const CCTK_REAL x_T = R * cos(Theta) * cos(Phi);
-        const CCTK_REAL s_x_P = -R * sin(Phi);
-        const CCTK_REAL y_R = sin(Theta) * sin(Phi);
-        const CCTK_REAL y_T = R * cos(Theta) * sin(Phi);
-        const CCTK_REAL s_y_P = R * cos(Phi);
-        const CCTK_REAL z_R = cos(Theta);
-        const CCTK_REAL z_T = -R * sin(Theta);
-
-        // only radial derivatives
-        const CCTK_REAL x_RT = cos(Theta) * cos(Phi);
-        const CCTK_REAL s_x_RP = -sin(Phi);
-        const CCTK_REAL y_RT = cos(Theta) * sin(Phi);
-        const CCTK_REAL s_y_RP = cos(Phi);
-        const CCTK_REAL z_RT = -sin(Theta);
-
-        const CCTK_REAL x_r = x_R * R_r;
-        const CCTK_REAL x_t = x_R * R_t + x_T * T_t;
-        const CCTK_REAL s_x_p = x_R * s_R_p + s_x_P * P_p;
-        const CCTK_REAL y_r = y_R * R_r;
-        const CCTK_REAL y_t = y_R * R_t + y_T * T_t;
-        const CCTK_REAL s_y_p = y_R * s_R_p + s_y_P * P_p;
-        const CCTK_REAL z_r = z_R * R_r;
-        const CCTK_REAL z_t = z_R * R_t + z_T * T_t;
-        const CCTK_REAL s_z_p = z_R * s_R_p;
-
-        // only radial derivatives
-        const CCTK_REAL x_rr = 0;
-        const CCTK_REAL x_rt = x_RT * R_r * T_t;
-        const CCTK_REAL s_x_rp = s_x_RP * R_r * P_p;
-        const CCTK_REAL y_rr = 0;
-        const CCTK_REAL y_rt = y_RT * R_r * T_t;
-        const CCTK_REAL s_y_rp = s_y_RP * R_r * P_p;
-        const CCTK_REAL z_rr = 0;
-        const CCTK_REAL z_rt = z_RT * R_r * T_t;
-        const CCTK_REAL s_z_rp = 0;
-
-        // Three-metric
-        const CCTK_REAL gxx0 = gij.at(igxx)[ind2d];
-        const CCTK_REAL gxy0 = gij.at(igxy)[ind2d];
-        const CCTK_REAL gxz0 = gij.at(igxz)[ind2d];
-        const CCTK_REAL gyy0 = gij.at(igyy)[ind2d];
-        const CCTK_REAL gyz0 = gij.at(igyz)[ind2d];
-        const CCTK_REAL gzz0 = gij.at(igzz)[ind2d];
-
-        const CCTK_REAL gxx_x = gij.at(igxx_x)[ind2d];
-        const CCTK_REAL gxy_x = gij.at(igxy_x)[ind2d];
-        const CCTK_REAL gxz_x = gij.at(igxz_x)[ind2d];
-        const CCTK_REAL gyy_x = gij.at(igyy_x)[ind2d];
-        const CCTK_REAL gyz_x = gij.at(igyz_x)[ind2d];
-        const CCTK_REAL gzz_x = gij.at(igzz_x)[ind2d];
-        const CCTK_REAL gxx_y = gij.at(igxx_y)[ind2d];
-        const CCTK_REAL gxy_y = gij.at(igxy_y)[ind2d];
-        const CCTK_REAL gxz_y = gij.at(igxz_y)[ind2d];
-        const CCTK_REAL gyy_y = gij.at(igyy_y)[ind2d];
-        const CCTK_REAL gyz_y = gij.at(igyz_y)[ind2d];
-        const CCTK_REAL gzz_y = gij.at(igzz_y)[ind2d];
-        const CCTK_REAL gxx_z = gij.at(igxx_z)[ind2d];
-        const CCTK_REAL gxy_z = gij.at(igxy_z)[ind2d];
-        const CCTK_REAL gxz_z = gij.at(igxz_z)[ind2d];
-        const CCTK_REAL gyy_z = gij.at(igyy_z)[ind2d];
-        const CCTK_REAL gyz_z = gij.at(igyz_z)[ind2d];
-        const CCTK_REAL gzz_z = gij.at(igzz_z)[ind2d];
-
-        // Radial derivative of metric
-        const CCTK_REAL gxx_r = gxx_x * x_r + gxx_y * y_r + gxx_z * z_r;
-        const CCTK_REAL gxy_r = gxy_x * x_r + gxy_y * y_r + gxy_z * z_r;
-        const CCTK_REAL gxz_r = gxz_x * x_r + gxz_y * y_r + gxz_z * z_r;
-        const CCTK_REAL gyy_r = gyy_x * x_r + gyy_y * y_r + gyy_z * z_r;
-        const CCTK_REAL gyz_r = gyz_x * x_r + gyz_y * y_r + gyz_z * z_r;
-        const CCTK_REAL gzz_r = gzz_x * x_r + gzz_y * y_r + gzz_z * z_r;
-
-        // Dual quantities to handle radial derivatives
-
-        const dual<CCTK_REAL> gxx{gxx0, gxx_r};
-        const dual<CCTK_REAL> gxy{gxy0, gxy_r};
-        const dual<CCTK_REAL> gxz{gxz0, gxz_r};
-        const dual<CCTK_REAL> gyy{gyy0, gyy_r};
-        const dual<CCTK_REAL> gyz{gyz0, gyz_r};
-        const dual<CCTK_REAL> gzz{gzz0, gzz_r};
-
-        // Determinant of three-metric
-        const dual<CCTK_REAL> detg = -pow2(gxz) * gyy + 2 * gxy * gxz * gyz -
-                                     gxx * pow2(gyz) - pow2(gxy) * gzz +
-                                     gxx * gyy * gzz;
-
-        // Triad m1 m2 s
-        // m1^2 = m2^2 = s^2 = 1
-        // m1 m2 = m1 s = m2 s = 0
-        dual<CCTK_REAL> m1x{x_t, x_rt};
-        dual<CCTK_REAL> m1y{y_t, y_rt};
-        dual<CCTK_REAL> m1z{z_t, z_rt};
-        dual<CCTK_REAL> m1lx = gxx * m1x + gxy * m1y + gxz * m1z;
-        dual<CCTK_REAL> m1ly = gxy * m1x + gyy * m1y + gyz * m1z;
-        dual<CCTK_REAL> m1lz = gxz * m1x + gyz * m1y + gzz * m1z;
-        dual<CCTK_REAL> m12 = m1lx * m1x + m1ly * m1y + m1lz * m1z;
-        m1x /= sqrt(m12);
-        m1y /= sqrt(m12);
-        m1z /= sqrt(m12);
-        m1lx = gxx * m1x + gxy * m1y + gxz * m1z;
-        m1ly = gxy * m1x + gyy * m1y + gyz * m1z;
-        m1lz = gxz * m1x + gyz * m1y + gzz * m1z;
-#ifdef CCTK_DEBUG
-        // Test
-        m12 = m1lx * m1x + m1ly * m1y + m1lz * m1z;
-        assert(fabs(m12 - 1) <= 1.0e-12);
-#endif
-
-        dual<CCTK_REAL> m2x{s_x_p, s_x_rp};
-        dual<CCTK_REAL> m2y{s_y_p, s_y_rp};
-        dual<CCTK_REAL> m2z{s_z_p, s_z_rp};
-        dual<CCTK_REAL> m1m2 = m1lx * m2x + m1ly * m2y + m1lz * m2z;
-        m2x -= m1m2 * m1x;
-        m2y -= m1m2 * m1y;
-        m2z -= m1m2 * m1z;
-        dual<CCTK_REAL> m2lx = gxx * m2x + gxy * m2y + gxz * m2z;
-        dual<CCTK_REAL> m2ly = gxy * m2x + gyy * m2y + gyz * m2z;
-        dual<CCTK_REAL> m2lz = gxz * m2x + gyz * m2y + gzz * m2z;
-        dual<CCTK_REAL> m22 = m2lx * m2x + m2ly * m2y + m2lz * m2z;
-        m2x /= sqrt(m22);
-        m2y /= sqrt(m22);
-        m2z /= sqrt(m22);
-        m2lx = gxx * m2x + gxy * m2y + gxz * m2z;
-        m2ly = gxy * m2x + gyy * m2y + gyz * m2z;
-        m2lz = gxz * m2x + gyz * m2y + gzz * m2z;
-#ifdef CCTK_DEBUG
-        // Test
-        m1m2 = m1lx * m2x + m1ly * m2y + m1lz * m2z;
-        assert(fabs(m1m2) <= 1.0e-12);
-        m22 = m2lx * m2x + m2ly * m2y + m2lz * m2z;
-        assert(fabs(m22 - 1) <= 1.0e-12);
-#endif
-
-        dual<CCTK_REAL> sx{x_r, x_rr};
-        dual<CCTK_REAL> sy{y_r, y_rr};
-        dual<CCTK_REAL> sz{z_r, z_rr};
-        dual<CCTK_REAL> m1s = m1lx * sx + m1ly * sy + m1lz * sz;
-        sx -= m1s * m1x;
-        sy -= m1s * m1y;
-        sz -= m1s * m1z;
-        dual<CCTK_REAL> m2s = m2lx * sx + m2ly * sy + m2lz * sz;
-        sx -= m2s * m2x;
-        sy -= m2s * m2y;
-        sz -= m2s * m2z;
-        dual<CCTK_REAL> slx = gxx * sx + gxy * sy + gxz * sz;
-        dual<CCTK_REAL> sly = gxy * sx + gyy * sy + gyz * sz;
-        dual<CCTK_REAL> slz = gxz * sx + gyz * sy + gzz * sz;
-        dual<CCTK_REAL> s2 = slx * sx + sly * sy + slz * sz;
-        sx /= sqrt(s2);
-        sy /= sqrt(s2);
-        sz /= sqrt(s2);
-        slx = gxx * sx + gxy * sy + gxz * sz;
-        sly = gxy * sx + gyy * sy + gyz * sz;
-        slz = gxz * sx + gyz * sy + gzz * sz;
-#ifdef CCTK_DEBUG
-        // Test
-        m1s = m1lx * sx + m1ly * sy + m1lz * sz;
-        assert(fabs(m1s) <= 1.0e-12);
-        m2s = m2lx * sx + m2ly * sy + m2lz * sz;
-        assert(fabs(m2s) <= 1.0e-12);
-        s2 = slx * sx + sly * sy + slz * sz;
-        assert(fabs(s2 - 1) <= 1.0e-12);
-#endif
-
-        // Store spacelike normal
-        sxij[ind2d] = sx.val;
-        syij[ind2d] = sy.val;
-        szij[ind2d] = sz.val;
-
-        sqrtdetg_sxij[ind2d] = (sqrt(detg) * sx).val;
-        sqrtdetg_syij[ind2d] = (sqrt(detg) * sy).val;
-        sqrtdetg_szij[ind2d] = (sqrt(detg) * sz).val;
-
-        sqrtdetg_sx_rij[ind2d] = (sqrt(detg) * sx).eps;
-        sqrtdetg_sy_rij[ind2d] = (sqrt(detg) * sy).eps;
-        sqrtdetg_sz_rij[ind2d] = (sqrt(detg) * sz).eps;
-      }
-    }
-
-    // Calculate divergence of spacelike normal
-
-    vector<CCTK_COMPLEX> sqrtdetg_sxlm(npoints), sqrtdetg_sylm(npoints),
-        sqrtdetg_szlm(npoints);
-    ssht_core_mw_forward_sov_conv_sym_real(
-        sqrtdetg_sxlm.data(), sqrtdetg_sxij.data(), nmodes, method, verbosity);
-    ssht_core_mw_forward_sov_conv_sym_real(
-        sqrtdetg_sylm.data(), sqrtdetg_syij.data(), nmodes, method, verbosity);
-    ssht_core_mw_forward_sov_conv_sym_real(
-        sqrtdetg_szlm.data(), sqrtdetg_szij.data(), nmodes, method, verbosity);
-
-    vector<CCTK_COMPLEX> d_sqrtdetg_sxlm(npoints), d_sqrtdetg_sylm(npoints),
-        d_sqrtdetg_szlm(npoints);
-    for (int l = 0; l <= lmax; ++l) {
-      for (int m = -l; m <= l; ++m) {
-        d_sqrtdetg_sxlm.at(cind(l, m)) =
-            sqrt(CCTK_REAL(l * (l + 1))) * sqrtdetg_sxlm.at(cind(l, m));
-        d_sqrtdetg_sylm.at(cind(l, m)) =
-            sqrt(CCTK_REAL(l * (l + 1))) * sqrtdetg_sylm.at(cind(l, m));
-        d_sqrtdetg_szlm.at(cind(l, m)) =
-            sqrt(CCTK_REAL(l * (l + 1))) * sqrtdetg_szlm.at(cind(l, m));
-      }
-    }
-
-    const int ds_spin = 1;
-    vector<CCTK_COMPLEX> d_sqrtdetg_sxij(npoints), d_sqrtdetg_syij(npoints),
-        d_sqrtdetg_szij(npoints);
-    ssht_core_mw_inverse_sov_sym(d_sqrtdetg_sxij.data(), d_sqrtdetg_sxlm.data(),
-                                 nmodes, ds_spin, method, verbosity);
-    ssht_core_mw_inverse_sov_sym(d_sqrtdetg_syij.data(), d_sqrtdetg_sylm.data(),
-                                 nmodes, ds_spin, method, verbosity);
-    ssht_core_mw_inverse_sov_sym(d_sqrtdetg_szij.data(), d_sqrtdetg_szlm.data(),
-                                 nmodes, ds_spin, method, verbosity);
-
-    // Calculate expansion
-
-    vector<CCTK_REAL> Theta_ij(npoints);
-
-    for (int i = 0; i < ntheta; ++i) {
-      for (int j = 0; j < nphi; ++j) {
-        const int ind2d = gind(i, j);
-
-        // Coordinates
-
-        const CCTK_REAL h = hij[ind2d];
-        // dX = \dh X = - (d/dTheta X + i/sin Theta d/dPhi X)
-        const CCTK_COMPLEX dh = dhij[ind2d];
-        const CCTK_REAL h_T = -real(dh);
-        const CCTK_REAL s_h_P = -imag(dh);
-
-        const CCTK_REAL R = h;
-        const CCTK_REAL Theta = coord_theta(i, j);
-        const CCTK_REAL Phi = coord_phi(i, j);
-
-        // const CCTK_REAL r = R - h;
-        // const CCTK_REAL theta = Theta;
-        // const CCTK_REAL phi = Phi;
-
-        // only non-zero terms
-        const CCTK_REAL r_R = 1;
-        const CCTK_REAL r_T = -h_T;
-        const CCTK_REAL s_r_P = -s_h_P;
-        const CCTK_REAL t_T = 1;
-        const CCTK_REAL p_P = 1;
-
-        // inverse
-        const CCTK_REAL R_r = r_R;
-        const CCTK_REAL R_t = r_T;
-        const CCTK_REAL s_R_p = s_r_P;
-        const CCTK_REAL T_t = t_T;
-        const CCTK_REAL P_p = p_P;
-
-        // x^i
-        // const CCTK_REAL x = R * sin(Theta) * cos(Phi);
-        // const CCTK_REAL y = R * sin(Theta) * sin(Phi);
-        // const CCTK_REAL z = R * cos(Theta);
-
-        // only non-zero terms
-        const CCTK_REAL x_R = sin(Theta) * cos(Phi);
-        const CCTK_REAL x_T = R * cos(Theta) * cos(Phi);
-        const CCTK_REAL s_x_P = -R * sin(Phi);
-        const CCTK_REAL y_R = sin(Theta) * sin(Phi);
-        const CCTK_REAL y_T = R * cos(Theta) * sin(Phi);
-        const CCTK_REAL s_y_P = R * cos(Phi);
-        const CCTK_REAL z_R = cos(Theta);
-        const CCTK_REAL z_T = -R * sin(Theta);
-
-        const CCTK_REAL x_r = x_R * R_r;
-        const CCTK_REAL x_t = x_R * R_t + x_T * T_t;
-        const CCTK_REAL s_x_p = x_R * s_R_p + s_x_P * P_p;
-        const CCTK_REAL y_r = y_R * R_r;
-        const CCTK_REAL y_t = y_R * R_t + y_T * T_t;
-        const CCTK_REAL s_y_p = y_R * s_R_p + s_y_P * P_p;
-        const CCTK_REAL z_r = z_R * R_r;
-        const CCTK_REAL z_t = z_R * R_t + z_T * T_t;
-        const CCTK_REAL s_z_p = z_R * s_R_p;
-
-        const CCTK_REAL s_det_xr = -s_z_p * x_t * y_r + s_z_p * x_r * y_t +
-                                   s_y_p * x_t * z_r - s_x_p * y_t * z_r -
-                                   s_y_p * x_r * z_t + s_x_p * y_r * z_t;
-
-        const CCTK_REAL r_x = (s_z_p * y_t - s_y_p * z_t) / s_det_xr;
-        const CCTK_REAL r_y = (-s_z_p * x_t + s_x_p * z_t) / s_det_xr;
-        const CCTK_REAL r_z = (s_y_p * x_t - s_x_p * y_t) / s_det_xr;
-        const CCTK_REAL theta_x = (-s_z_p * y_r + s_y_p * z_r) / s_det_xr;
-        const CCTK_REAL theta_y = (s_z_p * x_r - s_x_p * z_r) / s_det_xr;
-        const CCTK_REAL theta_z = (-s_y_p * x_r + s_x_p * y_r) / s_det_xr;
-        const CCTK_REAL z_phi_x = (-y_t * z_r + y_r * z_t) / s_det_xr;
-        const CCTK_REAL z_phi_y = (x_t * z_r - x_r * z_t) / s_det_xr;
-        const CCTK_REAL z_phi_z = (-x_t * y_r + x_r * y_t) / s_det_xr;
-#ifdef CCTK_DEBUG
-        // Test
-        assert(fabs(r_x * x_r + r_y * y_r + r_z * z_r - 1) <= 1.0e-12);
-        assert(fabs(r_x * x_t + r_y * y_t + r_z * z_t) <= 1.0e-12);
-        assert(fabs(r_x * s_x_p + r_y * s_y_p + r_z * s_z_p) <= 1.0e-12);
-        assert(fabs(theta_x * x_r + theta_y * y_r + theta_z * z_r) <= 1.0e-12);
-        assert(fabs(theta_x * x_t + theta_y * y_t + theta_z * z_t - 1) <=
-               1.0e-12);
-        assert(fabs(theta_x * s_x_p + theta_y * s_y_p + theta_z * s_z_p) <=
-               1.0e-12);
-        assert(fabs(z_phi_x * x_r + z_phi_y * y_r + z_phi_z * z_r) <= 1.0e-12);
-        assert(fabs(z_phi_x * x_t + z_phi_y * y_t + z_phi_z * z_t) <= 1.0e-12);
-        assert(fabs(z_phi_x * s_x_p + z_phi_y * s_y_p + z_phi_z * s_z_p - 1) <=
-               1.0e-12);
-#endif
-
-        // Read three-metric and extrinsic curvature
-
-        const CCTK_REAL gxx = gij.at(igxx)[ind2d];
-        const CCTK_REAL gxy = gij.at(igxy)[ind2d];
-        const CCTK_REAL gxz = gij.at(igxz)[ind2d];
-        const CCTK_REAL gyy = gij.at(igyy)[ind2d];
-        const CCTK_REAL gyz = gij.at(igyz)[ind2d];
-        const CCTK_REAL gzz = gij.at(igzz)[ind2d];
-        const CCTK_REAL kxx = gij.at(ikxx)[ind2d];
-        const CCTK_REAL kxy = gij.at(ikxy)[ind2d];
-        const CCTK_REAL kxz = gij.at(ikxz)[ind2d];
-        const CCTK_REAL kyy = gij.at(ikyy)[ind2d];
-        const CCTK_REAL kyz = gij.at(ikyz)[ind2d];
-        const CCTK_REAL kzz = gij.at(ikzz)[ind2d];
-
-        // Determinant of three-metric
-        const CCTK_REAL detg = -pow(gxz, 2) * gyy + 2 * gxy * gxz * gyz -
-                               gxx * pow(gyz, 2) - pow(gxy, 2) * gzz +
-                               gxx * gyy * gzz;
-
-        // Inverse three-metric
-        const CCTK_REAL guxx = (-pow(gyz, 2) + gyy * gzz) / detg;
-        const CCTK_REAL guxy = (gxz * gyz - gxy * gzz) / detg;
-        const CCTK_REAL guxz = (-gxz * gyy + gxy * gyz) / detg;
-        const CCTK_REAL guyy = (-pow(gxz, 2) + gxx * gzz) / detg;
-        const CCTK_REAL guyz = (gxy * gxz - gxx * gyz) / detg;
-        const CCTK_REAL guzz = (-pow(gxy, 2) + gxx * gyy) / detg;
-
-        // Read spacelike normal
-
-        const CCTK_REAL sx = sxij[ind2d];
-        const CCTK_REAL sy = syij[ind2d];
-        const CCTK_REAL sz = szij[ind2d];
-
-        // Read derivatives of densitized spacelike normal
-
-        const CCTK_REAL sqrtdetg_sx_r = sqrtdetg_sx_rij[ind2d];
-        const CCTK_REAL sqrtdetg_sy_r = sqrtdetg_sy_rij[ind2d];
-        const CCTK_REAL sqrtdetg_sz_r = sqrtdetg_sz_rij[ind2d];
-
-        const CCTK_COMPLEX d_sqrtdetg_sx = d_sqrtdetg_sxij[ind2d];
-        const CCTK_COMPLEX d_sqrtdetg_sy = d_sqrtdetg_syij[ind2d];
-        const CCTK_COMPLEX d_sqrtdetg_sz = d_sqrtdetg_szij[ind2d];
-
-        const CCTK_REAL sqrtdetg_sx_t = -real(d_sqrtdetg_sx);
-        const CCTK_REAL sqrtdetg_sy_t = -real(d_sqrtdetg_sy);
-        const CCTK_REAL sqrtdetg_sz_t = -real(d_sqrtdetg_sz);
-
-        const CCTK_REAL s_sqrtdetg_sx_p = -imag(d_sqrtdetg_sx);
-        const CCTK_REAL s_sqrtdetg_sy_p = -imag(d_sqrtdetg_sy);
-        const CCTK_REAL s_sqrtdetg_sz_p = -imag(d_sqrtdetg_sz);
-
-        const CCTK_REAL sqrtdetg_sx_x = sqrtdetg_sx_r * r_x +
-                                        sqrtdetg_sx_t * theta_x +
-                                        s_sqrtdetg_sx_p * z_phi_x;
-        const CCTK_REAL sqrtdetg_sy_y = sqrtdetg_sy_r * r_y +
-                                        sqrtdetg_sy_t * theta_y +
-                                        s_sqrtdetg_sy_p * z_phi_y;
-        const CCTK_REAL sqrtdetg_sz_z = sqrtdetg_sz_r * r_z +
-                                        sqrtdetg_sz_t * theta_z +
-                                        s_sqrtdetg_sz_p * z_phi_z;
-        const CCTK_REAL div_sqrtdetg_s =
-            sqrtdetg_sx_x + sqrtdetg_sy_y + sqrtdetg_sz_z;
-        const CCTK_REAL div_s = div_sqrtdetg_s / sqrt(detg);
-
-        // Theta_(l) = D_i s^i + K_ij s^i s^j - K   [arxiv:gr-qc/0512169] (3.1)
-        const CCTK_REAL Theta_l = div_s                    //
-                                  + kxx * (sx * sx - guxx) //
-                                  + kxy * (sx * sy - guxy) //
-                                  + kxz * (sx * sz - guxz) //
-                                  + kxy * (sy * sx - guxy) //
-                                  + kyy * (sy * sy - guyy) //
-                                  + kyz * (sy * sz - guyz) //
-                                  + kxz * (sz * sx - guxz) //
-                                  + kyz * (sz * sy - guyz) //
-                                  + kzz * (sz * sz - guzz);
-
-        // Store expansion
-        Theta_ij[ind2d] = Theta_l;
-      }
-    }
-
-    double h_min = INFINITY, h_max = -INFINITY;
-    double Theta_min = INFINITY, Theta_max = -INFINITY;
-    for (int i = 0; i < ntheta; ++i) {
-      for (int j = 0; j < nphi; ++j) {
-        const int ind2d = gind(i, j);
-        const CCTK_REAL h = hij[ind2d];
-        const CCTK_REAL Theta = Theta_ij[ind2d];
-        h_min = fmin(h_min, h);
-        h_max = fmax(h_max, h);
-        Theta_min = fmin(Theta_min, Theta);
-        Theta_max = fmax(Theta_max, Theta);
-      }
-    }
-    cout << "h in [" << h_min << "; " << h_max << "]\n";
-    cout << "Theta in [" << Theta_min << "; " << Theta_max << "]\n";
-  }
-} // namespace AHFinder
+  const geom_t geom(npoints);
+
+  const auto hlm = coefficients_from_const(geom, r0, r1z);
+  const auto res = solve(cctkGH, hlm);
+}
 
 } // namespace AHFinder

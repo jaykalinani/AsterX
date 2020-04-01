@@ -49,9 +49,17 @@ ADMBase::initial_lapse = "Brill-Lindquist"
 
 BrillLindquist::mass = 1.0
 
-AHFinder::lmax = 20
-AHFinder::npoints = 80
+AHFinder::lmax = 200
+AHFinder::npoints = 81
+AHFinder::x0 = 0.0
+AHFinder::y0 = 0.0
+AHFinder::z0 = 0.0
+# AHFinder::z0 = -0.1
 AHFinder::r0 = 0.5
+# AHFinder::r0 = 0.6
+AHFinder::r1z = 0.0
+# AHFinder::r1z = 0.1
+AHFinder::maxiters = 20 # 100
 
 IO::out_dir = $parfile
 IO::out_every = 0

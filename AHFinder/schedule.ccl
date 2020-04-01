@@ -12,7 +12,13 @@ if (test_ah) {
   {
     LANG: C
     OPTIONS: global
-  } "Test spherical harmonic transformations"
+  } "Test basic spherical harmonic transformations"
+
+  SCHEDULE AHFinder_test_discretization AT poststep
+  {
+    LANG: C
+    OPTIONS: global
+  } "Test discretization based on spherical harmonics"
 }
 
 SCHEDULE AHFinder_find AT poststep

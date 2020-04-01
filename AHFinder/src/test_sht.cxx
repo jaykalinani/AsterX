@@ -64,12 +64,15 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
   const ssht_dl_method_t method = SSHT_DL_RISBO;
   const int verbosity = 0; // [0..5]
 
+  // TODO: Test s_Y_lm* = (-1)^(s+m) -s_Y_l,-m
+
   // Test complex spherical harmonic functions
 
   for (int spin = sYlm_smin; spin <= sYlm_smax; ++spin) {
     for (int ll = abs(spin); ll <= sYlm_lmax; ++ll) {
       for (int mm = -ll; mm <= ll; ++mm) {
 
+        // Choose function
         vector<complex<double> > alm(ncoeffs, NAN);
         for (int l = abs(spin); l <= lmax; ++l) {
           for (int m = -l; m <= l; ++m) {
@@ -78,6 +81,7 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
           }
         }
 
+        // Evaluate
         vector<complex<double> > aij(npoints, NAN);
         ssht_core_mw_inverse_sov_sym(aij.data(), alm.data(), nmodes, spin,
                                      method, verbosity);
@@ -87,25 +91,52 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
             const double theta = coord_theta(i, j);
             const double phi = coord_phi(i, j);
             const complex<double> s = sYlm(spin, ll, mm, theta, phi);
+            const complex<double> sc = double(bitsign(spin + mm)) *
+                                       conj(sYlm(-spin, ll, -mm, theta, phi));
             const complex<double> a = aij.at(gind(i, j));
-            if (!(fabs(a - s) <= 1.0e-12))
-              CCTK_VINFO("spin=%d,ll=%d,mm=%d i=%d,j=%d,theta=%f,phi=%f "
+            if (!(abs(a - s) <= 1.0e-12))
+              CCTK_VINFO("spin=%d,ll=%d,mm=% i=%d,j=%d,theta=%f,phi=%f "
                          "s=(%.17g,%.17g) a=(%.17g,%.17g)",
                          spin, ll, mm, i, j, theta, phi, real(s), imag(s),
                          real(a), imag(a));
-            assert(fabs(a - s) <= 1.0e-12);
+            assert(abs(a - s) <= 1.0e-12);
+            assert(abs(s - sc) <= 1.0e-12);
           }
         }
 
+        // Expand
         ssht_core_mw_forward_sov_conv_sym(alm.data(), aij.data(), nmodes, spin,
                                           method, verbosity);
 
         for (int l = abs(spin); l <= lmax; ++l) {
           for (int m = -l; m <= l; ++m) {
             const complex<double> a = l == ll && m == mm ? 1 : 0;
-            assert(fabs(alm.at(cind(l, m)) - a) <= 1.0e-12);
+            assert(abs(alm.at(cind(l, m)) - a) <= 1.0e-12);
           }
         }
+
+#if 0
+        // Check phase convention
+        vector<complex<double> > blm(npoints, NAN);
+        ssht_core_mw_forward_sov_conv_sym(blm.data(), aij.data(), nmodes, -spin,
+                                          method, verbosity);
+
+        for (int l = abs(spin); l <= lmax; ++l) {
+          for (int m = -l; m <= l; ++m) {
+            // const complex<double> b =
+            //     double(bitsign(spin + m)) * conj(alm.at(cind(l, -m)));
+            const complex<double> b =
+                double(bitsign(spin + 1)) * conj(alm.at(cind(l, -m)));
+            const complex<double> a = l == ll && m == -mm ? 1 : 0;
+            if (!(abs(b - a) <= 1.0e-12))
+              CCTK_VINFO("spin=%d,ll=%d,mm=%d l=%d,m=%d "
+                         "b=(%.17g,%.17g) a=(%.17g,%.17g)",
+                         spin, ll, mm, l, m, real(b), imag(b), real(a),
+                         imag(a));
+            assert(abs(b - a) <= 1.0e-12);
+          }
+        }
+#endif
       }
     }
   }
@@ -144,14 +175,14 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
             const complex<double> scm = sYlm(spin, ll, -mm, theta, phi);
             const complex<double> sc =
                 c * scp + double(bitsign(mm)) * conj(c) * scm;
-            assert(fabs(imag(sc)) <= 1.0e-12);
+            assert(abs(imag(sc)) <= 1.0e-12);
             const double s = real(sc);
             const double a = aij.at(gind(i, j));
-            if (!(fabs(a - s) <= 1.0e-12))
+            if (!(abs(a - s) <= 1.0e-12))
               CCTK_VINFO("spin=%d,ll=%d,mm=%d i=%d,j=%d,theta=%f,phi=%f "
                          "s=%.17g a=%.17g",
                          spin, ll, mm, i, j, theta, phi, s, a);
-            assert(fabs(a - s) <= 1.0e-12);
+            assert(abs(a - s) <= 1.0e-12);
           }
         }
 
@@ -167,20 +198,41 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
               a += c;
             if (l == ll && -m == mm)
               a += double(bitsign(mm)) * conj(c);
-            assert(fabs(alm.at(cind(l, m)) - a) <= 1.0e-12);
+            assert(abs(alm.at(cind(l, m)) - a) <= 1.0e-12);
           }
         }
       }
     }
   }
 
-  // A note on derivatives: (see
-  // <https://en.wikipedia.org/wiki/Spin-weighted_spherical_harmonics>:
-  //
-  // \Delta = \dh \bar\dh = \bar\dh \dh
-  //
-  //     \dh sYlm = + \sqrt{ (l-s) (l+s+1) (s+1)Ylm
-  // \bar\dh sYlm = - \sqrt{ (l+s) (l-s+1) (s-1)Ylm
+  // Test gradient of real spherical harmonic functions
+
+  for (const int spin : {-1, 1}) {
+    for (int ll = abs(spin); ll <= sYlm_lmax; ++ll) {
+      for (int mm = -ll; mm <= ll; ++mm) {
+
+        for (int i = 0; i < ntheta; ++i) {
+          for (int j = 0; j < nphi; ++j) {
+            const double theta = coord_theta(i, j);
+            const double phi = coord_phi(i, j);
+            // ds =[\partial_theta, 1/\sin\theta \partial_\phi]
+            const array<complex<double>, 2> ds = dsYlm(0, ll, mm, theta, phi);
+            const complex<double> sc = -double(spin) /
+                                       sqrt(double(ll * (ll + 1))) *
+                                       (ds[0] + double(spin) * 1i * ds[1]);
+            // const complex<double> ac = aij.at(gind(i, j));
+            const complex<double> ac = sYlm(spin, ll, mm, theta, phi);
+            if (!(abs(ac - sc) <= 1.0e-12))
+              CCTK_VINFO("spin=%d,ll=%d,mm=%d i=%d,j=%d,theta=%f,phi=%f "
+                         "sc=(%.17g,%.17g) ac=(%.17g,%.17g)",
+                         spin, ll, mm, i, j, theta, phi, real(sc), imag(sc),
+                         real(ac), imag(ac));
+            assert(abs(ac - sc) <= 1.0e-12);
+          }
+        }
+      }
+    }
+  }
 }
 
 } // namespace AHFinder
