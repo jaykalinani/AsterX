@@ -19,6 +19,7 @@
 
 namespace CarpetX {
 using namespace std;
+using namespace Arith;
 
 template <typename T> struct mpi_datatype;
 template <> struct mpi_datatype<float> {

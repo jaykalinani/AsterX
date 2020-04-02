@@ -26,8 +26,9 @@
 namespace Loop {
 using namespace std;
 
-using CarpetX::dim;
-using CarpetX::vect;
+using Arith::vect;
+
+constexpr int dim = 3;
 
 enum class where_t { everywhere, interior, boundary, ghosts_inclusive, ghosts };
 

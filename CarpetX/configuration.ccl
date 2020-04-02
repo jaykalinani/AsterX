@@ -2,6 +2,8 @@
 
 REQUIRES AMReX MPI zlib
 
+REQUIRES Arith
+
 OPTIONAL Silo
 {
 }

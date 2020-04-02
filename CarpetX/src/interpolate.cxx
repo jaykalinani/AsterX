@@ -249,8 +249,10 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     givis.at(v) = {gi, vi};
   }
 
+  // CCTK_VINFO("interpolating");
   for (const auto &leveldata : ghext->leveldata) {
     const int level = leveldata.level;
+    // CCTK_VINFO("interpolating level %d", level);
 #warning "TODO: use OpenMP"
     for (ParIter<0, 2> pti(container, level); pti.isValid(); ++pti) {
       const Geometry &geom = ghext->amrcore->Geom(level);
@@ -263,6 +265,7 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
       vector<vector<CCTK_REAL> > varresults(nvars);
 
       for (int v = 0; v < nvars; ++v) {
+        // CCTK_VINFO("interpolating level %d, variable %d", level, v);
         const int gi = givis.at(v).gi;
         const int vi = givis.at(v).vi;
         const auto &restrict groupdata = *leveldata.groupdata.at(gi);
@@ -387,7 +390,15 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     }
   }
 
+  // CCTK_VINFO("interpolation results");
+  // for (const auto &proc_result : results) {
+  //   const int p = proc_result.first;
+  //   const auto &result = proc_result.second;
+  //   CCTK_VINFO("[%d] count=%zd", p, result.size());
+  // }
+
   // Collect particles back
+  // CCTK_VINFO("collecting results");
   const int nprocs = ParallelDescriptor::NProcs();
   const MPI_Comm comm = ParallelDescriptor::Communicator();
   const MPI_Datatype datatype = mpi_datatype<CCTK_REAL>::value;
@@ -404,6 +415,10 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     senddispls.at(p) = sendcount;
     sendcount += sendcounts.at(p);
   }
+  // for (int p = 0; p < nprocs; ++p)
+  //   CCTK_VINFO("[%d] senddispl=%d sendcount=%d", p, senddispls.at(p),
+  //              sendcounts.at(p));
+  // CCTK_VINFO("sendcount=%d", sendcount);
   vector<int> recvcounts(nprocs);
   MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT,
                comm);
@@ -413,6 +428,10 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     recvdispls.at(p) = recvcount;
     recvcount += recvcounts.at(p);
   }
+  // for (int p = 0; p < nprocs; ++p)
+  //   CCTK_VINFO("[%d] recvdispl=%d recvcount=%d", p, recvdispls.at(p),
+  //              recvcounts.at(p));
+  // CCTK_VINFO("recvcount=%d", recvcount);
   assert(recvcount == (nvars + 1) * npoints);
   vector<CCTK_REAL> sendbuf(sendcount);
   for (const auto &proc_result : results) {

@@ -1,7 +1,7 @@
 #ifndef DRIVER_HXX
 #define DRIVER_HXX
 
-#include "vect.hxx"
+#include "loop.hxx"
 
 #include <cctk.h>
 #undef copysign
@@ -31,6 +31,8 @@
 namespace CarpetX {
 using namespace amrex;
 using namespace std;
+
+  using Loop::dim;
 
 // Taken from
 // <https://stackoverflow.com/questions/27440953/stdunique-ptr-for-c-functions-that-need-free>
