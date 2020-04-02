@@ -1,9 +1,11 @@
-Cactus Code Thorn Dual
+Cactus Code Thorn Arith
 Author(s)    : Erik Schnetter <schnetter@gmail.com>
 Maintainer(s): Erik Schnetter <schnetter@gmail.com>
 Licence      : LGPL
 --------------------------------------------------------------------------
 
 1. Purpose
+
+Implement small vectors.
 
 Implement dual numbers <https://en.wikipedia.org/wiki/Dual_number>.

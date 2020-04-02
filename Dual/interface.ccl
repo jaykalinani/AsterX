@@ -1,5 +1,0 @@
-# Interface definition for thorn Dual
-
-IMPLEMENTS: Dual
-
-INCLUDES HEADER: dual.hxx IN dual.hxx

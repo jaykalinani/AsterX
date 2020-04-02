@@ -1,0 +1,6 @@
+# Interface definition for thorn Arith
+
+IMPLEMENTS: Arith
+
+INCLUDES HEADER: dual.hxx IN dual.hxx
+INCLUDES HEADER: vect.hxx IN vect.hxx

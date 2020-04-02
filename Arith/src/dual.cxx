@@ -4,9 +4,11 @@
 
 #include <functional>
 
-namespace Dual {
+namespace Arith {
 using namespace std;
 
+// This function is compiled, but not executed. The tests are "run" at
+// compile time. If this function compiles, the tests pass.
 void TestDual() {
   typedef dual<CCTK_REAL> DREAL;
   constexpr equal_to<CCTK_REAL> eq;
@@ -39,4 +41,4 @@ void TestDual() {
   static_assert(eqd(sqrt(DREAL(4, 3)), DREAL(2, 0.75)));
 }
 
-} // namespace Dual
+} // namespace Arith

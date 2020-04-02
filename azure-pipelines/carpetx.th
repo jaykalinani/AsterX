@@ -130,11 +130,11 @@ ExternalLibraries/zlib
 CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
+CarpetX/Arith
 CarpetX/BaikalX
 CarpetX/BrillLindquist
 CarpetX/CarpetX
 CarpetX/Coordinates
-CarpetX/Dual
 CarpetX/ErrorEstimator
 CarpetX/Forms
 CarpetX/Hydro
