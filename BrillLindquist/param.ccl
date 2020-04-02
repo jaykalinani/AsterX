@@ -14,6 +14,21 @@ EXTENDS KEYWORD initial_lapse "Initial lapse value"
 
 PRIVATE:
 
+CCTK_REAL x0 "Position of black hole"
+{
+  *:* :: ""
+} 0.0
+
+CCTK_REAL y0 "Position of black hole"
+{
+  *:* :: ""
+} 0.0
+
+CCTK_REAL z0 "Position of black hole"
+{
+  *:* :: ""
+} 0.0
+
 CCTK_REAL mass "Mass of black hole"
 {
   0.0:* :: ""

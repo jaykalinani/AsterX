@@ -30,7 +30,8 @@ template <typename T> constexpr T smooth(const T r) {
 template <typename T> constexpr T psi(const T x, const T y, const T z) {
   DECLARE_CCTK_PARAMETERS;
   const T m = mass;
-  const T r = smooth(sqrt(pow2(expand(x)) + pow2(expand(y)) + pow2(expand(z))));
+  const T r = smooth(
+      sqrt(pow2(expand(x - x0)) + pow2(expand(y - y0)) + pow2(expand(z - z0))));
   const T phi = 1 + m / (2 * r);
   return pow4(phi);
 }
@@ -38,7 +39,8 @@ template <typename T> constexpr T psi(const T x, const T y, const T z) {
 template <typename T> constexpr T lapse(const T x, const T y, const T z) {
   DECLARE_CCTK_PARAMETERS;
   const T m = mass;
-  const T r = smooth(sqrt(pow2(expand(x)) + pow2(expand(y)) + pow2(expand(z))));
+  const T r = smooth(
+      sqrt(pow2(expand(x - x0)) + pow2(expand(y - y0)) + pow2(expand(z - z0))));
   const T lapse1 = (1 - m / (2 * r)) / (1 + m / (2 * r));
   return (1 + lapse1) / 2; // average
 }
