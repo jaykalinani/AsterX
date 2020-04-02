@@ -20,9 +20,9 @@ CarpetX::xmax = +1.0
 CarpetX::ymax = +1.0
 CarpetX::zmax = +1.0
 
-CarpetX::ncells_x = 64
-CarpetX::ncells_y = 64
-CarpetX::ncells_z = 64
+CarpetX::ncells_x = 128   # 64
+CarpetX::ncells_y = 128   # 64
+CarpetX::ncells_z = 128   # 64
 
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
@@ -42,24 +42,22 @@ CarpetX::regrid_every = 0
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 5
-CarpetX::interpolation_order = 3
+CarpetX::interpolation_order = 3   # 3
 
 ADMBase::initial_data = "Brill-Lindquist"
 ADMBase::initial_lapse = "Brill-Lindquist"
 
+BrillLindquist::x0 = 0.1   # 0.0
 BrillLindquist::mass = 1.0
 
-AHFinder::lmax = 200
 AHFinder::npoints = 81
+AHFinder::lmax_filter = 9999
 AHFinder::x0 = 0.0
 AHFinder::y0 = 0.0
-AHFinder::z0 = 0.0
-# AHFinder::z0 = -0.1
-AHFinder::r0 = 0.5
-# AHFinder::r0 = 0.6
-AHFinder::r1z = 0.0
-# AHFinder::r1z = 0.1
-AHFinder::maxiters = 20 # 100
+AHFinder::z0 = -0.1   # 0.0
+AHFinder::r0 = 0.6    # 0.5
+AHFinder::r1z = 0.1   # 0.0
+AHFinder::maxiters = 100
 
 IO::out_dir = $parfile
 IO::out_every = 0

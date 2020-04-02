@@ -1,6 +1,7 @@
 #include "discretization.hxx"
 
 #include <dual.hxx>
+#include <vect.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -18,6 +19,7 @@
 
 namespace AHFinder {
 using namespace std;
+using namespace Arith;
 
 template <typename T> struct coords_t {
   geom_t geom;
@@ -32,6 +34,7 @@ template <typename T> coords_t<T> coords_from_shape(const aij_t<T> &h) {
   const geom_t &geom = h.geom;
   coords_t<T> coords(geom);
   for (int i = 0; i < geom.ntheta; ++i) {
+#pragma omp simd
     for (int j = 0; j < geom.nphi; ++j) {
       const T r = h(i, j);
       const T theta = geom.coord_theta(i, j);
@@ -61,6 +64,60 @@ template <typename T> struct metric_t {
         gxz_z(geom), gyy_z(geom), gyz_z(geom), gzz_z(geom), kxx(geom),
         kxy(geom), kxz(geom), kyy(geom), kyz(geom), kzz(geom) {}
 };
+
+template <typename T>
+metric_t<T> calculate_metric(const cGH *const cctkGH,
+                             const coords_t<T> &coords) {
+  const geom_t &geom = coords.geom;
+  metric_t<T> metric(geom);
+
+#pragma omp simd
+  for (int n = 0; n < geom.npoints; ++n) {
+    const T x0 = 0.0;
+    const T y0 = 0.0;
+    const T z0 = 0.0;
+    const T M = 1.0;
+    using U = vect<T, 3>;
+    using DT = dual<T, U>;
+    const DT x{coords.x.data()[n], {1, 0, 0}};
+    const DT y{coords.y.data()[n], {0, 1, 0}};
+    const DT z{coords.z.data()[n], {0, 0, 1}};
+    const DT r = sqrt(pow(x - x0, 2) + pow(y - y0, 2) + pow(z - z0, 2));
+    const DT psi = pow(1 + M / (2 * r), 4);
+    metric.gxx.data()[n] = psi.val;
+    metric.gxy.data()[n] = 0;
+    metric.gxz.data()[n] = 0;
+    metric.gyy.data()[n] = psi.val;
+    metric.gyz.data()[n] = 0;
+    metric.gzz.data()[n] = psi.val;
+    metric.gxx_x.data()[n] = psi.eps[0];
+    metric.gxy_x.data()[n] = 0;
+    metric.gxz_x.data()[n] = 0;
+    metric.gyy_x.data()[n] = psi.eps[0];
+    metric.gyz_x.data()[n] = 0;
+    metric.gzz_x.data()[n] = psi.eps[0];
+    metric.gxx_y.data()[n] = psi.eps[1];
+    metric.gxy_y.data()[n] = 0;
+    metric.gxz_y.data()[n] = 0;
+    metric.gyy_y.data()[n] = psi.eps[1];
+    metric.gyz_y.data()[n] = 0;
+    metric.gzz_y.data()[n] = psi.eps[1];
+    metric.gxx_z.data()[n] = psi.eps[2];
+    metric.gxy_z.data()[n] = 0;
+    metric.gxz_z.data()[n] = 0;
+    metric.gyy_z.data()[n] = psi.eps[2];
+    metric.gyz_z.data()[n] = 0;
+    metric.gzz_z.data()[n] = psi.eps[2];
+    metric.kxx.data()[n] = 0;
+    metric.kxy.data()[n] = 0;
+    metric.kxz.data()[n] = 0;
+    metric.kyy.data()[n] = 0;
+    metric.kyz.data()[n] = 0;
+    metric.kzz.data()[n] = 0;
+  }
+
+  return metric;
+}
 
 template <typename T>
 metric_t<T> interpolate_metric(const cGH *const cctkGH,
@@ -121,6 +178,7 @@ metric_t<T> interpolate_metric(const cGH *const cctkGH,
 template <typename T> struct expansion_t {
   alm_t<T> hlm;
   T area;
+  T cx, cy, cz;
   alm_t<T> Thetalm, hlm_new;
 };
 
@@ -141,9 +199,11 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
 
   aij_t<T> lambdaij(geom);
 
-  T area = 0;
+  aij_t<T> cxij(geom), cyij(geom), czij(geom);
+  aij_t<T> Aij(geom);
 
   for (int i = 0; i < geom.ntheta; ++i) {
+#pragma omp simd
     for (int j = 0; j < geom.nphi; ++j) {
 
       // Coordinates
@@ -159,9 +219,9 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
       const dual<T> theta{geom.coord_theta(i, j), 0};
       const dual<T> phi{geom.coord_phi(i, j), 0};
 
-      // const dual<T> x = x0 + r * sin(theta) * cos(phi);
-      // const dual<T> y = y0 + r * sin(theta) * sin(phi);
-      // const dual<T> z = z0 + r * cos(theta);
+      const dual<T> x = x0 + r * sin(theta) * cos(phi);
+      const dual<T> y = y0 + r * sin(theta) * sin(phi);
+      const dual<T> z = z0 + r * cos(theta);
 
       const dual<T> x_r = sin(theta) * cos(phi);
       const dual<T> y_r = sin(theta) * sin(phi);
@@ -349,8 +409,10 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
 
       const T ss_detQ = (qtt * ss_qpp - pow(s_qtp, 2)).val;
       const T s_sqrt_detQ = sqrt(ss_detQ);
-      const T darea = sin(theta.val) * s_sqrt_detQ * geom.coord_dtheta(i, j) *
-                      geom.coord_dphi(i, j);
+      // const T darea = sin(theta.val) * s_sqrt_detQ * geom.coord_dtheta(i, j)
+      // *
+      //                 geom.coord_dphi(i, j);
+      const T A = s_sqrt_detQ;
 
       // spacelike normal
       surij(i, j) = sur.val;
@@ -365,7 +427,10 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
 
       lambdaij(i, j) = lambda;
 
-      area += darea;
+      Aij(i, j) = A;
+      cxij(i, j) = A * x.val;
+      cyij(i, j) = A * y.val;
+      czij(i, j) = A * z.val;
     }
   }
 
@@ -373,9 +438,15 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
   const alm_t<T> s_lsulm = div(s_dsulm);
   const aij_t<T> s_lsuij = evaluate(s_lsulm);
 
+  const alm_t<T> Alm = expand(Aij);
+  const alm_t<T> cxlm = expand(cxij);
+  const alm_t<T> cylm = expand(cyij);
+  const alm_t<T> czlm = expand(czij);
+
   aij_t<T> Thetaij(geom);
 
   for (int i = 0; i < geom.ntheta; ++i) {
+#pragma omp simd
     for (int j = 0; j < geom.nphi; ++j) {
 
       // Coordinates
@@ -606,22 +677,36 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
     }
   }
 
+  const T area = sqrt(4 * T(M_PI)) * real(Alm(0, 0));
+
+  const T cx = real(cxlm(0, 0)) / real(Alm(0, 0));
+  const T cy = real(cylm(0, 0)) / real(Alm(0, 0));
+  const T cz = real(czlm(0, 0)) / real(Alm(0, 0));
+
   const alm_t<T> Thetalm = expand(Thetaij);
   // [arXiv:gr-qc/0702038], (28)
   aij_t<T> Sij(geom);
   for (int i = 0; i < geom.ntheta; ++i)
+#pragma omp simd
     for (int j = 0; j < geom.nphi; ++j)
       Sij(i, j) = lambdaij(i, j) * Thetaij(i, j);
   const alm_t<T> Slm = expand(Sij);
 
   alm_t<T> hlm_new(geom);
   for (int l = 0; l <= geom.lmax; ++l) {
+#pragma omp simd
     for (int m = -l; m <= l; ++m) {
       hlm_new(l, m) = hlm(l, m) - 1 / T(l * (l + 1) + 2) * Slm(l, m);
     }
   }
 
-  return {hlm, area, Thetalm, hlm_new};
+  return {.hlm = hlm,
+          .area = area,
+          .cx = cx,
+          .cy = cy,
+          .cz = cz,
+          .Thetalm = Thetalm,
+          .hlm_new = hlm_new};
 } // namespace AHFinder
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,7 +715,9 @@ template <typename T>
 expansion_t<T> update(const cGH *const cctkGH, const alm_t<T> &hlm) {
   const auto hij = evaluate(hlm);
   const auto coords = coords_from_shape(hij);
-  const auto metric = interpolate_metric(cctkGH, coords);
+#warning "TODO"
+  // const auto metric = interpolate_metric(cctkGH, coords);
+  const auto metric = calculate_metric(cctkGH, coords);
   const auto res = expansion(metric, hlm);
   return res;
 }
@@ -640,7 +727,7 @@ expansion_t<T> solve(const cGH *const cctkGH, const alm_t<T> &hlm_ini) {
   DECLARE_CCTK_PARAMETERS;
   int iter = 0;
   unique_ptr<const alm_t<T> > hlm_ptr =
-      make_unique<alm_t<T> >(filter(hlm_ini, lmax));
+      make_unique<alm_t<T> >(filter(hlm_ini, lmax_filter));
   for (;;) {
     ++iter;
     const auto &hlm = *hlm_ptr;
@@ -648,48 +735,30 @@ expansion_t<T> solve(const cGH *const cctkGH, const alm_t<T> &hlm_ini) {
     const auto hij = evaluate(hlm);
     const auto res = update(cctkGH, hlm);
     const auto &Thetalm = res.Thetalm;
-    const auto hlm_new = filter(res.hlm_new, lmax);
+    const auto hlm_new = filter(res.hlm_new, lmax_filter);
     const auto hij_new = evaluate(hlm_new);
     T dh_maxabs{0};
     for (int i = 0; i < geom.ntheta; ++i)
+#pragma omp simd
       for (int j = 0; j < geom.nphi; ++j)
         dh_maxabs = fmax(dh_maxabs, fabs(hij_new(i, j) - hij(i, j)));
-    T h_maxabs{0}; // ignoring l=0
-    for (int l = 1; l <= geom.lmax; ++l)
-      for (int m = -l; m <= l; ++m)
-        h_maxabs = fmax(h_maxabs, norm(hlm_new(l, m)));
-    h_maxabs = sqrt(h_maxabs);
     const auto Thetaij = evaluate(Thetalm);
     T Theta_maxabs{0};
     for (int i = 0; i < geom.ntheta; ++i)
+#pragma omp simd
       for (int j = 0; j < geom.nphi; ++j)
         Theta_maxabs = fmax(Theta_maxabs, fabs(Thetaij(i, j)));
     const T h = real(hlm(0, 0)) / sqrt(4 * M_PI);
+    const T cx = res.cx;
+    const T cy = res.cy;
+    const T cz = res.cz;
     const T R = sqrt(res.area / (4 * M_PI));
-    CCTK_VINFO("iter=%d, h=%g, R=%g |Θ|=%g, |∇h|=%g |Δh|=%g", iter, double(h),
-               double(R), double(Theta_maxabs), double(h_maxabs),
-               double(dh_maxabs));
-    // for (int l = 0; l <= lmax; ++l) {
-    //   T h_maxabs{0};
-    //   for (int m = -l; m <= l; ++m)
-    //     h_maxabs = fmax(h_maxabs, norm(hlm_new(l, m)));
-    //   h_maxabs = sqrt(h_maxabs);
-    //   CCTK_VINFO("l=%d |h|=%g", l, double(h_maxabs));
-    // }
-    // for (int l = 0; l <= lmax; ++l) {
-    //   printf("l=%d", l);
-    //   for (int m = -l; m <= l; ++m)
-    //     printf(" %g", double(abs(hlm_new(l, m))));
-    //   printf("\n");
-    // }
+    CCTK_VINFO("iter=%d h=%f c=[%f,%f,%f] R=%f", iter, double(h), double(cx),
+               double(cy), double(cz), double(R));
+    CCTK_VINFO("  |Θ|=%g |Δh|=%g", double(Theta_maxabs), double(dh_maxabs));
     if (iter >= maxiters || dh_maxabs <= 1.0e-12)
       return res;
     hlm_ptr = make_unique<alm_t<T> >(move(hlm_new));
-    // alm_t<T> hlm_next(geom);
-    // for (int l = 0; l <= geom.lmax; ++l)
-    //   for (int m = -l; m <= l; ++m)
-    //     hlm_next(l, m) = hlm(l, m) - (hlm_new(l, m) - hlm(l, m));
-    // hlm_ptr = make_unique<alm_t<T> >(move(hlm_next));
   }
 }
 

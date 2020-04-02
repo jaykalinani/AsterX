@@ -29,15 +29,15 @@ CCTK_REAL r1z "Initial horizon coordinate radius" STEERABLE=always
   *:* :: ""
 } 0.0
 
-CCTK_INT lmax "Number of modes for horizon" STEERABLE=always
-{
-  1:* :: ""
-} 16
-
 CCTK_INT npoints "Number of sampling points (per direction) on the sphere" STEERABLE=always
 {
-  1:* :: "must be at least nmodes"
-} 76
+  1:* :: ""
+} 81
+
+CCTK_INT lmax_filter "Number of modes for horizon" STEERABLE=always
+{
+  1:* :: ""
+} 9999
 
 CCTK_INT maxiters "Maximum number of iterations to find horizon" STEERABLE=always
 {
