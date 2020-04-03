@@ -131,7 +131,7 @@ CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
 CarpetX/Arith
-CarpetX/BaikalX
+#[const error] CarpetX/BaikalX
 CarpetX/BrillLindquist
 CarpetX/CarpetX
 CarpetX/Coordinates
@@ -143,7 +143,7 @@ CarpetX/HydroToyCarpetX
 CarpetX/Maxwell
 CarpetX/MaxwellToyCarpetX
 #DISABLED CarpetX/NSIMD
-CarpetX/NewRad
+#[const error] CarpetX/NewRad
 CarpetX/ODESolvers
 #DISABLED CarpetX/SHTOOLS
 #DISABLED CarpetX/Silo
