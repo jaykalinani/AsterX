@@ -83,11 +83,27 @@ array_from_initializer_list(initializer_list<T> l) {
 }
 
 template <typename T, size_t N>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 4), array<T, N> >
+array_from_initializer_list(initializer_list<T> l) {
+  assert(l.size() >= N);
+  const T *restrict const p = l.begin();
+  return {p[0], p[1], p[2], p[3]};
+}
+
+template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 6), array<T, N> >
 array_from_initializer_list(initializer_list<T> l) {
   assert(l.size() >= N);
   const T *restrict const p = l.begin();
   return {p[0], p[1], p[2], p[3], p[4], p[5]};
+}
+
+template <typename T, size_t N>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 10), array<T, N> >
+array_from_initializer_list(initializer_list<T> l) {
+  assert(l.size() >= N);
+  const T *restrict const p = l.begin();
+  return {p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]};
 }
 
 template <typename T, size_t N>
@@ -99,12 +115,29 @@ array_from_vector(vector<T> &&v) {
 }
 
 template <typename T, size_t N>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 4), array<T, N> >
+array_from_vector(vector<T> &&v) {
+  assert(v.size() >= N);
+  typename vector<T>::iterator const p = v.begin();
+  return {move(p[0]), move(p[1]), move(p[2]), move(p[3])};
+}
+
+template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 6), array<T, N> >
 array_from_vector(vector<T> &&v) {
   assert(v.size() >= N);
   typename vector<T>::iterator const p = v.begin();
   return {move(p[0]), move(p[1]), move(p[2]),
           move(p[3]), move(p[4]), move(p[5])};
+}
+
+template <typename T, size_t N>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 10), array<T, N> >
+array_from_vector(vector<T> &&v) {
+  assert(v.size() >= N);
+  typename vector<T>::iterator const p = v.begin();
+  return {move(p[0]), move(p[1]), move(p[2]), move(p[3]), move(p[4]),
+          move(p[5]), move(p[6]), move(p[7]), move(p[8]), move(p[9])};
 }
 
 static_assert(static_cast<const array<int, 3> &>(
