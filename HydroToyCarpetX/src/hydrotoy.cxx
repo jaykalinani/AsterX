@@ -418,11 +418,11 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D1<CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
-  const Loop::GF3D1<CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
-  const Loop::GF3D1<CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
-  const Loop::GF3D1<CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
-  const Loop::GF3D1<CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
+  const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+  const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+  const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+  const Loop::GF3D1<const CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+  const Loop::GF3D1<const CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
 
   const Loop::GF3D1<CCTK_REAL> regrid_error_(cctkGH, {1, 1, 1}, {1, 1, 1},
                                              regrid_error);
