@@ -235,6 +235,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   apply_diss(cctkGH, gf_betaG_(0), gf_betaGx_rhs_);
   apply_diss(cctkGH, gf_betaG_(1), gf_betaGy_rhs_);
   apply_diss(cctkGH, gf_betaG_(2), gf_betaGz_rhs_);
-} // namespace Z4c
+}
 
 } // namespace Z4c

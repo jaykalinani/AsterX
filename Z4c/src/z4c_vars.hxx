@@ -574,7 +574,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  mat3<T, DN, DN>{0, 0, 0, 0, 0, 0})
   //
   {}
-}; // namespace Z4c
+};
 
 } // namespace Z4c
 
