@@ -40,7 +40,7 @@ extern "C" void ADMBase_add_noise(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 0, 0, 0> alp_(cctkGH, alp);
 
-  // const GF3D<CCTK_REAL, 0, 0, 0> dtalp_(cctkGH, dtalp);
+  const GF3D<CCTK_REAL, 0, 0, 0> dtalp_(cctkGH, dtalp);
 
   const GF3D<CCTK_REAL, 0, 0, 0> betax_(cctkGH, betax);
   const GF3D<CCTK_REAL, 0, 0, 0> betay_(cctkGH, betay);
@@ -66,8 +66,8 @@ extern "C" void ADMBase_add_noise(CCTK_ARGUMENTS) {
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { add_noise(alp_(p.I)); });
 
-  // loop_all<0, 0, 0>(cctkGH,
-  //                   [&](const PointDesc &p) { add_noise(dtalp_(p.I)); });
+  loop_all<0, 0, 0>(cctkGH,
+                    [&](const PointDesc &p) { add_noise(dtalp_(p.I)); });
 
   loop_all<0, 0, 0>(cctkGH,
                     [&](const PointDesc &p) { add_noise(betax_(p.I)); });

@@ -36,13 +36,13 @@ if (CCTK_EQUALS(initial_lapse, "one")) {
   } "Set lapse to one"
 }
 
-# if (CCTK_EQUALS(initial_dtlapse, "zero")) {
-#   SCHEDULE ADMBase_initial_dtlapse IN ADMBase_InitialGauge
-#   {
-#     LANG: C
-#     WRITES: dtlapse(everywhere)
-#   } "Set dtlapse to zero"
-# }
+if (CCTK_EQUALS(initial_dtlapse, "zero")) {
+  SCHEDULE ADMBase_initial_dtlapse IN ADMBase_InitialGauge
+  {
+    LANG: C
+    WRITES: dtlapse(everywhere)
+  } "Set dtlapse to zero"
+}
 
 if (CCTK_EQUALS(initial_shift, "zero")) {
   SCHEDULE ADMBase_initial_shift IN ADMBase_InitialGauge
@@ -69,13 +69,13 @@ if (noise_amplitude != 0) {
     READS: metric(everywhere)
     READS: curv(everywhere)
     READS: lapse(everywhere)
-    # READS: dtlapse(everywhere)
+    READS: dtlapse(everywhere)
     READS: shift(everywhere)
     READS: dtshift(everywhere)
     WRITES: metric(everywhere)
     WRITES: curv(everywhere)
     WRITES: lapse(everywhere)
-    # WRITES: dtlapse(everywhere)
+    WRITES: dtlapse(everywhere)
     WRITES: shift(everywhere)
     WRITES: dtshift(everywhere)
   } "Add noise to ADMBase variables"

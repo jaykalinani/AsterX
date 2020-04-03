@@ -49,14 +49,14 @@ extern "C" void ADMBase_initial_lapse(CCTK_ARGUMENTS) {
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { alp_(p.I) = 1; });
 }
 
-// extern "C" void ADMBase_initial_dtlapse(CCTK_ARGUMENTS) {
-//   DECLARE_CCTK_ARGUMENTS_ADMBase_initial_dtlapse;
-//   DECLARE_CCTK_PARAMETERS;
-// 
-//   const GF3D<CCTK_REAL, 0, 0, 0> dtalp_(cctkGH, dtalp);
-// 
-//   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { dtalp_(p.I) = 0; });
-// }
+extern "C" void ADMBase_initial_dtlapse(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_ADMBase_initial_dtlapse;
+  DECLARE_CCTK_PARAMETERS;
+
+  const GF3D<CCTK_REAL, 0, 0, 0> dtalp_(cctkGH, dtalp);
+
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { dtalp_(p.I) = 0; });
+}
 
 extern "C" void ADMBase_initial_shift(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_ADMBase_initial_shift;
