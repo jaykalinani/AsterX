@@ -1,0 +1,52 @@
+# Interface definition for thorn Weyl
+
+IMPLEMENTS: Weyl
+
+INHERITS: ADMBase
+
+USES INCLUDE HEADER: loop.hxx
+
+
+
+CCTK_REAL metric4 TYPE=gf TAGS='index={0 0 0}'
+{
+  g4tt g4tx g4ty g4tz g4xx g4xy g4xz g4yy g4yz g4zz
+} "4-metric g_ab"
+
+CCTK_REAL Gamma4 TYPE=gf TAGS='index={0 0 0}'
+{
+  Gamma4ttt Gamma4ttx Gamma4tty Gamma4ttz Gamma4txx Gamma4txy Gamma4txz Gamma4tyy Gamma4tyz Gamma4tzz
+  Gamma4xtt Gamma4xtx Gamma4xty Gamma4xtz Gamma4xxx Gamma4xxy Gamma4xxz Gamma4xyy Gamma4xyz Gamma4xzz
+  Gamma4ytt Gamma4ytx Gamma4yty Gamma4ytz Gamma4yxx Gamma4yxy Gamma4yxz Gamma4yyy Gamma4yyz Gamma4yzz
+  Gamma4ztt Gamma4ztx Gamma4zty Gamma4ztz Gamma4zxx Gamma4zxy Gamma4zxz Gamma4zyy Gamma4zyz Gamma4zzz
+} "4-Christoffel symbols Gamma^a_bc"
+
+CCTK_REAL riemann4 TYPE=gf TAGS='index={0 0 0}'
+{
+  rm4txtx rm4txty rm4txtz rm4txxy rm4txxz rm4txyz
+  rm4tyty rm4tytz rm4tyxy rm4tyxz rm4tyyz
+  rm4tztz rm4tzxy rm4tzxz rm4tzyz
+  rm4xyxy rm4xyxz rm4xyyz
+  rm4xzxz rm4xzyz
+  rm4yzyz
+} "4-Riemann tensor R_abcd"
+
+CCTK_REAL ricci4 TYPE=gf TAGS='index={0 0 0}'
+{
+  r4tt r4tx r4ty r4tz r4xx r4xy r4xz r4yy r4yz r4zz
+} "4-ricci tensor R_ab"
+
+CCTK_REAL ricciscalar4 TYPE=gf TAGS='index={0 0 0}'
+{
+  rsc4
+} "4-ricci scalar R"
+
+CCTK_REAL weyl4 TYPE=gf TAGS='index={0 0 0}'
+{
+  c4txtx c4txty c4txtz c4txxy c4txxz c4txyz
+  c4tyty c4tytz c4tyxy c4tyxz c4tyyz
+  c4tztz c4tzxy c4tzxz c4tzyz
+  c4xyxy c4xyxz c4xyyz
+  c4xzxz c4xzyz
+  c4yzyz
+} "4-Weyl tensor C_abcd"

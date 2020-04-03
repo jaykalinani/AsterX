@@ -1,0 +1,38 @@
+# Schedule definitions for thorn Weyl
+
+STORAGE: metric4
+STORAGE: Gamma4
+STORAGE: riemann4
+STORAGE: ricci4
+STORAGE: ricciscalar4
+STORAGE: weyl4
+
+
+
+# SCHEDULE Weyl_Test AT wragh
+# {
+#   LANG: C
+#   OPTIONS: meta
+# } "Self-test"
+
+
+
+SCHEDULE Weyl_Weyl AT analysis
+{
+  LANG: C
+  READS: ADMBase::metric(everywhere)
+  READS: ADMBase::lapse(everywhere)
+  READS: ADMBase::shift(everywhere)
+  READS: ADMBase::curv(everywhere)
+  READS: ADMBase::dtlapse(everywhere)
+  READS: ADMBase::dtshift(everywhere)
+  READS: ADMBase::dtcurv(everywhere)
+  READS: ADMBase::dt2lapse(everywhere)
+  READS: ADMBase::dt2shift(everywhere)
+  WRITES: metric4(interior)   # We could write this everywhere
+  WRITES: Gamma4(interior)
+  WRITES: riemann4(interior)
+  WRITES: ricci4(interior)
+  WRITES: ricciscalar4(interior)
+  WRITES: weyl4(interior)
+} "Calculate Weyl tensor"
