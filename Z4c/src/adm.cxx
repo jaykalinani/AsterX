@@ -59,6 +59,8 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 0, 0, 0> gf_alp_(cctkGH, alp);
 
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtalp_(cctkGH, dtalp);
+
   const GF3D<CCTK_REAL, 0, 0, 0> gf_betax_(cctkGH, betax);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_betay_(cctkGH, betay);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_betaz_(cctkGH, betaz);
@@ -68,25 +70,28 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D<CCTK_REAL, 0, 0, 0> gf_dtbetaz_(cctkGH, dtbetaz);
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
-        // Load and calculate
-        const z4c_vars_noderivs<CCTK_REAL> vars(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-            gf_chi_, gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
-            gf_gammatyz_, gf_gammatzz_, gf_Kh_, gf_Atxx_, gf_Atxy_, gf_Atxz_,
-            gf_Atyy_, gf_Atyz_, gf_Atzz_,
-            //
-            // gf_Gamtx_, gf_Gamty_, gf_Gamtz_,
-            gf_chi_, gf_chi_, gf_chi_,
-            //
-            gf_Theta_, gf_alphaG_, gf_betaGx_, gf_betaGy_, gf_betaGz_, //
-            p.I);
+    // Load and calculate
+    const z4c_vars_noderivs<CCTK_REAL> vars(
+        kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+        gf_chi_, gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
+        gf_gammatyz_, gf_gammatzz_, gf_Kh_, gf_Atxx_, gf_Atxy_, gf_Atxz_,
+        gf_Atyy_, gf_Atyz_, gf_Atzz_,
+        //
+        // gf_Gamtx_, gf_Gamty_, gf_Gamtz_,
+        gf_chi_, gf_chi_, gf_chi_,
+        //
+        gf_Theta_, gf_alphaG_, gf_betaGx_, gf_betaGy_, gf_betaGz_, //
+        p.I);
 
-        // Store
-        vars.g.store(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_, gf_gzz_, p.I);
-        vars.k.store(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_, gf_kzz_, p.I);
-        gf_alp_(p.I) = vars.alp;
-        vars.beta.store(gf_betax_, gf_betay_, gf_betaz_, p.I);
-      });
+    // Store
+    vars.g.store(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_, gf_gzz_, p.I);
+    vars.k.store(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_, gf_kzz_, p.I);
+    gf_alp_(p.I) = vars.alp;
+    vars.beta.store(gf_betax_, gf_betay_, gf_betaz_, p.I);
+  });
+
+#warning "TODO: These are wrong!"
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtalp_(p.I) = 0; });
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtbetax_(p.I) = 0; });
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtbetay_(p.I) = 0; });

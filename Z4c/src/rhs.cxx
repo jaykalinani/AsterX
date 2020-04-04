@@ -133,42 +133,55 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   const GF3D<CCTK_REAL, 0, 0, 0> gf_betaGy_rhs_(cctkGH, betaGy_rhs);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_betaGz_rhs_(cctkGH, betaGz_rhs);
 
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtkxx_(cctkGH, dtkxx);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtkxy_(cctkGH, dtkxy);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtkxz_(cctkGH, dtkxz);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtkyy_(cctkGH, dtkyy);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtkyz_(cctkGH, dtkyz);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dtkzz_(cctkGH, dtkzz);
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dt2alp_(cctkGH, dt2alp);
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dt2betax_(cctkGH, dt2betax);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dt2betay_(cctkGH, dt2betay);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_dt2betaz_(cctkGH, dt2betaz);
+
   //
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
-        // Load and calculate
+    // Load and calculate
 
-        const CCTK_REAL rho{0};
-        const vec3<CCTK_REAL, DN> Si{0, 0, 0};
-        const mat3<CCTK_REAL, DN, DN> Sij{0, 0, 0, 0, 0, 0};
+    const CCTK_REAL rho{0};
+    const vec3<CCTK_REAL, DN> Si{0, 0, 0};
+    const mat3<CCTK_REAL, DN, DN> Sij{0, 0, 0, 0, 0, 0};
 
-        const z4c_vars<CCTK_REAL> vars(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta,                  //
-            gf_chi_(p.I), gf_dchi_(p.I), gf_ddchi_(p.I),          //
-            gf_gammat_(p.I), gf_dgammat_(p.I), gf_ddgammat_(p.I), //
-            gf_Kh_(p.I), gf_dKh_(p.I),                            //
-            gf_At_(p.I), gf_dAt_(p.I),                            //
-            gf_Gamt_(p.I), gf_dGamt_(p.I),                        //
-            gf_Theta_(p.I), gf_dTheta_(p.I),                      //
-            gf_alphaG_(p.I), gf_dalphaG_(p.I), gf_ddalphaG_(p.I), //
-            gf_betaG_(p.I), gf_dbetaG_(p.I), gf_ddbetaG_(p.I),    //
-            rho,                                                  //
-            Si,                                                   //
-            Sij);
+    const z4c_vars<CCTK_REAL> vars(
+        kappa1, kappa2, f_mu_L, f_mu_S, eta,                  //
+        gf_chi_(p.I), gf_dchi_(p.I), gf_ddchi_(p.I),          //
+        gf_gammat_(p.I), gf_dgammat_(p.I), gf_ddgammat_(p.I), //
+        gf_Kh_(p.I), gf_dKh_(p.I),                            //
+        gf_At_(p.I), gf_dAt_(p.I),                            //
+        gf_Gamt_(p.I), gf_dGamt_(p.I),                        //
+        gf_Theta_(p.I), gf_dTheta_(p.I),                      //
+        gf_alphaG_(p.I), gf_dalphaG_(p.I), gf_ddalphaG_(p.I), //
+        gf_betaG_(p.I), gf_dbetaG_(p.I), gf_ddbetaG_(p.I),    //
+        rho,                                                  //
+        Si,                                                   //
+        Sij);
 
-        // Store
-        gf_chi_rhs_(p.I) = vars.chi_rhs;
+    // Store
+    gf_chi_rhs_(p.I) = vars.chi_rhs;
     vars.gammat_rhs.store(gf_gammatxx_rhs_, gf_gammatxy_rhs_, gf_gammatxz_rhs_,
                           gf_gammatyy_rhs_, gf_gammatyz_rhs_, gf_gammatzz_rhs_,
                           p.I);
-        gf_Kh_rhs_(p.I) = vars.Kh_rhs;
+    gf_Kh_rhs_(p.I) = vars.Kh_rhs;
     vars.At_rhs.store(gf_Atxx_rhs_, gf_Atxy_rhs_, gf_Atxz_rhs_, gf_Atyy_rhs_,
                       gf_Atyz_rhs_, gf_Atzz_rhs_, p.I);
-        vars.Gamt_rhs.store(gf_Gamtx_rhs_, gf_Gamty_rhs_, gf_Gamtz_rhs_, p.I);
-        gf_Theta_rhs_(p.I) = vars.Theta_rhs;
-        gf_alphaG_rhs_(p.I) = vars.alphaG_rhs;
+    vars.Gamt_rhs.store(gf_Gamtx_rhs_, gf_Gamty_rhs_, gf_Gamtz_rhs_, p.I);
+    gf_Theta_rhs_(p.I) = vars.Theta_rhs;
+    gf_alphaG_rhs_(p.I) = vars.alphaG_rhs;
     vars.betaG_rhs.store(gf_betaGx_rhs_, gf_betaGy_rhs_, gf_betaGz_rhs_, p.I);
-      });
+  });
 
   // Upwind terms
 
@@ -233,6 +246,22 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   apply_diss(cctkGH, gf_betaG_(0), gf_betaGx_rhs_);
   apply_diss(cctkGH, gf_betaG_(1), gf_betaGy_rhs_);
   apply_diss(cctkGH, gf_betaG_(2), gf_betaGz_rhs_);
+
+  // ADMBase
+
+#warning "TODO: These are wrong!"
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkxx_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkxy_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkxz_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkyy_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkyz_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkzz_(p.I) = 0; });
+
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2alp_(p.I) = 0; });
+
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2betax_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2betay_(p.I) = 0; });
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2betaz_(p.I) = 0; });
 }
 
 } // namespace Z4c

@@ -113,6 +113,7 @@ SCHEDULE Z4c_ADM IN Z4c_PostStep AFTER Z4c_Enforce
   WRITES: ADMBase::metric(everywhere)
   WRITES: ADMBase::curv(everywhere)
   WRITES: ADMBase::lapse(everywhere)
+  WRITES: ADMBase::dtlapse(everywhere)
   WRITES: ADMBase::shift(everywhere)
   WRITES: ADMBase::dtshift(everywhere)
 } "Convert Z4c to ADM variables"
@@ -168,6 +169,10 @@ SCHEDULE Z4c_RHS IN Z4c_RHS
   WRITES: Theta_rhs(interior)
   WRITES: alphaG_rhs(interior)
   WRITES: betaG_rhs(interior)
+  #
+  WRITES: ADMBase::dtcurv(interior)
+  WRITES: ADMBase::dt2lapse(interior)
+  WRITES: ADMBase::dt2shift(interior)
 } "Calculate Z4c RHS"
 
 SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
@@ -189,6 +194,13 @@ SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
   SYNC: Theta_rhs
   SYNC: alphaG_rhs
   SYNC: betaG_rhs
+  #
+  WRITES: ADMBase::dtcurv(boundary)
+  WRITES: ADMBase::dt2lapse(boundary)
+  WRITES: ADMBase::dt2shift(boundary)
+  SYNC: ADMBase::dtcurv
+  SYNC: ADMBase::dt2lapse
+  SYNC: ADMBase::dt2shift
 } "Apply boundary conditions to Z4c RHS variables"
 
 
