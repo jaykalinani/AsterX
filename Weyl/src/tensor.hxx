@@ -331,9 +331,11 @@ public:
     const T f10 = f(1, 0);
     const T f20 = f(2, 0);
     const T f21 = f(1, 2);
-    const auto is_approx{[](const T &fgood, const T &fother) {
-      return norm1<T>()(fother - fgood) <=
-             1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
+    const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
+                       norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
+                       norm1<T>()(elts[4]) + norm1<T>()(elts[5]);
+    const auto is_approx{[scale](const T &fgood, const T &fother) {
+      return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
     }};
     if (!(is_approx((*this)(0, 1), f10) && is_approx((*this)(0, 2), f20) &&
           is_approx((*this)(1, 2), f21))) {
@@ -799,9 +801,13 @@ public:
     const T f21 = f(2, 1);
     const T f31 = f(3, 1);
     const T f32 = f(3, 2);
-    const auto is_approx{[](const T &fgood, const T &fother) {
-      return norm1<T>()(fother - fgood) <=
-             1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
+    const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
+                       norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
+                       norm1<T>()(elts[4]) + norm1<T>()(elts[5]) +
+                       norm1<T>()(elts[6]) + norm1<T>()(elts[7]) +
+                       norm1<T>()(elts[8]) + norm1<T>()(elts[9]);
+    const auto is_approx{[scale](const T &fgood, const T &fother) {
+      return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
     }};
     if (!(is_approx(f10, (*this)(0, 1)) && is_approx(f20, (*this)(0, 2)) &&
           is_approx(f30, (*this)(0, 3)) && is_approx(f21, (*this)(1, 2)) &&
@@ -1174,7 +1180,7 @@ public:
   constexpr amat4(const F &f)
       : elts{f(0, 1), f(0, 2), f(0, 3), f(1, 2), f(1, 3), f(2, 3)} {
 #ifdef CCTK_DEBUG
-    // Check symmetry
+    // Check antisymmetry
     const T f00 = f(0, 0);
     const T f10 = f(1, 0);
     const T f20 = f(2, 0);
@@ -1185,9 +1191,11 @@ public:
     const T f22 = f(2, 2);
     const T f32 = f(3, 2);
     const T f33 = f(3, 3);
-    const auto is_approx{[](const T &fgood, const T &fother) {
-      return norm1<T>()(fother - fgood) <=
-             1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
+    const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
+                       norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
+                       norm1<T>()(elts[4]) + norm1<T>()(elts[5]);
+    const auto is_approx{[scale](const T &fgood, const T &fother) {
+      return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
     }};
     if (!(is_approx(f00, zero<T>()()) && is_approx(f10, -(*this)(0, 1)) &&
           is_approx(f20, -(*this)(0, 2)) && is_approx(f30, -(*this)(0, 3)) &&
