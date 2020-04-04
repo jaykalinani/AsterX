@@ -5,6 +5,7 @@ IMPLEMENTS: Weyl
 INHERITS: ADMBase
 
 USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: vect.hxx
 
 
 

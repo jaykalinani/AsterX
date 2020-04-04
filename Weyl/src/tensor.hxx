@@ -13,6 +13,7 @@
 #include <type_traits>
 
 namespace Weyl {
+using namespace Arith;
 using namespace Loop;
 using namespace std;
 
@@ -81,7 +82,8 @@ template <typename T> struct norm1 {
 template <typename T, int D> struct norm1<vect<T, D> > {
   typedef typename norm1<T>::result_type result_type;
   constexpr result_type operator()(const vect<T, D> &xs) const {
-    typename norm1<T>::result_type r{0};
+    typedef typename norm1<T>::result_type R;
+    R r = zero<R>()();
     for (int d = 0; d < D; ++d)
       r = max(r, norm1<T>()(xs[d]));
     return r;
@@ -216,6 +218,16 @@ template <typename T, dnup_t dnup> struct nan<vec3<T, dnup> > {
   constexpr vec3<T, dnup> operator()() const { return vec3<T, dnup>(); }
 };
 
+} // namespace Weyl
+namespace Arith {
+template <typename T, Weyl::dnup_t dnup> struct zero<Weyl::vec3<T, dnup> > {
+  constexpr Weyl::vec3<T, dnup> operator()() const {
+    return Weyl::vec3<T, dnup>(zero<vect<T, 3> >()());
+  }
+};
+} // namespace Arith
+namespace Weyl {
+
 template <typename T, dnup_t dnup> struct norm1<vec3<T, dnup> > {
   typedef typename norm1<vect<T, 3> >::result_type result_type;
   constexpr result_type operator()(const vec3<T, dnup> &x) const {
@@ -323,20 +335,20 @@ public:
       return norm1<T>()(fother - fgood) <=
              1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
     }};
-    if (!(is_approx(f(0, 1), f10) && is_approx(f(0, 2), f20) &&
-          is_approx(f(1, 2), f21))) {
+    if (!(is_approx((*this)(0, 1), f10) && is_approx((*this)(0, 2), f20) &&
+          is_approx((*this)(1, 2), f21))) {
       ostringstream buf;
-      buf << "f(0,1)=" << f(0, 1) << "\n"
+      buf << "f(0,1)=" << (*this)(0, 1) << "\n"
           << "f(1,0)=" << f10 << "\n"
-          << "f(0,2)=" << f(0, 2) << "\n"
+          << "f(0,2)=" << (*this)(0, 2) << "\n"
           << "f(2,0)=" << f20 << "\n"
-          << "f(1,2)=" << f(1, 2) << "\n"
+          << "f(1,2)=" << (*this)(1, 2) << "\n"
           << "f(2,1)=" << f21 << "\n";
       CCTK_VERROR("symmetric matrix is not symmetric:\n%s", buf.str().c_str());
     }
-    assert(is_approx(f(0, 1), f10));
-    assert(is_approx(f(0, 2), f20));
-    assert(is_approx(f(1, 2), f21));
+    assert(is_approx(f10, (*this)(0, 1)));
+    assert(is_approx(f20, (*this)(0, 2)));
+    assert(is_approx(f21, (*this)(1, 2)));
 #endif
   }
 
@@ -458,6 +470,17 @@ struct nan<mat3<T, dnup1, dnup2> > {
   }
 };
 
+} // namespace Weyl
+namespace Arith {
+template <typename T, Weyl::dnup_t dnup1, Weyl::dnup_t dnup2>
+struct zero<Weyl::mat3<T, dnup1, dnup2> > {
+  constexpr Weyl::mat3<T, dnup1, dnup2> operator()() const {
+    return Weyl::mat3<T, dnup1, dnup2>(zero<vect<T, 6> >()());
+  }
+};
+} // namespace Arith
+namespace Weyl {
+
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 struct norm1<mat3<T, dnup1, dnup2> > {
   typedef typename norm1<vect<T, 6> >::result_type result_type;
@@ -475,28 +498,10 @@ constexpr mat3<T, dnup1, dnup2> mul(const mat3<T, dnup1, dnup3> &A,
   });
 }
 
-template <typename F, typename T> constexpr T fold(const F &f, const T &x) {
-  return x;
-}
-template <typename F, typename T, typename... Ts>
-constexpr T fold(const F &f, const T &x0, const T &x1, const Ts &... xs) {
-  return fold(f, fold(f, x0, x1), xs...);
-}
-
-template <typename T> constexpr T add() { return T(0); }
-// template <typename T>
-//  constexpr  T add(const T &x) {
-//   return x;
-// }
-template <typename T, typename... Ts>
-constexpr T add(const T &x, const Ts &... xs) {
-  return x + add(xs...);
-}
-
 template <typename F,
           typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
 constexpr R sum1(const F &f) {
-  R s{0};
+  R s = zero<R>()();
   for (int x = 0; x < 3; ++x)
     s += f(x);
   return s;
@@ -505,7 +510,7 @@ constexpr R sum1(const F &f) {
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int)> > > >
 constexpr R sum2(const F &f) {
-  R s{0};
+  R s = zero<R>()();
   for (int x = 0; x < 3; ++x)
     for (int y = 0; y < 3; ++y)
       s += f(x, y);
@@ -515,7 +520,7 @@ constexpr R sum2(const F &f) {
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int, int)> > > >
 constexpr R sum3(const F &f) {
-  R s{0};
+  R s = zero<R>()();
   for (int x = 0; x < 3; ++x)
     for (int y = 0; y < 3; ++y)
       for (int z = 0; z < 3; ++z)
@@ -531,7 +536,7 @@ template <typename T, dnup_t dnup> class vec4 {
 
   static constexpr int ind(const int n) {
 #ifdef CCTK_DEBUG
-    assert(n >= 0 && n <= 4);
+    assert(n >= 0 && n < 4);
 #endif
     return n;
   }
@@ -653,6 +658,16 @@ template <typename T, dnup_t dnup> struct nan<vec4<T, dnup> > {
   constexpr vec4<T, dnup> operator()() const { return vec4<T, dnup>(); }
 };
 
+} // namespace Weyl
+namespace Arith {
+template <typename T, Weyl::dnup_t dnup> struct zero<Weyl::vec4<T, dnup> > {
+  constexpr Weyl::vec4<T, dnup> operator()() const {
+    return Weyl::vec4<T, dnup>(zero<vect<T, 4> >()());
+  }
+};
+} // namespace Arith
+namespace Weyl {
+
 template <typename T, dnup_t dnup> struct norm1<vec4<T, dnup> > {
   typedef typename norm1<vect<T, 4> >::result_type result_type;
   constexpr result_type operator()(const vec4<T, dnup> &x) const {
@@ -670,7 +685,7 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class mat4 {
 
   static constexpr int symind(const int i, const int j) {
 #ifdef CCTK_DEBUG
-    assert(i >= 0 && i <= j && j <= 4);
+    assert(i >= 0 && i <= j && j < 4);
 #endif
     const int n = i * (7 - i) / 2 + j;
     // i j n
@@ -788,30 +803,30 @@ public:
       return norm1<T>()(fother - fgood) <=
              1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
     }};
-    if (!(is_approx(f(0, 1), f10) && is_approx(f(0, 2), f20) &&
-          is_approx(f(0, 3), f30) && is_approx(f(1, 2), f21) &&
-          is_approx(f(1, 3), f31) && is_approx(f(2, 3), f32))) {
+    if (!(is_approx(f10, (*this)(0, 1)) && is_approx(f20, (*this)(0, 2)) &&
+          is_approx(f30, (*this)(0, 3)) && is_approx(f21, (*this)(1, 2)) &&
+          is_approx(f31, (*this)(1, 3)) && is_approx(f32, (*this)(2, 3)))) {
       ostringstream buf;
-      buf << "f(0,1)=" << f(0, 1) << "\n"
+      buf << "f(0,1)=" << (*this)(0, 1) << "\n"
           << "f(1,0)=" << f10 << "\n"
-          << "f(0,2)=" << f(0, 2) << "\n"
+          << "f(0,2)=" << (*this)(0, 2) << "\n"
           << "f(2,0)=" << f20 << "\n"
-          << "f(0,3)=" << f(0, 3) << "\n"
+          << "f(0,3)=" << (*this)(0, 3) << "\n"
           << "f(3,0)=" << f30 << "\n"
-          << "f(1,2)=" << f(1, 2) << "\n"
+          << "f(1,2)=" << (*this)(1, 2) << "\n"
           << "f(2,1)=" << f21 << "\n"
-          << "f(1,3)=" << f(1, 3) << "\n"
+          << "f(1,3)=" << (*this)(1, 3) << "\n"
           << "f(3,1)=" << f31 << "\n"
-          << "f(2,3)=" << f(2, 3) << "\n"
+          << "f(2,3)=" << (*this)(2, 3) << "\n"
           << "f(3,2)=" << f32 << "\n";
       CCTK_VERROR("symmetric matrix is not symmetric:\n%s", buf.str().c_str());
     }
-    assert(is_approx(f(0, 1), f10));
-    assert(is_approx(f(0, 2), f20));
-    assert(is_approx(f(0, 3), f30));
-    assert(is_approx(f(1, 2), f21));
-    assert(is_approx(f(1, 3), f31));
-    assert(is_approx(f(2, 3), f32));
+    assert(is_approx((*this)(0, 1), f10));
+    assert(is_approx((*this)(0, 2), f20));
+    assert(is_approx((*this)(0, 3), f30));
+    assert(is_approx((*this)(1, 2), f21));
+    assert(is_approx((*this)(1, 3), f31));
+    assert(is_approx((*this)(2, 3), f32));
 #endif
   }
 
@@ -903,28 +918,58 @@ public:
 
   constexpr T det() const {
     const auto &A = *this;
-    return pow(A(0, 3), 2) * pow(A(1, 2), 2) -
-           2 * A(0, 2) * A(0, 3) * A(1, 2) * A(1, 3) +
-           pow(A(0, 2), 2) * pow(A(1, 3), 2) -
-           pow(A(0, 3), 2) * A(1, 1) * A(2, 2) +
-           2 * A(0, 1) * A(0, 3) * A(1, 3) * A(2, 2) -
-           A(0, 0) * pow(A(1, 3), 2) * A(2, 2) +
-           2 * A(0, 2) * A(0, 3) * A(1, 1) * A(2, 3) -
-           2 * A(0, 1) * A(0, 3) * A(1, 2) * A(2, 3) -
-           2 * A(0, 1) * A(0, 2) * A(1, 3) * A(2, 3) +
+    return -(A(0, 0) * pow(A(1, 3), 2) * A(2, 2)) +
+           pow(A(0, 3), 2) * (pow(A(1, 2), 2) - A(1, 1) * A(2, 2)) +
            2 * A(0, 0) * A(1, 2) * A(1, 3) * A(2, 3) +
            pow(A(0, 1), 2) * pow(A(2, 3), 2) -
            A(0, 0) * A(1, 1) * pow(A(2, 3), 2) -
-           pow(A(0, 2), 2) * A(1, 1) * A(3, 3) +
-           2 * A(0, 1) * A(0, 2) * A(1, 2) * A(3, 3) -
+           2 * A(0, 3) *
+               (A(0, 2) * (A(1, 2) * A(1, 3) - A(1, 1) * A(2, 3)) +
+                A(0, 1) * (-(A(1, 3) * A(2, 2)) + A(1, 2) * A(2, 3))) -
            A(0, 0) * pow(A(1, 2), 2) * A(3, 3) -
            pow(A(0, 1), 2) * A(2, 2) * A(3, 3) +
-           A(0, 0) * A(1, 1) * A(2, 2) * A(3, 3);
+           A(0, 0) * A(1, 1) * A(2, 2) * A(3, 3) +
+           pow(A(0, 2), 2) * (pow(A(1, 3), 2) - A(1, 1) * A(3, 3)) +
+           2 * A(0, 1) * A(0, 2) * (-(A(1, 3) * A(2, 3)) + A(1, 2) * A(3, 3));
   }
 
   constexpr mat4<T, !dnup1, !dnup2> inv(const T detA) const {
     const auto &A = *this;
     const T detA1 = 1 / detA;
+    return mat4<T, !dnup1, !dnup2>{
+        detA1 * (-(pow(A(1, 3), 2) * A(2, 2)) +
+                 2 * A(1, 2) * A(1, 3) * A(2, 3) - pow(A(1, 2), 2) * A(3, 3) +
+                 A(1, 1) * (-pow(A(2, 3), 2) + A(2, 2) * A(3, 3))),
+        detA1 * (A(0, 3) * (A(1, 3) * A(2, 2) - A(1, 2) * A(2, 3)) +
+                 A(0, 2) * (-(A(1, 3) * A(2, 3)) + A(1, 2) * A(3, 3)) +
+                 A(0, 1) * (pow(A(2, 3), 2) - A(2, 2) * A(3, 3))),
+        detA1 * (A(0, 3) * (-(A(1, 2) * A(1, 3)) + A(1, 1) * A(2, 3)) +
+                 A(0, 2) * (pow(A(1, 3), 2) - A(1, 1) * A(3, 3)) +
+                 A(0, 1) * (-(A(1, 3) * A(2, 3)) + A(1, 2) * A(3, 3))),
+        detA1 * (A(0, 3) * (pow(A(1, 2), 2) - A(1, 1) * A(2, 2)) +
+                 A(0, 2) * (-(A(1, 2) * A(1, 3)) + A(1, 1) * A(2, 3)) +
+                 A(0, 1) * (A(1, 3) * A(2, 2) - A(1, 2) * A(2, 3))),
+        detA1 * (-(pow(A(0, 3), 2) * A(2, 2)) +
+                 2 * A(0, 2) * A(0, 3) * A(2, 3) - pow(A(0, 2), 2) * A(3, 3) +
+                 A(0, 0) * (-pow(A(2, 3), 2) + A(2, 2) * A(3, 3))),
+        detA1 * (pow(A(0, 3), 2) * A(1, 2) -
+                 A(0, 3) * (A(0, 2) * A(1, 3) + A(0, 1) * A(2, 3)) +
+                 A(0, 1) * A(0, 2) * A(3, 3) +
+                 A(0, 0) * (A(1, 3) * A(2, 3) - A(1, 2) * A(3, 3))),
+        detA1 * (pow(A(0, 2), 2) * A(1, 3) + A(0, 1) * A(0, 3) * A(2, 2) -
+                 A(0, 2) * (A(0, 3) * A(1, 2) + A(0, 1) * A(2, 3)) +
+                 A(0, 0) * (-(A(1, 3) * A(2, 2)) + A(1, 2) * A(2, 3))),
+        detA1 * (-(pow(A(0, 3), 2) * A(1, 1)) +
+                 2 * A(0, 1) * A(0, 3) * A(1, 3) - pow(A(0, 1), 2) * A(3, 3) +
+                 A(0, 0) * (-pow(A(1, 3), 2) + A(1, 1) * A(3, 3))),
+        detA1 * (-(A(0, 1) * A(0, 3) * A(1, 2)) +
+                 A(0, 2) * (A(0, 3) * A(1, 1) - A(0, 1) * A(1, 3)) +
+                 pow(A(0, 1), 2) * A(2, 3) +
+                 A(0, 0) * (A(1, 2) * A(1, 3) - A(1, 1) * A(2, 3))),
+        detA1 * (-(pow(A(0, 2), 2) * A(1, 1)) +
+                 2 * A(0, 1) * A(0, 2) * A(1, 2) - pow(A(0, 1), 2) * A(2, 2) +
+                 A(0, 0) * (-pow(A(1, 2), 2) + A(1, 1) * A(2, 2)))};
+
     return mat4<T, !dnup1, !dnup2>{
         detA1 * (-(pow(A(1, 3), 2) * A(2, 2)) +
                  2 * A(1, 2) * A(1, 3) * A(2, 3) - pow(A(1, 2), 2) * A(3, 3) +
@@ -991,6 +1036,17 @@ struct nan<mat4<T, dnup1, dnup2> > {
   }
 };
 
+} // namespace Weyl
+namespace Arith {
+template <typename T, Weyl::dnup_t dnup1, Weyl::dnup_t dnup2>
+struct zero<Weyl::mat4<T, dnup1, dnup2> > {
+  constexpr Weyl::mat4<T, dnup1, dnup2> operator()() const {
+    return Weyl::mat4<T, dnup1, dnup2>(zero<vect<T, 10> >()());
+  }
+};
+} // namespace Arith
+namespace Weyl {
+
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 struct norm1<mat4<T, dnup1, dnup2> > {
   typedef typename norm1<vect<T, 10> >::result_type result_type;
@@ -1018,7 +1074,7 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class amat4 {
 
   static constexpr int asymind(const int i, const int j) {
 #ifdef CCTK_DEBUG
-    assert(i >= 0 && i < j && j <= 4);
+    assert(i >= 0 && i < j && j < 4);
 #endif
     const int n = i * (5 - i) / 2 + j - 1;
     // i j n
@@ -1055,6 +1111,17 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class amat4 {
   static_assert(ind(2, 1) == ind(1, 2), "");
   static_assert(ind(3, 1) == ind(1, 3), "");
   static_assert(ind(3, 2) == ind(2, 3), "");
+
+  static_assert(sign(1, 0) == -sign(0, 1), "");
+  static_assert(sign(2, 0) == -sign(0, 2), "");
+  static_assert(sign(3, 0) == -sign(0, 3), "");
+  static_assert(sign(2, 1) == -sign(1, 2), "");
+  static_assert(sign(3, 1) == -sign(1, 3), "");
+  static_assert(sign(3, 2) == -sign(2, 3), "");
+  static_assert(sign(0, 0) == 0, "");
+  static_assert(sign(1, 1) == 0, "");
+  static_assert(sign(2, 2) == 0, "");
+  static_assert(sign(3, 3) == 0, "");
 
 public:
   explicit constexpr amat4() : elts{nan<vect<T, 6> >()()} {}
@@ -1108,50 +1175,55 @@ public:
       : elts{f(0, 1), f(0, 2), f(0, 3), f(1, 2), f(1, 3), f(2, 3)} {
 #ifdef CCTK_DEBUG
     // Check symmetry
+    const T f00 = f(0, 0);
     const T f10 = f(1, 0);
     const T f20 = f(2, 0);
     const T f30 = f(3, 0);
+    const T f11 = f(1, 1);
     const T f21 = f(2, 1);
     const T f31 = f(3, 1);
+    const T f22 = f(2, 2);
     const T f32 = f(3, 2);
+    const T f33 = f(3, 3);
     const auto is_approx{[](const T &fgood, const T &fother) {
       return norm1<T>()(fother - fgood) <=
              1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
     }};
-    if (!(is_approx(f(0, 0), T{0}) && is_approx(f(0, 1), f10) &&
-          is_approx(f(0, 2), f20) && is_approx(f(0, 3), f30) &&
-          is_approx(f(1, 1), T{0}) && is_approx(f(1, 2), f21) &&
-          is_approx(f(1, 3), f31) && is_approx(f(2, 2), T{0}) &&
-          is_approx(f(2, 3), f32) && is_approx(f(3, 3), T{0}))) {
+    if (!(is_approx(f00, zero<T>()()) && is_approx(f10, -(*this)(0, 1)) &&
+          is_approx(f20, -(*this)(0, 2)) && is_approx(f30, -(*this)(0, 3)) &&
+          is_approx(f11, zero<T>()()) && is_approx(f21, -(*this)(1, 2)) &&
+          is_approx(f31, -(*this)(1, 3)) && is_approx(f22, zero<T>()()) &&
+          is_approx(f32, -(*this)(2, 3)) && is_approx(f33, zero<T>()()))) {
       ostringstream buf;
-      buf << "f(0,0)=" << f(0, 0) << "\n"
-          << "f(0,1)=" << f(0, 1) << "\n"
+      buf << "f(0,0)=" << f00 << "\n"
+          << "f(0,1)=" << (*this)(0, 1) << "\n"
           << "f(1,0)=" << f10 << "\n"
-          << "f(0,2)=" << f(0, 2) << "\n"
+          << "f(0,2)=" << (*this)(0, 2) << "\n"
           << "f(2,0)=" << f20 << "\n"
-          << "f(0,3)=" << f(0, 3) << "\n"
+          << "f(0,3)=" << (*this)(0, 3) << "\n"
           << "f(3,0)=" << f30 << "\n"
-          << "f(1,1)=" << f(1, 1) << "\n"
-          << "f(1,2)=" << f(1, 2) << "\n"
+          << "f(1,1)=" << f11 << "\n"
+          << "f(1,2)=" << (*this)(1, 2) << "\n"
           << "f(2,1)=" << f21 << "\n"
-          << "f(1,3)=" << f(1, 3) << "\n"
+          << "f(1,3)=" << (*this)(1, 3) << "\n"
           << "f(3,1)=" << f31 << "\n"
-          << "f(2,2)=" << f(2, 2) << "\n"
-          << "f(2,3)=" << f(2, 3) << "\n"
+          << "f(2,2)=" << f22 << "\n"
+          << "f(2,3)=" << (*this)(2, 3) << "\n"
           << "f(3,2)=" << f32 << "\n"
-          << "f(3,3)=" << f(3, 3) << "\n";
-      CCTK_VERROR("symmetric matrix is not symmetric:\n%s", buf.str().c_str());
+          << "f(3,3)=" << f33 << "\n";
+      CCTK_VERROR("antisymmetric matrix is not antisymmetric:\n%s",
+                  buf.str().c_str());
     }
-    assert(is_approx(f(0, 0), T{0}));
-    assert(is_approx(f(0, 1), f10));
-    assert(is_approx(f(0, 2), f20));
-    assert(is_approx(f(0, 3), f30));
-    assert(is_approx(f(1, 1), T{0}));
-    assert(is_approx(f(1, 2), f21));
-    assert(is_approx(f(1, 3), f31));
-    assert(is_approx(f(2, 2), T{0}));
-    assert(is_approx(f(2, 3), f32));
-    assert(is_approx(f(3, 3), T{0}));
+    assert(is_approx(f00, zero<T>()()));
+    assert(is_approx(f10, -(*this)(0, 1)));
+    assert(is_approx(f20, -(*this)(0, 2)));
+    assert(is_approx(f30, -(*this)(0, 3)));
+    assert(is_approx(f11, zero<T>()()));
+    assert(is_approx(f21, -(*this)(1, 2)));
+    assert(is_approx(f31, -(*this)(1, 3)));
+    assert(is_approx(f22, zero<T>()()));
+    assert(is_approx(f32, -(*this)(2, 3)));
+    assert(is_approx(f33, zero<T>()()));
 #endif
   }
 
@@ -1184,7 +1256,7 @@ public:
   const T operator()(int i, int j) const {
     const int s = sign(i, j);
     if (s == 0)
-      return T{0};
+      return zero<T>()();
     return s * elts[ind(i, j)];
   }
   //  T &operator()(int i, int j) { return
@@ -1201,7 +1273,7 @@ public:
         dnup2>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I),
-            elts[4](I), elts[4](I), elts[5](I)};
+            elts[3](I), elts[4](I), elts[5](I)};
   }
 
   friend constexpr amat4<T, dnup1, dnup2>
@@ -1240,12 +1312,12 @@ public:
 
   constexpr T det() const {
     const auto &A = *this;
-    return Power(A(0, 3), 2) * Power(A(1, 2), 2) -
+    return pow(A(0, 3), 2) * pow(A(1, 2), 2) -
            2 * A(0, 2) * A(0, 3) * A(1, 2) * A(1, 3) +
-           Power(A(0, 2), 2) * Power(A(1, 3), 2) +
+           pow(A(0, 2), 2) * pow(A(1, 3), 2) +
            2 * A(0, 1) * A(0, 3) * A(1, 2) * A(2, 3) -
            2 * A(0, 1) * A(0, 2) * A(1, 3) * A(2, 3) +
-           Power(A(0, 1), 2) * Power(A(2, 3), 2);
+           pow(A(0, 1), 2) * pow(A(2, 3), 2);
   }
 
   constexpr amat4<T, !dnup1, !dnup2> inv(const T detA) const {
@@ -1290,12 +1362,24 @@ public:
               << "," << A(3, 2) << "," << A(3, 3) << "]]";
   }
 };
+
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 struct nan<amat4<T, dnup1, dnup2> > {
   constexpr amat4<T, dnup1, dnup2> operator()() const {
     return amat4<T, dnup1, dnup2>();
   }
 };
+
+} // namespace Weyl
+namespace Arith {
+template <typename T, Weyl::dnup_t dnup1, Weyl::dnup_t dnup2>
+struct zero<Weyl::amat4<T, dnup1, dnup2> > {
+  constexpr Weyl::amat4<T, dnup1, dnup2> operator()() const {
+    return Weyl::amat4<T, dnup1, dnup2>(zero<vect<T, 6> >()());
+  }
+};
+} // namespace Arith
+namespace Weyl {
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 struct norm1<amat4<T, dnup1, dnup2> > {
@@ -1316,34 +1400,10 @@ constexpr amat4<T, dnup1, dnup2> mul(const amat4<T, dnup1, dnup4> &A,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-template <typename F, typename T>
-constexpr  T fold(const F &f, const T &x) {
-  return x;
-}
-template <typename F, typename T, typename... Ts>
-constexpr  T fold(const F &f, const T &x0,
-                                              const T &x1, const Ts &... xs) {
-  return fold(f, fold(f, x0, x1), xs...);
-}
-
-template <typename T> constexpr  T add() {
-  return T(0);
-}
-// template <typename T>
-//  constexpr  T add(const T &x) {
-//   return x;
-// }
-template <typename T, typename... Ts>
-constexpr  T add(const T &x, const Ts &... xs) {
-  return x + add(xs...);
-}
-#endif
-
 template <typename F,
           typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
 constexpr R sum41(const F &f) {
-  R s{0};
+  R s = zero<R>()();
   for (int x = 0; x < 4; ++x)
     s += f(x);
   return s;
@@ -1352,7 +1412,7 @@ constexpr R sum41(const F &f) {
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int)> > > >
 constexpr R sum42(const F &f) {
-  R s{0};
+  R s = zero<R>()();
   for (int x = 0; x < 4; ++x)
     for (int y = 0; y < 4; ++y)
       s += f(x, y);
@@ -1362,12 +1422,32 @@ constexpr R sum42(const F &f) {
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int, int)> > > >
 constexpr R sum43(const F &f) {
-  R s{0};
+  R s = zero<R>()();
   for (int x = 0; x < 4; ++x)
     for (int y = 0; y < 4; ++y)
       for (int z = 0; z < 4; ++z)
         s += f(x, y, z);
   return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename F, typename T> constexpr T fold(const F &f, const T &x) {
+  return x;
+}
+template <typename F, typename T, typename... Ts>
+constexpr T fold(const F &f, const T &x0, const T &x1, const Ts &... xs) {
+  return fold(f, fold(f, x0, x1), xs...);
+}
+
+template <typename T> constexpr T add() { return T(0); }
+// template <typename T>
+//  constexpr  T add(const T &x) {
+//   return x;
+// }
+template <typename T, typename... Ts>
+constexpr T add(const T &x, const Ts &... xs) {
+  return x + add(xs...);
 }
 
 } // namespace Weyl

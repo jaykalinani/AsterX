@@ -38,41 +38,15 @@ template <typename T> struct weyl_vars_noderivs {
           if (a == 0 && b == 0)
             return alpha;
           if (a == 0)
-            return betal(b);
+            return betal(b - 1);
           if (b == 0)
-            return betal(a);
-          return gamma(a, b);
+            return betal(a - 1);
+          return gamma(a - 1, b - 1);
         }),
         detg(g.det()), //
         gu(g.inv(detg))
   //
   {}
-
-#if 0
-  
-  weyl_vars_noderivs(const GF3D<const T, 0, 0, 0> &gf_gammaxx_,
-                     const GF3D<const T, 0, 0, 0> &gf_gammaxy_,
-                     const GF3D<const T, 0, 0, 0> &gf_gammaxz_,
-                     const GF3D<const T, 0, 0, 0> &gf_gammayy_,
-                     const GF3D<const T, 0, 0, 0> &gf_gammayz_,
-                     const GF3D<const T, 0, 0, 0> &gf_gammazz_,
-                     //
-                     const GF3D<const T, 0, 0, 0> &gf_alpha_,
-                     //
-                     const GF3D<const T, 0, 0, 0> &gf_betax_,
-                     const GF3D<const T, 0, 0, 0> &gf_betay_,
-                     const GF3D<const T, 0, 0, 0> &gf_betaz_,
-                     //
-                     const vect<int, 3> &I)
-      : weyl_vars_noderivs<T>(mat3<T, DN, DN>(gf_gammaxx_, gf_gammaxy_,
-                                              gf_gammaxz_, gf_gammayy_,
-                                              gf_gammayz_, gf_gammazz_, I),
-                              //
-                              gf_alpha_(I),
-                              //
-                              vec3<T, UP>(gf_betax_, gf_betay_, gf_betaz_, I))
-  // {}
-#endif
 };
 
 template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
@@ -140,7 +114,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
   const vec4<mat4<T, DN, DN>, UP> Gamma;
 
   const vec4<mat4<vec4<T, DN>, DN, DN>, DN> dGammal;
-  // const vec4<mat4<vec4<T, DN>, DN, DN>, UP> dGamma;
+  const vec4<mat4<vec4<T, DN>, DN, DN>, UP> dGamma;
 
   // Riemann, Ricci, Weyl
   // TODO: Use Rm(a,b,c,d) == Rm(c,d,a,b)
@@ -325,131 +299,15 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
         Gammal(calc_gammal(dg)),       //
         Gamma(calc_gamma(gu, Gammal)), //
         //
-        dGammal(calc_dgammal(ddg)), //
-        // dGamma(calc_dgamma(gu,dgu,Gammal,dGammal)),   //
+        dGammal(calc_dgammal(ddg)),                    //
+        dGamma(calc_dgamma(gu, dgu, Gammal, dGammal)), //
         //
-        Rm(calc_riemann(Gammal, Gamma, dGammal)), //
-        R(calc_ricci(gu, Rm)),                    //
-        Rsc(R.trace(gu)),                         //
+        Rm(calc_riemann(g, Gamma, dGamma)), //
+        R(calc_ricci(gu, Rm)),              //
+        Rsc(R.trace(gu)),                   //
         C(calc_weyl(g, Rm, R, Rsc))
   //
   {}
-
-#if 0
-  weyl_vars(const GF3D<const T, 0, 0, 0> &gf_gammaxx_,
-            const GF3D<const T, 0, 0, 0> &gf_gammaxy_,
-            const GF3D<const T, 0, 0, 0> &gf_gammaxz_,
-            const GF3D<const T, 0, 0, 0> &gf_gammayy_,
-            const GF3D<const T, 0, 0, 0> &gf_gammayz_,
-            const GF3D<const T, 0, 0, 0> &gf_gammazz_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_alpha_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_betax_,
-            const GF3D<const T, 0, 0, 0> &gf_betay_,
-            const GF3D<const T, 0, 0, 0> &gf_betaz_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_kxx_,
-            const GF3D<const T, 0, 0, 0> &gf_kxy_,
-            const GF3D<const T, 0, 0, 0> &gf_kxz_,
-            const GF3D<const T, 0, 0, 0> &gf_kyy_,
-            const GF3D<const T, 0, 0, 0> &gf_kyz_,
-            const GF3D<const T, 0, 0, 0> &gf_kzz_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_dtalpha_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_dtbetax_,
-            const GF3D<const T, 0, 0, 0> &gf_dtbetay_,
-            const GF3D<const T, 0, 0, 0> &gf_dtbetaz_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_dtkxx_,
-            const GF3D<const T, 0, 0, 0> &gf_dtkxy_,
-            const GF3D<const T, 0, 0, 0> &gf_dtkxz_,
-            const GF3D<const T, 0, 0, 0> &gf_dtkyy_,
-            const GF3D<const T, 0, 0, 0> &gf_dtkyz_,
-            const GF3D<const T, 0, 0, 0> &gf_dtkzz_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_dt2alpha_,
-            //
-            const GF3D<const T, 0, 0, 0> &gf_dt2betax_,
-            const GF3D<const T, 0, 0, 0> &gf_dt2betay_,
-            const GF3D<const T, 0, 0, 0> &gf_dt2betaz_,
-            //
-            const vect<int, 3> &I, const vec3<T, UP> &dx)
-      : weyl_vars(mat3<T, DN, DN>(gf_gammaxx_, gf_gammaxy_, gf_gammaxz_,
-                                  gf_gammayy_, gf_gammayz_, gf_gammazz_, I),
-                  //
-                  gf_alpha_(I),
-                  //
-                  vec3<T, UP>(gf_betax_, gf_betay_, gf_betaz_, I),
-                  //
-                  mat3<T, DN, DN>(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_,
-                                  gf_kzz_, I),
-                  //
-                  gf_dtalpha_(I),
-                  //
-                  vec3<T, UP>(gf_dtbetax_, gf_dtbetay_, gf_dtbetaz_, I),
-                  //
-                  mat3<vec3<T, DN>, DN, DN>{
-                      deriv(gf_gammaxx_, I, dx),
-                      deriv(gf_gammaxy_, I, dx),
-                      deriv(gf_gammaxz_, I, dx),
-                      deriv(gf_gammayy_, I, dx),
-                      deriv(gf_gammayz_, I, dx),
-                      deriv(gf_gammazz_, I, dx),
-                  },
-                  //
-                  deriv(gf_alpha_, I, dx),
-                  //
-                  vec3<vec3<T, DN>, UP>{
-                      deriv(gf_betax_, I, dx),
-                      deriv(gf_betay_, I, dx),
-                      deriv(gf_betaz_, I, dx),
-                  },
-                  //
-                  mat3<T, DN, DN>(gf_dtkxx_, gf_dtkxy_, gf_dtkxz_, gf_dtkyy_,
-                                  gf_dtkyz_, gf_dtkzz_, I),
-                  //
-                  gf_dt2alpha_(I),
-                  //
-                  vec3<T, UP>(gf_dt2betax_, gf_dt2betay_, gf_dt2betaz_, I),
-                  //
-                  mat3<vec3<T, DN>, DN, DN>{
-                      deriv(gf_kxx_, I, dx),
-                      deriv(gf_kxy_, I, dx),
-                      deriv(gf_kxz_, I, dx),
-                      deriv(gf_kyy_, I, dx),
-                      deriv(gf_kyz_, I, dx),
-                      deriv(gf_kzz_, I, dx),
-                  },
-                  //
-                  deriv(gf_dtalpha_, I, dx),
-                  //
-                  vec3<vec3<T, DN>, UP>{
-                      deriv(gf_dtbetax_, I, dx),
-                      deriv(gf_dtbetay_, I, dx),
-                      deriv(gf_dtbetaz_, I, dx),
-                  },
-                  //
-                  mat3<mat3<T, DN, DN>, DN, DN>{
-                      deriv2(gf_gammaxx_, I, dx),
-                      deriv2(gf_gammaxy_, I, dx),
-                      deriv2(gf_gammaxz_, I, dx),
-                      deriv2(gf_gammayy_, I, dx),
-                      deriv2(gf_gammayz_, I, dx),
-                      deriv2(gf_gammazz_, I, dx),
-                  },
-                  //
-                  deriv2(gf_alpha_, I, dx),
-                  //
-                  vec3<mat3<T, DN, DN>, UP>{
-                      deriv2(gf_betax_, I, dx),
-                      deriv2(gf_betay_, I, dx),
-                      deriv2(gf_betaz_, I, dx),
-                  })
-  //
-  {}
-#endif
 };
 
 } // namespace Weyl

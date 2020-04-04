@@ -23,26 +23,6 @@ calc_dgu(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, DN, DN> &dg) {
   });
 }
 
-#if 0
-template <typename T>
- constexpr mat4<vec4<T, DN>, UP, UP>
-calc_dAu(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, UP, UP> &dgu,
-         const mat4<T, DN, DN> &A, const mat4<vec4<T, DN>, DN, DN> &dA) {
-  // A^ab,c = (g^ax g^by A_xy),c
-  //        = g^ax,c g^by A_xy + g^ax g^by,c A_xy + g^ax g^by A_xy,c
-  return mat4<vec4<T, DN>, UP, UP>(
-      [&](int a, int b)  {
-        return vec4<T, DN>([&](int c)  {
-          return sum42([&](int x, int y)  {
-            return dgu(a, x)(c) * gu(b, y) * A(x, y)   //
-                   + gu(a, x) * dgu(b, y)(c) * A(x, y) //
-                   + gu(a, x) * gu(b, y) * dA(x, y)(c);
-          });
-        });
-      });
-}
-#endif
-
 template <typename T>
 constexpr vec4<mat4<T, DN, DN>, DN>
 calc_gammal(const mat4<vec4<T, DN>, DN, DN> dg) {
@@ -100,16 +80,19 @@ calc_dgamma(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, UP, UP> &dgu,
 
 template <typename T>
 constexpr amat4<amat4<T, DN, DN>, DN, DN>
-calc_riemann(const vec4<mat4<T, DN, DN>, DN> &Gammal,
-             const vec4<mat4<T, DN, DN>, UP> &Gamma,
-             const vec4<mat4<vec4<T, DN>, DN, DN>, DN> &dGammal) {
+calc_riemann(const mat4<T, DN, DN> &g, const vec4<mat4<T, DN, DN>, UP> &Gamma,
+             const vec4<mat4<vec4<T, DN>, DN, DN>, UP> &dGamma) {
   // Rm_abcd
   return amat4<amat4<T, DN, DN>, DN, DN>([&](int a, int b) {
     return amat4<T, DN, DN>([&](int c, int d) {
-      return dGammal(a)(d, b)(c)                                              //
-             - dGammal(a)(c, b)(d)                                            //
-             + sum41([&](int x) { return Gammal(a)(c, x) * Gamma(x)(d, b); }) //
-             - sum41([&](int x) { return Gammal(a)(d, x) * Gamma(x)(c, b); });
+      return sum41([&](int x) {
+        const T rmuxbcd =
+            dGamma(x)(d, b)(c)                                              //
+            - dGamma(x)(c, b)(d)                                            //
+            + sum41([&](int y) { return Gamma(x)(c, y) * Gamma(y)(d, b); }) //
+            - sum41([&](int y) { return Gamma(x)(d, y) * Gamma(y)(c, b); });
+        return g(a, x) * rmuxbcd;
+      });
     });
   });
 }
@@ -131,12 +114,12 @@ calc_weyl(const mat4<T, DN, DN> &g, const amat4<amat4<T, DN, DN>, DN, DN> &Rm,
   // C_abcd
   return amat4<amat4<T, DN, DN>, DN, DN>([&](int a, int b) {
     return amat4<T, DN, DN>([&](int c, int d) {
-      return Rm(a, b)(c, d) +
-             1 / T{4 - 2} *
-                 (R(a, d) * g(b, c) - R(a, c) * g(b, d) + R(b, c) * g(a, d) -
-                  R(b, d) * g(a, c)) +
-             1 / T{(4 - 1) * (4 - 2)} * Rsc *
-                 (g(a, c) * g(b, d) - g(a, d) * g(b, d));
+      return Rm(a, b)(c, d) //
+             + 1 / T{4 - 2} *
+                   (R(a, d) * g(b, c) - R(a, c) * g(b, d)    //
+                    + R(b, c) * g(a, d) - R(b, d) * g(a, c)) //
+             + 1 / T{(4 - 1) * (4 - 2)} * Rsc *
+                   (g(a, c) * g(b, d) - g(a, d) * g(b, c));
     });
   });
 }

@@ -9,11 +9,11 @@ STORAGE: weyl4
 
 
 
-# SCHEDULE Weyl_Test AT wragh
-# {
-#   LANG: C
-#   OPTIONS: meta
-# } "Self-test"
+SCHEDULE Weyl_Test AT wragh
+{
+  LANG: C
+  OPTIONS: meta
+} "Self-test"
 
 
 
