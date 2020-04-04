@@ -135,8 +135,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   //
 
-  loop_int<0, 0, 0>(
-      cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
         // Load and calculate
 
         const CCTK_REAL rho{0};

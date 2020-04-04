@@ -67,8 +67,7 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D<CCTK_REAL, 0, 0, 0> gf_dtbetay_(cctkGH, dtbetay);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_dtbetaz_(cctkGH, dtbetaz);
 
-  loop_all<0, 0, 0>(
-      cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
         // Load and calculate
         const z4c_vars_noderivs<CCTK_REAL> vars(
             kappa1, kappa2, f_mu_L, f_mu_S, eta, //
