@@ -12,6 +12,14 @@ SCHEDULE GROUP ADMBase_PostInitial AT initial AFTER (ADMBase_InitialData ADMBase
 {
 } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
 
+SCHEDULE GROUP ADMBase_SetADMVars AT poststep
+{
+} "Set ADM variables in this group, or before this group"
+
+SCHEDULE GROUP ADMBase_SetADMRHS AT poststep
+{
+} "Set ADM RHS variables in this group, or before this group"  
+
 
 
 if (CCTK_EQUALS(initial_data, "Cartesian Minkowski")) {
