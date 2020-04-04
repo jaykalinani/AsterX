@@ -152,6 +152,30 @@ static_assert(static_cast<const array<int, 3> &>(
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <typename T> struct zero;
+
+template <> struct zero<short> {
+  constexpr short operator()() const { return 0; }
+};
+
+template <> struct zero<int> {
+  constexpr int operator()() const { return 0; }
+};
+
+template <> struct zero<long> {
+  constexpr long operator()() const { return 0; }
+};
+
+template <> struct zero<float> {
+  constexpr float operator()() const { return 0; }
+};
+
+template <> struct zero<double> {
+  constexpr double operator()() const { return 0; }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
 template <typename T, int D> struct vect {
   array<T, D> elts;
 
@@ -402,6 +426,10 @@ template <typename T, int D> struct vect {
     os << "]";
     return os;
   }
+};
+
+template <typename T, int D> struct zero<vect<T, D> > {
+  constexpr vect<T, D> operator()() { return vect<T, D>(); }
 };
 
 } // namespace Arith
