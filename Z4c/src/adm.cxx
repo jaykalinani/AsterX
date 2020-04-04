@@ -35,6 +35,10 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Atyz_(cctkGH, Atyz);
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Atzz_(cctkGH, Atzz);
 
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_Gamtx_(cctkGH, Gamtx);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_Gamty_(cctkGH, Gamty);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_Gamtz_(cctkGH, Gamtz);
+
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Theta_(cctkGH, Theta);
 
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_alphaG_(cctkGH, alphaG);
@@ -73,14 +77,15 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
     // Load and calculate
     const z4c_vars_noderivs<CCTK_REAL> vars(
         kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-        gf_chi_, gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
-        gf_gammatyz_, gf_gammatzz_, gf_Kh_, gf_Atxx_, gf_Atxy_, gf_Atxz_,
-        gf_Atyy_, gf_Atyz_, gf_Atzz_,
-        //
-        // gf_Gamtx_, gf_Gamty_, gf_Gamtz_,
-        gf_chi_, gf_chi_, gf_chi_,
-        //
-        gf_Theta_, gf_alphaG_, gf_betaGx_, gf_betaGy_, gf_betaGz_, //
+        gf_chi_,                             //
+        gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_, gf_gammatyz_,
+        gf_gammatzz_,                                               //
+        gf_Kh_,                                                     //
+        gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_, gf_Atzz_, //
+        gf_Gamtx_, gf_Gamty_, gf_Gamtz_,                            //
+        gf_Theta_,                                                  //
+        gf_alphaG_,                                                 //
+        gf_betaGx_, gf_betaGy_, gf_betaGz_,                         //
         p.I);
 
     // Store
