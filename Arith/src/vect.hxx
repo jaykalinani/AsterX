@@ -396,7 +396,7 @@ template <typename T, int D> struct vect {
   }
 
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE T maxabs() const {
-    T r = 0;
+    T r = zero<T>()();
     for (int d = 0; d < D; ++d)
       r = fmax(r, fabs(elts[d]));
     return r;
@@ -410,7 +410,7 @@ template <typename T, int D> struct vect {
   }
 
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE T sum() const {
-    T r = 0;
+    T r = zero<T>()();
     for (int d = 0; d < D; ++d)
       r += elts[d];
     return r;
