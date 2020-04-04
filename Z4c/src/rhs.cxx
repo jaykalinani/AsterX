@@ -158,17 +158,16 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
         // Store
         gf_chi_rhs_(p.I) = vars.chi_rhs;
-        vars.gammat_rhs.store(gf_gammatxx_rhs_, gf_gammatxy_rhs_,
-                              gf_gammatxz_rhs_, gf_gammatyy_rhs_,
-                              gf_gammatyz_rhs_, gf_gammatzz_rhs_, p.I);
+    vars.gammat_rhs.store(gf_gammatxx_rhs_, gf_gammatxy_rhs_, gf_gammatxz_rhs_,
+                          gf_gammatyy_rhs_, gf_gammatyz_rhs_, gf_gammatzz_rhs_,
+                          p.I);
         gf_Kh_rhs_(p.I) = vars.Kh_rhs;
-        vars.At_rhs.store(gf_Atxx_rhs_, gf_Atxy_rhs_, gf_Atxz_rhs_,
-                          gf_Atyy_rhs_, gf_Atyz_rhs_, gf_Atzz_rhs_, p.I);
+    vars.At_rhs.store(gf_Atxx_rhs_, gf_Atxy_rhs_, gf_Atxz_rhs_, gf_Atyy_rhs_,
+                      gf_Atyz_rhs_, gf_Atzz_rhs_, p.I);
         vars.Gamt_rhs.store(gf_Gamtx_rhs_, gf_Gamty_rhs_, gf_Gamtz_rhs_, p.I);
         gf_Theta_rhs_(p.I) = vars.Theta_rhs;
         gf_alphaG_rhs_(p.I) = vars.alphaG_rhs;
-        vars.betaG_rhs.store(gf_betaGx_rhs_, gf_betaGy_rhs_, gf_betaGz_rhs_,
-                             p.I);
+    vars.betaG_rhs.store(gf_betaGx_rhs_, gf_betaGy_rhs_, gf_betaGz_rhs_, p.I);
       });
 
   // Upwind terms
