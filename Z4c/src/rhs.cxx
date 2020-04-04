@@ -181,6 +181,11 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
     gf_Theta_rhs_(p.I) = vars.Theta_rhs;
     gf_alphaG_rhs_(p.I) = vars.alphaG_rhs;
     vars.betaG_rhs.store(gf_betaGx_rhs_, gf_betaGy_rhs_, gf_betaGz_rhs_, p.I);
+
+    vars.K_rhs.store(gf_dtkxx_, gf_dtkxy_, gf_dtkxz_, gf_dtkyy_, gf_dtkyz_,
+                     gf_dtkzz_, p.I);
+    gf_dt2alp_(p.I) = vars.dtalpha_rhs;
+    vars.dtbeta_rhs.store(gf_dt2betax_, gf_dt2betay_, gf_dt2betaz_, p.I);
   });
 
   // Upwind terms
@@ -246,22 +251,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   apply_diss(cctkGH, gf_betaG_(0), gf_betaGx_rhs_);
   apply_diss(cctkGH, gf_betaG_(1), gf_betaGy_rhs_);
   apply_diss(cctkGH, gf_betaG_(2), gf_betaGz_rhs_);
-
-  // ADMBase
-
-#warning "TODO: These are wrong!"
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkxx_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkxy_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkxz_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkyy_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkyz_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtkzz_(p.I) = 0; });
-
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2alp_(p.I) = 0; });
-
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2betax_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2betay_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dt2betaz_(p.I) = 0; });
 }
 
 } // namespace Z4c

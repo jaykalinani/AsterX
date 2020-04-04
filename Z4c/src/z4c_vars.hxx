@@ -40,10 +40,12 @@ template <typename T> struct z4c_vars_noderivs {
   const mat3<T, DN, DN> Sij;
 
   // ADM variables
-  const mat3<T, DN, DN> g; // W = 0
-  const mat3<T, DN, DN> k; // W = 0
-  const T alp;             // W = 0
-  const vec3<T, UP> beta;  // W = 0
+  const mat3<T, DN, DN> g;  // W = 0
+  const mat3<T, DN, DN> K;  // W = 0
+  const T alp;              // W = 0
+  const T dtalp;            // W = 0
+  const vec3<T, UP> beta;   // W = 0
+  const vec3<T, UP> dtbeta; // W = 0
 
   Z4C_INLINE
   z4c_vars_noderivs(const T &kappa1, const T &kappa2, const T &f_mu_L,
@@ -64,11 +66,22 @@ template <typename T> struct z4c_vars_noderivs {
         rho(rho), Si(Si), Sij(Sij),
         // ADM variables
         g([&](int a, int b) { return 1 / chi * gammat(a, b); }), //
-        k([&](int a, int b) {
+        K([&](int a, int b) {
           return 1 / chi * (At(a, b) + (Kh + 2 * Theta) / 3 * gammat(a, b));
         }),          //
         alp(alphaG), //
-        beta([&](int a) { return betaG(a); })
+        // (11)
+        dtalp([&] {
+          const T mu_L = f_mu_L / alphaG;
+          return -pow2(alphaG) * mu_L * Kh;
+        }()),
+        beta([&](int a) { return betaG(a); }),
+        // (12)
+        dtbeta([&](int a) {
+          const T mu_S = f_mu_S / pow2(alphaG);
+          return pow2(alphaG) * mu_S * Gamt(a) //
+                 - eta * betaG(a);
+        })
   //
   {}
 
@@ -165,9 +178,11 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
 
   // ADM variables
   using z4c_vars_noderivs<T>::g;
-  using z4c_vars_noderivs<T>::k;
+  using z4c_vars_noderivs<T>::K;
   using z4c_vars_noderivs<T>::alp;
   using z4c_vars_noderivs<T>::beta;
+  using z4c_vars_noderivs<T>::dtalp;
+  using z4c_vars_noderivs<T>::dtbeta;
 
   // Derivatives of Z4c variables
   const vec3<T, DN> dchi;
@@ -218,6 +233,11 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   const T Theta_rhs;
   const T alphaG_rhs;
   const vec3<T, UP> betaG_rhs;
+
+  // ADM RHS variables
+  const mat3<T, DN, DN> K_rhs;
+  const T dtalpha_rhs;
+  const vec3<T, UP> dtbeta_rhs;
 
   // See arXiv:1212.2901 [gr-qc]
   Z4C_INLINE
@@ -458,16 +478,29 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  + 2 / T(3) * pow2(Kh + 2 * Theta))                         //
             - alphaG * (8 * M_PI * rho                                      //
                         + kappa1 * (2 + kappa2) * Theta)),
-        // (11)
-        alphaG_rhs([&] {
+        //
+        alphaG_rhs(dtalp), betaG_rhs(dtbeta),
+        //
+        K_rhs([&](int a, int b) {
+          return -1 / pow(chi, 2) * chi_rhs *
+                     (At(a, b) + (Kh + 2 * Theta) / 3 * gammat(a, b)) +
+                 1 / chi *
+                     (At_rhs(a, b) +
+                      (Kh_rhs + 2 * Theta_rhs) / 3 * gammat(a, b)) +
+                 1 / chi * (At(a, b) + (Kh + 2 * Theta) / 3 * gammat_rhs(a, b));
+        }),
+        //
+        dtalpha_rhs([&] {
           const T mu_L = f_mu_L / alphaG;
-          return -pow2(alphaG) * mu_L * Kh;
+          return -2 * alphaG * alphaG_rhs * mu_L * Kh //
+                 - pow2(alphaG) * mu_L * Kh_rhs;
         }()),
-        // (12)
-        betaG_rhs([&](int a) {
+        //
+        dtbeta_rhs([&](int a) {
           const T mu_S = f_mu_S / pow2(alphaG);
-          return pow2(alphaG) * mu_S * Gamt(a) //
-                 - eta * betaG(a);
+          return 2 * alphaG * alphaG_rhs * mu_S * Gamt(a) //
+                 + pow2(alphaG) * mu_S * Gamt_rhs(a)      //
+                 - eta * betaG_rhs(a);
         })
   //
   {}

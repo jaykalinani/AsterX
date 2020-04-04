@@ -90,17 +90,12 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
 
     // Store
     vars.g.store(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_, gf_gzz_, p.I);
-    vars.k.store(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_, gf_kzz_, p.I);
+    vars.K.store(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_, gf_kzz_, p.I);
     gf_alp_(p.I) = vars.alp;
+    gf_dtalp_(p.I) = vars.dtalp;
     vars.beta.store(gf_betax_, gf_betay_, gf_betaz_, p.I);
+    vars.dtbeta.store(gf_dtbetax_, gf_dtbetay_, gf_dtbetaz_, p.I);
   });
-
-#warning "TODO: These are wrong!"
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtalp_(p.I) = 0; });
-
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtbetax_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtbetay_(p.I) = 0; });
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_dtbetaz_(p.I) = 0; });
 }
 
 } // namespace Z4c
