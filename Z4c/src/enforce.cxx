@@ -36,8 +36,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 0, 0, 0> gf_alphaG_(cctkGH, alphaG);
 
-  loop_all<0, 0, 0>(
-      cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
         // Load
         const CCTK_REAL chi_old = gf_chi_(p.I);
         const CCTK_REAL alphaG_old = gf_alphaG_(p.I);

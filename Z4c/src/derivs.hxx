@@ -26,8 +26,8 @@ constexpr int deriv_order = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv1d(const T *restrict const var,
-                                              const ptrdiff_t di, const T dx) {
+inline Z4C_INLINE T deriv1d(const T *restrict const var, const ptrdiff_t di,
+                            const T dx) {
   switch (deriv_order) {
   case 2:
     return -1 / T(2) * (var[-di] - var[+di]) / dx;
@@ -41,9 +41,9 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv1d(const T *restrict const var,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T
-deriv1d_upwind(const T *restrict const var, const ptrdiff_t di, const bool sign,
-               const T dx) {
+inline Z4C_INLINE T deriv1d_upwind(const T *restrict const var,
+                                   const ptrdiff_t di, const bool sign,
+                                   const T dx) {
   // arXiv:1111.2177 [gr-qc], (71)
   switch (deriv_order) {
   case 2:
@@ -85,9 +85,8 @@ deriv1d_upwind(const T *restrict const var, const ptrdiff_t di, const bool sign,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv2_1d(const T *restrict const var,
-                                                const ptrdiff_t di,
-                                                const T dx) {
+inline Z4C_INLINE T deriv2_1d(const T *restrict const var, const ptrdiff_t di,
+                              const T dx) {
   switch (deriv_order) {
   case 2:
     return ((var[-di] + var[+di]) //
@@ -104,10 +103,8 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv2_1d(const T *restrict const var,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv2_2d(const T *restrict const var,
-                                                const ptrdiff_t di,
-                                                const ptrdiff_t dj, const T dx,
-                                                const T dy) {
+inline Z4C_INLINE T deriv2_2d(const T *restrict const var, const ptrdiff_t di,
+                              const ptrdiff_t dj, const T dx, const T dy) {
   array<T, deriv_order + 1> arrx;
   T *const varx = &arrx[arrx.size() / 2];
   for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
@@ -116,9 +113,8 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv2_2d(const T *restrict const var,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv1d_diss(const T *restrict const var,
-                                                   const ptrdiff_t di,
-                                                   const T dx) {
+inline Z4C_INLINE T deriv1d_diss(const T *restrict const var,
+                                 const ptrdiff_t di, const T dx) {
   switch (deriv_order) {
   case 2:
     return ((var[-2 * di] + var[+2 * di]) //
@@ -139,25 +135,24 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv1d_diss(const T *restrict const var,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <int dir, typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T deriv(const GF3D<const T, 0, 0, 0> &gf_,
-                                            const vect<int, dim> &I,
-                                            const vec3<T, UP> &dx) {
+inline Z4C_INLINE T deriv(const GF3D<const T, 0, 0, 0> &gf_,
+                          const vect<int, dim> &I, const vec3<T, UP> &dx) {
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.offset(DI(dir));
   return deriv1d(&gf_(I), di, dx(dir));
 }
 
 template <int dir, typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T
-deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-             const bool sign, const vec3<T, UP> &dx) {
+inline Z4C_INLINE T deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_,
+                                 const vect<int, dim> &I, const bool sign,
+                                 const vec3<T, UP> &dx) {
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.offset(DI(dir));
   return deriv1d_upwind(&gf_(I), di, sign, dx(dir));
 }
 
 template <int dir1, int dir2, typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(dir1 == dir2), T>
+inline Z4C_INLINE enable_if_t<(dir1 == dir2), T>
 deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
        const vec3<T, UP> &dx) {
   const auto &DI = vect<int, dim>::unit;
@@ -166,7 +161,7 @@ deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <int dir1, int dir2, typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(dir1 != dir2), T>
+inline Z4C_INLINE enable_if_t<(dir1 != dir2), T>
 deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
        const vec3<T, UP> &dx) {
   const auto &DI = vect<int, dim>::unit;
@@ -176,9 +171,8 @@ deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <int dir, typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T
-deriv_diss(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-           const vec3<T, UP> &dx) {
+inline Z4C_INLINE T deriv_diss(const GF3D<const T, 0, 0, 0> &gf_,
+                               const vect<int, dim> &I, const vec3<T, UP> &dx) {
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.offset(DI(dir));
   return deriv1d_diss(&gf_(I), di, dx(dir));
@@ -187,9 +181,9 @@ deriv_diss(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE vec3<T, DN>
-deriv(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-      const vec3<T, UP> &dx) {
+inline Z4C_INLINE vec3<T, DN> deriv(const GF3D<const T, 0, 0, 0> &gf_,
+                                    const vect<int, dim> &I,
+                                    const vec3<T, UP> &dx) {
   return {
       deriv<0>(gf_, I, dx),
       deriv<1>(gf_, I, dx),
@@ -198,7 +192,7 @@ deriv(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE vec3<T, DN>
+inline Z4C_INLINE vec3<T, DN>
 deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
              const vec3<T, UP> &dir, const vec3<T, UP> &dx) {
   return {
@@ -209,9 +203,9 @@ deriv_upwind(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE mat3<T, DN, DN>
-deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
-       const vec3<T, UP> &dx) {
+inline Z4C_INLINE mat3<T, DN, DN> deriv2(const GF3D<const T, 0, 0, 0> &gf_,
+                                         const vect<int, dim> &I,
+                                         const vec3<T, UP> &dx) {
   return {
       deriv2<0, 0>(gf_, I, dx), deriv2<0, 1>(gf_, I, dx),
       deriv2<0, 2>(gf_, I, dx), deriv2<1, 1>(gf_, I, dx),
@@ -220,9 +214,8 @@ deriv2(const GF3D<const T, 0, 0, 0> &gf_, const vect<int, dim> &I,
 }
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE T diss(const GF3D<const T, 0, 0, 0> &gf_,
-                                           const vect<int, dim> &I,
-                                           const vec3<T, UP> &dx) {
+inline Z4C_INLINE T diss(const GF3D<const T, 0, 0, 0> &gf_,
+                         const vect<int, dim> &I, const vec3<T, UP> &dx) {
   // arXiv:gr-qc/0610128, (63), with r=2
   constexpr int diss_order = deriv_order + 2;
   constexpr int sign = diss_order % 4 == 0 ? -1 : +1;
@@ -242,12 +235,11 @@ calc_derivs(const cGH *restrict const cctkGH, const GF3D<const T, 0, 0, 0> &gf_,
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
-  loop_int<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                      const auto dval = deriv(gf_, p.I, dx);
-                      for (int a = 0; a < 3; ++a)
-                        dgf_(a)(p.I) = dval(a);
-                    });
+  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+    const auto dval = deriv(gf_, p.I, dx);
+    for (int a = 0; a < 3; ++a)
+      dgf_(a)(p.I) = dval(a);
+  });
 }
 
 template <typename T>
@@ -260,16 +252,15 @@ calc_derivs2(const cGH *restrict const cctkGH,
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
-  loop_int<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                      const auto dval = deriv(gf_, p.I, dx);
-                      for (int a = 0; a < 3; ++a)
-                        dgf_(a)(p.I) = dval(a);
-                      const auto ddval = deriv2(gf_, p.I, dx);
-                      for (int a = 0; a < 3; ++a)
-                        for (int b = a; b < 3; ++b)
-                          ddgf_(a, b)(p.I) = ddval(a, b);
-                    });
+  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+    const auto dval = deriv(gf_, p.I, dx);
+    for (int a = 0; a < 3; ++a)
+      dgf_(a)(p.I) = dval(a);
+    const auto ddval = deriv2(gf_, p.I, dx);
+    for (int a = 0; a < 3; ++a)
+      for (int b = a; b < 3; ++b)
+        ddgf_(a, b)(p.I) = ddval(a, b);
+  });
 }
 
 template <typename T, dnup_t dnup>
@@ -322,12 +313,11 @@ apply_upwind(const cGH *restrict const cctkGH,
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
-  loop_int<0, 0, 0>(
-      cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const vec3<CCTK_REAL, UP> betaG = gf_betaG_(p.I);
-        const vec3<CCTK_REAL, DN> dgf_upwind(deriv_upwind(gf_, p.I, betaG, dx));
-        gf_rhs_(p.I) += sum1([&](int x) { return betaG(x) * dgf_upwind(x); });
-      });
+  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+    const vec3<CCTK_REAL, UP> betaG = gf_betaG_(p.I);
+    const vec3<CCTK_REAL, DN> dgf_upwind(deriv_upwind(gf_, p.I, betaG, dx));
+    gf_rhs_(p.I) += sum1([&](int x) { return betaG(x) * dgf_upwind(x); });
+  });
 }
 
 template <typename T>
@@ -342,10 +332,9 @@ CCTK_ATTRIBUTE_NOINLINE void apply_diss(const cGH *restrict const cctkGH,
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
-  loop_int<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                      gf_rhs_(p.I) += epsdiss * diss(gf_, p.I, dx);
-                    });
+  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+    gf_rhs_(p.I) += epsdiss * diss(gf_, p.I, dx);
+  });
 }
 
 } // namespace Z4c
