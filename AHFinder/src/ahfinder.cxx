@@ -66,19 +66,20 @@ template <typename T> struct metric_t {
 };
 
 template <typename T>
-metric_t<T> calculate_metric(const cGH *const cctkGH,
-                             const coords_t<T> &coords) {
+metric_t<T> brill_lindquist_metric(const cGH *const cctkGH,
+                                   const coords_t<T> &coords) {
   const geom_t &geom = coords.geom;
   metric_t<T> metric(geom);
 
+  const T x0 = 0.0;
+  const T y0 = 0.0;
+  const T z0 = 0.0;
+  const T M = 1.0;
+
 #pragma omp simd
   for (int n = 0; n < geom.npoints; ++n) {
-    const T x0 = 0.0;
-    const T y0 = 0.0;
-    const T z0 = 0.0;
-    const T M = 1.0;
     using U = vect<T, 3>;
-    using DT = dual<T, U>;
+    using DT = dual<T, U>; // spatial derivatives (x, y, z)
     const DT x{coords.x.data()[n], {1, 0, 0}};
     const DT y{coords.y.data()[n], {0, 1, 0}};
     const DT z{coords.z.data()[n], {0, 0, 1}};
@@ -393,9 +394,107 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
       const dual<T> sut = qurt * sr + qutt * st + z_qutp * s_sp;
       const dual<T> z_sup = z_qurp * sr + z_qutp * st + zz_qupp * s_sp;
 
-      const dual<T> s2 = sr * sur + st * sut + s_sp * z_sup;
 #ifdef CCTK_DEBUG
+      const dual<T> s2 = sr * sur + st * sut + s_sp * z_sup;
       assert(fabs(s2 - 1) <= 1.0e-12);
+#endif
+
+#ifdef CCTK_DEBUG
+      // m1_a
+      // TODO: rename to m1^a
+      dual<T> m1ur = h_t;
+      dual<T> m1ut = 1;
+      dual<T> z_m1up = 0;
+
+      dual<T> m1r = qrr * m1ur + qrt * m1ut + s_qrp * z_m1up;
+      dual<T> m1t = qrt * m1ur + qtt * m1ut + s_qtp * z_m1up;
+      dual<T> s_m1p = s_qrp * m1ur + s_qtp * m1ut + ss_qpp * z_m1up;
+
+      dual<T> m12 = m1r * m1ur + m1t * m1ut + s_m1p * z_m1up;
+
+      m1ur /= sqrt(m12);
+      m1ut /= sqrt(m12);
+      z_m1up /= sqrt(m12);
+
+      m1r = qrr * m1ur + qrt * m1ut + s_qrp * z_m1up;
+      m1t = qrt * m1ur + qtt * m1ut + s_qtp * z_m1up;
+      s_m1p = s_qrp * m1ur + s_qtp * m1ut + ss_qpp * z_m1up;
+
+      m12 = m1r * m1ur + m1t * m1ut + s_m1p * z_m1up;
+      assert(fabs(m12 - 1) <= 1.0e-12);
+
+      const dual<T> sm1 = sr * m1ur + st * m1ut + s_sp * z_m1up;
+      assert(fabs(sm1) <= 1.0e-12);
+
+      // m2_a
+      dual<T> s_m2ur = s_h_p;
+      dual<T> s_m2ut = 0;
+      dual<T> m2up = 1;
+
+      const dual<T> s_m1m2 = s_m2ur * m1r + s_m2ut * m1t + m2up * s_m1p;
+
+      s_m2ur -= s_m1m2 * m1ur;
+      s_m2ut -= s_m1m2 * m1ut;
+      m2up -= s_m1m2 * z_m1up;
+
+      const dual<T> s_m2r = qrr * s_m2ur + qrt * s_m2ut + s_qrp * m2up;
+      const dual<T> s_m2t = qrt * s_m2ur + qtt * s_m2ut + s_qtp * m2up;
+      const dual<T> ss_m2p = s_qrp * s_m2ur + s_qtp * s_m2ut + ss_qpp * m2up;
+
+      const dual<T> ss_m22 = s_m2r * s_m2ur + s_m2t * s_m2ut + ss_m2p * m2up;
+
+      const dual<T> m2ur = s_m2ur / sqrt(ss_m22);
+      const dual<T> m2ut = s_m2ut / sqrt(ss_m22);
+      const dual<T> z_m2up = m2up / sqrt(ss_m22);
+
+      const dual<T> m2r = qrr * m2ur + qrt * m2ut + s_qrp * z_m2up;
+      const dual<T> m2t = qrt * m2ur + qtt * m2ut + s_qtp * z_m2up;
+      const dual<T> s_m2p = s_qrp * m2ur + s_qtp * m2ut + ss_qpp * z_m2up;
+
+      const dual<T> m1m2 = m2ur * m1r + m2ut * m1t + z_m2up * s_m1p;
+      assert(fabs(m1m2) <= 1.0e-12);
+
+      const dual<T> m22 = m2r * m2ur + m2t * m2ut + s_m2p * z_m2up;
+      assert(fabs(m22 - 1) <= 1.0e-12);
+
+      const dual<T> sm2 = sr * m2ur + st * m2ut + s_sp * z_m2up;
+      assert(fabs(sm2) <= 1.0e-12);
+#endif
+
+#if 0
+      {
+        // m1_a
+        const dual<T> m1ux = x_t + h_t * sin(theta) * cos(phi);
+        const dual<T> m1uy = y_t + h_t * sin(theta) * sin(phi);
+        const dual<T> m1uz = z_t + h_t * cos(theta);
+
+        const dual<T> m1x = gxx * m1ux + gxy * m1uy + gxz * m1uz;
+        const dual<T> m1y = gxy * m1ux + gyy * m1uy + gyz * m1uz;
+        const dual<T> m1z = gxz * m1ux + gyz * m1uy + gzz * m1uz;
+
+        const dual<T> m1r = m1x * x_r + m1y * y_r + m1z * z_r;
+        const dual<T> m1t = m1x * x_t + m1y * y_t + m1z * z_t;
+        const dual<T> s_m1p = m1x * s_x_p + m1y * s_y_p + m1z * s_z_p;
+
+        const dual<T> sm1 = sur * m1r + sut * m1t + z_sup * s_m1p;
+        assert(fabs(sm1) <= 1.0e-12);
+
+        // m2_a
+        const dual<T> s_m2ux = s_x_p + s_h_p * sin(theta) * cos(phi);
+        const dual<T> s_m2uy = s_y_p + s_h_p * sin(theta) * sin(phi);
+        const dual<T> s_m2uz = s_z_p + s_h_p * cos(theta);
+
+        const dual<T> s_m2x = gxx * s_m2ux + gxy * s_m2uy + gxz * s_m2uz;
+        const dual<T> s_m2y = gxy * s_m2ux + gyy * s_m2uy + gyz * s_m2uz;
+        const dual<T> s_m2z = gxz * s_m2ux + gyz * s_m2uy + gzz * s_m2uz;
+
+        const dual<T> s_m2r = s_m2x * x_r + s_m2y * y_r + s_m2z * z_r;
+        const dual<T> s_m2t = s_m2x * x_t + s_m2y * y_t + s_m2z * z_t;
+        const dual<T> ss_m2p = s_m2x * s_x_p + s_m2y * s_y_p + s_m2z * s_z_p;
+
+        const dual<T> s_sm2 = sur * s_m2r + sut * s_m2t + z_sup * ss_m2p;
+        assert(fabs(s_sm2) <= 1.0e-12);
+      }
 #endif
 
       // densitized spacelike normal
@@ -407,12 +506,51 @@ expansion_t<T> expansion(const metric_t<T> &metric, const alm_t<T> &hlm) {
       // [arXiv:gr-qc/0702038], (26)
       const T lambda = Psi4 * dF.val * pow(r.val, 2);
 
-      const T ss_detQ = (qtt * ss_qpp - pow(s_qtp, 2)).val;
-      const T s_sqrt_detQ = sqrt(ss_detQ);
-      // const T darea = sin(theta.val) * s_sqrt_detQ * geom.coord_dtheta(i, j)
-      // *
-      //                 geom.coord_dphi(i, j);
-      const T A = s_sqrt_detQ;
+      // Construct a 2-metric on the surface
+
+      const dual<T> x_T =
+          h_t * sin(theta) * cos(phi) + r * cos(theta) * cos(phi);
+      const dual<T> y_T =
+          h_t * sin(theta) * sin(phi) + r * cos(theta) * sin(phi);
+      const dual<T> z_T = h_t * cos(theta) - r * sin(theta);
+      const dual<T> s_x_P = s_h_p * sin(theta) * cos(phi) - r * sin(phi);
+      const dual<T> s_y_P = s_h_p * sin(theta) * sin(phi) + r * cos(phi);
+      const dual<T> s_z_P = s_h_p * cos(theta);
+
+      const dual<T> qTT = 0                 //
+                          + gxx * x_T * x_T //
+                          + gxy * x_T * y_T //
+                          + gxz * x_T * z_T //
+                          + gxy * y_T * x_T //
+                          + gyy * y_T * y_T //
+                          + gyz * y_T * z_T //
+                          + gxz * z_T * x_T //
+                          + gyz * z_T * y_T //
+                          + gzz * z_T * z_T;
+      const dual<T> s_qTP = 0                   //
+                            + gxx * x_T * s_x_P //
+                            + gxy * x_T * s_y_P //
+                            + gxz * x_T * s_z_P //
+                            + gxy * y_T * s_x_P //
+                            + gyy * y_T * s_y_P //
+                            + gyz * y_T * s_z_P //
+                            + gxz * z_T * s_x_P //
+                            + gyz * z_T * s_y_P //
+                            + gzz * z_T * s_z_P;
+      const dual<T> ss_qPP = 0                     //
+                             + gxx * s_x_P * s_x_P //
+                             + gxy * s_x_P * s_y_P //
+                             + gxz * s_x_P * s_z_P //
+                             + gxy * s_y_P * s_x_P //
+                             + gyy * s_y_P * s_y_P //
+                             + gyz * s_y_P * s_z_P //
+                             + gxz * s_z_P * s_x_P //
+                             + gyz * s_z_P * s_y_P //
+                             + gzz * s_z_P * s_z_P;
+
+      const dual<T> ss_detq2 = qTT * ss_qPP - pow(s_qTP, 2);
+      const dual<T> s_sqrt_detq2 = sqrt(ss_detq2);
+      const T A = s_sqrt_detq2.val;
 
       // spacelike normal
       surij(i, j) = sur.val;
@@ -715,9 +853,9 @@ template <typename T>
 expansion_t<T> update(const cGH *const cctkGH, const alm_t<T> &hlm) {
   const auto hij = evaluate(hlm);
   const auto coords = coords_from_shape(hij);
-#warning "TODO"
-  // const auto metric = interpolate_metric(cctkGH, coords);
-  const auto metric = calculate_metric(cctkGH, coords);
+  // CCTK_VWARN(CCTK_WARN_ALERT, "Using Brill-Lindquist metric");
+  // const auto metric = brill_lindquist_metric(cctkGH, coords);
+  const auto metric = interpolate_metric(cctkGH, coords);
   const auto res = expansion(metric, hlm);
   return res;
 }

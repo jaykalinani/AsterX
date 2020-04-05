@@ -33,13 +33,17 @@ struct geom_t {
   double coord_theta(const int i, const int j) const {
     assert(i >= 0 && i < ntheta);
     assert(j >= 0 && j < nphi);
-    return ssht_sampling_mw_t2theta(i, nmodes);
+    const double theta = ssht_sampling_mw_t2theta(i, nmodes);
+    assert(theta >= 0 && theta <= M_PI);
+    return theta;
   }
 
   double coord_phi(const int i, const int j) const {
     assert(i >= 0 && i < ntheta);
     assert(j >= 0 && j < nphi);
-    return ssht_sampling_mw_p2phi(j, nmodes);
+    const double phi = ssht_sampling_mw_p2phi(j, nmodes);
+    assert(phi >= 0 && phi < 2 * M_PI);
+    return phi;
   }
 
   double coord_dtheta(const int i, const int j) const {
