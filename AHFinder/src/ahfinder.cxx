@@ -14,6 +14,7 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -74,6 +75,9 @@ metric_t<T> brill_lindquist_metric(const cGH *const cctkGH,
   const T x0 = 0.0;
   const T y0 = 0.0;
   const T z0 = 0.0;
+  const T fx = 0.8;
+  const T fy = 1.0;
+  const T fz = 1.0;
   const T M = 1.0;
 
 #pragma omp simd
@@ -83,32 +87,36 @@ metric_t<T> brill_lindquist_metric(const cGH *const cctkGH,
     const DT x{coords.x.data()[n], {1, 0, 0}};
     const DT y{coords.y.data()[n], {0, 1, 0}};
     const DT z{coords.z.data()[n], {0, 0, 1}};
-    const DT r = sqrt(pow(x - x0, 2) + pow(y - y0, 2) + pow(z - z0, 2));
-    const DT psi = pow(1 + M / (2 * r), 4);
-    metric.gxx.data()[n] = psi.val;
+    const DT X = (x - x0) / fx;
+    const DT Y = (y - y0) / fy;
+    const DT Z = (z - z0) / fz;
+    const DT R = sqrt(pow(X, 2) + pow(Y, 2) + pow(Z, 2));
+    const DT Psi = pow(1 + M / (2 * R), 4);
+    const vect<T, 3> eta{pow(X.eps[0], 2), pow(Y.eps[1], 2), pow(Z.eps[2], 2)};
+    metric.gxx.data()[n] = Psi.val * eta[0];
     metric.gxy.data()[n] = 0;
     metric.gxz.data()[n] = 0;
-    metric.gyy.data()[n] = psi.val;
+    metric.gyy.data()[n] = Psi.val * eta[1];
     metric.gyz.data()[n] = 0;
-    metric.gzz.data()[n] = psi.val;
-    metric.gxx_x.data()[n] = psi.eps[0];
+    metric.gzz.data()[n] = Psi.val * eta[2];
+    metric.gxx_x.data()[n] = Psi.eps[0] * eta[0];
     metric.gxy_x.data()[n] = 0;
     metric.gxz_x.data()[n] = 0;
-    metric.gyy_x.data()[n] = psi.eps[0];
+    metric.gyy_x.data()[n] = Psi.eps[0] * eta[1];
     metric.gyz_x.data()[n] = 0;
-    metric.gzz_x.data()[n] = psi.eps[0];
-    metric.gxx_y.data()[n] = psi.eps[1];
+    metric.gzz_x.data()[n] = Psi.eps[0] * eta[2];
+    metric.gxx_y.data()[n] = Psi.eps[1] * eta[0];
     metric.gxy_y.data()[n] = 0;
     metric.gxz_y.data()[n] = 0;
-    metric.gyy_y.data()[n] = psi.eps[1];
+    metric.gyy_y.data()[n] = Psi.eps[1] * eta[1];
     metric.gyz_y.data()[n] = 0;
-    metric.gzz_y.data()[n] = psi.eps[1];
-    metric.gxx_z.data()[n] = psi.eps[2];
+    metric.gzz_y.data()[n] = Psi.eps[1] * eta[2];
+    metric.gxx_z.data()[n] = Psi.eps[2] * eta[0];
     metric.gxy_z.data()[n] = 0;
     metric.gxz_z.data()[n] = 0;
-    metric.gyy_z.data()[n] = psi.eps[2];
+    metric.gyy_z.data()[n] = Psi.eps[2] * eta[1];
     metric.gyz_z.data()[n] = 0;
-    metric.gzz_z.data()[n] = psi.eps[2];
+    metric.gzz_z.data()[n] = Psi.eps[2] * eta[2];
     metric.kxx.data()[n] = 0;
     metric.kxy.data()[n] = 0;
     metric.kxz.data()[n] = 0;
@@ -871,30 +879,68 @@ expansion_t<T> solve(const cGH *const cctkGH, const alm_t<T> &hlm_ini) {
     const auto &hlm = *hlm_ptr;
     const geom_t &geom = hlm.geom;
     const auto hij = evaluate(hlm);
+
     const auto res = update(cctkGH, hlm);
+
     const auto &Thetalm = res.Thetalm;
     const auto hlm_new = filter(res.hlm_new, lmax_filter);
     const auto hij_new = evaluate(hlm_new);
+
     T dh_maxabs{0};
     for (int i = 0; i < geom.ntheta; ++i)
 #pragma omp simd
       for (int j = 0; j < geom.nphi; ++j)
         dh_maxabs = fmax(dh_maxabs, fabs(hij_new(i, j) - hij(i, j)));
+
+    alm_t<T> dhlm(geom);
+    for (int l = 0; l <= geom.lmax; ++l)
+#pragma omp simd
+      for (int m = -l; m <= l; ++m)
+        dhlm(l, m) = hlm_new(l, m) - hlm(l, m);
+    auto dhij = evaluate(dhlm);
+    aij_t<T> dh2ij(geom);
+    for (int i = 0; i < geom.ntheta; ++i)
+#pragma omp simd
+      for (int j = 0; j < geom.nphi; ++j)
+        dh2ij(i, j) = pow(dhij(i, j), 2);
+    const auto dh2lm = expand(dh2ij);
+    const T dh_norm2 = sqrt(sqrt(4 * M_PI) * real(dh2lm(0, 0)));
+
     const auto Thetaij = evaluate(Thetalm);
     T Theta_maxabs{0};
     for (int i = 0; i < geom.ntheta; ++i)
 #pragma omp simd
       for (int j = 0; j < geom.nphi; ++j)
         Theta_maxabs = fmax(Theta_maxabs, fabs(Thetaij(i, j)));
+
+    aij_t<T> Theta2ij(geom);
+    for (int i = 0; i < geom.ntheta; ++i)
+#pragma omp simd
+      for (int j = 0; j < geom.nphi; ++j)
+        Theta2ij(i, j) = pow(Thetaij(i, j), 2);
+    const auto Theta2lm = expand(Theta2ij);
+    const T Theta_norm2 = sqrt(sqrt(4 * M_PI) * real(Theta2lm(0, 0)));
+
     const T h = real(hlm(0, 0)) / sqrt(4 * M_PI);
+
     const T cx = res.cx;
     const T cy = res.cy;
     const T cz = res.cz;
     const T R = sqrt(res.area / (4 * M_PI));
+
     CCTK_VINFO("iter=%d h=%f c=[%f,%f,%f] R=%f", iter, double(h), double(cx),
                double(cy), double(cz), double(R));
-    CCTK_VINFO("  |Θ|=%g |Δh|=%g", double(Theta_maxabs), double(dh_maxabs));
-    if (iter >= maxiters || dh_maxabs <= 1.0e-12)
+    CCTK_VINFO("  h_0m=%f", double(real(hlm(0, 0))));
+    CCTK_VINFO("  h_1m=%f (%f,%f)", double(real(hlm(1, 0))),
+               double(real(hlm(1, 1))), double(imag(hlm(1, 1))));
+    CCTK_VINFO("  h_2m=%f (%f,%f) (%f,%f)", double(real(hlm(2, 0))),
+               double(real(hlm(2, 1))), double(imag(hlm(2, 1))),
+               double(real(hlm(2, 2))), double(imag(hlm(2, 2))));
+    CCTK_VINFO("  |Θ|∞=%g |Θ|2=%g |Δh|∞=%g |Δh|2=%g", double(Theta_maxabs),
+               double(Theta_norm2), double(dh_maxabs), double(dh_norm2));
+
+    const T eps = pow(numeric_limits<T>::epsilon(), T(3) / 4);
+    if (iter >= maxiters || dh_maxabs <= eps)
       return res;
     hlm_ptr = make_unique<alm_t<T> >(move(hlm_new));
   }
