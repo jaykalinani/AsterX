@@ -1,3 +1,8 @@
+#ifndef DUAL_HXX
+#define DUAL_HXX
+
+#include "vect.hxx"
+
 #include <cassert>
 #include <cmath>
 #include <functional>
@@ -82,6 +87,12 @@ template <typename T, typename U = T> struct dual {
   }
 };
 
+template <typename T, typename U> struct zero<dual<T, U> > {
+  constexpr dual<T, U> operator()() const {
+    return dual<T, U>(zero<T>()(), zero<U>()());
+  }
+};
+
 } // namespace Arith
 namespace std {
 template <typename T, typename U> struct equal_to<Arith::dual<T, U> > {
@@ -107,6 +118,8 @@ template <typename T, typename U> struct less<Arith::dual<T, U> > {
 };
 
 template <typename T, typename U>
+constexpr Arith::dual<T, U> abs(const Arith::dual<T, U> &x);
+template <typename T, typename U>
 constexpr Arith::dual<T, U> cbrt(const Arith::dual<T, U> &x);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> cos(const Arith::dual<T, U> &x);
@@ -115,6 +128,8 @@ constexpr Arith::dual<T, U> exp(const Arith::dual<T, U> &x);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> fabs(const Arith::dual<T, U> &x);
 template <typename T, typename U>
+constexpr bool isnan(const Arith::dual<T, U> &x);
+template <typename T, typename U>
 constexpr Arith::dual<T, U> pow(const Arith::dual<T, U> &x, int n);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> pow2(const Arith::dual<T, U> &x);
@@ -122,6 +137,12 @@ template <typename T, typename U>
 constexpr Arith::dual<T, U> sin(const Arith::dual<T, U> &x);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> sqrt(const Arith::dual<T, U> &x);
+
+template <typename T, typename U>
+constexpr Arith::dual<T, U> abs(const Arith::dual<T, U> &x) {
+  // return sqrt(pow2(x));
+  return {abs(x.val), copysign(T{1}, x.val) * x.eps};
+}
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> cbrt(const Arith::dual<T, U> &x) {
@@ -147,6 +168,11 @@ constexpr Arith::dual<T, U> fabs(const Arith::dual<T, U> &x) {
 }
 
 template <typename T, typename U>
+constexpr bool isnan(const Arith::dual<T, U> &x) {
+  return isnan(x.val) || x.eps.isnan().any();
+}
+
+template <typename T, typename U>
 constexpr Arith::dual<T, U> pow(const Arith::dual<T, U> &x, const int n) {
   if (n == 0)
     return {1, U{}};
@@ -168,4 +194,50 @@ constexpr Arith::dual<T, U> sqrt(const Arith::dual<T, U> &x) {
   const T r = sqrt(x.val);
   return {r, x.eps / (2 * r)};
 }
+
 } // namespace std
+
+////////////////////////////////////////////////////////////////////////////////
+namespace Arith {
+
+template <typename T> struct one;
+
+template <> struct one<bool> {
+  constexpr bool operator()() const { return 1; }
+};
+
+template <> struct one<short> {
+  constexpr short operator()() const { return 1; }
+};
+
+template <> struct one<int> {
+  constexpr int operator()() const { return 1; }
+};
+
+template <> struct one<long> {
+  constexpr long operator()() const { return 1; }
+};
+
+template <> struct one<float> {
+  constexpr float operator()() const { return 1; }
+};
+
+template <> struct one<double> {
+  constexpr double operator()() const { return 1; }
+};
+
+template <typename T> struct one<complex<T> > {
+  constexpr complex<T> operator()() const {
+    return complex<T>(one<T>()(), zero<T>()());
+  }
+};
+
+template <typename T, typename U> struct one<dual<T, U> > {
+  constexpr dual<T, U> operator()() const {
+    return dual<T, U>(one<T>()(), zero<U>()());
+  }
+};
+
+} // namespace Arith
+
+#endif // #ifndef DUAL_HXX

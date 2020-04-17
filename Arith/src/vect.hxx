@@ -11,6 +11,7 @@
 #undef signbit
 
 #include <array>
+#include <complex>
 #include <initializer_list>
 #include <type_traits>
 #include <utility>
@@ -154,6 +155,10 @@ static_assert(static_cast<const array<int, 3> &>(
 
 template <typename T> struct zero;
 
+template <> struct zero<bool> {
+  constexpr bool operator()() const { return 0; }
+};
+
 template <> struct zero<short> {
   constexpr short operator()() const { return 0; }
 };
@@ -172,6 +177,12 @@ template <> struct zero<float> {
 
 template <> struct zero<double> {
   constexpr double operator()() const { return 0; }
+};
+
+template <typename T> struct zero<complex<T> > {
+  constexpr complex<T> operator()() const {
+    return complex<T>(zero<T>()(), zero<T>()());
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -455,6 +466,15 @@ abs(const Arith::vect<T, D> &x) {
   Arith::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = abs(x.elts[d]);
+  return r;
+}
+
+template <typename T, int D>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<bool, D>
+isnan(const Arith::vect<T, D> &x) {
+  Arith::vect<bool, D> r;
+  for (int d = 0; d < D; ++d)
+    r.elts[d] = isnan(x.elts[d]);
   return r;
 }
 
