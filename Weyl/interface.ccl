@@ -51,3 +51,62 @@ CCTK_REAL weyl4 TYPE=gf TAGS='index={0 0 0}'
   c4xzxz c4xzyz
   c4yzyz
 } "4-Weyl tensor C_abcd"
+
+
+
+CCTK_REAL tetrad_l TYPE=gf TAGS='index={0 0 0}'
+{
+  lt lx ly lz
+} "Tetrad vector l^a"
+
+CCTK_REAL tetrad_n TYPE=gf TAGS='index={0 0 0}'
+{
+  nt nx ny nz
+} "Tetrad vector n^a"
+
+# TODO: Combine these, represent as complex number
+CCTK_REAL tetrad_mre TYPE=gf TAGS='index={0 0 0}'
+{
+  mret mrex mrey mrez
+} "Tetrad vector real(m^a)"
+
+CCTK_REAL tetrad_mim TYPE=gf TAGS='index={0 0 0}'
+{
+  mimt mimx mimy mimz
+} "Tetrad vector imag(m^a)"
+
+CCTK_REAL ricci_scalars TYPE=gf TAGS='index={0 0 0}'
+{
+  Lambda
+  Phi00
+  Phi11
+  Phi22
+  Phi10re Phi10im
+  Phi20re Phi20im
+  Phi21re Phi21im
+} "Ricci scalars"
+
+CCTK_REAL weyl_scalars TYPE=gf TAGS='index={0 0 0}'
+{
+  Psi0re Psi0im
+  Psi1re Psi1im
+  Psi2re Psi2im
+  Psi3re Psi3im
+  Psi4re Psi4im
+} "Weyl scalars"
+
+CCTK_REAL spin_coefficients TYPE=gf TAGS='index={0 0 0}'
+{
+  npkappare   npkappaim
+  npsigmare   npsigmaim
+  nprhore     nprhoim
+  nptaure     nptauim
+  npepsilonre npepsilonim
+  npbetare    npbetaim
+  npalphare   npalphaim
+  npgammare   npgammaim
+  nppire      nppiim
+  npmure      npmuim
+  nplambdare  nplambdaim
+  npnure      npnuim
+} "Newman-Penrose spin coefficients"

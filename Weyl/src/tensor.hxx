@@ -1,7 +1,9 @@
 #ifndef TENSOR_HXX
 #define TENSOR_HXX
 
+#include <dual.hxx>
 #include <loop.hxx>
+#include <vect.hxx>
 
 #include <cctk.h>
 
@@ -636,6 +638,15 @@ public:
   friend constexpr vec4<T, dnup> operator*(const T &a, const vec4<T, dnup> &x) {
     return {a * x.elts};
   }
+  friend constexpr vec4<T, dnup> operator*(const vec4<T, dnup> &x, const T &a) {
+    return {x.elts * a};
+  }
+  friend constexpr vec4<T, dnup> operator/(const vec4<T, dnup> &x, const T &a) {
+    return {x.elts / a};
+  }
+
+  vec4<T, dnup> &operator*=(const T &a) { return *this = *this * a; }
+  vec4<T, dnup> &operator/=(const T &a) { return *this = *this / a; }
 
   friend constexpr bool operator==(const vec4<T, dnup> &x,
                                    const vec4<T, dnup> &y) {
@@ -646,6 +657,11 @@ public:
     return !(x == y);
   }
 
+  constexpr vec4<bool, dnup> isnan() const {
+    return vec4<bool, dnup>(std::isnan(elts));
+  }
+
+  constexpr bool any() const { return elts.any(); }
   constexpr T maxabs() const { return elts.maxabs(); }
 
   friend struct norm1<vec4>;
@@ -866,12 +882,12 @@ public:
     gf_Atx_(I) = A(0, 1);
     gf_Aty_(I) = A(0, 2);
     gf_Atz_(I) = A(0, 3);
-    gf_Axx_(I) = A(1, 0);
-    gf_Axy_(I) = A(1, 1);
-    gf_Axz_(I) = A(1, 2);
-    gf_Ayy_(I) = A(2, 1);
-    gf_Ayz_(I) = A(2, 2);
-    gf_Azz_(I) = A(3, 2);
+    gf_Axx_(I) = A(1, 1);
+    gf_Axy_(I) = A(1, 2);
+    gf_Axz_(I) = A(1, 3);
+    gf_Ayy_(I) = A(2, 2);
+    gf_Ayz_(I) = A(2, 3);
+    gf_Azz_(I) = A(3, 3);
   }
 
   const T &operator()(int i, int j) const { return elts[ind(i, j)]; }
@@ -1256,9 +1272,9 @@ public:
     gf_Atx_(I) = A(0, 1);
     gf_Aty_(I) = A(0, 2);
     gf_Atz_(I) = A(0, 3);
-    gf_Axy_(I) = A(1, 1);
-    gf_Axz_(I) = A(1, 2);
-    gf_Ayz_(I) = A(2, 2);
+    gf_Axy_(I) = A(1, 2);
+    gf_Axz_(I) = A(1, 3);
+    gf_Ayz_(I) = A(2, 3);
   }
 
   const T operator()(int i, int j) const {
@@ -1435,6 +1451,18 @@ constexpr R sum43(const F &f) {
     for (int y = 0; y < 4; ++y)
       for (int z = 0; z < 4; ++z)
         s += f(x, y, z);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<remove_reference_t<
+                          result_of_t<F(int, int, int, int)> > > >
+constexpr R sum44(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 4; ++x)
+    for (int y = 0; y < 4; ++y)
+      for (int z = 0; z < 4; ++z)
+        for (int w = 0; w < 4; ++w)
+          s += f(x, y, z, w);
   return s;
 }
 

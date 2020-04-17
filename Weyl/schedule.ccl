@@ -6,6 +6,7 @@ STORAGE: riemann4
 STORAGE: ricci4
 STORAGE: ricciscalar4
 STORAGE: weyl4
+STORAGE: tetrad_l tetrad_n tetrad_mre tetrad_mim
 
 
 
@@ -35,4 +36,11 @@ SCHEDULE Weyl_Weyl AT analysis
   WRITES: ricci4(interior)
   WRITES: ricciscalar4(interior)
   WRITES: weyl4(interior)
+  WRITES: tetrad_l(interior)
+  WRITES: tetrad_n(interior)
+  WRITES: tetrad_mre(interior)
+  WRITES: tetrad_mim(interior)
+  WRITES: ricci_scalars(interior)
+  WRITES: weyl_scalars(interior)
+  WRITES: spin_coefficients(interior)
 } "Calculate Weyl tensor"

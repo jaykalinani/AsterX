@@ -231,11 +231,89 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_lt_(cctkGH, lt);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_lx_(cctkGH, lx);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_ly_(cctkGH, ly);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_lz_(cctkGH, lz);
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nt_(cctkGH, nt);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nx_(cctkGH, nx);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_ny_(cctkGH, ny);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nz_(cctkGH, nz);
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mret_(cctkGH, mret);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mrex_(cctkGH, mrex);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mrey_(cctkGH, mrey);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mrez_(cctkGH, mrez);
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mimt_(cctkGH, mimt);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mimx_(cctkGH, mimx);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mimy_(cctkGH, mimy);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_mimz_(cctkGH, mimz);
+
+  //
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Lambda_(cctkGH, Lambda);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi00_(cctkGH, Phi00);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi11_(cctkGH, Phi11);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi22_(cctkGH, Phi22);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi10re_(cctkGH, Phi10re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi10im_(cctkGH, Phi10im);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi20re_(cctkGH, Phi20re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi20im_(cctkGH, Phi20im);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi21re_(cctkGH, Phi21re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Phi21im_(cctkGH, Phi21im);
+
+  //
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi0re_(cctkGH, Psi0re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi0im_(cctkGH, Psi0im);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi1re_(cctkGH, Psi1re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi1im_(cctkGH, Psi1im);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi2re_(cctkGH, Psi2re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi2im_(cctkGH, Psi2im);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi3re_(cctkGH, Psi3re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi3im_(cctkGH, Psi3im);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi4re_(cctkGH, Psi4re);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_Psi4im_(cctkGH, Psi4im);
+
+  //
+
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npkappare_(cctkGH, npkappare);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npkappaim_(cctkGH, npkappaim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npsigmare_(cctkGH, npsigmare);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npsigmaim_(cctkGH, npsigmaim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nprhore_(cctkGH, nprhore);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nprhoim_(cctkGH, nprhoim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nptaure_(cctkGH, nptaure);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nptauim_(cctkGH, nptauim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npepsilonre_(cctkGH, npepsilonre);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npepsilonim_(cctkGH, npepsilonim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npbetare_(cctkGH, npbetare);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npbetaim_(cctkGH, npbetaim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npalphare_(cctkGH, npalphare);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npalphaim_(cctkGH, npalphaim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npgammare_(cctkGH, npgammare);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npgammaim_(cctkGH, npgammaim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nppire_(cctkGH, nppire);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nppiim_(cctkGH, nppiim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npmure_(cctkGH, npmure);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npmuim_(cctkGH, npmuim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nplambdare_(cctkGH, nplambdare);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_nplambdaim_(cctkGH, nplambdaim);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npnure_(cctkGH, npnure);
+  const GF3D<CCTK_REAL, 0, 0, 0> gf_npnuim_(cctkGH, npnuim);
+
+  //
+
   loop_int<0, 0, 0>(
       cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Load and calculate
 
+        const vec3<CCTK_REAL, UP> coord3{p.x, p.y, p.z};
+
         const weyl_vars<CCTK_REAL> vars(
+            cctk_time, coord3,                                 //
             gf_gamma_(p.I), gf_alpha_(p.I), gf_beta_(p.I),     //
             gf_k_(p.I), gf_dtalpha_(p.I), gf_dtbeta_(p.I),     //
             gf_dgamma_(p.I), gf_dalpha_(p.I), gf_dbeta_(p.I),  //
@@ -349,6 +427,64 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
         gf_c4xzyz_(p.I) = vars.C(1, 3)(2, 3);
 
         gf_c4yzyz_(p.I) = vars.C(2, 3)(2, 3);
+
+        vars.l.store(gf_lt_, gf_lx_, gf_ly_, gf_lz_, p.I);
+        vars.n.store(gf_nt_, gf_nx_, gf_ny_, gf_nz_, p.I);
+        gf_mret_(p.I) = real(vars.m(0));
+        gf_mrex_(p.I) = real(vars.m(1));
+        gf_mrey_(p.I) = real(vars.m(2));
+        gf_mrez_(p.I) = real(vars.m(3));
+        gf_mimt_(p.I) = imag(vars.m(0));
+        gf_mimx_(p.I) = imag(vars.m(1));
+        gf_mimy_(p.I) = imag(vars.m(2));
+        gf_mimz_(p.I) = imag(vars.m(3));
+
+        gf_Lambda_(p.I) = vars.Lambda;
+        gf_Phi00_(p.I) = vars.Phi00;
+        gf_Phi11_(p.I) = vars.Phi11;
+        gf_Phi22_(p.I) = vars.Phi22;
+        gf_Phi10re_(p.I) = real(vars.Phi10);
+        gf_Phi10im_(p.I) = imag(vars.Phi10);
+        gf_Phi20re_(p.I) = real(vars.Phi20);
+        gf_Phi20im_(p.I) = imag(vars.Phi20);
+        gf_Phi21re_(p.I) = real(vars.Phi21);
+        gf_Phi21im_(p.I) = imag(vars.Phi21);
+
+        gf_Psi0re_(p.I) = real(vars.Psi0);
+        gf_Psi0im_(p.I) = imag(vars.Psi0);
+        gf_Psi1re_(p.I) = real(vars.Psi1);
+        gf_Psi1im_(p.I) = imag(vars.Psi1);
+        gf_Psi2re_(p.I) = real(vars.Psi2);
+        gf_Psi2im_(p.I) = imag(vars.Psi2);
+        gf_Psi3re_(p.I) = real(vars.Psi3);
+        gf_Psi3im_(p.I) = imag(vars.Psi3);
+        gf_Psi4re_(p.I) = real(vars.Psi4);
+        gf_Psi4im_(p.I) = imag(vars.Psi4);
+
+        gf_npkappare_(p.I) = real(vars.npkappa);
+        gf_npkappaim_(p.I) = imag(vars.npkappa);
+        gf_npsigmare_(p.I) = real(vars.npsigma);
+        gf_npsigmaim_(p.I) = imag(vars.npsigma);
+        gf_nprhore_(p.I) = real(vars.nprho);
+        gf_nprhoim_(p.I) = imag(vars.nprho);
+        gf_nptaure_(p.I) = real(vars.nptau);
+        gf_nptauim_(p.I) = imag(vars.nptau);
+        gf_npepsilonre_(p.I) = real(vars.npepsilon);
+        gf_npepsilonim_(p.I) = imag(vars.npepsilon);
+        gf_npbetare_(p.I) = real(vars.npbeta);
+        gf_npbetaim_(p.I) = imag(vars.npbeta);
+        gf_npalphare_(p.I) = real(vars.npalpha);
+        gf_npalphaim_(p.I) = imag(vars.npalpha);
+        gf_npgammare_(p.I) = real(vars.npgamma);
+        gf_npgammaim_(p.I) = imag(vars.npgamma);
+        gf_nppire_(p.I) = real(vars.nppi);
+        gf_nppiim_(p.I) = imag(vars.nppi);
+        gf_npmure_(p.I) = real(vars.npmu);
+        gf_npmuim_(p.I) = imag(vars.npmu);
+        gf_nplambdare_(p.I) = real(vars.nplambda);
+        gf_nplambdaim_(p.I) = imag(vars.nplambda);
+        gf_npnure_(p.I) = real(vars.npnu);
+        gf_npnuim_(p.I) = imag(vars.npnu);
       });
 }
 

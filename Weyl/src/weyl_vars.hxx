@@ -6,10 +6,14 @@
 #include "tensor.hxx"
 
 #include <cmath>
+#include <complex>
 
 namespace Weyl {
 
 template <typename T> struct weyl_vars_noderivs {
+
+  // Position
+  const vec4<T, UP> coord;
 
   // ADM variables
   const mat3<T, DN, DN> gamma;
@@ -26,9 +30,17 @@ template <typename T> struct weyl_vars_noderivs {
   const T detg;
   const mat4<T, UP, UP> gu;
 
-  weyl_vars_noderivs(const mat3<T, DN, DN> &gamma, const T &alpha,
+  // Tetrad
+  const vec4<T, UP> et, ephi, etheta, er;
+  const vec4<T, UP> l, n;
+  const vec4<complex<T>, UP> m;
+
+  weyl_vars_noderivs(const T time, const vec3<T, UP> &coord3,
+                     const mat3<T, DN, DN> &gamma, const T &alpha,
                      const vec3<T, UP> &beta)
-      : gamma(gamma), alpha(alpha), beta(beta),
+      : coord(time, coord3(0), coord3(1), coord3(2)),
+        //
+        gamma(gamma), alpha(alpha), beta(beta),
         //
         betal([&](int a) {
           return sum1([&](int x) { return gamma(a, x) * beta(x); });
@@ -36,15 +48,22 @@ template <typename T> struct weyl_vars_noderivs {
         //
         g([&](int a, int b) {
           if (a == 0 && b == 0)
-            return alpha;
+            return -pow(alpha, 2);
           if (a == 0)
             return betal(b - 1);
           if (b == 0)
             return betal(a - 1);
           return gamma(a - 1, b - 1);
         }),
-        detg(g.det()), //
-        gu(g.inv(detg))
+        detg(g.det()),                       //
+        gu(g.inv(detg)),                     //
+        et(calc_et(gu)),                     //
+        ephi(calc_ephi(coord, g)),           //
+        etheta(calc_etheta(coord, g, ephi)), //
+        er(calc_er(coord, g, etheta, ephi)), //
+        l([&](int a) { return (et(a) + er(a)) / sqrt(T(2)); }),
+        n([&](int a) { return (et(a) - er(a)) / sqrt(T(2)); }),
+        m([&](int a) { return complex<T>(etheta(a), ephi(a)) / sqrt(T(2)); })
   //
   {}
 };
@@ -52,6 +71,9 @@ template <typename T> struct weyl_vars_noderivs {
 template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
 
   // C++ is tedious:
+
+  // Position
+  using weyl_vars_noderivs<T>::coord;
 
   // ADM variables
   using weyl_vars_noderivs<T>::alpha;
@@ -67,6 +89,15 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
   // Inverse 4-metric
   using weyl_vars_noderivs<T>::detg;
   using weyl_vars_noderivs<T>::gu;
+
+  // Tetrad
+  using weyl_vars_noderivs<T>::et;
+  using weyl_vars_noderivs<T>::ephi;
+  using weyl_vars_noderivs<T>::etheta;
+  using weyl_vars_noderivs<T>::er;
+  using weyl_vars_noderivs<T>::l;
+  using weyl_vars_noderivs<T>::n;
+  using weyl_vars_noderivs<T>::m;
 
   // Time derivatives of ADM variables
   const mat3<T, DN, DN> k;
@@ -123,7 +154,24 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
   const T Rsc;
   const amat4<amat4<T, DN, DN>, DN, DN> C;
 
+  // Ricci and Weyl scalars
+  const T Lambda;
+  const T Phi00, Phi11, Phi22;
+  const complex<T> Phi10, Phi20, Phi21;
+  const complex<T> Psi0, Psi1, Psi2, Psi3, Psi4;
+
+  // Gradient of tetrad
+  const vec4<vec4<T, DN>, UP> det, dephi, detheta, der;
+  const vec4<vec4<T, DN>, UP> dl, dn;
+  const vec4<vec4<complex<T>, DN>, UP> dm;
+
+  // Newman-Penrose spin coefficients
+  const complex<T> npkappa, npsigma, nprho, nptau, npepsilon, npbeta, npalpha,
+      npgamma, nppi, npmu, nplambda, npnu;
+
   weyl_vars(
+      const T time, const vec3<T, UP> &coord3,
+      //
       const mat3<T, DN, DN> &gamma, const T &alpha, const vec3<T, UP> &beta,
       //
       const mat3<T, DN, DN> &k, const T &dtalpha, const vec3<T, UP> &dtbeta,
@@ -138,7 +186,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
       //
       const mat3<mat3<T, DN, DN>, DN, DN> &ddgamma,
       const mat3<T, DN, DN> &ddalpha, const vec3<mat3<T, DN, DN>, UP> &ddbeta)
-      : weyl_vars_noderivs<T>(gamma, alpha, beta),
+      : weyl_vars_noderivs<T>(time, coord3, gamma, alpha, beta),
         // Time derivatives of ADM variables
         k(k), dtalpha(dtalpha), dtbeta(dtbeta),
         // Spatial derivatives of ADM variables
@@ -305,7 +353,124 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
         Rm(calc_riemann(g, Gamma, dGamma)), //
         R(calc_ricci(gu, Rm)),              //
         Rsc(R.trace(gu)),                   //
-        C(calc_weyl(g, Rm, R, Rsc))
+        C(calc_weyl(g, Rm, R, Rsc)),
+        //
+        // Badri Krishnan's PhD thesis, appendix A
+        Lambda(Rsc / 24), //
+        Phi00([&] {
+          return sum42([&](int a, int b) { return R(a, b) * l(a) * l(b) / 2; });
+        }()),
+        Phi11([&] {
+          return sum42([&](int a, int b) {
+            return R(a, b) * (l(a) * n(b) + real(m(a) * conj(m(b)))) / 4;
+          });
+        }()),
+        Phi22([&] {
+          return sum42([&](int a, int b) { return R(a, b) * n(a) * n(b) / 2; });
+        }()),
+        Phi10([&] {
+          return sum42(
+              [&](int a, int b) { return R(a, b) * l(a) * conj(m(b)) / T(2); });
+        }()),
+        Phi20([&] {
+          return sum42([&](int a, int b) {
+            return R(a, b) * conj(m(a)) * conj(m(b)) / T(2);
+          });
+        }()),
+        Phi21([&] {
+          return sum42(
+              [&](int a, int b) { return R(a, b) * conj(m(a)) * n(b) / T(2); });
+        }()),
+        Psi0([&] {
+          return sum44([&](int a, int b, int c, int d) {
+            return C(a, b)(c, d) * l(a) * m(b) * l(c) * m(d);
+          });
+        }()),
+        Psi1([&] {
+          return sum44([&](int a, int b, int c, int d) {
+            return C(a, b)(c, d) * l(a) * m(b) * l(c) * n(d);
+          });
+        }()),
+        Psi2([&] {
+          return sum44([&](int a, int b, int c, int d) {
+            return C(a, b)(c, d) * l(a) * m(b) * conj(m(c)) * n(d);
+          });
+        }()),
+        Psi3([&] {
+          return sum44([&](int a, int b, int c, int d) {
+            return C(a, b)(c, d) * l(a) * n(b) * conj(m(c)) * n(d);
+          });
+        }()),
+        Psi4([&] {
+          return sum44([&](int a, int b, int c, int d) {
+            return C(a, b)(c, d) * conj(m(a)) * n(b) * conj(m(c)) * n(d);
+          });
+        }()),
+        det(calc_det(gu, dgu, et, Gamma)),                                    //
+        dephi(calc_dephi(coord, g, dg, ephi, Gamma)),                         //
+        detheta(calc_detheta(coord, g, dg, ephi, dephi, etheta, Gamma)),      //
+        der(calc_der(coord, g, dg, ephi, dephi, etheta, detheta, er, Gamma)), //
+        dl([&](int a) { return (det(a) + der(a)) / sqrt(T(2)); }),
+        dn([&](int a) { return (det(a) - der(a)) / sqrt(T(2)); }),
+        dm([&](int a) {
+          return vec4<complex<T>, DN>([&](int b) {
+            return complex<T>(detheta(a)(b), dephi(a)(b)) / sqrt(T(2));
+          });
+        }),
+        npkappa([&] {
+          return sum42([&](int a, int b) { return -m(a) * l(b) * dl(a)(b); });
+        }()),
+        npsigma([&] {
+          return sum42([&](int a, int b) { return -m(a) * m(b) * dl(a)(b); });
+        }()),
+        nprho([&] {
+          return sum42(
+              [&](int a, int b) { return -m(a) * conj(m(b)) * dl(a)(b); });
+        }()),
+        nptau([&] {
+          return sum42([&](int a, int b) { return -m(a) * n(b) * dl(a)(b); });
+        }()),
+        npepsilon([&] {
+          return sum42([&](int a, int b) {
+            return (conj(m(a)) * l(b) * dm(a)(b) - n(a) * l(b) * dl(a)(b)) /
+                   T(2);
+          });
+        }()),
+        npbeta([&] {
+          return sum42([&](int a, int b) {
+            return (conj(m(a)) * m(b) * dm(a)(b) - n(a) * m(b) * dl(a)(b)) /
+                   T(2);
+          });
+        }()),
+        npalpha([&] {
+          return sum42([&](int a, int b) {
+            return (conj(m(a)) * conj(m(b)) * dm(a)(b) -
+                    n(a) * conj(m(b)) * dl(a)(b)) /
+                   T(2);
+          });
+        }()),
+        npgamma([&] {
+          return sum42([&](int a, int b) {
+            return (conj(m(a)) * n(b) * dm(a)(b) - n(a) * n(b) * dl(a)(b)) /
+                   T(2);
+          });
+        }()),
+        nppi([&] {
+          return sum42(
+              [&](int a, int b) { return conj(m(a)) * l(b) * dn(a)(b); });
+        }()),
+        npmu([&] {
+          return sum42(
+              [&](int a, int b) { return conj(m(a)) * m(b) * dn(a)(b); });
+        }()),
+        nplambda([&] {
+          return sum42(
+              [&](int a, int b) { return conj(m(a)) * conj(m(b)) * dn(a)(b); });
+        }()),
+        npnu([&] {
+          return sum42(
+              [&](int a, int b) { return conj(m(a)) * n(b) * dn(a)(b); });
+        }())
   //
   {}
 };

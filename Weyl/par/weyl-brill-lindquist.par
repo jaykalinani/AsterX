@@ -55,10 +55,21 @@ BrillLindquist::x0 = 0.0
 BrillLindquist::mass = 1.0
 
 IO::out_dir = $parfile
-IO::out_every = 0
+IO::out_every = 1
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
 CarpetX::out_plotfile_groups = ""
-CarpetX::out_silo_vars = ""
+CarpetX::out_silo_vars = "
+    Weyl::metric4
+    Weyl::ricci4
+    Weyl::weyl4
+    Weyl::tetrad_l
+    Weyl::tetrad_n
+    Weyl::tetrad_mre
+    Weyl::tetrad_mim
+    Weyl::ricci_scalars
+    Weyl::weyl_scalars
+    Weyl::spin_coefficients
+"
 CarpetX::out_tsv = no
