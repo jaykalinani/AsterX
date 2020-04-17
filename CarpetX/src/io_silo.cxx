@@ -32,6 +32,8 @@ namespace CarpetX {
 using namespace amrex;
 using namespace std;
 
+constexpr bool io_verbose = true;
+
 struct mesh_props_t {
   IntVect ngrow;
 
@@ -171,6 +173,16 @@ void OutputSilo(const cGH *restrict const cctkGH) {
           enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
         }};
     CCTK_TraverseString(out_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+    if (io_verbose) {
+      CCTK_VINFO("Silo output for groups:");
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        if (group_enabled.at(gi)) {
+          char *const groupname = CCTK_GroupName(gi);
+          CCTK_VINFO("  %s", groupname);
+          free(groupname);
+        }
+      }
+    }
     return enabled;
   }();
 
