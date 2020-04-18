@@ -16,6 +16,7 @@
 #include <silo.hxx>
 #endif
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdlib>
@@ -97,6 +98,264 @@ string make_varname(const int gi, const int vi, const int reflevel = -1,
   return DB::legalize_name(buf.str());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+void InputSilo(const cGH *restrict const cctkGH) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  int ierr;
+
+  // Set up timers
+  static Timer timer("InputSilo");
+  Interval interval(timer);
+
+  static Timer timer_setup("InputSilo.setup");
+  auto interval_setup = make_unique<Interval>(timer_setup);
+
+  const MPI_Comm mpi_comm = MPI_COMM_WORLD;
+  const int myproc = CCTK_MyProc(cctkGH);
+  const int nprocs = CCTK_nProcs(cctkGH);
+
+  const int ioproc_every = [&]() {
+    if (CCTK_EQUALS(out_mode, "proc"))
+      return 1;
+    if (CCTK_EQUALS(out_mode, "np"))
+      return out_proc_every;
+    if (CCTK_EQUALS(out_mode, "onefile"))
+      return nprocs;
+    assert(0);
+  }();
+  assert(ioproc_every > 0);
+
+  const int myioproc = myproc / ioproc_every * ioproc_every;
+  assert(myioproc <= myproc);
+  assert(myproc < myioproc + ioproc_every);
+  const bool read_file = myproc % ioproc_every == 0;
+  assert((myioproc == myproc) == read_file);
+
+  const int metafile_ioproc = 0;
+  const bool read_metafile = myproc == metafile_ioproc;
+
+  // Configure Silo library
+  DBShowErrors(DB_ALL_AND_DRVR, nullptr);
+  // DBSetAllowEmptyObjects(1);
+  DBSetCompression("METHOD=GZIP");
+  DBSetEnableChecksums(1);
+
+  // Determine input file name
+  const string parfilename = [&]() {
+    string buf(1024, '\0');
+    const int len =
+        CCTK_ParameterFilename(buf.length(), const_cast<char *>(buf.data()));
+    buf.resize(len);
+    return buf;
+  }();
+
+  // TODO: Check wether this parameter contains multiple file names
+  // const string simulation_name = filereader_ID_files;
+  const string simulation_name = in_file;
+
+  // TODO: directories instead of carefully chosen names
+
+  // Find input groups
+  const vector<bool> group_enabled = [&]() {
+    vector<bool> enabled(CCTK_NumGroups(), false);
+    const auto callback{
+        [](const int index, const char *const optstring, void *const arg) {
+          vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
+          enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
+        }};
+    CCTK_TraverseString(in_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+    if (io_verbose) {
+      CCTK_VINFO("Silo input for groups:");
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        if (group_enabled.at(gi)) {
+          char *const groupname = CCTK_GroupName(gi);
+          CCTK_VINFO("  %s", groupname);
+          free(groupname);
+        }
+      }
+    }
+    return enabled;
+  }();
+  const auto num_in_vars =
+      count(group_enabled.begin(), group_enabled.end(), true);
+  if (num_in_vars == 0)
+    return;
+
+  constexpr int ndims = dim;
+
+  interval_setup = nullptr;
+
+  static Timer timer_data("InputSilo.data");
+  auto interval_data = make_unique<Interval>(timer_data);
+
+  // Read data
+  {
+    const string subdirname = make_subdirname(simulation_name, cctk_iteration);
+    // TODO
+    // const string pathname = string(filereader_ID_dir) + "/" + subdirname;
+    const string pathname = string(in_dir) + "/" + subdirname;
+
+    DB::ptr<DBfile> file;
+    if (read_file) {
+      const string filename =
+          pathname + "/" +
+          make_filename(simulation_name, cctk_iteration, myproc / ioproc_every);
+      // We could use DB_UNKNOWN instead of DB_HDF5
+      file = DB::make(DBOpen(filename.c_str(), DB_HDF5, DB_READ));
+      assert(file);
+    }
+
+    // Loop over levels
+    for (const auto &leveldata : ghext->leveldata) {
+      if (io_verbose)
+        CCTK_VINFO("Reading level %d", leveldata.level);
+
+      // Loop over groups
+      set<mesh_props_t> have_meshes;
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        if (!group_enabled.at(gi))
+          continue;
+        if (CCTK_GroupTypeI(gi) != CCTK_GF)
+          continue;
+        if (io_verbose) {
+          char *const groupname = CCTK_GroupName(gi);
+          CCTK_VINFO("  Reading group %s", groupname);
+          free(groupname);
+        }
+
+        auto &groupdata = *leveldata.groupdata.at(gi);
+        const int numvars = groupdata.numvars;
+        const int tl = 0;
+        MultiFab &mfab = *groupdata.mfab[tl];
+        const IndexType &indextype = mfab.ixType();
+        const IntVect &ngrow = mfab.nGrowVect();
+        const DistributionMapping &dm = mfab.DistributionMap();
+
+        const mesh_props_t mesh_props{ngrow};
+        const bool have_mesh = have_meshes.count(mesh_props);
+
+        // Loop over components (AMReX boxes)
+        const int nfabs = dm.size();
+        for (int component = 0; component < nfabs; ++component) {
+          if (io_verbose)
+            CCTK_VINFO("    Reading component %d", component);
+
+          const int proc = dm[component];
+          const int ioproc = proc / ioproc_every * ioproc_every;
+          const bool recv_this_fab = proc == myproc;
+          const bool read_this_fab = ioproc == myproc;
+          if (!(recv_this_fab || read_this_fab))
+            continue;
+
+          const Box &fabbox = mfab.fabbox(component); // exterior
+
+          array<int, ndims> dims;
+          for (int d = 0; d < ndims; ++d)
+            dims[d] = fabbox.length(d);
+          ptrdiff_t zonecount = 1;
+          for (int d = 0; d < ndims; ++d)
+            zonecount *= dims[d];
+          assert(zonecount >= 0 && zonecount <= INT_MAX);
+
+          // Communicate variable, part 1
+          static Timer timer_mpi("InputSilo.mpi");
+          auto interval_mpi = make_unique<Interval>(timer_mpi);
+          const int mpi_tag = 22901; // randomly chosen
+          vector<double> buffer;
+          MPI_Request mpi_req;
+          double *data = nullptr;
+          if (recv_this_fab && read_this_fab) {
+            FArrayBox &fab = mfab[component];
+            data = fab.dataPtr();
+          } else if (recv_this_fab) {
+            FArrayBox &fab = mfab[component];
+            assert(numvars * zonecount <= INT_MAX);
+            MPI_Irecv(fab.dataPtr(), numvars * zonecount, MPI_DOUBLE, ioproc,
+                      mpi_tag, mpi_comm, &mpi_req);
+          } else {
+            buffer.resize(numvars * zonecount);
+            assert(numvars * zonecount <= INT_MAX);
+            data = buffer.data();
+          }
+          interval_mpi = nullptr;
+
+          // Read variable
+          if (read_file) {
+            static Timer timer_var("InputSilo.var");
+            Interval interval_var(timer_var);
+
+            const string meshname = make_meshname(leveldata.level, component);
+
+            const int centering = [&]() {
+              if (indextype.nodeCentered())
+                return DB_NODECENT;
+              if (indextype.cellCentered())
+                return DB_ZONECENT;
+              assert(0);
+            }();
+
+            for (int vi = 0; vi < numvars; ++vi) {
+              const string varname =
+                  make_varname(gi, vi, leveldata.level, component);
+              if (io_verbose)
+                CCTK_VINFO("      Reading variable %s", varname.c_str());
+
+              const DB::ptr<DBquadvar> quadvar =
+                  DB::make(DBGetQuadvar(file.get(), varname.c_str()));
+              assert(quadvar);
+
+              assert(quadvar->ndims == ndims);
+              assert(ndims <= 3);
+              for (int d = 0; d < ndims; ++d)
+                assert(quadvar->dims[d] == dims[d]);
+              assert(quadvar->datatype == DB_DOUBLE);
+              assert(quadvar->centering == centering);
+              assert(quadvar->nvals == 1);
+
+              // TODO: check DBOPT_COORDSYS: int cartesian = DB_CARTESIAN;
+              const int column_major = 0;
+              assert(quadvar->major_order == column_major);
+
+              const void *const read_ptr = quadvar->vals[0];
+
+              void *const data_ptr = data + vi * zonecount;
+              memcpy(data_ptr, read_ptr, zonecount * sizeof(double));
+            } // for vi
+          }   // if read_file
+
+          // Communicate variable, part 2
+          static Timer timer_wait("InputSilo.wait");
+          auto interval_wait = make_unique<Interval>(timer_wait);
+          if (recv_this_fab && read_this_fab) {
+            // do nothing
+          } else if (recv_this_fab) {
+            MPI_Wait(&mpi_req, MPI_STATUS_IGNORE);
+          } else {
+            buffer.resize(numvars * zonecount);
+            assert(numvars * zonecount <= INT_MAX);
+            MPI_Send(buffer.data(), numvars * zonecount, MPI_DOUBLE, proc,
+                     mpi_tag, mpi_comm);
+          }
+          if (recv_this_fab)
+            for (int vi = 0; vi < numvars; ++vi)
+              groupdata.valid.at(tl).at(vi).set(
+                  valid_t(true), [] { return "read from file"; });
+          interval_wait = nullptr;
+
+        } // for component
+
+      } // for gi
+    }   // for leveldata
+  }     // write data
+
+  interval_data = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void OutputSilo(const cGH *restrict const cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -142,7 +401,7 @@ void OutputSilo(const cGH *restrict const cctkGH) {
   DBSetCompression("METHOD=GZIP");
   DBSetEnableChecksums(1);
 
-  // Create output file
+  // Determine output file name
   const string parfilename = [&]() {
     string buf(1024, '\0');
     const int len =
@@ -165,7 +424,7 @@ void OutputSilo(const cGH *restrict const cctkGH) {
   // TODO: directories instead of carefully chosen names
 
   // Find output groups
-  const vector<bool> group_enabled = [&]() {
+  const vector<bool> group_enabled = [&] {
     vector<bool> enabled(CCTK_NumGroups(), false);
     const auto callback{
         [](const int index, const char *const optstring, void *const arg) {
@@ -208,8 +467,6 @@ void OutputSilo(const cGH *restrict const cctkGH) {
     }
     ierr = CCTK_CreateDirectory(mode, pathname.c_str());
     assert(ierr >= 0);
-    // int dummy = 0;
-    // MPI_Bcast(&dummy, 1, MPI_INT, 0, mpi_comm);
     interval_mkdir = nullptr;
 
     DB::ptr<DBfile> file;
@@ -254,6 +511,7 @@ void OutputSilo(const cGH *restrict const cctkGH) {
           if (!(send_this_fab || write_this_fab))
             continue;
 
+          // TODO: Check whether data are valid
           const Box &fabbox = mfab.fabbox(component); // exterior
 
           array<int, ndims> dims;
@@ -997,4 +1255,5 @@ void OutputSilo(const cGH *restrict const cctkGH) {
 }
 
 } // namespace CarpetX
+
 #endif

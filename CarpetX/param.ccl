@@ -230,6 +230,23 @@ CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 
 
 
+STRING in_dir "Input directory" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+STRING in_file "Input file name" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+STRING in_silo_vars "Variables to input in Silo format" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+
+
 STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
 {
   ".*" :: ""
@@ -261,3 +278,9 @@ USES STRING out_dir
 USES CCTK_INT out_every
 USES KEYWORD out_mode
 USES CCTK_INT out_proc_every
+
+# USES STRING filereader_ID_dir
+# USES STRING filereader_ID_files
+# 
+# USES STRING checkpoint_dir
+# USES STRING recover_dir

@@ -12,7 +12,9 @@
 
 namespace CarpetX {
 
+int InputGH(const cGH *cctkGH);
 int OutputGH(const cGH *cctkGH);
+
 } // namespace CarpetX
 
 #endif // #ifndef IO_HXX

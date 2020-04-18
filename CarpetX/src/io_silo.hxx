@@ -6,9 +6,10 @@
 #ifdef HAVE_CAPABILITY_Silo
 namespace CarpetX {
 
-void OutputSilo(const cGH *restrict const cctkGH);
+void InputSilo(const cGH *cctkGH);
+void OutputSilo(const cGH *cctkGH);
 
-}
+} // namespace CarpetX
 #endif
 
 #endif // #ifndef IO_SILO_HXX

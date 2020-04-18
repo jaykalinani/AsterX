@@ -1,4 +1,5 @@
 #include "driver.hxx"
+#include "io.hxx"
 #include "schedule.hxx"
 #include "timer.hxx"
 
@@ -1256,6 +1257,7 @@ int Initialise(tFleshConfig *config) {
 #pragma omp critical
       CCTK_VINFO("Initializing level %d...", level);
 
+      InputGH(cctkGH);
       CCTK_Traverse(cctkGH, "CCTK_INITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTINITIAL");
       CCTK_Traverse(cctkGH, "CCTK_POSTPOSTINITIAL");
