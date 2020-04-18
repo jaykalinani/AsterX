@@ -4,27 +4,32 @@ RESTRICTED:
 
 KEYWORD initial_data "Initial metric and extrinsic curvature datasets"
 {
+  "none" :: "Do not set up initial conditions"
   "Cartesian Minkowski" :: "Minkowski geometry in Cartesian coordinates"
   "linear wave" :: "linear wave"
 } "Cartesian Minkowski"
 
 KEYWORD initial_lapse "Initial lapse value"
 {
+  "none" :: "Do not set up initial conditions"
   "one" :: "Uniform lapse"
 } "one"
 
 KEYWORD initial_shift "Initial shift value"
 {
+  "none" :: "Do not set up initial conditions"
   "zero" :: "Shift is zero"
 } "zero"
 
 KEYWORD initial_dtlapse "Initial dtlapse value"
 {
+  "none" :: "Do not set up initial conditions"
   "zero" :: "Dtlapse is zero"
 } "zero"
 
 KEYWORD initial_dtshift "Initial dtshift value"
 {
+  "none" :: "Do not set up initial conditions"
   "zero" :: "Dtshift is zero"
 } "zero"
 
