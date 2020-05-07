@@ -444,6 +444,10 @@ void OutputSilo(const cGH *restrict const cctkGH) {
     }
     return enabled;
   }();
+  const auto num_out_vars =
+      count(group_enabled.begin(), group_enabled.end(), true);
+  if (num_out_vars == 0)
+    return;
 
   constexpr int ndims = dim;
 
