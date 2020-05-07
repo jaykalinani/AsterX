@@ -3,6 +3,7 @@
 IMPLEMENTS: AHFinder
 
 INHERITS: ADMBase
+INHERITS: Coordinates
 
 USES INCLUDE HEADER: dual.hxx
 
