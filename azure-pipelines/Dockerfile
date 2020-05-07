@@ -35,7 +35,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install cmake
-# (AMReX 20.04 requires at least cmake 3.14)
+# (AMReX 20.05 requires at least cmake 3.14)
 RUN mkdir dist && \
     (cd dist && \
     wget https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2-Linux-x86_64.tar.gz && \
@@ -87,9 +87,9 @@ RUN mkdir src && \
 # Install AMReX
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/20.04.tar.gz && \
-    tar xzf 20.04.tar.gz && \
-    cd amrex-20.04 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/20.05.tar.gz && \
+    tar xzf 20.05.tar.gz && \
+    cd amrex-20.05 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
