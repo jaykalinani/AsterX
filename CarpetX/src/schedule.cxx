@@ -1138,9 +1138,9 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
       assert(0);
     }
     valid_t valid;
-    valid.valid_int = where & WH_INTERIOR;
-    valid.valid_outer = where & WH_BOUNDARY;
-    valid.valid_ghosts = where & WH_GHOSTS;
+    valid.valid_int = where & CCTK_VALID_INTERIOR;
+    valid.valid_outer = where & CCTK_VALID_BOUNDARY;
+    valid.valid_ghosts = where & CCTK_VALID_GHOSTS;
     result.push_back({gi, vi, tl, valid});
   }
   return result;
