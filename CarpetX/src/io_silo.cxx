@@ -104,8 +104,6 @@ void InputSilo(const cGH *restrict const cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  int ierr;
-
   // Set up timers
   static Timer timer("InputSilo");
   Interval interval(timer);
@@ -168,13 +166,19 @@ void InputSilo(const cGH *restrict const cctkGH) {
         }};
     CCTK_TraverseString(in_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
     if (io_verbose) {
-      CCTK_VINFO("Silo input for groups:");
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (group_enabled.at(gi)) {
-          char *const groupname = CCTK_GroupName(gi);
-          CCTK_VINFO("  %s", groupname);
-          free(groupname);
+      const bool have_silo_input = any_of(
+          group_enabled.begin(), group_enabled.end(), [](bool b) { return b; });
+      if (have_silo_input) {
+        CCTK_VINFO("Silo input for groups:");
+        for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+          if (group_enabled.at(gi)) {
+            char *const groupname = CCTK_GroupName(gi);
+            CCTK_VINFO("  %s", groupname);
+            free(groupname);
+          }
         }
+      } else {
+        CCTK_VINFO("No Silo input");
       }
     }
     return enabled;
