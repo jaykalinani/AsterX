@@ -1118,11 +1118,11 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
   result.reserve(attribute->n_RDWR);
   for (int n = 0; n < attribute->n_RDWR; ++n) {
     const RDWR_entry &restrict RDWR = attribute->RDWR[n];
-    int gi = CCTK_GroupIndexFromVarI(RDWR.var_id);
+    int gi = CCTK_GroupIndexFromVarI(RDWR.varindex);
     assert(gi >= 0);
-    int vi = RDWR.var_id - CCTK_FirstVarIndexI(gi);
+    int vi = RDWR.varindex - CCTK_FirstVarIndexI(gi);
     assert(vi >= 0 && vi < CCTK_NumVarsInGroupI(gi));
-    int tl = RDWR.time_level;
+    int tl = RDWR.timelevel;
     int where;
     switch (rdwr) {
     case rdwr_t::read:
