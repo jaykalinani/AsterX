@@ -1092,6 +1092,18 @@ mode_t decode_mode(const cFunctionData *restrict attribute) {
 }
 
 enum class rdwr_t { read, write, invalid };
+ostream &operator<<(ostream &os, const rdwr_t rdwr) {
+  switch (rdwr) {
+  case rdwr_t::read:
+    return os << "read";
+  case rdwr_t::write:
+    return os << "write";
+  case rdwr_t::invalid:
+    return os << "invalid";
+  default:
+    assert(0);
+  }
+}
 
 struct clause_t {
   int gi, vi, tl;
