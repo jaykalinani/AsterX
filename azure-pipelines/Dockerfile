@@ -59,6 +59,7 @@ RUN mkdir src && \
     rm -rf src
 
 # Install ssht
+# TODO: Use "cmake install" instead of "cp"
 RUN mkdir src && \
     (cd src && \
     git clone -n https://github.com/astro-informatics/ssht.git && \
