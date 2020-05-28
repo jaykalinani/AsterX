@@ -1185,7 +1185,10 @@ int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
                where);
 
   int ierr = CCTK_ScheduleTraverse(where, cctkGH, CallFunction);
-  assert(!ierr);
+  if (ierr == 2)
+    if (verbose)
+      CCTK_VINFO("Schedule item \"%s\" not found", where);
+  assert(ierr == 0 || ierr == 2);
 
   return 0; // unused
 }
