@@ -10,7 +10,7 @@ services:
       dockerfile: Dockerfile
     privileged: true
     image: eschnett/cactus-amrex-jovyan
-    container_name: cacrex
+    container_name: carpetx
     user: jovyan
     volumes:
       - homefs-cactusamrex:/home/jovyan
