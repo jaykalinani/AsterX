@@ -17,5 +17,5 @@ docker-compose up -d
 Once the image is running, you can get a shell inside it using this command:
 
 ```bash
-docker-compose exec -it cacrex bash
+docker-compose exec -it carpetx bash
 ```
