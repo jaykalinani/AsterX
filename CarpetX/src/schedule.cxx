@@ -1148,6 +1148,8 @@ vector<clause_t> decode_clauses(const cFunctionData *restrict attribute,
 
 // Schedule initialisation
 int Initialise(tFleshConfig *config) {
+  DECLARE_CCTK_PARAMETERS;
+
   static Timer timer("Initialise");
   Interval interval(timer);
 
@@ -1161,6 +1163,11 @@ int Initialise(tFleshConfig *config) {
 
   // Initialise schedule
   CCTKi_ScheduleGHInit(cctkGH);
+
+  // Check presync mode
+  if (!CCTK_EQUALS(presync_mode, "mixed-error"))
+    CCTK_ERROR(
+        "CarpetX currently requires Cactus::presync_mode = \"mixed-error\"");
 
   // Initialise all grid extensions
   CCTKi_InitGHExtensions(cctkGH);
