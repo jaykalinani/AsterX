@@ -1775,10 +1775,10 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     swap(thread_local_info, saved_thread_local_info);
 #pragma omp parallel
     {
-      int thread_num = omp_get_thread_num();
+      const int thread_num = omp_get_thread_num();
       thread_local_info_t &restrict thread_info =
           *thread_local_info.at(thread_num);
-      cGH *restrict threadGH = &thread_info.cctkGH;
+      cGH *restrict const threadGH = &thread_info.cctkGH;
       update_cctkGH(threadGH, cctkGH);
       TileBox &restrict thread_tilebox = thread_info.tilebox;
 
@@ -1787,7 +1787,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       for (int level = min_level; level < max_level; ++level) {
         const auto &restrict leveldata = ghext->leveldata.at(level);
         enter_level_mode(threadGH, leveldata);
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+        const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
         for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
           thread_info.mfiter = &mfi;
