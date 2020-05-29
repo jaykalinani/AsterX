@@ -1,6 +1,7 @@
 /* TwoPunctures:  File  "TwoPunctures.c"*/
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -213,13 +214,15 @@ TwoPunctures (CCTK_ARGUMENTS)
 #if 0
   int percent10 = 0;
 #endif
+  static bool did_setup = false;
   static CCTK_REAL *F = NULL;
   static derivs u, v, cf_v;
   static CCTK_REAL mp_saved, mm_saved, mp_adm_saved, mm_adm_saved, E_saved, J1_saved, J2_saved, J3_saved;
   CCTK_REAL admMass;
 
-#pragma omp single
-  if (! F) {
+  if (! did_setup) {
+#pragma omp critical
+    if (! did_setup) {
     CCTK_REAL up, um;
     /* Solve only when called for the first time */
     F = dvector (0, ntotal - 1);
@@ -379,17 +382,20 @@ TwoPunctures (CCTK_ARGUMENTS)
     J1_saved = *J1;
     J2_saved = *J2;
     J3_saved = *J3;
-  } else {
-    // before each call CarpetX wipes the grid scalars so I need to restore them
-    *mp = mp_saved;
-    *mm = mm_saved;
-    *mp_adm = mp_adm_saved;
-    *mm_adm = mm_adm_saved;
-    *E = E_saved;
-    *J1 = J1_saved;
-    *J2 = J2_saved;
-    *J3 = J3_saved;
+
+    did_setup = true;
+    }
   }
+
+  // before each call CarpetX wipes the grid scalars so I need to restore them
+  *mp = mp_saved;
+  *mm = mm_saved;
+  *mp_adm = mp_adm_saved;
+  *mm_adm = mm_adm_saved;
+  *E = E_saved;
+  *J1 = J1_saved;
+  *J2 = J2_saved;
+  *J3 = J3_saved;
 
   if (CCTK_EQUALS(grid_setup_method, "Taylor expansion"))
   {
@@ -623,6 +629,7 @@ TwoPunctures (CCTK_ARGUMENTS)
 
   if (use_sources && rescale_sources)
   {
+    assert(0);                  // TODO: Implement via critical region
 #pragma omp single
     Rescale_Sources(cctkGH,
                     np,

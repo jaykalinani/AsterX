@@ -57,14 +57,14 @@ norm_inf (CCTK_REAL const * restrict const F,
           int const ntotal)
 {
   CCTK_REAL dmax = -1;
-#pragma omp parallel
+// #pragma omp parallel
   {
     CCTK_REAL dmax1 = -1;
-#pragma omp for
+// #pragma omp for
     for (int j = 0; j < ntotal; j++)
       if (fabs (F[j]) > dmax1)
         dmax1 = fabs (F[j]);
-#pragma omp critical
+// #pragma omp critical
     if (dmax1 > dmax)
       dmax = dmax1;
   }
@@ -80,7 +80,7 @@ resid (CCTK_REAL * restrict const res,
        int const * restrict const * restrict const cols,
        CCTK_REAL const * restrict const * restrict const JFD)
 {
-#pragma omp parallel for
+// #pragma omp parallel for
   for (int i = 0; i < ntotal; i++)
   {
     CCTK_REAL JFDdv_i = 0;
@@ -224,16 +224,16 @@ relax (CCTK_REAL * restrict const dv,
   {
     for (n = 0; n < N_PlaneRelax; n++)
     {
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (i = 2; i < n1; i = i + 2)
 	LineRelax_be (dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (i = 1; i < n1; i = i + 2)
 	LineRelax_be (dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (j = 1; j < n2; j = j + 2)
 	LineRelax_al (dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (j = 0; j < n2; j = j + 2)
 	LineRelax_al (dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
     }
@@ -242,16 +242,16 @@ relax (CCTK_REAL * restrict const dv,
   {
     for (n = 0; n < N_PlaneRelax; n++)
     {
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (i = 0; i < n1; i = i + 2)
 	LineRelax_be (dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (i = 1; i < n1; i = i + 2)
 	LineRelax_be (dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (j = 1; j < n2; j = j + 2)
 	LineRelax_al (dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
       for (j = 0; j < n2; j = j + 2)
 	LineRelax_al (dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
     }
@@ -360,7 +360,7 @@ bicgstab (CCTK_POINTER_TO_CONST const cctkGH,
 
   /* compute initial residual rt = r = F - J*dv */
   J_times_dv (nvar, n1, n2, n3, dv, r, u);
-#pragma omp parallel for
+// #pragma omp parallel for
   for (int j = 0; j < ntotal; j++)
     rt[j] = r[j] = F[j] - r[j];
 
@@ -383,20 +383,20 @@ bicgstab (CCTK_POINTER_TO_CONST const cctkGH,
     /* compute direction vector p */
     if (ii == 0)
     {
-#pragma omp parallel for
+// #pragma omp parallel for
       for (int j = 0; j < ntotal; j++)
 	p[j] = r[j];
     }
     else
     {
       beta = (rho / rho1) * (alpha / omega);
-#pragma omp parallel for
+// #pragma omp parallel for
       for (int j = 0; j < ntotal; j++)
 	p[j] = r[j] + beta * (p[j] - omega * vv[j]);
     }
 
     /* compute direction adjusting vector ph and scalar alpha */
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int j = 0; j < ntotal; j++)
       ph.d0[j] = 0;
     for (int j = 0; j < NRELAX; j++)	/* solves JFD*ph = p by relaxation*/
@@ -404,7 +404,7 @@ bicgstab (CCTK_POINTER_TO_CONST const cctkGH,
 
     J_times_dv (nvar, n1, n2, n3, ph, vv, u);	/* vv=J*ph*/
     alpha = rho / scalarproduct (rt, vv, ntotal);
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int j = 0; j < ntotal; j++)
       s[j] = r[j] - alpha * vv[j];
 
@@ -412,7 +412,7 @@ bicgstab (CCTK_POINTER_TO_CONST const cctkGH,
     *normres = norm2 (s, ntotal);
     if (*normres <= tol)
     {
-#pragma omp parallel for
+// #pragma omp parallel for
       for (int j = 0; j < ntotal; j++)
 	dv.d0[j] += alpha * ph.d0[j];
       if (output == 1) {
@@ -424,7 +424,7 @@ bicgstab (CCTK_POINTER_TO_CONST const cctkGH,
     }
 
     /* compute stabilizer vector sh and scalar omega */
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int j = 0; j < ntotal; j++)
       sh.d0[j] = 0;
     for (int j = 0; j < NRELAX; j++)	/* solves JFD*sh = s by relaxation*/
@@ -434,7 +434,7 @@ bicgstab (CCTK_POINTER_TO_CONST const cctkGH,
     omega = scalarproduct (t, s, ntotal) / scalarproduct (t, t, ntotal);
 
     /* compute new solution approximation */
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int j = 0; j < ntotal; j++)
     {
       dv.d0[j] += alpha * ph.d0[j] + omega * sh.d0[j];
@@ -515,7 +515,7 @@ Newton (CCTK_POINTER_TO_CONST const cctkGH,
       F_of_v (cctkGH, nvar, n1, n2, n3, v, F, u);
       dmax = norm_inf (F, ntotal);
     }
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int j = 0; j < ntotal; j++)
       dv.d0[j] = 0;
 
@@ -528,7 +528,7 @@ Newton (CCTK_POINTER_TO_CONST const cctkGH,
     ii =
       bicgstab (cctkGH,
                 nvar, n1, n2, n3, v, dv, verbose, 100, dmax * 1.e-3, &normres);
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int j = 0; j < ntotal; j++)
       v.d0[j] -= dv.d0[j];
     F_of_v (cctkGH, nvar, n1, n2, n3, v, F, u);
