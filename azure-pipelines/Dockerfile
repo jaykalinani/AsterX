@@ -31,6 +31,7 @@ RUN apt-get update && \
         subversion \
         wget \
         zlib1g-dev \
+        vim \
         && \
     rm -rf /var/lib/apt/lists/*
 
