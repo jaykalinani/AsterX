@@ -1,3 +1,8 @@
+# run.me:
+# run.cores: 40
+# run.memory: 1.0e9
+# run.time: 3600.0
+
 ActiveThorns = "
     CarpetX
     Formaline
@@ -10,9 +15,11 @@ $ncells = 16
 
 Cactus::cctk_show_schedule = no
 
+Cactus::presync_mode = "mixed-error"
+
 Cactus::cctk_itlast = $ncells * 2 ** ($nlevels - 1) * 2
 
-# CarpetX::verbose = yes
+CarpetX::verbose = no
 
 CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
@@ -31,4 +38,7 @@ WaveToyCarpetX::initial_condition = "periodic Gaussian"
 # WaveToyCarpetX::spatial_frequency_z = 0.0
 
 IO::out_dir = $parfile
+# High frequency output to make a movie
 IO::out_every = 16   #TODO $ncells * 2 ** ($nlevels - 1) / 2
+
+CarpetX::out_silo_vars = "all"
