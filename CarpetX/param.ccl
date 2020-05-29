@@ -250,12 +250,12 @@ STRING in_silo_vars "Variables to input in Silo format" STEERABLE=always
 STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
 {
   ".*" :: ""
-} "all"
+} ""
 
 STRING out_silo_vars "Variables to output in Silo format" STEERABLE=always
 {
   ".*" :: ""
-} "all"
+} ""
 
 BOOLEAN out_tsv "Output in TSV (tab-separated values) format?" STEERABLE=always
 {
