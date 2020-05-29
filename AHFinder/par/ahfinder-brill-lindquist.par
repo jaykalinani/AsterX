@@ -1,13 +1,21 @@
+# run.me:
+# run.cores: 4
+# run.memory: 1.0e9
+# run.time: 30.0
+
 ActiveThorns = "
     ADMBase
     AHFinder
     BrillLindquist
     CarpetX
+    Coordinates
     Formaline
     IOUtil
 "
 
 Cactus::cctk_show_schedule = yes
+
+Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 0.0
