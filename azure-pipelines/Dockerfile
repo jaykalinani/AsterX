@@ -29,9 +29,9 @@ RUN apt-get update && \
         python3 \
         rsync \
         subversion \
+        vim \
         wget \
         zlib1g-dev \
-        vim \
         && \
     rm -rf /var/lib/apt/lists/*
 
