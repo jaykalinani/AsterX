@@ -18,15 +18,20 @@ dtfac = 1/4.0
 
 xmin = -domain_size
 xmax = +domain_size
-nlevels = round(log(1.0 * domain_spacing / fine_box_spacing, 2)) + 1
-ncells = round(2.0 * domain_size / domain_spacing)
+nlevels = int(round(log(1.0 * domain_spacing / fine_box_spacing, 2)) + 1)
+ncells = int(round(2.0 * domain_size / domain_spacing))
 
 large_box_size = fine_box_size * 2 ** (nlevels - 2)
 error_threshold = 1.0 / large_box_size
 
-out_every = 1   #TODO round(1.0 / dtfac * 2 ** (nlevels - 1))
+out_every = int(round(1.0 / dtfac * 2 ** (nlevels - 1)))
 
 parfile = """
+# run.me:
+# run.cores: 40
+# run.memory: 1.0e9
+# run.time: 7200.0
+
 ActiveThorns = "
     ADMBase
     CarpetX
@@ -46,7 +51,9 @@ ActiveThorns = "
 # fine_box_spacing = $fine_box_spacing
 # dtfac = $dtfac
 
-Cactus::cctk_show_schedule = yes
+Cactus::cctk_show_schedule = no
+
+Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 100.0
@@ -141,7 +148,7 @@ CarpetX::out_silo_vars = "
 
 CarpetX::out_tsv = no
 
-TimerReport::out_every = 1   #TODO 128
+TimerReport::out_every = 128
 TimerReport::out_filename = "TimerReport"
 TimerReport::output_schedule_timers = no
 TimerReport::n_top_timers = 100
