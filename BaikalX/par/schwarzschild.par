@@ -15,6 +15,8 @@ $ncells = 24
 
 Cactus::cctk_show_schedule = yes
 
+Cactus::presync_mode = "mixed-error"
+
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 1.0
 
