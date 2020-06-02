@@ -53,7 +53,7 @@ void mpi_reduce(void *restrict x, void *restrict y, int *restrict length,
                         &num_datatypes, &combiner);
   assert(combiner == MPI_COMBINER_CONTIGUOUS);
   assert(num_integers == 1);
-  assert(num_addresses == 1);
+  assert(num_addresses >= 1);
   assert(num_datatypes == 1);
   vector<int> integers(num_integers);
   vector<MPI_Aint> addresses(num_addresses);
