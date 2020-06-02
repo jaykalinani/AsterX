@@ -1332,11 +1332,13 @@ int Initialise(tFleshConfig *config) {
 #pragma omp critical
   CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
 
-  // Restrict
-  assert(current_level == -1);
-  for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
-    Restrict(level);
-  CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+  if (!restrict_during_sync) {
+    // Restrict
+    assert(current_level == -1);
+    for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
+      Restrict(level);
+    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+  }
 
   // Checkpoint, analysis, output
   CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
@@ -1584,11 +1586,13 @@ int Evolve(tFleshConfig *config) {
     for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
       Reflux(level);
 
-    // Restrict
-    assert(current_level == -1);
-    for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
-      Restrict(level);
-    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+    if (!restrict_during_sync) {
+      // Restrict
+      assert(current_level == -1);
+      for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
+        Restrict(level);
+      CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+    }
 
     CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
     CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
@@ -1978,8 +1982,6 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   }
 
   if (restrict_during_sync) {
-#warning "TODO"
-    assert(false);
     if (current_level == -1) {
       for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
         Restrict(level, groups);

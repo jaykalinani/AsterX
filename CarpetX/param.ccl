@@ -219,7 +219,7 @@ BOOLEAN do_restrict "Automatically restrict fine to coarse grid functions"
 
 BOOLEAN restrict_during_sync "Restrict fine to coarse grid functions when syncing"
 {
-} no
+} yes
 
 
 
