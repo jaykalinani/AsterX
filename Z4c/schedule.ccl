@@ -66,7 +66,20 @@ SCHEDULE Z4c_Initial2 IN Z4c_Initial AFTER Z4c_Initial1
 
 
 
-SCHEDULE Z4c_Boundaries IN Z4c_PostStep
+SCHEDULE Z4c_Sync IN Z4c_PostStep
+{
+  LANG: C
+  SYNC: chi
+  SYNC: gamma_tilde
+  SYNC: K_hat
+  SYNC: A_tilde
+  SYNC: Gam_tilde
+  SYNC: Theta
+  SYNC: alphaG
+  SYNC: betaG
+} "Synchronize Z4c variables"
+
+SCHEDULE Z4c_Boundaries IN Z4c_PostStep AFTER Z4c_Sync
 {
   LANG: C
   WRITES: chi(boundary)
@@ -77,14 +90,6 @@ SCHEDULE Z4c_Boundaries IN Z4c_PostStep
   WRITES: Theta(boundary)
   WRITES: alphaG(boundary)
   WRITES: betaG(boundary)
-  SYNC: chi
-  SYNC: gamma_tilde
-  SYNC: K_hat
-  SYNC: A_tilde
-  SYNC: Gam_tilde
-  SYNC: Theta
-  SYNC: alphaG
-  SYNC: betaG
 } "Apply boundary conditions to Z4c variables"
 
 SCHEDULE Z4c_Enforce IN Z4c_PostStep AFTER Z4c_Boundaries
@@ -118,6 +123,33 @@ SCHEDULE Z4c_ADM IN Z4c_PostStep AFTER Z4c_Enforce
   WRITES: ADMBase::shift(everywhere)
   WRITES: ADMBase::dtshift(everywhere)
 } "Convert Z4c to ADM variables"
+
+SCHEDULE Z4c_ADM2 IN Z4c_PostStep AFTER Z4c_Enforce
+{
+  LANG: C
+  READS: chi(everywhere)
+  READS: gamma_tilde(everywhere)
+  READS: K_hat(everywhere)
+  READS: A_tilde(everywhere)
+  READS: Gam_tilde(everywhere)
+  READS: Theta(everywhere)
+  READS: alphaG(everywhere)
+  READS: betaG(everywhere)
+  WRITES: ADMBase::dtcurv(interior)
+  WRITES: ADMBase::dt2lapse(interior)
+  WRITES: ADMBase::dt2shift(interior)
+} "Calculate second time derivatives of ADM variables"
+
+SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStep
+{
+  LANG: C
+  WRITES: ADMBase::dtcurv(boundary)
+  WRITES: ADMBase::dt2lapse(boundary)
+  WRITES: ADMBase::dt2shift(boundary)
+  SYNC: ADMBase::dtcurv
+  SYNC: ADMBase::dt2lapse
+  SYNC: ADMBase::dt2shift
+} "Apply boundary conditions to second time derivatives of ADM variables"
 
 
 
@@ -170,10 +202,6 @@ SCHEDULE Z4c_RHS IN Z4c_RHS
   WRITES: Theta_rhs(interior)
   WRITES: alphaG_rhs(interior)
   WRITES: betaG_rhs(interior)
-  #
-  WRITES: ADMBase::dtcurv(interior)
-  WRITES: ADMBase::dt2lapse(interior)
-  WRITES: ADMBase::dt2shift(interior)
 } "Calculate Z4c RHS"
 
 SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
@@ -195,13 +223,6 @@ SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
   SYNC: Theta_rhs
   SYNC: alphaG_rhs
   SYNC: betaG_rhs
-  #
-  WRITES: ADMBase::dtcurv(boundary)
-  WRITES: ADMBase::dt2lapse(boundary)
-  WRITES: ADMBase::dt2shift(boundary)
-  SYNC: ADMBase::dtcurv
-  SYNC: ADMBase::dt2lapse
-  SYNC: ADMBase::dt2shift
 } "Apply boundary conditions to Z4c RHS variables"
 
 
@@ -242,6 +263,6 @@ SCHEDULE GROUP Z4c_RHS IN ODESolvers_RHS
 
 
 
-SCHEDULE GROUP Z4c_PostSTep AT postrestrict
-{
-} "Post-process Z4c variables"
+# SCHEDULE GROUP Z4c_PostStep AT postrestrict
+# {
+# } "Post-process Z4c variables"

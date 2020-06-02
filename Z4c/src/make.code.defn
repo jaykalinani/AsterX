@@ -3,6 +3,8 @@
 # Source files in this directory
 SRCS =						\
 	adm.cxx					\
+	adm2.cxx				\
+	adm2boundaries.cxx			\
 	boundaries.cxx				\
 	constraints.cxx				\
 	constraintboundaries.cxx		\
@@ -11,6 +13,7 @@ SRCS =						\
 	initial2.cxx				\
 	rhs.cxx					\
 	rhsboundaries.cxx			\
+        sync.cxx				\
 	test.cxx
 
 # Subdirectories containing source files
