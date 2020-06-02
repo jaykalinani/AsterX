@@ -5,6 +5,8 @@ ActiveThorns = "
     TestODESolvers
 "
 
+Cactus::presync_mode = "mixed-error"
+
 CarpetX::ncells_x = 1
 CarpetX::ncells_y = 1
 CarpetX::ncells_z = 1
