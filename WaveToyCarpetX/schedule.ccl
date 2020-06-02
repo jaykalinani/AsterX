@@ -40,24 +40,24 @@ SCHEDULE WaveToyCarpetX_EstimateError AT postinitial
 
 
 
-SCHEDULE WaveToyCarpetX_Sync AT postrestrict
-{
-  LANG: C
-  SYNC: state
-} "Boundary conditions for the wave equation"
-
-SCHEDULE WaveToyCarpetX_Boundaries AT postrestrict AFTER WaveToyCarpetX_Sync
-{
-  LANG: C
-  READS: state(interior)
-  WRITES: state(boundary)
-} "Boundary conditions for the wave equation"
-
-SCHEDULE WaveToyCarpetX_NaNCheck_current AT postrestrict AFTER WaveToyCarpetX_Boundaries
-{
-  LANG: C
-  READS: phi(everywhere) psi(everywhere)
-} "Check for nans in the state vector"
+# SCHEDULE WaveToyCarpetX_Sync AT postrestrict
+# {
+#   LANG: C
+#   SYNC: state
+# } "Boundary conditions for the wave equation"
+# 
+# SCHEDULE WaveToyCarpetX_Boundaries AT postrestrict AFTER WaveToyCarpetX_Sync
+# {
+#   LANG: C
+#   READS: state(interior)
+#   WRITES: state(boundary)
+# } "Boundary conditions for the wave equation"
+# 
+# SCHEDULE WaveToyCarpetX_NaNCheck_current AT postrestrict AFTER WaveToyCarpetX_Boundaries
+# {
+#   LANG: C
+#   READS: phi(everywhere) psi(everywhere)
+# } "Check for nans in the state vector"
 
 
 
