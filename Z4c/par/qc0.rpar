@@ -10,7 +10,9 @@ import sys
 domain_size = 128.0
 domain_spacing = 1.0
 fine_box_size = 2.0
-fine_box_spacing = 1/32.0
+#TODO fine_box_spacing = 1/16.0
+fine_box_spacing = 1/24.0
+#TODO fine_box_spacing = 1/32.0
 
 dtfac = 1/4.0
 
@@ -25,6 +27,12 @@ large_box_size = fine_box_size * 2 ** (nlevels - 2)
 error_threshold = 1.0 / large_box_size
 
 out_every = int(round(1.0 / dtfac * 2 ** (nlevels - 1)))
+
+try:
+    run_test = int("@RUN_TEST@")
+except:
+    run_test = 0
+final_time = 1.0/16 if run_test else 100.0
 
 parfile = """
 # run.me:
@@ -56,7 +64,7 @@ Cactus::cctk_show_schedule = no
 Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
-Cactus::cctk_final_time = 100.0
+Cactus::cctk_final_time = $final_time
 
 CarpetX::verbose = no
 CarpetX::poison_undefined_values = no
@@ -148,7 +156,7 @@ CarpetX::out_silo_vars = "
 
 CarpetX::out_tsv = no
 
-TimerReport::out_every = 128
+TimerReport::out_every = $out_every
 TimerReport::out_filename = "TimerReport"
 TimerReport::output_schedule_timers = no
 TimerReport::n_top_timers = 100
