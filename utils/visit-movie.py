@@ -8,7 +8,7 @@
 
 # module load visit/3.1.0
 # visit -cli -nosplash -nowin -s visit-movie.py
-# ffmpeg -framerate 10 -i qc0%04d.png qc0.mp4
+# ffmpeg -framerate 10 -i qc0%04d.png -pix_fmt yuv420p qc0.mp4
 
 OpenDatabase("/gpfs/eschnetter/simulations/qc0/output-0000/qc0/qc0.visit")
 
@@ -31,9 +31,12 @@ v.windowCoords = (-10, 10, -10, 10)
 SetView2D(v)
 
 ann = AnnotationAttributes()
-ann.databaseInfoFlag = False
-ann.userInfoFlag = False
-ann.timeInfoFlag = False
+# databaseInfoFlag is necessary to display the simulation time
+ann.databaseInfoFlag = True
+# Display the simulation time
+ann.timeInfoFlag = True
+# userInfoFlag also displays the timestamp when the movie was made
+ann.userInfoFlag = True
 SetAnnotationAttributes(ann)
 
 s = SaveWindowAttributes()
@@ -46,3 +49,5 @@ SetSaveWindowAttributes(s)
 for state in range(0, TimeSliderGetNStates(), 10):
     SetTimeSliderState(state)
     SaveWindow()
+
+exit()
