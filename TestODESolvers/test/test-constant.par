@@ -17,14 +17,19 @@ CarpetX::blocking_factor_z = 1
 
 CarpetX::ghost_size = 0
 
-CarpetX::dtfac = 0.1
+CarpetX::dtfac = 0.001
+Cactus::cctk_itlast = 10
 
-ODESolvers::method = "constant"
+ODESolvers::method = "Constant"
 
-TestODESolvers::order = 0
+# test something not exactly solvable by method
+TestODESolvers::order = 0 + 1
 
 CarpetX::out_plotfile_groups = ""
 CarpetX::out_tsv = no
 
 IO::out_dir = $parfile
+IO::out_fileinfo  = "axis labels"
+IO::parfile_write = "no"
+
 IO::out_every = 1
