@@ -46,8 +46,8 @@ template <typename T, int order> struct interpolator {
     const auto DI = vect<int, dim>::unit(dir);
     switch (order) {
     case 0: {
-      const T x = di[dir];
 #ifdef CCTK_DEBUG
+      const T x = di[dir];
       assert(fabs(x) <= T(0.5));
 #endif
       const T y0 = interpolate<dir - 1>(i, di);
