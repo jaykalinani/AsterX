@@ -205,6 +205,12 @@ CCTK_INT interpolation_order "Interpolation order" STEERABLE=always
 
 
 
+BOOLEAN use_subcycling_wip "Use subcycling in time"
+{
+} no  
+
+
+
 BOOLEAN do_reflux "Manage flux registers to ensure conservation"
 {
 } yes

@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -102,6 +103,10 @@ struct GHExt {
   struct GlobalData {
     // all data that exists on all levels
 
+    // For subcycling in time, there really should be one copy of each
+    // integrated grid scalar per level. We don't do that yet; insted,
+    // we assume that grid scalars only hold "analysis" data.
+
     struct ScalarGroupData : public CommonGroupData {
       vector<vector<CCTK_REAL> > data; // [time level][var index]
     };
@@ -112,6 +117,12 @@ struct GHExt {
 
   struct LevelData {
     int level;
+
+    // Iteration and time at which this level is valid
+    constexpr static int64_t coarse_delta_iteration = 1LL << 32;
+    int64_t iteration, delta_iteration;
+    CCTK_REAL time, delta_time;
+
     // Empty MultiFab holding a cell-centred BoxArray for iterating
     // over grid functions.
     // TODO: Can we store the BoxArray directly?

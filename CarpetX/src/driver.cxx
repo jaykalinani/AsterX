@@ -19,6 +19,7 @@
 #include <omp.h>
 #include <mpi.h>
 
+#include <cassert>
 #include <cmath>
 #include <memory>
 #include <ostream>
@@ -28,6 +29,18 @@
 namespace CarpetX {
 using namespace amrex;
 using namespace std;
+
+template <typename T> constexpr T ipow(T x, int n) {
+  assert(n >= 0);
+  T r = 1;
+  while (n > 0) {
+    if (n % 2)
+      r *= x;
+    n /= 2;
+    x *= x;
+  }
+  return r;
+}
 
 // Global variables
 
@@ -366,6 +379,23 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
   assert(ba.ixType() ==
          IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
+
+  const int timereffact = use_subcycling_wip ? 2 : 1;
+  if (level == 0) {
+    // We are creating the coarsest level
+    leveldata.iteration = 0;
+    leveldata.delta_iteration = leveldata.coarse_delta_iteration;
+    leveldata.time = 0.0;
+    leveldata.delta_time = 1.0;
+  } else {
+    // We are creating a new refined level
+    auto &coarseleveldata = ghext->leveldata.at(level - 1);
+    leveldata.iteration = coarseleveldata.iteration;
+    assert(coarseleveldata.delta_iteration % timereffact == 0);
+    leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
+    leveldata.time = coarseleveldata.time;
+    leveldata.delta_time = coarseleveldata.delta_time / timereffact;
+  }
 
   const int numgroups = CCTK_NumGroups();
   leveldata.groupdata.resize(numgroups);
@@ -885,6 +915,19 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
   leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
   assert(ba.ixType() ==
          IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
+
+  // We assume that this level is at the same time as the next coarser level
+  const int timereffact = use_subcycling_wip ? 2 : 1;
+  // leveldata.iteration = coarseleveldata.iteration;
+  // assert(coarseleveldata.delta_iteration % timereffact == 0);
+  // leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
+  // leveldata.time = coarseleveldata.time;
+  // leveldata.delta_time = coarseleveldata.delta_time / timereffact;
+  assert(leveldata.iteration == coarseleveldata.iteration);
+  assert(leveldata.delta_iteration ==
+         coarseleveldata.delta_iteration / timereffact);
+  assert(leveldata.time == coarseleveldata.time);
+  assert(leveldata.delta_time == coarseleveldata.delta_time / timereffact);
 
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
