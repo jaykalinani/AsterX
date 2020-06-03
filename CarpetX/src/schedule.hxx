@@ -52,10 +52,35 @@ extern int current_level;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Like an MFIter, but does not support iteration, instead it can be copied
+struct MFPointer {
+  int m_index;
+  Box m_fabbox;
+  Box m_growntilebox;
+  Box m_validbox;
+  IntVect m_nGrowVect;
+
+  MFPointer() = delete;
+  MFPointer(const MFPointer &) = default;
+  MFPointer(MFPointer &&) = default;
+  MFPointer &operator=(const MFPointer &) = default;
+  MFPointer &operator=(MFPointer &&) = default;
+  MFPointer(const MFIter &mfi)
+      : m_index(mfi.index()), m_fabbox(mfi.fabbox()),
+        m_growntilebox(mfi.growntilebox()), m_validbox(mfi.validbox()),
+        m_nGrowVect(mfi.theFabArrayBase().nGrowVect()) {}
+
+  constexpr int index() const noexcept { return m_index; }
+  constexpr Box fabbox() const noexcept { return m_fabbox; }
+  constexpr Box growntilebox() const noexcept { return m_growntilebox; }
+  constexpr Box validbox() const noexcept { return m_validbox; }
+  constexpr IntVect nGrowVect() const noexcept { return m_nGrowVect; }
+};
+
 struct GridDesc : GridDescBase {
 
   GridDesc() = delete;
-  GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi);
+  GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp);
   GridDesc(const cGH *cctkGH) : GridDescBase(cctkGH) {}
 };
 
@@ -64,7 +89,7 @@ struct GridPtrDesc : GridDesc {
   Dim3 cactus_offset;
 
   GridPtrDesc() = delete;
-  GridPtrDesc(const GHExt::LevelData &leveldata, const MFIter &mfi);
+  GridPtrDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp);
 
   template <typename T> T *ptr(const Array4<T> &vars, int vi) const {
     return vars.ptr(cactus_offset.x, cactus_offset.y, cactus_offset.z, vi);
@@ -86,7 +111,8 @@ struct GridPtrDesc1 : GridDesc {
   GridPtrDesc1 &operator=(const GridPtrDesc1 &) = delete;
 
   GridPtrDesc1(const GHExt::LevelData &leveldata,
-               const GHExt::LevelData::GroupData &groupdata, const MFIter &mfi);
+               const GHExt::LevelData::GroupData &groupdata,
+               const MFPointer &mfp);
 
   template <typename T> T *ptr(const Array4<T> &vars, int vi) const {
     return vars.ptr(cactus_offset.x + gimin[0], cactus_offset.y + gimin[1],

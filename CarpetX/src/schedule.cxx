@@ -59,7 +59,7 @@ struct thread_local_info_t {
   // TODO: store only MFIter here; recalculate other things from it
   cGH cctkGH;
   TileBox tilebox;
-  MFIter *mfiter;
+  const MFPointer *restrict mfpointer;
   unsigned char padding[128]; // Prevent false sharing
 };
 
@@ -134,18 +134,17 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
 } // namespace Loop
 namespace CarpetX {
 
-GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
+GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   DECLARE_CCTK_PARAMETERS;
 
-  const Box &fbx = mfi.fabbox();   // allocated array
-  const Box &vbx = mfi.validbox(); // interior region (without ghosts)
-  // const Box &bx = mfi.tilebox();       // current region (without ghosts)
-  const Box &gbx = mfi.growntilebox(); // current region (with ghosts)
+  const Box &fbx = mfp.fabbox();   // allocated array
+  const Box &vbx = mfp.validbox(); // interior region (without ghosts)
+  const Box &gbx = mfp.growntilebox(); // current region (with ghosts)
   const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
 
   // The number of ghostzones in each direction
   for (int d = 0; d < dim; ++d)
-    nghostzones[d] = mfi.theFabArrayBase().nGrowVect()[d];
+    nghostzones[d] = mfp.nGrowVect()[d];
 
   // Global shape
   for (int d = 0; d < dim; ++d)
@@ -229,17 +228,18 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFIter &mfi) {
   }
 }
 
-GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata, const MFIter &mfi)
-    : GridDesc(leveldata, mfi) {
-  const Box &fbx = mfi.fabbox(); // allocated array
+GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata,
+                         const MFPointer &mfp)
+    : GridDesc(leveldata, mfp) {
+  const Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
 }
 
 GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData &leveldata,
                            const GHExt::LevelData::GroupData &groupdata,
-                           const MFIter &mfi)
-    : GridDesc(leveldata, mfi) {
-  const Box &fbx = mfi.fabbox(); // allocated array
+                           const MFPointer &mfp)
+    : GridDesc(leveldata, mfp) {
+  const Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
   for (int d = 0; d < dim; ++d) {
     assert(groupdata.nghostzones[d] >= 0);
@@ -951,9 +951,9 @@ void leave_level_mode(cGH *restrict cctkGH,
 // Set cctkGH entries for local mode
 void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
-                      const MFIter &mfi) {
+                      const MFPointer &mfp) {
   assert(in_level_mode(cctkGH));
-  const GridPtrDesc grid(leveldata, mfi);
+  const GridPtrDesc grid(leveldata, mfp);
 
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = grid.lsh[d];
@@ -983,9 +983,9 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
       continue;
 
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
-    const GridPtrDesc1 grid1(leveldata, groupdata, mfi);
+    const GridPtrDesc1 grid1(leveldata, groupdata, mfp);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+      const Array4<CCTK_REAL> vars = groupdata.mfab.at(tl)->array(mfp.index());
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         cctkGH->data[groupdata.firstvarindex + vi][tl] = grid1.ptr(vars, vi);
     }
@@ -1019,7 +1019,7 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
 }
 void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
-                      const MFIter &mfi) {
+                      const MFPointer &mfp) {
   assert(in_local_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_lsh[d] = undefined;
@@ -1196,7 +1196,7 @@ int Initialise(tFleshConfig *config) {
     clone_cctkGH(threadGH, cctkGH);
     setup_cctkGH(threadGH);
     enter_global_mode(threadGH);
-    thread_local_info.at(n)->mfiter = nullptr;
+    thread_local_info.at(n)->mfpointer = nullptr;
   }
   swap(saved_thread_local_info, thread_local_info);
   assert(thread_local_info.empty());
@@ -1777,6 +1777,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     // TODO: provide looping function
     assert(thread_local_info.empty());
     swap(thread_local_info, saved_thread_local_info);
+
+#if 0
+
 #pragma omp parallel
     {
       const int thread_num = omp_get_thread_num();
@@ -1784,25 +1787,80 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           *thread_local_info.at(thread_num);
       cGH *restrict const threadGH = &thread_info.cctkGH;
       update_cctkGH(threadGH, cctkGH);
-      TileBox &restrict thread_tilebox = thread_info.tilebox;
+       TileBox &restrict thread_tilebox = thread_info.tilebox;
 
-      // Loop over all levels
-      // TODO: parallelize this loop
+                   // Loop over all levels
+                   // TODO: parallelize this loop
       for (int level = min_level; level < max_level; ++level) {
         const auto &restrict leveldata = ghext->leveldata.at(level);
         enter_level_mode(threadGH, leveldata);
         const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
         for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-          thread_info.mfiter = &mfi;
-          enter_local_mode(threadGH, thread_tilebox, leveldata, mfi);
+          cout << "level=" << level << " mfi.currentIndex=" << mfi.tileIndex()
+               << " mfi.length=" << mfi.length() << "\n";
+          MFPointer mfp(mfi);
+          thread_info.mfpointer = &mfp;
+          enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
           CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, thread_tilebox, leveldata, mfi);
-          thread_info.mfiter = nullptr;
+          leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          thread_info.mfpointer = nullptr;
         }
         leave_level_mode(threadGH, leveldata);
       }
     }
+
+#else
+
+    vector<std::function<void()> > tasks;
+    for (int level = min_level; level < max_level; ++level) {
+      const auto &restrict leveldata = ghext->leveldata.at(level);
+      const auto mfitinfo = MFItInfo().EnableTiling(
+          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+      // Note: The MFIter uses global variables and OpenMP barriers
+      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+        const MFPointer mfp(mfi);
+        assert(leveldata.mfab0->array(mfi).dataPtr() ==
+               leveldata.mfab0->array(mfp.index()).dataPtr());
+
+        const auto task{[level, mfp, function, attribute] {
+          const int thread_num = omp_get_thread_num();
+          thread_local_info_t &restrict thread_info =
+              *thread_local_info.at(thread_num);
+          cGH *restrict const threadGH = &thread_info.cctkGH;
+          TileBox &restrict thread_tilebox = thread_info.tilebox;
+
+          const auto &restrict leveldata = ghext->leveldata.at(level);
+          thread_info.mfpointer = &mfp;
+
+          enter_level_mode(threadGH, leveldata);
+          enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          CCTK_CallFunction(function, attribute, threadGH);
+          leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          leave_level_mode(threadGH, leveldata);
+          thread_info.mfpointer = nullptr;
+        }};
+        tasks.push_back(task);
+      }
+    }
+
+#pragma omp parallel
+    {
+      // Initialize thread-local state variables
+      const int thread_num = omp_get_thread_num();
+      thread_local_info_t &restrict thread_info =
+          *thread_local_info.at(thread_num);
+      cGH *restrict const threadGH = &thread_info.cctkGH;
+      update_cctkGH(threadGH, cctkGH);
+
+      // run all tasks
+#pragma omp for schedule(dynamic)
+      for (size_t i = 0; i < tasks.size(); ++i)
+        tasks[i]();
+    }
+
+#endif
+
     swap(saved_thread_local_info, thread_local_info);
     assert(thread_local_info.empty());
     break;
@@ -2047,8 +2105,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         }
 
       } else {
-        // Refined level: Prolongate boundaries from next coarser
-        // level, and copy from adjacent boxes on same level
+        // Refined level: Prolongate boundaries from next coarser level, and
+        // copy from adjacent boxes on same level
 
         const int level = leveldata.level;
         const auto &restrict coarseleveldata = ghext->leveldata.at(level - 1);
