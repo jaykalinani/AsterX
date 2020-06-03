@@ -1,6 +1,6 @@
 # Schedule definitions for thorn TestODESolvers
 
-STORAGE: state rhs
+STORAGE: state rhs error state2 rhs2 error2 corder
 
 
 
@@ -8,24 +8,25 @@ SCHEDULE TestODESolvers_Initial AT initial
 {
   LANG: C
   WRITES: state(everywhere)
+  WRITES: state2(everywhere)
 } "Initialize state vector"
 
 SCHEDULE TestODESolvers_RHS IN ODESolvers_RHS
 {
   LANG: C
-  READS: state
-  WRITES: rhs
+  READS: state, state2
+  WRITES: rhs, rhs2
 } "RHS function"
 
 SCHEDULE TestODESolvers_Boundary AT poststep
 {
   LANG: C
-  SYNC: state
+  SYNC: state, state2
 } "Apply boundary conditions to state vector"
 
 SCHEDULE TestODESolvers_Error AT analysis
 {
   LANG: C
-  READS: state
-  WRITES: error
+  READS: state, state2
+  WRITES: error, error2, corder
 } "Calculate error in state vector"

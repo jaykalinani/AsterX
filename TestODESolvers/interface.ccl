@@ -9,3 +9,11 @@ CCTK_REAL state TYPE=gf TAGS='rhs="TestODESolvers::rhs"' "State vector"
 CCTK_REAL rhs TYPE=gf "RHS of state vector"
 
 CCTK_REAL error TYPE=gf "Error in state vector"
+
+CCTK_REAL state2 TYPE=gf TAGS='rhs="TestODESolvers::rhs2"' "State vector, stepped with twice the timestep"
+
+CCTK_REAL rhs2 TYPE=gf "RHS of state vector"
+
+CCTK_REAL error2 TYPE=gf "Error in state vector"
+
+CCTK_REAL corder TYPE=gf "Estimate for convergence order"
