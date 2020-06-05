@@ -146,8 +146,8 @@ namespace CarpetX {
 GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   DECLARE_CCTK_PARAMETERS;
 
-  const Box &fbx = mfp.fabbox();   // allocated array
-  const Box &vbx = mfp.validbox(); // interior region (without ghosts)
+  const Box &fbx = mfp.fabbox();       // allocated array
+  const Box &vbx = mfp.validbox();     // interior region (without ghosts)
   const Box &gbx = mfp.growntilebox(); // current region (with ghosts)
   const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
 
@@ -273,9 +273,9 @@ void error_if_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
   if (CCTK_BUILTIN_EXPECT((required & ~have).valid_any(), false))
     CCTK_VERROR("%s: Grid function \"%s\" is invalid on refinement level %d, "
                 "time level %d; required %s, found %s",
-        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+                msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
                 groupdata.level, tl, string(required).c_str(),
-        string(groupdata.valid.at(tl).at(vi)).c_str());
+                string(groupdata.valid.at(tl).at(vi)).c_str());
 }
 void warn_if_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
                      int tl, const valid_t &required,
@@ -285,9 +285,9 @@ void warn_if_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
     CCTK_VWARN(CCTK_WARN_ALERT,
                "%s: Grid function \"%s\" is invalid on refinement level %d, "
                "time level %d; required %s, found %s",
-        msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+               msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
                groupdata.level, tl, string(required).c_str(),
-        string(groupdata.valid.at(tl).at(vi)).c_str());
+               string(groupdata.valid.at(tl).at(vi)).c_str());
 }
 
 // Set grid functions to nan
@@ -305,8 +305,8 @@ void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
   const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+  for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    const GridPtrDesc1 grid(groupdata, mfi);
     const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
@@ -382,8 +382,8 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
   const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+  for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    const GridPtrDesc1 grid(groupdata, mfi);
     const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
@@ -421,8 +421,8 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
           double(nan_xmax[0]), double(nan_xmax[1]), double(nan_xmax[2]),
           string(groupdata.valid.at(tl).at(vi)).c_str());
 
-      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-        const GridPtrDesc1 grid(leveldata, groupdata, mfi);
+      for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+        const GridPtrDesc1 grid(groupdata, mfi);
         const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
         const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
@@ -617,7 +617,7 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
     auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
         {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-    for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
 
       for (const auto &groupdataptr : leveldata.groupdata) {
         if (groupdataptr == nullptr)
@@ -688,7 +688,7 @@ void check_checksums(const checksums_t checksums, const int min_level,
     auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
         {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-    for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
 
       for (const auto &groupdataptr : leveldata.groupdata) {
         if (groupdataptr == nullptr)
@@ -1311,17 +1311,17 @@ int Initialise(tFleshConfig *config) {
              new_numlevels == old_numlevels + 1);
 #pragma omp critical
       {
-        const double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+        const double pts0 = ghext->leveldata.at(0).fab->boxArray().d_numPts();
         for (const auto &leveldata : ghext->leveldata) {
-          const int sz = leveldata.mfab0->size();
-          const double pts = leveldata.mfab0->boxArray().d_numPts();
+          const int sz = leveldata.fab->size();
+          const double pts = leveldata.fab->boxArray().d_numPts();
           if (leveldata.level == 0) {
             CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
                        leveldata.level, sz, pts,
                        100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
           } else {
             const double ptsc = ghext->leveldata.at(leveldata.level - 1)
-                                    .mfab0->boxArray()
+                                    .fab->boxArray()
                                     .d_numPts();
             CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
                        leveldata.level, sz, pts,
@@ -1561,18 +1561,18 @@ int Evolve(tFleshConfig *config) {
       {
         CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
                    new_numlevels);
-        double pts0 = ghext->leveldata.at(0).mfab0->boxArray().d_numPts();
+        double pts0 = ghext->leveldata.at(0).fab->boxArray().d_numPts();
         assert(current_level == -1);
         for (const auto &leveldata : ghext->leveldata) {
-          const int sz = leveldata.mfab0->size();
-          const double pts = leveldata.mfab0->boxArray().d_numPts();
+          const int sz = leveldata.fab->size();
+          const double pts = leveldata.fab->boxArray().d_numPts();
           if (leveldata.level == 0) {
             CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
                        leveldata.level, sz, pts,
                        100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
           } else {
             const double ptsc = ghext->leveldata.at(leveldata.level - 1)
-                                    .mfab0->boxArray()
+                                    .fab->boxArray()
                                     .d_numPts();
             CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
                        leveldata.level, sz, pts,
@@ -1803,7 +1803,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         enter_level_mode(threadGH, leveldata);
         const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
           cout << "level=" << level << " mfi.currentIndex=" << mfi.tileIndex()
                << " mfi.length=" << mfi.length() << "\n";
           MFPointer mfp(mfi);
@@ -1825,10 +1825,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       const auto mfitinfo = MFItInfo().EnableTiling(
           {max_tile_size_x, max_tile_size_y, max_tile_size_z});
       // Note: The MFIter uses global variables and OpenMP barriers
-      for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
         const MFPointer mfp(mfi);
-        assert(leveldata.mfab0->array(mfi).dataPtr() ==
-               leveldata.mfab0->array(mfp.index()).dataPtr());
 
         const auto task{[level, mfp, function, attribute] {
           const int thread_num = omp_get_thread_num();
@@ -2129,12 +2127,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
 #warning "TODO: interpolation does not require boundaries: also for regridding!"
             error_if_invalid(coarsegroupdata, vi, tl, make_valid_int(), [] {
-                               return "SyncGroupsByDirI on coarse level "
-                                      "before prolongation";
-                             });
+              return "SyncGroupsByDirI on coarse level "
+                     "before prolongation";
+            });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), [] {
-                  return "SyncGroupsByDirI on fine level before prolongation";
-                });
+              return "SyncGroupsByDirI on fine level before prolongation";
+            });
             poison_invalid(groupdata, vi, tl);
             check_valid(coarsegroupdata, vi, tl, [] {
               return "SyncGroupsByDirI on coarse level before prolongation";
@@ -2218,15 +2216,15 @@ void Reflux(int level) {
         const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
         for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
           error_if_invalid(flux_finegroupdata, vi, tl, make_valid_int(), [&] {
-                ostringstream buf;
-                buf << "Reflux: Fine level flux in direction " << d;
-                return buf.str();
-              });
+            ostringstream buf;
+            buf << "Reflux: Fine level flux in direction " << d;
+            return buf.str();
+          });
           error_if_invalid(flux_groupdata, vi, tl, make_valid_int(), [&] {
-                ostringstream buf;
-                buf << "Reflux: Coarse level flux in direction " << d;
-                return buf.str();
-              });
+            ostringstream buf;
+            buf << "Reflux: Coarse level flux in direction " << d;
+            return buf.str();
+          });
         }
       }
 

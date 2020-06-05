@@ -209,7 +209,7 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   {
     const int level = 0;
     const auto &restrict leveldata = ghext->leveldata.at(level);
-    const MFIter mfi(*leveldata.mfab0);
+    const MFIter mfi(*leveldata.fab);
     assert(mfi.isValid());
     auto &particles = container.GetParticles(
         level)[make_pair(mfi.index(), mfi.LocalTileIndex())];

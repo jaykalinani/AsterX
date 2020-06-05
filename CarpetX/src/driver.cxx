@@ -274,8 +274,8 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags,
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-    GridPtrDesc1 grid(leveldata, groupdata, mfi);
+  for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    GridPtrDesc1 grid(groupdata, mfi);
 
     const Array4<const CCTK_REAL> &err_array4 =
         groupdata.mfab.at(tl)->array(mfi);
@@ -375,10 +375,6 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
   ghext->leveldata.resize(level + 1);
   GHExt::LevelData &leveldata = ghext->leveldata.at(level);
   leveldata.level = level;
-  // TODO: Make this an empty MultiFab
-  leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
-  assert(ba.ixType() ==
-         IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
 
   const int timereffact = use_subcycling_wip ? 2 : 1;
   if (level == 0) {
@@ -396,6 +392,10 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
     leveldata.time = coarseleveldata.time;
     leveldata.delta_time = coarseleveldata.delta_time / timereffact;
   }
+
+  leveldata.fab = make_unique<FabArrayBase>(ba, dm, 1, ghost_size);
+  assert(ba.ixType() ==
+         IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
 
   const int numgroups = CCTK_NumGroups();
   leveldata.groupdata.resize(numgroups);
@@ -911,8 +911,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
   assert(leveldata.level > 0);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
 
-  // TODO: Make this an empty MultiFab
-  leveldata.mfab0 = make_unique<MultiFab>(ba, dm, 1, ghost_size);
+  leveldata.fab = make_unique<FabArrayBase>(ba, dm, 1, ghost_size);
   assert(ba.ixType() ==
          IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
 
@@ -973,8 +972,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
         auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-        for (MFIter mfi(*leveldata.mfab0, mfitinfo); mfi.isValid(); ++mfi) {
-          GridPtrDesc1 grid(leveldata, groupdata, mfi);
+        for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+          GridPtrDesc1 grid(groupdata, mfi);
           const Array4<CCTK_REAL> &vars = mfab->array(mfi);
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             const GF3D1<CCTK_REAL> &ptr_ = grid.gf3d(vars, vi);

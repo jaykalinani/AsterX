@@ -123,14 +123,10 @@ struct GHExt {
     int64_t iteration, delta_iteration;
     CCTK_REAL time, delta_time;
 
-    // Empty MultiFab holding a cell-centred BoxArray for iterating
-    // over grid functions.
-    // TODO: Can we store the BoxArray directly?
-    // The data in mfab0 is not valid. It's a dummy
-    // variable to get the distribution mapping, the
-    // grid size, ghost zones, etc. Only needed for
-    // cctkGH.
-    unique_ptr<MultiFab> mfab0;
+    // FabArrayBase object holding a cell-centred BoxArray for
+    // iterating over grid functions. This stores the grid structure
+    // and its distribution over all processes, but holds no data.
+    unique_ptr<FabArrayBase> fab;
 
     struct GroupData : public CommonGroupData {
       int level;
