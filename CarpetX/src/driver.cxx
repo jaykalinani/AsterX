@@ -249,8 +249,8 @@ CactusAmrCore::CactusAmrCore(const RealBox &rb, int max_level_in,
 
 CactusAmrCore::~CactusAmrCore() {}
 
-void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
-                             int ngrow) {
+void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags,
+                             const Real time, const int ngrow) {
   DECLARE_CCTK_PARAMETERS;
 
   // Don't regrid before Cactus is ready to
@@ -269,7 +269,7 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags, Real time,
   auto &restrict leveldata = ghext->leveldata.at(level);
   auto &restrict groupdata = *leveldata.groupdata.at(gi);
   // Ensure the error estimate has been set
-  error_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
+  error_if_invalid(groupdata, vi, tl, make_valid_int(),
                    [] { return "ErrorEst"; });
   auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
@@ -415,6 +415,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
 
     leveldata.groupdata.at(gi) = make_unique<GHExt::LevelData::GroupData>();
     GHExt::LevelData::GroupData &groupdata = *leveldata.groupdata.at(gi);
+    groupdata.level = leveldata.level;
     groupdata.groupindex = gi;
     groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     groupdata.numvars = group.numvars;
@@ -447,7 +448,7 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
           gba, dm, groupdata.numvars, IntVect(groupdata.nghostzones));
       groupdata.valid.at(tl).resize(groupdata.numvars, why_valid_t(why));
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        poison_invalid(leveldata, groupdata, vi, tl);
+        poison_invalid(groupdata, vi, tl);
     }
 
     if (level > 0) {
@@ -735,8 +736,7 @@ void apply_physbcs(const Box &, const FArrayBox &, int, int, const Geometry &,
 }
 
 tuple<CarpetXPhysBCFunct, Vector<BCRec> >
-get_boundaries(const GHExt::LevelData &leveldata,
-               const GHExt::LevelData::GroupData &groupdata) {
+get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
   DECLARE_CCTK_PARAMETERS;
 
   const array<array<bool, 3>, 2> is_periodic{{
@@ -781,7 +781,7 @@ get_boundaries(const GHExt::LevelData &leveldata,
   const auto apply_physbc{[](const Box &, const FArrayBox &, int, int,
                              const Geometry &, CCTK_REAL, const Vector<BCRec> &,
                              int, int) {}};
-  CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(leveldata.level), bcs,
+  CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(groupdata.level), bcs,
                             apply_physbcs);
 
   return {move(physbc), move(bcs)};
@@ -839,7 +839,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
 
     const IntVect reffact{2, 2, 2};
 
-    auto physbc_bcs = get_boundaries(leveldata, groupdata);
+    auto physbc_bcs = get_boundaries(groupdata);
     CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
     const Vector<BCRec> &bcs = get<1>(physbc_bcs);
 
@@ -862,10 +862,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
       if (tl < prolongate_tl) {
         // Expect coarse grid data to be valid
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          error_if_invalid(
-              coarseleveldata, coarsegroupdata, vi, tl, make_valid_all(),
-              [] { return "MakeNewLevelFromCoarse before prolongation"; });
-          check_valid(coarseleveldata, coarsegroupdata, vi, tl, [] {
+          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), [] {
+            return "MakeNewLevelFromCoarse before prolongation";
+          });
+          check_valid(coarsegroupdata, vi, tl, [] {
             return "MakeNewLevelFromCoarse before prolongation";
           });
         }
@@ -881,8 +881,8 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
       }
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl,
+        poison_invalid(groupdata, vi, tl);
+        check_valid(groupdata, vi, tl,
                     [] { return "MakeNewLevelFromCoarse after prolongation"; });
       }
     } // for tl
@@ -945,7 +945,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
     const IntVect reffact{2, 2, 2};
 
-    auto physbc_bcs = get_boundaries(leveldata, groupdata);
+    auto physbc_bcs = get_boundaries(groupdata);
     CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
     const Vector<BCRec> &bcs = get<1>(physbc_bcs);
 
@@ -987,12 +987,11 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
       if (tl < prolongate_tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          error_if_invalid(coarseleveldata, coarsegroupdata, vi, tl,
-                           make_valid_all(),
+          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(),
                            [] { return "RemakeLevel before prolongation"; });
-          error_if_invalid(leveldata, groupdata, vi, tl, make_valid_all(),
+          error_if_invalid(groupdata, vi, tl, make_valid_all(),
                            [] { return "RemakeLevel before prolongation"; });
-          check_valid(coarseleveldata, coarsegroupdata, vi, tl,
+          check_valid(coarsegroupdata, vi, tl,
                       [] { return "RemakeLevel before prolongation"; });
           // We cannot call this function since it would try to
           // traverse the old grid function with the new grid
@@ -1022,8 +1021,8 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
             groupdata.numvars);
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        poison_invalid(leveldata, groupdata, vi, tl);
-        check_valid(leveldata, groupdata, vi, tl,
+        poison_invalid(groupdata, vi, tl);
+        check_valid(groupdata, vi, tl,
                     [] { return "RemakeLevel after prolongation"; });
       }
     } // for tl

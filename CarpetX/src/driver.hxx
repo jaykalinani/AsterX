@@ -133,6 +133,10 @@ struct GHExt {
     unique_ptr<MultiFab> mfab0;
 
     struct GroupData : public CommonGroupData {
+      int level;
+      const LevelData &leveldata() const;
+      LevelData &leveldata();
+
       array<int, dim> indextype;
       array<int, dim> nghostzones;
       vector<array<int, dim> > parities;
@@ -153,6 +157,13 @@ struct GHExt {
 
 extern unique_ptr<GHExt> ghext;
 
+inline const GHExt::LevelData &GHExt::LevelData::GroupData::leveldata() const {
+  return ghext->leveldata.at(level);
+}
+inline GHExt::LevelData &GHExt::LevelData::GroupData::leveldata() {
+  return ghext->leveldata.at(level);
+}
+
 Interpolater *get_interpolator(const array<int, dim> indextype);
 
 typedef void apply_physbcs_t(const Box &, const FArrayBox &, int, int,
@@ -160,8 +171,7 @@ typedef void apply_physbcs_t(const Box &, const FArrayBox &, int, int,
                              int, int);
 typedef PhysBCFunct<apply_physbcs_t *> CarpetXPhysBCFunct;
 tuple<CarpetXPhysBCFunct, Vector<BCRec> >
-get_boundaries(const GHExt::LevelData &leveldata,
-               const GHExt::LevelData::GroupData &groupdata);
+get_boundaries(const GHExt::LevelData::GroupData &groupdata);
 
 } // namespace CarpetX
 

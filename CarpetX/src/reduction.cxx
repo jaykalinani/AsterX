@@ -121,7 +121,7 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     const MultiFab &mfab = *groupdata.mfab.at(tl);
     unique_ptr<iMultiFab> finemask_imfab;
 
-    warn_if_invalid(leveldata, groupdata, vi, tl, make_valid_int(),
+    warn_if_invalid(groupdata, vi, tl, make_valid_int(),
                     [] { return "Before reduction"; });
 
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
@@ -167,4 +167,5 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
 
   return red;
 }
+
 } // namespace CarpetX
