@@ -363,8 +363,8 @@ void SetupGlobals() {
   }
 }
 
-void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
-                const function<string()> &why) {
+void SetupLevel(const int level, const BoxArray &ba,
+                const DistributionMapping &dm, const function<string()> &why) {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
@@ -372,25 +372,29 @@ void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
     CCTK_VINFO("SetupLevel level %d", level);
 
   assert(level == int(ghext->leveldata.size()));
+
   ghext->leveldata.resize(level + 1);
   GHExt::LevelData &leveldata = ghext->leveldata.at(level);
   leveldata.level = level;
 
-  const int timereffact = use_subcycling_wip ? 2 : 1;
-  if (level == 0) {
-    // We are creating the coarsest level
-    leveldata.iteration = 0;
-    leveldata.delta_iteration = leveldata.coarse_delta_iteration;
-    leveldata.time = 0.0;
-    leveldata.delta_time = 1.0;
-  } else {
-    // We are creating a new refined level
-    auto &coarseleveldata = ghext->leveldata.at(level - 1);
-    leveldata.iteration = coarseleveldata.iteration;
-    assert(coarseleveldata.delta_iteration % timereffact == 0);
-    leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
-    leveldata.time = coarseleveldata.time;
-    leveldata.delta_time = coarseleveldata.delta_time / timereffact;
+  if (use_subcycling_wip) {
+    const int timereffact = use_subcycling_wip ? 2 : 1;
+    if (level == 0) {
+      // We are creating the coarsest level
+      leveldata.is_subcycling_level = false; // unused
+      leveldata.iteration = 0;
+      leveldata.delta_iteration = leveldata.coarse_delta_iteration;
+      leveldata.time = 0.0;
+      leveldata.delta_time = 1.0;
+    } else {
+      // We are creating a new refined level
+      auto &coarseleveldata = ghext->leveldata.at(level - 1);
+      leveldata.iteration = coarseleveldata.iteration;
+      assert(coarseleveldata.delta_iteration % timereffact == 0);
+      leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
+      leveldata.time = coarseleveldata.time;
+      leveldata.delta_time = coarseleveldata.delta_time / timereffact;
+    }
   }
 
   leveldata.fab = make_unique<FabArrayBase>(ba, dm, 1, ghost_size);
@@ -807,7 +811,7 @@ void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
   }
 }
 
-void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
+void CactusAmrCore::MakeNewLevelFromCoarse(const int level, const Real time,
                                            const BoxArray &ba,
                                            const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
@@ -816,11 +820,13 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
 #pragma omp critical
     CCTK_VINFO("MakeNewLevelFromCoarse level %d", level);
 
+  assert(!use_subcycling_wip);
   assert(level > 0);
 
   SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromCoarse"; });
 
   // Prolongate
+  assert(!use_subcycling_wip);
   auto &leveldata = ghext->leveldata.at(level);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
   const int num_groups = CCTK_NumGroups();
@@ -898,7 +904,8 @@ void CactusAmrCore::MakeNewLevelFromCoarse(int level, Real time,
   }
 }
 
-void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
+void CactusAmrCore::RemakeLevel(const int level, const Real time,
+                                const BoxArray &ba,
                                 const DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -908,6 +915,7 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
 
   // Copy or prolongate
   auto &leveldata = ghext->leveldata.at(level);
+  assert(!use_subcycling_wip);
   assert(leveldata.level > 0);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
 
@@ -1037,14 +1045,14 @@ void CactusAmrCore::RemakeLevel(int level, Real time, const BoxArray &ba,
   }
 }
 
-void CactusAmrCore::ClearLevel(int level) {
+void CactusAmrCore::ClearLevel(const int level) {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
 #pragma omp critical
     CCTK_VINFO("ClearLevel level %d", level);
 
-  // assert(level == int(ghext->leveldata.size()) - 1);
+  // note: several levels can be removed at once
   ghext->leveldata.resize(level);
 }
 
