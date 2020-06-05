@@ -16,6 +16,7 @@
 #include <AMReX.H>
 #include <AMReX_Orientation.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_VisMF.H>
 
 #include <array>
 #include <cassert>
@@ -78,6 +79,10 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
   }};
   CCTK_TraverseString(out_plotfile_groups, enable_group, &group_enabled,
                       CCTK_GROUP_OR_VAR);
+
+  // TODO: Set the number of output files (the number of files written
+  // in parallel) to reduce the total number of files
+  // VisMF::SetNOutFiles(saveNFiles);
 
   for (int gi = 0; gi < numgroups; ++gi) {
     if (!group_enabled.at(gi))
