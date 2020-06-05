@@ -128,7 +128,7 @@ constexpr Arith::dual<T, U> exp(const Arith::dual<T, U> &x);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> fabs(const Arith::dual<T, U> &x);
 template <typename T, typename U>
-constexpr bool isnan(const Arith::dual<T, U> &x);
+constexpr bool isnan1(const Arith::dual<T, U> &x);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> pow(const Arith::dual<T, U> &x, int n);
 template <typename T, typename U>
@@ -168,8 +168,8 @@ constexpr Arith::dual<T, U> fabs(const Arith::dual<T, U> &x) {
 }
 
 template <typename T, typename U>
-constexpr bool isnan(const Arith::dual<T, U> &x) {
-  return isnan(x.val) || x.eps.isnan().any();
+constexpr bool isnan1(const Arith::dual<T, U> &x) {
+  return isnan1(x.val) || x.eps.isnan1().any();
 }
 
 template <typename T, typename U>

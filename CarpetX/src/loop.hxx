@@ -4,13 +4,6 @@
 #include "vect.hxx"
 
 #include <cctk.h>
-#undef copysign
-#undef fpclassify
-#undef isfinite
-#undef isinf
-#undef isnan
-#undef isnormal
-#undef signbit
 
 #include <algorithm>
 #include <array>

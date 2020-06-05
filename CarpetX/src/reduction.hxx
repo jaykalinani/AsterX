@@ -4,13 +4,6 @@
 #include "vect.hxx"
 
 #include <cctk.h>
-#undef copysign
-#undef fpclassify
-#undef isfinite
-#undef isinf
-#undef isnan
-#undef isnormal
-#undef signbit
 
 #include <mpi.h>
 
@@ -34,17 +27,17 @@ template <> struct mpi_datatype<long double> {
 
 template <typename T> constexpr T pow21(T x) noexcept { return x * x; }
 
-template <typename T> T fmax1(T x, T y) {
-  if (CCTK_isnan(CCTK_REAL(x)))
+template <typename T> constexpr T fmax1(T x, T y) noexcept {
+  if (isnan1(x))
     return x;
-  if (CCTK_isnan(CCTK_REAL(y)))
+  if (isnan1(y))
     return y;
   return fmax(x, y);
 }
-template <typename T> T fmin1(T x, T y) {
-  if (CCTK_isnan(CCTK_REAL(x)))
+template <typename T> constexpr T fmin1(T x, T y) noexcept {
+  if (isnan1(x))
     return x;
-  if (CCTK_isnan(CCTK_REAL(y)))
+  if (isnan1(y))
     return y;
   return fmin(x, y);
 }

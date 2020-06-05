@@ -188,7 +188,7 @@ template <typename T> constexpr vec4<T, UP> calc_et(const mat4<T, UP, UP> &gu) {
   const vec4<T, DN> etl([&](int a) { return a == 0 ? e : z; });
   const auto et = raise(gu, etl);
   const auto etlen = sqrt(-dot(etl, et));
-  assert(!isnan(etlen) && etlen >= 1.0e-12);
+  assert(!isnan1(etlen) && etlen >= 1.0e-12);
   return et / etlen;
 }
 
@@ -256,7 +256,7 @@ calc_det(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, UP, UP> &dgu,
   });
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
-      assert(!isnan(det(a)(b)));
+      assert(!isnan1(det(a)(b)));
   return det;
 }
 
@@ -280,7 +280,7 @@ calc_dephi(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
   });
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
-      assert(!isnan(dephi(a)(b)));
+      assert(!isnan1(dephi(a)(b)));
   return dephi;
 }
 
@@ -306,7 +306,7 @@ calc_detheta(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
   });
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
-      assert(!isnan(detheta(a)(b)));
+      assert(!isnan1(detheta(a)(b)));
   return detheta;
 }
 
@@ -335,7 +335,7 @@ calc_der(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
   });
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
-      assert(!isnan(der(a)(b)));
+      assert(!isnan1(der(a)(b)));
   return der;
 }
 

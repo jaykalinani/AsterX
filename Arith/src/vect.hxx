@@ -1,14 +1,8 @@
 #ifndef VECT_HXX
 #define VECT_HXX
 
+#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
-#undef copysign
-#undef fpclassify
-#undef isfinite
-#undef isinf
-#undef isnan
-#undef isnormal
-#undef signbit
 
 #include <array>
 #include <complex>
@@ -471,10 +465,10 @@ abs(const Arith::vect<T, D> &x) {
 
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<bool, D>
-isnan(const Arith::vect<T, D> &x) {
+isnan1(const Arith::vect<T, D> &x) {
   Arith::vect<bool, D> r;
   for (int d = 0; d < D; ++d)
-    r.elts[d] = isnan(x.elts[d]);
+    r.elts[d] = isnan1(x.elts[d]);
   return r;
 }
 
