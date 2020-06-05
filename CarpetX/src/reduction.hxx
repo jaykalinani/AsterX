@@ -32,7 +32,7 @@ template <> struct mpi_datatype<long double> {
   static constexpr MPI_Datatype value = MPI_LONG_DOUBLE;
 };
 
-template <typename T> T pow21(T x) { return x * x; }
+template <typename T> constexpr T pow21(T x) noexcept { return x * x; }
 
 template <typename T> T fmax1(T x, T y) {
   if (CCTK_isnan(CCTK_REAL(x)))
@@ -54,37 +54,45 @@ template <typename T, int D> struct reduction {
   T min, max, sum, sum2;
   T vol, maxabs, sumabs, sum2abs;
   vect<T, D> minloc, maxloc;
-  reduction();
-  reduction(const vect<T, D> &p, const T &V, const T &x);
-  reduction(const reduction &x, const reduction &y);
-  reduction operator+(const reduction &y) const { return reduction(*this, y); }
-  reduction &operator+=(const reduction &y) { return *this = *this + y; }
 
-  T avg() const { return sum / vol; }
-  T sdv() const { return sqrt(fmax1(T(0), vol * sum2 - pow21(sum))); }
-  T norm0() const { return vol; }
-  T norm1() const { return sumabs / vol; }
-  T norm2() const { return sqrt(sum2abs / vol); }
-  T norm_inf() const { return maxabs; }
+  constexpr reduction();
+  constexpr reduction(const vect<T, D> &p, const T &V, const T &x);
+  constexpr reduction(const reduction &x, const reduction &y);
+  constexpr reduction operator+(const reduction &y) const {
+    return reduction(*this, y);
+  }
+  constexpr reduction &operator+=(const reduction &y) noexcept {
+    return *this = *this + y;
+  }
+
+  constexpr T avg() const noexcept { return sum / vol; }
+  constexpr T sdv() const noexcept {
+    return sqrt(fmax1(T(0), vol * sum2 - pow21(sum)));
+  }
+  constexpr T norm0() const noexcept { return vol; }
+  constexpr T norm1() const noexcept { return sumabs / vol; }
+  constexpr T norm2() const noexcept { return sqrt(sum2abs / vol); }
+  constexpr T norm_inf() const noexcept { return maxabs; }
 
   template <typename T1, int D1>
   friend ostream &operator<<(ostream &os, const reduction<T1, D1> &red);
 };
 
 template <typename T, int D>
-reduction<T, D>::reduction()
+constexpr reduction<T, D>::reduction()
     : min(1.0 / 0.0), max(-1.0 / 0.0), sum(0.0), sum2(0.0), vol(0.0),
       maxabs(0.0), sumabs(0.0), sum2abs(0.0),
       minloc(vect<T, D>::pure(0.0 / 0.0)), maxloc(vect<T, D>::pure(0.0 / 0.0)) {
 }
 
 template <typename T, int D>
-reduction<T, D>::reduction(const vect<T, D> &p, const T &V, const T &x)
+constexpr reduction<T, D>::reduction(const vect<T, D> &p, const T &V,
+                                     const T &x)
     : min(x), max(x), sum(V * x), sum2(V * pow21(x)), vol(V), maxabs(fabs(x)),
       sumabs(V * fabs(x)), sum2abs(V * pow21(fabs(x))), minloc(p), maxloc(p) {}
 
 template <typename T, int D>
-reduction<T, D>::reduction(const reduction &x, const reduction &y)
+constexpr reduction<T, D>::reduction(const reduction &x, const reduction &y)
     : min(fmin1(x.min, y.min)), max(fmax1(x.max, y.max)), sum(x.sum + y.sum),
       sum2(x.sum2 + y.sum2), vol(x.vol + y.vol),
       maxabs(fmax1(x.maxabs, y.maxabs)), sumabs(x.sumabs + y.sumabs),
