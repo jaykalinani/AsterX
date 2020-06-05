@@ -53,7 +53,7 @@ void statecomp_t::check_valid() const {
         const auto &groupdata = *leveldata.groupdata.at(groupid);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           const int tl = 0;
-          CarpetX::check_valid(leveldata, groupdata, vi, tl, [&]() {
+          CarpetX::check_valid(groupdata, vi, tl, [&]() {
             return "ODESolver before calculating state vector";
           });
         }
