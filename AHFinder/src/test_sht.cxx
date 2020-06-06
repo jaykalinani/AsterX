@@ -1,6 +1,6 @@
 #include "sYlm.hxx"
 
-#include <ssht.h>
+#include <ssht/ssht.h>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>

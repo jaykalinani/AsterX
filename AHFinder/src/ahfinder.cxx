@@ -7,7 +7,7 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-#include <ssht.h>
+#include <ssht/ssht.h>
 
 #include <array>
 #include <cassert>

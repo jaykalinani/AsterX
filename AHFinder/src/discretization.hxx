@@ -3,7 +3,7 @@
 
 #include <cctk.h>
 
-#include <ssht.h>
+#include <ssht/ssht.h>
 
 #include <array>
 #include <cassert>
