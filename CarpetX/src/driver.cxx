@@ -27,7 +27,6 @@
 #include <utility>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 template <typename T> constexpr T ipow(T x, int n) {
@@ -66,7 +65,8 @@ int Barrier(const cGH *cctkGHa);
 extern "C" void CarpetX_CallScheduleGroup(void *cctkGH, const char *groupname);
 
 // Local functions
-void SetupLevel(int level, const BoxArray &ba, const DistributionMapping &dm,
+void SetupLevel(int level, const amrex::BoxArray &ba,
+                const amrex::DistributionMapping &dm,
                 const function<string()> &why);
 void SetupGlobals();
 
@@ -229,28 +229,29 @@ vector<array<int, dim> > get_group_parities(const int gi) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// AmrCore functions
+// amrex::AmrCore functions
 
 CactusAmrCore::CactusAmrCore() {}
-CactusAmrCore::CactusAmrCore(const RealBox *rb, int max_level_in,
-                             const Vector<int> &n_cell_in, int coord,
-                             Vector<IntVect> ref_ratios, const int *is_per)
-    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
+CactusAmrCore::CactusAmrCore(const amrex::RealBox *rb, int max_level_in,
+                             const amrex::Vector<int> &n_cell_in, int coord,
+                             amrex::Vector<amrex::IntVect> ref_ratios,
+                             const int *is_per)
+    : amrex::AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
   SetupGlobals();
 }
 
-CactusAmrCore::CactusAmrCore(const RealBox &rb, int max_level_in,
-                             const Vector<int> &n_cell_in, int coord,
-                             Vector<IntVect> const &ref_ratios,
-                             Array<int, AMREX_SPACEDIM> const &is_per)
-    : AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
+CactusAmrCore::CactusAmrCore(const amrex::RealBox &rb, int max_level_in,
+                             const amrex::Vector<int> &n_cell_in, int coord,
+                             amrex::Vector<amrex::IntVect> const &ref_ratios,
+                             amrex::Array<int, AMREX_SPACEDIM> const &is_per)
+    : amrex::AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
   SetupGlobals();
 }
 
 CactusAmrCore::~CactusAmrCore() {}
 
-void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags,
-                             const Real time, const int ngrow) {
+void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
+                             const amrex::Real time, const int ngrow) {
   DECLARE_CCTK_PARAMETERS;
 
   // Don't regrid before Cactus is ready to
@@ -271,33 +272,34 @@ void CactusAmrCore::ErrorEst(const int level, TagBoxArray &tags,
   // Ensure the error estimate has been set
   error_if_invalid(groupdata, vi, tl, make_valid_int(),
                    [] { return "ErrorEst"; });
-  auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+  for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     GridPtrDesc1 grid(groupdata, mfi);
 
-    const Array4<const CCTK_REAL> &err_array4 =
+    const amrex::Array4<const CCTK_REAL> &err_array4 =
         groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<const CCTK_REAL> &err_ = grid.gf3d(err_array4, vi);
-    const Array4<char> &tags_array4 = tags.array(mfi);
+    const amrex::Array4<char> &tags_array4 = tags.array(mfi);
 
     grid.loop_idx(
         where_t::interior, groupdata.indextype, [&](const Loop::PointDesc &p) {
           tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
                       grid.cactus_offset.z + p.k) =
-              err_(p.I) >= regrid_error_threshold ? TagBox::SET : TagBox::CLEAR;
+              err_(p.I) >= regrid_error_threshold ? amrex::TagBox::SET
+                                                  : amrex::TagBox::CLEAR;
         });
     // Do not set the boundary; AMReX's error grid function might have
     // a different number of ghost zones, and these ghost zones are
     // probably unused anyway.
     if (false) {
-      grid.loop_idx(where_t::boundary, groupdata.indextype,
-                    [&](const Loop::PointDesc &p) {
-                      tags_array4(grid.cactus_offset.x + p.i,
-                                  grid.cactus_offset.y + p.j,
-                                  grid.cactus_offset.z + p.k) = TagBox::CLEAR;
-                    });
+      grid.loop_idx(
+          where_t::boundary, groupdata.indextype,
+          [&](const Loop::PointDesc &p) {
+            tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+                        grid.cactus_offset.z + p.k) = amrex::TagBox::CLEAR;
+          });
     }
   }
 }
@@ -363,8 +365,9 @@ void SetupGlobals() {
   }
 }
 
-void SetupLevel(const int level, const BoxArray &ba,
-                const DistributionMapping &dm, const function<string()> &why) {
+void SetupLevel(const int level, const amrex::BoxArray &ba,
+                const amrex::DistributionMapping &dm,
+                const function<string()> &why) {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
@@ -397,9 +400,10 @@ void SetupLevel(const int level, const BoxArray &ba,
     }
   }
 
-  leveldata.fab = make_unique<FabArrayBase>(ba, dm, 1, ghost_size);
-  assert(ba.ixType() ==
-         IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
+  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
+  assert(ba.ixType() == amrex::IndexType(amrex::IndexType::CELL,
+                                         amrex::IndexType::CELL,
+                                         amrex::IndexType::CELL));
 
   const int numgroups = CCTK_NumGroups();
   leveldata.groupdata.resize(numgroups);
@@ -440,16 +444,18 @@ void SetupLevel(const int level, const BoxArray &ba,
         assert(abs(groupdata.parities.at(vi)[d]) == 1);
 
     // Allocate grid hierarchies
-    const BoxArray &gba = convert(
-        ba,
-        IndexType(groupdata.indextype[0] ? IndexType::CELL : IndexType::NODE,
-                  groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
-                  groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
+    const amrex::BoxArray &gba = convert(
+        ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE,
+                             groupdata.indextype[1] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE,
+                             groupdata.indextype[2] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE));
     groupdata.mfab.resize(group.numtimelevels);
     groupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      groupdata.mfab.at(tl) = make_unique<MultiFab>(
-          gba, dm, groupdata.numvars, IntVect(groupdata.nghostzones));
+      groupdata.mfab.at(tl) = make_unique<amrex::MultiFab>(
+          gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
       groupdata.valid.at(tl).resize(groupdata.numvars, why_valid_t(why));
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         poison_invalid(groupdata, vi, tl);
@@ -460,7 +466,7 @@ void SetupLevel(const int level, const BoxArray &ba,
       const bool have_fluxes = fluxes[0] >= 0;
       if (have_fluxes) {
         assert((groupdata.indextype == array<int, dim>{1, 1, 1}));
-        groupdata.freg = make_unique<FluxRegister>(
+        groupdata.freg = make_unique<amrex::FluxRegister>(
             gba, dm, ghext->amrcore->refRatio(level - 1), level,
             groupdata.numvars);
         groupdata.fluxes = fluxes;
@@ -494,7 +500,7 @@ void SetupLevel(const int level, const BoxArray &ba,
   }
 }
 
-Interpolater *get_interpolator(const array<int, dim> indextype) {
+amrex::Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
 
   enum class interp_t { unset, interpolate, conservative, ddf };
@@ -735,11 +741,13 @@ Interpolater *get_interpolator(const array<int, dim> indextype) {
   assert(0);
 }
 
-void apply_physbcs(const Box &, const FArrayBox &, int, int, const Geometry &,
-                   CCTK_REAL, const Vector<BCRec> &, int, int) { // do nothing
+void apply_physbcs(const amrex::Box &, const amrex::FArrayBox &, int, int,
+                   const amrex::Geometry &, CCTK_REAL,
+                   const amrex::Vector<amrex::BCRec> &, int,
+                   int) { // do nothing
 }
 
-tuple<CarpetXPhysBCFunct, Vector<BCRec> >
+tuple<CarpetXPhysBCFunct, amrex::Vector<amrex::BCRec> >
 get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -771,29 +779,30 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
     assert(dir >= 0 && dir < dim);
     assert(face >= 0 && face < 2);
     if (is_periodic[face][dir])
-      return BCType::int_dir;
+      return amrex::BCType::int_dir;
     if (is_reflect[face][dir])
-      return groupdata.parities.at(vi)[dir] > 0 ? BCType::reflect_even
-                                                : BCType::reflect_odd;
-    return BCType::ext_dir;
+      return groupdata.parities.at(vi)[dir] > 0 ? amrex::BCType::reflect_even
+                                                : amrex::BCType::reflect_odd;
+    return amrex::BCType::ext_dir;
   }};
 
-  Vector<BCRec> bcs(groupdata.numvars);
+  amrex::Vector<amrex::BCRec> bcs(groupdata.numvars);
   for (int vi = 0; vi < groupdata.numvars; ++vi)
-    bcs.at(vi) = BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
-                       makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
-  const auto apply_physbc{[](const Box &, const FArrayBox &, int, int,
-                             const Geometry &, CCTK_REAL, const Vector<BCRec> &,
-                             int, int) {}};
+    bcs.at(vi) =
+        amrex::BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
+                     makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
+  const auto apply_physbc{[](const amrex::Box &, const amrex::FArrayBox &, int,
+                             int, const amrex::Geometry &, CCTK_REAL,
+                             const amrex::Vector<amrex::BCRec> &, int, int) {}};
   CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(groupdata.level), bcs,
                             apply_physbcs);
 
   return {move(physbc), move(bcs)};
 }
 
-void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
-                                            const BoxArray &ba,
-                                            const DistributionMapping &dm) {
+void CactusAmrCore::MakeNewLevelFromScratch(
+    int level, amrex::Real time, const amrex::BoxArray &ba,
+    const amrex::DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
@@ -811,9 +820,9 @@ void CactusAmrCore::MakeNewLevelFromScratch(int level, Real time,
   }
 }
 
-void CactusAmrCore::MakeNewLevelFromCoarse(const int level, const Real time,
-                                           const BoxArray &ba,
-                                           const DistributionMapping &dm) {
+void CactusAmrCore::MakeNewLevelFromCoarse(
+    const int level, const amrex::Real time, const amrex::BoxArray &ba,
+    const amrex::DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
@@ -841,13 +850,14 @@ void CactusAmrCore::MakeNewLevelFromCoarse(const int level, const Real time,
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
     auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
-    Interpolater *const interpolator = get_interpolator(groupdata.indextype);
+    amrex::Interpolater *const interpolator =
+        get_interpolator(groupdata.indextype);
 
-    const IntVect reffact{2, 2, 2};
+    const amrex::IntVect reffact{2, 2, 2};
 
     auto physbc_bcs = get_boundaries(groupdata);
     CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
-    const Vector<BCRec> &bcs = get<1>(physbc_bcs);
+    const amrex::Vector<amrex::BCRec> &bcs = get<1>(physbc_bcs);
 
     const int ntls = groupdata.mfab.size();
     // We only prolongate the state vector. And if there is more than
@@ -904,9 +914,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(const int level, const Real time,
   }
 }
 
-void CactusAmrCore::RemakeLevel(const int level, const Real time,
-                                const BoxArray &ba,
-                                const DistributionMapping &dm) {
+void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
+                                const amrex::BoxArray &ba,
+                                const amrex::DistributionMapping &dm) {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
@@ -919,9 +929,10 @@ void CactusAmrCore::RemakeLevel(const int level, const Real time,
   assert(leveldata.level > 0);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
 
-  leveldata.fab = make_unique<FabArrayBase>(ba, dm, 1, ghost_size);
-  assert(ba.ixType() ==
-         IndexType(IndexType::CELL, IndexType::CELL, IndexType::CELL));
+  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
+  assert(ba.ixType() == amrex::IndexType(amrex::IndexType::CELL,
+                                         amrex::IndexType::CELL,
+                                         amrex::IndexType::CELL));
 
   // We assume that this level is at the same time as the next coarser level
   const int timereffact = use_subcycling_wip ? 2 : 1;
@@ -948,19 +959,22 @@ void CactusAmrCore::RemakeLevel(const int level, const Real time,
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
     auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
-    Interpolater *const interpolator = get_interpolator(groupdata.indextype);
+    amrex::Interpolater *const interpolator =
+        get_interpolator(groupdata.indextype);
 
-    const IntVect reffact{2, 2, 2};
+    const amrex::IntVect reffact{2, 2, 2};
 
     auto physbc_bcs = get_boundaries(groupdata);
     CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
-    const Vector<BCRec> &bcs = get<1>(physbc_bcs);
+    const amrex::Vector<amrex::BCRec> &bcs = get<1>(physbc_bcs);
 
-    const BoxArray &gba = convert(
-        ba,
-        IndexType(groupdata.indextype[0] ? IndexType::CELL : IndexType::NODE,
-                  groupdata.indextype[1] ? IndexType::CELL : IndexType::NODE,
-                  groupdata.indextype[2] ? IndexType::CELL : IndexType::NODE));
+    const amrex::BoxArray &gba = convert(
+        ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE,
+                             groupdata.indextype[1] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE,
+                             groupdata.indextype[2] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE));
 
     const int ntls = groupdata.mfab.size();
     // We only prolongate the state vector. And if there is more than
@@ -969,20 +983,21 @@ void CactusAmrCore::RemakeLevel(const int level, const Real time,
         groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
 
     for (int tl = 0; tl < ntls; ++tl) {
-      auto mfab = make_unique<MultiFab>(gba, dm, groupdata.numvars,
-                                        IntVect(groupdata.nghostzones));
+      auto mfab = make_unique<amrex::MultiFab>(
+          gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
       vector<why_valid_t> valid(groupdata.numvars, why_valid_t([] {
                                   return "RemakeLevel: not prolongated/copied "
                                          "because variable is not evolved";
                                 }));
       if (poison_undefined_values) {
         // Set new grid functions to nan
-        auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+        auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-        for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+             ++mfi) {
           GridPtrDesc1 grid(groupdata, mfi);
-          const Array4<CCTK_REAL> &vars = mfab->array(mfi);
+          const amrex::Array4<CCTK_REAL> &vars = mfab->array(mfi);
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             const GF3D1<CCTK_REAL> &ptr_ = grid.gf3d(vars, vi);
             grid.loop_idx(
@@ -1023,7 +1038,7 @@ void CactusAmrCore::RemakeLevel(const int level, const Real time,
       groupdata.mfab.at(tl) = move(mfab);
       groupdata.valid.at(tl) = move(valid);
       if (groupdata.freg)
-        groupdata.freg = make_unique<FluxRegister>(
+        groupdata.freg = make_unique<amrex::FluxRegister>(
             gba, dm, ghext->amrcore->refRatio(level - 1), level,
             groupdata.numvars);
 
@@ -1147,7 +1162,7 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
   assert(cctkGH);
 
   // Initialize AMReX
-  ParmParse pp;
+  amrex::ParmParse pp;
   // Don't catch Unix signals. If signals are caught, we don't get
   // core files.
   pp.add("amrex.signal_handling", 0);
@@ -1173,24 +1188,24 @@ int InitGH(cGH *restrict cctkGH) {
   assert(cctkGH);
 
   // Domain
-  const RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
+  const amrex::RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
 
   // Number of coarse grid cells
-  const Vector<int> ncells{ncells_x, ncells_y, ncells_z};
+  const amrex::Vector<int> ncells{ncells_x, ncells_y, ncells_z};
 
   const int coord = -1; // undefined?
 
   // Refinement ratios
-  const Vector<IntVect> reffacts; // empty
+  const amrex::Vector<amrex::IntVect> reffacts; // empty
 
   // Periodicity
-  const Array<int, dim> is_periodic{
+  const amrex::Array<int, dim> is_periodic{
       periodic || periodic_x, periodic || periodic_y, periodic || periodic_z};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no
   // constructor arguments for them
-  ParmParse pp;
+  amrex::ParmParse pp;
   pp.add("amr.blocking_factor_x", blocking_factor_x);
   pp.add("amr.blocking_factor_y", blocking_factor_y);
   pp.add("amr.blocking_factor_z", blocking_factor_z);
@@ -1207,7 +1222,7 @@ int InitGH(cGH *restrict cctkGH) {
     {
       const int maxnumlevels = ghext->amrcore->maxLevel() + 1;
       for (int level = 0; level < maxnumlevels; ++level) {
-        CCTK_VINFO("Geometry level %d:", level);
+        CCTK_VINFO("amrex::Geometry level %d:", level);
         cout << ghext->amrcore->Geom(level) << "\n";
       }
     }
@@ -1215,8 +1230,8 @@ int InitGH(cGH *restrict cctkGH) {
 
   // #pragma omp critical
   // {
-  // CCTK_VINFO("BoxArray level %d:", level);
-  // cout << ghext->amrcore->boxArray(level) << "\n";
+  // CCTK_VINFO("amrex::Boxamrex::Array level %d:", level);
+  // cout << ghext->amrcore->boxamrex::Array(level) << "\n";
   // CCTK_VINFO("DistributionMap level %d:", level);
   // cout << ghext->amrcore->DistributionMap(level) << "\n";
   // }
@@ -1271,7 +1286,7 @@ extern "C" int CarpetX_Shutdown() {
 
 int MyProc(const cGH *restrict cctkGH) {
   if (pamrex) {
-    return ParallelDescriptor::MyProc();
+    return amrex::ParallelDescriptor::MyProc();
   } else {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -1281,7 +1296,7 @@ int MyProc(const cGH *restrict cctkGH) {
 
 int nProcs(const cGH *restrict cctkGH) {
   if (pamrex) {
-    return ParallelDescriptor::NProcs();
+    return amrex::ParallelDescriptor::NProcs();
   } else {
     int size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -1291,7 +1306,7 @@ int nProcs(const cGH *restrict cctkGH) {
 
 int Exit(cGH *cctkGH, int retval) {
   if (pamrex) {
-    ParallelDescriptor::Abort(retval);
+    amrex::ParallelDescriptor::Abort(retval);
   } else {
     MPI_Abort(MPI_COMM_WORLD, retval);
   }
@@ -1300,7 +1315,7 @@ int Exit(cGH *cctkGH, int retval) {
 
 int Abort(cGH *cctkGH, int retval) {
   if (pamrex) {
-    ParallelDescriptor::Abort(retval);
+    amrex::ParallelDescriptor::Abort(retval);
   } else {
     MPI_Abort(MPI_COMM_WORLD, retval);
   }
@@ -1309,7 +1324,7 @@ int Abort(cGH *cctkGH, int retval) {
 
 int Barrier(const cGH *restrict cctkGH) {
   assert(pamrex);
-  ParallelDescriptor::Barrier();
+  amrex::ParallelDescriptor::Barrier();
   return 0;
 }
 

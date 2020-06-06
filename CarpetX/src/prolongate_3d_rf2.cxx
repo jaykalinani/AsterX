@@ -16,7 +16,6 @@ static inline int omp_get_num_threads(void) { return 1; }
 #include <vector>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 template <typename T> constexpr T pown(const T x, const int n0) {
@@ -470,9 +469,10 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <int CENTERING, bool CONSERVATIVE, int ORDER, int D, typename T>
-void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
-              T *restrict const fineptr, const Box &restrict finebox,
-              const Box &restrict targetbox) {
+void interp3d(const T *restrict const crseptr,
+              const amrex::Box &restrict crsebox, T *restrict const fineptr,
+              const amrex::Box &restrict finebox,
+              const amrex::Box &restrict targetbox) {
   static test_interp1d<CENTERING, CONSERVATIVE, ORDER, T> test;
 
   static_assert(D >= 0 && D < 3, "");
@@ -483,8 +483,8 @@ void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
   assert(finebox.ok());
   assert(targetbox.ok());
 
-  const IntVect first_crseind(finebox.loVect());
-  IntVect next_crseind = first_crseind;
+  const amrex::IntVect first_crseind(finebox.loVect());
+  amrex::IntVect next_crseind = first_crseind;
   ++next_crseind.getVect()[D];
   const ptrdiff_t di =
       crsebox.index(next_crseind) - crsebox.index(first_crseind);
@@ -493,18 +493,20 @@ void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
   constexpr int required_ghosts =
       interp1d<CENTERING, CONSERVATIVE, ORDER>::required_ghosts;
   {
-    const IntVect fineind(targetbox.loVect());
-    IntVect crseind = fineind;
-    crseind.getVect()[D] = coarsen(fineind.getVect()[D], 2) - required_ghosts;
+    const amrex::IntVect fineind(targetbox.loVect());
+    amrex::IntVect crseind = fineind;
+    crseind.getVect()[D] =
+        amrex::coarsen(fineind.getVect()[D], 2) - required_ghosts;
     for (int d = 0; d < 3; ++d)
       assert(crseind.getVect()[d] >= crsebox.loVect()[d]);
     for (int d = 0; d < 3; ++d)
       assert(targetbox.loVect()[d] >= finebox.loVect()[d]);
   }
   {
-    const IntVect fineind(targetbox.hiVect());
-    IntVect crseind = fineind;
-    crseind.getVect()[D] = coarsen(fineind.getVect()[D], 2) + required_ghosts;
+    const amrex::IntVect fineind(targetbox.hiVect());
+    amrex::IntVect crseind = fineind;
+    crseind.getVect()[D] =
+        amrex::coarsen(fineind.getVect()[D], 2) + required_ghosts;
     for (int d = 0; d < 3; ++d)
       assert(crseind.getVect()[d] <= crsebox.hiVect()[d]);
     for (int d = 0; d < 3; ++d)
@@ -522,25 +524,25 @@ void interp3d(const T *restrict const crseptr, const Box &restrict crsebox,
       targetbox.hiVect()[2] + 1,
   };
 
-  const ptrdiff_t fined0 = finebox.index(IntVect(0, 0, 0));
+  const ptrdiff_t fined0 = finebox.index(amrex::IntVect(0, 0, 0));
   constexpr ptrdiff_t finedi = 1;
-  assert(finebox.index(IntVect(1, 0, 0)) - fined0 == finedi);
-  const ptrdiff_t finedj = finebox.index(IntVect(0, 1, 0)) - fined0;
-  const ptrdiff_t finedk = finebox.index(IntVect(0, 0, 1)) - fined0;
+  assert(finebox.index(amrex::IntVect(1, 0, 0)) - fined0 == finedi);
+  const ptrdiff_t finedj = finebox.index(amrex::IntVect(0, 1, 0)) - fined0;
+  const ptrdiff_t finedk = finebox.index(amrex::IntVect(0, 0, 1)) - fined0;
 
-  const ptrdiff_t crsed0 = crsebox.index(IntVect(0, 0, 0));
+  const ptrdiff_t crsed0 = crsebox.index(amrex::IntVect(0, 0, 0));
   constexpr ptrdiff_t crsedi = 1;
-  assert(crsebox.index(IntVect(1, 0, 0)) - crsed0 == crsedi);
-  const ptrdiff_t crsedj = crsebox.index(IntVect(0, 1, 0)) - crsed0;
-  const ptrdiff_t crsedk = crsebox.index(IntVect(0, 0, 1)) - crsed0;
+  assert(crsebox.index(amrex::IntVect(1, 0, 0)) - crsed0 == crsedi);
+  const ptrdiff_t crsedj = crsebox.index(amrex::IntVect(0, 1, 0)) - crsed0;
+  const ptrdiff_t crsedk = crsebox.index(amrex::IntVect(0, 0, 1)) - crsed0;
 
   for (int k = imin[2]; k < imax[2]; ++k) {
     for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
       for (int i = imin[0]; i < imax[0]; ++i) {
 #if 0
-        const IntVect fineind(i, j, k);
-        IntVect crseind = fineind;
+        const amrex::IntVect fineind(i, j, k);
+        amrex::IntVect crseind = fineind;
         crseind.getVect()[D] = coarsen(fineind.getVect()[D], 2);
         const int off = fineind.getVect()[D] - crseind.getVect()[D] * 2;
         fineptr[finebox.index(fineind)] =
@@ -587,22 +589,24 @@ prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 
 template <int CENTI, int CENTJ, int CENTK, bool CONSI, bool CONSJ, bool CONSK,
           int ORDERI, int ORDERJ, int ORDERK>
-Box prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
-                      ORDERK>::CoarseBox(const Box &fine, int ratio) {
-  return CoarseBox(fine, IntVect(ratio));
+amrex::Box prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI,
+                             ORDERJ, ORDERK>::CoarseBox(const amrex::Box &fine,
+                                                        int ratio) {
+  return CoarseBox(fine, amrex::IntVect(ratio));
 }
 
 template <int CENTI, int CENTJ, int CENTK, bool CONSI, bool CONSJ, bool CONSK,
           int ORDERI, int ORDERJ, int ORDERK>
-Box prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
-                      ORDERK>::CoarseBox(const Box &fine,
-                                         const IntVect &ratio) {
+amrex::Box
+prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
+                  ORDERK>::CoarseBox(const amrex::Box &fine,
+                                     const amrex::IntVect &ratio) {
   for (int d = 0; d < dim; ++d)
-    assert(fine.type(d) ==
-           (indextype()[d] == 0 ? IndexType::NODE : IndexType::CELL));
+    assert(fine.type(d) == (indextype()[d] == 0 ? amrex::IndexType::NODE
+                                                : amrex::IndexType::CELL));
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
-  Box crse = amrex::coarsen(fine, 2);
+  amrex::Box crse = amrex::coarsen(fine, 2);
   for (int d = 0; d < dim; ++d)
     crse = crse.grow(d, (order()[d] + 1) / 2);
   return crse;
@@ -611,15 +615,16 @@ Box prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 template <int CENTI, int CENTJ, int CENTK, bool CONSI, bool CONSJ, bool CONSK,
           int ORDERI, int ORDERJ, int ORDERK>
 void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
-                       ORDERK>::interp(const FArrayBox &crse, int crse_comp,
-                                       FArrayBox &fine, int fine_comp,
-                                       int ncomp, const Box &fine_region,
-                                       const IntVect &ratio,
-                                       const Geometry &crse_geom,
-                                       const Geometry &fine_geom,
-                                       Vector<BCRec> const &bcr,
+                       ORDERK>::interp(const amrex::FArrayBox &crse,
+                                       int crse_comp, amrex::FArrayBox &fine,
+                                       int fine_comp, int ncomp,
+                                       const amrex::Box &fine_region,
+                                       const amrex::IntVect &ratio,
+                                       const amrex::Geometry &crse_geom,
+                                       const amrex::Geometry &fine_geom,
+                                       amrex::Vector<amrex::BCRec> const &bcr,
                                        int actual_comp, int actual_state,
-                                       RunOn gpu_or_cpu) {
+                                       amrex::RunOn gpu_or_cpu) {
   static vector<Timer> timers;
   static bool have_timers = false;
 
@@ -656,8 +661,9 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
 
-  const BCRec bcrec(BCType::int_dir, BCType::int_dir, BCType::int_dir,
-                    BCType::int_dir, BCType::int_dir, BCType::int_dir);
+  const amrex::BCRec bcrec(amrex::BCType::int_dir, amrex::BCType::int_dir,
+                           amrex::BCType::int_dir, amrex::BCType::int_dir,
+                           amrex::BCType::int_dir, amrex::BCType::int_dir);
   assert(int(bcr.size()) >= ncomp);
   for (const auto &bc : bcr)
     assert(bc == bcrec);
@@ -666,13 +672,13 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   assert(actual_state == 0); // ???
 
   // Target box is intersection of fine_region and domain of fine
-  const Box target_region = fine_region & fine.box();
+  const amrex::Box target_region = fine_region & fine.box();
   assert(target_region == fine_region);
 
   // We prolongate first in the x, then y, then the z direction. Each
   // direction changes the target from coarse-plus-ghosts to fine.
-  const Box source_region = CoarseBox(target_region, 2);
-  array<Box, dim> targets;
+  const amrex::Box source_region = CoarseBox(target_region, 2);
+  array<amrex::Box, dim> targets;
   for (int d = 0; d < dim; ++d) {
     targets[d] = d == 0 ? source_region : targets[d - 1];
     targets[d].setRange(d, target_region.loVect()[d], target_region.length(d));
@@ -694,7 +700,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 #pragma omp simd
         for (int i = source_region.loVect()[0]; i <= source_region.hiVect()[0];
              ++i) {
-          const IntVect ind(i, j, k);
+          const amrex::IntVect ind(i, j, k);
           assert(crse.box().contains(ind));
           assert(CCTK_isfinite(crseptr[crse.box().index(ind)]));
         }
@@ -733,7 +739,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 #pragma omp simd
         for (int i = target_region.loVect()[0]; i <= target_region.hiVect()[0];
              ++i) {
-          const IntVect ind(i, j, k);
+          const amrex::IntVect ind(i, j, k);
           assert(fine.box().contains(ind));
           fineptr[fine.box().index(ind)] = 0.0 / 0.0;
         }
@@ -750,7 +756,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 #pragma omp simd
         for (int i = target_region.loVect()[0]; i <= target_region.hiVect()[0];
              ++i) {
-          const IntVect ind(i, j, k);
+          const amrex::IntVect ind(i, j, k);
           assert(fine.box().contains(ind));
           assert(CCTK_isfinite(fineptr[fine.box().index(ind)]));
         }

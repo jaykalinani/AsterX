@@ -11,28 +11,29 @@
 #include <vector>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 extern "C" void CarpetX_SolvePoisson() {
   // Create operator
 
-  Vector<Geometry> geoms(ghext->leveldata.size());
-  Vector<BoxArray> grids(ghext->leveldata.size());
-  Vector<DistributionMapping> dmaps(ghext->leveldata.size());
+  amrex::Vector<amrex::Geometry> geoms(ghext->leveldata.size());
+  amrex::Vector<amrex::BoxArray> grids(ghext->leveldata.size());
+  amrex::Vector<amrex::DistributionMapping> dmaps(ghext->leveldata.size());
   for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
     geoms.at(level) = ghext->amrcore->Geom(level);
     grids.at(level) = ghext->amrcore->boxArray(level);
     dmaps.at(level) = ghext->amrcore->DistributionMap(level);
   }
 
-  MLNodeLaplacian mlnodelaplacian(geoms, grids, dmaps);
+  amrex::MLNodeLaplacian mlnodelaplacian(geoms, grids, dmaps);
 
   mlnodelaplacian.setDomainBC(
-      {LinOpBCType::Periodic, LinOpBCType::Periodic, LinOpBCType::Periodic},
-      {LinOpBCType::Periodic, LinOpBCType::Periodic, LinOpBCType::Periodic});
+      {amrex::LinOpBCType::Periodic, amrex::LinOpBCType::Periodic,
+       amrex::LinOpBCType::Periodic},
+      {amrex::LinOpBCType::Periodic, amrex::LinOpBCType::Periodic,
+       amrex::LinOpBCType::Periodic});
 
-  vector<MultiFab> sigmas(ghext->leveldata.size());
+  vector<amrex::MultiFab> sigmas(ghext->leveldata.size());
   for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
     auto &sigma = sigmas.at(level);
     sigma.define(ghext->amrcore->boxArray(level),
@@ -45,20 +46,20 @@ extern "C" void CarpetX_SolvePoisson() {
 
   // Create solver
 
-  MLMG mlmg(mlnodelaplacian);
+  amrex::MLMG mlmg(mlnodelaplacian);
 
-  const int gi_rhs = CCTK_GroupIndex("Maxwell::dive");
+  const int gi_rhs = CCTK_GroupIndex("Poisson::rhs");
   assert(gi_rhs >= 0);
-  const int gi_sol = CCTK_GroupIndex("Maxwell::phi1");
+  const int gi_sol = CCTK_GroupIndex("Poisson::phi");
   assert(gi_sol >= 0);
-  const int gi_res = CCTK_GroupIndex("Maxwell::dive1");
+  const int gi_res = CCTK_GroupIndex("Poisson::res");
   assert(gi_res >= 0);
   const int tl = 0;
   const int vi = 0;
 
-  Vector<MultiFab *> ress(ghext->leveldata.size());
-  Vector<MultiFab *> sols(ghext->leveldata.size());
-  Vector<const MultiFab *> rhss(ghext->leveldata.size());
+  amrex::Vector<amrex::MultiFab *> ress(ghext->leveldata.size());
+  amrex::Vector<amrex::MultiFab *> sols(ghext->leveldata.size());
+  amrex::Vector<const amrex::MultiFab *> rhss(ghext->leveldata.size());
   for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
     const auto &restrict leveldata = ghext->leveldata.at(level);
     const auto &restrict groupdata_rhs = *leveldata.groupdata.at(gi_rhs);

@@ -14,7 +14,6 @@
 #include <vector>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 template <typename T, int D> MPI_Datatype reduction_mpi_datatype() {
@@ -81,11 +80,11 @@ MPI_Op reduction_mpi_op() {
 
 namespace {
 template <typename T>
-reduction<T, dim> reduce_array(const Array4<const T> &restrict vars,
-                               const int n, const array<int, dim> &imin,
-                               const array<int, dim> &imax,
-                               const Array4<const int> *restrict const finemask,
-                               const vect<T, dim> &x0, const vect<T, dim> &dx) {
+reduction<T, dim>
+reduce_array(const amrex::Array4<const T> &restrict vars, const int n,
+             const array<int, dim> &imin, const array<int, dim> &imax,
+             const amrex::Array4<const int> *restrict const finemask,
+             const vect<T, dim> &x0, const vect<T, dim> &dx) {
   CCTK_REAL dV = 1.0;
   for (int d = 0; d < dim; ++d)
     dV *= dx[d];
@@ -118,8 +117,8 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
   reduction<CCTK_REAL, dim> red;
   for (auto &restrict leveldata : ghext->leveldata) {
     const auto &restrict groupdata = *leveldata.groupdata.at(gi);
-    const MultiFab &mfab = *groupdata.mfab.at(tl);
-    unique_ptr<iMultiFab> finemask_imfab;
+    const amrex::MultiFab &mfab = *groupdata.mfab.at(tl);
+    unique_ptr<amrex::iMultiFab> finemask_imfab;
 
     warn_if_invalid(groupdata, vi, tl, make_valid_int(),
                     [] { return "Before reduction"; });
@@ -134,28 +133,29 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     if (fine_level < int(ghext->leveldata.size())) {
       const auto &restrict fine_leveldata = ghext->leveldata.at(fine_level);
       const auto &restrict fine_groupdata = *fine_leveldata.groupdata.at(gi);
-      const MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
+      const amrex::MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
 
-      const IntVect reffact{2, 2, 2};
-      finemask_imfab = make_unique<iMultiFab>(
+      const amrex::IntVect reffact{2, 2, 2};
+      finemask_imfab = make_unique<amrex::iMultiFab>(
           makeFineMask(mfab, fine_mfab.boxArray(), reffact));
     }
 
-    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
         {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel reduction(reduction : red)
-    for (MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
-      const Box &bx = mfi.tilebox(); // current region (without ghosts)
+    for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+      const amrex::Box &bx = mfi.tilebox(); // current region (without ghosts)
       const array<int, dim> imin{bx.smallEnd(0), bx.smallEnd(1),
                                  bx.smallEnd(2)};
       const array<int, dim> imax{bx.bigEnd(0) + 1, bx.bigEnd(1) + 1,
                                  bx.bigEnd(2) + 1};
 
-      const Array4<const CCTK_REAL> &vars = mfab.array(mfi);
+      const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
 
-      unique_ptr<Array4<const int> > finemask;
+      unique_ptr<amrex::Array4<const int> > finemask;
       if (finemask_imfab)
-        finemask = make_unique<Array4<const int> >(finemask_imfab->array(mfi));
+        finemask =
+            make_unique<amrex::Array4<const int> >(finemask_imfab->array(mfi));
 
       red += reduce_array(vars, vi, imin, imax, finemask.get(), x0, dx);
     }

@@ -18,14 +18,13 @@
 #include <vector>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 namespace {
 
 // Interpolate a grid function at one point, dimensionally recursive
 template <typename T, int order> struct interpolator {
-  const Array4<const T> &vars;
+  const amrex::Array4<const T> &vars;
   const int vi;
   const vect<int, dim> &derivs;
   const T *restrict const dx;
@@ -202,27 +201,27 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   assert(in_global_mode(cctkGH));
 
   // Create particle container
-  typedef AmrParticleContainer<0, 2> Container;
+  typedef amrex::AmrParticleContainer<0, 2> Container;
   Container container(ghext->amrcore.get());
 
   // Set particle positions
   {
     const int level = 0;
     const auto &restrict leveldata = ghext->leveldata.at(level);
-    const MFIter mfi(*leveldata.fab);
+    const amrex::MFIter mfi(*leveldata.fab);
     assert(mfi.isValid());
     auto &particles = container.GetParticles(
         level)[make_pair(mfi.index(), mfi.LocalTileIndex())];
-    // particles.GetArrayOfStructs()().reserve(npoints);
+    // particles.Getamrex::ArrayOfStructs()().reserve(npoints);
     for (int n = 0; n < npoints; ++n) {
-      Particle<0, 2> p;
+      amrex::Particle<0, 2> p;
       p.id() = Container::ParticleType::NextID();
-      p.cpu() = ParallelDescriptor::MyProc();
+      p.cpu() = amrex::ParallelDescriptor::MyProc();
       p.pos(0) = coordsx[n];
       p.pos(1) = coordsy[n];
       p.pos(2) = coordsz[n];
-      p.idata(0) = ParallelDescriptor::MyProc(); // source process
-      p.idata(1) = n;                            // source index
+      p.idata(0) = amrex::ParallelDescriptor::MyProc(); // source process
+      p.idata(1) = n;                                   // source index
       particles.push_back(p);
     }
   }
@@ -254,8 +253,8 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     const int level = leveldata.level;
     // CCTK_VINFO("interpolating level %d", level);
 #warning "TODO: use OpenMP"
-    for (ParIter<0, 2> pti(container, level); pti.isValid(); ++pti) {
-      const Geometry &geom = ghext->amrcore->Geom(level);
+    for (amrex::ParIter<0, 2> pti(container, level); pti.isValid(); ++pti) {
+      const amrex::Geometry &geom = ghext->amrcore->Geom(level);
       const CCTK_REAL *restrict const x0 = geom.ProbLo();
       const CCTK_REAL *restrict const dx = geom.CellSize();
 
@@ -272,7 +271,8 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
         // Ensure interpolated variables are vertex centred
         // TODO: Generalize this
         assert((groupdata.indextype == array<int, dim>{0, 0, 0}));
-        const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(pti);
+        const amrex::Array4<const CCTK_REAL> &vars =
+            groupdata.mfab.at(tl)->array(pti);
         vect<int, dim> derivs;
         int op = operations[v];
         while (op > 0) {
@@ -399,8 +399,8 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
 
   // Collect particles back
   // CCTK_VINFO("collecting results");
-  const int nprocs = ParallelDescriptor::NProcs();
-  const MPI_Comm comm = ParallelDescriptor::Communicator();
+  const int nprocs = amrex::ParallelDescriptor::NProcs();
+  const MPI_Comm comm = amrex::ParallelDescriptor::Communicator();
   const MPI_Datatype datatype = mpi_datatype<CCTK_REAL>::value;
 
   vector<int> sendcounts(nprocs, 0);

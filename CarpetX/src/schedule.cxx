@@ -50,7 +50,6 @@ static inline int omp_get_max_threads(void) { return 1; }
 #include <vector>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 // Value for undefined cctkGH entries
@@ -65,7 +64,7 @@ struct TileBox {
 };
 
 struct thread_local_info_t {
-  // TODO: store only MFIter here; recalculate other things from it
+  // TODO: store only amrex::MFIter here; recalculate other things from it
   cGH cctkGH;
   TileBox tilebox;
   const MFPointer *restrict mfpointer;
@@ -84,8 +83,8 @@ void Restrict(int level);
 
 namespace {
 // Convert a (direction, face) pair to an AMReX Orientation
-Orientation orient(int d, int f) {
-  return Orientation(d, Orientation::Side(f));
+amrex::Orientation orient(int d, int f) {
+  return amrex::Orientation(d, amrex::Orientation::Side(f));
 }
 int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
                        const int *requested_tls, int *status, const bool inc);
@@ -146,10 +145,10 @@ namespace CarpetX {
 GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   DECLARE_CCTK_PARAMETERS;
 
-  const Box &fbx = mfp.fabbox();       // allocated array
-  const Box &vbx = mfp.validbox();     // interior region (without ghosts)
-  const Box &gbx = mfp.growntilebox(); // current region (with ghosts)
-  const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+  const amrex::Box &fbx = mfp.fabbox();   // allocated array
+  const amrex::Box &vbx = mfp.validbox(); // interior region (without ghosts)
+  const amrex::Box &gbx = mfp.growntilebox(); // current region (with ghosts)
+  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
 
   // The number of ghostzones in each direction
   for (int d = 0; d < dim; ++d)
@@ -198,7 +197,7 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
     tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)];
   }
 
-  const Geometry &geom = ghext->amrcore->Geom(0);
+  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
@@ -240,14 +239,14 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
 GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata,
                          const MFPointer &mfp)
     : GridDesc(leveldata, mfp) {
-  const Box &fbx = mfp.fabbox(); // allocated array
+  const amrex::Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
 }
 
 GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
                            const MFPointer &mfp)
     : GridDesc(groupdata.leveldata(), mfp) {
-  const Box &fbx = mfp.fabbox(); // allocated array
+  const amrex::Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
   for (int d = 0; d < dim; ++d) {
     assert(groupdata.nghostzones[d] >= 0);
@@ -302,12 +301,12 @@ void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
     return;
 
   const auto &leveldata = groupdata.leveldata();
-  const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+  const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+  for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     const GridPtrDesc1 grid(groupdata, mfi);
-    const Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+    const amrex::Array4<CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
     if (!valid.valid_any()) {
@@ -379,12 +378,13 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
       nan_update(grid, p);
   }};
   const auto &leveldata = groupdata.leveldata();
-  const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+  const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-  for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+  for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     const GridPtrDesc1 grid(groupdata, mfi);
-    const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+    const amrex::Array4<const CCTK_REAL> &vars =
+        groupdata.mfab.at(tl)->array(mfi);
     const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
     if (valid.valid_all()) {
@@ -421,9 +421,10 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
           double(nan_xmax[0]), double(nan_xmax[1]), double(nan_xmax[2]),
           string(groupdata.valid.at(tl).at(vi)).c_str());
 
-      for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+      for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
         const GridPtrDesc1 grid(groupdata, mfi);
-        const Array4<const CCTK_REAL> &vars = groupdata.mfab.at(tl)->array(mfi);
+        const amrex::Array4<const CCTK_REAL> &vars =
+            groupdata.mfab.at(tl)->array(mfi);
         const GF3D1<const CCTK_REAL> ptr_ = grid.gf3d(vars, vi);
 
         if (valid.valid_int)
@@ -543,7 +544,7 @@ void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
 
 struct tiletag_t {
   int level;
-  Box tilebox;
+  amrex::Box tilebox;
   int gi, vi, tl;
   tiletag_t() = delete;
 
@@ -614,10 +615,10 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
 
   for (int level = min_level; level < max_level; ++level) {
     auto &restrict leveldata = ghext->leveldata.at(level);
-    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
         {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-    for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
 
       for (const auto &groupdataptr : leveldata.groupdata) {
         if (groupdataptr == nullptr)
@@ -643,7 +644,7 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write,
             if (!(wr.valid_any() && to_check.valid_any()))
               continue;
 
-            const Array4<const CCTK_REAL> &vars =
+            const amrex::Array4<const CCTK_REAL> &vars =
                 groupdata.mfab.at(tl)->array(mfi);
             const GF3D1<const CCTK_REAL> var_ = grid.gf3d(vars, vi);
 
@@ -685,10 +686,10 @@ void check_checksums(const checksums_t checksums, const int min_level,
 
   for (int level = min_level; level < max_level; ++level) {
     auto &restrict leveldata = ghext->leveldata.at(level);
-    auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
         {max_tile_size_x, max_tile_size_y, max_tile_size_z});
 #pragma omp parallel
-    for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
 
       for (const auto &groupdataptr : leveldata.groupdata) {
         if (groupdataptr == nullptr)
@@ -709,7 +710,7 @@ void check_checksums(const checksums_t checksums, const int min_level,
             const auto &did_check = old_checksum.where;
             assert(did_check.valid_any());
 
-            const Array4<const CCTK_REAL> &vars =
+            const amrex::Array4<const CCTK_REAL> &vars =
                 groupdata.mfab.at(tl)->array(mfi);
             const GF3D1<const CCTK_REAL> var_ = grid.gf3d(vars, vi);
 
@@ -817,7 +818,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   cctkGH->cctk_convlevel = 0; // no convergence tests
 
   // Initialize grid spacing
-  const Geometry &geom = ghext->amrcore->Geom(0);
+  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
   const CCTK_REAL *restrict x0 = geom.ProbLo();
   const CCTK_REAL *restrict dx = geom.CellSize();
 
@@ -830,7 +831,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   // CCTK_REAL mindx = 1.0 / 0.0;
   // const int numlevels = ghext->amrcore->finestLevel() + 1;
   // for (int level = 0; level < numlevels; ++level) {
-  //   const Geometry &geom = ghext->amrcore->Geom(level);
+  //   const amrex::Geometry &geom = ghext->amrcore->Geom(level);
   //   const CCTK_REAL *restrict dx = geom.CellSize();
   //   for (int d = 0; d < dim; ++d)
   //     mindx = fmin(mindx, dx[d]);
@@ -927,7 +928,7 @@ void enter_level_mode(cGH *restrict cctkGH,
   assert(in_global_mode(cctkGH));
 
   // Global shape
-  const Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1 +
                           2 * cctkGH->cctk_nghostzones[d];
@@ -993,7 +994,8 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
     const GridPtrDesc1 grid1(groupdata, mfp);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      const Array4<CCTK_REAL> vars = groupdata.mfab.at(tl)->array(mfp.index());
+      const amrex::Array4<CCTK_REAL> vars =
+          groupdata.mfab.at(tl)->array(mfp.index());
       for (int vi = 0; vi < groupdata.numvars; ++vi)
         cctkGH->data[groupdata.firstvarindex + vi][tl] = grid1.ptr(vars, vi);
     }
@@ -1801,9 +1803,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       for (int level = min_level; level < max_level; ++level) {
         const auto &restrict leveldata = ghext->leveldata.at(level);
         enter_level_mode(threadGH, leveldata);
-        const auto mfitinfo = MFItInfo().SetDynamic(true).EnableTiling(
+        const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-        for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
           cout << "level=" << level << " mfi.currentIndex=" << mfi.tileIndex()
                << " mfi.length=" << mfi.length() << "\n";
           MFPointer mfp(mfi);
@@ -1822,10 +1824,10 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     vector<std::function<void()> > tasks;
     for (int level = min_level; level < max_level; ++level) {
       const auto &restrict leveldata = ghext->leveldata.at(level);
-      const auto mfitinfo = MFItInfo().EnableTiling(
+      const auto mfitinfo = amrex::MFItInfo().EnableTiling(
           {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-      // Note: The MFIter uses global variables and OpenMP barriers
-      for (MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+      // Note: The amrex::MFIter uses global variables and OpenMP barriers
+      for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
         const MFPointer mfp(mfi);
 
         const auto task{[level, mfp, function, attribute] {
@@ -2076,7 +2078,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
       auto physbc_bcs = get_boundaries(groupdata);
       CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
-      const Vector<BCRec> &bcs = get<1>(physbc_bcs);
+      const amrex::Vector<amrex::BCRec> &bcs = get<1>(physbc_bcs);
 
       if (leveldata.level == 0) {
         // Coarsest level: Copy from adjacent boxes on same level
@@ -2118,10 +2120,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
         assert(coarsegroupdata.numvars == groupdata.numvars);
 
-        Interpolater *const interpolator =
+        amrex::Interpolater *const interpolator =
             get_interpolator(groupdata.indextype);
 
-        const IntVect reffact{2, 2, 2};
+        const amrex::IntVect reffact{2, 2, 2};
 
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
@@ -2237,7 +2239,7 @@ void Reflux(int level) {
         finegroupdata.freg->FineAdd(*flux_finegroupdata.mfab.at(tl), d, 0, 0,
                                     flux_finegroupdata.numvars, 1);
       }
-      const Geometry &geom = ghext->amrcore->Geom(level);
+      const amrex::Geometry &geom = ghext->amrcore->Geom(level);
       finegroupdata.freg->Reflux(*groupdata.mfab.at(tl), 1.0, 0, 0,
                                  groupdata.numvars, geom);
 
@@ -2277,7 +2279,7 @@ void Restrict(int level, const vector<int> &groups) {
 
     auto &groupdata = *leveldata.groupdata.at(gi);
     const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
-    const IntVect reffact{2, 2, 2};
+    const amrex::IntVect reffact{2, 2, 2};
 
     // Don't restrict the regridding error nor the refinement level
     if (gi == gi_regrid_error || gi == gi_refinement_level)

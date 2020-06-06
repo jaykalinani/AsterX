@@ -8,7 +8,6 @@
 #include <cassert>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 constexpr int VC = 0;        // vertex centering
@@ -18,7 +17,7 @@ constexpr bool CONS = true;  // conservative
 
 template <int CENTI, int CENTJ, int CENTK, bool CONSI, bool CONSJ, bool CONSK,
           int ORDERI, int ORDERJ, int ORDERK>
-class prolongate_3d_rf2 final : public Interpolater {
+class prolongate_3d_rf2 final : public amrex::Interpolater {
 
   // Centering must be vertex (0) or cell (1)
   static_assert(CENTI == 0 || CENTI == 1, "");
@@ -39,15 +38,18 @@ class prolongate_3d_rf2 final : public Interpolater {
 public:
   virtual ~prolongate_3d_rf2() override;
 
-  virtual Box CoarseBox(const Box &fine, int ratio) override;
-  virtual Box CoarseBox(const Box &fine, const IntVect &ratio) override;
+  virtual amrex::Box CoarseBox(const amrex::Box &fine, int ratio) override;
+  virtual amrex::Box CoarseBox(const amrex::Box &fine,
+                               const amrex::IntVect &ratio) override;
 
-  virtual void interp(const FArrayBox &crse, int crse_comp, FArrayBox &fine,
-                      int fine_comp, int ncomp, const Box &fine_region,
-                      const IntVect &ratio, const Geometry &crse_geom,
-                      const Geometry &fine_geom, Vector<BCRec> const &bcr,
-                      int actual_comp, int actual_state,
-                      RunOn gpu_or_cpu) override;
+  virtual void interp(const amrex::FArrayBox &crse, int crse_comp,
+                      amrex::FArrayBox &fine, int fine_comp, int ncomp,
+                      const amrex::Box &fine_region,
+                      const amrex::IntVect &ratio,
+                      const amrex::Geometry &crse_geom,
+                      const amrex::Geometry &fine_geom,
+                      amrex::Vector<amrex::BCRec> const &bcr, int actual_comp,
+                      int actual_state, amrex::RunOn gpu_or_cpu) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

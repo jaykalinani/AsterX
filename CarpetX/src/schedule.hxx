@@ -11,10 +11,8 @@
 #include <array>
 
 namespace CarpetX {
-using namespace Loop;
 using namespace std;
-using std::max;
-using std::min;
+using namespace Loop;
 
 int Initialise(tFleshConfig *config);
 int Evolve(tFleshConfig *config);
@@ -48,26 +46,26 @@ extern int current_level;
 // Like an MFIter, but does not support iteration, instead it can be copied
 struct MFPointer {
   int m_index;
-  Box m_fabbox;
-  Box m_growntilebox;
-  Box m_validbox;
-  IntVect m_nGrowVect;
+  amrex::Box m_fabbox;
+  amrex::Box m_growntilebox;
+  amrex::Box m_validbox;
+  amrex::IntVect m_nGrowVect;
 
   MFPointer() = delete;
   MFPointer(const MFPointer &) = default;
   MFPointer(MFPointer &&) = default;
   MFPointer &operator=(const MFPointer &) = default;
   MFPointer &operator=(MFPointer &&) = default;
-  MFPointer(const MFIter &mfi)
+  MFPointer(const amrex::MFIter &mfi)
       : m_index(mfi.index()), m_fabbox(mfi.fabbox()),
         m_growntilebox(mfi.growntilebox()), m_validbox(mfi.validbox()),
         m_nGrowVect(mfi.theFabArrayBase().nGrowVect()) {}
 
   constexpr int index() const noexcept { return m_index; }
-  constexpr Box fabbox() const noexcept { return m_fabbox; }
-  constexpr Box growntilebox() const noexcept { return m_growntilebox; }
-  constexpr Box validbox() const noexcept { return m_validbox; }
-  constexpr IntVect nGrowVect() const noexcept { return m_nGrowVect; }
+  constexpr amrex::Box fabbox() const noexcept { return m_fabbox; }
+  constexpr amrex::Box growntilebox() const noexcept { return m_growntilebox; }
+  constexpr amrex::Box validbox() const noexcept { return m_validbox; }
+  constexpr amrex::IntVect nGrowVect() const noexcept { return m_nGrowVect; }
 };
 
 struct GridDesc : GridDescBase {
@@ -79,23 +77,23 @@ struct GridDesc : GridDescBase {
 
 // TODO: remove this
 struct GridPtrDesc : GridDesc {
-  Dim3 cactus_offset;
+  amrex::Dim3 cactus_offset;
 
   GridPtrDesc() = delete;
   GridPtrDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp);
 
-  template <typename T> T *ptr(const Array4<T> &vars, int vi) const {
+  template <typename T> T *ptr(const amrex::Array4<T> &vars, int vi) const {
     return vars.ptr(cactus_offset.x, cactus_offset.y, cactus_offset.z, vi);
   }
   template <typename T>
-  T &idx(const Array4<T> &vars, int i, int j, int k, int vi) const {
+  T &idx(const amrex::Array4<T> &vars, int i, int j, int k, int vi) const {
     return vars(cactus_offset.x + i, cactus_offset.y + i, cactus_offset.z + j,
                 vi);
   }
 };
 
 struct GridPtrDesc1 : GridDesc {
-  Dim3 cactus_offset;
+  amrex::Dim3 cactus_offset;
   array<int, dim> gimin, gimax;
   array<int, dim> gash;
 
@@ -106,17 +104,18 @@ struct GridPtrDesc1 : GridDesc {
   GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
                const MFPointer &mfp);
 
-  template <typename T> T *ptr(const Array4<T> &vars, int vi) const {
+  template <typename T> T *ptr(const amrex::Array4<T> &vars, int vi) const {
     return vars.ptr(cactus_offset.x + gimin[0], cactus_offset.y + gimin[1],
                     cactus_offset.z + gimin[2], vi);
   }
   template <typename T>
-  T &idx(const Array4<T> &vars, int i, int j, int k, int vi) const {
+  T &idx(const amrex::Array4<T> &vars, int i, int j, int k, int vi) const {
     return vars(cactus_offset.x + gimin[0] + i, cactus_offset.y + gimin[1] + i,
                 cactus_offset.z + gimin[2] + j, vi);
   }
 
-  template <typename T> GF3D1<T> gf3d(const Array4<T> &vars, int vi) const {
+  template <typename T>
+  GF3D1<T> gf3d(const amrex::Array4<T> &vars, int vi) const {
     return GF3D1<T>(ptr(vars, vi), gimin, gimax, gash);
   }
 };

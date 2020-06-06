@@ -33,7 +33,6 @@
 #include <vector>
 
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +104,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
         return buf.str();
       }();
 
-      Vector<string> varnames(groupdata0.numvars);
+      amrex::Vector<string> varnames(groupdata0.numvars);
       for (int vi = 0; vi < groupdata0.numvars; ++vi) {
         ostringstream buf;
         buf << CCTK_VarName(groupdata0.firstvarindex + vi);
@@ -114,15 +113,15 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
         varnames.at(vi) = buf.str();
       }
 
-      Vector<const MultiFab *> mfabs(ghext->leveldata.size());
-      Vector<Geometry> geoms(ghext->leveldata.size());
-      Vector<int> iters(ghext->leveldata.size());
-      Vector<IntVect> reffacts(ghext->leveldata.size());
+      amrex::Vector<const amrex::MultiFab *> mfabs(ghext->leveldata.size());
+      amrex::Vector<amrex::Geometry> geoms(ghext->leveldata.size());
+      amrex::Vector<int> iters(ghext->leveldata.size());
+      amrex::Vector<amrex::IntVect> reffacts(ghext->leveldata.size());
       for (const auto &restrict leveldata : ghext->leveldata) {
         mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi)->mfab.at(tl);
         geoms.at(leveldata.level) = ghext->amrcore->Geom(leveldata.level);
         iters.at(leveldata.level) = cctk_iteration;
-        reffacts.at(leveldata.level) = IntVect{2, 2, 2};
+        reffacts.at(leveldata.level) = amrex::IntVect{2, 2, 2};
       }
 
       // TODO: Output all groups into a single file
@@ -174,8 +173,8 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
     const int tl = 0;
     const auto &geom = ghext->amrcore->Geom(leveldata.level);
     const auto &mfab = *groupdata.mfab.at(tl);
-    for (MFIter mfi(mfab); mfi.isValid(); ++mfi) {
-      const Array4<const CCTK_REAL> &vars = mfab.array(mfi);
+    for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
+      const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
       const auto &imin = vars.begin;
       const auto &imax = vars.end;
       for (int k = imin.z; k < imax.z; ++k) {
@@ -235,7 +234,7 @@ void OutputASCII(const cGH *restrict cctkGH) {
       buf << ".p" << setw(4) << setfill('0') << CCTK_MyProc(nullptr);
       const string filename = buf.str();
 
-      Vector<string> varnames(groupdata0.numvars);
+      amrex::Vector<string> varnames(groupdata0.numvars);
       for (int vi = 0; vi < groupdata0.numvars; ++vi) {
         ostringstream buf;
         buf << CCTK_VarName(groupdata0.firstvarindex + vi);

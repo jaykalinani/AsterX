@@ -30,13 +30,12 @@
 
 #ifdef HAVE_CAPABILITY_Silo
 namespace CarpetX {
-using namespace amrex;
 using namespace std;
 
 constexpr bool io_verbose = true;
 
 struct mesh_props_t {
-  IntVect ngrow;
+  amrex::IntVect ngrow;
 
   auto to_tuple() const { return make_tuple(ngrow); }
   friend bool operator==(const mesh_props_t &p, const mesh_props_t &q) {
@@ -233,10 +232,10 @@ void InputSilo(const cGH *restrict const cctkGH) {
         auto &groupdata = *leveldata.groupdata.at(gi);
         const int numvars = groupdata.numvars;
         const int tl = 0;
-        MultiFab &mfab = *groupdata.mfab[tl];
-        const IndexType &indextype = mfab.ixType();
-        const IntVect &ngrow = mfab.nGrowVect();
-        const DistributionMapping &dm = mfab.DistributionMap();
+        amrex::MultiFab &mfab = *groupdata.mfab[tl];
+        const amrex::IndexType &indextype = mfab.ixType();
+        const amrex::IntVect &ngrow = mfab.nGrowVect();
+        const amrex::DistributionMapping &dm = mfab.DistributionMap();
 
         const mesh_props_t mesh_props{ngrow};
         const bool have_mesh = have_meshes.count(mesh_props);
@@ -254,7 +253,7 @@ void InputSilo(const cGH *restrict const cctkGH) {
           if (!(recv_this_fab || read_this_fab))
             continue;
 
-          const Box &fabbox = mfab.fabbox(component); // exterior
+          const amrex::Box &fabbox = mfab.fabbox(component); // exterior
 
           array<int, ndims> dims;
           for (int d = 0; d < ndims; ++d)
@@ -272,10 +271,10 @@ void InputSilo(const cGH *restrict const cctkGH) {
           MPI_Request mpi_req;
           double *data = nullptr;
           if (recv_this_fab && read_this_fab) {
-            FArrayBox &fab = mfab[component];
+            amrex::FArrayBox &fab = mfab[component];
             data = fab.dataPtr();
           } else if (recv_this_fab) {
-            FArrayBox &fab = mfab[component];
+            amrex::FArrayBox &fab = mfab[component];
             assert(numvars * zonecount <= INT_MAX);
             MPI_Irecv(fab.dataPtr(), numvars * zonecount, MPI_DOUBLE, ioproc,
                       mpi_tag, mpi_comm, &mpi_req);
@@ -501,10 +500,10 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         const auto &groupdata = *leveldata.groupdata.at(gi);
         const int numvars = groupdata.numvars;
         const int tl = 0;
-        const MultiFab &mfab = *groupdata.mfab[tl];
-        const IndexType &indextype = mfab.ixType();
-        const IntVect &ngrow = mfab.nGrowVect();
-        const DistributionMapping &dm = mfab.DistributionMap();
+        const amrex::MultiFab &mfab = *groupdata.mfab[tl];
+        const amrex::IndexType &indextype = mfab.ixType();
+        const amrex::IntVect &ngrow = mfab.nGrowVect();
+        const amrex::DistributionMapping &dm = mfab.DistributionMap();
 
         const mesh_props_t mesh_props{ngrow};
         const bool have_mesh = have_meshes.count(mesh_props);
@@ -520,7 +519,7 @@ void OutputSilo(const cGH *restrict const cctkGH) {
             continue;
 
           // TODO: Check whether data are valid
-          const Box &fabbox = mfab.fabbox(component); // exterior
+          const amrex::Box &fabbox = mfab.fabbox(component); // exterior
 
           array<int, ndims> dims;
           for (int d = 0; d < ndims; ++d)
@@ -540,7 +539,7 @@ void OutputSilo(const cGH *restrict const cctkGH) {
             for (int d = 0; d < ndims; ++d)
               dims_vc[d] = dims[d] + int(indextype.cellCentered(d));
 
-            const Geometry &geom = ghext->amrcore->Geom(leveldata.level);
+            const amrex::Geometry &geom = ghext->amrcore->Geom(leveldata.level);
             const double *const x0 = geom.ProbLo();
             const double *const dx = geom.CellSize();
             array<vector<double>, ndims> coords;
@@ -605,10 +604,10 @@ void OutputSilo(const cGH *restrict const cctkGH) {
           vector<double> buffer;
           const double *data = nullptr;
           if (send_this_fab && write_this_fab) {
-            const FArrayBox &fab = mfab[component];
+            const amrex::FArrayBox &fab = mfab[component];
             data = fab.dataPtr();
           } else if (send_this_fab) {
-            const FArrayBox &fab = mfab[component];
+            const amrex::FArrayBox &fab = mfab[component];
             assert(numvars * zonecount <= INT_MAX);
             MPI_Send(fab.dataPtr(), numvars * zonecount, MPI_DOUBLE, ioproc,
                      mpi_tag, mpi_comm);
@@ -710,9 +709,9 @@ void OutputSilo(const cGH *restrict const cctkGH) {
       const auto &groupdata0 = *leveldata0.groupdata.at(gi);
       const int numvars = groupdata0.numvars;
       const int tl = 0;
-      const MultiFab &mfab0 = *groupdata0.mfab[tl];
-      const IndexType &indextype = mfab0.ixType();
-      const IntVect &ngrow = mfab0.nGrowVect();
+      const amrex::MultiFab &mfab0 = *groupdata0.mfab[tl];
+      const amrex::IndexType &indextype = mfab0.ixType();
+      const amrex::IntVect &ngrow = mfab0.nGrowVect();
 
       const mesh_props_t mesh_props{ngrow};
       const bool have_mesh = have_meshes.count(mesh_props);
@@ -726,8 +725,8 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         vector<int> ncomps_level;
         for (const auto &leveldata : ghext->leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
-          const MultiFab &mfab = *groupdata.mfab[tl];
-          const DistributionMapping &dm = mfab.DistributionMap();
+          const amrex::MultiFab &mfab = *groupdata.mfab[tl];
+          const amrex::DistributionMapping &dm = mfab.DistributionMap();
           const int nfabs = dm.size();
           ncomps_level.push_back(nfabs);
         }
@@ -786,20 +785,20 @@ void OutputSilo(const cGH *restrict const cctkGH) {
             const int fine_level = level + 1;
             if (fine_level < nlevels) {
               const auto &groupdata = *leveldata.groupdata.at(gi);
-              const MultiFab &mfab = *groupdata.mfab[tl];
+              const amrex::MultiFab &mfab = *groupdata.mfab[tl];
               const auto &fine_leveldata = ghext->leveldata.at(fine_level);
               const auto &fine_groupdata = *fine_leveldata.groupdata.at(gi);
-              const MultiFab &fine_mfab = *fine_groupdata.mfab[tl];
+              const amrex::MultiFab &fine_mfab = *fine_groupdata.mfab[tl];
 
               const int ncomps = ncomps_level.at(level);
               const int fine_comp0 = firstcomp_level.at(fine_level);
-              const BoxArray &fine_boxarray = fine_mfab.boxarray;
+              const amrex::BoxArray &fine_boxarray = fine_mfab.boxarray;
 
               for (int component = 0; component < ncomps; ++component) {
-                const Box &box = mfab.box(component); // interior
-                Box refined_box(box);
+                const amrex::Box &box = mfab.box(component); // interior
+                amrex::Box refined_box(box);
                 refined_box.refine(2);
-                const vector<pair<int, Box> > child_boxes =
+                const vector<pair<int, amrex::Box> > child_boxes =
                     fine_boxarray.intersections(refined_box);
                 vector<int> children;
                 children.reserve(child_boxes.size());
@@ -986,13 +985,13 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         for (const auto &leveldata : ghext->leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
           const int tl = 0;
-          const MultiFab &mfab = *groupdata.mfab[tl];
-          const Geometry &geom = ghext->amrcore->Geom(leveldata.level);
+          const amrex::MultiFab &mfab = *groupdata.mfab[tl];
+          const amrex::Geometry &geom = ghext->amrcore->Geom(leveldata.level);
           const double *const x0 = geom.ProbLo();
           const double *const dx = geom.CellSize();
           const int nfabs = mfab.size();
           for (int c = 0; c < nfabs; ++c) {
-            const Box &fabbox = mfab.fabbox(c); // exterior
+            const amrex::Box &fabbox = mfab.fabbox(c); // exterior
             iextent_t iextent;
             extent_t extent;
             for (int d = 0; d < ndims; ++d) {
@@ -1081,8 +1080,8 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         vector<string> meshnames;
         for (const auto &leveldata : ghext->leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
-          const MultiFab &mfab = *groupdata.mfab[tl];
-          const DistributionMapping &dm = mfab.DistributionMap();
+          const amrex::MultiFab &mfab = *groupdata.mfab[tl];
+          const amrex::DistributionMapping &dm = mfab.DistributionMap();
           const int nfabs = dm.size();
           for (int c = 0; c < nfabs; ++c) {
             const int proc = dm[c];
@@ -1125,13 +1124,12 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         // for (const auto &leveldata : ghext->leveldata) {
         //   const auto &groupdata = *leveldata.groupdata.at(gi);
         //   const int tl = 0;
-        //   const MultiFab &mfab = *groupdata.mfab[tl];
-        //   const Geometry &geom = ghext->amrcore->Geom(leveldata.level);
-        //   const double *const x0 = geom.ProbLo();
-        //   const double *const dx = geom.CellSize();
-        //   const int nfabs = mfab.size();
-        //   for (int c = 0; c < nfabs; ++c) {
-        //     const Box &fabbox = mfab.fabbox(c); // exterior
+        //   const amrex::MultiFab &mfab = *groupdata.mfab[tl];
+        //   const amrex::Geometry &geom =
+        //   ghext->amrcore->Geom(leveldata.level); const double *const x0 =
+        //   geom.ProbLo(); const double *const dx = geom.CellSize(); const int
+        //   nfabs = mfab.size(); for (int c = 0; c < nfabs; ++c) {
+        //     const amrex::Box &fabbox = mfab.fabbox(c); // exterior
         //     extent_t extent;
         //     for (int d = 0; d < ndims; ++d) {
         //       extent[0][d] = x0[d] + fabbox.smallEnd(d) * dx[d];
@@ -1151,10 +1149,10 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         for (const auto &leveldata : ghext->leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
           const int tl = 0;
-          const MultiFab &mfab = *groupdata.mfab[tl];
+          const amrex::MultiFab &mfab = *groupdata.mfab[tl];
           const int nfabs = mfab.size();
           for (int c = 0; c < nfabs; ++c) {
-            const Box &fabbox = mfab.fabbox(c); // exterior
+            const amrex::Box &fabbox = mfab.fabbox(c); // exterior
             array<int, ndims> dims_vc;
             for (int d = 0; d < ndims; ++d)
               dims_vc[d] = fabbox.length(d) + int(indextype.cellCentered(d));
@@ -1218,8 +1216,8 @@ void OutputSilo(const cGH *restrict const cctkGH) {
           for (const auto &leveldata : ghext->leveldata) {
             const auto &groupdata = *leveldata.groupdata.at(gi);
             const int tl = 0;
-            const MultiFab &mfab = *groupdata.mfab[tl];
-            const DistributionMapping &dm = mfab.DistributionMap();
+            const amrex::MultiFab &mfab = *groupdata.mfab[tl];
+            const amrex::DistributionMapping &dm = mfab.DistributionMap();
             const int nfabs = dm.size();
             for (int c = 0; c < nfabs; ++c) {
               const int proc = dm[c];
