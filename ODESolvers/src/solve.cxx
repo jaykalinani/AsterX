@@ -1,5 +1,5 @@
-#include <../../CarpetX/src/driver.hxx>
-#include <../../CarpetX/src/schedule.hxx>
+#include "../../CarpetX/src/driver.hxx"
+#include "../../CarpetX/src/schedule.hxx"
 
 #include <cctk.h>
 #include <cctk_Parameters.h>
@@ -16,7 +16,6 @@
 #include <vector>
 
 namespace ODESolver {
-using namespace amrex;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,11 +25,11 @@ struct statecomp_t {
 
   vector<string> groupnames;
   vector<int> groupids;
-  vector<MultiFab *> mfabs;
+  vector<amrex::MultiFab *> mfabs;
 
 private:
   // These will be automatically freed when this object is deallocated
-  vector<unique_ptr<MultiFab> > owned_stuff;
+  vector<unique_ptr<amrex::MultiFab> > owned_stuff;
 
 public:
   void check_valid() const;
@@ -78,9 +77,9 @@ statecomp_t statecomp_t::copy() const {
       CCTK_VERROR("statecomp_t::copy.x: Group %s contains nans",
                   groupnames.at(n).c_str());
 #endif
-    auto y = make_unique<MultiFab>(x->boxArray(), x->DistributionMap(),
-                                   x->nComp(), x->nGrowVect());
-    MultiFab::Copy(*y, *x, 0, 0, y->nComp(), y->nGrowVect());
+    auto y = make_unique<amrex::MultiFab>(x->boxArray(), x->DistributionMap(),
+                                          x->nComp(), x->nGrowVect());
+    amrex::MultiFab::Copy(*y, *x, 0, 0, y->nComp(), y->nGrowVect());
 #ifdef CCTK_DEBUG
     if (y->contains_nan())
       CCTK_VERROR("statecomp_t::copy.y: Group %s contains nans",
@@ -107,8 +106,8 @@ void statecomp_t::axpy(const statecomp_t &y, const CCTK_REAL alpha,
       CCTK_VERROR("statecomp_t::axpy.x: Group %s contains nans",
                   x.groupnames.at(n).c_str());
 #endif
-    MultiFab::Saxpy(*y.mfabs.at(n), alpha, *x.mfabs.at(n), 0, 0,
-                    y.mfabs.at(n)->nComp(), y.mfabs.at(n)->nGrowVect());
+    amrex::MultiFab::Saxpy(*y.mfabs.at(n), alpha, *x.mfabs.at(n), 0, 0,
+                           y.mfabs.at(n)->nComp(), y.mfabs.at(n)->nGrowVect());
 #ifdef CCTK_DEBUG
     if (y.mfabs.at(n)->contains_nan())
       CCTK_VERROR("statecomp_t::axpy.y: Group %s contains nans",
@@ -138,9 +137,9 @@ void statecomp_t::lincomb(const statecomp_t &z, const CCTK_REAL alpha,
       CCTK_VERROR("statecomp_t::lincomb.y: Group %s contains nans",
                   y.groupnames.at(n).c_str());
 #endif
-    MultiFab::LinComb(*z.mfabs.at(n), alpha, *x.mfabs.at(n), 0, beta,
-                      *y.mfabs.at(n), 0, 0, z.mfabs.at(n)->nComp(),
-                      z.mfabs.at(n)->nGrowVect());
+    amrex::MultiFab::LinComb(*z.mfabs.at(n), alpha, *x.mfabs.at(n), 0, beta,
+                             *y.mfabs.at(n), 0, 0, z.mfabs.at(n)->nComp(),
+                             z.mfabs.at(n)->nGrowVect());
 #ifdef CCTK_DEBUG
     if (z.mfabs.at(n)->contains_nan())
       CCTK_VERROR("statecomp_t::lincomb.z: Group %s contains nans",
