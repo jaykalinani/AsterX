@@ -62,15 +62,12 @@ RUN mkdir src && \
 # Install ssht
 # TODO: Use "cmake install" instead of "cp"
 RUN mkdir src && \
-    (cd src && \
-    git clone -n https://github.com/astro-informatics/ssht.git && \
-    cd ssht && \
-    git checkout 7378ce8853897cbd1b08adebf7ec088c1e40f860 && \
-    make -j$(nproc) default && \
-    cp src/c/*.h /usr/local/include && \
-    cp lib/c/* /usr/local/lib && \
-    true) && \
-    rm -rf src
+    (git clone https://github.com/astro-informatics/ssht.git && \
+    mkdir -p ssht/build && \
+    cd ssht/build && \
+    cmake .. && \
+    make install) && \
+    rm -fr src
 
 # Install Silo
 RUN mkdir src && \
