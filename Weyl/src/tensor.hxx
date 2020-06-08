@@ -658,7 +658,8 @@ public:
   }
 
   constexpr vec4<bool, dnup> isnan1() const {
-    return vec4<bool, dnup>(std::isnan1(elts));
+    using std::isnan1;
+    return vec4<bool, dnup>(isnan1(elts));
   }
 
   constexpr bool any() const { return elts.any(); }
