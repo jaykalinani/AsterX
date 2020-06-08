@@ -506,7 +506,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   {}
 
   Z4C_INLINE
-  z4c_vars(const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_SL,
+  z4c_vars(const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
            const T &eta,
            //
            const GF3D<const T, 0, 0, 0> &gf_chi_,
