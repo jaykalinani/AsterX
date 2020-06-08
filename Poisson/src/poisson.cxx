@@ -116,7 +116,14 @@ extern "C" void Poisson_solve(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson_solve;
   DECLARE_CCTK_PARAMETERS;
 
-  SolvePoisson();
+  const int gi_sol = CCTK_GroupIndex("Poisson::phi");
+  assert(gi_sol >= 0);
+  const int gi_rhs = CCTK_GroupIndex("Poisson::rhs");
+  assert(gi_rhs >= 0);
+  const int gi_res = CCTK_GroupIndex("Poisson::res");
+  assert(gi_res >= 0);
+
+  SolvePoisson(gi_sol, gi_rhs, gi_res);
 }
 
 extern "C" void Poisson_residual(CCTK_ARGUMENTS) {

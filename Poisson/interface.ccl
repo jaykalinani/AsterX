@@ -7,7 +7,10 @@ USES INCLUDE HEADER: vect.hxx
 
 
 
-void FUNCTION SolvePoisson()
+void FUNCTION SolvePoisson(
+  CCTK_INT IN gi_sol,
+  CCTK_INT IN gi_rhs,
+  CCTK_INT IN gi_res)
 REQUIRES FUNCTION SolvePoisson
 
 
