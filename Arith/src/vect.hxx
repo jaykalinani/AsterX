@@ -302,7 +302,7 @@ template <typename T, int D> struct vect {
   //   return r;
   // }
 
-  friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator*(T a,
+  friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator*(const T &a,
                                                                const vect &x) {
     vect r;
     for (int d = 0; d < D; ++d)
@@ -310,22 +310,48 @@ template <typename T, int D> struct vect {
     return r;
   }
   friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator*(const vect &x,
-                                                               T a) {
+                                                               const T &a) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] * a;
     return r;
   }
   friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator/(const vect &x,
-                                                               T a) {
+                                                               const T &a) {
     vect r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = x.elts[d] / a;
     return r;
   }
 
-  friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<bool, D> operator!(
-      const vect &x) {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+=(const vect &x) {
+    return *this = *this + x;
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-=(const vect &x) {
+    return *this = *this - x;
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator*=(const vect &x) {
+    return *this = *this * x;
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator/=(const vect &x) {
+    return *this = *this / x;
+  }
+
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+=(const T &a) {
+    return *this = *this + a;
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-=(const T &a) {
+    return *this = *this - a;
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator*=(const T &a) {
+    return *this = *this * a;
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator/=(const T &a) {
+    return *this = *this / a;
+  }
+
+  friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<bool, D>
+  operator!(const vect &x) {
     vect<bool, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = !x.elts[d];
