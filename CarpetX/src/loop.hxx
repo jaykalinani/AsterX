@@ -28,6 +28,7 @@ enum class where_t { everywhere, interior, boundary, ghosts_inclusive, ghosts };
 struct PointDesc {
   int i, j, k;
   CCTK_REAL x, y, z;
+  CCTK_REAL dx, dy, dz;
   int idx;
   static constexpr int di = 1;
   int dj, dk;
@@ -36,12 +37,16 @@ struct PointDesc {
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<int, dim> DI(int d) const {
     return vect<int, dim>::unit(d);
   }
+  vect<CCTK_REAL, dim> X;
+  vect<CCTK_REAL, dim> DX;
   friend ostream &operator<<(ostream &os, const PointDesc &p) {
     os << "PointDesc{"
        << "ijk:"
        << "{" << p.i << "," << p.j << "," << p.k << "}, "
        << "xyz:"
        << "{" << p.x << "," << p.y << "," << p.z << "}, "
+       << "dxyz:"
+       << "{" << p.dx << "," << p.dy << "," << p.dz << "}, "
        << "idx:" << p.idx << ", "
        << "dijk:"
        << "{" << p.di << "," << p.dj << "," << p.dk << "}"
@@ -119,7 +124,8 @@ public:
       const CCTK_REAL z = x0[2] + (lbnd[2] + k + CCTK_REAL(CK - 1) / 2) * dx[2];
       const int idx = i * di + j * dj + k * dk;
       const vect<int, dim> I{i, j, k};
-      const PointDesc p{i, j, k, x, y, z, idx, dj, dk, I, inormal};
+      const PointDesc p{i,     j,   k,  x,  y, z,       dx[0],     dx[1],
+                        dx[2], idx, dj, dk, I, inormal, {x, y, z}, dx};
       f(p);
     }};
 
