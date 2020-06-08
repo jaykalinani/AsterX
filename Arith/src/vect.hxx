@@ -480,7 +480,12 @@ namespace std {
 template <typename T, int D> struct equal_to<Arith::vect<T, D> > {
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE bool
   operator()(const Arith::vect<T, D> &lhs, const Arith::vect<T, D> &rhs) const {
-    return equal_to<array<T, D> >()(lhs.elts, rhs.elts);
+    // This is not yet constexpr in C++17
+    // return equal_to<array<T, D> >()(lhs.elts, rhs.elts);
+    for (int d = 0; d < D; ++d)
+      if (!equal_to<T>()(lhs.elts[d], rhs.elts[d]))
+        return false;
+    return true;
   }
 };
 
