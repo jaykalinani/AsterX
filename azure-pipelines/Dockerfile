@@ -63,7 +63,7 @@ RUN mkdir src && \
 # TODO: Use "cmake install" instead of "cp"
 RUN mkdir src && \
     (git clone https://github.com/astro-informatics/ssht.git && \
-    mkdir -p ssht/build && \
+    mkdir ssht/build && \
     cd ssht/build && \
     cmake .. && \
     make install) && \
