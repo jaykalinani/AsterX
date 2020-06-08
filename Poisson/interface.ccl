@@ -3,6 +3,7 @@
 IMPLEMENTS: Poisson
 
 USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: vect.hxx
 
 
 
@@ -11,12 +12,12 @@ REQUIRES FUNCTION SolvePoisson
 
 
 
-CCTK_REAL rhs TYPE=gf TAGS='index={0 0 0}' "rhs"
+CCTK_REAL rhs TYPE=gf TAGS='index={0 0 0}' "Right hand side"
 
-CCTK_REAL phi TYPE=gf TAGS='index={0 0 0}' "phi"
-CCTK_REAL res TYPE=gf TAGS='index={0 0 0}' "res"
+CCTK_REAL phi TYPE=gf TAGS='index={0 0 0}' "Potential"
+CCTK_REAL res TYPE=gf TAGS='index={0 0 0}' "Residual (as reported by AMReX)"
 
-CCTK_REAL ires TYPE=gf TAGS='index={0 0 0}' "ires"
+CCTK_REAL ires TYPE=gf TAGS='index={0 0 0}' "Independently evaluated residual"
 
-CCTK_REAL asol TYPE=gf TAGS='index={0 0 0}' "asol"
-CCTK_REAL aerr TYPE=gf TAGS='index={0 0 0}' "aerr"
+CCTK_REAL asol TYPE=gf TAGS='index={0 0 0}' "Analytic solution"
+CCTK_REAL aerr TYPE=gf TAGS='index={0 0 0}' "Error wrt. analytic solution"

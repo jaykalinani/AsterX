@@ -1,4 +1,5 @@
 #include <loop.hxx>
+#include <vect.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -51,6 +52,38 @@ template <typename T> constexpr T fbnd(T x, T y, T z) {
 //
 //   f(r) + r f'(r) = C
 
+// AMReX uses a weird Laplace stencil. It takes a second derivative in
+// one direction, and smoothes with weights [1, 4, 1] / 6 in the other
+// directions.
+template <typename T>
+T laplace(const GF3D<const T, 0, 0, 0> &u, const PointDesc &p) {
+  T r = 0;
+  for (int dir = 0; dir < dim; ++dir) {
+    vect<T, dim> lap{1, -2, 1};
+    lap /= pow(p.DX[dir], 2);
+    vect<T, dim> smo{1, 4, 1};
+    smo /= 6;
+    for (int k = -1; k <= 1; ++k) {
+      for (int j = -1; j <= 1; ++j) {
+        for (int i = -1; i <= 1; ++i) {
+          const vect<int, dim> di{i, j, k};
+          T w = 1;
+          for (int d = 0; d < dim; ++d)
+            if (d == dir)
+              w *= lap[1 + di[d]];
+            else
+              w *= smo[1 + di[d]];
+          auto I = p.I;
+          for (int d = 0; d < dim; ++d)
+            I += di[d] * p.DI(d);
+          r += w * u(I);
+        }
+      }
+    }
+  }
+  return r;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void Poisson_setup(CCTK_ARGUMENTS) {
@@ -86,17 +119,6 @@ extern "C" void Poisson_solve(CCTK_ARGUMENTS) {
   SolvePoisson();
 }
 
-// extern "C" void Poisson_fixup(CCTK_ARGUMENTS) {
-//   DECLARE_CCTK_ARGUMENTS_Poisson_fixup;
-//   DECLARE_CCTK_PARAMETERS;
-//
-//   const GF3D<CCTK_REAL, 0, 0, 0> phi_(cctkGH, phi);
-//
-//   // Set boundary conditions
-//   loop_bnd<0, 0, 0>(
-//       cctkGH, [&](const PointDesc &p) { phi_(p.I) = fbnd(p.x, p.y, p.z); });
-// }
-
 extern "C" void Poisson_residual(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson_residual;
   DECLARE_CCTK_PARAMETERS;
@@ -111,13 +133,7 @@ extern "C" void Poisson_residual(CCTK_ARGUMENTS) {
         cctk_lbnd[2] + p.k == 1 || cctk_lbnd[2] + p.k == cctk_gsh[2] - 1)
       ires_(p.I) = phi_(p.I) - fbnd(p.x, p.y, p.z);
     else
-      ires_(p.I) = (phi_(p.I - p.DI(0)) - 2 * phi_(p.I) + phi_(p.I + p.DI(0))) /
-                       pow(p.DX[0], 2) +
-                   (phi_(p.I - p.DI(1)) - 2 * phi_(p.I) + phi_(p.I + p.DI(1))) /
-                       pow(p.DX[1], 2) +
-                   (phi_(p.I - p.DI(2)) - 2 * phi_(p.I) + phi_(p.I + p.DI(2))) /
-                       pow(p.DX[2], 2) -
-                   frhs(p.x, p.y, p.z);
+      ires_(p.I) = laplace(phi_, p) - frhs(p.x, p.y, p.z);
   });
 }
 
@@ -129,10 +145,7 @@ extern "C" void Poisson_residual_boundary(CCTK_ARGUMENTS) {
 
   const GF3D<CCTK_REAL, 0, 0, 0> ires_(cctkGH, ires);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
-    // ires_(p.I) = phi_(p.I) - fbnd(p.x, p.y, p.z);
-    ires_(p.I) = 0.0;
-  });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { ires_(p.I) = 0.0; });
 }
 
 extern "C" void Poisson_error(CCTK_ARGUMENTS) {

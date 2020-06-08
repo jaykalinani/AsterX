@@ -17,13 +17,7 @@ SCHEDULE Poisson_solve AT initial AFTER Poisson_setup
   WRITES: res(interior)
 } "Solve Poisson equation (this overwrites the boundary conditions)"
 
-# SCHEDULE Poisson_fixup AT initial AFTER  Poisson_solve
-# {
-#   LANG: C
-#   WRITES: phi(boundary)
-# } "Apply boundary conditions again"
-
-SCHEDULE Poisson_residual AT initial AFTER (Poisson_solve, Poisson_fixup)
+SCHEDULE Poisson_residual AT initial AFTER Poisson_solve
 {
   LANG: C
   READS: phi(everywhere)
@@ -38,7 +32,7 @@ SCHEDULE Poisson_residual_boundary AT initial AFTER Poisson_residual
   WRITES: ires(boundary)
 } "Evaluate residual on boundary"
 
-SCHEDULE Poisson_error AT initial AFTER (Poisson_solve, Poisson_fixup)
+SCHEDULE Poisson_error AT initial AFTER Poisson_solve
 {
   LANG: C
   READS: phi(everywhere)
