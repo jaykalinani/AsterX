@@ -733,11 +733,12 @@ void check_checksums(const checksums_t checksums, const int min_level,
 
             if (checksum != old_checksum)
               CCTK_VERROR(
-                  "Checksum mismatch: variable %s, tile %s, old checksum %s, "
-                  "new checksum %s",
+                  "Checksum mismatch: variable %s, tile %s, "
+                  "int:%d,outer:%d,ghosts:%d, old checksum %s, new checksum %s",
                   CCTK_FullVarName(groupdata.firstvarindex + tiletag.vi),
-                  string(tiletag).c_str(), string(old_checksum).c_str(),
-                  string(checksum).c_str());
+                  string(tiletag).c_str(), int(did_check.valid_int),
+                  int(did_check.valid_outer), int(did_check.valid_ghosts),
+                  string(old_checksum).c_str(), string(checksum).c_str());
           }
         }
       }
