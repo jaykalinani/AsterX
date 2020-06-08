@@ -218,6 +218,18 @@ template <typename T, int D> struct vect {
     return r;
   }
 
+  static constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect iota() {
+    vect r;
+    for (int d = 0; d < D; ++d)
+      r.elts[d] = d;
+    return r;
+  }
+
+  template <typename F>
+  static constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect make(const F &f) {
+    return vect<int, D>::iota().map(f);
+  }
+
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE const T &operator[](int d) const {
 #ifdef CCTK_DEBUG
     assert(d >= 0 && d < D);
