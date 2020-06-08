@@ -27,11 +27,12 @@ extern "C" void CarpetX_SolvePoisson() {
 
   amrex::MLNodeLaplacian mlnodelaplacian(geoms, grids, dmaps);
 
+  // TODO: Look at Geometry for this
   mlnodelaplacian.setDomainBC(
-      {amrex::LinOpBCType::Periodic, amrex::LinOpBCType::Periodic,
-       amrex::LinOpBCType::Periodic},
-      {amrex::LinOpBCType::Periodic, amrex::LinOpBCType::Periodic,
-       amrex::LinOpBCType::Periodic});
+      {amrex::LinOpBCType::Dirichlet, amrex::LinOpBCType::Dirichlet,
+       amrex::LinOpBCType::Dirichlet},
+      {amrex::LinOpBCType::Dirichlet, amrex::LinOpBCType::Dirichlet,
+       amrex::LinOpBCType::Dirichlet});
 
   vector<amrex::MultiFab> sigmas(ghext->leveldata.size());
   for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
@@ -73,31 +74,53 @@ extern "C" void CarpetX_SolvePoisson() {
   mlmg.setVerbose(10);
   mlmg.setBottomVerbose(10);
 
-  // Initial guess
-
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
-    sols.at(level)->setVal(0.0, vi);
-  }
-
   // Solve
 
   mlmg.compResidual(ress, sols, rhss);
 #pragma omp critical
   {
+    CCTK_VINFO("Before solving:");
+    for (int i = -1; i < 10; ++i) {
+      const int j = 4, k = 4;
+      CCTK_VINFO("phi[%d,%d,%d]=%g", i, j, k,
+                 double(sols.at(0)->array(0)(i, j, k, vi)));
+    }
     for (int level = 0; level < int(ghext->leveldata.size()); ++level)
       CCTK_VINFO("norm_inf rhs[%d]: %g", level,
-                 double(rhss.at(level)->norminf(0, 0, false, true)));
+                 double(rhss.at(level)->norminf(vi, 0, false, true)));
     for (int level = 0; level < int(ghext->leveldata.size()); ++level)
       CCTK_VINFO("norm_inf sol[%d]: %g", level,
-                 double(sols.at(level)->norminf(0, 0, false, true)));
+                 double(sols.at(level)->norminf(vi, 0, false, true)));
     for (int level = 0; level < int(ghext->leveldata.size()); ++level)
       CCTK_VINFO("norm_inf res[%d]: %g", level,
-                 double(ress.at(level)->norminf(0, 0, false, true)));
+                 double(ress.at(level)->norminf(vi, 0, false, true)));
   }
 
   const CCTK_REAL rtol = 0.0;
   const CCTK_REAL atol = 1.0e-12;
-  mlmg.solve(sols, rhss, rtol, atol);
+  const CCTK_REAL maxerr = mlmg.solve(sols, rhss, rtol, atol);
+#pragma omp critical
+  CCTK_VINFO("Solution error (norm_inf): %g", double(maxerr));
+
+  mlmg.compResidual(ress, sols, rhss);
+#pragma omp critical
+  {
+    CCTK_VINFO("After solving:");
+    for (int i = -1; i < 10; ++i) {
+      const int j = 4, k = 4;
+      CCTK_VINFO("phi[%d,%d,%d]=%g", i, j, k,
+                 double(sols.at(0)->array(0)(i, j, k, vi)));
+    }
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      CCTK_VINFO("norm_inf rhs[%d]: %g", level,
+                 double(rhss.at(level)->norminf(vi, 0, false, true)));
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      CCTK_VINFO("norm_inf sol[%d]: %g", level,
+                 double(sols.at(level)->norminf(vi, 0, false, true)));
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      CCTK_VINFO("norm_inf res[%d]: %g", level,
+                 double(ress.at(level)->norminf(vi, 0, false, true)));
+  }
 }
 
 } // namespace CarpetX
