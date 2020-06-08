@@ -116,7 +116,9 @@ template <typename T, typename U> struct less<Arith::dual<T, U> > {
     return false;
   }
 };
+} // namespace std
 
+namespace Arith {
 template <typename T, typename U>
 constexpr Arith::dual<T, U> abs(const Arith::dual<T, U> &x);
 template <typename T, typename U>
@@ -141,39 +143,46 @@ constexpr Arith::dual<T, U> sqrt(const Arith::dual<T, U> &x);
 template <typename T, typename U>
 constexpr Arith::dual<T, U> abs(const Arith::dual<T, U> &x) {
   // return sqrt(pow2(x));
+  using std::abs, std::copysign;
   return {abs(x.val), copysign(T{1}, x.val) * x.eps};
 }
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> cbrt(const Arith::dual<T, U> &x) {
+  using std::cbrt;
   const T r = cbrt(x.val);
   return {r, r / (3 * x.val) * x.eps};
 }
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> cos(const Arith::dual<T, U> &x) {
+  using std::cos, std::sin;
   return {cos(x.val), -sin(x.val) * x.eps};
 }
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> exp(const Arith::dual<T, U> &x) {
+  using std::exp;
   const T r = exp(x.val);
   return {r, r * x.eps};
 }
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> fabs(const Arith::dual<T, U> &x) {
+  using std::copysign, std::fabs;
   // return sqrt(pow2(x));
   return {fabs(x.val), copysign(T{1}, x.val) * x.eps};
 }
 
 template <typename T, typename U>
 constexpr bool isnan1(const Arith::dual<T, U> &x) {
+  using std::isnan1;
   return isnan1(x.val) || x.eps.isnan1().any();
 }
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> pow(const Arith::dual<T, U> &x, const int n) {
+  using std::pow;
   if (n == 0)
     return {1, U{}};
   return {pow(x.val, n), n * pow(x.val, n - 1) * x.eps};
@@ -186,19 +195,18 @@ constexpr Arith::dual<T, U> pow2(const Arith::dual<T, U> &x) {
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> sin(const Arith::dual<T, U> &x) {
+  using std::cos, std::sin;
   return {sin(x.val), cos(x.val) * x.eps};
 }
 
 template <typename T, typename U>
 constexpr Arith::dual<T, U> sqrt(const Arith::dual<T, U> &x) {
+  using std::sqrt;
   const T r = sqrt(x.val);
   return {r, x.eps / (2 * r)};
 }
 
-} // namespace std
-
 ////////////////////////////////////////////////////////////////////////////////
-namespace Arith {
 
 template <typename T> struct one;
 

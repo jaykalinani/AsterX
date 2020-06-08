@@ -184,7 +184,7 @@ template <typename T> struct zero<complex<T> > {
 template <typename T, int D> struct vect {
   array<T, D> elts;
 
-  // initializes all elts to zero
+  // initializes all elements to zero
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect() : elts() {}
 
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const array<T, D> &arr)
@@ -465,7 +465,6 @@ template <typename T, int D> struct zero<vect<T, D> > {
 
 } // namespace Arith
 namespace std {
-
 template <typename T, int D> struct equal_to<Arith::vect<T, D> > {
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE bool
   operator()(const Arith::vect<T, D> &lhs, const Arith::vect<T, D> &rhs) const {
@@ -479,6 +478,8 @@ template <typename T, int D> struct less<Arith::vect<T, D> > {
     return less<array<T, D> >(lhs.elts, rhs.elts);
   }
 };
+} // namespace std
+namespace Arith {
 
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<T, D>
@@ -492,6 +493,7 @@ abs(const Arith::vect<T, D> &x) {
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<bool, D>
 isnan1(const Arith::vect<T, D> &x) {
+  using std::isnan1;
   Arith::vect<bool, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = isnan1(x.elts[d]);
@@ -501,6 +503,7 @@ isnan1(const Arith::vect<T, D> &x) {
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<T, D>
 max(const Arith::vect<T, D> &x, const Arith::vect<T, D> &y) {
+  using std::max;
   Arith::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = max(x.elts[d], y.elts[d]);
@@ -510,14 +513,12 @@ max(const Arith::vect<T, D> &x, const Arith::vect<T, D> &y) {
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<T, D>
 min(const Arith::vect<T, D> &x, const Arith::vect<T, D> &y) {
+  using std::min;
   Arith::vect<T, D> r;
   for (int d = 0; d < D; ++d)
     r.elts[d] = min(x.elts[d], y.elts[d]);
   return r;
 }
-
-} // namespace std
-namespace Arith {
 
 namespace static_test {
 constexpr vect<int, 3> vect1{0, 1, 2};
