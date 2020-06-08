@@ -1,6 +1,6 @@
 # How to build this Docker image:
-#     docker build . --tag eschnett/cactus-amrex
-#     docker push eschnett/cactus-amrex
+#     docker build . --tag einsteintoolkit/cactus-amrex
+#     docker push einsteintoolkit/cactus-amrex
 
 # Use Ubuntu
 FROM ubuntu:19.10
