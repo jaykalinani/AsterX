@@ -1,0 +1,22 @@
+# Interface definition for thorn Poisson
+
+IMPLEMENTS: Poisson
+
+USES INCLUDE HEADER: loop.hxx
+
+
+
+void FUNCTION SolvePoisson()
+REQUIRES FUNCTION SolvePoisson
+
+
+
+CCTK_REAL rhs TYPE=gf TAGS='index={0 0 0}' "rhs"
+
+CCTK_REAL phi TYPE=gf TAGS='index={0 0 0}' "phi"
+CCTK_REAL res TYPE=gf TAGS='index={0 0 0}' "res"
+
+CCTK_REAL ires TYPE=gf TAGS='index={0 0 0}' "ires"
+
+CCTK_REAL asol TYPE=gf TAGS='index={0 0 0}' "asol"
+CCTK_REAL aerr TYPE=gf TAGS='index={0 0 0}' "aerr"
