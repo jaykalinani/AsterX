@@ -9,7 +9,7 @@ services:
       context: .
       dockerfile: Dockerfile
     privileged: true
-    image: eschnett/cactus-amrex-jovyan
+    image: einsteintoolkit/cactus-amrex-jovyan
     container_name: carpetx
     user: jovyan
     volumes:

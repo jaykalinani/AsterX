@@ -1,4 +1,4 @@
-FROM eschnett/cactus-amrex
+FROM einsteintoolkit/cactus-amrex
 WORKDIR /
 
 RUN useradd -m jovyan
