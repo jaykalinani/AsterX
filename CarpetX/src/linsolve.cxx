@@ -84,11 +84,6 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 #pragma omp critical
   {
     CCTK_VINFO("Before solving:");
-    for (int i = -1; i < 10; ++i) {
-      const int j = 4, k = 4;
-      CCTK_VINFO("phi[%d,%d,%d]=%g", i, j, k,
-                 double(sols.at(0)->array(0)(i, j, k, vi)));
-    }
     for (int level = 0; level < int(ghext->leveldata.size()); ++level)
       CCTK_VINFO("norm_inf rhs[%d]: %g", level,
                  double(rhss.at(level)->norminf(vi, 0, false, true)));
@@ -112,11 +107,6 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 #pragma omp critical
   {
     CCTK_VINFO("After solving:");
-    for (int i = -1; i < 10; ++i) {
-      const int j = 4, k = 4;
-      CCTK_VINFO("phi[%d,%d,%d]=%g", i, j, k,
-                 double(sols.at(0)->array(0)(i, j, k, vi)));
-    }
     for (int level = 0; level < int(ghext->leveldata.size()); ++level)
       CCTK_VINFO("norm_inf rhs[%d]: %g", level,
                  double(rhss.at(level)->norminf(vi, 0, false, true)));
