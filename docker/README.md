@@ -1,4 +1,4 @@
-This sets up a docker environment for developing CactusAMReX.
+This sets up a docker environment for developing CarpetX.
 
 To use the docker environment, first run:
 
