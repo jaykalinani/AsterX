@@ -120,7 +120,6 @@ struct GHExt {
     bool is_subcycling_level;
 
     // Iteration and time at which this cycle level is valid
-    constexpr static int64_t coarse_delta_iteration = 1LL << 32;
     int64_t iteration, delta_iteration;
     CCTK_REAL time, delta_time;
 

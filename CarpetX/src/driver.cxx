@@ -227,279 +227,6 @@ vector<array<int, dim> > get_group_parities(const int gi) {
   return parities;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-// amrex::AmrCore functions
-
-CactusAmrCore::CactusAmrCore() {}
-CactusAmrCore::CactusAmrCore(const amrex::RealBox *rb, int max_level_in,
-                             const amrex::Vector<int> &n_cell_in, int coord,
-                             amrex::Vector<amrex::IntVect> ref_ratios,
-                             const int *is_per)
-    : amrex::AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
-  SetupGlobals();
-}
-
-CactusAmrCore::CactusAmrCore(const amrex::RealBox &rb, int max_level_in,
-                             const amrex::Vector<int> &n_cell_in, int coord,
-                             amrex::Vector<amrex::IntVect> const &ref_ratios,
-                             amrex::Array<int, AMREX_SPACEDIM> const &is_per)
-    : amrex::AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
-  SetupGlobals();
-}
-
-CactusAmrCore::~CactusAmrCore() {}
-
-void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
-                             const amrex::Real time, const int ngrow) {
-  DECLARE_CCTK_PARAMETERS;
-
-  // Don't regrid before Cactus is ready to
-  if (level >= int(ghext->leveldata.size()))
-    return;
-
-  if (verbose)
-#pragma omp critical
-    CCTK_VINFO("ErrorEst level %d", level);
-
-  const int gi = CCTK_GroupIndex("CarpetX::regrid_error");
-  assert(gi >= 0);
-  const int vi = 0;
-  const int tl = 0;
-
-  auto &restrict leveldata = ghext->leveldata.at(level);
-  auto &restrict groupdata = *leveldata.groupdata.at(gi);
-  // Ensure the error estimate has been set
-  error_if_invalid(groupdata, vi, tl, make_valid_int(),
-                   [] { return "ErrorEst"; });
-  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-  for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
-    GridPtrDesc1 grid(groupdata, mfi);
-
-    const amrex::Array4<const CCTK_REAL> &err_array4 =
-        groupdata.mfab.at(tl)->array(mfi);
-    const GF3D1<const CCTK_REAL> &err_ = grid.gf3d(err_array4, vi);
-    const amrex::Array4<char> &tags_array4 = tags.array(mfi);
-
-    grid.loop_idx(
-        where_t::interior, groupdata.indextype, [&](const Loop::PointDesc &p) {
-          tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-                      grid.cactus_offset.z + p.k) =
-              err_(p.I) >= regrid_error_threshold ? amrex::TagBox::SET
-                                                  : amrex::TagBox::CLEAR;
-        });
-    // Do not set the boundary; AMReX's error grid function might have
-    // a different number of ghost zones, and these ghost zones are
-    // probably unused anyway.
-    if (false) {
-      grid.loop_idx(
-          where_t::boundary, groupdata.indextype,
-          [&](const Loop::PointDesc &p) {
-            tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
-                        grid.cactus_offset.z + p.k) = amrex::TagBox::CLEAR;
-          });
-    }
-  }
-}
-
-void SetupGlobals() {
-  DECLARE_CCTK_PARAMETERS;
-
-  if (verbose)
-#pragma omp critical
-    CCTK_VINFO("SetupGlobals");
-
-  GHExt::GlobalData &globaldata = ghext->globaldata;
-
-  const int numgroups = CCTK_NumGroups();
-  globaldata.scalargroupdata.resize(numgroups);
-  for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
-
-    /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
-      continue;
-
-    assert(group.grouptype == CCTK_SCALAR);
-    assert(group.vartype == CCTK_VARIABLE_REAL);
-    assert(group.disttype == CCTK_DISTRIB_CONSTANT);
-    assert(group.dim == 0);
-
-    globaldata.scalargroupdata.at(gi) =
-        make_unique<GHExt::GlobalData::ScalarGroupData>();
-    GHExt::GlobalData::ScalarGroupData &scalargroupdata =
-        *globaldata.scalargroupdata.at(gi);
-    scalargroupdata.groupindex = gi;
-    scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-    scalargroupdata.numvars = group.numvars;
-    scalargroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
-    scalargroupdata.do_restrict = get_group_restrict_flag(gi);
-
-    // Allocate data
-    scalargroupdata.data.resize(group.numtimelevels);
-    scalargroupdata.valid.resize(group.numtimelevels);
-    for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
-      scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
-      why_valid_t why([] { return "SetupGlobals"; });
-      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars, why);
-      for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-        // TODO: decide that valid_bnd == false always and rely on
-        // initialization magic?
-        valid_t valid;
-        valid.valid_int = false;
-        valid.valid_outer = true;
-        valid.valid_ghosts = true;
-        scalargroupdata.valid.at(tl).at(vi).set(valid,
-                                                [] { return "SetupGlobals"; });
-
-        // TODO: make poison_invalid and check_invalid virtual members of
-        // CommonGroupData
-        poison_invalid(scalargroupdata, vi, tl);
-        check_valid(scalargroupdata, vi, tl, [] { return "SetupGlobals"; });
-      }
-    }
-  }
-}
-
-void SetupLevel(const int level, const amrex::BoxArray &ba,
-                const amrex::DistributionMapping &dm,
-                const function<string()> &why) {
-  DECLARE_CCTK_PARAMETERS;
-
-  if (verbose)
-#pragma omp critical
-    CCTK_VINFO("SetupLevel level %d", level);
-
-  assert(level == int(ghext->leveldata.size()));
-
-  ghext->leveldata.resize(level + 1);
-  GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-  leveldata.level = level;
-
-  if (use_subcycling_wip) {
-    const int timereffact = use_subcycling_wip ? 2 : 1;
-    if (level == 0) {
-      // We are creating the coarsest level
-      leveldata.is_subcycling_level = false; // unused
-      leveldata.iteration = 0;
-      leveldata.delta_iteration = leveldata.coarse_delta_iteration;
-      leveldata.time = 0.0;
-      leveldata.delta_time = 1.0;
-    } else {
-      // We are creating a new refined level
-      auto &coarseleveldata = ghext->leveldata.at(level - 1);
-      leveldata.iteration = coarseleveldata.iteration;
-      assert(coarseleveldata.delta_iteration % timereffact == 0);
-      leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
-      leveldata.time = coarseleveldata.time;
-      leveldata.delta_time = coarseleveldata.delta_time / timereffact;
-    }
-  }
-
-  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
-  assert(ba.ixType() == amrex::IndexType(amrex::IndexType::CELL,
-                                         amrex::IndexType::CELL,
-                                         amrex::IndexType::CELL));
-
-  const int numgroups = CCTK_NumGroups();
-  leveldata.groupdata.resize(numgroups);
-  for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
-
-    /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_GF)
-      continue;
-
-    assert(group.grouptype == CCTK_GF);
-    assert(group.vartype == CCTK_VARIABLE_REAL);
-    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
-    assert(group.dim == dim);
-
-    leveldata.groupdata.at(gi) = make_unique<GHExt::LevelData::GroupData>();
-    GHExt::LevelData::GroupData &groupdata = *leveldata.groupdata.at(gi);
-    groupdata.level = leveldata.level;
-    groupdata.groupindex = gi;
-    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-    groupdata.numvars = group.numvars;
-    groupdata.do_checkpoint = get_group_checkpoint_flag(gi);
-    groupdata.do_restrict = get_group_restrict_flag(gi);
-    groupdata.indextype = get_group_indextype(gi);
-    groupdata.nghostzones = get_group_nghostzones(gi);
-    groupdata.parities = get_group_parities(gi);
-    if (groupdata.parities.empty()) {
-      array<int, dim> parity;
-      for (int d = 0; d < dim; ++d)
-        parity[d] = groupdata.indextype[d] == 0 ? +1 : -1;
-      groupdata.parities.resize(groupdata.numvars, parity);
-    }
-    assert(int(groupdata.parities.size()) == groupdata.numvars);
-    for (int vi = 0; vi < groupdata.numvars; ++vi)
-      for (int d = 0; d < dim; ++d)
-        assert(abs(groupdata.parities.at(vi)[d]) == 1);
-
-    // Allocate grid hierarchies
-    const amrex::BoxArray &gba = convert(
-        ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
-                                                    : amrex::IndexType::NODE,
-                             groupdata.indextype[1] ? amrex::IndexType::CELL
-                                                    : amrex::IndexType::NODE,
-                             groupdata.indextype[2] ? amrex::IndexType::CELL
-                                                    : amrex::IndexType::NODE));
-    groupdata.mfab.resize(group.numtimelevels);
-    groupdata.valid.resize(group.numtimelevels);
-    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
-      groupdata.mfab.at(tl) = make_unique<amrex::MultiFab>(
-          gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
-      groupdata.valid.at(tl).resize(groupdata.numvars, why_valid_t(why));
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
-        poison_invalid(groupdata, vi, tl);
-    }
-
-    if (level > 0) {
-      array<int, dim> fluxes = get_group_fluxes(groupdata.groupindex);
-      const bool have_fluxes = fluxes[0] >= 0;
-      if (have_fluxes) {
-        assert((groupdata.indextype == array<int, dim>{1, 1, 1}));
-        groupdata.freg = make_unique<amrex::FluxRegister>(
-            gba, dm, ghext->amrcore->refRatio(level - 1), level,
-            groupdata.numvars);
-        groupdata.fluxes = fluxes;
-      } else {
-        groupdata.fluxes.fill(-1);
-      }
-    }
-  }
-
-  // Check flux register consistency
-  for (int gi = 0; gi < numgroups; ++gi) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
-
-    /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_GF)
-      continue;
-    const auto &groupdata = *leveldata.groupdata.at(gi);
-    if (groupdata.freg) {
-      for (int d = 0; d < dim; ++d) {
-        assert(groupdata.fluxes[d] != groupdata.groupindex);
-        const auto &flux_groupdata =
-            *leveldata.groupdata.at(groupdata.fluxes[d]);
-        array<int, dim> flux_indextype{1, 1, 1};
-        flux_indextype[d] = 0;
-        assert(flux_groupdata.indextype == flux_indextype);
-        assert(flux_groupdata.numvars == groupdata.numvars);
-      }
-    }
-  }
-}
-
 amrex::Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -800,6 +527,278 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
   return {move(physbc), move(bcs)};
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+// amrex::AmrCore functions
+
+CactusAmrCore::CactusAmrCore() {}
+CactusAmrCore::CactusAmrCore(const amrex::RealBox *rb, int max_level_in,
+                             const amrex::Vector<int> &n_cell_in, int coord,
+                             amrex::Vector<amrex::IntVect> ref_ratios,
+                             const int *is_per)
+    : amrex::AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
+  SetupGlobals();
+}
+
+CactusAmrCore::CactusAmrCore(const amrex::RealBox &rb, int max_level_in,
+                             const amrex::Vector<int> &n_cell_in, int coord,
+                             amrex::Vector<amrex::IntVect> const &ref_ratios,
+                             amrex::Array<int, AMREX_SPACEDIM> const &is_per)
+    : amrex::AmrCore(rb, max_level_in, n_cell_in, coord, ref_ratios, is_per) {
+  SetupGlobals();
+}
+
+CactusAmrCore::~CactusAmrCore() {}
+
+void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
+                             const amrex::Real time, const int ngrow) {
+  DECLARE_CCTK_PARAMETERS;
+
+  // Don't regrid before Cactus is ready to
+  if (level >= int(ghext->leveldata.size()))
+    return;
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("ErrorEst level %d", level);
+
+  const int gi = CCTK_GroupIndex("CarpetX::regrid_error");
+  assert(gi >= 0);
+  const int vi = 0;
+  const int tl = 0;
+
+  auto &restrict leveldata = ghext->leveldata.at(level);
+  auto &restrict groupdata = *leveldata.groupdata.at(gi);
+  // Ensure the error estimate has been set
+  error_if_invalid(groupdata, vi, tl, make_valid_int(),
+                   [] { return "ErrorEst"; });
+  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
+      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+#pragma omp parallel
+  for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    GridPtrDesc1 grid(groupdata, mfi);
+
+    const amrex::Array4<const CCTK_REAL> &err_array4 =
+        groupdata.mfab.at(tl)->array(mfi);
+    const GF3D1<const CCTK_REAL> &err_ = grid.gf3d(err_array4, vi);
+    const amrex::Array4<char> &tags_array4 = tags.array(mfi);
+
+    grid.loop_idx(
+        where_t::interior, groupdata.indextype, [&](const Loop::PointDesc &p) {
+          tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+                      grid.cactus_offset.z + p.k) =
+              err_(p.I) >= regrid_error_threshold ? amrex::TagBox::SET
+                                                  : amrex::TagBox::CLEAR;
+        });
+    // Do not set the boundary; AMReX's error grid function might have
+    // a different number of ghost zones, and these ghost zones are
+    // probably unused anyway.
+    if (false) {
+      grid.loop_idx(
+          where_t::boundary, groupdata.indextype,
+          [&](const Loop::PointDesc &p) {
+            tags_array4(grid.cactus_offset.x + p.i, grid.cactus_offset.y + p.j,
+                        grid.cactus_offset.z + p.k) = amrex::TagBox::CLEAR;
+          });
+    }
+  }
+}
+
+void SetupGlobals() {
+  DECLARE_CCTK_PARAMETERS;
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("SetupGlobals");
+
+  GHExt::GlobalData &globaldata = ghext->globaldata;
+
+  const int numgroups = CCTK_NumGroups();
+  globaldata.scalargroupdata.resize(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
+      continue;
+
+    assert(group.grouptype == CCTK_SCALAR);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_CONSTANT);
+    assert(group.dim == 0);
+
+    globaldata.scalargroupdata.at(gi) =
+        make_unique<GHExt::GlobalData::ScalarGroupData>();
+    GHExt::GlobalData::ScalarGroupData &scalargroupdata =
+        *globaldata.scalargroupdata.at(gi);
+    scalargroupdata.groupindex = gi;
+    scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    scalargroupdata.numvars = group.numvars;
+    scalargroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+    scalargroupdata.do_restrict = get_group_restrict_flag(gi);
+
+    // Allocate data
+    scalargroupdata.data.resize(group.numtimelevels);
+    scalargroupdata.valid.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
+      scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
+      why_valid_t why([] { return "SetupGlobals"; });
+      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars, why);
+      for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
+        // TODO: decide that valid_bnd == false always and rely on
+        // initialization magic?
+        valid_t valid;
+        valid.valid_int = false;
+        valid.valid_outer = true;
+        valid.valid_ghosts = true;
+        scalargroupdata.valid.at(tl).at(vi).set(valid,
+                                                [] { return "SetupGlobals"; });
+
+        // TODO: make poison_invalid and check_invalid virtual members of
+        // CommonGroupData
+        poison_invalid(scalargroupdata, vi, tl);
+        check_valid(scalargroupdata, vi, tl, [] { return "SetupGlobals"; });
+      }
+    }
+  }
+}
+
+void SetupLevel(const int level, const amrex::BoxArray &ba,
+                const amrex::DistributionMapping &dm,
+                const function<string()> &why) {
+  DECLARE_CCTK_PARAMETERS;
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("SetupLevel level %d", level);
+
+  assert(level == int(ghext->leveldata.size()));
+
+  ghext->leveldata.resize(level + 1);
+  GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+  leveldata.level = level;
+
+  const int timereffact = use_subcycling_wip ? 2 : 1;
+  if (level == 0) {
+    // We are creating the coarsest level
+    const int64_t coarse_delta_iteration = 1LL << 32;
+    leveldata.is_subcycling_level = false; // unused
+    leveldata.iteration = 0;
+    leveldata.delta_iteration = coarse_delta_iteration;
+    leveldata.time = 0.0;
+    leveldata.delta_time = 1.0;
+  } else {
+    // We are creating a new refined level
+    auto &coarseleveldata = ghext->leveldata.at(level - 1);
+    leveldata.iteration = coarseleveldata.iteration;
+    assert(coarseleveldata.delta_iteration % timereffact == 0);
+    leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
+    leveldata.time = coarseleveldata.time;
+    leveldata.delta_time = coarseleveldata.delta_time / timereffact;
+  }
+
+  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
+  assert(ba.ixType() == amrex::IndexType(amrex::IndexType::CELL,
+                                         amrex::IndexType::CELL,
+                                         amrex::IndexType::CELL));
+
+  const int numgroups = CCTK_NumGroups();
+  leveldata.groupdata.resize(numgroups);
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if (group.grouptype != CCTK_GF)
+      continue;
+
+    assert(group.grouptype == CCTK_GF);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_DEFAULT);
+    assert(group.dim == dim);
+
+    leveldata.groupdata.at(gi) = make_unique<GHExt::LevelData::GroupData>();
+    GHExt::LevelData::GroupData &groupdata = *leveldata.groupdata.at(gi);
+    groupdata.level = leveldata.level;
+    groupdata.groupindex = gi;
+    groupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    groupdata.numvars = group.numvars;
+    groupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+    groupdata.do_restrict = get_group_restrict_flag(gi);
+    groupdata.indextype = get_group_indextype(gi);
+    groupdata.nghostzones = get_group_nghostzones(gi);
+    groupdata.parities = get_group_parities(gi);
+    if (groupdata.parities.empty()) {
+      array<int, dim> parity;
+      for (int d = 0; d < dim; ++d)
+        parity[d] = groupdata.indextype[d] == 0 ? +1 : -1;
+      groupdata.parities.resize(groupdata.numvars, parity);
+    }
+    assert(int(groupdata.parities.size()) == groupdata.numvars);
+    for (int vi = 0; vi < groupdata.numvars; ++vi)
+      for (int d = 0; d < dim; ++d)
+        assert(abs(groupdata.parities.at(vi)[d]) == 1);
+
+    // Allocate grid hierarchies
+    const amrex::BoxArray &gba = convert(
+        ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE,
+                             groupdata.indextype[1] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE,
+                             groupdata.indextype[2] ? amrex::IndexType::CELL
+                                                    : amrex::IndexType::NODE));
+    groupdata.mfab.resize(group.numtimelevels);
+    groupdata.valid.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
+      groupdata.mfab.at(tl) = make_unique<amrex::MultiFab>(
+          gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
+      groupdata.valid.at(tl).resize(groupdata.numvars, why_valid_t(why));
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        poison_invalid(groupdata, vi, tl);
+    }
+
+    if (level > 0) {
+      array<int, dim> fluxes = get_group_fluxes(groupdata.groupindex);
+      const bool have_fluxes = fluxes[0] >= 0;
+      if (have_fluxes) {
+        assert((groupdata.indextype == array<int, dim>{1, 1, 1}));
+        groupdata.freg = make_unique<amrex::FluxRegister>(
+            gba, dm, ghext->amrcore->refRatio(level - 1), level,
+            groupdata.numvars);
+        groupdata.fluxes = fluxes;
+      } else {
+        groupdata.fluxes.fill(-1);
+      }
+    }
+  }
+
+  // Check flux register consistency
+  for (int gi = 0; gi < numgroups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    /* only grid functions live on levels (and the grid) */
+    if (group.grouptype != CCTK_GF)
+      continue;
+    const auto &groupdata = *leveldata.groupdata.at(gi);
+    if (groupdata.freg) {
+      for (int d = 0; d < dim; ++d) {
+        assert(groupdata.fluxes[d] != groupdata.groupindex);
+        const auto &flux_groupdata =
+            *leveldata.groupdata.at(groupdata.fluxes[d]);
+        array<int, dim> flux_indextype{1, 1, 1};
+        flux_indextype[d] = 0;
+        assert(flux_groupdata.indextype == flux_indextype);
+        assert(flux_groupdata.numvars == groupdata.numvars);
+      }
+    }
+  }
+}
+
 void CactusAmrCore::MakeNewLevelFromScratch(
     int level, amrex::Real time, const amrex::BoxArray &ba,
     const amrex::DistributionMapping &dm) {
@@ -935,17 +934,10 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                                          amrex::IndexType::CELL));
 
   // We assume that this level is at the same time as the next coarser level
-  const int timereffact = use_subcycling_wip ? 2 : 1;
-  // leveldata.iteration = coarseleveldata.iteration;
-  // assert(coarseleveldata.delta_iteration % timereffact == 0);
-  // leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
-  // leveldata.time = coarseleveldata.time;
-  // leveldata.delta_time = coarseleveldata.delta_time / timereffact;
   assert(leveldata.iteration == coarseleveldata.iteration);
-  assert(leveldata.delta_iteration ==
-         coarseleveldata.delta_iteration / timereffact);
+  assert(leveldata.delta_iteration % coarseleveldata.delta_iteration == 0);
   assert(leveldata.time == coarseleveldata.time);
-  assert(leveldata.delta_time == coarseleveldata.delta_time / timereffact);
+  assert(fmod(leveldata.delta_time, coarseleveldata.delta_time) == 0);
 
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
