@@ -1523,7 +1523,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
     }
 
   } // for gi
-} // namespace CarpetX
+}
 
 // Schedule evolution
 int Evolve(tFleshConfig *config) {
