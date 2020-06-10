@@ -123,7 +123,13 @@ extern "C" void Poisson_solve(CCTK_ARGUMENTS) {
   const int gi_res = CCTK_GroupIndex("Poisson::res");
   assert(gi_res >= 0);
 
-  SolvePoisson(gi_sol, gi_rhs, gi_res);
+  const CCTK_REAL reltol = 0.0;
+  const CCTK_REAL abstol = 1.0e-12;
+  CCTK_REAL res_initial, res_final;
+  SolvePoisson(gi_sol, gi_rhs, gi_res, reltol, abstol, &res_initial,
+               &res_final);
+  CCTK_VINFO("Residual before solve: %g", double(res_initial));
+  CCTK_VINFO("Residual after solve:  %g", double(res_final));
 }
 
 extern "C" void Poisson_residual(CCTK_ARGUMENTS) {

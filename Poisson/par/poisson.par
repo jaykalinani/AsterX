@@ -1,3 +1,8 @@
+# run.me:
+# run.cores: 4
+# run.memory: 1.0e9
+# run.time: 60.0
+
 ActiveThorns = "
     CarpetX
     Formaline
@@ -50,5 +55,3 @@ IO::out_dir = $parfile
 IO::out_every = 1
 
 CarpetX::out_silo_vars = "all"
-
-CarpetX::out_tsv = no
