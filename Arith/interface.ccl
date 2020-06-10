@@ -5,6 +5,7 @@ IMPLEMENTS: Arith
 INCLUDES HEADER: dual.hxx IN dual.hxx
 INCLUDES HEADER: fixmath.hxx IN fixmath.hxx
 INCLUDES HEADER: mat.hxx IN mat.hxx
+INCLUDES HEADER: rational.hxx IN rational.hxx
 INCLUDES HEADER: sum.hxx IN sum.hxx
 INCLUDES HEADER: vec.hxx IN vec.hxx
 INCLUDES HEADER: vect.hxx IN vect.hxx

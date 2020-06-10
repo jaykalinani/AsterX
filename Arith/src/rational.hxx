@@ -13,7 +13,7 @@
 namespace Arith {
 using namespace std;
 
-template <typename I = int64_t> struct rational {
+template <typename I> struct rational {
   I num, den;
 
   struct no_normalize {};

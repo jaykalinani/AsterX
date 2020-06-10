@@ -12,20 +12,21 @@ template <typename I> constexpr bool isgood(const rational<I> &x) {
 // This function is compiled, but not executed. The tests are "run" at
 // compile time. If this function compiles, the tests pass.
 void TestRational() {
-  static_assert(rational().num == 0);
-  static_assert(rational(1).num == 1);
-  static_assert(rational(1, 2).num == 1);
-  static_assert(rational(2, 4).num == 1);
-  static_assert(rational().den == 1);
-  static_assert(rational(1).den == 1);
-  static_assert(rational(1, 2).den == 2);
-  static_assert(rational(2, 4).den == 2);
+  using rat64 = rational<int64_t>;
+  static_assert(rat64().num == 0);
+  static_assert(rat64(1).num == 1);
+  static_assert(rat64(1, 2).num == 1);
+  static_assert(rat64(2, 4).num == 1);
+  static_assert(rat64().den == 1);
+  static_assert(rat64(1).den == 1);
+  static_assert(rat64(1, 2).den == 2);
+  static_assert(rat64(2, 4).den == 2);
 
-  constexpr auto n = rational();
-  constexpr auto e = rational(1);
-  constexpr auto x = rational(1, 2);
-  constexpr auto y = rational(2, 3);
-  constexpr auto z = rational(3, 4);
+  constexpr auto n = rat64();
+  constexpr auto e = rat64(1);
+  constexpr auto x = rat64(1, 2);
+  constexpr auto y = rat64(2, 3);
+  constexpr auto z = rat64(3, 4);
   constexpr auto a = 4;
 
   +x;
