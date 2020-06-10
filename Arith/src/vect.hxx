@@ -187,6 +187,23 @@ template <typename T, int D> struct vect {
   // initializes all elements to zero
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect() : elts() {}
 
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const vect &) = default;
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect &&) = default;
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect &
+  operator=(const vect &) = default;
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect &operator=(vect &&) = default;
+
+  template <typename U>
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const vect<U, D> &x) : elts() {
+    for (int d = 0; d < D; ++d)
+      elts[d] = x.elts[d];
+  }
+  template <typename U>
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect &&x) : elts() {
+    for (int d = 0; d < D; ++d)
+      elts[d] = move(x.elts[d]);
+  }
+
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const array<T, D> &arr)
       : elts(arr) {}
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(initializer_list<T> lst)
@@ -245,7 +262,7 @@ template <typename T, int D> struct vect {
 
   template <typename F,
             typename R = remove_cv_t<remove_reference_t<result_of_t<F(T)> > > >
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE R map(const F &f) const {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<R, D> map(const F &f) const {
     vect<R, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = f(elts[d]);
@@ -254,8 +271,8 @@ template <typename T, int D> struct vect {
   template <
       typename F, typename U,
       typename R = remove_cv_t<remove_reference_t<result_of_t<F(T, U)> > > >
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE R map2(const F &f,
-                                                const vect<U, D> &y) const {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<R, D>
+  map2(const F &f, const vect<U, D> &y) const {
     vect<R, D> r;
     for (int d = 0; d < D; ++d)
       r.elts[d] = f(elts[d], y.elts[d]);
