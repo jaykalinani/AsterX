@@ -146,6 +146,7 @@ CarpetX/MaxwellToyCarpetX
 #[const error] CarpetX/NewRad
 CarpetX/ODESolvers
 CarpetX/Poisson
+CarpetX/Punctures
 #DISABLED CarpetX/SHTOOLS
 #DISABLED CarpetX/Silo
 CarpetX/StaticTrumpet
