@@ -687,16 +687,12 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
     leveldata.is_subcycling_level = false; // unused
     leveldata.iteration = 0;
     leveldata.delta_iteration = coarse_delta_iteration;
-    leveldata.time = 0.0;
-    leveldata.delta_time = 1.0;
   } else {
     // We are creating a new refined level
     auto &coarseleveldata = ghext->leveldata.at(level - 1);
+    leveldata.is_subcycling_level = use_subcycling_wip;
     leveldata.iteration = coarseleveldata.iteration;
-    assert(coarseleveldata.delta_iteration % timereffact == 0);
     leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
-    leveldata.time = coarseleveldata.time;
-    leveldata.delta_time = coarseleveldata.delta_time / timereffact;
   }
 
   leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
@@ -935,9 +931,6 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 
   // We assume that this level is at the same time as the next coarser level
   assert(leveldata.iteration == coarseleveldata.iteration);
-  assert(leveldata.delta_iteration % coarseleveldata.delta_iteration == 0);
-  assert(leveldata.time == coarseleveldata.time);
-  assert(fmod(leveldata.delta_time, coarseleveldata.delta_time) == 0);
 
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {

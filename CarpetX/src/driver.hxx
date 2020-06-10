@@ -4,6 +4,8 @@
 #include "loop.hxx"
 #include "valid.hxx"
 
+#include <rational.hxx>
+
 #include <cctk.h>
 
 #include <AMReX.H>
@@ -25,8 +27,11 @@
 
 namespace CarpetX {
 using namespace std;
+using namespace Arith;
 
 using Loop::dim;
+
+using rat64 = rational<int64_t>;
 
 // Taken from
 // <https://stackoverflow.com/questions/27440953/stdunique-ptr-for-c-functions-that-need-free>
@@ -120,8 +125,7 @@ struct GHExt {
     bool is_subcycling_level;
 
     // Iteration and time at which this cycle level is valid
-    int64_t iteration, delta_iteration;
-    CCTK_REAL time, delta_time;
+    rat64 iteration, delta_iteration;
 
     // Fabamrex::ArrayBase object holding a cell-centred BoxArray for
     // iterating over grid functions. This stores the grid structure
