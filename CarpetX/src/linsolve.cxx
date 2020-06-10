@@ -8,6 +8,7 @@
 #include <AMReX_MLMG.H>
 #include <AMReX_MLNodeLaplacian.H>
 
+#include <cmath>
 #include <vector>
 
 namespace CarpetX {
@@ -15,7 +16,11 @@ using namespace std;
 
 extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
                                      const CCTK_INT gi_rhs,
-                                     const CCTK_INT gi_res) {
+                                     const CCTK_INT gi_res,
+                                     const CCTK_REAL reltol,
+                                     const CCTK_REAL abstol,
+                                     CCTK_REAL *restrict const res_initial,
+                                     CCTK_REAL *restrict const res_final) {
   assert(gi_rhs >= 0);
   assert(gi_sol >= 0);
   const bool have_res = gi_res >= 0;
@@ -79,8 +84,16 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 
   // Solve
 
-  if (have_res)
+  if (have_res) {
     mlmg.compResidual(ress, sols, rhss);
+    *res_initial = 0;
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      *res_initial =
+          fmax(*res_initial, ress.at(level)->norminf(vi, 0, false, true));
+  } else {
+    *res_initial = NAN;
+  }
+
 #pragma omp critical
   {
     CCTK_VINFO("Before solving:");
@@ -96,14 +109,22 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
                    double(ress.at(level)->norminf(vi, 0, false, true)));
   }
 
-  const CCTK_REAL rtol = 0.0;
-  const CCTK_REAL atol = 1.0e-12;
-  const CCTK_REAL maxerr = mlmg.solve(sols, rhss, rtol, atol);
+  // const CCTK_REAL rtol = 0.0;
+  // const CCTK_REAL atol = 1.0e-12;
+  const CCTK_REAL maxerr = mlmg.solve(sols, rhss, reltol, abstol);
 #pragma omp critical
   CCTK_VINFO("Solution error (norm_inf): %g", double(maxerr));
 
-  if (have_res)
+  if (have_res) {
     mlmg.compResidual(ress, sols, rhss);
+    *res_final = 0;
+    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      *res_final =
+          fmax(*res_final, ress.at(level)->norminf(vi, 0, false, true));
+  } else {
+    *res_final = NAN;
+  }
+
 #pragma omp critical
   {
     CCTK_VINFO("After solving:");
