@@ -1,5 +1,9 @@
 # Configuration definitions for thorn Arith
 
+OPTIONAL yaml_cpp
+{
+}
+
 PROVIDES Arith
 {
 }

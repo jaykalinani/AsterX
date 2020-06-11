@@ -1,6 +1,12 @@
 #ifndef RATIONAL_HXX
 #define RATIONAL_HXX
 
+#include <cctk.h>
+
+#ifdef HAVE_CAPABILITY_yaml_cpp
+#include <yaml-cpp/yaml.h>
+#endif
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -118,6 +124,14 @@ template <typename I> struct rational {
   friend ostream &operator<<(ostream &os, const rational &x) {
     return os << "(" << x.num << "/" << x.den << ")";
   }
+
+#ifdef HAVE_CAPABILITY_yaml_cpp
+  friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const rational &x) {
+    yaml << YAML::LocalTag("rational-1.0.0");
+    yaml << YAML::Flow << YAML::BeginSeq << x.num << x.den << YAML::EndSeq;
+    return yaml;
+  }
+#endif
 };
 
 template <typename I> constexpr rational<I> abs(const rational<I> &x) {
