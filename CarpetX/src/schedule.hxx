@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <optional>
 
 namespace CarpetX {
 using namespace std;
@@ -37,9 +39,36 @@ int DisableGroupStorage(const cGH *cctkGH, const char *groupname);
 // functions. This is used early during startup.)
 extern cGH *saved_cctkGH;
 
-// Whether CallFunction traverses all levels (-1) or just one specific level
-// (>=0)
-extern int current_level;
+struct active_levels_t {
+  int min_level, max_level;
+
+  active_levels_t() = delete;
+
+  active_levels_t(const int min_level, const int max_level)
+      : min_level(min_level), max_level(max_level) {
+    assert(min_level >= 0);
+    assert(max_level <= int(ghext->leveldata.size()));
+  }
+
+  template <typename F> void loop(F f) {
+    for (int level = min_level; level < max_level; ++level)
+      assert(ghext->leveldata.at(level).iteration ==
+             ghext->leveldata.at(min_level).iteration);
+    for (int level = min_level; level < max_level; ++level)
+      f(ghext->leveldata.at(level));
+  }
+
+  template <typename F> void loop_reverse(F f) {
+    for (int level = min_level; level < max_level; ++level)
+      assert(ghext->leveldata.at(level).iteration ==
+             ghext->leveldata.at(min_level).iteration);
+    for (int level = max_level - 1; level >= min_level; --level)
+      f(ghext->leveldata.at(level));
+  }
+};
+
+// The levels CallFunction should traverse
+extern optional<active_levels_t> active_levels;
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -48,7 +48,8 @@ public:
 void statecomp_t::check_valid() const {
   for (const int groupid : groupids) {
     if (groupid >= 0) {
-      for (const auto &leveldata : CarpetX::ghext->leveldata) {
+      assert(CarpetX::active_levels);
+      CarpetX::active_levels->loop([&](const auto &leveldata) {
         const auto &groupdata = *leveldata.groupdata.at(groupid);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           const int tl = 0;
@@ -56,7 +57,7 @@ void statecomp_t::check_valid() const {
             return "ODESolver before calculating state vector";
           });
         }
-      }
+      });
     }
   }
 }
@@ -200,7 +201,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
   statecomp_t var, rhs;
   int nvars = 0;
-  for (const auto &leveldata : CarpetX::ghext->leveldata) {
+  assert(CarpetX::active_levels);
+  CarpetX::active_levels->loop([&](const auto &leveldata) {
     for (const auto &groupdataptr : leveldata.groupdata) {
       // TODO: add support for evolving grid scalars
       if (groupdataptr == nullptr)
@@ -217,11 +219,11 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
         rhs.groupnames.push_back(CCTK_GroupName(rhs_groupdata.groupindex));
         rhs.groupids.push_back(rhs_groupdata.groupindex);
         rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
-        if (leveldata.level == 0)
+        if (leveldata.level == active_levels->min_level)
           nvars += groupdata.numvars;
       }
     }
-  }
+  });
   if (verbose)
     CCTK_VINFO("  Integrating %d variables", nvars);
   if (nvars == 0)
