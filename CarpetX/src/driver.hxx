@@ -15,6 +15,8 @@
 #include <AMReX_Interpolater.H>
 #include <AMReX_MultiFab.H>
 
+#include <yaml-cpp/yaml.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -100,6 +102,9 @@ struct GHExt {
     vector<vector<why_valid_t> > valid; // [time level][var index]
 
     // TODO: add poison_invalid and check_valid functions
+
+    friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                     const CommonGroupData &commongroupdata);
   };
 
   struct GlobalData {
@@ -111,9 +116,15 @@ struct GHExt {
 
     struct ScalarGroupData : public CommonGroupData {
       vector<vector<CCTK_REAL> > data; // [time level][var index]
+
+      friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                       const ScalarGroupData &scalargroupdata);
     };
     // TODO: right now this is sized for the total number of groups
     vector<unique_ptr<ScalarGroupData> > scalargroupdata; // [group index]
+
+    friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                     const GlobalData &globaldata);
   };
   GlobalData globaldata;
 
@@ -148,11 +159,20 @@ struct GHExt {
       unique_ptr<amrex::FluxRegister> freg;
       // associated flux group indices
       array<int, dim> fluxes; // [dir]
+
+      friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                       const GroupData &groupdata);
     };
     // TODO: right now this is sized for the total number of groups
     vector<unique_ptr<GroupData> > groupdata; // [group index]
+
+    friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                     const LevelData &leveldata);
   };
   vector<LevelData> leveldata; // [reflevel]
+
+  friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const GHExt &ghext);
+  friend ostream &operator<<(ostream &os, const GHExt &ghext);
 };
 
 extern unique_ptr<GHExt> ghext;

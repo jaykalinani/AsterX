@@ -18,6 +18,8 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 
+#include <yaml-cpp/yaml.h>
+
 #include <array>
 #include <cassert>
 #include <cctype>
@@ -387,6 +389,41 @@ void OutputScalars(const cGH *restrict cctkGH) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void OutputMetadata(const cGH *restrict cctkGH) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  static Timer timer("OutputMetadata");
+  Interval interval(timer);
+
+  const bool is_root = CCTK_MyProc(nullptr) == 0;
+  if (!is_root)
+    return;
+
+  YAML::Emitter yaml;
+  yaml << YAML::Comment("CarpetX");
+  yaml << YAML::BeginDoc;
+  yaml << YAML::LocalTag("carpetx-metadata-1.0.0");
+  yaml << YAML::BeginMap;
+  // yaml << YAML::Key << "iteration";
+  // yaml << YAML::Value << cctk_iteration;
+  // yaml << YAML::Key << "time";
+  // yaml << YAML::Value << cctk_time;
+  yaml << YAML::Key << "ghext";
+  yaml << YAML::Value << *ghext;
+  yaml << YAML::EndMap;
+  yaml << YAML::EndDoc;
+
+  ostringstream buf;
+  buf << out_dir << "/metadata.yaml";
+  const string filename = buf.str();
+
+  ofstream file(filename.c_str(), std::ofstream::out);
+  file << yaml.c_str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 int OutputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -400,14 +437,20 @@ int OutputGH(const cGH *restrict cctkGH) {
                cctk_iteration, double(cctk_time), CCTK_RunTime());
 
   if (out_every > 0 && cctk_iteration % out_every == 0) {
+    OutputASCII(cctkGH);
+
+    OutputMetadata(cctkGH);
+
+    OutputNorms(cctkGH);
+
     OutputPlotfile(cctkGH);
+
 #ifdef HAVE_CAPABILITY_Silo
     // TODO: Stop at paramcheck time when Silo output parameters are
     // set, but Silo is not available
     OutputSilo(cctkGH);
 #endif
-    OutputASCII(cctkGH);
-    OutputNorms(cctkGH);
+
     OutputScalars(cctkGH);
   }
 

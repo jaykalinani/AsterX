@@ -1057,6 +1057,122 @@ void CactusAmrCore::ClearLevel(const int level) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                          const GHExt::CommonGroupData &commongroupdata) {
+  yaml << YAML::LocalTag("commongroupdata-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "groupname" << YAML::Value
+       << unique_ptr<char>(CCTK_GroupName(commongroupdata.groupindex)).get();
+  yaml << YAML::Key << "numvars" << YAML::Value << commongroupdata.numvars;
+  yaml << YAML::Key << "do_checkpoint" << YAML::Value
+       << commongroupdata.do_checkpoint;
+  yaml << YAML::Key << "do_restrict" << YAML::Value
+       << commongroupdata.do_restrict;
+  yaml << YAML::Key << "valid" << YAML::Value << commongroupdata.valid;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &
+operator<<(YAML::Emitter &yaml,
+           const GHExt::GlobalData::ScalarGroupData &scalargroupdata) {
+  yaml << YAML::LocalTag("scalargroupdata-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "commongroupdata" << YAML::Value
+       << (GHExt::CommonGroupData)scalargroupdata;
+  yaml << YAML::Key << "data" << YAML::Value << scalargroupdata.data;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                          const GHExt::GlobalData &globaldata) {
+  yaml << YAML::LocalTag("globaldata-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "scalargroupdata" << YAML::Value << YAML::BeginSeq;
+  for (const auto &scalargroupdata : globaldata.scalargroupdata)
+    if (scalargroupdata)
+      yaml << *scalargroupdata;
+  yaml << YAML::EndSeq;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+template <typename T, size_t N> inline vector<T> seq(const array<T, N> &v) {
+  vector<T> r;
+  for (const auto &x : v)
+    r.push_back(x);
+  return r;
+}
+
+template <typename T, size_t N>
+inline vector<vector<T> > seqs(const vector<array<T, N> > &v) {
+  vector<vector<T> > r;
+  for (const auto &x : v)
+    r.push_back(seq(x));
+  return r;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                          const GHExt::LevelData::GroupData &groupdata) {
+  yaml << YAML::LocalTag("groupdata-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "commongroupdata" << YAML::Value
+       << (GHExt::CommonGroupData)groupdata;
+  yaml << YAML::Key << "level" << YAML::Value << groupdata.level;
+  yaml << YAML::Key << "indextype" << YAML::Value << YAML::Flow
+       << seq(groupdata.indextype);
+  yaml << YAML::Key << "nghostzones" << YAML::Value << YAML::Flow
+       << seq(groupdata.nghostzones);
+  yaml << YAML::Key << "parities" << YAML::Value << YAML::Flow
+       << seqs(groupdata.parities);
+  yaml << YAML::Key << "fluxes" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (const int flux : groupdata.fluxes)
+    yaml << (flux >= 0 ? unique_ptr<char>(CCTK_GroupName(flux)).get() : "");
+  yaml << YAML::EndSeq;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                          const GHExt::LevelData &leveldata) {
+  yaml << YAML::LocalTag("leveldata-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "level" << YAML::Value << leveldata.level;
+  yaml << YAML::Key << "is_subcycling_level" << YAML::Value
+       << leveldata.is_subcycling_level;
+  yaml << YAML::Key << "iteration" << YAML::Value << leveldata.iteration;
+  yaml << YAML::Key << "delta_iteration" << YAML::Value
+       << leveldata.delta_iteration;
+  yaml << YAML::Key << "fab" << YAML::Value << /*TODO*/ "fab";
+  yaml << YAML::Key << "groupdata" << YAML::Value << YAML::BeginSeq;
+  for (const auto &groupdata : leveldata.groupdata)
+    if (groupdata)
+      yaml << *groupdata;
+  yaml << YAML::EndSeq;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const GHExt &ghext) {
+  yaml << YAML::LocalTag("ghext-1.0.0");
+  yaml << YAML::BeginMap;
+  // yaml << YAML::Key << "amrcore" << YAML::Value << /*TODO*/ "*ghext.amrcore";
+  yaml << YAML::Key << "globaldata" << YAML::Value << ghext.globaldata;
+  yaml << YAML::Key << "leveldata" << YAML::Value << ghext.leveldata;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+ostream &operator<<(ostream &os, const GHExt &ghext) {
+  YAML::Emitter yaml;
+  yaml << ghext;
+  os << yaml.c_str() << "\n";
+  return os;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // Start driver
 extern "C" int CarpetX_Startup() {
   DECLARE_CCTK_PARAMETERS;

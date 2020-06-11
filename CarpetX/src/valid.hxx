@@ -1,6 +1,8 @@
 #ifndef VALID_HXX
 #define VALID_HXX
 
+#include <yaml-cpp/yaml.h>
+
 #include <functional>
 #include <iostream>
 #include <sstream>
@@ -55,6 +57,7 @@ struct valid_t {
            make_tuple(y.valid_int, y.valid_outer, y.valid_ghosts);
   }
 
+  // TODO: Move I/O functions to valid.cxx
   friend ostream &operator<<(ostream &os, const valid_t v) {
     auto str = [](bool v) { return v ? "VAL" : "INV"; };
     return os << "[int:" << str(v.valid_int) << ",outer:" << str(v.valid_outer)
@@ -64,6 +67,16 @@ struct valid_t {
     ostringstream buf;
     buf << *this;
     return buf.str();
+  }
+
+  friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const valid_t v) {
+    yaml << YAML::LocalTag("valid-1.0.0");
+    yaml << YAML::Flow << YAML::BeginMap;
+    yaml << YAML::Key << "int" << YAML::Value << v.valid_int;
+    yaml << YAML::Key << "outer" << YAML::Value << v.valid_outer;
+    yaml << YAML::Key << "ghosts" << YAML::Value << v.valid_ghosts;
+    yaml << YAML::EndMap;
+    return yaml;
   }
 };
 
@@ -160,6 +173,19 @@ public:
     ostringstream buf;
     buf << *this;
     return buf.str();
+  }
+
+  friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const why_valid_t why) {
+    yaml << YAML::LocalTag("why_valid-1.0.0");
+    yaml << YAML::BeginMap;
+    yaml << YAML::Key << "valid" << YAML::Value << why.valid;
+    yaml << YAML::Key << "why" << YAML::Value << YAML::BeginMap;
+    yaml << YAML::Key << "int" << YAML::Value << why.why_int();
+    yaml << YAML::Key << "outer" << YAML::Value << why.why_outer();
+    yaml << YAML::Key << "ghosts" << YAML::Value << why.why_ghosts();
+    yaml << YAML::EndMap;
+    yaml << YAML::EndMap;
+    return yaml;
   }
 };
 
