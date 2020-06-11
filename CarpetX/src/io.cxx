@@ -46,8 +46,8 @@ int InputGH(const cGH *restrict cctkGH) {
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root)
-    cout << "InputGH: iteration " << cctk_iteration << ", time " << cctk_time
-         << "\n";
+    CCTK_VINFO("InputGH: iteration %d, time %f", cctk_iteration,
+               double(cctk_time));
 
 #ifdef HAVE_CAPABILITY_Silo
   // TODO: Stop at paramcheck time when Silo input parameters are
@@ -396,8 +396,8 @@ int OutputGH(const cGH *restrict cctkGH) {
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root)
-    cout << "OutputGH: iteration " << cctk_iteration << ", time " << cctk_time
-         << ", run time " << CCTK_RunTime() << " s\n";
+    CCTK_VINFO("OutputGH: iteration %d, time %f, run time %d s\n",
+               cctk_iteration, double(cctk_time), CCTK_RunTime());
 
   if (out_every > 0 && cctk_iteration % out_every == 0) {
     OutputPlotfile(cctkGH);
