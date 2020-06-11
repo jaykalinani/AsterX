@@ -683,10 +683,9 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
   const int timereffact = use_subcycling_wip ? 2 : 1;
   if (level == 0) {
     // We are creating the coarsest level
-    const int64_t coarse_delta_iteration = 1LL << 32;
     leveldata.is_subcycling_level = false; // unused
     leveldata.iteration = 0;
-    leveldata.delta_iteration = coarse_delta_iteration;
+    leveldata.delta_iteration = 1;
   } else {
     // We are creating a new refined level
     auto &coarseleveldata = ghext->leveldata.at(level - 1);
