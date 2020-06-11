@@ -159,3 +159,4 @@ CarpetX/Z4c
 CarpetX/googletest
 #DISABLED CarpetX/libsharp
 CarpetX/ssht
+CarpetX/yaml_cpp
