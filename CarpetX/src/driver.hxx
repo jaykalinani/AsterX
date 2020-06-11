@@ -86,7 +86,7 @@ public:
 struct GHExt {
 
   // AMReX grid structure
-  // TODO: Remove unique_ptr once amrex::AmrCore has move constructors
+  // TODO: convert this from unique_ptr to optional
   unique_ptr<CactusAmrCore> amrcore;
 
   struct CommonGroupData {
