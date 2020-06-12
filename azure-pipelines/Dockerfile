@@ -3,7 +3,7 @@
 #     docker push einsteintoolkit/cactus-amrex
 
 # Use Ubuntu
-FROM ubuntu:19.10
+FROM ubuntu:20.04
 
 RUN mkdir /cactus
 WORKDIR /cactus
@@ -59,6 +59,20 @@ RUN mkdir src && \
     true) && \
     rm -rf src
 
+# Install Silo
+RUN mkdir src && \
+    (cd src && \
+    wget https://wci.llnl.gov/content/assets/docs/simulation/computer-codes/silo/silo-4.10.2/silo-4.10.2-bsd.tar.gz && \
+    tar xzf silo-4.10.2-bsd.tar.gz && \
+    cd silo-4.10.2-bsd && \
+    mkdir build && \
+    cd build && \
+    ../configure --disable-fortran --enable-optimization --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/serial/include,/usr/lib/x86_64-linux-gnu/hdf5/serial/lib --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make -j$(nproc) install && \
+    true) && \
+    rm -rf src
+
 # Install ssht
 # TODO: Use "cmake install" instead of "cp"
 RUN mkdir src && \
@@ -69,15 +83,15 @@ RUN mkdir src && \
     make install) && \
     rm -fr src
 
-# Install Silo
+# Install yaml-cpp
 RUN mkdir src && \
     (cd src && \
-    wget https://wci.llnl.gov/content/assets/docs/simulation/computer-codes/silo/silo-4.10.2/silo-4.10.2-bsd.tar.gz && \
-    tar xzf silo-4.10.2-bsd.tar.gz && \
-    cd silo-4.10.2-bsd && \
+    wget https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz && \
+    tar xzf yaml-cpp-0.6.3.tar.gz && \
+    cd yaml-cpp-yaml-cpp-0.6.3 && \
     mkdir build && \
     cd build && \
-    ../configure --disable-fortran --enable-optimization --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/serial/include,/usr/lib/x86_64-linux-gnu/hdf5/serial/lib --prefix=/usr/local && \
+    cmake .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true) && \
