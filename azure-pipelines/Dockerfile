@@ -3,7 +3,9 @@
 #     docker push einsteintoolkit/cactus-amrex
 
 # Use Ubuntu
-FROM ubuntu:20.04
+# Note: We cannot update to Ubuntu 20.04; see
+# <https://bitbucket.org/einsteintoolkit/tickets/issues/2415/cannot-checkout-svn-repos-with-ubuntu-2004>
+FROM ubuntu:19.10
 
 RUN mkdir /cactus
 WORKDIR /cactus
