@@ -1134,6 +1134,38 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   return yaml;
 }
 
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::FabArrayBase &fab) {
+  yaml << YAML::LocalTag("fabarraybase-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "ixType" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  const auto ixtype = fab.ixType();
+  for (int d = 0; d < dim; ++d)
+    yaml << ixtype[d];
+  yaml << YAML::EndSeq;
+  yaml << YAML::Key << "nGrowVect" << YAML::Value << YAML::Flow
+       << YAML::BeginSeq;
+  const auto ngrowvect = fab.nGrowVect();
+  for (int d = 0; d < dim; ++d)
+    yaml << ngrowvect[d];
+  yaml << YAML::EndSeq;
+  yaml << YAML::Key << "boxArray" << YAML::Value << YAML::BeginSeq;
+  for (int n = 0; n < fab.size(); ++n) {
+    yaml << YAML::Flow << YAML::BeginMap;
+    yaml << YAML::Key << "small" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (int d = 0; d < dim; ++d)
+      yaml << fab.boxArray()[n].smallEnd(d);
+    yaml << YAML::EndSeq;
+    yaml << YAML::Key << "big" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (int d = 0; d < dim; ++d)
+      yaml << fab.boxArray()[n].bigEnd(d);
+    yaml << YAML::EndSeq;
+    yaml << YAML::EndMap;
+  }
+  yaml << YAML::EndSeq;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
 YAML::Emitter &operator<<(YAML::Emitter &yaml,
                           const GHExt::LevelData &leveldata) {
   yaml << YAML::LocalTag("leveldata-1.0.0");
@@ -1144,7 +1176,7 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   yaml << YAML::Key << "iteration" << YAML::Value << leveldata.iteration;
   yaml << YAML::Key << "delta_iteration" << YAML::Value
        << leveldata.delta_iteration;
-  yaml << YAML::Key << "fab" << YAML::Value << /*TODO*/ "fab";
+  yaml << YAML::Key << "fab" << YAML::Value << *leveldata.fab;
   yaml << YAML::Key << "groupdata" << YAML::Value << YAML::BeginSeq;
   for (const auto &groupdata : leveldata.groupdata)
     if (groupdata)

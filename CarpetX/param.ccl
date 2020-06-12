@@ -253,6 +253,10 @@ STRING in_silo_vars "Variables to input in Silo format" STEERABLE=always
 
 
 
+BOOLEAN out_metadata "Output metadata in YAML format?" STEERABLE=always
+{
+} no
+
 STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
 {
   ".*" :: ""

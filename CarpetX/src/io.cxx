@@ -389,9 +389,51 @@ void OutputScalars(const cGH *restrict cctkGH) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+struct parameters {};
+YAML::Emitter &operator<<(YAML::Emitter &yaml, parameters) {
+  yaml << YAML::LocalTag("parameters-1.0.0");
+  yaml << YAML::BeginMap;
+  int first = 1;
+  for (;;) {
+    const cParamData *data;
+    // This call is most likely not thread safe
+    int ierr = CCTK_ParameterWalk(first, nullptr, nullptr, &data);
+    assert(ierr >= 0);
+    if (ierr)
+      break;
+    const string fullname = string(data->thorn) + "::" + data->name;
+    yaml << YAML::Key << fullname << YAML::Value << YAML::Flow;
+    int type;
+    const void *pvalue = CCTK_ParameterGet(data->name, data->thorn, &type);
+    switch (type) {
+    case PARAMETER_KEYWORD:
+    case PARAMETER_STRING:
+      yaml << *static_cast<const char *const *>(pvalue);
+      break;
+    case PARAMETER_INT:
+      yaml << *static_cast<const CCTK_INT *>(pvalue);
+      break;
+    case PARAMETER_REAL:
+      yaml << *static_cast<const CCTK_REAL *>(pvalue);
+      break;
+    case PARAMETER_BOOLEAN:
+      yaml << static_cast<bool>(*static_cast<const CCTK_INT *>(pvalue));
+      break;
+    default:
+      assert(0);
+    }
+    first = 0;
+  }
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
 void OutputMetadata(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
+
+  if (!out_metadata)
+    return;
 
   static Timer timer("OutputMetadata");
   Interval interval(timer);
@@ -405,12 +447,31 @@ void OutputMetadata(const cGH *restrict cctkGH) {
   yaml << YAML::BeginDoc;
   yaml << YAML::LocalTag("carpetx-metadata-1.0.0");
   yaml << YAML::BeginMap;
-  // yaml << YAML::Key << "iteration";
-  // yaml << YAML::Value << cctk_iteration;
-  // yaml << YAML::Key << "time";
-  // yaml << YAML::Value << cctk_time;
+  yaml << YAML::Key << "nghostzones";
+  yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (int d = 0; d < dim; ++d)
+    yaml << cctk_nghostzones[d];
+  yaml << YAML::EndSeq;
+  yaml << YAML::Key << "origin_space";
+  yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (int d = 0; d < dim; ++d)
+    yaml << cctk_origin_space[d];
+  yaml << YAML::EndSeq;
+  yaml << YAML::Key << "delta_space";
+  yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (int d = 0; d < dim; ++d)
+    yaml << cctk_delta_space[d];
+  yaml << YAML::EndSeq;
+  yaml << YAML::Key << "iteration";
+  yaml << YAML::Value << cctk_iteration;
+  yaml << YAML::Key << "time";
+  yaml << YAML::Value << cctk_time;
+  yaml << YAML::Key << "delta_time";
+  yaml << YAML::Value << cctk_delta_time;
   yaml << YAML::Key << "ghext";
   yaml << YAML::Value << *ghext;
+  yaml << YAML::Key << "parameters";
+  yaml << YAML::Value << parameters();
   yaml << YAML::EndMap;
   yaml << YAML::EndDoc;
 
