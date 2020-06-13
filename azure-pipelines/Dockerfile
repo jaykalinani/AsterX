@@ -113,12 +113,5 @@ RUN mkdir src && \
     true) && \
     rm -rf src
 
-# Install yaml_cpp
-WORKDIR /
-RUN git clone https://github.com/jbeder/yaml-cpp.git
-WORKDIR /yaml-cpp/build
-RUN cmake ..
-RUN make install
-
 # As documentation
 COPY Dockerfile /Dockerfile
