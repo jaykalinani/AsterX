@@ -16,6 +16,18 @@ INCLUDES HEADER: loopcontrol.h IN loopcontrol.h
 
 
 
+# The overall size of the domain
+CCTK_INT FUNCTION GetDomainSpecification
+  (CCTK_INT IN size,
+   CCTK_REAL OUT ARRAY physical_min,
+   CCTK_REAL OUT ARRAY physical_max,
+   CCTK_REAL OUT ARRAY interior_min,
+   CCTK_REAL OUT ARRAY interior_max,
+   CCTK_REAL OUT ARRAY exterior_min,
+   CCTK_REAL OUT ARRAY exterior_max,
+   CCTK_REAL OUT ARRAY spacing)
+PROVIDES FUNCTION GetDomainSpecification WITH CarpetX_GetDomainSpecification LANGUAGE C
+
 void FUNCTION GetTileExtent(
   CCTK_POINTER_TO_CONST IN cctkGH,
   CCTK_INT ARRAY OUT tile_min,

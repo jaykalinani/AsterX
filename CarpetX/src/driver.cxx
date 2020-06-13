@@ -63,6 +63,13 @@ int Barrier(const cGH *cctkGHa);
 // Aliased functions
 
 extern "C" void CarpetX_CallScheduleGroup(void *cctkGH, const char *groupname);
+extern "C" CCTK_INT CarpetX_GetDomainSpecification(
+    CCTK_INT size, CCTK_REAL *restrict const physical_min,
+    CCTK_REAL *restrict const physical_max,
+    CCTK_REAL *restrict const interior_min,
+    CCTK_REAL *restrict const interior_max,
+    CCTK_REAL *restrict const exterior_min,
+    CCTK_REAL *restrict const exterior_max, CCTK_REAL *restrict const spacing);
 
 // Local functions
 void SetupLevel(int level, const amrex::BoxArray &ba,
@@ -1467,6 +1474,36 @@ void CarpetX_CallScheduleGroup(void *cctkGH_, const char *groupname) {
   Interval interval(timer);
   int ierr = CCTK_ScheduleTraverse(groupname, cctkGH, CallFunction);
   assert(!ierr);
+}
+
+CCTK_INT
+CarpetX_GetDomainSpecification(const CCTK_INT size,
+                               CCTK_REAL *restrict const physical_min,
+                               CCTK_REAL *restrict const physical_max,
+                               CCTK_REAL *restrict const interior_min,
+                               CCTK_REAL *restrict const interior_max,
+                               CCTK_REAL *restrict const exterior_min,
+                               CCTK_REAL *restrict const exterior_max,
+                               CCTK_REAL *restrict const spacing) {
+  assert(size == dim);
+  assert(!empty(ghext->leveldata));
+  const auto &fab = *ghext->leveldata.at(0).fab;
+  const auto &geom = ghext->amrcore->Geom(0);
+  for (int d = 0; d < dim; ++d) {
+    // the domain itself (physical faces)
+    physical_min[d] = geom.ProbDomain().lo(d);
+    physical_max[d] = geom.ProbDomain().hi(d);
+    // domain without boundary points (last interior cell centre)
+    interior_min[d] = geom.ProbDomain().lo(d) + 0.5 * geom.CellSize(d);
+    interior_max[d] = geom.ProbDomain().hi(d) - 0.5 * geom.CellSize(d);
+    // domain including boundary/ghost points (last boundary/ghost cell centre)
+    exterior_min[d] =
+        geom.ProbDomain().lo(d) - (fab.nGrow(d) - 0.5) * geom.CellSize(d);
+    exterior_max[d] =
+        geom.ProbDomain().hi(d) + (fab.nGrow(d) - 0.5) * geom.CellSize(d);
+    spacing[d] = geom.CellSize(d);
+  }
+  return 0;
 }
 
 } // namespace CarpetX
