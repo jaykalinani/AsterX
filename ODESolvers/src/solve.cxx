@@ -271,6 +271,48 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Calculate new state vector
     statecomp_t::lincomb(var, 1, old, dt, rhs);
 
+  } else if (CCTK_EQUALS(method, "RK3")) {
+
+    // k1 = f(y0)
+    // k2 = f(y0 + h/2 k1)
+    // k3 = f(y0 - h k1 + 2 h k2)
+    // y1 = y0 + h/6 k1 + 2/3 h k2 + h/6 k3
+
+    const auto old = var.copy();
+    const auto k1 = rhs.copy();
+
+    // Step 2
+
+    // Add scaled RHS to state vector
+    statecomp_t::axpy(var, dt / 2, k1);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto k2 = rhs.copy();
+
+    // Step 3
+
+    // Add scaled RHS to state vector
+    statecomp_t::lincomb(var, 1, old, -dt, k1);
+    statecomp_t::axpy(var, 2 * dt, k2);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #3 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto &k3 = rhs;
+
+    // Calculate new state vector
+    statecomp_t::lincomb(var, 1, old, dt / 6, k1);
+    statecomp_t::axpy(var, 2 * dt / 3, k2);
+    statecomp_t::axpy(var, dt / 6, k3);
+
   } else if (CCTK_EQUALS(method, "SSPRK3")) {
 
     // k1 = f(y0)

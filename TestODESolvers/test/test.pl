@@ -4,12 +4,14 @@ use strict;
 use warnings;
 
 my %methods = (
-  "constant" => {"name" => "Constant", 
+  "constant" => {"name" => "constant", 
                  "order" => 0},
   "euler" => {"name" => "Euler",
               "order" => 1},
   "rk2" => {"name" => "rk2",
             "order" => 2},
+  "ssprk3" => {"name" => "ssprk3",
+               "order" => 3},
   "rk4" => {"name" => "rk4",
             "order" => 4},
 );
@@ -42,9 +44,6 @@ ODESolvers::method = "$methods{$method}->{name}"
 
 # test something not exactly solvable by method
 TestODESolvers::order = $methods{$method}->{order} + 1
-
-CarpetX::out_plotfile_groups = ""
-CarpetX::out_tsv = no
 
 IO::out_dir = \$parfile
 IO::out_fileinfo  = "axis labels"

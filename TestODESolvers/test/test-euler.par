@@ -25,9 +25,6 @@ ODESolvers::method = "Euler"
 # test something not exactly solvable by method
 TestODESolvers::order = 1 + 1
 
-CarpetX::out_plotfile_groups = ""
-CarpetX::out_tsv = no
-
 IO::out_dir = $parfile
 IO::out_fileinfo  = "axis labels"
 IO::parfile_write = "no"
