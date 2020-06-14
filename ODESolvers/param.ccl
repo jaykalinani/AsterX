@@ -4,7 +4,8 @@ KEYWORD method "ODE solver method" STEERABLE=always
 {
   "constant" :: "state vector is kept constant in time"
   "Euler" :: "forward Euler"
-  "RK2" :: "midpoint rule"
+  "RK2" :: "explicit midpoint rule"
+  "SSPRK3" :: "third-order Strong Stability Preserving Runge-Kutta (SSPRK3)"
   "RK4" :: "classic RK4"
 } "RK2"
 

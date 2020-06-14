@@ -239,14 +239,23 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
   if (CCTK_EQUALS(method, "constant")) {
 
+    // y1 = y0
+
     // do nothing
 
   } else if (CCTK_EQUALS(method, "Euler")) {
+
+    // k1 = f(y0)
+    // y1 = y0 + h k1
 
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt, rhs);
 
   } else if (CCTK_EQUALS(method, "RK2")) {
+
+    // k1 = f(y0)
+    // k2 = f(y0 + h/2 k1)
+    // y1 = y0 + h k2
 
     const auto old = var.copy();
 
@@ -262,7 +271,55 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Calculate new state vector
     statecomp_t::lincomb(var, 1, old, dt, rhs);
 
+  } else if (CCTK_EQUALS(method, "SSPRK3")) {
+
+    // k1 = f(y0)
+    // k2 = f(y0 + h k1)
+    // k3 = f(y0 + h/4 k1 + h/4 k2)
+    // y1 = y0 + h/6 k1 + h/6 k2 + 2/3 h k3
+
+    const auto old = var.copy();
+    const auto k1 = rhs.copy();
+
+    // Step 2
+
+    // Add scaled RHS to state vector
+    statecomp_t::axpy(var, dt, k1);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto k2 = rhs.copy();
+
+    // Step 3
+
+    // Add scaled RHS to state vector
+    statecomp_t::lincomb(var, 1, old, dt / 4, k1);
+    statecomp_t::axpy(var, dt / 4, k2);
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #3 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
+    const auto &k3 = rhs;
+
+    // Calculate new state vector
+    statecomp_t::lincomb(var, 1, old, dt / 6, k1);
+    statecomp_t::axpy(var, dt / 6, k2);
+    statecomp_t::axpy(var, 2 * dt / 3, k3);
+
   } else if (CCTK_EQUALS(method, "RK4")) {
+
+    // k1 = f(y0)
+    // k2 = f(y0 + h/2 k1)
+    // k3 = f(y0 + h/2 k2)
+    // k4 = f(y0 + h k3)
+    // y1 = y0 + h/6 k1 + h/3 k2 + h/3 k3 + h/6 k4
 
     const auto old = var.copy();
     const auto k1 = rhs.copy();
