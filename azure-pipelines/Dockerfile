@@ -29,6 +29,7 @@ RUN apt-get update && \
         libhwloc-dev \
         libmpich-dev \
         libopenblas-dev \
+        libudev-dev \
         perl \
         pkg-config \
         python \
