@@ -35,7 +35,6 @@ export CACTUS_STARTTIME=$(date +%s)
 time                                            \
     /usr/bin/mpiexec                            \
     -n @NUM_PROCS@                              \
-    -l                                          \
     @EXECUTABLE@ -L 3 @PARFILE@                 \
     >@SIMULATION_NAME@.out                      \
     2>@SIMULATION_NAME@.err

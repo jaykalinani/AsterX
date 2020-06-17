@@ -3,15 +3,13 @@
 #     docker push einsteintoolkit/cactus-amrex
 
 # Use Ubuntu
-# Note: We cannot update to Ubuntu 20.04; see
-# <https://bitbucket.org/einsteintoolkit/tickets/issues/2415/cannot-checkout-svn-repos-with-ubuntu-2004>
-# FROM ubuntu:19.10
 FROM ubuntu:20.04
 
 RUN mkdir /cactus
 WORKDIR /cactus
 
 # Install system packages
+# Note: Boost on Ubuntu requires OpenMPI
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get --yes --no-install-recommends install \
@@ -27,8 +25,8 @@ RUN apt-get update && \
         libgsl-dev \
         libhdf5-dev \
         libhwloc-dev \
-        libmpich-dev \
         libopenblas-dev \
+        libopenmpi-dev \
         libudev-dev \
         perl \
         pkg-config \
@@ -108,6 +106,3 @@ RUN mkdir src && \
     make -j$(nproc) install && \
     true) && \
     rm -rf src
-
-# As documentation
-COPY Dockerfile /Dockerfile
