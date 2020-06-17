@@ -1,7 +1,7 @@
 #ifndef LOOP_HXX
 #define LOOP_HXX
 
-#include "vect.hxx"
+#include <vect.hxx>
 
 #include <cctk.h>
 
