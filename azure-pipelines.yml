@@ -22,9 +22,6 @@ steps:
     set -euxo pipefail
     cd Cactus
     ./simfactory/bin/sim build -j$(nproc) --thornlist=../azure-pipelines/carpetx.th
-    # TODO
-    ls -l ./exe/cactus_sim
-    ldd ./exe/cactus_sim
   displayName: Build Cactus
 - script: |
     set -euxo pipefail
@@ -38,6 +35,8 @@ steps:
     cd Cactus
     ./simfactory/bin/sim submit sim-test-1 --test --procs=1 --num-threads=2
     cat /home/vsts_azpcontainer/simulations/sim-test-1/output-0000/sim-test-1.log
+    # TODO
+    cat /home/vsts_azpcontainer/simulations/sim-test-1/output-0000/TEST/sim/AdvectHRSC/square.log
     ./simfactory/bin/sim submit sim-test-2 --test --procs=2 --num-threads=1
     cat /home/vsts_azpcontainer/simulations/sim-test-2/output-0000/sim-test-2.log
     grep -q 'Number failed            -> 0' /home/vsts_azpcontainer/simulations/sim-test-1/output-0000/sim-test-1.log
