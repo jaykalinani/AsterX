@@ -434,9 +434,9 @@ TwoPunctures (CCTK_ARGUMENTS)
         const int ind = i*di + j*dj + k*dk;
 
         CCTK_REAL xx, yy, zz;
-        xx = coordx[ind] - center_offset[0];
-        yy = coordy[ind] - center_offset[1];
-        zz = coordz[ind] - center_offset[2];
+        xx = vcoordx[ind] - center_offset[0];
+        yy = vcoordy[ind] - center_offset[1];
+        zz = vcoordz[ind] - center_offset[2];
 
         /* We implement swapping the x and z coordinates as follows.
            The bulk of the code that performs the actual calculations
@@ -633,7 +633,7 @@ TwoPunctures (CCTK_ARGUMENTS)
 #pragma omp single
     Rescale_Sources(cctkGH,
                     np,
-                    coordx, coordy, coordz,
+                    vcoordx, vcoordy, vcoordz,
                     NULL,
                     gxx, gyy, gzz,
                     gxy, gxz, gyz);

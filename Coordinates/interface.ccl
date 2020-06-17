@@ -6,4 +6,7 @@ USES INCLUDE HEADER: loop.hxx
 
 PUBLIC:
 
-CCTK_REAL coords TYPE=gf TAGS='index={0 0 0}' { coordx coordy coordz } "Coordinates"
+CCTK_REAL vertex_coords TYPE=gf TAGS='index={0 0 0}' { vcoordx vcoordy vcoordz } "Vertex coordinates"
+
+CCTK_REAL cell_coords TYPE=gf TAGS='index={1 1 1}' { ccoordx ccoordy ccoordz } "Cell centre coordinates"
+CCTK_REAL cell_volume TYPE=gf TAGS='index={1 1 1}' { cvol } "Cell volume"
