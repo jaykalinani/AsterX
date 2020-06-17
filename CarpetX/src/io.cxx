@@ -150,8 +150,8 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
-                const vector<string> &varnames) {
+void WriteTSV(const cGH *restrict cctkGH, const string &filename, int gi,
+              const vector<string> &varnames) {
   ostringstream buf;
   buf << filename << ".tsv";
   ofstream file(buf.str());
@@ -203,14 +203,14 @@ void WriteASCII(const cGH *restrict cctkGH, const string &filename, int gi,
   file.close();
 }
 
-void OutputASCII(const cGH *restrict cctkGH) {
+void OutputTSV(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
   if (!out_tsv)
     return;
 
-  static Timer timer("OutputASCII");
+  static Timer timer("OutputTSV");
   Interval interval(timer);
 
   const int numgroups = CCTK_NumGroups();
@@ -245,7 +245,7 @@ void OutputASCII(const cGH *restrict cctkGH) {
         varnames.at(vi) = buf.str();
       }
 
-      WriteASCII(cctkGH, filename, gi, varnames);
+      WriteTSV(cctkGH, filename, gi, varnames);
     }
   }
 }
@@ -498,13 +498,13 @@ int OutputGH(const cGH *restrict cctkGH) {
                cctk_iteration, double(cctk_time), CCTK_RunTime());
 
   if (out_every > 0 && cctk_iteration % out_every == 0) {
-    OutputASCII(cctkGH);
-
     OutputMetadata(cctkGH);
 
     OutputNorms(cctkGH);
 
     OutputPlotfile(cctkGH);
+
+    OutputScalars(cctkGH);
 
 #ifdef HAVE_CAPABILITY_Silo
     // TODO: Stop at paramcheck time when Silo output parameters are
@@ -512,7 +512,7 @@ int OutputGH(const cGH *restrict cctkGH) {
     OutputSilo(cctkGH);
 #endif
 
-    OutputScalars(cctkGH);
+    OutputTSV(cctkGH);
   }
 
   // TODO: This should be the number of variables output
