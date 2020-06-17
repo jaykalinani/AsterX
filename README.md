@@ -1,6 +1,6 @@
 # [CactusAMReX](https://bitbucket.org/eschnett/cactusamrex)
 
-![CarpetX logo](carpetx.png)
+![CarpetX logo](figures/carpetx.png)
 
 **CarpetX** is a [Cactus](https://cactuscode.org/) driver based on [AMReX](https://amrex-codes.github.io), a software framework for block-structured AMR (adaptive mesh refinement). CarpetX is intended for the [Einstein Toolkit](https://einsteintoolkit.org/).
 
