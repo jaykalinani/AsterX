@@ -22,7 +22,7 @@ RUN apt-get update && \
         gfortran \
         git \
         hdf5-tools \
-        libboost-dev \
+        libboost-all-dev \
         libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
