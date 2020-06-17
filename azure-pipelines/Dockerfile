@@ -5,20 +5,24 @@
 # Use Ubuntu
 # Note: We cannot update to Ubuntu 20.04; see
 # <https://bitbucket.org/einsteintoolkit/tickets/issues/2415/cannot-checkout-svn-repos-with-ubuntu-2004>
-FROM ubuntu:19.10
+# FROM ubuntu:19.10
+FROM ubuntu:20.04
 
 RUN mkdir /cactus
 WORKDIR /cactus
 
 # Install system packages
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get --yes --no-install-recommends install \
         build-essential \
         ca-certificates \
+        cmake \
         g++ \
         gfortran \
         git \
         hdf5-tools \
+        libboost-dev \
         libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
@@ -36,15 +40,6 @@ RUN apt-get update && \
         zlib1g-dev \
         && \
     rm -rf /var/lib/apt/lists/*
-
-# Install cmake
-# (AMReX 20.06 requires at least cmake 3.14)
-RUN mkdir dist && \
-    (cd dist && \
-    wget https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2-Linux-x86_64.tar.gz && \
-    tar xzf cmake-3.16.2-Linux-x86_64.tar.gz -C /usr/local --strip-components=1 && \
-    true) && \
-    rm -rf dist
 
 # Install NSIMD
 # Note: This assumes that the system has x86_64 CPUs with AVX2 and FMA
