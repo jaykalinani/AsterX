@@ -109,11 +109,14 @@ CactusUtils/Vectors
 # Additional Cactus thorns
 !TARGET   = $ARR
 !TYPE     = svn
-!URL      = https://svn.cactuscode.org/projects/$1/$2/trunk
+!URL      = https://github.com/EinsteinToolkit/$1-$2.git/trunk
 !CHECKOUT =
+#DISABLED ExternalLibraries/BLAS
+# ExternalLibraries/Boost
 ExternalLibraries/FFTW3
 ExternalLibraries/GSL
 ExternalLibraries/HDF5
+#DISABLED ExternalLibraries/LAPACK
 ExternalLibraries/MPI
 ExternalLibraries/OpenBLAS
 ExternalLibraries/hwloc
@@ -132,6 +135,7 @@ CarpetX/AHFinder
 CarpetX/AMReX
 CarpetX/Arith
 #[const error] CarpetX/BaikalX
+CarpetX/Boost
 CarpetX/BrillLindquist
 CarpetX/CarpetX
 CarpetX/Coordinates
@@ -160,3 +164,18 @@ CarpetX/googletest
 #DISABLED CarpetX/libsharp
 CarpetX/ssht
 CarpetX/yaml_cpp
+
+
+
+# THCBase thorns
+!TARGET   = $ARR
+!TYPE     = git
+# !URL      = https://bitbucket.org/FreeTHC/thcbase.git
+!URL      = https://bitbucket.org/eschnett/thcbase.git
+!REPO_BRANCH = eschnett/carpetx
+!REPO_PATH= $2
+!CHECKOUT =
+THCBase/AdvectHRSC
+THCBase/CPPUtils
+THCBase/FDCore
+THCBase/HRSCCore
