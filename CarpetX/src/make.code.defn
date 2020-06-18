@@ -6,6 +6,7 @@ SRCS =						\
         interpolate.cxx				\
 	io.cxx					\
 	io_silo.cxx				\
+	io_tsv.cxx				\
 	level.cxx				\
         linsolve.cxx				\
         logo.cxx				\
