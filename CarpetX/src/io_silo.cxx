@@ -22,8 +22,10 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <regex>
 #include <set>
 #include <sstream>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -88,6 +90,9 @@ string make_varname(const int gi, const int vi, const int reflevel = -1,
   } else {
     const int v0 = CCTK_FirstVarIndexI(gi);
     varname = CCTK_FullVarName(v0 + vi);
+    varname = regex_replace(varname, regex("::"), "-");
+    for (auto &ch : varname)
+      ch = tolower(ch);
   }
   ostringstream buf;
   buf << varname;
