@@ -399,6 +399,8 @@ int OutputGH(const cGH *restrict cctkGH) {
     OutputSilo(cctkGH);
 #endif
 
+    OutputTSVold(cctkGH);
+
     OutputTSV(cctkGH);
   }
 

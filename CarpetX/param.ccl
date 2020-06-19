@@ -271,6 +271,11 @@ BOOLEAN out_tsv "Output in TSV (tab-separated values) format?" STEERABLE=always
 {
 } no
 
+STRING out_tsv_vars "Variables to output in TSV format" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
 
 
 SHARES: Cactus
