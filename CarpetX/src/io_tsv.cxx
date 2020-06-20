@@ -6,6 +6,7 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -236,15 +237,52 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
   const int nprocs = amrex::ParallelDescriptor::NProcs();
   const int ioproc = 0;
 
-  vector<string> varnames;
-  for (int vi = 0; vi < groupdata0.numvars; ++vi)
-    varnames.push_back(CCTK_VarName(groupdata0.firstvarindex + vi));
+  assert(data.size() <= INT_MAX);
+  const int npoints = data.size();
 
-  const string sep = "\t";
-  ofstream file;
+  vector<int> all_npoints;
+  if (myproc == ioproc)
+    all_npoints.resize(nprocs);
+  MPI_Gather(&npoints, 1, MPI_INT, all_npoints.data(), 1, MPI_INT, ioproc,
+             comm);
+
+  int total_npoints = 0;
+  vector<int> all_offsets;
+  if (myproc == ioproc) {
+    all_offsets.resize(nprocs);
+    for (int p = 0; p < nprocs; ++p) {
+      all_offsets.at(p) = total_npoints;
+      assert(total_npoints <= INT_MAX - all_npoints.at(p));
+      total_npoints += all_npoints.at(p);
+    }
+  }
+  vector<CCTK_REAL> all_data;
+  if (myproc == ioproc)
+    all_data.resize(total_npoints);
+  MPI_Gatherv(data.data(), npoints, MPI_DOUBLE, all_data.data(),
+              all_npoints.data(), all_offsets.data(), MPI_DOUBLE, ioproc, comm);
 
   if (myproc == ioproc) {
-    file.open(filename);
+
+    assert(total_npoints % nvalues == 0);
+    vector<int> iptr(total_npoints / nvalues);
+    iota(iptr.begin(), iptr.end(), 0);
+    const auto compare = [&](const int i, const int j) {
+      array<int, 4> pi, pj;
+      for (int d = 0; d < 4; ++d)
+        pi[d] = int(all_data.at(i * nvalues + d));
+      for (int d = 0; d < 4; ++d)
+        pj[d] = int(all_data.at(j * nvalues + d));
+      return pi < pj;
+    };
+    sort(iptr.begin(), iptr.end(), compare);
+
+    vector<string> varnames;
+    for (int vi = 0; vi < groupdata0.numvars; ++vi)
+      varnames.push_back(CCTK_VarName(groupdata0.firstvarindex + vi));
+
+    const string sep = "\t";
+    ofstream file(filename);
     // get more precision for floats, could also use
     // https://stackoverflow.com/a/30968371
     file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
@@ -263,50 +301,19 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     for (const auto &varname : varnames)
       file << sep << col++ << ":" << varname;
     file << "\n";
-  }
 
-  // Loop over all processes
-  for (int proc = 0; proc < nprocs; ++proc) {
-    if (myproc == ioproc || myproc == proc) {
-
-      vector<CCTK_REAL> out_data;
-      if (proc == ioproc) {
-        // Optimize self-communication
-        swap(out_data, data);
-      } else {
-        if (myproc == ioproc) {
-          // Receive data
-          int npoints_out;
-          MPI_Recv(&npoints_out, 1, MPI_INT, proc, 0, comm, MPI_STATUS_IGNORE);
-          out_data.resize(npoints_out);
-          static_assert(is_same_v<CCTK_REAL, double>);
-          MPI_Recv(out_data.data(), npoints_out, MPI_DOUBLE, proc, 0, comm,
-                   MPI_STATUS_IGNORE);
-        } else {
-          // Send data
-          assert(data.size() <= INT_MAX);
-          const int npoints = data.size();
-          MPI_Send(&npoints, 1, MPI_INT, ioproc, 0, comm);
-          static_assert(is_same_v<CCTK_REAL, double>);
-          MPI_Send(data.data(), npoints, MPI_DOUBLE, ioproc, 0, comm);
-        }
-      }
-
-      if (myproc == ioproc) {
-        // Output data
-        assert(out_data.size() % nvalues == 0);
-        size_t pos = 0;
-        while (pos < out_data.size()) {
-          file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
-          for (int v = 0; v < 4; ++v)
-            file << sep << int(out_data.at(pos++));
-          for (int v = 4; v < nvalues; ++v)
-            file << sep << out_data.at(pos++);
-          file << "\n";
-        }
-      }
+    // Output data
+    for (const auto i : iptr) {
+      int pos = nvalues * i;
+      file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
+      for (int v = 0; v < 4; ++v)
+        file << sep << int(all_data.at(pos++));
+      for (int v = 4; v < nvalues; ++v)
+        file << sep << all_data.at(pos++);
+      file << "\n";
+      assert(pos % nvalues == 0);
     }
-  } // for proc
+  }
 }
 
 void OutputTSV(const cGH *restrict cctkGH) {
