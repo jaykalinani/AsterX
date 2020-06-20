@@ -252,7 +252,7 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   for (const auto &leveldata : ghext->leveldata) {
     const int level = leveldata.level;
     // CCTK_VINFO("interpolating level %d", level);
-#warning "TODO: use OpenMP"
+    // TODO: use OpenMP
     for (amrex::ParIter<0, 2> pti(container, level); pti.isValid(); ++pti) {
       const amrex::Geometry &geom = ghext->amrcore->Geom(level);
       const CCTK_REAL *restrict const x0 = geom.ProbLo();
@@ -263,6 +263,8 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
 
       vector<vector<CCTK_REAL> > varresults(nvars);
 
+      // TODO: Don't re-calculate interpolation coefficients for each
+      // variable
       for (int v = 0; v < nvars; ++v) {
         // CCTK_VINFO("interpolating level %d, variable %d", level, v);
         const int gi = givis.at(v).gi;
