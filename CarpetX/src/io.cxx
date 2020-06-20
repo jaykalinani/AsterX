@@ -174,10 +174,12 @@ void OutputNorms(const cGH *restrict cctkGH) {
     file << sep << ++col << ":L1norm";
     file << sep << ++col << ":L2norm";
     file << sep << ++col << ":maxabs";
-    for (int d = 0; d < dim; ++d)
-      file << sep << ++col << ":minloc[" << d << "]";
-    for (int d = 0; d < dim; ++d)
-      file << sep << ++col << ":maxloc[" << d << "]";
+    if (!out_norms_only_stable) {
+      for (int d = 0; d < dim; ++d)
+        file << sep << ++col << ":minloc[" << d << "]";
+      for (int d = 0; d < dim; ++d)
+        file << sep << ++col << ":maxloc[" << d << "]";
+    }
     file << "\n";
   }
 
@@ -202,10 +204,12 @@ void OutputNorms(const cGH *restrict cctkGH) {
              << sep << red.max << sep << red.sum << sep << red.avg() << sep
              << red.sdv() << sep << red.norm0() << sep << red.norm1() << sep
              << red.norm2() << sep << red.norm_inf();
-        for (int d = 0; d < dim; ++d)
-          file << sep << red.minloc[d];
-        for (int d = 0; d < dim; ++d)
-          file << sep << red.maxloc[d];
+        if (!out_norms_only_stable) {
+          for (int d = 0; d < dim; ++d)
+            file << sep << red.minloc[d];
+          for (int d = 0; d < dim; ++d)
+            file << sep << red.maxloc[d];
+        }
         file << "\n";
       }
     }

@@ -257,6 +257,10 @@ BOOLEAN out_metadata "Output metadata in YAML format?" STEERABLE=always
 {
 } no
 
+BOOLEAN out_norms_only_stable "Output only stable norms (omit e.g. maxloc)" STEERABLE=always
+{
+} no
+
 STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
 {
   ".*" :: ""
