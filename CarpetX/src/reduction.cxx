@@ -118,6 +118,8 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
   for (auto &restrict leveldata : ghext->leveldata) {
     const auto &restrict groupdata = *leveldata.groupdata.at(gi);
     const amrex::MultiFab &mfab = *groupdata.mfab.at(tl);
+#warning                                                                       \
+    "TODO: Don't overcount vertex-centred grid boundaries; introduce a weight function"
     unique_ptr<amrex::iMultiFab> finemask_imfab;
 
     warn_if_invalid(groupdata, vi, tl, make_valid_int(),
