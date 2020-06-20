@@ -257,7 +257,12 @@ BOOLEAN out_metadata "Output metadata in YAML format?" STEERABLE=always
 {
 } no
 
-BOOLEAN out_norms_only_stable "Output only stable norms (omit e.g. maxloc)" STEERABLE=always
+STRING out_norm_vars "Variables to output as norms" STEERABLE=always
+{
+  ".*" :: ""
+} "all"
+
+BOOLEAN out_norm_omit_unstable "Omit unstable norms (e.g. maxloc)" STEERABLE=always
 {
 } no
 

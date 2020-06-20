@@ -143,8 +143,37 @@ void OutputNorms(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
+  if (out_norm_vars[0] == '\0')
+    return;
+
   static Timer timer("OutputNorms");
   Interval interval(timer);
+
+  // Find output groups
+  const vector<bool> group_enabled = [&] {
+    vector<bool> enabled(CCTK_NumGroups(), false);
+    const auto callback{
+        [](const int index, const char *const optstring, void *const arg) {
+          vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
+          enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
+        }};
+    CCTK_TraverseString(out_norm_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+    if (verbose) {
+      CCTK_VINFO("TSV output for groups:");
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        if (group_enabled.at(gi)) {
+          char *const groupname = CCTK_GroupName(gi);
+          CCTK_VINFO("  %s", groupname);
+          free(groupname);
+        }
+      }
+    }
+    return enabled;
+  }();
+  const auto num_out_groups =
+      count(group_enabled.begin(), group_enabled.end(), true);
+  if (num_out_groups == 0)
+    return;
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   const string sep = "\t";
@@ -174,7 +203,7 @@ void OutputNorms(const cGH *restrict cctkGH) {
     file << sep << ++col << ":L1norm";
     file << sep << ++col << ":L2norm";
     file << sep << ++col << ":maxabs";
-    if (!out_norms_only_stable) {
+    if (!out_norm_omit_unstable) {
       for (int d = 0; d < dim; ++d)
         file << sep << ++col << ":minloc[" << d << "]";
       for (int d = 0; d < dim; ++d)
@@ -185,6 +214,8 @@ void OutputNorms(const cGH *restrict cctkGH) {
 
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
+    if (!group_enabled.at(gi))
+      continue;
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
 
@@ -204,7 +235,7 @@ void OutputNorms(const cGH *restrict cctkGH) {
              << sep << red.max << sep << red.sum << sep << red.avg() << sep
              << red.sdv() << sep << red.norm0() << sep << red.norm1() << sep
              << red.norm2() << sep << red.norm_inf();
-        if (!out_norms_only_stable) {
+        if (!out_norm_omit_unstable) {
           for (int d = 0; d < dim; ++d)
             file << sep << red.minloc[d];
           for (int d = 0; d < dim; ++d)
