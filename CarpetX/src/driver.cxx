@@ -706,6 +706,8 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
                                          amrex::IndexType::CELL,
                                          amrex::IndexType::CELL));
 
+  const auto &geom = ghext->amrcore->Geom(leveldata.level);
+
   const int numgroups = CCTK_NumGroups();
   leveldata.groupdata.resize(numgroups);
   for (int gi = 0; gi < numgroups; ++gi) {
@@ -743,6 +745,11 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
     for (int vi = 0; vi < groupdata.numvars; ++vi)
       for (int d = 0; d < dim; ++d)
         assert(abs(groupdata.parities.at(vi)[d]) == 1);
+
+    // Periodic boundaries require (num interior points) >= (num ghost points)
+    for (int d = 0; d < dim; ++d)
+      if (geom.isPeriodic(d))
+        assert(geom.Domain().length(d) >= groupdata.nghostzones[d]);
 
     // Allocate grid hierarchies
     const amrex::BoxArray &gba = convert(
