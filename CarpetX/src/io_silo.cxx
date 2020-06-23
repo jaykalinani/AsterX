@@ -50,8 +50,9 @@ struct mesh_props_t {
 
 string make_subdirname(const string &simulation_name, const int iteration) {
   ostringstream buf;
-  buf << simulation_name //
-      << ".it" << setw(8) << setfill('0') << iteration;
+  buf << simulation_name                               //
+      << ".it" << setw(8) << setfill('0') << iteration //
+      << ".silo.dir";
   return buf.str();
 }
 
