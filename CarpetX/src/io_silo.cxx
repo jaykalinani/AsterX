@@ -491,6 +491,15 @@ void OutputSilo(const cGH *restrict const cctkGH) {
       assert(file);
     }
 
+    {
+      // Tell VisIt that the mesh structure may change over time
+      const int dims = 1;
+      const int value = 1;
+      ierr = DBWrite(file.get(), "MetadataIsTimeVarying", &value, &dims, 1,
+                     DB_INT);
+      assert(!ierr);
+    }
+
     // Loop over levels
     for (const auto &leveldata : ghext->leveldata) {
 
@@ -701,6 +710,15 @@ void OutputSilo(const cGH *restrict const cctkGH) {
         DB::make(DBCreate(metafilename.c_str(), DB_CLOBBER, DB_LOCAL,
                           simulation_name.c_str(), DB_HDF5));
     assert(metafile);
+
+    {
+      // Tell VisIt that the mesh structure may change over time
+      const int dims = 1;
+      const int value = 1;
+      ierr = DBWrite(metafile.get(), "MetadataIsTimeVarying", &value, &dims, 1,
+                     DB_INT);
+      assert(!ierr);
+    }
 
     // Loop over groups
     set<mesh_props_t> have_meshes;
