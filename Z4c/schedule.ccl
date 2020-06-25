@@ -41,7 +41,7 @@ SCHEDULE Z4c_Test AT wragh
 
 
 
-SCHEDULE Z4c_Initial1 IN Z4c_Initial
+SCHEDULE Z4c_Initial1 IN Z4c_InitialGroup
 {
   LANG: C
   READS: ADMBase::metric(everywhere)
@@ -57,7 +57,7 @@ SCHEDULE Z4c_Initial1 IN Z4c_Initial
   WRITES: betaG(everywhere)
 } "Convert ADM to Z4c variables, part 1"
 
-SCHEDULE Z4c_Initial2 IN Z4c_Initial AFTER Z4c_Initial1
+SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Initial1
 {
   LANG: C
   READS: gamma_tilde(everywhere)
@@ -66,7 +66,7 @@ SCHEDULE Z4c_Initial2 IN Z4c_Initial AFTER Z4c_Initial1
 
 
 
-SCHEDULE Z4c_Sync IN Z4c_PostStep
+SCHEDULE Z4c_Sync IN Z4c_PostStepGroup
 {
   LANG: C
   SYNC: chi
@@ -79,7 +79,7 @@ SCHEDULE Z4c_Sync IN Z4c_PostStep
   SYNC: betaG
 } "Synchronize Z4c variables"
 
-SCHEDULE Z4c_Boundaries IN Z4c_PostStep AFTER Z4c_Sync
+SCHEDULE Z4c_Boundaries IN Z4c_PostStepGroup AFTER Z4c_Sync
 {
   LANG: C
   WRITES: chi(boundary)
@@ -92,7 +92,7 @@ SCHEDULE Z4c_Boundaries IN Z4c_PostStep AFTER Z4c_Sync
   WRITES: betaG(boundary)
 } "Apply boundary conditions to Z4c variables"
 
-SCHEDULE Z4c_Enforce IN Z4c_PostStep AFTER Z4c_Boundaries
+SCHEDULE Z4c_Enforce IN Z4c_PostStepGroup AFTER Z4c_Boundaries
 {
   LANG: C
   READS: chi(everywhere)
@@ -105,85 +105,91 @@ SCHEDULE Z4c_Enforce IN Z4c_PostStep AFTER Z4c_Boundaries
   WRITES: alphaG(everywhere)
 } "Enforce algebraic Z4c constraints"
 
-SCHEDULE Z4c_ADM IN Z4c_PostStep AFTER Z4c_Enforce
-{
-  LANG: C
-  READS: chi(everywhere)
-  READS: gamma_tilde(everywhere)
-  READS: K_hat(everywhere)
-  READS: A_tilde(everywhere)
-  READS: Gam_tilde(everywhere)
-  READS: Theta(everywhere)
-  READS: alphaG(everywhere)
-  READS: betaG(everywhere)
-  WRITES: ADMBase::metric(everywhere)
-  WRITES: ADMBase::curv(everywhere)
-  WRITES: ADMBase::lapse(everywhere)
-  WRITES: ADMBase::dtlapse(everywhere)
-  WRITES: ADMBase::shift(everywhere)
-  WRITES: ADMBase::dtshift(everywhere)
-} "Convert Z4c to ADM variables"
+if (calc_ADM_vars) {
+  SCHEDULE Z4c_ADM IN Z4c_PostStepGroup AFTER Z4c_Enforce
+  {
+    LANG: C
+    READS: chi(everywhere)
+    READS: gamma_tilde(everywhere)
+    READS: K_hat(everywhere)
+    READS: A_tilde(everywhere)
+    READS: Gam_tilde(everywhere)
+    READS: Theta(everywhere)
+    READS: alphaG(everywhere)
+    READS: betaG(everywhere)
+    WRITES: ADMBase::metric(everywhere)
+    WRITES: ADMBase::curv(everywhere)
+    WRITES: ADMBase::lapse(everywhere)
+    WRITES: ADMBase::dtlapse(everywhere)
+    WRITES: ADMBase::shift(everywhere)
+    WRITES: ADMBase::dtshift(everywhere)
+  } "Convert Z4c to ADM variables"
+}
 
-SCHEDULE Z4c_ADM2 IN Z4c_PostStep AFTER Z4c_Enforce
-{
-  LANG: C
-  READS: chi(everywhere)
-  READS: gamma_tilde(everywhere)
-  READS: K_hat(everywhere)
-  READS: A_tilde(everywhere)
-  READS: Gam_tilde(everywhere)
-  READS: Theta(everywhere)
-  READS: alphaG(everywhere)
-  READS: betaG(everywhere)
-  WRITES: ADMBase::dtcurv(interior)
-  WRITES: ADMBase::dt2lapse(interior)
-  WRITES: ADMBase::dt2shift(interior)
-} "Calculate second time derivatives of ADM variables"
+if (calc_ADMRHS_vars) {
+  SCHEDULE Z4c_ADM2 IN Z4c_PostStepGroup AFTER Z4c_Enforce
+  {
+    LANG: C
+    READS: chi(everywhere)
+    READS: gamma_tilde(everywhere)
+    READS: K_hat(everywhere)
+    READS: A_tilde(everywhere)
+    READS: Gam_tilde(everywhere)
+    READS: Theta(everywhere)
+    READS: alphaG(everywhere)
+    READS: betaG(everywhere)
+    WRITES: ADMBase::dtcurv(interior)
+    WRITES: ADMBase::dt2lapse(interior)
+    WRITES: ADMBase::dt2shift(interior)
+  } "Calculate second time derivatives of ADM variables"
 
-SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStep
-{
-  LANG: C
-  WRITES: ADMBase::dtcurv(boundary)
-  WRITES: ADMBase::dt2lapse(boundary)
-  WRITES: ADMBase::dt2shift(boundary)
-  SYNC: ADMBase::dtcurv
-  SYNC: ADMBase::dt2lapse
-  SYNC: ADMBase::dt2shift
-} "Apply boundary conditions to second time derivatives of ADM variables"
-
-
-
-SCHEDULE Z4c_Constraints IN Z4c_Analysis
-{
-  LANG: C
-  READS: chi(everywhere)
-  READS: gamma_tilde(everywhere)
-  READS: K_hat(everywhere)
-  READS: A_tilde(everywhere)
-  READS: Gam_tilde(everywhere)
-  READS: Theta(everywhere)
-  WRITES: ZtC(interior)
-  WRITES: HC(interior)
-  WRITES: MtC(interior)
-  WRITES: allC(interior)
-} "Calculate Z4c constraints"
-
-SCHEDULE Z4c_ConstraintBoundaries IN Z4c_Analysis AFTER Z4c_Constraints
-{
-  LANG: C
-  WRITES: ZtC(boundary)
-  WRITES: HC(boundary)
-  WRITES: MtC(boundary)
-  WRITES: allC(boundary)
-  SYNC: ZtC
-  SYNC: HC
-  SYNC: MtC
-  SYNC: allC
-} "Apply boundary conditions to Z4c constraints"
+  SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStepGroup
+  {
+    LANG: C
+    WRITES: ADMBase::dtcurv(boundary)
+    WRITES: ADMBase::dt2lapse(boundary)
+    WRITES: ADMBase::dt2shift(boundary)
+    SYNC: ADMBase::dtcurv
+    SYNC: ADMBase::dt2lapse
+    SYNC: ADMBase::dt2shift
+  } "Apply boundary conditions to second time derivatives of ADM variables"
+}
 
 
 
-SCHEDULE Z4c_RHS IN Z4c_RHS
+if (calc_constraints) {
+  SCHEDULE Z4c_Constraints IN Z4c_AnalysisGroup
+  {
+    LANG: C
+    READS: chi(everywhere)
+    READS: gamma_tilde(everywhere)
+    READS: K_hat(everywhere)
+    READS: A_tilde(everywhere)
+    READS: Gam_tilde(everywhere)
+    READS: Theta(everywhere)
+    WRITES: ZtC(interior)
+    WRITES: HC(interior)
+    WRITES: MtC(interior)
+    WRITES: allC(interior)
+  } "Calculate Z4c constraints"
+
+  SCHEDULE Z4c_ConstraintBoundaries IN Z4c_AnalysisGroup AFTER Z4c_Constraints
+  {
+    LANG: C
+    WRITES: ZtC(boundary)
+    WRITES: HC(boundary)
+    WRITES: MtC(boundary)
+    WRITES: allC(boundary)
+    SYNC: ZtC
+    SYNC: HC
+    SYNC: MtC
+    SYNC: allC
+  } "Apply boundary conditions to Z4c constraints"
+}
+
+
+
+SCHEDULE Z4c_RHS IN Z4c_RHSGroup
 {
   LANG: C
   READS: chi(everywhere)
@@ -204,7 +210,7 @@ SCHEDULE Z4c_RHS IN Z4c_RHS
   WRITES: betaG_rhs(interior)
 } "Calculate Z4c RHS"
 
-SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
+SCHEDULE Z4c_RHSBoundaries IN Z4c_RHSGroup AFTER Z4c_RHS
 {
   LANG: C
   WRITES: chi_rhs(boundary)
@@ -231,33 +237,33 @@ SCHEDULE Z4c_RHSBoundaries IN Z4c_RHS AFTER Z4c_RHS
 
 
 
-SCHEDULE GROUP Z4c_Initial AT initial AFTER ADMBase_PostInitial
+SCHEDULE GROUP Z4c_InitialGroup AT initial AFTER ADMBase_PostInitial
 {
 } "Convert ADM to Z4c variables"
 
-SCHEDULE GROUP Z4c_PostStep AT initial AFTER Z4c_Initial
+SCHEDULE GROUP Z4c_PostStepGroup AT initial AFTER Z4c_Initial
 {
 } "Post-process Z4c variables"
 
 
 
-SCHEDULE GROUP Z4c_PostStep AT postregrid
+SCHEDULE GROUP Z4c_PostStepGroup AT postregrid
 {
 } "Post-process Z4c variables"
 
 
 
-SCHEDULE GROUP Z4c_Analysis AT analysis
+SCHEDULE GROUP Z4c_AnalysisGroup AT analysis
 {
 } "Analyse Z4c variables"
 
 
 
-SCHEDULE GROUP Z4c_PostStep IN ODESolvers_PostStep
+SCHEDULE GROUP Z4c_PostStepGroup IN ODESolvers_PostStep BEFORE (ADMBase_SetADMVars, ADMBase_SetADMRHS)
 {
 } "Post-process Z4c variables"
 
-SCHEDULE GROUP Z4c_RHS IN ODESolvers_RHS
+SCHEDULE GROUP Z4c_RHSGroup IN ODESolvers_RHS
 {
 } "Calculate Z4c RHS"
 
