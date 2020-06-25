@@ -24,11 +24,27 @@ SCHEDULE GROUP ADMBase_PostInitial AT postregrid AFTER (ADMBase_InitialData ADMB
 {
 } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
 
+SCHEDULE GROUP ADMBase_SetADMVars AT postregrid
+{
+} "Set ADM variables in this group, or before this group"
+
 SCHEDULE GROUP ADMBase_SetADMVars AT poststep
 {
 } "Set ADM variables in this group, or before this group"
 
+SCHEDULE GROUP ADMBase_SetADMVars IN ODESolvers_PostStep
+{
+} "Set ADM variables in this group, or before this group"
+
+SCHEDULE GROUP ADMBase_SetADMRHS AT postregrid
+{
+} "Set ADM RHS variables in this group, or before this group"  
+
 SCHEDULE GROUP ADMBase_SetADMRHS AT poststep
+{
+} "Set ADM RHS variables in this group, or before this group"  
+
+SCHEDULE GROUP ADMBase_SetADMRHS IN ODESolvers_PostStep
 {
 } "Set ADM RHS variables in this group, or before this group"  
 
