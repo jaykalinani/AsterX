@@ -15,7 +15,8 @@
 namespace Arith {
 using namespace std;
 
-template <typename T> constexpr T div(T x, T y) ARITH_INLINE {
+template <typename T> constexpr T div_floor(T x, T y) ARITH_INLINE;
+template <typename T> constexpr T div_floor(T x, T y) {
   // C++ division truncates; we want to round towards -infinity instead
   if (y < 0) {
     x = -x;
@@ -24,8 +25,10 @@ template <typename T> constexpr T div(T x, T y) ARITH_INLINE {
   return x >= 0 ? x / y : (x - y + 1) / y;
 }
 
-template <typename T> constexpr T mod(const T &x, const T &y) ARITH_INLINE {
-  return x - div(x, y) * y;
+template <typename T>
+constexpr T mod_floor(const T &x, const T &y) ARITH_INLINE;
+template <typename T> constexpr T mod_floor(const T &x, const T &y) {
+  return x - div_floor(x, y) * y;
 }
 
 } // namespace Arith

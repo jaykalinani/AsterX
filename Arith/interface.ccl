@@ -2,6 +2,7 @@
 
 IMPLEMENTS: Arith
 
+INCLUDES HEADER: div.hxx IN div.hxx
 INCLUDES HEADER: dual.hxx IN dual.hxx
 INCLUDES HEADER: fixmath.hxx IN fixmath.hxx
 INCLUDES HEADER: mat.hxx IN mat.hxx
