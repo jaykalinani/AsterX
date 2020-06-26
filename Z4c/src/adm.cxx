@@ -27,7 +27,7 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatzz_(cctkGH, gammatzz);
 
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Kh_(cctkGH, Kh);
-
+ 
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Atxx_(cctkGH, Atxx);
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Atxy_(cctkGH, Atxy);
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_Atxz_(cctkGH, Atxz);
@@ -46,6 +46,19 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_betaGx_(cctkGH, betaGx);
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_betaGy_(cctkGH, betaGy);
   const GF3D<const CCTK_REAL, 0, 0, 0> gf_betaGz_(cctkGH, betaGz);
+
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTtt_(cctkGH, eTtt);
+
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTtx_(cctkGH, eTtx);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTty_(cctkGH, eTty);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTtz_(cctkGH, eTtz);
+ 
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTxx_(cctkGH, eTxx);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTxy_(cctkGH, eTxy);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTxz_(cctkGH, eTxz);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTyy_(cctkGH, eTyy);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTyz_(cctkGH, eTyz);
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTzz_(cctkGH, eTzz);
 
   const GF3D<CCTK_REAL, 0, 0, 0> gf_gxx_(cctkGH, gxx);
   const GF3D<CCTK_REAL, 0, 0, 0> gf_gxy_(cctkGH, gxy);
@@ -86,6 +99,9 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
         gf_Theta_,                                                  //
         gf_alphaG_,                                                 //
         gf_betaGx_, gf_betaGy_, gf_betaGz_,                         //
+        gf_eTtt_,                                                   //
+        gf_eTtx_, gf_eTty_, gf_eTtz_,                               //
+        gf_eTxx_, gf_eTxy_, gf_eTxz_, gf_eTyy_, gf_eTyz_, gf_eTzz_, //
         p.I);
 
     // Store

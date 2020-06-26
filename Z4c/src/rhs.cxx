@@ -103,6 +103,23 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   //
 
+  const GF3D<const CCTK_REAL, 0, 0, 0> gf_eTtt_(cctkGH, eTtt);
+
+  const vec3<GF3D<const CCTK_REAL, 0, 0, 0>, DN> gf_eTti_(
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTtx),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTty),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTtz));
+
+  const mat3<GF3D<const CCTK_REAL, 0, 0, 0>, DN, DN> gf_eTij_(
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTxx),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTxy),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTxz),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTyy),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTyz),
+      GF3D<const CCTK_REAL, 0, 0, 0>(cctkGH, eTzz));
+
+  //
+
   const GF3D<CCTK_REAL, 0, 0, 0> gf_chi_rhs_(cctkGH, chi_rhs);
 
   const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxx_rhs_(cctkGH, gammatxx_rhs);
@@ -138,10 +155,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
     // Load and calculate
 
-    const CCTK_REAL rho{0};
-    const vec3<CCTK_REAL, DN> Si{0, 0, 0};
-    const mat3<CCTK_REAL, DN, DN> Sij{0, 0, 0, 0, 0, 0};
-
     const z4c_vars<CCTK_REAL> vars(
         kappa1, kappa2, f_mu_L, f_mu_S, eta,                  //
         gf_chi_(p.I), gf_dchi_(p.I), gf_ddchi_(p.I),          //
@@ -152,9 +165,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
         gf_Theta_(p.I), gf_dTheta_(p.I),                      //
         gf_alphaG_(p.I), gf_dalphaG_(p.I), gf_ddalphaG_(p.I), //
         gf_betaG_(p.I), gf_dbetaG_(p.I), gf_ddbetaG_(p.I),    //
-        rho,                                                  //
-        Si,                                                   //
-        Sij);
+        gf_eTtt_(p.I), gf_eTti_(p.I), gf_eTij_(p.I));
 
     // Store
     gf_chi_rhs_(p.I) = vars.chi_rhs;

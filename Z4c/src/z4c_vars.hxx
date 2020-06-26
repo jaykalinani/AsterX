@@ -34,6 +34,11 @@ template <typename T> struct z4c_vars_noderivs {
   const T alphaG;               // W = 0
   const vec3<T, UP> betaG;      // W = 0
 
+  // T_munu variables
+  const T eTtt;
+  const vec3<T, DN> eTti;
+  const mat3<T, DN, DN> eTij;
+
   // Hydro variables
   const T rho;
   const vec3<T, DN> Si;
@@ -55,15 +60,33 @@ template <typename T> struct z4c_vars_noderivs {
                     const mat3<T, DN, DN> &At, const vec3<T, UP> &Gamt,
                     const T &Theta, const T &alphaG, const vec3<T, UP> &betaG,
                     //
-                    const T &rho, const vec3<T, DN> &Si,
-                    const mat3<T, DN, DN> &Sij)
+                    const T &eTtt, const vec3<T, DN> &eTti,
+                    const mat3<T, DN, DN> &eTij)
       : kappa1(kappa1), kappa2(kappa2), f_mu_L(f_mu_L), f_mu_S(f_mu_S),
         eta(eta),
         //
         chi(chi), gammat(gammat), Kh(Kh), At(At), Gamt(Gamt), Theta(Theta),
         alphaG(alphaG), betaG(betaG),
         //
-        rho(rho), Si(Si), Sij(Sij),
+        eTtt(eTtt), eTti(eTti), eTij(eTij),
+        // Hydro variables
+        // rho = n^a n^b T_ab
+        rho([&] {
+          return 1 / pow2(alphaG) *
+                 (eTtt                                                  //
+                  - 2 * sum1([&](int x) { return betaG(x) * eTti(x); }) //
+                  + sum2([&](int x, int y) {
+                      return betaG(x) * betaG(y) * eTij(x, y);
+                    }));
+        }()),
+        // S_i = -p_i^a n^b T_ab
+        Si([&](int a) {
+          return -1 / alphaG *
+                 (eTti(a) //
+                  - sum1([&](int x) { return betaG(x) * eTij(a, x); }));
+        }), //
+        // S_ij = p_i^a p_j^b T_ab
+        Sij(eTij),
         // ADM variables
         g([&](int a, int b) { return 1 / chi * gammat(a, b); }), //
         K([&](int a, int b) {
@@ -119,6 +142,19 @@ template <typename T> struct z4c_vars_noderivs {
                     const GF3D<const T, 0, 0, 0> &gf_betaGy_,
                     const GF3D<const T, 0, 0, 0> &gf_betaGz_,
                     //
+                    const GF3D<const T, 0, 0, 0> &gf_eTtt_,
+                    //
+                    const GF3D<const T, 0, 0, 0> &gf_eTtx_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTty_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTtz_,
+                    //
+                    const GF3D<const T, 0, 0, 0> &gf_eTxx_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTxy_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTxz_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTyy_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTyz_,
+                    const GF3D<const T, 0, 0, 0> &gf_eTzz_,
+                    //
                     const vect<int, 3> &I)
       : z4c_vars_noderivs<T>(kappa1, kappa2, f_mu_L, f_mu_S, eta,
                              //
@@ -141,11 +177,12 @@ template <typename T> struct z4c_vars_noderivs {
                              //
                              vec3<T, UP>(gf_betaGx_, gf_betaGy_, gf_betaGz_, I),
                              //
-                             0,
+                             gf_eTtt_(I),
                              //
-                             vec3<T, DN>{0, 0, 0},
+                             vec3<T, UP>(gf_eTtx_, gf_eTty_, gf_eTtz_, I),
                              //
-                             mat3<T, DN, DN>{0, 0, 0, 0, 0, 0})
+                             mat3<T, DN, DN>(gf_eTxx_, gf_eTxy_, gf_eTxz_,
+                                             gf_eTyy_, gf_eTyz_, gf_eTzz_, I))
   //
   {}
 };
@@ -170,6 +207,11 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   using z4c_vars_noderivs<T>::Theta;
   using z4c_vars_noderivs<T>::alphaG;
   using z4c_vars_noderivs<T>::betaG;
+
+  // T_munu variables
+  using z4c_vars_noderivs<T>::eTtt;
+  using z4c_vars_noderivs<T>::eTti;
+  using z4c_vars_noderivs<T>::eTij;
 
   // Hydro variables
   using z4c_vars_noderivs<T>::rho;
@@ -258,10 +300,10 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
            const vec3<T, UP> &betaG, const vec3<vec3<T, DN>, UP> &dbetaG,
            const vec3<mat3<T, DN, DN>, UP> &ddbetaG,
            //
-           const T &rho, const vec3<T, DN> &Si, const mat3<T, DN, DN> &Sij)
+           const T &eTtt, const vec3<T, DN> &eTti, const mat3<T, DN, DN> &eTij)
       : z4c_vars_noderivs<T>(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
                              chi, gammat, Kh, At, Gamt, Theta, alphaG, betaG,
-                             rho, Si, Sij),
+                             eTtt, eTti, eTij),
         // Derivatives of Z4c variables
         dchi(dchi), ddchi(ddchi),             //
         dgammat(dgammat), ddgammat(ddgammat), //
@@ -539,6 +581,19 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
            const GF3D<const T, 0, 0, 0> &gf_betaGy_,
            const GF3D<const T, 0, 0, 0> &gf_betaGz_,
            //
+           const GF3D<const T, 0, 0, 0> &gf_eTtt_,
+           //
+           const GF3D<const T, 0, 0, 0> &gf_eTtx_,
+           const GF3D<const T, 0, 0, 0> &gf_eTty_,
+           const GF3D<const T, 0, 0, 0> &gf_eTtz_,
+           //
+           const GF3D<const T, 0, 0, 0> &gf_eTxx_,
+           const GF3D<const T, 0, 0, 0> &gf_eTxy_,
+           const GF3D<const T, 0, 0, 0> &gf_eTxz_,
+           const GF3D<const T, 0, 0, 0> &gf_eTyy_,
+           const GF3D<const T, 0, 0, 0> &gf_eTyz_,
+           const GF3D<const T, 0, 0, 0> &gf_eTzz_,
+           //
            const vect<int, 3> &I, const vec3<T, UP> &dx)
       : z4c_vars(kappa1, kappa2, f_mu_L, f_mu_S, eta,
                  //
@@ -600,11 +655,12 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                      deriv2(gf_betaGz_, I, dx),
                  },
                  //
-                 0,
+                 gf_eTtt_(I),
                  //
-                 vec3<T, DN>{0, 0, 0},
+                 vec3<T, DN>(gf_eTtx_, gf_eTty_, gf_eTtz_, I),
                  //
-                 mat3<T, DN, DN>{0, 0, 0, 0, 0, 0})
+                 mat3<T, DN, DN>(gf_eTxx_, gf_eTxy_, gf_eTxz_, gf_eTyy_,
+                                 gf_eTyz_, gf_eTzz_, I))
   //
   {}
 };

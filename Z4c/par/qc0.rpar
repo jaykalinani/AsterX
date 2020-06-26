@@ -49,6 +49,7 @@ ActiveThorns = "
     IOUtil
     ODESolvers
     TimerReport
+    TmunuBase
     TwoPunctures
     Z4c
 "
