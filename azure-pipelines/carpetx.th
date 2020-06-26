@@ -142,6 +142,7 @@ CarpetX/Coordinates
 CarpetX/ErrorEstimator
 CarpetX/Forms
 CarpetX/Hydro
+CarpetX/HydroBase
 CarpetX/HydroToyCarpetX
 #DISABLED CarpetX/Kokkos
 CarpetX/Maxwell
@@ -156,6 +157,7 @@ CarpetX/Punctures
 CarpetX/StaticTrumpet
 CarpetX/TestODESolvers
 CarpetX/TestProlongate
+CarpetX/TmunuBase
 CarpetX/TwoPunctures
 CarpetX/WaveToyCarpetX
 CarpetX/Weyl
@@ -179,3 +181,24 @@ THCBase/AdvectHRSC
 THCBase/CPPUtils
 THCBase/FDCore
 THCBase/HRSCCore
+
+# # THCCore thorns
+# !TARGET   = $ARR
+# !TYPE     = git
+# !URL      = https://bitbucket.org/FreeTHC/thccore.git
+# # !URL      = https://bitbucket.org/eschnett/thccore.git
+# # !REPO_BRANCH = eschnett/carpetx
+# !REPO_PATH= $2
+# !CHECKOUT =
+# THCCore/THC_Core
+# 
+# # THCExtra thorns
+# !TARGET   = $ARR
+# !TYPE     = git
+# !URL      = https://bitbucket.org/FreeTHC/thcextra.git
+# # !URL      = https://bitbucket.org/eschnett/thcextra.git
+# # !REPO_BRANCH = eschnett/carpetx
+# !REPO_PATH= $2
+# !CHECKOUT =
+# THCExtra/EOS_Thermal
+# THCExtra/PizzaNumUtils
