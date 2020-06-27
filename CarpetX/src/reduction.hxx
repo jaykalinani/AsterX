@@ -60,7 +60,9 @@ template <typename T, int D> struct reduction {
 
   constexpr T avg() const noexcept { return sum / vol; }
   constexpr T sdv() const noexcept {
-    return sqrt(fmax1(T(0), sum2 / vol - pow21(sum / vol)));
+    // Splitting pow21(sum/vol) improves floating-point accuracy
+    // return sqrt(fmax1(T(0), sum2 / vol - pow21(sum / vol)));
+    return sqrt(fmax1(T(0), sum2 / vol - pow21(sum) / pow21(vol)));
   }
   constexpr T norm0() const noexcept { return vol; }
   constexpr T norm1() const noexcept { return sumabs / vol; }
