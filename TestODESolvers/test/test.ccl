@@ -1,9 +1,9 @@
 TEST test-dp87
 {
-  ABSTOL 1.e-10
+  ABSTOL 1.e-8
 }
 
 TEST test-rkf78
 {
-  ABSTOL 1.e-10
+  ABSTOL 1.e-8
 }
