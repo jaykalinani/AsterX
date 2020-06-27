@@ -139,6 +139,8 @@ CarpetX/Boost
 CarpetX/BrillLindquist
 CarpetX/CarpetX
 CarpetX/Coordinates
+CarpetX/DGCoordinates
+CarpetX/DGWaveToy
 CarpetX/ErrorEstimator
 CarpetX/Forms
 CarpetX/Hydro
