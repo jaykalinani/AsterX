@@ -9,9 +9,12 @@
 #include <AMReX_MultiFab.H>
 
 #include <cassert>
+#include <cmath>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -36,6 +39,7 @@ public:
 
   statecomp_t copy() const;
 
+  static void assign(const statecomp_t &y, const statecomp_t &x);
   static void axpy(const statecomp_t &y, CCTK_REAL alpha, const statecomp_t &x);
   static void lincomb(const statecomp_t &z, CCTK_REAL alpha,
                       const statecomp_t &x, CCTK_REAL beta,
@@ -62,7 +66,7 @@ void statecomp_t::check_valid() const {
   }
 }
 
-// Copy state vector into newly allocate memory
+// Copy state vector into newly allocated memory
 statecomp_t statecomp_t::copy() const {
   check_valid();
   const size_t size = mfabs.size();
@@ -91,6 +95,30 @@ statecomp_t statecomp_t::copy() const {
   }
   result.check_valid();
   return result;
+}
+
+// y = x
+void statecomp_t::assign(const statecomp_t &y, const statecomp_t &x) {
+  x.check_valid();
+  y.check_valid();
+  const size_t size = y.mfabs.size();
+  assert(x.mfabs.size() == size);
+  for (size_t n = 0; n < size; ++n) {
+    assert(x.mfabs.at(n)->nGrowVect() == y.mfabs.at(n)->nGrowVect());
+#ifdef CCTK_DEBUG
+    if (x.mfabs.at(n)->contains_nan())
+      CCTK_VERROR("statecomp_t::assign.x: Group %s contains nans",
+                  x.groupnames.at(n).c_str());
+#endif
+    amrex::MultiFab::Copy(*y.mfabs.at(n), *x.mfabs.at(n), 0, 0,
+                          y.mfabs.at(n)->nComp(), y.mfabs.at(n)->nGrowVect());
+#ifdef CCTK_DEBUG
+    if (y.mfabs.at(n)->contains_nan())
+      CCTK_VERROR("statecomp_t::assign.y: Group %s contains nans",
+                  y.groupnames.at(n).c_str());
+#endif
+  }
+  y.check_valid();
 }
 
 // y += alpha * x
@@ -411,6 +439,194 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     statecomp_t::axpy(var, dt / 3, k3);
     statecomp_t::axpy(var, dt / 6, k4);
 
+  } else if (CCTK_EQUALS(method, "RKF78")) {
+
+    typedef CCTK_REAL T;
+    const auto R = [](T x, T y) { return x / y; };
+    const tuple<vector<tuple<T, vector<T> > >, vector<T> > tableau{
+        {
+            {/* 1 */ 0, {}},                                           //
+            {/* 2 */ R(2, 27), {R(2, 27)}},                            //
+            {/* 3 */ R(1, 9), {R(1, 36), R(3, 36)}},                   //
+            {/* 4 */ R(1, 6), {R(1, 24), 0, R(3, 24)}},                //
+            {/* 5 */ R(5, 12), {R(20, 48), 0, R(-75, 48), R(75, 48)}}, //
+            {/* 6 */ R(1, 2), {R(1, 20), 0, 0, R(5, 20), R(4, 20)}},   //
+            {/* 7 */ R(5, 6),
+             {R(-25, 108), 0, 0, R(125, 108), R(-260, 108), R(250, 108)}}, //
+            {/* 8 */ R(1, 6),
+             {R(31, 300), 0, 0, 0, R(61, 225), R(-2, 9), R(13, 900)}}, //
+            {/* 9 */ R(2, 3),
+             {2, 0, 0, R(-53, 6), R(704, 45), R(-107, 9), R(67, 90), 3}}, //
+            {/* 10 */ R(1, 3),
+             {R(-91, 108), 0, 0, R(23, 108), R(-976, 135), R(311, 54),
+              R(-19, 60), R(17, 6), R(-1, 12)}}, //
+            {/* 11 */ 1,
+             {R(2383, 4100), 0, 0, R(-341, 164), R(4496, 1025), R(-301, 82),
+              R(2133, 4100), R(45, 82), R(45, 164), R(18, 41)}}, //
+                                                                 // {/* 12 */ 0,
+            //  {R(3, 205), 0, 0, 0, 0, R(-6, 41), R(-3, 205), R(-3, 41), R(3,
+            //  41),
+            //   R(6, 41)}}, //
+            // {/* 13 */ 1,
+            //  {R(-1777, 4100), 0, 0, R(-341, 164), R(4496, 1025), R(-289, 82),
+            //   R(2193, 4100), R(51, 82), R(33, 164), R(12, 41), 0, 1}}, //
+        },
+        {
+            R(41, 840), 0, 0, 0, 0, R(34, 105), R(9, 35), R(9, 35), R(9, 280),
+            R(9, 280), R(41, 840),
+            // 0,
+            // 0,
+        }};
+
+    // Check Butcher tableau
+    const size_t nsteps = get<0>(tableau).size();
+    {
+      for (size_t step = 0; step < nsteps; ++step) {
+        // TODO: Could allow <=
+        assert(get<1>(get<0>(tableau).at(step)).size() == step);
+        const auto &c = get<0>(get<0>(tableau).at(step));
+        const auto &as = get<1>(get<0>(tableau).at(step));
+        T x = 0;
+        for (const auto &a : as)
+          x += a;
+        assert(fabs(x - c) <= 10 * numeric_limits<T>::epsilon());
+      }
+      // TODO: Could allow <=
+      assert(get<1>(tableau).size() == nsteps);
+      const auto &bs = get<1>(tableau);
+      T x = 0;
+      for (const auto &b : bs)
+        x += b;
+      assert(fabs(x - 1) <= 10 * numeric_limits<T>::epsilon());
+    }
+
+    const auto old = var.copy();
+
+    vector<statecomp_t> ks;
+    ks.reserve(nsteps);
+    // Special-case step 1 (why?)
+    ks.push_back(rhs.copy());
+    for (size_t step = 1; step < nsteps; ++step) {
+      const auto &c = get<0>(get<0>(tableau).at(step));
+      const auto &as = get<1>(get<0>(tableau).at(step));
+      // Set current time
+      *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + c * dt;
+      // Add scaled RHS to state vector
+      statecomp_t::assign(var, old);
+      for (size_t i = 0; i < as.size(); ++i)
+        if (as.at(i) != 0)
+          statecomp_t::axpy(var, as.at(i) * dt, ks.at(i));
+      // TODO: Deallocate ks that are not needed any more
+      CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+      if (verbose)
+        CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+      CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+      ks.push_back(rhs.copy());
+    }
+
+    // Calculate new state vector
+    const auto &bs = get<1>(tableau);
+    statecomp_t::assign(var, old);
+    for (size_t i = 0; i < bs.size(); ++i)
+      if (bs.at(i) != 0)
+        statecomp_t::axpy(var, bs.at(i) * dt, ks.at(i));
+
+  } else if (CCTK_EQUALS(method, "DP87")) {
+
+    typedef CCTK_REAL T;
+    const auto R = [](T x, T y) { return x / y; };
+    // These coefficients are taken from the Einstein Toolkit, thorn
+    // CactusNumerical/MoL, file RK87.c, written by Peter Diener,
+    // following P. J. Prince and J. R. Dormand, Journal of
+    // Computational and Applied Mathematics, volume 7, no 1, 1981
+    const tuple<vector<vector<T> >, vector<T> > tableau{
+        {
+            {/*1*/},                                    //
+            {/*2*/ R(1, 18)},                           //
+            {/*3*/ R(1, 48), R(1, 16)},                 //
+            {/*4*/ R(1, 32), 0, R(3, 32)},              //
+            {/*5*/ R(5, 16), 0, -R(75, 64), R(75, 64)}, //
+            {/*6*/ R(3, 80), 0, 0, R(3, 16), R(3, 20)}, //
+            {/*7*/ R(29443841, 614563906), 0, 0, R(77736538, 692538347),
+             -R(28693883, 1125000000), R(23124283, 1800000000)}, //
+            {/*8*/ R(16016141, 946692911), 0, 0, R(61564180, 158732637),
+             R(22789713, 633445777), R(545815736, 2771057229),
+             -R(180193667, 1043307555)}, //
+            {/*9*/ R(39632708, 573591083), 0, 0, -R(433636366, 683701615),
+             -R(421739975, 2616292301), R(100302831, 723423059),
+             R(790204164, 839813087), R(800635310, 3783071287)}, //
+            {/*10*/ R(246121993, 1340847787), 0, 0,
+             -R(37695042795, 15268766246), -R(309121744, 1061227803),
+             -R(12992083, 490766935), R(6005943493, 2108947869),
+             R(393006217, 1396673457), R(123872331, 1001029789)}, //
+            {/*11*/ -R(1028468189, 846180014), 0, 0, R(8478235783, 508512852),
+             R(1311729495, 1432422823), -R(10304129995, 1701304382),
+             -R(48777925059, 3047939560), R(15336726248, 1032824649),
+             -R(45442868181, 3398467696), R(3065993473, 597172653)}, //
+            {/*12*/ R(185892177, 718116043), 0, 0, -R(3185094517, 667107341),
+             -R(477755414, 1098053517), -R(703635378, 230739211),
+             R(5731566787, 1027545527), R(5232866602, 850066563),
+             -R(4093664535, 808688257), R(3962137247, 1805957418),
+             R(65686358, 487910083)}, //
+            {/*13*/ R(403863854, 491063109), 0, 0, -R(5068492393, 434740067),
+             -R(411421997, 543043805), R(652783627, 914296604),
+             R(11173962825, 925320556), -R(13158990841, 6184727034),
+             R(3936647629, 1978049680), -R(160528059, 685178525),
+             R(248638103, 1413531060), 0}, //
+        },
+        {R(14005451, 335480064), 0, 0, 0, 0, -R(59238493, 1068277825),
+         R(181606767, 758867731), R(561292985, 797845732),
+         -R(1041891430, 1371343529), R(760417239, 1151165299),
+         R(118820643, 751138087), -R(528747749, 2220607170), R(1, 4)}};
+
+    // Check Butcher tableau
+    const size_t nsteps = get<0>(tableau).size();
+    {
+      for (size_t step = 0; step < nsteps; ++step)
+        // TODO: Could allow <=
+        assert(get<0>(tableau).at(step).size() == step);
+      // TODO: Could allow <=
+      assert(get<1>(tableau).size() == nsteps);
+      const auto &bs = get<1>(tableau);
+      T x = 0;
+      for (const auto &b : bs)
+        x += b;
+      assert(fabs(x - 1) <= 10 * numeric_limits<T>::epsilon());
+    }
+
+    const auto old = var.copy();
+
+    vector<statecomp_t> ks;
+    ks.reserve(nsteps);
+    // Special-case step 1 (why?)
+    ks.push_back(rhs.copy());
+    for (size_t step = 1; step < nsteps; ++step) {
+      const auto &as = get<0>(tableau).at(step);
+      T c = 0;
+      for (const auto &a : as)
+        c += a;
+      // Set current time
+      *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + c * dt;
+      // Add scaled RHS to state vector
+      statecomp_t::assign(var, old);
+      for (size_t i = 0; i < as.size(); ++i)
+        if (as.at(i) != 0)
+          statecomp_t::axpy(var, as.at(i) * dt, ks.at(i));
+      // TODO: Deallocate ks that are not needed any more
+      CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+      if (verbose)
+        CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+      CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+      ks.push_back(rhs.copy());
+    }
+
+    // Calculate new state vector
+    const auto &bs = get<1>(tableau);
+    statecomp_t::assign(var, old);
+    for (size_t i = 0; i < bs.size(); ++i)
+      if (bs.at(i) != 0)
+        statecomp_t::axpy(var, bs.at(i) * dt, ks.at(i));
+
   } else {
     assert(0);
   }
@@ -423,6 +639,6 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CCTK_VINFO("Calculated new state at t=%g", double(cctkGH->cctk_time));
 
   // TODO: Update time here, and not during time level cycling in the driver
-}
+} // namespace ODESolver
 
 } // namespace ODESolver
