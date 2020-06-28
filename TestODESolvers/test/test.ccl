@@ -1,9 +1,11 @@
 TEST test-dp87
 {
   ABSTOL 1.0e-6
+  RELTOL 1.0e-6
 }
 
 TEST test-rkf78
 {
   ABSTOL 1.0e-6
+  RELTOL 1.0e-6
 }
