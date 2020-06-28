@@ -3,7 +3,8 @@
 #     docker push einsteintoolkit/cactus-amrex
 
 # Use Ubuntu
-FROM ubuntu:20.04
+# FROM ubuntu:20.04
+FROM debian:testing-20200607-slim
 
 RUN mkdir /cactus
 WORKDIR /cactus
