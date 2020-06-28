@@ -9,6 +9,6 @@ TEST test-dp87
 
 TEST test-rkf78
 {
-  ABSTOL 1.0e-3
-  RELTOL 1.0e-3
+  ABSTOL 1.0e-2
+  RELTOL 1.0e-2
 }
