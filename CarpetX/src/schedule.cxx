@@ -1561,6 +1561,7 @@ int Evolve(tFleshConfig *config) {
 
     assert(!active_levels);
 
+    // TODO: Move regridding into a function
     if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0 &&
         ghext->amrcore->maxLevel() > 0) {
 #pragma omp critical
