@@ -97,12 +97,12 @@ RUN mkdir src && \
 # Install AMReX
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/20.06.tar.gz && \
-    tar xzf 20.06.tar.gz && \
-    cd amrex-20.06 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/20.07.tar.gz && \
+    tar xzf 20.07.tar.gz && \
+    cd amrex-20.07 && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_FORTRAN=OFF -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true) && \
