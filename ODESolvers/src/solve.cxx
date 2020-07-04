@@ -239,6 +239,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       const auto &groupdata = *groupdataptr;
       const int rhs_gi = get_group_rhs(groupdata.groupindex);
       if (rhs_gi >= 0) {
+        assert(rhs_gi != groupdata.groupindex);
         const auto &rhs_groupdata = *leveldata.groupdata.at(rhs_gi);
         assert(rhs_groupdata.numvars == groupdata.numvars);
         var.groupnames.push_back(CCTK_GroupName(groupdata.groupindex));
