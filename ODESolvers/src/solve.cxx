@@ -260,11 +260,6 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
   const CCTK_REAL saved_time = cctkGH->cctk_time;
   const CCTK_REAL old_time = cctkGH->cctk_time - dt;
-  *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
-  // Calculate first RHS
-  if (verbose)
-    CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
-  CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
   if (CCTK_EQUALS(method, "constant")) {
 
@@ -277,6 +272,12 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // k1 = f(y0)
     // y1 = y0 + h k1
 
+    // Calculate first RHS
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt, rhs);
 
@@ -287,12 +288,19 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // y1 = y0 + h k2
 
     const auto old = var.copy();
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
+
+    // Step 1
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt / 2, rhs);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) += dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
+    // Step 2
     if (verbose)
       CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
@@ -308,6 +316,12 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // y1 = y0 + h/6 k1 + 2/3 h k2 + h/6 k3
 
     const auto old = var.copy();
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
+
+    // Step 1
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
     const auto k1 = rhs.copy();
 
     // Step 2
@@ -350,6 +364,12 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // y1 = y0 + h/6 k1 + h/6 k2 + 2/3 h k3
 
     const auto old = var.copy();
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
+
+    // Step 1
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
     const auto k1 = rhs.copy();
 
     // Step 2
@@ -393,6 +413,12 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // y1 = y0 + h/6 k1 + h/3 k2 + h/3 k3 + h/6 k4
 
     const auto old = var.copy();
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
+
+    // Step 1
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
     const auto k1 = rhs.copy();
 
     // Step 2
@@ -505,9 +531,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     vector<statecomp_t> ks;
     ks.reserve(nsteps);
-    // Special-case step 1 (why?)
-    ks.push_back(rhs.copy());
-    for (size_t step = 1; step < nsteps; ++step) {
+    for (size_t step = 0; step < nsteps; ++step) {
       const auto &c = get<0>(get<0>(tableau).at(step));
       const auto &as = get<1>(get<0>(tableau).at(step));
       // Set current time
@@ -599,9 +623,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     vector<statecomp_t> ks;
     ks.reserve(nsteps);
-    // Special-case step 1 (why?)
-    ks.push_back(rhs.copy());
-    for (size_t step = 1; step < nsteps; ++step) {
+    for (size_t step = 0; step < nsteps; ++step) {
       const auto &as = get<0>(tableau).at(step);
       T c = 0;
       for (const auto &a : as)
@@ -640,6 +662,6 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CCTK_VINFO("Calculated new state at t=%g", double(cctkGH->cctk_time));
 
   // TODO: Update time here, and not during time level cycling in the driver
-} // namespace ODESolver
+}
 
 } // namespace ODESolver
