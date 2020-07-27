@@ -16,7 +16,6 @@ then
   chmod a+x GetComponents
   ./GetComponents --parallel azure-pipelines/carpetx.th
 fi
-mkdir -p /home/jovyan/cactusamrex/Cactus
 cd /home/jovyan/cactusamrex/Cactus
 echo docker > /home/jovyan/.hostname
 if [ ! -r repos/simfactory2/mdb/machines/docker.ini ]
