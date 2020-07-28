@@ -11,6 +11,7 @@ services:
     privileged: true
     image: einsteintoolkit/cactus-amrex-jovyan
     container_name: carpetx
+    hostname: carpetx
     user: jovyan
     volumes:
       - homefs-cactusamrex:/home/jovyan
