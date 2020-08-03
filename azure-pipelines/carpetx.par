@@ -1,6 +1,7 @@
 ActiveThorns = "
     CarpetX
     IOUtil
+    SystemTopology
     WaveToyCarpetX
 "
  
