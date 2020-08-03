@@ -95,28 +95,16 @@ RUN mkdir src && \
     rm -rf src
 
 # Install AMReX
+# Enable Fortran for `docker/Dockerfile`
+# Keep AMReX source tree around
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/20.07.tar.gz && \
-    tar xzf 20.07.tar.gz && \
-    cd amrex-20.07 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/20.08.tar.gz && \
+    tar xzf 20.08.tar.gz && \
+    cd amrex-20.08 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_FORTRAN=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true)
-
-# # Install AMReX
-# RUN mkdir src && \
-#     (cd src && \
-#     git clone -n https://github.com/mic84/amrex && \
-#     cd amrex && \
-#     git checkout c01d9965064b20972e2109e85f842ecb1d712c41 && \
-#     mkdir build && \
-#     cd build && \
-#     cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_BACKTRACE=ON -DENABLE_HDF5=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
-#     make -j$(nproc) && \
-#     make -j$(nproc) install && \
-#     true) && \
-#     rm -rf src
