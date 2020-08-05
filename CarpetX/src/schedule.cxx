@@ -208,7 +208,8 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
     const int levfac = 1 << leveldata.level;
     const int levoff = 1 - 2 * nghostzones[d];
     const int levoffdenom = 2;
-    const CCTK_REAL origin_space = global_x0[d];
+    const CCTK_REAL origin_space =
+        global_x0[d] + (1 - nghostzones[d] + CCTK_REAL(1) / 2) * global_dx[d];
     const CCTK_REAL delta_space = global_dx[d];
     dx[d] = delta_space / levfac;
     x0[d] = origin_space + dx[d] * levoff / levoffdenom;
@@ -822,12 +823,12 @@ void setup_cctkGH(cGH *restrict cctkGH) {
 
   // Initialize grid spacing
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
-  const CCTK_REAL *restrict x0 = geom.ProbLo();
-  const CCTK_REAL *restrict dx = geom.CellSize();
+  const CCTK_REAL *restrict const x0 = geom.ProbLo();
+  const CCTK_REAL *restrict const dx = geom.CellSize();
 
   for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_origin_space[d] = x0[d];
-    cctkGH->cctk_delta_space[d] = dx[d];
+    cctkGH->cctk_origin_space[d] = NAN;
+    cctkGH->cctk_delta_space[d] = NAN;
   }
 
   // Initialize time stepping
@@ -937,15 +938,27 @@ void enter_level_mode(cGH *restrict cctkGH,
     cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1 +
                           2 * cctkGH->cctk_nghostzones[d];
 
-  // The refinement factor over the top level (coarsest) grid
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_levfac[d] = 1 << leveldata.level;
-
-  // Offset between this level's and the coarsest level's origin as multiple
-  // of the grid spacing
+  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
+  const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
+  const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_levoff[d] = 1 - 2 * cctkGH->cctk_nghostzones[d];
-    cctkGH->cctk_levoffdenom[d] = 2;
+    // The refinement factor over the top level (coarsest) grid
+    const int levfac = 1 << leveldata.level;
+    cctkGH->cctk_levfac[d] = levfac;
+    // Offset between this level's and the coarsest level's origin as multiple
+    // of the grid spacing
+    const int levoff = 1 - 2 * cctkGH->cctk_nghostzones[d];
+    const int levoffdenom = 2;
+    cctkGH->cctk_levoff[d] = levoff;
+    cctkGH->cctk_levoffdenom[d] = levoffdenom;
+    // Coordinates
+    const CCTK_REAL origin_space =
+        global_x0[d] +
+        (1 - cctkGH->cctk_nghostzones[d] + CCTK_REAL(1) / 2) * global_dx[d];
+    const CCTK_REAL delta_space = global_dx[d];
+    cctkGH->cctk_delta_space[d] = delta_space / levfac;
+    cctkGH->cctk_origin_space[d] =
+        origin_space + cctkGH->cctk_delta_space[d] * levoff / levoffdenom;
   }
 }
 void leave_level_mode(cGH *restrict cctkGH,
@@ -955,13 +968,18 @@ void leave_level_mode(cGH *restrict cctkGH,
     cctkGH->cctk_gsh[d] = undefined;
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levfac[d] = undefined;
-  for (int d = 0; d < dim; ++d)
+  for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_levoff[d] = undefined;
-  for (int d = 0; d < dim; ++d)
     cctkGH->cctk_levoffdenom[d] = 0;
+  }
+  for (int d = 0; d < dim; ++d) {
+    cctkGH->cctk_origin_space[d] = NAN;
+    cctkGH->cctk_delta_space[d] = NAN;
+  }
 }
 
 // Set cctkGH entries for local mode
+// TODO: Have separate cctkGH for each level, each local box, and each tile
 void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
                       const GHExt::LevelData &restrict leveldata,
                       const MFPointer &mfp) {
@@ -1302,7 +1320,7 @@ int Initialise(tFleshConfig *config) {
       CCTK_REAL x0[dim], x1[dim], dx[dim];
       for (int d = 0; d < dim; ++d) {
         dx[d] = cctkGH->cctk_delta_space[d];
-        x0[d] = cctkGH->cctk_origin_space[d];
+        x0[d] = cctkGH->cctk_origin_space[d] - dx[d] / 2;
         x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
       }
 #pragma omp critical
