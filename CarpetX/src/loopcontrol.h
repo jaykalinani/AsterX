@@ -36,10 +36,6 @@ GridDescBase_t LC_CreateGridDesc(const cGH *cctkGH);
 
 #define LC_LOOP3_BOX(name, i, j, k, grid, imin, imax, inormal)                 \
   do {                                                                         \
-    for (int d = 0; d < LC_DIM; ++d)                                           \
-      if (imin[d] >= imax[d])                                                  \
-        return;                                                                \
-                                                                               \
     for (int k = imin[2]; k < imax[2]; ++k) {                                  \
       for (int j = imin[1]; j < imax[1]; ++j) {                                \
         for (int i = imin[0]; i < imax[0]; ++i) {
