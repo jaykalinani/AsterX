@@ -1084,9 +1084,10 @@ void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     }
   }
 }
-extern "C" void CarpetX_GetTileExtent(const void *restrict cctkGH_,
-                                      CCTK_INT *restrict tile_min,
-                                      CCTK_INT *restrict tile_max) {
+
+extern "C" void CarpetX_GetTileExtent(const void *restrict const cctkGH_,
+                                      CCTK_INT *restrict const tile_min,
+                                      CCTK_INT *restrict const tile_max) {
   const cGH *restrict cctkGH = static_cast<const cGH *>(cctkGH_);
   // Check whether we are in local mode
   assert(cctkGH->cctk_bbox[0] != undefined);
