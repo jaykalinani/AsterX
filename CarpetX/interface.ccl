@@ -44,6 +44,22 @@ void FUNCTION GetTileExtent(
   CCTK_INT ARRAY OUT tile_max)
 PROVIDES FUNCTION GetTileExtent WITH CarpetX_GetTileExtent LANGUAGE C
 
+void FUNCTION GetLoopBoxAll(
+  CCTK_POINTER_TO_CONST IN cctkGH,
+  CCTK_INT IN size,
+  CCTK_INT ARRAY OUT loop_min,
+  CCTK_INT ARRAY OUT loop_max)
+PROVIDES FUNCTION GetLoopBoxAll WITH CarpetX_GetLoopBoxAll LANGUAGE C
+
+void FUNCTION GetLoopBoxInt(
+  CCTK_POINTER_TO_CONST IN cctkGH,
+  CCTK_INT IN size,
+  CCTK_INT ARRAY OUT loop_min,
+  CCTK_INT ARRAY OUT loop_max)
+PROVIDES FUNCTION GetLoopBoxInt WITH CarpetX_GetLoopBoxInt LANGUAGE C
+
+
+
 void FUNCTION CallScheduleGroup(
   CCTK_POINTER IN cctkGH,
   CCTK_STRING IN groupname)

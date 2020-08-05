@@ -1,5 +1,6 @@
 #include "driver.hxx"
 #include "io.hxx"
+#include "loop.hxx"
 #include "schedule.hxx"
 #include "timer.hxx"
 
@@ -1083,6 +1084,38 @@ extern "C" void CarpetX_GetTileExtent(const void *restrict cctkGH_,
     tile_min[d] = tilebox.tile_min[d];
     tile_max[d] = tilebox.tile_max[d];
   }
+}
+
+extern "C" void CarpetX_GetLoopBoxAll(const void *restrict const cctkGH_,
+                                      const CCTK_INT size,
+                                      CCTK_INT *restrict const loop_min,
+                                      CCTK_INT *restrict const loop_max) {
+  const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
+  assert(size == dim);
+  const GridDescBase grid(cctkGH);
+  vect<int, dim> imin, imax;
+  // Assumd cell centred box
+  grid.box_all<1, 1, 1>(grid.nghostzones, imin, imax);
+  for (int d = 0; d < dim; ++d)
+    loop_min[d] = imin[d];
+  for (int d = 0; d < dim; ++d)
+    loop_max[d] = imax[d];
+}
+
+extern "C" void CarpetX_GetLoopBoxInt(const void *restrict const cctkGH_,
+                                      const CCTK_INT size,
+                                      CCTK_INT *restrict const loop_min,
+                                      CCTK_INT *restrict const loop_max) {
+  const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
+  assert(size == dim);
+  const GridDescBase grid(cctkGH);
+  vect<int, dim> imin, imax;
+  // Assumd cell centred box
+  grid.box_int<1, 1, 1>(grid.nghostzones, imin, imax);
+  for (int d = 0; d < dim; ++d)
+    loop_min[d] = imin[d];
+  for (int d = 0; d < dim; ++d)
+    loop_max[d] = imax[d];
 }
 
 mode_t decode_mode(const cFunctionData *restrict attribute) {

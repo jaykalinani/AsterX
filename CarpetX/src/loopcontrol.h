@@ -1,6 +1,8 @@
 #ifndef LOOPCONTROL_H
 #define LOOPCONTROL_H
 
+#include <cctk_Loop.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
