@@ -199,7 +199,9 @@ array<int, dim> get_group_nghostzones(const int gi) {
       Util_TableGetIntArray(tags, dim, nghostzones.data(), "nghostzones");
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
     // default: use driver parameter
-    nghostzones = {ghost_size, ghost_size, ghost_size};
+    nghostzones = {ghost_size >= 0 ? ghost_size : ghost_size_x,
+                   ghost_size >= 0 ? ghost_size : ghost_size_y,
+                   ghost_size >= 0 ? ghost_size : ghost_size_z};
   } else if (iret >= 0) {
     assert(iret == dim);
   } else {
@@ -701,7 +703,11 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
     leveldata.delta_iteration = coarseleveldata.delta_iteration / timereffact;
   }
 
-  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
+  const amrex::IntVect nghostzones = {
+      ghost_size >= 0 ? ghost_size : ghost_size_x,
+      ghost_size >= 0 ? ghost_size : ghost_size_y,
+      ghost_size >= 0 ? ghost_size : ghost_size_z};
+  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, nghostzones);
   assert(ba.ixType() == amrex::IndexType(amrex::IndexType::CELL,
                                          amrex::IndexType::CELL,
                                          amrex::IndexType::CELL));
@@ -937,7 +943,11 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
   assert(leveldata.level > 0);
   auto &coarseleveldata = ghext->leveldata.at(level - 1);
 
-  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, ghost_size);
+  const amrex::IntVect nghostzones = {
+      ghost_size >= 0 ? ghost_size : ghost_size_x,
+      ghost_size >= 0 ? ghost_size : ghost_size_y,
+      ghost_size >= 0 ? ghost_size : ghost_size_z};
+  leveldata.fab = make_unique<amrex::FabArrayBase>(ba, dm, 1, nghostzones);
   assert(ba.ixType() == amrex::IndexType(amrex::IndexType::CELL,
                                          amrex::IndexType::CELL,
                                          amrex::IndexType::CELL));

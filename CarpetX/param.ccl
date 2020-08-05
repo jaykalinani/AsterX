@@ -181,6 +181,22 @@ CCTK_REAL regrid_error_threshold "Regridding error threshold" STEERABLE=always
 
 CCTK_INT ghost_size "Number of ghost zones"
 {
+  -1 :: "use ghost_size_[xyz]"
+  0:* :: ""
+} -1
+
+CCTK_INT ghost_size_x "Number of ghost zones"
+{
+  0:* :: ""
+} 1
+
+CCTK_INT ghost_size_y "Number of ghost zones"
+{
+  0:* :: ""
+} 1
+
+CCTK_INT ghost_size_z "Number of ghost zones"
+{
   0:* :: ""
 } 1
 

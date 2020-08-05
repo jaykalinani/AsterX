@@ -869,8 +869,9 @@ void enter_global_mode(cGH *restrict cctkGH) {
 
   // The number of ghostzones in each direction
   // TODO: Get this from mfab (mfab.fb_ghosts)
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_nghostzones[d] = ghost_size;
+  cctkGH->cctk_nghostzones[0] = ghost_size >= 0 ? ghost_size : ghost_size_x;
+  cctkGH->cctk_nghostzones[1] = ghost_size >= 0 ? ghost_size : ghost_size_y;
+  cctkGH->cctk_nghostzones[2] = ghost_size >= 0 ? ghost_size : ghost_size_z;
 
   // Grid scalar pointers
   {
