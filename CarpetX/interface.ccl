@@ -28,6 +28,16 @@ CCTK_INT FUNCTION GetDomainSpecification
    CCTK_REAL OUT ARRAY spacing)
 PROVIDES FUNCTION GetDomainSpecification WITH CarpetX_GetDomainSpecification LANGUAGE C
 
+# Convenient way to determine boundary sizes
+CCTK_INT FUNCTION GetBoundarySizesAndTypes
+  (CCTK_POINTER_TO_CONST IN cctkGH,
+   CCTK_INT IN size,
+   CCTK_INT OUT ARRAY bndsize,
+   CCTK_INT OUT ARRAY is_ghostbnd,
+   CCTK_INT OUT ARRAY is_symbnd,
+   CCTK_INT OUT ARRAY is_physbnd)
+PROVIDES FUNCTION GetBoundarySizesAndTypes WITH CarpetX_GetBoundarySizesAndTypes LANGUAGE C
+
 void FUNCTION GetTileExtent(
   CCTK_POINTER_TO_CONST IN cctkGH,
   CCTK_INT ARRAY OUT tile_min,

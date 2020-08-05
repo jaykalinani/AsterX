@@ -70,6 +70,10 @@ extern "C" CCTK_INT CarpetX_GetDomainSpecification(
     CCTK_REAL *restrict const interior_max,
     CCTK_REAL *restrict const exterior_min,
     CCTK_REAL *restrict const exterior_max, CCTK_REAL *restrict const spacing);
+extern "C" CCTK_INT CarpetX_GetBoundarySizesAndTypes(
+    const void *cctkGH_, CCTK_INT size, CCTK_INT *restrict const bndsize,
+    CCTK_INT *restrict const is_ghostbnd, CCTK_INT *restrict const is_symbnd,
+    CCTK_INT *restrict const is_physbnd);
 
 // Local functions
 void SetupLevel(int level, const amrex::BoxArray &ba,
@@ -1518,6 +1522,54 @@ CarpetX_GetDomainSpecification(const CCTK_INT size,
     exterior_max[d] =
         geom.ProbDomain().hi(d) + (fab.nGrow(d) - 0.5) * geom.CellSize(d);
     spacing[d] = geom.CellSize(d);
+  }
+  return 0;
+}
+
+CCTK_INT CarpetX_GetBoundarySizesAndTypes(const void *const cctkGH_,
+                                          const CCTK_INT size,
+                                          CCTK_INT *restrict const bndsize,
+                                          CCTK_INT *restrict const is_ghostbnd,
+                                          CCTK_INT *restrict const is_symbnd,
+                                          CCTK_INT *restrict const is_physbnd) {
+  DECLARE_CCTK_PARAMETERS;
+
+  const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
+  assert(size == 2 * dim);
+
+  const array<array<bool, 3>, 2> is_periodic{{
+      {{
+          periodic || periodic_x,
+          periodic || periodic_y,
+          periodic || periodic_z,
+      }},
+      {{
+          periodic || periodic_x,
+          periodic || periodic_y,
+          periodic || periodic_z,
+      }},
+  }};
+  const array<array<bool, 3>, 2> is_reflect{{
+      {{
+          !!reflection_x,
+          !!reflection_y,
+          !!reflection_z,
+      }},
+      {{
+          !!reflection_upper_x,
+          !!reflection_upper_y,
+          !!reflection_upper_z,
+      }},
+  }};
+
+  for (int d = 0; d < dim; ++d) {
+    for (int f = 0; f < 2; ++f) {
+      bndsize[2 * d + f] = cctkGH->cctk_nghostzones[d];
+      is_ghostbnd[2 * d + f] = cctkGH->cctk_bbox[2 * d + f];
+      is_symbnd[2 * d + f] =
+          !is_ghostbnd[2 * d + f] && (is_periodic[f][d] || is_reflect[f][d]);
+      is_physbnd[2 * d + f] = !is_ghostbnd[2 * d + f] && !is_symbnd[2 * d + f];
+    }
   }
   return 0;
 }
