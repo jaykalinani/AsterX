@@ -1958,7 +1958,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           leave_level_mode(threadGH, leveldata);
           thread_info.mfpointer = nullptr;
         }};
-        tasks.push_back(task);
+        tasks.emplace_back(task);
       }
     });
 
