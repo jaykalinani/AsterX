@@ -12,32 +12,32 @@ BOOLEAN poison_undefined_values "Set undefined grid point values to nan" STEERAB
 
 
 
-CCTK_REAL xmin "Domain size"
+CCTK_REAL xmin "Domain size (location of vertices)"
 {
   *:* :: ""
 } -1.0
 
-CCTK_REAL xmax "Domain size"
+CCTK_REAL xmax "Domain size (location of vertices)"
 {
   *:* :: ""
 } 1.0
 
-CCTK_REAL ymin "Domain size"
+CCTK_REAL ymin "Domain size (location of vertices)"
 {
   *:* :: ""
 } -1.0
 
-CCTK_REAL ymax "Domain size"
+CCTK_REAL ymax "Domain size (location of vertices)"
 {
   *:* :: ""
 } 1.0
 
-CCTK_REAL zmin "Domain size"
+CCTK_REAL zmin "Domain size (location of vertices)"
 {
   *:* :: ""
 } -1.0
 
-CCTK_REAL zmax "Domain size"
+CCTK_REAL zmax "Domain size (location of vertices)"
 {
   *:* :: ""
 } 1.0

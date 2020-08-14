@@ -206,11 +206,15 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
     const int levfac = 1 << leveldata.level;
-    const int levoff = 1 - 2 * nghostzones[d];
+    // Offset between this level's and the coarsest level's origin as multiple
+    // of the grid spacing
+    const int levoff = (1 - levfac) * (1 - 2 * nghostzones[d]);
     const int levoffdenom = 2;
+    // Cell-centred coordinates on coarse level
     const CCTK_REAL origin_space =
-        global_x0[d] + (1 - nghostzones[d] + CCTK_REAL(1) / 2) * global_dx[d];
+        global_x0[d] + (1 - 2 * nghostzones[d]) * global_dx[d] / 2;
     const CCTK_REAL delta_space = global_dx[d];
+    // Cell-centred coordinates on current level
     dx[d] = delta_space / levfac;
     x0[d] = origin_space + dx[d] * levoff / levoffdenom;
   }
@@ -947,18 +951,16 @@ void enter_level_mode(cGH *restrict cctkGH,
     cctkGH->cctk_levfac[d] = levfac;
     // Offset between this level's and the coarsest level's origin as multiple
     // of the grid spacing
-    const int levoff = 1 - 2 * cctkGH->cctk_nghostzones[d];
+    const int levoff = (1 - levfac) * (1 - 2 * cctkGH->cctk_nghostzones[d]);
     const int levoffdenom = 2;
     cctkGH->cctk_levoff[d] = levoff;
     cctkGH->cctk_levoffdenom[d] = levoffdenom;
-    // Coordinates
+    // Cell-centred coarse level coordinates
     const CCTK_REAL origin_space =
-        global_x0[d] +
-        (1 - cctkGH->cctk_nghostzones[d] + CCTK_REAL(1) / 2) * global_dx[d];
+        global_x0[d] + (1 - 2 * cctkGH->cctk_nghostzones[d]) * global_dx[d] / 2;
     const CCTK_REAL delta_space = global_dx[d];
-    cctkGH->cctk_delta_space[d] = delta_space / levfac;
-    cctkGH->cctk_origin_space[d] =
-        origin_space + cctkGH->cctk_delta_space[d] * levoff / levoffdenom;
+    cctkGH->cctk_delta_space[d] = delta_space;
+    cctkGH->cctk_origin_space[d] = origin_space;
   }
 }
 void leave_level_mode(cGH *restrict cctkGH,
@@ -1321,7 +1323,8 @@ int Initialise(tFleshConfig *config) {
       CCTK_REAL x0[dim], x1[dim], dx[dim];
       for (int d = 0; d < dim; ++d) {
         dx[d] = cctkGH->cctk_delta_space[d];
-        x0[d] = cctkGH->cctk_origin_space[d] - dx[d] / 2;
+        x0[d] =
+            cctkGH->cctk_origin_space[d] - (1 - 2 * nghostzones[d]) * dx[d] / 2;
         x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
       }
 #pragma omp critical
