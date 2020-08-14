@@ -115,8 +115,8 @@ public:
         return;
 
     constexpr int di = 1;
-    const int dj = di * (ash[0] + 1 - CI);
-    const int dk = dj * (ash[1] + 1 - CJ);
+    const int dj = di * (ash[0] + !CI);
+    const int dk = dj * (ash[1] + !CJ);
 
     const auto kernel{[&](const int i, const int j,
                           const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -533,17 +533,16 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   GF3D &operator=(const GF3D &) = delete;
   GF3D &operator=(GF3D &&) = default;
   inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
-      : dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
-        dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),
-        np(dk * (cctkGH->cctk_ash[2] + 1 - CK)),
-        ni(cctkGH->cctk_lsh[0] + 1 - CI), nj(cctkGH->cctk_lsh[1] + 1 - CJ),
-        nk(cctkGH->cctk_lsh[2] + 1 - CK), ptr(ptr) {}
+      : dj(di * (cctkGH->cctk_ash[0] + !CI)),
+        dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
+        np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
+        nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK), ptr(ptr) {
+  }
   inline GF3D(const cGH *restrict cctkGH, allocate)
-      : dj(di * (cctkGH->cctk_ash[0] + 1 - CI)),
-        dk(dj * (cctkGH->cctk_ash[1] + 1 - CJ)),
-        np(dk * (cctkGH->cctk_ash[2] + 1 - CK)),
-        ni(cctkGH->cctk_lsh[0] + 1 - CI), nj(cctkGH->cctk_lsh[1] + 1 - CJ),
-        nk(cctkGH->cctk_lsh[2] + 1 - CK),
+      : dj(di * (cctkGH->cctk_ash[0] + !CI)),
+        dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
+        np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
+        nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK),
         data(np, numeric_limits<T>::quiet_NaN()), ptr(data.data()) {}
   inline int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
