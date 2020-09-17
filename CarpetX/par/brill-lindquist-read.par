@@ -2,15 +2,17 @@ ActiveThorns = "
     ADMBase
     BrillLindquist
     CarpetX
-    Formaline
     IOUtil
     ODESolvers
+    TmunuBase
     Z4c
 "
 
 CarpetX::verbose = yes
 
 Cactus::cctk_show_schedule = yes
+
+Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 0.0
@@ -58,7 +60,7 @@ BrillLindquist::mass = 1.0
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
-CarpetX::in_dir = "/Users/eschnett/simulations/brill-lindquist-write/output-0000/brill-lindquist-write"
+CarpetX::in_dir = "/home/eschnett/caliban-simulations/brill-lindquist-write"
 CarpetX::in_file = "brill-lindquist-write"
 CarpetX::in_silo_vars = "
     ADMBase::metric

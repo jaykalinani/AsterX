@@ -103,11 +103,21 @@ string make_varname(const int gi, const int vi, const int reflevel = -1,
   return DB::legalize_name(buf.str());
 }
 
+const string driver_name = "CarpetX";
+
+string make_fabarraybasename(const int reflevel) {
+  ostringstream buf;
+  buf << "FabArrayBase.rl" << setw(2) << setfill('0') << reflevel;
+  return DB::legalize_name(buf.str());
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void InputSilo(const cGH *restrict const cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
+
+  int ierr;
 
   // Set up timers
   static Timer timer("InputSilo");
@@ -159,6 +169,10 @@ void InputSilo(const cGH *restrict const cctkGH) {
   // const string simulation_name = filereader_ID_files;
   const string simulation_name = in_file;
 
+  // TODO
+  // const string pathname = string(filereader_ID_dir);
+  const string pathname = string(in_dir);
+
   // TODO: directories instead of carefully chosen names
 
   // Find input groups
@@ -197,20 +211,80 @@ void InputSilo(const cGH *restrict const cctkGH) {
 
   interval_setup = nullptr;
 
+  static Timer timer_meta("InputSilo.meta");
+  auto interval_meta = make_unique<Interval>(timer_meta);
+
+  // Read metadata
+  if (read_metafile) {
+
+    const string metafilename =
+        pathname + "/" + make_filename(simulation_name, cctk_iteration);
+    // We could use DB_UNKNOWN instead of DB_HDF5
+    const DB::ptr<DBfile> metafile =
+        DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
+    assert(metafile);
+
+    // Read internal driver state
+    // TODO: Only do this when recovering. But then, we should also do
+    // this as a file reader option!
+    {
+      const string dirname = DB::legalize_name(driver_name);
+
+      // Read number of levels
+      const int nlevels = [&] {
+        const string varname = dirname + "/" + DB::legalize_name("nlevels");
+        const int vartype = DBGetVarType(metafile.get(), varname.c_str());
+        assert(vartype == DB_INT);
+        const int varlength = DBGetVarLength(metafile.get(), varname.c_str());
+        assert(varlength == 1);
+        int result;
+        ierr = DBReadVar(metafile.get(), varname.c_str(), &result);
+        assert(!ierr);
+        return result;
+      }();
+
+      // Read FabArrayBase (component positions and shapes)
+      vector<vector<amrex::Box> > boxes(nlevels);
+      for (int level = 0; level < nlevels; ++level) {
+        const string varname = dirname + "/" + make_fabarraybasename(level);
+        const int vartype = DBGetVarType(metafile.get(), varname.c_str());
+        assert(vartype == DB_INT);
+        int vardims[2];
+        const int varndims =
+            DBGetVarDims(metafile.get(), varname.c_str(), 2, vardims);
+        assert(varndims >= 0);
+        assert(varndims == 2);
+        assert(vardims[1] == 2 * ndims);
+        const int nfabs = vardims[0];
+        assert(nfabs >= 0);
+        vector<int> data(2 * ndims * nfabs);
+        ierr = DBReadVar(metafile.get(), varname.c_str(), data.data());
+
+        auto &levboxes = boxes.at(level);
+        levboxes.resize(nfabs);
+        assert(!ierr);
+        for (int component = 0; component < nfabs; ++component) {
+          const amrex::IntVect small(&data.at(2 * ndims * component));
+          const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
+          levboxes.at(component) = amrex::Box(small, big);
+        }
+      }
+    }
+  }
+
+  interval_meta = nullptr;
+
   static Timer timer_data("InputSilo.data");
   auto interval_data = make_unique<Interval>(timer_data);
 
   // Read data
   {
-    const string subdirname = make_subdirname(simulation_name, cctk_iteration);
-    // TODO
-    // const string pathname = string(filereader_ID_dir) + "/" + subdirname;
-    const string pathname = string(in_dir) + "/" + subdirname;
-
     DB::ptr<DBfile> file;
     if (read_file) {
+      const string subdirname =
+          make_subdirname(simulation_name, cctk_iteration);
       const string filename =
-          pathname + "/" +
+          pathname + "/" + subdirname + "/" +
           make_filename(simulation_name, cctk_iteration, myproc / ioproc_every);
       // We could use DB_UNKNOWN instead of DB_HDF5
       file = DB::make(DBOpen(filename.c_str(), DB_HDF5, DB_READ));
@@ -1267,6 +1341,43 @@ void OutputSilo(const cGH *restrict const cctkGH) {
       }   // write multivar
 
     } // for gi
+
+    // Write internal driver state
+    {
+      const string dirname = DB::legalize_name(driver_name);
+      ierr = DBMkDir(metafile.get(), dirname.c_str());
+      assert(!ierr);
+
+      // Write number of levels
+      {
+        const int dims = 1;
+        const int value = ghext->leveldata.size();
+        const string varname = dirname + "/" + DB::legalize_name("nlevels");
+        ierr =
+            DBWrite(metafile.get(), varname.c_str(), &value, &dims, 1, DB_INT);
+        assert(!ierr);
+      }
+
+      // Write FabArrayBase (component positions and shapes)
+      for (const auto &leveldata : ghext->leveldata) {
+        const amrex::FabArrayBase &fab = *leveldata.fab;
+        const int nfabs = fab.size();
+        vector<int> boxes(2 * ndims * nfabs);
+        for (int component = 0; component < nfabs; ++component) {
+          const amrex::Box &fabbox = fab.box(component); // valid region
+          for (int d = 0; d < ndims; ++d)
+            boxes[d + 2 * ndims * component] = fabbox.smallEnd(d);
+          for (int d = 0; d < ndims; ++d)
+            boxes[d + ndims + 2 * ndims * component] = fabbox.bigEnd(d);
+        }
+        const int dims[2] = {nfabs, 2 * ndims};
+        const string varname =
+            dirname + "/" + make_fabarraybasename(leveldata.level);
+        ierr = DBWrite(metafile.get(), varname.c_str(), boxes.data(), dims, 2,
+                       DB_INT);
+        assert(!ierr);
+      }
+    }
 
     {
       const string visitname = [&]() {
