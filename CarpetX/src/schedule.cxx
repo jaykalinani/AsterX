@@ -109,6 +109,19 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
     lbnd[d] = cctkGH->cctk_lbnd[d];
     ubnd[d] = cctkGH->cctk_ubnd[d];
   }
+#ifdef CCTK_HAVE_CGH_TILE
+  for (int d = 0; d < dim; ++d) {
+    tmin[d] = cctkGH->cctk_tile_min[d];
+    tmax[d] = cctkGH->cctk_tile_max[d];
+  }
+#else
+  const CarpetX::TileBox &restrict tilebox =
+      CarpetX::thread_local_info.at(thread_num)->tilebox;
+  for (int d = 0; d < dim; ++d) {
+    tmin[d] = tilebox.tile_min[d];
+    tmax[d] = tilebox.tile_max[d];
+  }
+#endif
   for (int d = 0; d < dim; ++d)
     lsh[d] = cctkGH->cctk_lsh[d];
   for (int d = 0; d < dim; ++d)
@@ -127,13 +140,6 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
         &CarpetX::thread_local_info.at(thread_num)->cctkGH;
     // Check whether this is the correct cGH structure
     assert(cctkGH == threadGH);
-  }
-
-  const CarpetX::TileBox &restrict tilebox =
-      CarpetX::thread_local_info.at(thread_num)->tilebox;
-  for (int d = 0; d < dim; ++d) {
-    tmin[d] = tilebox.tile_min[d];
-    tmax[d] = tilebox.tile_max[d];
   }
 
   for (int d = 0; d < dim; ++d) {
@@ -765,6 +771,8 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
   cctkGH->cctk_lsh = new int[dim];
   cctkGH->cctk_lbnd = new int[dim];
   cctkGH->cctk_ubnd = new int[dim];
+  cctkGH->cctk_tile_min = new int[dim];
+  cctkGH->cctk_tile_max = new int[dim];
   cctkGH->cctk_ash = new int[dim];
   cctkGH->cctk_to = new int[dim];
   cctkGH->cctk_from = new int[dim];
@@ -996,6 +1004,10 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     cctkGH->cctk_lbnd[d] = grid.lbnd[d];
     cctkGH->cctk_ubnd[d] = grid.ubnd[d];
   }
+  for (int d = 0; d < dim; ++d) {
+    cctkGH->cctk_tile_min[d] = grid.tmin[d];
+    cctkGH->cctk_tile_max[d] = grid.tmax[d];
+  }
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = grid.bbox[2 * d + f];
@@ -1037,6 +1049,11 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     assert(cctkGH->cctk_ubnd[d] ==
            cctkGH->cctk_lbnd[d] + cctkGH->cctk_lsh[d] - 1);
 
+    // Tile box
+    assert(cctkGH->cctk_tile_min[d] >= 0);
+    assert(cctkGH->cctk_tile_min[d] <= cctkGH->cctk_tile_max[d]);
+    assert(cctkGH->cctk_tile_max[d] <= cctkGH->cctk_lsh[d]);
+
     // Internal representation
     assert(cctkGH->cctk_ash[d] >= 0);
     assert(cctkGH->cctk_ash[d] >= cctkGH->cctk_lsh[d]);
@@ -1062,6 +1079,10 @@ void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
   for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_lbnd[d] = undefined;
     cctkGH->cctk_ubnd[d] = undefined;
+  }
+  for (int d = 0; d < dim; ++d) {
+    cctkGH->cctk_tile_min[d] = undefined;
+    cctkGH->cctk_tile_max[d] = undefined;
   }
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
