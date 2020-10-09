@@ -1,5 +1,6 @@
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
+#include "util_Table.h"
 
 #include <array>
 #include <cassert>
@@ -44,15 +45,58 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
     assert(coords[d].size() == npoints);
 
   vector<vector<CCTK_REAL> > results(nvars);
+  vector<vector<CCTK_REAL> > results2(nvars);
   vector<CCTK_REAL *> resultptrs(nvars);
+  vector<CCTK_REAL *> resultptrs2(nvars);
   for (int n = 0; n < nvars; ++n) {
     results.at(n).resize(npoints);
     resultptrs.at(n) = results.at(n).data();
+    results2.at(n).resize(npoints);
+    resultptrs2.at(n) = results2.at(n).data();
   }
 
   Interpolate(cctkGH, npoints, coords[0].data(), coords[1].data(),
               coords[2].data(), nvars, varinds.data(), operations.data(),
               resultptrs.data());
+
+  CCTK_INT const N_dims = 3;
+  CCTK_INT const N_input = all_varinds.size();
+
+  const void *interp_coords[N_dims];
+  interp_coords[0] = coords[0].data();
+  interp_coords[1] = coords[1].data();
+  interp_coords[2] = coords[2].data();
+
+  void * const *output_array = (void * const *)&resultptrs2[0];
+
+  /* DriverInterpolate arguments that aren't currently used */
+  CCTK_INT const coord_system_handle = 0;
+  CCTK_INT const interp_coords_type_code = 0;
+  CCTK_INT const output_array_type_codes[1] = {0};
+  int interp_handle = 0;
+
+  /* Table generation */
+  
+  int param_table_handle;
+  
+  param_table_handle = Util_TableCreate(UTIL_TABLE_FLAGS_DEFAULT);
+  if (param_table_handle < 0)
+          CCTK_ERROR("Can't create parameter table!");
+  if (Util_TableSetInt(param_table_handle, 1, "order") < 0)
+          CCTK_ERROR("Can't set order in parameter table!");
+  if (Util_TableSetIntArray(param_table_handle,
+                            nvars, varinds.data(),
+                            "operand_indices") < 0)
+          CCTK_ERROR("Can't set operand_indices array in parameter table!");
+  if (Util_TableSetIntArray(param_table_handle,
+                            nvars, operations.data(),
+                            "operation_codes") < 0)
+          CCTK_ERROR("Can't set operation_codes array in parameter table!");
+
+  int ierr = DriverInterpolate(cctkGH, N_dims, interp_handle, param_table_handle,
+                               coord_system_handle, npoints, interp_coords_type_code,
+                               interp_coords, N_input, all_varinds.data(), 
+                               nvars, output_array_type_codes, output_array);
 
   const auto chop{[](const auto x) { return fabs(x) <= 1.0e-12 ? 0 : x; }};
   for (int v = 0; v < nvars; ++v) {
@@ -63,11 +107,15 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
       switch (op) {
       case 0:
         assert(chop(results.at(v).at(n) - coords[d].at(n)) == 0);
+        assert(chop(results2.at(v).at(n) - coords[d].at(n)) == 0);
+        assert(chop(results.at(v).at(n) - results2.at(v).at(n)) == 0);
         break;
       case 1:
       case 2:
       case 3:
         assert(chop(results.at(v).at(n) - (op - 1 == d ? 1 : 0)) == 0);
+        assert(chop(results2.at(v).at(n) - (op - 1 == d ? 1 : 0)) == 0);
+        assert(chop(results2.at(v).at(n) - results.at(v).at(n)) == 0);
         break;
       case 11:
       case 12:
@@ -76,6 +124,7 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
       case 23:
       case 33:
         assert(chop(results.at(v).at(n)) == 0);
+        assert(chop(results2.at(v).at(n)) == 0);
         break;
       default:
         assert(0);
