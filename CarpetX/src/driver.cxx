@@ -59,6 +59,7 @@ int nProcs(const cGH *cctkGH);
 int Exit(cGH *cctkGH, int retval);
 int Abort(cGH *cctkGH, int retval);
 int Barrier(const cGH *cctkGHa);
+int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data);
 
 // Aliased functions
 
@@ -628,51 +629,114 @@ void SetupGlobals() {
 
   const int numgroups = CCTK_NumGroups();
   globaldata.scalargroupdata.resize(numgroups);
+  globaldata.arraygroupdata.resize(numgroups);
   for (int gi = 0; gi < numgroups; ++gi) {
     cGroup group;
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
     /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
+    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY) {
       continue;
+    } else if (group.grouptype == CCTK_SCALAR) {
+      assert(group.vartype == CCTK_VARIABLE_REAL);
+      assert(group.disttype == CCTK_DISTRIB_CONSTANT);
+      assert(group.dim == 0);
 
-    assert(group.grouptype == CCTK_SCALAR);
-    assert(group.vartype == CCTK_VARIABLE_REAL);
-    assert(group.disttype == CCTK_DISTRIB_CONSTANT);
-    assert(group.dim == 0);
+      globaldata.scalargroupdata.at(gi) =
+          make_unique<GHExt::GlobalData::ScalarGroupData>();
+      GHExt::GlobalData::ScalarGroupData &scalargroupdata =
+          *globaldata.scalargroupdata.at(gi);
+      scalargroupdata.groupindex = gi;
+      scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+      scalargroupdata.numvars = group.numvars;
+      scalargroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+      scalargroupdata.do_restrict = get_group_restrict_flag(gi);
 
-    globaldata.scalargroupdata.at(gi) =
-        make_unique<GHExt::GlobalData::ScalarGroupData>();
-    GHExt::GlobalData::ScalarGroupData &scalargroupdata =
-        *globaldata.scalargroupdata.at(gi);
-    scalargroupdata.groupindex = gi;
-    scalargroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-    scalargroupdata.numvars = group.numvars;
-    scalargroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
-    scalargroupdata.do_restrict = get_group_restrict_flag(gi);
+      // Set up dynamic data
+      scalargroupdata.dimension = 0;
+      scalargroupdata.activetimelevels = 1;
 
-    // Allocate data
-    scalargroupdata.data.resize(group.numtimelevels);
-    scalargroupdata.valid.resize(group.numtimelevels);
-    for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
-      scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
-      why_valid_t why([] { return "SetupGlobals"; });
-      scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars, why);
-      for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-        // TODO: decide that valid_bnd == false always and rely on
-        // initialization magic?
-        valid_t valid;
-        valid.valid_int = false;
-        valid.valid_outer = true;
-        valid.valid_ghosts = true;
-        scalargroupdata.valid.at(tl).at(vi).set(valid,
-                                                [] { return "SetupGlobals"; });
+      // Allocate data
+      scalargroupdata.data.resize(group.numtimelevels);
+      scalargroupdata.valid.resize(group.numtimelevels);
+      for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
+        scalargroupdata.data.at(tl).resize(scalargroupdata.numvars);
+        why_valid_t why([] { return "SetupGlobals"; });
+        scalargroupdata.valid.at(tl).resize(scalargroupdata.numvars, why);
+        for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
+          // TODO: decide that valid_bnd == false always and rely on
+          // initialization magic?
+          valid_t valid;
+          valid.valid_int = false;
+          valid.valid_outer = true;
+          valid.valid_ghosts = true;
+          scalargroupdata.valid.at(tl).at(vi).set(valid,
+                                                  [] { return "SetupGlobals"; });
 
-        // TODO: make poison_invalid and check_invalid virtual members of
-        // CommonGroupData
-        poison_invalid(scalargroupdata, vi, tl);
-        check_valid(scalargroupdata, vi, tl, [] { return "SetupGlobals"; });
+          // TODO: make poison_invalid and check_invalid virtual members of
+          // CommonGroupData
+          poison_invalid(scalargroupdata, vi, tl);
+          check_valid(scalargroupdata, vi, tl, [] { return "SetupGlobals"; });
+        }
+      }
+    } else {
+      assert(group.grouptype == CCTK_ARRAY);
+      assert(group.vartype == CCTK_VARIABLE_REAL);
+      assert(group.disttype == CCTK_DISTRIB_CONSTANT);
+      assert(group.dim > 0 && group.dim <= dim);
+
+      globaldata.arraygroupdata.at(gi) =
+          make_unique<GHExt::GlobalData::ArrayGroupData>();
+      GHExt::GlobalData::ArrayGroupData &arraygroupdata =
+          *globaldata.arraygroupdata.at(gi);
+      arraygroupdata.groupindex = gi;
+      arraygroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+      arraygroupdata.numvars = group.numvars;
+      arraygroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+      arraygroupdata.do_restrict = get_group_restrict_flag(gi);
+
+      CCTK_INT const *const *const sz = CCTK_GroupSizesI(gi);
+      arraygroupdata.array_size = 1;
+      for (int d = 0; d < group.dim; ++d) {
+        arraygroupdata.array_size = arraygroupdata.array_size * *sz[d];
+      }
+
+      // Set up dynamic data
+      arraygroupdata.dimension = group.dim;
+      arraygroupdata.activetimelevels = 1;
+      for (int d = 0; d < group.dim; ++d) {
+        arraygroupdata.lsh[d] = *sz[d];
+        arraygroupdata.ash[d] = *sz[d];
+        arraygroupdata.gsh[d] = *sz[d];
+        arraygroupdata.nghostzones[d] = 0;
+        arraygroupdata.lbnd[d] = 0;
+        arraygroupdata.ubnd[d] = *sz[d]-1;
+        arraygroupdata.bbox[2*d] = arraygroupdata.bbox[2*d+1] = 1;
+      }
+
+      // Allocate data
+      arraygroupdata.data.resize(group.numtimelevels);
+      arraygroupdata.valid.resize(group.numtimelevels);
+      for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
+        arraygroupdata.data.at(tl).resize(arraygroupdata.numvars*arraygroupdata.array_size);
+        why_valid_t why([] { return "SetupGlobals"; });
+        arraygroupdata.valid.at(tl).resize(arraygroupdata.numvars, why);
+        for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
+          // TODO: decide that valid_bnd == false always and rely on
+          // initialization magic?
+          valid_t valid;
+          valid.valid_int = false;
+          valid.valid_outer = true;
+          valid.valid_ghosts = true;
+          arraygroupdata.valid.at(tl).at(vi).set(valid,
+                                                  [] { return "SetupGlobals"; });
+
+          // TODO: make poison_invalid and check_invalid virtual members of
+          // CommonGroupData
+          poison_invalid(arraygroupdata, vi, tl);
+          check_valid(arraygroupdata, vi, tl, [] { return "SetupGlobals"; });
+        }
       }
     }
   }
@@ -1113,6 +1177,18 @@ operator<<(YAML::Emitter &yaml,
   return yaml;
 }
 
+YAML::Emitter &
+operator<<(YAML::Emitter &yaml,
+           const GHExt::GlobalData::ArrayGroupData &arraygroupdata) {
+  yaml << YAML::LocalTag("arraygroupdata-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "commongroupdata" << YAML::Value
+       << (GHExt::CommonGroupData)arraygroupdata;
+  yaml << YAML::Key << "data" << YAML::Value << arraygroupdata.data;
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
 YAML::Emitter &operator<<(YAML::Emitter &yaml,
                           const GHExt::GlobalData &globaldata) {
   yaml << YAML::LocalTag("globaldata-1.0.0");
@@ -1306,6 +1382,7 @@ extern "C" int CarpetX_Startup() {
 
   CCTK_OverloadSyncGroupsByDirI(SyncGroupsByDirI);
 
+  CCTK_OverloadGroupDynamicData(GroupDynamicData);
   return 0;
 }
 
@@ -1570,6 +1647,62 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(const void *const cctkGH_,
           !is_ghostbnd[2 * d + f] && (is_periodic[f][d] || is_reflect[f][d]);
       is_physbnd[2 * d + f] = !is_ghostbnd[2 * d + f] && !is_symbnd[2 * d + f];
     }
+  }
+  return 0;
+}
+
+int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
+  // Return values:
+  //  0 for success
+  // -1 if given pointer to data structure is NULL
+  // -3 if given GH pointer is invalid
+  // (-77 if group has zero variables)
+  // -78 if group does not exist
+  if (not cctkGH)
+    return -3;
+  if (not(gi >= 0 and gi < CCTK_NumGroups()))
+    return -78;
+  if (not data)
+    return -1;
+  cGroup group;
+  int ierr = CCTK_GroupData(gi, &group);
+  assert(!ierr);
+  if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY) {
+    data->dim = group.dim;
+    data->lsh = cctkGH->cctk_lsh;
+    data->ash = cctkGH->cctk_ash;
+    data->gsh = cctkGH->cctk_gsh;
+    data->lbnd = cctkGH->cctk_lbnd;
+    data->ubnd = cctkGH->cctk_ubnd;
+    data->bbox = cctkGH->cctk_bbox;
+    data->nghostzones = cctkGH->cctk_nghostzones;
+    data->activetimelevels = CCTK_ActiveTimeLevelsGI(cctkGH, gi);
+  } else if (group.grouptype == CCTK_SCALAR) {
+    GHExt::GlobalData &globaldata = ghext->globaldata;
+    GHExt::GlobalData::ScalarGroupData &scalargroupdata =
+        *globaldata.scalargroupdata.at(gi);
+    data->dim = scalargroupdata.dimension;
+    data->lsh = scalargroupdata.lsh;
+    data->ash = scalargroupdata.ash;
+    data->gsh = scalargroupdata.gsh;
+    data->lbnd = scalargroupdata.lbnd;
+    data->ubnd = scalargroupdata.ubnd;
+    data->bbox = scalargroupdata.bbox;
+    data->nghostzones = scalargroupdata.nghostzones;
+    data->activetimelevels = scalargroupdata.activetimelevels;
+  } else { // CCTK_ARRAY
+    GHExt::GlobalData &globaldata = ghext->globaldata;
+    GHExt::GlobalData::ArrayGroupData &arraygroupdata =
+        *globaldata.arraygroupdata.at(gi);
+    data->dim = arraygroupdata.dimension;
+    data->lsh = arraygroupdata.lsh;
+    data->ash = arraygroupdata.ash;
+    data->gsh = arraygroupdata.gsh;
+    data->lbnd = arraygroupdata.lbnd;
+    data->ubnd = arraygroupdata.ubnd;
+    data->bbox = arraygroupdata.bbox;
+    data->nghostzones = arraygroupdata.nghostzones;
+    data->activetimelevels = arraygroupdata.activetimelevels;
   }
   return 0;
 }
