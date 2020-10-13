@@ -69,26 +69,23 @@ extern "C" void TestArrayGroup_Compare(cGH *cctkGH) {
   int nmax = 4;
 
   int error_count[3] = {0,0,0};
+  std::string vname;
 
   for(int n=0; n<nmax; n++) {
+    vname = "TestArrayGroup::test1[" + std::to_string(n) + "]";
+    CCTK_REAL *var1 = (CCTK_REAL *)CCTK_VarDataPtr(cctkGH,0,vname.c_str());
+
+    vname = "TestArrayGroup::test2[" + std::to_string(n) + "]";
+    CCTK_REAL *var2 = (CCTK_REAL *)CCTK_VarDataPtr(cctkGH,0,vname.c_str());
+
+    vname = "TestArrayGroup::test3[" + std::to_string(n) + "]";
+    CCTK_REAL *var3 = (CCTK_REAL *)CCTK_VarDataPtr(cctkGH,0,vname.c_str());
     for(int j=0; j<jmax; j++) {
       for(int i=0; i<imax; i++) {
-        int index = i + j*imax + n*imax*jmax;
-//        std::string vname = "TestArrayGroup::test1[" + std::to_string(index) + "]";
-//        CCTK_REAL *var1 = (CCTK_REAL *)CCTK_VarDataPtr(cctkGH,0,vname.c_str());
-//
-//        vname = "TestArrayGroup::test2[" + std::to_string(index) + "]";
-//        CCTK_REAL *var2 = (CCTK_REAL *)CCTK_VarDataPtr(cctkGH,0,vname.c_str());
-//
-//        vname = "TestArrayGroup::test3[" + std::to_string(index) + "]";
-//        CCTK_REAL *var3 = (CCTK_REAL *)CCTK_VarDataPtr(cctkGH,0,vname.c_str());
-
-        if (test1[index] != 1+i*j*n) error_count[0] += 1;
-        if (test2[index] != 1+7*i*j*n) error_count[1] += 1;
-        if (test3[index] != 1+13*i*j*n) error_count[2] += 1;
-        //if (*var1 != 1+i*j*n) error_count[0] += 1;
-        //if (*var2 != 1+7*i*j*n) error_count[1] += 1;
-        //if (*var3 != 1+13*i*j*n) error_count[2] += 1;
+        int index = i + j*imax;
+        if (var1[index] != 1+i*j*n) error_count[0] += 1;
+        if (var2[index] != 1+7*i*j*n) error_count[1] += 1;
+        if (var3[index] != 1+13*i*j*n) error_count[2] += 1;
       }
     }
   }
