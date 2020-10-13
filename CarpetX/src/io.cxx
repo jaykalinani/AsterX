@@ -298,12 +298,12 @@ void OutputScalars(const cGH *restrict cctkGH) {
 
     // Output data
     const GHExt::GlobalData &restrict globaldata = ghext->globaldata;
-    const GHExt::GlobalData::ScalarGroupData &restrict scalargroupdata =
-        *globaldata.scalargroupdata.at(gi);
+    const GHExt::GlobalData::ArrayGroupData &restrict arraygroupdata =
+        *globaldata.arraygroupdata.at(gi);
     const int tl = 0;
     file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
-    for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-      file << sep << scalargroupdata.data.at(tl).at(vi);
+    for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
+      file << sep << arraygroupdata.data.at(tl).at(vi);
     }
     file << "\n";
   }

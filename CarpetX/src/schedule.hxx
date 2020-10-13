@@ -165,16 +165,6 @@ void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
 void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
                  const function<string()> &msg);
 
-void error_if_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata,
-                      int vi, int tl, const valid_t &required,
-                      const function<string()> &msg);
-void warn_if_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata,
-                     int vi, int tl, const valid_t &required,
-                     const function<string()> &msg);
-void poison_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata, int vi,
-                    int tl);
-void check_valid(const GHExt::GlobalData::ScalarGroupData &groupdata, int vi,
-                 int tl, const function<string()> &msg);
 
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,

@@ -129,11 +129,11 @@ void WriteTSVScalars(const cGH *restrict cctkGH, const string &filename,
   if (CCTK_MyProc(nullptr) > 0)
     return;
 
-  const auto &scalargroupdata = *ghext->globaldata.scalargroupdata.at(gi);
+  const auto &arraygroupdata = *ghext->globaldata.arraygroupdata.at(gi);
 
   vector<string> varnames;
-  for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
-    varnames.push_back(CCTK_VarName(scalargroupdata.firstvarindex + vi));
+  for (int vi = 0; vi < arraygroupdata.numvars; ++vi)
+    varnames.push_back(CCTK_VarName(arraygroupdata.firstvarindex + vi));
 
   const string sep = "\t";
   ofstream file(filename);
@@ -151,8 +151,8 @@ void WriteTSVScalars(const cGH *restrict cctkGH, const string &filename,
   // Output data
   file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
   const int tl = 0;
-  for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
-    file << sep << scalargroupdata.data.at(tl).at(vi);
+  for (int vi = 0; vi < arraygroupdata.numvars; ++vi)
+    file << sep << arraygroupdata.data.at(tl).at(vi);
   file << "\n";
 }
 
@@ -368,7 +368,7 @@ void OutputTSV(const cGH *restrict cctkGH) {
         WriteTSVScalars(cctkGH, basename + ".tsv", gi);
         break;
       case CCTK_ARRAY:
-        assert(0); // Grid ararys are not yet supported
+        assert(0); // Grid arrays are not yet supported
         break;
       case CCTK_GF:
         WriteTSVGFs(cctkGH, basename + ".x.tsv", gi, {true, false, false},
