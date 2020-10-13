@@ -590,12 +590,21 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
   if (valid.valid_all())
     return;
 
-  int ubnd = *arraygroupdata.ubnd;
-  if (!valid.valid_int) {
-    CCTK_REAL *restrict const ptr =
-        const_cast<CCTK_REAL *>(&arraygroupdata.data.at(tl).at(vi));
-    for (int i = 0; i < ubnd; i++) {
-      ptr[i] = 0.0 / 0.0;
+  int dimension = arraygroupdata.dimension;
+  atomic<size_t> nan_count{0};
+  if (dimension == 0) {
+    return;
+  } else {
+    const int *gsh = arraygroupdata.gsh;
+    int n_elems = 1;
+    for (int i = 0; i < dimension; i++) n_elems *= gsh[i];
+  
+    if (valid.valid_int) {
+      CCTK_REAL *restrict const ptr =
+          const_cast<CCTK_REAL *>(&arraygroupdata.data.at(tl).at(vi));
+      for (int i = 0; i < n_elems; i++) {
+        ptr[i] = 0.0 / 0.0;
+      }
     }
   }
 }
@@ -613,13 +622,22 @@ void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
 
   // arrays have no boundary so we expect them to alway be valid
   assert(valid.valid_outer && valid.valid_ghosts);
-  int ubnd = *arraygroupdata.ubnd;
+
+  int dimension = arraygroupdata.dimension;
   atomic<size_t> nan_count{0};
-  if (valid.valid_int) {
-    const CCTK_REAL *restrict const ptr = &arraygroupdata.data.at(tl).at(vi);
-    for (int i = 0; i < ubnd; i++) {
-      if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr[i]), false)) {
-        ++nan_count;
+  if (dimension == 0) {
+    return;
+  } else {
+    const int *gsh = arraygroupdata.gsh;
+    int n_elems = 1;
+    for (int i = 0; i < dimension; i++) n_elems *= gsh[i];
+  
+    if (valid.valid_int) {
+      const CCTK_REAL *restrict const ptr = &arraygroupdata.data.at(tl).at(vi);
+      for (int i = 0; i < n_elems; i++) {
+        if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr[i]), false)) {
+          ++nan_count;
+        }
       }
     }
   }
