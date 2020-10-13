@@ -590,11 +590,13 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
   if (valid.valid_all())
     return;
 
-//TODO: poison needs to poison entire array, not just the first element
+  int ubnd = *arraygroupdata.ubnd;
   if (!valid.valid_int) {
     CCTK_REAL *restrict const ptr =
         const_cast<CCTK_REAL *>(&arraygroupdata.data.at(tl).at(vi));
-    *ptr = 0.0 / 0.0;
+    for (int i = 0; i < ubnd; i++) {
+      ptr[i] = 0.0 / 0.0;
+    }
   }
 }
 
@@ -611,16 +613,15 @@ void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
 
   // arrays have no boundary so we expect them to alway be valid
   assert(valid.valid_outer && valid.valid_ghosts);
-//TODO: nan checker needs to check every element of the arrays
-//  int ubnd = *arraygroupdata.info->ubnd;
+  int ubnd = *arraygroupdata.ubnd;
   atomic<size_t> nan_count{0};
   if (valid.valid_int) {
     const CCTK_REAL *restrict const ptr = &arraygroupdata.data.at(tl).at(vi);
-//    for (int i = 0; i < ubnd; i++) {
-      if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(*ptr), false)) {
+    for (int i = 0; i < ubnd; i++) {
+      if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr[i]), false)) {
         ++nan_count;
       }
-//    }
+    }
   }
 
   if (CCTK_BUILTIN_EXPECT(nan_count > 0, false))
