@@ -197,21 +197,21 @@ extern "C" CCTK_INT CarpetX_InterpGridArrays(
     void const *const coords[], int const N_input_arrays,
     CCTK_INT const input_array_variable_indices[], int const N_output_arrays,
     CCTK_INT const output_array_type_codes[], void *const output_arrays[]) {
-/* TODO: verify that the interface with SymmetryInterpolate can be simply copied from
-   Carpet like below */
-//  if (CCTK_IsFunctionAliased("SymmetryInterpolate")) {
-//    return SymmetryInterpolate(
-//        cctkGH, N_dims, local_interp_handle, param_table_handle,
-//        coord_system_handle, N_interp_points, interp_coords_type_code, coords,
-//        N_input_arrays, input_array_variable_indices, N_output_arrays,
-//        output_array_type_codes, output_arrays);
-//  } else {
-    return CarpetX_DriverInterpolate(
-        cctkGH, N_dims, local_interp_handle, param_table_handle,
-        coord_system_handle, N_interp_points, interp_coords_type_code, coords,
-        N_input_arrays, input_array_variable_indices, N_output_arrays,
-        output_array_type_codes, output_arrays);
-//  }
+  /* TODO: verify that the interface with SymmetryInterpolate can be simply
+     copied from Carpet like below */
+  //  if (CCTK_IsFunctionAliased("SymmetryInterpolate")) {
+  //    return SymmetryInterpolate(
+  //        cctkGH, N_dims, local_interp_handle, param_table_handle,
+  //        coord_system_handle, N_interp_points, interp_coords_type_code,
+  //        coords, N_input_arrays, input_array_variable_indices,
+  //        N_output_arrays, output_array_type_codes, output_arrays);
+  //  } else {
+  return CarpetX_DriverInterpolate(
+      cctkGH, N_dims, local_interp_handle, param_table_handle,
+      coord_system_handle, N_interp_points, interp_coords_type_code, coords,
+      N_input_arrays, input_array_variable_indices, N_output_arrays,
+      output_array_type_codes, output_arrays);
+  //  }
 }
 
 extern "C" CCTK_INT CarpetX_InterpStartup() {
@@ -230,8 +230,8 @@ extern "C" CCTK_INT CarpetX_DriverInterpolate(
     CCTK_POINTER const output_arrays[]) {
   DECLARE_CCTK_PARAMETERS;
 
-// This verifies that the order in param_table_handle matches the order of the
-// runtime parameter from CarpetX
+  // This verifies that the order in param_table_handle matches the order of the
+  // runtime parameter from CarpetX
   CCTK_INT order;
   int n_elems = Util_TableGetInt(param_table_handle, &order, "order");
   assert(n_elems == 1);
@@ -239,20 +239,22 @@ extern "C" CCTK_INT CarpetX_DriverInterpolate(
 
   vector<CCTK_INT> varinds;
   varinds.resize(N_output_arrays);
-  n_elems = Util_TableGetIntArray
-    (param_table_handle, N_output_arrays, varinds.data(), "operand_indices");
+  n_elems = Util_TableGetIntArray(param_table_handle, N_output_arrays,
+                                  varinds.data(), "operand_indices");
   assert(n_elems == N_output_arrays);
 
   vector<CCTK_INT> operations;
   operations.resize(N_output_arrays);
-  n_elems = Util_TableGetIntArray
-    (param_table_handle, N_output_arrays, operations.data(), "operation_codes");
+  n_elems = Util_TableGetIntArray(param_table_handle, N_output_arrays,
+                                  operations.data(), "operation_codes");
   assert(n_elems == N_output_arrays);
 
   const CCTK_POINTER resultptrs = (const CCTK_POINTER)output_arrays;
-  CarpetX_Interpolate(cctkGH, N_interp_points, static_cast<const CCTK_REAL*>(coords[0]),
-              static_cast<const CCTK_REAL*>(coords[1]), static_cast<const CCTK_REAL*>(coords[2]),
-              N_output_arrays, varinds.data(), operations.data(), resultptrs);
+  CarpetX_Interpolate(
+      cctkGH, N_interp_points, static_cast<const CCTK_REAL *>(coords[0]),
+      static_cast<const CCTK_REAL *>(coords[1]),
+      static_cast<const CCTK_REAL *>(coords[2]), N_output_arrays,
+      varinds.data(), operations.data(), resultptrs);
 
   return 0;
 }
