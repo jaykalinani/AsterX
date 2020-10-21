@@ -635,65 +635,63 @@ void SetupGlobals() {
     assert(!ierr);
 
     /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY) {
+    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
       continue;
-    } else {
-      assert(group.grouptype == CCTK_ARRAY || group.grouptype == CCTK_SCALAR);
-      assert(group.vartype == CCTK_VARIABLE_REAL);
-      assert(group.disttype == CCTK_DISTRIB_CONSTANT);
-      assert(group.dim >= 0);
+    assert(group.grouptype == CCTK_ARRAY || group.grouptype == CCTK_SCALAR);
+    assert(group.vartype == CCTK_VARIABLE_REAL);
+    assert(group.disttype == CCTK_DISTRIB_CONSTANT);
+    assert(group.dim >= 0);
 
-      globaldata.arraygroupdata.at(gi) =
-          make_unique<GHExt::GlobalData::ArrayGroupData>();
-      GHExt::GlobalData::ArrayGroupData &arraygroupdata =
-          *globaldata.arraygroupdata.at(gi);
-      arraygroupdata.groupindex = gi;
-      arraygroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
-      arraygroupdata.numvars = group.numvars;
-      arraygroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
-      arraygroupdata.do_restrict = get_group_restrict_flag(gi);
+    globaldata.arraygroupdata.at(gi) =
+        make_unique<GHExt::GlobalData::ArrayGroupData>();
+    GHExt::GlobalData::ArrayGroupData &arraygroupdata =
+        *globaldata.arraygroupdata.at(gi);
+    arraygroupdata.groupindex = gi;
+    arraygroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
+    arraygroupdata.numvars = group.numvars;
+    arraygroupdata.do_checkpoint = get_group_checkpoint_flag(gi);
+    arraygroupdata.do_restrict = get_group_restrict_flag(gi);
 
-      CCTK_INT const *const *const sz = CCTK_GroupSizesI(gi);
-      arraygroupdata.array_size = 1;
-      for (int d = 0; d < group.dim; ++d) {
-        arraygroupdata.array_size = arraygroupdata.array_size * *sz[d];
-      }
+    CCTK_INT const *const *const sz = CCTK_GroupSizesI(gi);
+    arraygroupdata.array_size = 1;
+    for (int d = 0; d < group.dim; ++d) {
+      arraygroupdata.array_size = arraygroupdata.array_size * *sz[d];
+    }
 
-      // Set up dynamic data
-      arraygroupdata.dimension = group.dim;
-      arraygroupdata.activetimelevels = 1;
-      for (int d = 0; d < group.dim; ++d) {
-        arraygroupdata.lsh[d] = *sz[d];
-        arraygroupdata.ash[d] = *sz[d];
-        arraygroupdata.gsh[d] = *sz[d];
-        arraygroupdata.nghostzones[d] = 0;
-        arraygroupdata.lbnd[d] = 0;
-        arraygroupdata.ubnd[d] = *sz[d]-1;
-        arraygroupdata.bbox[2*d] = arraygroupdata.bbox[2*d+1] = 1;
-      }
+    // Set up dynamic data
+    arraygroupdata.dimension = group.dim;
+    arraygroupdata.activetimelevels = 1;
+    for (int d = 0; d < group.dim; ++d) {
+      arraygroupdata.lsh[d] = *sz[d];
+      arraygroupdata.ash[d] = *sz[d];
+      arraygroupdata.gsh[d] = *sz[d];
+      arraygroupdata.nghostzones[d] = 0;
+      arraygroupdata.lbnd[d] = 0;
+      arraygroupdata.ubnd[d] = *sz[d]-1;
+      arraygroupdata.bbox[2*d] = arraygroupdata.bbox[2*d+1] = 1;
+    }
 
-      // Allocate data
-      arraygroupdata.data.resize(group.numtimelevels);
-      arraygroupdata.valid.resize(group.numtimelevels);
-      for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
-        arraygroupdata.data.at(tl).resize(arraygroupdata.numvars*arraygroupdata.array_size);
-        why_valid_t why([] { return "SetupGlobals"; });
-        arraygroupdata.valid.at(tl).resize(arraygroupdata.numvars, why);
-        for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
-          // TODO: decide that valid_bnd == false always and rely on
-          // initialization magic?
-          valid_t valid;
-          valid.valid_int = false;
-          valid.valid_outer = true;
-          valid.valid_ghosts = true;
-          arraygroupdata.valid.at(tl).at(vi).set(valid,
-                                                  [] { return "SetupGlobals"; });
+    // Allocate data
+    arraygroupdata.data.resize(group.numtimelevels);
+    arraygroupdata.valid.resize(group.numtimelevels);
+    for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
+      arraygroupdata.data.at(tl).resize(arraygroupdata.numvars*arraygroupdata.array_size);
+      why_valid_t why([] { return "SetupGlobals"; });
+      arraygroupdata.valid.at(tl).resize(arraygroupdata.numvars, why);
+      for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
+        // TODO: decide that valid_bnd == false always and rely on
+        // initialization magic?
+        valid_t valid;
+        valid.valid_int = false;
+        valid.valid_outer = true;
+        valid.valid_ghosts = true;
+        arraygroupdata.valid.at(tl).at(vi).set(valid,
+                                                [] { return "SetupGlobals"; });
 
-          // TODO: make poison_invalid and check_invalid virtual members of
-          // CommonGroupData
-          poison_invalid(arraygroupdata, vi, tl);
-          check_valid(arraygroupdata, vi, tl, [] { return "SetupGlobals"; });
-        }
+        // TODO: make poison_invalid and check_invalid virtual members of
+        // CommonGroupData
+        poison_invalid(arraygroupdata, vi, tl);
+        check_valid(arraygroupdata, vi, tl, [] { return "SetupGlobals"; });
       }
     }
   }
