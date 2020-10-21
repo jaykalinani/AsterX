@@ -114,38 +114,6 @@ struct GHExt {
     // integrated grid scalar per level. We don't do that yet; instead,
     // we assume that grid scalars only hold "analysis" data.
 
-    struct ScalarGroupData : public CommonGroupData {
-      vector<vector<CCTK_REAL> > data; // [time level][var index]
-      int dimension;
-      int activetimelevels;
-      int lsh[dim];
-      int ash[dim];
-      int gsh[dim];
-      int nghostzones[dim];
-      int bbox[2*dim];
-      int lbnd[dim];
-      int ubnd[dim];
-
-      ScalarGroupData() {
-        dimension = -1;
-        activetimelevels = -1;
-        for (int d = 0; d < dim; d++) {
-          lsh[d] = -1;
-          ash[d] = -1;
-          gsh[d] = -1;
-          lbnd[d] = -1;
-          ubnd[d] = -1;
-          bbox[2*d] = bbox[2*d+1] = -1;
-          nghostzones[d] = -1;
-        }
-      }
-
-      friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
-                                       const ScalarGroupData &scalargroupdata);
-    };
-    // TODO: right now this is sized for the total number of groups
-    vector<unique_ptr<ScalarGroupData> > scalargroupdata; // [group index]
-
     struct ArrayGroupData : public CommonGroupData {
       vector<vector<CCTK_REAL> > data; // [time level][var index]
       int array_size;
