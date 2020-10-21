@@ -67,7 +67,7 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
   interp_coords[1] = coords[1].data();
   interp_coords[2] = coords[2].data();
 
-  void * const *output_array = (void * const *)&resultptrs2[0];
+  void *const *output_array = (void *const *)&resultptrs2[0];
 
   /* DriverInterpolate arguments that aren't currently used */
   CCTK_INT const coord_system_handle = 0;
@@ -76,27 +76,25 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
   int interp_handle = 0;
 
   /* Table generation */
-  
+
   int param_table_handle;
-  
+
   param_table_handle = Util_TableCreate(UTIL_TABLE_FLAGS_DEFAULT);
   if (param_table_handle < 0)
-          CCTK_ERROR("Can't create parameter table!");
+    CCTK_ERROR("Can't create parameter table!");
   if (Util_TableSetInt(param_table_handle, 1, "order") < 0)
-          CCTK_ERROR("Can't set order in parameter table!");
-  if (Util_TableSetIntArray(param_table_handle,
-                            nvars, varinds.data(),
+    CCTK_ERROR("Can't set order in parameter table!");
+  if (Util_TableSetIntArray(param_table_handle, nvars, varinds.data(),
                             "operand_indices") < 0)
-          CCTK_ERROR("Can't set operand_indices array in parameter table!");
-  if (Util_TableSetIntArray(param_table_handle,
-                            nvars, operations.data(),
+    CCTK_ERROR("Can't set operand_indices array in parameter table!");
+  if (Util_TableSetIntArray(param_table_handle, nvars, operations.data(),
                             "operation_codes") < 0)
-          CCTK_ERROR("Can't set operation_codes array in parameter table!");
+    CCTK_ERROR("Can't set operation_codes array in parameter table!");
 
-  int ierr = DriverInterpolate(cctkGH, N_dims, interp_handle, param_table_handle,
-                               coord_system_handle, npoints, interp_coords_type_code,
-                               interp_coords, N_input, all_varinds.data(), 
-                               nvars, output_array_type_codes, output_array);
+  int ierr = DriverInterpolate(
+      cctkGH, N_dims, interp_handle, param_table_handle, coord_system_handle,
+      npoints, interp_coords_type_code, interp_coords, N_input,
+      all_varinds.data(), nvars, output_array_type_codes, output_array);
 
   const auto chop{[](const auto x) { return fabs(x) <= 1.0e-12 ? 0 : x; }};
   for (int v = 0; v < nvars; ++v) {
