@@ -68,6 +68,70 @@ constexpr int factorial(int n) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <typename F,
+          typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
+constexpr R sum41(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 4; ++x)
+    s += f(x);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<
+                          remove_reference_t<result_of_t<F(int, int)> > > >
+constexpr R sum42(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 4; ++x)
+    for (int y = 0; y < 4; ++y)
+      s += f(x, y);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<
+                          remove_reference_t<result_of_t<F(int, int, int)> > > >
+constexpr R sum43(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 4; ++x)
+    for (int y = 0; y < 4; ++y)
+      for (int z = 0; z < 4; ++z)
+        s += f(x, y, z);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<remove_reference_t<
+                          result_of_t<F(int, int, int, int)> > > >
+constexpr R sum44(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 4; ++x)
+    for (int y = 0; y < 4; ++y)
+      for (int z = 0; z < 4; ++z)
+        for (int w = 0; w < 4; ++w)
+          s += f(x, y, z, w);
+  return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename F, typename T> constexpr T fold(const F &f, const T &x) {
+  return x;
+}
+template <typename F, typename T, typename... Ts>
+constexpr T fold(const F &f, const T &x0, const T &x1, const Ts &... xs) {
+  return fold(f, fold(f, x0, x1), xs...);
+}
+
+template <typename T> constexpr T add() { return T(0); }
+// template <typename T>
+//  constexpr  T add(const T &x) {
+//   return x;
+// }
+template <typename T, typename... Ts>
+constexpr T add(const T &x, const Ts &... xs) {
+  return x + add(xs...);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 template <typename T> struct nan {
   constexpr T operator()() const { return NAN; }
 };
@@ -1430,70 +1494,6 @@ constexpr amat4<T, dnup1, dnup2> mul(const amat4<T, dnup1, dnup4> &A,
   return amat4<T, dnup1, dnup2>([&](int a, int b) {
     return sum1([&](int x) { return A(a, x) * B(x, b); });
   });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename F,
-          typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
-constexpr R sum41(const F &f) {
-  R s = zero<R>()();
-  for (int x = 0; x < 4; ++x)
-    s += f(x);
-  return s;
-}
-
-template <typename F, typename R = remove_cv_t<
-                          remove_reference_t<result_of_t<F(int, int)> > > >
-constexpr R sum42(const F &f) {
-  R s = zero<R>()();
-  for (int x = 0; x < 4; ++x)
-    for (int y = 0; y < 4; ++y)
-      s += f(x, y);
-  return s;
-}
-
-template <typename F, typename R = remove_cv_t<
-                          remove_reference_t<result_of_t<F(int, int, int)> > > >
-constexpr R sum43(const F &f) {
-  R s = zero<R>()();
-  for (int x = 0; x < 4; ++x)
-    for (int y = 0; y < 4; ++y)
-      for (int z = 0; z < 4; ++z)
-        s += f(x, y, z);
-  return s;
-}
-
-template <typename F, typename R = remove_cv_t<remove_reference_t<
-                          result_of_t<F(int, int, int, int)> > > >
-constexpr R sum44(const F &f) {
-  R s = zero<R>()();
-  for (int x = 0; x < 4; ++x)
-    for (int y = 0; y < 4; ++y)
-      for (int z = 0; z < 4; ++z)
-        for (int w = 0; w < 4; ++w)
-          s += f(x, y, z, w);
-  return s;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename F, typename T> constexpr T fold(const F &f, const T &x) {
-  return x;
-}
-template <typename F, typename T, typename... Ts>
-constexpr T fold(const F &f, const T &x0, const T &x1, const Ts &... xs) {
-  return fold(f, fold(f, x0, x1), xs...);
-}
-
-template <typename T> constexpr T add() { return T(0); }
-// template <typename T>
-//  constexpr  T add(const T &x) {
-//   return x;
-// }
-template <typename T, typename... Ts>
-constexpr T add(const T &x, const Ts &... xs) {
-  return x + add(xs...);
 }
 
 } // namespace Weyl
