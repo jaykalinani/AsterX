@@ -20,7 +20,6 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
   const CCTK_REAL dV1 = 1 / (dx * dy * dz);
 
-  const Loop::vect<int, dim> zero{{0, 0, 0}};
   const Loop::vect<int, dim> nx{{1, 0, 0}};
   const Loop::vect<int, dim> ny{{0, 1, 0}};
   const Loop::vect<int, dim> nz{{0, 0, 1}};
