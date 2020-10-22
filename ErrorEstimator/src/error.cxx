@@ -57,8 +57,7 @@ extern "C" void ErrorEstimator_Estimate(CCTK_ARGUMENTS) {
       return (radius_t *)radius_sphere;
     else if (CCTK_EQUALS(sh, "cube"))
       return (radius_t *)radius_cube;
-    else
-      assert(0);
+    abort();
   }(region_shape);
 
   loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
