@@ -187,6 +187,8 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
     constexpr int imax = (ORDER + 1) / 2 - 1;
     constexpr int i1min = ORDER - imax;
     constexpr int i1max = ORDER - imin;
+    // nvcc doesn't accept the constexpr terms below
+#ifndef __CUDACC__
     static_assert(abs(imin - i0min) <= required_ghosts, "");
     static_assert(abs(imin - i0max) <= required_ghosts, "");
     static_assert(abs(imax - i0min) <= required_ghosts, "");
@@ -195,6 +197,7 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
     static_assert(abs(i1min - i0max) <= required_ghosts, "");
     static_assert(abs(i1max - i0min) <= required_ghosts, "");
     static_assert(abs(i1max - i0max) <= required_ghosts, "");
+#endif
     T y = 0;
     // Make use of symmetry in coefficients
     for (int i = 0; i < (ORDER + 1) / 2; ++i) {
@@ -233,8 +236,11 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
     constexpr int i0 = (ORDER + 1) / 2;
     constexpr int imin = 0;
     constexpr int imax = ORDER;
+    // nvcc doesn't accept the constexpr terms below
+#ifndef __CUDACC__
     static_assert(abs(imin - i0) <= required_ghosts, "");
     static_assert(abs(imax - i0) <= required_ghosts, "");
+#endif
     T y = 0;
     if (off == 0)
       for (int i = 0; i < ORDER + 1; ++i)
@@ -317,8 +323,11 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
     constexpr int i0 = (ORDER + 1) / 2;
     constexpr int imin = 0;
     constexpr int imax = ORDER;
+    // nvcc doesn't accept the constexpr terms below
+#ifndef __CUDACC__
     static_assert(abs(imin - i0) <= required_ghosts, "");
     static_assert(abs(imax - i0) <= required_ghosts, "");
+#endif
     T y = 0;
     if (off == 0)
       for (int i = 0; i < ORDER + 1; ++i)

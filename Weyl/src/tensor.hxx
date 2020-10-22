@@ -274,9 +274,12 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class mat3 {
   static_assert(symind(1, 2) == 4, "");
   static_assert(symind(2, 2) == 5, "");
 
+  // nvcc doesn't handle these constexpr expressions
+#ifndef __CUDACC__
   static_assert(ind(1, 0) == ind(0, 1), "");
   static_assert(ind(2, 0) == ind(0, 2), "");
   static_assert(ind(2, 1) == ind(1, 2), "");
+#endif
 
 public:
   explicit constexpr mat3() : elts{nan<vect<T, 6> >()()} {}
@@ -738,12 +741,15 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class mat4 {
   static_assert(symind(2, 3) == 8, "");
   static_assert(symind(3, 3) == 9, "");
 
+  // nvcc doesn't handle these constexpr expressions
+#ifndef __CUDACC__
   static_assert(ind(1, 0) == ind(0, 1), "");
   static_assert(ind(2, 0) == ind(0, 2), "");
   static_assert(ind(3, 0) == ind(0, 3), "");
   static_assert(ind(2, 1) == ind(1, 2), "");
   static_assert(ind(3, 1) == ind(1, 3), "");
   static_assert(ind(3, 2) == ind(2, 3), "");
+#endif
 
 public:
   explicit constexpr mat4() : elts{nan<vect<T, 10> >()()} {}
@@ -1128,12 +1134,15 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class amat4 {
   static_assert(asymind(1, 3) == 4, "");
   static_assert(asymind(2, 3) == 5, "");
 
+  // nvcc doesn't handle these constexpr expressions
+#ifndef __CUDACC__
   static_assert(ind(1, 0) == ind(0, 1), "");
   static_assert(ind(2, 0) == ind(0, 2), "");
   static_assert(ind(3, 0) == ind(0, 3), "");
   static_assert(ind(2, 1) == ind(1, 2), "");
   static_assert(ind(3, 1) == ind(1, 3), "");
   static_assert(ind(3, 2) == ind(2, 3), "");
+#endif
 
   static_assert(sign(1, 0) == -sign(0, 1), "");
   static_assert(sign(2, 0) == -sign(0, 2), "");

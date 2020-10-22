@@ -18,6 +18,8 @@ using namespace std;
 extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
+#ifdef __CUDACC_
+
   // Test tensors
 
   mt19937 engine(42);
@@ -169,6 +171,8 @@ extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
     const double found = deriv1d_diss(var, 1, 1.0);
     assert(fabs(found - expected) <= eps);
   }
+
+#endif
 }
 
 } // namespace Z4c

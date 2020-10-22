@@ -276,9 +276,12 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class mat3 {
   static_assert(symind(1, 2) == 4, "");
   static_assert(symind(2, 2) == 5, "");
 
+  // nvcc doesn't handle these constexpr expressions
+#ifndef __CUDACC__
   static_assert(ind(1, 0) == ind(0, 1), "");
   static_assert(ind(2, 0) == ind(0, 2), "");
   static_assert(ind(2, 1) == ind(1, 2), "");
+#endif
 
 public:
   explicit constexpr Z4C_INLINE mat3() : elts{nan<vect<T, 6> >()()} {}
