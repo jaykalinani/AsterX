@@ -196,6 +196,10 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
                                     const CCTK_INT *restrict const varinds,
                                     const CCTK_INT *restrict const operations,
                                     const CCTK_POINTER resultptrs_) {
+#ifdef __CUDACC__
+  abort();
+#else
+
   DECLARE_CCTK_PARAMETERS;
   const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
   assert(in_global_mode(cctkGH));
@@ -467,5 +471,7 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     for (int v = 0; v < nvars; ++v)
       resultptrs[v][idx] = recvbuf.at(offset + 1 + v);
   }
+
+#endif
 }
 } // namespace CarpetX
