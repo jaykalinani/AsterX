@@ -71,6 +71,58 @@ constexpr int factorial(int n) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <typename F, typename T>
+constexpr Z4C_INLINE T fold(const F &f, const T &x) {
+  return x;
+}
+template <typename F, typename T, typename... Ts>
+constexpr Z4C_INLINE T fold(const F &f, const T &x0, const T &x1,
+                            const Ts &... xs) {
+  return fold(f, fold(f, x0, x1), xs...);
+}
+
+template <typename T> constexpr Z4C_INLINE T add() { return T(0); }
+// template <typename T>
+//  constexpr Z4C_INLINE T add(const T &x) {
+//   return x;
+// }
+template <typename T, typename... Ts>
+constexpr Z4C_INLINE T add(const T &x, const Ts &... xs) {
+  return x + add(xs...);
+}
+
+template <typename F,
+          typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
+constexpr Z4C_INLINE R sum1(const F &f) {
+  R s{0};
+  for (int x = 0; x < 3; ++x)
+    s += f(x);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<
+                          remove_reference_t<result_of_t<F(int, int)> > > >
+constexpr Z4C_INLINE R sum2(const F &f) {
+  R s{0};
+  for (int x = 0; x < 3; ++x)
+    for (int y = 0; y < 3; ++y)
+      s += f(x, y);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<
+                          remove_reference_t<result_of_t<F(int, int, int)> > > >
+constexpr Z4C_INLINE R sum3(const F &f) {
+  R s{0};
+  for (int x = 0; x < 3; ++x)
+    for (int y = 0; y < 3; ++y)
+      for (int z = 0; z < 3; ++z)
+        s += f(x, y, z);
+  return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 template <typename T> struct nan {
   constexpr Z4C_INLINE T operator()() const { return NAN; }
 };
@@ -497,56 +549,6 @@ mul(const mat3<T, dnup1, dnup3> &A, const mat3<T, !dnup3, dnup2> &B) {
   return mat3<T, dnup1, dnup2>([&](int a, int b) Z4C_INLINE {
     return sum1([&](int x) Z4C_INLINE { return A(a, x) * B(x, b); });
   });
-}
-
-template <typename F, typename T>
-constexpr Z4C_INLINE T fold(const F &f, const T &x) {
-  return x;
-}
-template <typename F, typename T, typename... Ts>
-constexpr Z4C_INLINE T fold(const F &f, const T &x0, const T &x1,
-                            const Ts &... xs) {
-  return fold(f, fold(f, x0, x1), xs...);
-}
-
-template <typename T> constexpr Z4C_INLINE T add() { return T(0); }
-// template <typename T>
-//  constexpr Z4C_INLINE T add(const T &x) {
-//   return x;
-// }
-template <typename T, typename... Ts>
-constexpr Z4C_INLINE T add(const T &x, const Ts &... xs) {
-  return x + add(xs...);
-}
-
-template <typename F,
-          typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
-constexpr Z4C_INLINE R sum1(const F &f) {
-  R s{0};
-  for (int x = 0; x < 3; ++x)
-    s += f(x);
-  return s;
-}
-
-template <typename F, typename R = remove_cv_t<
-                          remove_reference_t<result_of_t<F(int, int)> > > >
-constexpr Z4C_INLINE R sum2(const F &f) {
-  R s{0};
-  for (int x = 0; x < 3; ++x)
-    for (int y = 0; y < 3; ++y)
-      s += f(x, y);
-  return s;
-}
-
-template <typename F, typename R = remove_cv_t<
-                          remove_reference_t<result_of_t<F(int, int, int)> > > >
-constexpr Z4C_INLINE R sum3(const F &f) {
-  R s{0};
-  for (int x = 0; x < 3; ++x)
-    for (int y = 0; y < 3; ++y)
-      for (int z = 0; z < 3; ++z)
-        s += f(x, y, z);
-  return s;
 }
 } // namespace Z4c
 
