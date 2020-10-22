@@ -156,6 +156,7 @@ CarpetX/Punctures
 #DISABLED CarpetX/SHTOOLS
 #DISABLED CarpetX/Silo
 CarpetX/StaticTrumpet
+CarpetX/TestArrayGroup
 CarpetX/TestODESolvers
 CarpetX/TestProlongate
 CarpetX/TmunuBase

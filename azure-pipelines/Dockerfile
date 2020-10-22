@@ -31,7 +31,7 @@ RUN apt-get update && \
         libudev-dev \
         perl \
         pkg-config \
-        python \
+        python2 \
         python3 \
         rsync \
         subversion \

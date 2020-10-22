@@ -480,81 +480,89 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
   }
 }
 
-// Ensure grid functions are valid
-void error_if_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata,
+
+// Ensure arrays are valid
+void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,
                       const function<string()> &msg) {
   const valid_t &have = groupdata.valid.at(tl).at(vi).get();
   if (CCTK_BUILTIN_EXPECT((required & ~have).valid_any(), false))
-    CCTK_VERROR("%s: Grid function \"%s\" is invalid on time level %d; "
+    CCTK_VERROR("%s: Array \"%s\" is invalid on time level %d; "
                 "required %s, found %s",
                 msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
                 tl, string(required).c_str(),
                 string(groupdata.valid.at(tl).at(vi)).c_str());
 }
-void warn_if_invalid(const GHExt::GlobalData::ScalarGroupData &groupdata,
+void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                      int vi, int tl, const valid_t &required,
                      const function<string()> &msg) {
   const valid_t &have = groupdata.valid.at(tl).at(vi).get();
   if (CCTK_BUILTIN_EXPECT((required & ~have).valid_any(), false))
     CCTK_VWARN(CCTK_WARN_ALERT,
-               "%s: Grid function \"%s\" is invalid on time level %d; "
+               "%s: Array \"%s\" is invalid on time level %d; "
                "required %s, found %s",
                msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
                tl, string(required).c_str(),
                string(groupdata.valid.at(tl).at(vi)).c_str());
 }
 
-// Set grid scalars to nan
-void poison_invalid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
+// Set arrays to nan
+void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
                     int vi, int tl) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
 
-  const valid_t &valid = scalargroupdata.valid.at(tl).at(vi).get();
+  const valid_t &valid = arraygroupdata.valid.at(tl).at(vi).get();
   if (valid.valid_all())
     return;
 
-  // scalars have no boundary so we expect them to alway be valid
-  assert(valid.valid_outer && valid.valid_ghosts);
-
   if (!valid.valid_int) {
+    int dimension = arraygroupdata.dimension;
     CCTK_REAL *restrict const ptr =
-        const_cast<CCTK_REAL *>(&scalargroupdata.data.at(tl).at(vi));
-    *ptr = 0.0 / 0.0;
+        const_cast<CCTK_REAL *>(&arraygroupdata.data.at(tl).at(vi));
+    const int *gsh = arraygroupdata.gsh;
+    int n_elems = 1;
+    for (int i = 0; i < dimension; i++) n_elems *= gsh[i];
+    for (int i = 0; i < n_elems; i++) ptr[i] = 0.0 / 0.0;
   }
 }
 
-// Ensure grid scalars are not nan
-void check_valid(const GHExt::GlobalData::ScalarGroupData &scalargroupdata,
+// Ensure arrays are not nan
+void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
                  int vi, int tl, const function<string()> &msg) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
 
-  const valid_t &valid = scalargroupdata.valid.at(tl).at(vi).get();
+  const valid_t &valid = arraygroupdata.valid.at(tl).at(vi).get();
   if (!valid.valid_any())
     return;
 
-  // scalars have no boundary so we expect them to alway be valid
+  // arrays have no boundary so we expect them to alway be valid
   assert(valid.valid_outer && valid.valid_ghosts);
 
   atomic<size_t> nan_count{0};
   if (valid.valid_int) {
-    const CCTK_REAL *restrict const ptr = &scalargroupdata.data.at(tl).at(vi);
-    if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(*ptr), false)) {
-      ++nan_count;
+    const CCTK_REAL *restrict const ptr = &arraygroupdata.data.at(tl).at(vi);
+    int dimension = arraygroupdata.dimension;
+    const int *gsh = arraygroupdata.gsh;
+    int n_elems = 1;
+    for (int i = 0; i < dimension; i++) n_elems *= gsh[i];
+    for (int i = 0; i < n_elems; i++) {
+      if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr[i]), false)) {
+        ++nan_count;
+      }
     }
   }
 
   if (CCTK_BUILTIN_EXPECT(nan_count > 0, false))
-    CCTK_VERROR("%s: Grid Scalar \"%s\" has %td nans on time level %d; "
+    CCTK_VERROR("%s: Array \"%s\" has %td nans on time level %d; "
                 "expected valid %s",
                 msg().c_str(),
-                CCTK_FullVarName(scalargroupdata.firstvarindex + vi),
+                CCTK_FullVarName(arraygroupdata.firstvarindex + vi),
                 size_t(nan_count), tl,
-                string(scalargroupdata.valid.at(tl).at(vi)).c_str());
+                string(arraygroupdata.valid.at(tl).at(vi)).c_str());
 }
 
 struct tiletag_t {
@@ -896,15 +904,16 @@ void enter_global_mode(cGH *restrict cctkGH) {
       int ierr = CCTK_GroupData(gi, &group);
       assert(!ierr);
 
-      if (group.grouptype != CCTK_SCALAR)
+      if (group.grouptype != CCTK_SCALAR && group.grouptype != CCTK_ARRAY) {
         continue;
-
-      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
-      for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
-        const auto &restrict vars = scalargroupdata.data.at(tl);
-        for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-          cctkGH->data[scalargroupdata.firstvarindex + vi][tl] =
-              const_cast<CCTK_REAL *>(&vars.at(vi));
+      } else { // CCTK_ARRAY or CCTK_SCALAR
+        auto &restrict arraygroupdata = *globaldata.arraygroupdata.at(gi);
+        for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
+          const auto &restrict vars = arraygroupdata.data.at(tl);
+          for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
+            cctkGH->data[arraygroupdata.firstvarindex + vi][tl] =
+                const_cast<CCTK_REAL *>(&vars.at(vi*arraygroupdata.array_size));
+          }
         }
       }
     }
@@ -922,13 +931,14 @@ void leave_global_mode(cGH *restrict cctkGH) {
       int ierr = CCTK_GroupData(gi, &group);
       assert(!ierr);
 
-      if (group.grouptype != CCTK_SCALAR)
+      if (group.grouptype != CCTK_SCALAR && group.grouptype != CCTK_ARRAY) {
         continue;
-
-      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
-      for (int tl = 0; tl < int(scalargroupdata.data.size()); ++tl) {
-        for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-          cctkGH->data[scalargroupdata.firstvarindex + vi][tl] = nullptr;
+      } else { // CCTK_ARRAY or CCTK_SCALAR
+        auto &restrict arraygroupdata = *globaldata.arraygroupdata.at(gi);
+        for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
+          for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
+            cctkGH->data[arraygroupdata.firstvarindex + vi][tl] = nullptr;
+          }
         }
       }
     }
@@ -1529,24 +1539,21 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
           }
         }
       });
-    }
-
-    // Invalidate scalars
-    if (group.grouptype == CCTK_SCALAR) {
+    } else { // CCTK_ARRAY or CCTK_SCALAR
 
       auto &restrict globaldata = ghext->globaldata;
-      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
-      if (!scalargroupdata.do_checkpoint) {
+      auto &restrict arraygroupdata = *globaldata.arraygroupdata.at(gi);
+      if (!arraygroupdata.do_checkpoint) {
         // Invalidate all time levels
-        const int ntls = scalargroupdata.data.size();
+        const int ntls = arraygroupdata.data.size();
         for (int tl = 0; tl < ntls; ++tl) {
-          for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
+          for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
             // TODO: handle this more nicely
-            scalargroupdata.valid.at(tl).at(vi).set_int(false, [] {
+            arraygroupdata.valid.at(tl).at(vi).set_int(false, [] {
               return "InvalidateTimelevels (invalidate all non-checkpointed "
                      "variables)";
             });
-            poison_invalid(scalargroupdata, vi, tl);
+            poison_invalid(arraygroupdata, vi, tl);
           }
         }
       }
@@ -1590,30 +1597,27 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             check_valid(groupdata, vi, tl, [&]() { return "CycleTimelevels"; });
       });
-    }
-
-    // cycle scalars
-    if (group.grouptype == CCTK_SCALAR) {
+    } else { // CCTK_ARRAY or CCTK_SCALAR
 
       auto &restrict globaldata = ghext->globaldata;
-      auto &restrict scalargroupdata = *globaldata.scalargroupdata.at(gi);
-      const int ntls = scalargroupdata.data.size();
+      auto &restrict arraygroupdata = *globaldata.arraygroupdata.at(gi);
+      const int ntls = arraygroupdata.data.size();
       // Rotate time levels and invalidate current time level
       if (ntls > 1) {
-        rotate(scalargroupdata.data.begin(), scalargroupdata.data.end() - 1,
-               scalargroupdata.data.end());
-        rotate(scalargroupdata.valid.begin(), scalargroupdata.valid.end() - 1,
-               scalargroupdata.valid.end());
-        for (int vi = 0; vi < scalargroupdata.numvars; ++vi) {
-          scalargroupdata.valid.at(0).at(vi).set_int(false, [] {
+        rotate(arraygroupdata.data.begin(), arraygroupdata.data.end() - 1,
+               arraygroupdata.data.end());
+        rotate(arraygroupdata.valid.begin(), arraygroupdata.valid.end() - 1,
+               arraygroupdata.valid.end());
+        for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
+          arraygroupdata.valid.at(0).at(vi).set_int(false, [] {
             return "CycletimeLevels (invalidate current time level)";
           });
-          poison_invalid(scalargroupdata, vi, 0);
+          poison_invalid(arraygroupdata, vi, 0);
         }
       }
       for (int tl = 0; tl < ntls; ++tl)
-        for (int vi = 0; vi < scalargroupdata.numvars; ++vi)
-          check_valid(scalargroupdata, vi, tl,
+        for (int vi = 0; vi < arraygroupdata.numvars; ++vi)
+          check_valid(arraygroupdata, vi, tl,
                       [&]() { return "CycleTimelevels"; });
     }
 
@@ -1813,20 +1817,19 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
             return buf.str();
           });
         });
+      } else { // CCTK_ARRAY or CCTK_SCALAR
 
-      } else { // CCTK_SCALAR
-
-        const auto &restrict scalargroupdata =
-            *ghext->globaldata.scalargroupdata.at(rd.gi);
+        const auto &restrict arraygroupdata =
+            *ghext->globaldata.arraygroupdata.at(rd.gi);
         const valid_t &need = rd.valid;
-        error_if_invalid(scalargroupdata, rd.vi, rd.tl, need, [&] {
+        error_if_invalid(arraygroupdata, rd.vi, rd.tl, need, [&] {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
               << "::" << attribute->routine << " checking input";
           return buf.str();
         });
-        check_valid(scalargroupdata, rd.vi, rd.tl, [&] {
+        check_valid(arraygroupdata, rd.vi, rd.tl, [&] {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
@@ -1872,13 +1875,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
               });
           poison_invalid(groupdata, wr.vi, wr.tl);
         });
-
-      } else { // CCTK_SCALAR
-
-        auto &restrict scalargroupdata =
-            *ghext->globaldata.scalargroupdata.at(wr.gi);
+      } else { // CCTK_ARRAY or CCTK_SCALAR
+        auto &restrict arraygroupdata =
+            *ghext->globaldata.arraygroupdata.at(wr.gi);
         const valid_t &provided = wr.valid;
-        scalargroupdata.valid.at(wr.tl).at(wr.vi).set_and(
+        arraygroupdata.valid.at(wr.tl).at(wr.vi).set_and(
             need | ~provided,
             [iteration = cctkGH->cctk_iteration, where = attribute->where,
              thorn = attribute->thorn, routine = attribute->routine] {
@@ -1888,7 +1889,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                   << ": Poison output variables that are not input variables";
               return buf.str();
             });
-        poison_invalid(scalargroupdata, wr.vi, wr.tl);
+        poison_invalid(arraygroupdata, wr.vi, wr.tl);
       }
     }
   }
@@ -2053,13 +2054,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
             return buf.str();
           });
         });
-
-      } else { // CCTK_SCALAR
-
-        auto &restrict scalargroupdata =
-            *ghext->globaldata.scalargroupdata.at(wr.gi);
+      } else { // CCTK_ARRAY or CCTK_SCALAR
+        auto &restrict arraygroupdata =
+            *ghext->globaldata.arraygroupdata.at(wr.gi);
         const valid_t &provided = wr.valid;
-        scalargroupdata.valid.at(wr.tl).at(wr.vi).set_or(
+        arraygroupdata.valid.at(wr.tl).at(wr.vi).set_or(
             provided,
             [iteration = cctkGH->cctk_iteration, where = attribute->where,
              thorn = attribute->thorn, routine = attribute->routine] {
@@ -2069,7 +2068,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                   << ": Mark output variables as valid";
               return buf.str();
             });
-        check_valid(scalargroupdata, wr.vi, wr.tl, [&]() {
+        check_valid(arraygroupdata, wr.vi, wr.tl, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
@@ -2108,13 +2107,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
             return buf.str();
           });
         });
-
-      } else { // CCTK_SCALAR
-
-        auto &restrict scalargroupdata =
-            *ghext->globaldata.scalargroupdata.at(inv.gi);
+      } else { // CCTK_ARRAY or CCTK_SCALAR
+        auto &restrict arraygroupdata =
+            *ghext->globaldata.arraygroupdata.at(inv.gi);
         const valid_t &provided = inv.valid;
-        scalargroupdata.valid.at(inv.tl).at(inv.vi).set_and(
+        arraygroupdata.valid.at(inv.tl).at(inv.vi).set_and(
             ~provided,
             [iteration = cctkGH->cctk_iteration, where = attribute->where,
              thorn = attribute->thorn, routine = attribute->routine] {
@@ -2124,7 +2121,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                   << ": Mark invalid variables as invalid";
               return buf.str();
             });
-        check_valid(scalargroupdata, inv.vi, inv.tl, [&]() {
+        check_valid(arraygroupdata, inv.vi, inv.tl, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
