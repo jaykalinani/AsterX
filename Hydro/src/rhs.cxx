@@ -69,7 +69,7 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
   const ptrdiff_t offz =
       nghostzones[0] * diz + nghostzones[1] * djz + nghostzones[2] * dkz;
 
-  const auto calcrhs{
+  const auto calcrhs =
       [&](const CCTK_REAL *restrict const fxvar,
           const CCTK_REAL *restrict const fyvar,
           const CCTK_REAL *restrict const fzvar,
@@ -91,7 +91,7 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
             }
           }
         }
-      }};
+      };
 
   calcrhs(fxdens, fydens, fzdens, dtdens);
   calcrhs(fxmomx, fymomx, fzmomx, dtmomx);

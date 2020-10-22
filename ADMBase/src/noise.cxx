@@ -21,8 +21,9 @@ extern "C" void ADMBase_add_noise(CCTK_ARGUMENTS) {
   // Random number distribution
   uniform_real_distribution<CCTK_REAL> distribution(-noise_amplitude,
                                                     noise_amplitude);
-  const auto add_noise{
-      [&](CCTK_REAL &restrict var) { var += distribution(engine); }};
+  const auto add_noise = [&](CCTK_REAL &restrict var) {
+    var += distribution(engine);
+  };
 
   const GF3D<CCTK_REAL, 0, 0, 0> gxx_(cctkGH, gxx);
   const GF3D<CCTK_REAL, 0, 0, 0> gxy_(cctkGH, gxy);

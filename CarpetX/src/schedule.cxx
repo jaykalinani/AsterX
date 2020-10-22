@@ -367,31 +367,31 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
     nan_xmin[d] = +1.0 / 0.0;
     nan_xmax[d] = -1.0 / 0.0;
   }
-  const auto nan_update{
-      [&](const GridDescBase &grid, const Loop::PointDesc &p) {
+  const auto nan_update = [&](const GridDescBase &grid,
+                              const Loop::PointDesc &p) {
 #pragma omp critical
-        {
-          ++nan_count;
-          nan_imin[0] = min(nan_imin[0], grid.lbnd[0] + p.i);
-          nan_imin[1] = min(nan_imin[1], grid.lbnd[1] + p.j);
-          nan_imin[2] = min(nan_imin[2], grid.lbnd[2] + p.k);
-          nan_imax[0] = max(nan_imax[0], grid.lbnd[0] + p.i);
-          nan_imax[1] = max(nan_imax[1], grid.lbnd[1] + p.j);
-          nan_imax[2] = max(nan_imax[2], grid.lbnd[2] + p.k);
-          nan_xmin[0] = fmin(nan_xmin[0], p.x);
-          nan_xmin[1] = fmin(nan_xmin[1], p.y);
-          nan_xmin[2] = fmin(nan_xmin[2], p.z);
-          nan_xmax[0] = fmax(nan_xmax[0], p.x);
-          nan_xmax[1] = fmax(nan_xmax[1], p.y);
-          nan_xmax[2] = fmax(nan_xmax[2], p.z);
-        }
-      }};
-  const auto nan_check{[&](const GridDescBase &grid,
-                           const GF3D1<const CCTK_REAL> &ptr_,
-                           const Loop::PointDesc &p) {
+    {
+      ++nan_count;
+      nan_imin[0] = min(nan_imin[0], grid.lbnd[0] + p.i);
+      nan_imin[1] = min(nan_imin[1], grid.lbnd[1] + p.j);
+      nan_imin[2] = min(nan_imin[2], grid.lbnd[2] + p.k);
+      nan_imax[0] = max(nan_imax[0], grid.lbnd[0] + p.i);
+      nan_imax[1] = max(nan_imax[1], grid.lbnd[1] + p.j);
+      nan_imax[2] = max(nan_imax[2], grid.lbnd[2] + p.k);
+      nan_xmin[0] = fmin(nan_xmin[0], p.x);
+      nan_xmin[1] = fmin(nan_xmin[1], p.y);
+      nan_xmin[2] = fmin(nan_xmin[2], p.z);
+      nan_xmax[0] = fmax(nan_xmax[0], p.x);
+      nan_xmax[1] = fmax(nan_xmax[1], p.y);
+      nan_xmax[2] = fmax(nan_xmax[2], p.z);
+    }
+  };
+  const auto nan_check = [&](const GridDescBase &grid,
+                             const GF3D1<const CCTK_REAL> &ptr_,
+                             const Loop::PointDesc &p) {
     if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr_(p.I)), false))
       nan_update(grid, p);
-  }};
+  };
   const auto &leveldata = groupdata.leveldata();
   const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
       {max_tile_size_x, max_tile_size_y, max_tile_size_z});
@@ -1966,7 +1966,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
         const MFPointer mfp(mfi);
 
-        const auto task{[level = leveldata.level, mfp, function, attribute] {
+        const auto task = [level = leveldata.level, mfp, function, attribute] {
           const int thread_num = omp_get_thread_num();
           thread_local_info_t &restrict thread_info =
               *thread_local_info.at(thread_num);
@@ -1982,7 +1982,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
           leave_level_mode(threadGH, leveldata);
           thread_info.mfpointer = nullptr;
-        }};
+        };
         tasks.emplace_back(task);
       }
     });

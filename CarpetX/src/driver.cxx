@@ -515,7 +515,7 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
           !!reflection_upper_z,
       }},
   }};
-  const auto makebc{[&](const int vi, const int dir, const int face) {
+  const auto makebc = [&](const int vi, const int dir, const int face) {
     assert(dir >= 0 && dir < dim);
     assert(face >= 0 && face < 2);
     if (is_periodic[face][dir])
@@ -524,16 +524,17 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
       return groupdata.parities.at(vi)[dir] > 0 ? amrex::BCType::reflect_even
                                                 : amrex::BCType::reflect_odd;
     return amrex::BCType::ext_dir;
-  }};
+  };
 
   amrex::Vector<amrex::BCRec> bcs(groupdata.numvars);
   for (int vi = 0; vi < groupdata.numvars; ++vi)
     bcs.at(vi) =
         amrex::BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
                      makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
-  const auto apply_physbc{[](const amrex::Box &, const amrex::FArrayBox &, int,
-                             int, const amrex::Geometry &, CCTK_REAL,
-                             const amrex::Vector<amrex::BCRec> &, int, int) {}};
+  const auto apply_physbc = [](const amrex::Box &, const amrex::FArrayBox &,
+                               int, int, const amrex::Geometry &, CCTK_REAL,
+                               const amrex::Vector<amrex::BCRec> &, int,
+                               int) {};
   CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(groupdata.level), bcs,
                             apply_physbcs);
 

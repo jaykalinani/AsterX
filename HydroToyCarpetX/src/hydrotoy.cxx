@@ -258,7 +258,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   // fetot^i = (etot + press) vel^i
 
   Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcflux{[&](auto &u, auto f) {
+    auto calcflux=[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(0);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -268,7 +268,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
       return dAx * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
-    }};
+    };
 
     fxrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velx_(I); });
 
@@ -282,7 +282,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   });
 
   Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcflux{[&](auto &u, auto f) {
+    auto calcflux=[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(1);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -292,7 +292,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
       return dAy * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
-    }};
+    };
 
     fyrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * vely_(I); });
 
@@ -306,7 +306,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   });
 
   Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcflux{[&](auto &u, auto f) {
+    auto calcflux=[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(2);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -316,7 +316,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
       return dAz * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
-    }};
+    };
 
     fzrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velz_(I); });
 
@@ -397,11 +397,11 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   // dt etot + d_i (etot vel^i) = 0
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcupdate{[&](auto &fx, auto &fy, auto &fz) {
+    auto calcupdate=[&](auto &fx, auto &fy, auto &fz) {
       return dV1 *
              ((fx(p.I + p.DI(0)) - fx(p.I)) + (fy(p.I + p.DI(1)) - fy(p.I)) +
               (fz(p.I + p.DI(2)) - fz(p.I)));
-    }};
+    };
 
     rho_(p.I) = rho_p_(p.I) - calcupdate(fxrho_, fyrho_, fzrho_);
 
@@ -434,7 +434,7 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
   }
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcerr{[&](auto &var_) {
+    auto calcerr = [&](auto &var_) {
       CCTK_REAL err{0};
       for (int d = 0; d < dim; ++d) {
         auto varm = var_(p.I - p.DI(d));
@@ -443,7 +443,7 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
         err = fmax(err, fabs(varm - 2 * var0 + varp));
       }
       return err;
-    }};
+    };
 
     regrid_error_(p.I) = fmax5(calcerr(rho_), calcerr(momx_), calcerr(momy_),
                                calcerr(momz_), calcerr(etot_));

@@ -28,17 +28,17 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
   const int ntheta = nmodes;
   const int nphi = 2 * nmodes - 1;
   const int npoints = ntheta * nphi;
-  const auto coord_theta{[&](const int i, const int j) -> CCTK_REAL {
+  const auto coord_theta = [&](const int i, const int j) -> CCTK_REAL {
     assert(i >= 0 && i < ntheta);
     assert(j >= 0 && j < nphi);
     return ssht_sampling_mw_t2theta(i, nmodes);
-  }};
-  const auto coord_phi{[&](const int i, const int j) -> CCTK_REAL {
+  };
+  const auto coord_phi = [&](const int i, const int j) -> CCTK_REAL {
     assert(i >= 0 && i < ntheta);
     assert(j >= 0 && j < nphi);
     return ssht_sampling_mw_p2phi(j, nmodes);
-  }};
-  const auto gind{[&](const int i, const int j) -> int {
+  };
+  const auto gind = [&](const int i, const int j) -> int {
     // 0 <= i < ntheta
     // 0 <= j < nphi
     assert(i >= 0 && i < ntheta);
@@ -46,11 +46,11 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
     const int ind = j + nphi * i;
     assert(ind >= 0 && ind < npoints);
     return ind;
-  }};
+  };
 
   const int lmax = nmodes - 1;
   const int ncoeffs = nmodes * nmodes;
-  const auto cind{[&](const int l, const int m) -> int {
+  const auto cind = [&](const int l, const int m) -> int {
     // 0 <= l <= lmax
     // -l <= m <= l
     assert(l >= 0 && l <= lmax);
@@ -59,7 +59,7 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
     ssht_sampling_elm2ind(&ind, l, m);
     assert(ind >= 0 && ind < ncoeffs);
     return ind;
-  }};
+  };
 
   const ssht_dl_method_t method = SSHT_DL_RISBO;
   const int verbosity = 0; // [0..5]

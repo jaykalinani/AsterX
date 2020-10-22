@@ -51,7 +51,7 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   const Loop::vect<int, dim> ash_fy = ash_ng + dj;
   const Loop::vect<int, dim> ash_fz = ash_ng + dk;
 
-  const auto mkstr{[](const Loop::vect<int, dim> &ash) {
+  const auto mkstr = [](const Loop::vect<int, dim> &ash) {
     Loop::vect<ptrdiff_t, dim> str;
     ptrdiff_t s = 1;
     for (int d = 0; d < dim; ++d) {
@@ -59,7 +59,7 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
       s *= ash[d];
     }
     return str;
-  }};
+  };
 
   const Loop::vect<ptrdiff_t, dim> str = mkstr(ash);
   const Loop::vect<ptrdiff_t, dim> str_fx = mkstr(ash_fx);
@@ -82,8 +82,8 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   // dt mom_j + d_i (mom_j vel^i) = 0
   // dt etot + d_i (etot vel^i) = 0
 
-  const auto calcupdate{[&](auto &u_, const auto &u_p_, const auto &fx_,
-                            const auto &fy_, const auto &fz_) {
+  const auto calcupdate = [&](auto &u_, const auto &u_p_, const auto &fx_,
+                              const auto &fy_, const auto &fz_) {
     for (int k = imin[2]; k < imax[2]; ++k) {
       for (int j = imin[1]; j < imax[1]; ++j) {
         ptrdiff_t idx_i0 = off + str[1] * j + str[2] * k;
@@ -107,7 +107,7 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
         }
       }
     }
-  }};
+  };
 
   calcupdate(rho, rho_p, fxrho, fyrho, fzrho);
   calcupdate(momx, momx_p, fxmomx, fymomx, fzmomx);

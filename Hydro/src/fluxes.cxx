@@ -57,15 +57,16 @@ extern "C" void Hydro_Fluxes(CCTK_ARGUMENTS) {
   const ptrdiff_t dj = di * ash[0];
   const ptrdiff_t dk = dj * ash[1];
 
-  const auto calcflux{[&](const int dir, const int ddir, const CCTK_REAL dAdir,
-                          const Loop::vect<int, dim> &ndir,
-                          const CCTK_REAL *restrict const veldir,
-                          CCTK_REAL *restrict const fdirdens,
-                          CCTK_REAL *restrict const fdirmomx,
-                          CCTK_REAL *restrict const fdirmomy,
-                          CCTK_REAL *restrict const fdirmomz,
-                          CCTK_REAL *restrict const
-                              fdiretot) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  const auto calcflux = [&](const int dir, const int ddir,
+                            const CCTK_REAL dAdir,
+                            const Loop::vect<int, dim> &ndir,
+                            const CCTK_REAL *restrict const veldir,
+                            CCTK_REAL *restrict const fdirdens,
+                            CCTK_REAL *restrict const fdirmomx,
+                            CCTK_REAL *restrict const fdirmomy,
+                            CCTK_REAL *restrict const fdirmomz,
+                            CCTK_REAL *restrict const
+                                fdiretot) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     const Loop::vect<int, dim> imindir = max(tmin, nghostzones);
     const Loop::vect<int, dim> imaxdir =
         min(tmax + (tmax >= lsh).ifelse(ndir, zero), lsh + ndir - nghostzones);
@@ -125,7 +126,7 @@ extern "C" void Hydro_Fluxes(CCTK_ARGUMENTS) {
         }
       }
     }
-  }};
+  };
 
   calcflux(0, di, dAx, nx, velx, fxdens, fxmomx, fxmomy, fxmomz, fxetot);
   calcflux(1, dj, dAy, ny, vely, fydens, fymomx, fymomy, fymomz, fyetot);
