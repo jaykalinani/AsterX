@@ -1357,7 +1357,7 @@ int InitGH(cGH *restrict cctkGH) {
   const int coord = -1; // undefined?
 
   // Refinement ratios
-  const amrex::Vector<amrex::IntVect> reffacts; // empty
+  const amrex::Vector<amrex::IntVect> reffacts{}; // empty
 
   // Periodicity
   const amrex::Array<int, dim> is_periodic{
