@@ -199,7 +199,7 @@ template <typename T, int D> struct vect {
       elts[d] = x.elts[d];
   }
   template <typename U>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect &&x) : elts() {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect<U, D> &&x) : elts() {
     for (int d = 0; d < D; ++d)
       elts[d] = move(x.elts[d]);
   }
