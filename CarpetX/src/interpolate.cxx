@@ -460,7 +460,7 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
 
   // Set result
   CCTK_REAL *const restrict *const restrict resultptrs =
-      static_cast<CCTK_REAL *const *const restrict>(resultptrs_);
+      static_cast<CCTK_REAL *const *>(resultptrs_);
   for (int n = 0; n < npoints; ++n) {
     const int offset = (nvars + 1) * n;
     const int idx = int(recvbuf.at(offset));
