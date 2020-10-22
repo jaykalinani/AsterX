@@ -3,8 +3,8 @@
 namespace Arith {
 
 template <typename T> constexpr bool test_div_floor(T x, T y) {
-  T d = div_floor(x, y);
-  T m = mod_floor(x, y);
+  constexpr T d = div_floor(x, y);
+  constexpr T m = mod_floor(x, y);
   return d * y + m == x && m >= 0 && m < abs(y);
 }
 

@@ -14,7 +14,7 @@ namespace AHFinder {
 
 template <typename T> constexpr bool is_approx(const T x, const T y) {
   typedef decltype(abs(declval<T>())) R;
-  constexpr R eps = pow(numeric_limits<R>::epsilon(), R(3) / R(4));
+  R eps = pow(numeric_limits<R>::epsilon(), R(3) / R(4));
   return abs(x - y) <= eps;
 }
 
