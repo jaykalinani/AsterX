@@ -78,7 +78,7 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
 
   int param_table_handle;
   int operands[nvars];
-  for (int i = 0; i<nvars; i++) {
+  for (int i = 0; i < nvars; i++) {
     operands[i] = i;
   }
 
@@ -96,8 +96,8 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
 
   int ierr = DriverInterpolate(
       cctkGH, N_dims, interp_handle, param_table_handle, coord_system_handle,
-      npoints, interp_coords_type_code, interp_coords, nvars,
-      varinds.data(), nvars, output_array_type_codes, output_array);
+      npoints, interp_coords_type_code, interp_coords, nvars, varinds.data(),
+      nvars, output_array_type_codes, output_array);
 
   const auto chop{[](const auto x) { return fabs(x) <= 1.0e-12 ? 0 : x; }};
   for (int v = 0; v < nvars; ++v) {
