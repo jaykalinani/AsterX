@@ -4,6 +4,7 @@
 #include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
 #include "timer.hxx"
+#include "interp.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -1325,6 +1326,7 @@ extern "C" int CarpetX_Startup() {
 
   CCTK_OverloadSyncGroupsByDirI(SyncGroupsByDirI);
 
+  CCTK_OverloadInterpGridArrays(CarpetX_InterpGridArrays);
   CCTK_OverloadGroupDynamicData(GroupDynamicData);
   return 0;
 }
