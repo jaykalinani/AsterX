@@ -668,15 +668,16 @@ void SetupGlobals() {
       arraygroupdata.gsh[d] = *sz[d];
       arraygroupdata.nghostzones[d] = 0;
       arraygroupdata.lbnd[d] = 0;
-      arraygroupdata.ubnd[d] = *sz[d]-1;
-      arraygroupdata.bbox[2*d] = arraygroupdata.bbox[2*d+1] = 1;
+      arraygroupdata.ubnd[d] = *sz[d] - 1;
+      arraygroupdata.bbox[2 * d] = arraygroupdata.bbox[2 * d + 1] = 1;
     }
 
     // Allocate data
     arraygroupdata.data.resize(group.numtimelevels);
     arraygroupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
-      arraygroupdata.data.at(tl).resize(arraygroupdata.numvars*arraygroupdata.array_size);
+      arraygroupdata.data.at(tl).resize(arraygroupdata.numvars *
+                                        arraygroupdata.array_size);
       why_valid_t why([] { return "SetupGlobals"; });
       arraygroupdata.valid.at(tl).resize(arraygroupdata.numvars, why);
       for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
@@ -687,7 +688,7 @@ void SetupGlobals() {
         valid.valid_outer = true;
         valid.valid_ghosts = true;
         arraygroupdata.valid.at(tl).at(vi).set(valid,
-                                                [] { return "SetupGlobals"; });
+                                               [] { return "SetupGlobals"; });
 
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
