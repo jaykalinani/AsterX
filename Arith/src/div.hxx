@@ -18,16 +18,13 @@ using namespace std;
 template <typename T> constexpr T div_floor(T x, T y) ARITH_INLINE;
 template <typename T> constexpr T div_floor(T x, T y) {
   // C++ division truncates; we want to round towards -infinity instead
-  if (y < 0) {
-    x = -x;
-    y = -y;
-  }
-  return x >= 0 ? x / y : (x - y + 1) / y;
+  x = y < 0 ? -x : x;
+  y = y < 0 ? -y : y;
+  return (x >= 0 ? x : x - y + 1) / y;
 }
 
-template <typename T>
-constexpr T mod_floor(const T &x, const T &y) ARITH_INLINE;
-template <typename T> constexpr T mod_floor(const T &x, const T &y) {
+template <typename T> constexpr T mod_floor(T x, T y) ARITH_INLINE;
+template <typename T> constexpr T mod_floor(T x, T y) {
   return x - div_floor(x, y) * y;
 }
 
