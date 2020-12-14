@@ -635,8 +635,8 @@ void SetupGlobals() {
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
+    // grid functions live on levels
+    if (group.grouptype == CCTK_GF)
       continue;
     assert(group.grouptype == CCTK_ARRAY || group.grouptype == CCTK_SCALAR);
     assert(group.vartype == CCTK_VARIABLE_REAL);
