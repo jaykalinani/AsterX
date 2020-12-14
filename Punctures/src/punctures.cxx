@@ -35,8 +35,7 @@ template <typename T> T pown(T x, int n) {
 
 const mat<CCTK_REAL, 3, DN, DN> g([](int a, int b) { return a == b; });
 
-const auto epsilon = [](int a, int b,
-                        int c) -> CCTK_REAL CCTK_ATTRIBUTE_ALWAYS_INLINE {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REAL epsilon(int a, int b, int c) {
   if (a == 0 && b == 1 && c == 2)
     return 1;
   if (a == 0 && b == 2 && c == 1)
@@ -50,7 +49,7 @@ const auto epsilon = [](int a, int b,
   if (a == 2 && b == 1 && c == 0)
     return -1;
   return 0;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
