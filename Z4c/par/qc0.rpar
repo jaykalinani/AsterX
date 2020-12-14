@@ -45,7 +45,6 @@ ActiveThorns = "
     CarpetX
     Coordinates
     ErrorEstimator
-    Formaline
     IOUtil
     ODESolvers
     TimerReport
