@@ -2507,8 +2507,7 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
   assert(requested_tls);
   for (int n = 0; n < n_groups; ++n) {
     if (groups[n] < 0 or groups[n] >= CCTK_NumGroups()) {
-      CCTK_VWarn(1, __LINE__, __FILE__, CCTK_THORNSTRING,
-                 "Group index %d is illegal", groups[n]);
+      CCTK_VWARN(CCTK_WARN_ALERT, "Group index %d is illegal", groups[n]);
       return -1;
     }
     assert(groups[n] >= 0 and groups[n] < CCTK_NumGroups());
@@ -2522,7 +2521,7 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
     int const declared_tls = CCTK_DeclaredTimeLevelsGI(groups[n]);
     if (inc and declared_tls < 2 and ntls > declared_tls) {
       char *groupname = CCTK_GroupName(groups[n]);
-      CCTK_VWarn(CCTK_WARN_ALERT, __LINE__, __FILE__, CCTK_THORNSTRING,
+      CCTK_VWARN(CCTK_WARN_ALERT,
                  "Attempting to activate %d timelevels for group '%s' which "
                  "only has a single timelevel declared in interface.ccl. "
                  "Please declared at least 2 timelevels in interface.ccl to "
