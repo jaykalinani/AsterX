@@ -1925,31 +1925,24 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   case mode_t::local: {
     // Call function once per tile
     // TODO: provide looping function
+
     assert(thread_local_info.empty());
     swap(thread_local_info, saved_thread_local_info);
 
-#if 0
+    if (CCTK_EQUALS(kernel_launch_method, "serial")) {
 
-#pragma omp parallel
-    {
       const int thread_num = omp_get_thread_num();
       thread_local_info_t &restrict thread_info =
           *thread_local_info.at(thread_num);
       cGH *restrict const threadGH = &thread_info.cctkGH;
-      update_cctkGH(threadGH, cctkGH);
       TileBox &restrict thread_tilebox = thread_info.tilebox;
-
-      // Loop over all levels
-      // TODO: parallelize this loop
       active_levels->loop([&](const auto &restrict leveldata) {
         enter_level_mode(threadGH, leveldata);
-        const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
+        const auto mfitinfo = amrex::MFItInfo().EnableTiling(
             {max_tile_size_x, max_tile_size_y, max_tile_size_z});
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
-          cout << "level=" << level << " mfi.currentIndex=" << mfi.tileIndex()
-               << " mfi.length=" << mfi.length() << "\n";
-          MFPointer mfp(mfi);
+          const MFPointer mfp(mfi);
           thread_info.mfpointer = &mfp;
           enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
           CCTK_CallFunction(function, attribute, threadGH);
@@ -1958,55 +1951,79 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         }
         leave_level_mode(threadGH, leveldata);
       });
-    }
 
-#else
+    } else if (CCTK_EQUALS(kernel_launch_method, "openmp")) {
 
-    vector<std::function<void()> > tasks;
-    active_levels->loop([&](const auto &restrict leveldata) {
-      const auto mfitinfo = amrex::MFItInfo().EnableTiling(
-          {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-      // Note: The amrex::MFIter uses global variables and OpenMP barriers
-      for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
-        const MFPointer mfp(mfi);
+      vector<std::function<void()> > tasks;
+      active_levels->loop([&](const auto &restrict leveldata) {
+        const auto mfitinfo = amrex::MFItInfo().EnableTiling(
+            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+        // Note: The amrex::MFIter uses global variables and OpenMP barriers
+        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+             ++mfi) {
+          const MFPointer mfp(mfi);
 
-        const auto task = [level = leveldata.level, mfp, function, attribute] {
-          const int thread_num = omp_get_thread_num();
-          thread_local_info_t &restrict thread_info =
-              *thread_local_info.at(thread_num);
-          cGH *restrict const threadGH = &thread_info.cctkGH;
-          TileBox &restrict thread_tilebox = thread_info.tilebox;
+          const auto task = [level = leveldata.level, mfp, function,
+                             attribute] {
+            const int thread_num = omp_get_thread_num();
+            thread_local_info_t &restrict thread_info =
+                *thread_local_info.at(thread_num);
+            cGH *restrict const threadGH = &thread_info.cctkGH;
+            TileBox &restrict thread_tilebox = thread_info.tilebox;
 
-          const auto &restrict leveldata = ghext->leveldata.at(level);
-          thread_info.mfpointer = &mfp;
+            const auto &restrict leveldata = ghext->leveldata.at(level);
+            thread_info.mfpointer = &mfp;
 
-          enter_level_mode(threadGH, leveldata);
-          enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
-          CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
-          leave_level_mode(threadGH, leveldata);
-          thread_info.mfpointer = nullptr;
-        };
-        tasks.emplace_back(task);
-      }
-    });
+            enter_level_mode(threadGH, leveldata);
+            enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+            CCTK_CallFunction(function, attribute, threadGH);
+            leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+            leave_level_mode(threadGH, leveldata);
+            thread_info.mfpointer = nullptr;
+          };
+          tasks.emplace_back(task);
+        }
+      });
 
 #pragma omp parallel
-    {
-      // Initialize thread-local state variables
+      {
+        // Initialize thread-local state variables
+        const int thread_num = omp_get_thread_num();
+        thread_local_info_t &restrict thread_info =
+            *thread_local_info.at(thread_num);
+        cGH *restrict const threadGH = &thread_info.cctkGH;
+        update_cctkGH(threadGH, cctkGH);
+
+        // run all tasks
+#pragma omp for schedule(dynamic)
+        for (size_t i = 0; i < tasks.size(); ++i)
+          tasks[i]();
+      }
+
+    } else if (CCTK_EQUALS(kernel_launch_method, "cuda")) {
+
       const int thread_num = omp_get_thread_num();
       thread_local_info_t &restrict thread_info =
           *thread_local_info.at(thread_num);
       cGH *restrict const threadGH = &thread_info.cctkGH;
-      update_cctkGH(threadGH, cctkGH);
+      TileBox &restrict thread_tilebox = thread_info.tilebox;
+      active_levels->loop([&](const auto &restrict leveldata) {
+        enter_level_mode(threadGH, leveldata);
+        // No tiling on a GPU
+        for (amrex::MFIter mfi(*leveldata.fab); mfi.isValid(); ++mfi) {
+          const MFPointer mfp(mfi);
+          thread_info.mfpointer = &mfp;
+          enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          CCTK_CallFunction(function, attribute, threadGH);
+          leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          thread_info.mfpointer = nullptr;
+        }
+        leave_level_mode(threadGH, leveldata);
+      });
 
-      // run all tasks
-#pragma omp for schedule(dynamic)
-      for (size_t i = 0; i < tasks.size(); ++i)
-        tasks[i]();
+    } else {
+      assert(0);
     }
-
-#endif
 
     swap(saved_thread_local_info, thread_local_info);
     assert(thread_local_info.empty());
