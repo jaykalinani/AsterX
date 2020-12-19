@@ -54,9 +54,9 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REAL epsilon(int a, int b, int c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
-                                        T &alpha, mat<T, 3, DN, DN> &K, T &rhs,
-                                        T &psi) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
+                                               T &alpha, mat<T, 3, DN, DN> &K,
+                                               T &rhs, T &psi) {
   DECLARE_CCTK_PARAMETERS;
 
   T alpha1 = 0;
