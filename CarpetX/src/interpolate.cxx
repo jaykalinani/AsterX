@@ -214,11 +214,6 @@ extern "C" CCTK_INT CarpetX_InterpGridArrays(
   //  }
 }
 
-extern "C" CCTK_INT CarpetX_InterpStartup() {
-  CCTK_OverloadInterpGridArrays(CarpetX_InterpGridArrays);
-  return 0;
-}
-
 extern "C" CCTK_INT CarpetX_DriverInterpolate(
     CCTK_POINTER_TO_CONST const cctkGH, CCTK_INT const N_dims,
     CCTK_INT const local_interp_handle, CCTK_INT const param_table_handle,
@@ -241,13 +236,29 @@ extern "C" CCTK_INT CarpetX_DriverInterpolate(
   varinds.resize(N_output_arrays);
   n_elems = Util_TableGetIntArray(param_table_handle, N_output_arrays,
                                   varinds.data(), "operand_indices");
-  assert(n_elems == N_output_arrays);
+  if (n_elems == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    assert(N_input_arrays == N_output_arrays);
+    for (int i = 0; i < N_input_arrays; i++) {
+      varinds.at(i) = input_array_variable_indices[i];
+    }
+  } else if (n_elems == N_output_arrays) {
+    for (int i = 0; i < n_elems; i++) {
+      varinds.at(i) = input_array_variable_indices[varinds.at(i)];
+    }
+  } else {
+    // TODO: actually output the error code
+    CCTK_ERROR("TableGetIntArray failed.");
+  }
 
   vector<CCTK_INT> operations;
-  operations.resize(N_output_arrays);
+  operations.resize(N_output_arrays, 0);
   n_elems = Util_TableGetIntArray(param_table_handle, N_output_arrays,
                                   operations.data(), "operation_codes");
-  assert(n_elems == N_output_arrays);
+  if (n_elems == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    assert(N_input_arrays == N_output_arrays);
+  } else if (n_elems != N_output_arrays) {
+    CCTK_ERROR("TableGetIntArray failed.");
+  }
 
   const CCTK_POINTER resultptrs = (const CCTK_POINTER)output_arrays;
   CarpetX_Interpolate(

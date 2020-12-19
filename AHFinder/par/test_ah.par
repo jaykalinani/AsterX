@@ -16,6 +16,7 @@ $nlevels = 3
 $ncells = 32
 
 Cactus::cctk_show_schedule = no
+Cactus::presync_mode = "mixed-error"
 
 Cactus::presync_mode = "mixed-error"
 

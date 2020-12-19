@@ -60,7 +60,6 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
               resultptrs.data());
 
   CCTK_INT const N_dims = 3;
-  CCTK_INT const N_input = all_varinds.size();
 
   const void *interp_coords[N_dims];
   interp_coords[0] = coords[0].data();
@@ -78,13 +77,17 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
   /* Table generation */
 
   int param_table_handle;
+  int operands[nvars];
+  for (int i = 0; i < nvars; i++) {
+    operands[i] = i;
+  }
 
   param_table_handle = Util_TableCreate(UTIL_TABLE_FLAGS_DEFAULT);
   if (param_table_handle < 0)
     CCTK_ERROR("Can't create parameter table!");
   if (Util_TableSetInt(param_table_handle, 1, "order") < 0)
     CCTK_ERROR("Can't set order in parameter table!");
-  if (Util_TableSetIntArray(param_table_handle, nvars, varinds.data(),
+  if (Util_TableSetIntArray(param_table_handle, nvars, operands,
                             "operand_indices") < 0)
     CCTK_ERROR("Can't set operand_indices array in parameter table!");
   if (Util_TableSetIntArray(param_table_handle, nvars, operations.data(),
@@ -93,8 +96,8 @@ extern "C" void AHFinder_test_interpolation(CCTK_ARGUMENTS) {
 
   int ierr = DriverInterpolate(
       cctkGH, N_dims, interp_handle, param_table_handle, coord_system_handle,
-      npoints, interp_coords_type_code, interp_coords, N_input,
-      all_varinds.data(), nvars, output_array_type_codes, output_array);
+      npoints, interp_coords_type_code, interp_coords, nvars, varinds.data(),
+      nvars, output_array_type_codes, output_array);
 
   const auto chop{[](const auto x) { return fabs(x) <= 1.0e-12 ? 0 : x; }};
   for (int v = 0; v < nvars; ++v) {

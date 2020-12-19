@@ -124,7 +124,7 @@ struct GHExt {
       int gsh[dim];
       int lbnd[dim];
       int ubnd[dim];
-      int bbox[2*dim];
+      int bbox[2 * dim];
       int nghostzones[dim];
 
       ArrayGroupData() {
@@ -136,7 +136,7 @@ struct GHExt {
           gsh[d] = -1;
           lbnd[d] = -1;
           ubnd[d] = -1;
-          bbox[2*d] = bbox[2*d+1] = -1;
+          bbox[2 * d] = bbox[2 * d + 1] = -1;
           nghostzones[d] = -1;
         }
       }

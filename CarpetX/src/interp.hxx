@@ -4,9 +4,7 @@
 #include "cctk.h"
 
 /* Scheduled functions */
-int CarpetX_InterpStartup(void);
-
-int CarpetX_InterpGridArrays(
+extern "C" int CarpetX_InterpGridArrays(
     cGH const *const cGH, int const N_dims, int const local_interp_handle,
     int const param_table_handle, int const coord_system_handle,
     int const N_interp_points, int const interp_coords_type_code,
