@@ -480,7 +480,6 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
   }
 }
 
-
 // Ensure arrays are valid
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,
@@ -493,8 +492,8 @@ void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                 tl, string(required).c_str(),
                 string(groupdata.valid.at(tl).at(vi)).c_str());
 }
-void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
-                     int vi, int tl, const valid_t &required,
+void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
+                     int tl, const valid_t &required,
                      const function<string()> &msg) {
   const valid_t &have = groupdata.valid.at(tl).at(vi).get();
   if (CCTK_BUILTIN_EXPECT((required & ~have).valid_any(), false))
@@ -523,8 +522,10 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
         const_cast<CCTK_REAL *>(&arraygroupdata.data.at(tl).at(vi));
     const int *gsh = arraygroupdata.gsh;
     int n_elems = 1;
-    for (int i = 0; i < dimension; i++) n_elems *= gsh[i];
-    for (int i = 0; i < n_elems; i++) ptr[i] = 0.0 / 0.0;
+    for (int i = 0; i < dimension; i++)
+      n_elems *= gsh[i];
+    for (int i = 0; i < n_elems; i++)
+      ptr[i] = 0.0 / 0.0;
   }
 }
 
@@ -548,7 +549,8 @@ void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
     int dimension = arraygroupdata.dimension;
     const int *gsh = arraygroupdata.gsh;
     int n_elems = 1;
-    for (int i = 0; i < dimension; i++) n_elems *= gsh[i];
+    for (int i = 0; i < dimension; i++)
+      n_elems *= gsh[i];
     for (int i = 0; i < n_elems; i++) {
       if (CCTK_BUILTIN_EXPECT(!CCTK_isfinite(ptr[i]), false)) {
         ++nan_count;
@@ -912,7 +914,8 @@ void enter_global_mode(cGH *restrict cctkGH) {
           const auto &restrict vars = arraygroupdata.data.at(tl);
           for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
             cctkGH->data[arraygroupdata.firstvarindex + vi][tl] =
-                const_cast<CCTK_REAL *>(&vars.at(vi*arraygroupdata.array_size));
+                const_cast<CCTK_REAL *>(
+                    &vars.at(vi * arraygroupdata.array_size));
           }
         }
       }
