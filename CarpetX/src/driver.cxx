@@ -134,7 +134,7 @@ array<int, dim> get_group_indextype(const int gi) {
   array<CCTK_INT, dim> index;
   int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    index = {1, 1, 1}; // default: cell-centred
+    index = {0, 0, 0}; // default: vertex-centred
   } else if (iret >= 0) {
     assert(iret == dim);
   } else {
