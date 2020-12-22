@@ -1613,7 +1613,7 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
   cGroup group;
   int ierr = CCTK_GroupData(gi, &group);
   assert(!ierr);
-  if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY) {
+  if (group.grouptype == CCTK_GF) {
     data->dim = group.dim;
     data->lsh = cctkGH->cctk_lsh;
     data->ash = cctkGH->cctk_ash;
@@ -1623,7 +1623,7 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->bbox = cctkGH->cctk_bbox;
     data->nghostzones = cctkGH->cctk_nghostzones;
     data->activetimelevels = CCTK_ActiveTimeLevelsGI(cctkGH, gi);
-  } else { // CCTK_ARRAY or CCTK_SCALAR
+  } else if (group.grouptype == CCTK_SCALAR or group.grouptype == CCTK_ARRAY) {
     GHExt::GlobalData &globaldata = ghext->globaldata;
     GHExt::GlobalData::ArrayGroupData &arraygroupdata =
         *globaldata.arraygroupdata.at(gi);
@@ -1636,6 +1636,11 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->bbox = arraygroupdata.bbox;
     data->nghostzones = arraygroupdata.nghostzones;
     data->activetimelevels = arraygroupdata.activetimelevels;
+  } else {
+    char* gname = CCTK_GroupName(gi);
+    CCTK_VERROR("Internal error: unexpected group type %d for group '%s'",
+                (int)group.grouptype, gname);
+    free(gname);
   }
   return 0;
 }
