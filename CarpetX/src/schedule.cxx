@@ -169,20 +169,20 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Global shape
   for (int d = 0; d < dim; ++d)
     gsh[d] =
-        domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 2 * nghostzones[d];
+        domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + (domain.type(d) == amrex::IndexType::CELL ? 1 : 0) + 2 * nghostzones[d];
 
   // Local shape
   for (int d = 0; d < dim; ++d)
-    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 + (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0);
 
   // Allocated shape
   for (int d = 0; d < dim; ++d)
-    ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+    ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 + (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0);
 
   // Local extent
   for (int d = 0; d < dim; ++d) {
     lbnd[d] = fbx[orient(d, 0)] + nghostzones[d];
-    ubnd[d] = fbx[orient(d, 1)] + nghostzones[d];
+    ubnd[d] = fbx[orient(d, 1)] + (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0) + nghostzones[d];
   }
 
   // Boundaries
@@ -206,7 +206,9 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
     tmin[d] = gbx[orient(d, 0)] - fbx[orient(d, 0)];
-    tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)];
+    // the allocated box is 1 vertex larger than the number of cells, and AMReX
+    // assigns this extra vertex to the final tile
+    tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)] + (fbx.type(d) == amrex::IndexType::CELL ? gbx[orient(d, 1)] == fbx[orient(d, 1)] : 0);
   }
 
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
@@ -272,10 +274,10 @@ GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
   for (int d = 0; d < dim; ++d)
     gimin[d] = nghostzones[d] - groupdata.nghostzones[d];
   for (int d = 0; d < dim; ++d)
-    gimax[d] = lsh[d] + (1 - groupdata.indextype[d]) -
+    gimax[d] = lsh[d] - groupdata.indextype[d] -
                (nghostzones[d] - groupdata.nghostzones[d]);
   for (int d = 0; d < dim; ++d)
-    gash[d] = ash[d] + (1 - groupdata.indextype[d]) -
+    gash[d] = ash[d] - groupdata.indextype[d] -
               2 * (nghostzones[d] - groupdata.nghostzones[d]);
 }
 

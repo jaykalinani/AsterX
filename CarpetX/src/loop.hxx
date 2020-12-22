@@ -115,8 +115,8 @@ public:
         return;
 
     constexpr int di = 1;
-    const int dj = di * (ash[0] + !CI);
-    const int dk = dj * (ash[1] + !CJ);
+    const int dj = di * (ash[0] - CI);
+    const int dk = dj * (ash[1] - CJ);
 
     const auto kernel{[&](const int i, const int j,
                           const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -170,12 +170,12 @@ public:
   void box_all(const array<int, dim> &group_nghostzones,
                vect<int, dim> &restrict imin,
                vect<int, dim> &restrict imax) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - ghost_offset);
+      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] - offset[d] - ghost_offset);
     }
   }
 
@@ -184,11 +184,11 @@ public:
   void box_int(const array<int, dim> &group_nghostzones,
                vect<int, dim> &restrict imin,
                vect<int, dim> &restrict imax) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - nghostzones[d]);
+      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] - offset[d] - nghostzones[d]);
     }
   }
 
@@ -196,13 +196,13 @@ public:
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_all(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - ghost_offset);
+      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] - offset[d] - ghost_offset);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -213,12 +213,12 @@ public:
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_int(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - nghostzones[d]);
+      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] - offset[d] - nghostzones[d]);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -231,7 +231,7 @@ public:
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_bnd(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim - 1; rank >= 0; --rank) {
 
@@ -252,8 +252,8 @@ public:
                       nghostzones[d] - group_nghostzones[d];
                   const int begin_bnd = ghost_offset;
                   const int begin_int = nghostzones[d];
-                  const int end_int = lsh[d] + offset[d] - nghostzones[d];
-                  const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
                   switch (inormal[d]) {
                   case -1: // lower boundary
                     imin[d] = begin_bnd;
@@ -273,7 +273,7 @@ public:
 
                   imin[d] = std::max(tmin[d], imin[d]);
                   imax[d] = std::min(
-                      tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                      tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
                 }
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
@@ -292,7 +292,7 @@ public:
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_ghosts_inclusive(const array<int, dim> &group_nghostzones,
                         const F &f) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim - 1; rank >= 0; --rank) {
 
@@ -313,8 +313,8 @@ public:
                       nghostzones[d] - group_nghostzones[d];
                   const int begin_bnd = ghost_offset;
                   const int begin_int = nghostzones[d];
-                  const int end_int = lsh[d] + offset[d] - nghostzones[d];
-                  const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
                   switch (inormal[d]) {
                   case -1: // lower boundary
                     imin[d] = begin_bnd;
@@ -334,7 +334,7 @@ public:
 
                   imin[d] = std::max(tmin[d], imin[d]);
                   imax[d] = std::min(
-                      tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                      tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
                 }
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
@@ -351,7 +351,7 @@ public:
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_ghosts(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{!CI, !CJ, !CK};
+    const array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim - 1; rank >= 0; --rank) {
 
@@ -372,8 +372,8 @@ public:
                       nghostzones[d] - group_nghostzones[d];
                   const int begin_bnd = ghost_offset;
                   const int begin_int = nghostzones[d];
-                  const int end_int = lsh[d] + offset[d] - nghostzones[d];
-                  const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
                   switch (inormal[d]) {
                   case -1: // lower boundary
                     imin[d] = begin_bnd;
@@ -393,7 +393,7 @@ public:
 
                   imin[d] = std::max(tmin[d], imin[d]);
                   imax[d] = std::min(
-                      tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                      tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
                 }
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
@@ -533,16 +533,16 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   GF3D &operator=(const GF3D &) = delete;
   GF3D &operator=(GF3D &&) = default;
   inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
-      : dj(di * (cctkGH->cctk_ash[0] + !CI)),
-        dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
-        np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
-        nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK), ptr(ptr) {
+      : dj(di * (cctkGH->cctk_ash[0] - CI)),
+        dk(dj * (cctkGH->cctk_ash[1] - CJ)),
+        np(dk * (cctkGH->cctk_ash[2] - CK)), ni(cctkGH->cctk_lsh[0] - CI),
+        nj(cctkGH->cctk_lsh[1] - CJ), nk(cctkGH->cctk_lsh[2] - CK), ptr(ptr) {
   }
   inline GF3D(const cGH *restrict cctkGH, allocate)
-      : dj(di * (cctkGH->cctk_ash[0] + !CI)),
-        dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
-        np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
-        nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK),
+      : dj(di * (cctkGH->cctk_ash[0] - CI)),
+        dk(dj * (cctkGH->cctk_ash[1] - CJ)),
+        np(dk * (cctkGH->cctk_ash[2] - CK)), ni(cctkGH->cctk_lsh[0] - CI),
+        nj(cctkGH->cctk_lsh[1] - CJ), nk(cctkGH->cctk_lsh[2] - CK),
         data(np, numeric_limits<T>::quiet_NaN()), ptr(data.data()) {}
   inline int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
@@ -600,12 +600,12 @@ template <typename T> struct GF3D1 {
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
-      imax[d] = cctkGH->cctk_lsh[d] + (1 - indextype[d]) -
+      imax[d] = cctkGH->cctk_lsh[d] - indextype[d] -
                 (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     }
     array<int, dim> ash;
     for (int d = 0; d < dim; ++d)
-      ash[d] = cctkGH->cctk_ash[d] + (1 - indextype[d]) -
+      ash[d] = cctkGH->cctk_ash[d] - indextype[d] -
                2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     *this = GF3D1(ptr, imin, imax, ash);
   }
