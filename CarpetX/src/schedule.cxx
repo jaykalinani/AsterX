@@ -100,6 +100,8 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
 } // namespace CarpetX
 namespace Loop {
 
+// FIXME: this struct is defined in loop.hxx and thus these should be either in
+// loop.cxx or the definiton moved to schedule.hxx
 GridDescBase::GridDescBase() {}
 
 GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
@@ -800,6 +802,7 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 enum class mode_t { unknown, local, level, global, meta };
 
 mode_t current_mode(const cGH *restrict cctkGH) {
+  // FIXME: this will fail if lsh actually has a value of 666 (which happens to be "undefined")
   if (cctkGH->cctk_lsh[0] != undefined)
     return mode_t::local;
   else if (cctkGH->cctk_gsh[0] != undefined)

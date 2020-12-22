@@ -783,6 +783,10 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
         assert(geom.Domain().length(d) >= groupdata.nghostzones[d]);
 
     // Allocate grid hierarchies
+    // FIXME: CarpetX and AMReX use opposite numbers for cell/vertex data.
+    // Namely AMReX uses (AMReX_IndexType.H): enum   CellIndex { CELL = 0, NODE
+    // = 1 } while CarpetX uses indextype == 0 for vertex (node) and indextype
+    // == 1 for cell data.
     const amrex::BoxArray &gba = convert(
         ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
                                                     : amrex::IndexType::NODE,
