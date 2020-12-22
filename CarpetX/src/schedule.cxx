@@ -955,10 +955,12 @@ void enter_level_mode(cGH *restrict cctkGH,
   assert(in_global_mode(cctkGH));
 
   // Global shape
-  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+  const auto mfitinfo = amrex::MFItInfo().EnableTiling({max_tile_size_x, max_tile_size_y, max_tile_size_z});
+  amrex::MFIter mfi(*leveldata.fab, mfitinfo);
+  const MFPointer mfp(mfi);
+  const GridPtrDesc grid(leveldata, mfp);
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1 +
-                          2 * cctkGH->cctk_nghostzones[d];
+    cctkGH->cctk_gsh[d] = grid.gsh[d];
 
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
