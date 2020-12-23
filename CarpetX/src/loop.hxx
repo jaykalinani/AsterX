@@ -174,7 +174,7 @@ public:
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+      imax[d] = std::min(tmax[d],
                          lsh[d] - offset[d] - ghost_offset);
     }
   }
@@ -187,7 +187,7 @@ public:
     const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+      imax[d] = std::min(tmax[d],
                          lsh[d] - offset[d] - nghostzones[d]);
     }
   }
@@ -201,7 +201,7 @@ public:
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+      imax[d] = std::min(tmax[d],
                          lsh[d] - offset[d] - ghost_offset);
     }
     const array<int, dim> inormal{0, 0, 0};
@@ -217,7 +217,7 @@ public:
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0),
+      imax[d] = std::min(tmax[d],
                          lsh[d] - offset[d] - nghostzones[d]);
     }
     const array<int, dim> inormal{0, 0, 0};
@@ -272,8 +272,7 @@ public:
                   }
 
                   imin[d] = std::max(tmin[d], imin[d]);
-                  imax[d] = std::min(
-                      tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
                 }
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
@@ -333,8 +332,7 @@ public:
                   }
 
                   imin[d] = std::max(tmin[d], imin[d]);
-                  imax[d] = std::min(
-                      tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
                 }
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
@@ -392,8 +390,7 @@ public:
                   }
 
                   imin[d] = std::max(tmin[d], imin[d]);
-                  imax[d] = std::min(
-                      tmax[d] - (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
                 }
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
