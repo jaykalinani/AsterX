@@ -166,31 +166,31 @@ static_assert(static_cast<const array<int, 3> &>(
 template <typename T> struct zero;
 
 template <> struct zero<bool> {
-  constexpr bool operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE bool operator()() const { return 0; }
 };
 
 template <> struct zero<short> {
-  constexpr short operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE short operator()() const { return 0; }
 };
 
 template <> struct zero<int> {
-  constexpr int operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE int operator()() const { return 0; }
 };
 
 template <> struct zero<long> {
-  constexpr long operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE long operator()() const { return 0; }
 };
 
 template <> struct zero<float> {
-  constexpr float operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE float operator()() const { return 0; }
 };
 
 template <> struct zero<double> {
-  constexpr double operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE double operator()() const { return 0; }
 };
 
 template <typename T> struct zero<complex<T> > {
-  constexpr complex<T> operator()() const {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE complex<T> operator()() const {
     return complex<T>(zero<T>()(), zero<T>()());
   }
 };
@@ -323,24 +323,24 @@ template <typename T, int D> struct vect {
     return r;
   }
 
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+(const vect
-  // &x, const array<T, D> &y) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect
+  // operator+(const vect &x, const array<T, D> &y) {
   //   return x + vect(y);
   // }
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-(const vect
-  // &x, const array<T, D> &y) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect
+  // operator-(const vect &x, const array<T, D> &y) {
   //   return x - vect(y);
   // }
 
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+(const vect
-  // &x, T a) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+(const vect &x,
+  //                                                              T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] + a;
   //   return r;
   // }
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-(const vect
-  // &x, T a) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-(const vect &x,
+  //                                                              T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] - a;
@@ -505,7 +505,9 @@ template <typename T, int D> struct vect {
 };
 
 template <typename T, int D> struct zero<vect<T, D> > {
-  constexpr vect<T, D> operator()() { return vect<T, D>(); }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<T, D> operator()() {
+    return vect<T, D>();
+  }
 };
 
 } // namespace Arith
