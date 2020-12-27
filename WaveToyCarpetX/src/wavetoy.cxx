@@ -3,6 +3,14 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
+#ifdef __CUDACC__
+#define WAVETOY_DEVICE __device__
+#define WAVETOY_HOST __host__
+#else
+#define WAVETOY_DEVICE
+#define WAVETOY_HOST
+#endif
+
 #include <AMReX.H>
 #include <AMReX_Box.H>
 #include <AMReX_IndexType.H>
@@ -42,20 +50,24 @@ struct GridDescBaseCUDA : Loop::GridDescBase {
     const int dj = di * (ash[0] + !CI);
     const int dk = dj * (ash[1] + !CJ);
 
-#warning "TODO: do local copies of member fields help?"
-    const auto kernel{[=, lbnd1 = lbnd, x01 = x0, dx1 = dx] AMREX_GPU_DEVICE(
-                          const int i, const int j,
-                          const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      const CCTK_REAL x = x01[0] + (lbnd1[0] + i - CCTK_REAL(!CI) / 2) * dx1[0];
-      const CCTK_REAL y = x01[1] + (lbnd1[1] + j - CCTK_REAL(!CJ) / 2) * dx1[1];
-      const CCTK_REAL z = x01[2] + (lbnd1[2] + k - CCTK_REAL(!CK) / 2) * dx1[2];
-      const int idx = i * di + j * dj + k * dk;
-      const Arith::vect<int, Loop::dim> I{i, j, k};
-      const Loop::PointDesc p{i,      j,       k,         x,   y,  z,
-                              dx1[0], dx1[1],  dx1[2],    idx, dj, dk,
-                              I,      inormal, {x, y, z}, dx1};
-      f(p);
-    }};
+    // For some reason, the argument inormal cannot be captured, but a copy of
+    // inormal can
+    const auto inormal1 = inormal;
+    const auto kernel =
+        [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE WAVETOY_DEVICE WAVETOY_HOST(
+            const int i, const int j, const int k) {
+          const CCTK_REAL x =
+              x0[0] + (lbnd[0] + i - CCTK_REAL(!CI) / 2) * dx[0];
+          const CCTK_REAL y =
+              x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
+          const CCTK_REAL z =
+              x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
+          const int idx = i * di + j * dj + k * dk;
+          const Loop::PointDesc p{i,         j,        k,         x,   y,  z,
+                                  dx[0],     dx[1],    dx[2],     idx, dj, dk,
+                                  {i, j, k}, inormal1, {x, y, z}, dx};
+          f(p);
+        };
 
     array<bool, Loop::dim> bforward;
     for (int d = 0; d < Loop::dim; ++d)
@@ -70,7 +82,7 @@ struct GridDescBaseCUDA : Loop::GridDescBase {
 
     for (int k = imin[2]; k < imax[2]; ++k) {
       for (int j = imin[1]; j < imax[1]; ++j) {
-#pragma omp simd //        AMREX_PRAGMA_SIMD
+#pragma omp simd
         for (int i = imin[0]; i < imax[0]; ++i) {
           kernel(i, j, k);
         }
@@ -87,7 +99,8 @@ struct GridDescBaseCUDA : Loop::GridDescBase {
         amrex::IntVect(CI ? amrex::IndexType::CELL : amrex::IndexType::NODE,
                        CJ ? amrex::IndexType::CELL : amrex::IndexType::NODE,
                        CK ? amrex::IndexType::CELL : amrex::IndexType::NODE));
-    amrex::launch(box, [=] AMREX_GPU_DEVICE(const amrex::Box &box) {
+    amrex::launch(box, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE WAVETOY_DEVICE(
+                           const amrex::Box &box) {
       const amrex::IntVect bmin = box.smallEnd();
       const amrex::IntVect bend = box.bigEnd();
       const array<int, Loop::dim> imin{bmin[0], bmin[1], bmin[2]};
@@ -367,8 +380,8 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   // CPU or GPU
 
   const auto central_potential =
-      [=] AMREX_GPU_HOST_DEVICE(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
-                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE AMREX_GPU_HOST_DEVICE(
+          CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z) {
         CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
         return -central_point_charge * pow(central_point_radius, -dim) *
                spline_potential(r / central_point_radius);
@@ -380,7 +393,8 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
                                     cctkGH->cctk_nghostzones[2]};
   const GridDescBaseCUDA griddesc(cctkGH);
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones, [=] AMREX_GPU_DEVICE(const Loop::PointDesc &p) {
+      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE AMREX_GPU_HOST_DEVICE(
+                       const Loop::PointDesc &p) {
         CCTK_REAL ddx_phi =
             (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
             pow(dx, 2);
