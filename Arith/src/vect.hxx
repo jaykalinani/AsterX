@@ -228,6 +228,10 @@ template <typename T, int D> struct vect {
     assert(lst.size() == D);
 #endif
   }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const T (&arr)[D]) : elts() {
+    for (int d = 0; d < D; ++d)
+      elts[d] = arr[d];
+  }
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const vector<T> &vec)
       : elts(array_from_vector<T, D>(vec)) {
 #ifdef CCTK_DEBUG
