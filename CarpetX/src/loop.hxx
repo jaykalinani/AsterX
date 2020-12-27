@@ -124,9 +124,9 @@ public:
       const CCTK_REAL y = x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
       const CCTK_REAL z = x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
       const int idx = i * di + j * dj + k * dk;
-      const vect<int, dim> I{i, j, k};
-      const PointDesc p{i,     j,   k,  x,  y, z,       dx[0],     dx[1],
-                        dx[2], idx, dj, dk, I, inormal, {x, y, z}, dx};
+      const PointDesc p{i,         j,       k,         x,   y,  z,
+                        dx[0],     dx[1],   dx[2],     idx, dj, dk,
+                        {i, j, k}, inormal, {x, y, z}, dx};
       f(p);
     }};
 
