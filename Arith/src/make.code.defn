@@ -1,7 +1,7 @@
 # Main make.code.defn file for thorn Arith
 
 # Source files in this directory
-SRCS = div.cxx dual.cxx mat.cxx rational.cxx sum.cxx vec.cxx
+SRCS = div.cxx dual.cxx mat.cxx rational.cxx sum.cxx vec.cxx vect.cxx
 
 # Subdirectories containing source files
 SUBDIRS =
