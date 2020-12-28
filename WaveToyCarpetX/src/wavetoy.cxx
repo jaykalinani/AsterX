@@ -3,23 +3,7 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-#ifdef __CUDACC__
-#define WAVETOY_DEVICE __device__
-#define WAVETOY_HOST __host__
-#else
-#define WAVETOY_DEVICE
-#define WAVETOY_HOST
-#endif
-
-#include <AMReX.H>
-#include <AMReX_Box.H>
-#include <AMReX_IndexType.H>
-#include <AMReX_IntVect.H>
-#ifdef AMREX_USE_GPU
-#include <AMReX_Gpu.H>
-#endif
-
-#include <loop.hxx>
+#include <loop_device.hxx>
 
 #include <array>
 #include <cassert>
@@ -28,114 +12,6 @@
 
 namespace WaveToyCarpetX {
 using namespace std;
-
-struct GridDescBaseCUDA : Loop::GridDescBase {
-
-  GridDescBaseCUDA(const cGH *cctkGH) : Loop::GridDescBase(cctkGH) {}
-
-  // Loop over a given box
-  template <int CI, int CJ, int CK, typename F>
-  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_box_device(const F &f, const array<int, Loop::dim> &restrict imin,
-                  const array<int, Loop::dim> &restrict imax,
-                  const array<int, Loop::dim> &restrict inormal) const {
-    static_assert(CI == 0 || CI == 1, "");
-    static_assert(CJ == 0 || CJ == 1, "");
-    static_assert(CK == 0 || CK == 1, "");
-
-    for (int d = 0; d < Loop::dim; ++d)
-      assert(!(imin[d] >= imax[d]));
-
-    constexpr int di = 1;
-    const int dj = di * (ash[0] + !CI);
-    const int dk = dj * (ash[1] + !CJ);
-
-    // For some reason, the argument inormal cannot be captured, but a copy of
-    // inormal can
-    const auto inormal1 = inormal;
-    const auto kernel =
-        [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE WAVETOY_DEVICE WAVETOY_HOST(
-            const int i, const int j, const int k) {
-          const CCTK_REAL x =
-              x0[0] + (lbnd[0] + i - CCTK_REAL(!CI) / 2) * dx[0];
-          const CCTK_REAL y =
-              x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
-          const CCTK_REAL z =
-              x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
-          const int idx = i * di + j * dj + k * dk;
-          const Loop::PointDesc p{i,         j,        k,         x,   y,  z,
-                                  dx[0],     dx[1],    dx[2],     idx, dj, dk,
-                                  {i, j, k}, inormal1, {x, y, z}, dx};
-          f(p);
-        };
-
-    array<bool, Loop::dim> bforward;
-    for (int d = 0; d < Loop::dim; ++d)
-      bforward[d] = inormal[d] >= 0;
-    bool all_forward = true;
-    for (int d = 0; d < Loop::dim; ++d)
-      all_forward &= bforward[d];
-    assert(all_forward);
-
-#ifndef AMREX_USE_GPU
-    // Run on CPU
-
-    for (int k = imin[2]; k < imax[2]; ++k) {
-      for (int j = imin[1]; j < imax[1]; ++j) {
-#pragma omp simd
-        for (int i = imin[0]; i < imax[0]; ++i) {
-          kernel(i, j, k);
-        }
-      }
-    }
-
-#else
-    // Run on GPU
-
-    // Convert to AMReX box
-    const amrex::Box box(
-        amrex::IntVect(imin[0], imin[1], imin[2]),
-        amrex::IntVect(imax[0] - 1, imax[1] - 1, imax[2] - 1),
-        amrex::IntVect(CI ? amrex::IndexType::CELL : amrex::IndexType::NODE,
-                       CJ ? amrex::IndexType::CELL : amrex::IndexType::NODE,
-                       CK ? amrex::IndexType::CELL : amrex::IndexType::NODE));
-    amrex::launch(box, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE WAVETOY_DEVICE(
-                           const amrex::Box &box) {
-      const amrex::IntVect bmin = box.smallEnd();
-      const amrex::IntVect bend = box.bigEnd();
-      const array<int, Loop::dim> imin{bmin[0], bmin[1], bmin[2]};
-      const array<int, Loop::dim> imax{bend[0] + 1, bend[1] + 1, bend[2] + 1};
-
-      for (int k = imin[2]; k < imax[2]; ++k) {
-        for (int j = imin[1]; j < imax[1]; ++j) {
-          for (int i = imin[0]; i < imax[0]; ++i) {
-            kernel(i, j, k);
-          }
-        }
-      }
-    });
-#endif
-  }
-
-  // Loop over all interior points
-  template <int CI, int CJ, int CK, typename F>
-  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_int_device(const array<int, Loop::dim> &group_nghostzones,
-                  const F &f) const {
-    const array<int, Loop::dim> offset{!CI, !CJ, !CK};
-    array<int, Loop::dim> imin, imax;
-    for (int d = 0; d < Loop::dim; ++d) {
-      imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - nghostzones[d]);
-    }
-    const array<int, Loop::dim> inormal{0, 0, 0};
-
-    loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 
 constexpr int dim = 3;
 
@@ -158,7 +34,7 @@ template <typename T> T spline(T r) {
 
 // The potential for the spline
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE AMREX_GPU_HOST_DEVICE T
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
 spline_potential(T r) {
   // \Laplace u = 4 \pi \rho
   if (r >= 1.0)
@@ -380,7 +256,7 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   // CPU or GPU
 
   const auto central_potential =
-      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE AMREX_GPU_HOST_DEVICE(
+      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
           CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z) {
         CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
         return -central_point_charge * pow(central_point_radius, -dim) *
@@ -391,9 +267,9 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
                                     cctkGH->cctk_nghostzones[1],
                                     cctkGH->cctk_nghostzones[2]};
-  const GridDescBaseCUDA griddesc(cctkGH);
+  const Loop::GridDescBaseDevice griddesc(cctkGH);
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE AMREX_GPU_HOST_DEVICE(
+      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
                        const Loop::PointDesc &p) {
         CCTK_REAL ddx_phi =
             (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
