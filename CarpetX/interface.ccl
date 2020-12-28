@@ -12,6 +12,7 @@ USES INCLUDE HEADER: rational.hxx
 USES INCLUDE HEADER: vect.hxx
 
 INCLUDES HEADER: loop.hxx IN loop.hxx
+INCLUDES HEADER: loop_device.hxx IN loop_device.hxx
 INCLUDES HEADER: loopcontrol.h IN loopcontrol.h
 
 
