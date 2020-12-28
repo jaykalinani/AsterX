@@ -86,6 +86,9 @@ reduce_array(const amrex::Array4<const T> &restrict vars, const int n,
              const amrex::Array4<const int> *restrict const finemask,
              const vect<T, dim> &x0, const vect<T, dim> &dx) {
   CCTK_REAL dV = 1.0;
+  // TODO: correct this for vertex quantities or document / remove sum like
+  // reductions for vertex quantities (though this would affect things like
+  // norm2 as well as "sum" itself)
   for (int d = 0; d < dim; ++d)
     dV *= dx[d];
   reduction<T, dim> red;
@@ -144,6 +147,9 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
 
     auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
         {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+    // TODO: check that multi-threading actually helps and we are not dominated
+    // my memory latency anyway
+    // TODO: document required version of OpenMP to use custom reductions
 #pragma omp parallel reduction(reduction : red)
     for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
       const amrex::Box &bx = mfi.tilebox(); // current region (without ghosts)
