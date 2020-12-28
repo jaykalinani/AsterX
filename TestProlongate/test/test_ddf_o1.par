@@ -19,6 +19,13 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 1
 CarpetX::verbose = yes
 
+CarpetX::xmin = -1.+0.1234567
+CarpetX::ymin = -1.+0.2345678
+CarpetX::zmin = -1.+0.3456789
+CarpetX::xmax = +1.+0.1234567
+CarpetX::ymax = +1.+0.2345678
+CarpetX::zmax = +1.+0.3456789
+
 CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
