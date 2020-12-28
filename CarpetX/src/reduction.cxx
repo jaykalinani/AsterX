@@ -92,6 +92,7 @@ reduce_array(const amrex::Array4<const T> &restrict vars, const int n,
   for (int d = 0; d < dim; ++d)
     dV *= dx[d];
   reduction<T, dim> red;
+  // TODO: use loop.hxx codoe to loop over grid
   for (int k = imin[2]; k < imax[2]; ++k) {
     for (int j = imin[1]; j < imax[1]; ++j) {
       // #pragma omp simd reduction(red : reduction_CCTK_REAL)
@@ -131,8 +132,10 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
     const CCTK_REAL *restrict const x01 = geom.ProbLo();
     const CCTK_REAL *restrict const dx1 = geom.CellSize();
-    const vect<CCTK_REAL, dim> x0{x01[0], x01[1], x01[2]};
     const vect<CCTK_REAL, dim> dx{dx1[0], dx1[1], dx1[2]};
+    const vect<CCTK_REAL, dim> x0{x01[0] + (mfab.ixType()[0] == amrex::IndexType::CELL? dx[0]/2. : 0.),
+                                  x01[1] + (mfab.ixType()[1] == amrex::IndexType::CELL? dx[1]/2. : 0.),
+                                  x01[2] + (mfab.ixType()[2] == amrex::IndexType::CELL? dx[2]/2. : 0.)};
 
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
