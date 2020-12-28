@@ -3,7 +3,6 @@
 
 #include "loop.hxx"
 
-#warning "TODO: try removing these"
 #ifdef __CUDACC__
 #define CCTK_DEVICE __device__
 #define CCTK_HOST __host__
