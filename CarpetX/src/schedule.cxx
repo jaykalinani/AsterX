@@ -2181,11 +2181,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     groups.push_back(gi);
   }
 
-  if (restrict_during_sync)
+  if (restrict_during_sync) {
     active_levels->loop_reverse([&](const auto &leveldata) {
       if (leveldata.level < int(ghext->leveldata.size()) - 1)
         Restrict(leveldata.level, groups);
     });
+    // FIXME: cannot call POSTRESTRICT since this could contain a SYNC leading
+    // to an infinite loop. This means that outer boundaries will be left
+    // invalid after an implicit restrict
+    // CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+  }
 
   active_levels->loop([&](auto &restrict leveldata) {
     for (const int gi : groups) {
