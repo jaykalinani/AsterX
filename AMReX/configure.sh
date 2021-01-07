@@ -44,7 +44,7 @@ AMREX_GIT_VERSION_NUMERIC=$(
 
 if [ ${AMREX_GIT_VERSION_NUMERIC} -lt 1912 ]; then
     echo "BEGIN ERROR"
-    echo "Need at least AMReX version 19.12"
+    echo "Need at least AMReX version 19.12; found only version ${AMREX_GIT_VERSION_MAJOR}.${AMREX_GIT_VERSION_MINOR} ($AMREX_GIT_VERSION_NUMERIC)"
     echo "END ERROR"
     exit 1
 fi
