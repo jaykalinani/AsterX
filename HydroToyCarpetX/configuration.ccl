@@ -2,4 +2,4 @@
 
 # REQUIRES Kokkos
 # REQUIRES NSIMD
-REQUIRES Vectors
+# REQUIRES Vectors

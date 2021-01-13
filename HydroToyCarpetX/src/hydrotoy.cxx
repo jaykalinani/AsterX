@@ -101,6 +101,10 @@ extern "C" void HydroToyCarpetX_Boundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Boundaries;
 
   // do nothing
+
+  Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    assert(false); // This should not be executed
+  });
 }
 
 extern "C" void HydroToyCarpetX_CopyConserved(CCTK_ARGUMENTS) {

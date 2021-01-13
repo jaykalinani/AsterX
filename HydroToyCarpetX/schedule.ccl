@@ -17,6 +17,13 @@ SCHEDULE HydroToyCarpetX_Initialize AT initial
   SYNC: conserved
 } "Set up hydro initial conditions"
 
+SCHEDULE HydroToyCarpetX_Boundaries AT initial AFTER HydroToyCarpetX_Initialize
+{
+  LANG: C
+  WRITES: conserved(boundary)
+  SYNC: conserved
+} "Apply boundary conditions after regridding"
+
 SCHEDULE HydroToyCarpetX_EstimateError AT postinitial
 {
   LANG: C
