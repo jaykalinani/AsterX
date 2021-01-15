@@ -271,6 +271,12 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   griddesc.loop_int_device<1, 1, 1>(
       nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
                        const Loop::PointDesc &p) {
+        // TODO: Remove this
+        // Create a new PointDesc structure that is cell centred (<1,
+        // 1, 1>) from a given PointDesc structure that might have a
+        // different centering
+        const auto p1 = griddesc.point_desc<1, 1, 1>(p);
+        assert(p1.idx == p.idx);
         CCTK_REAL ddx_phi =
             (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
             pow(dx, 2);
