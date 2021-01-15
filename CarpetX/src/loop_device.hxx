@@ -45,9 +45,11 @@ public:
     for (int d = 0; d < dim; ++d)
       assert(!(imin[d] >= imax[d]));
 
+#if 0
     constexpr int di = 1;
     const int dj = di * (ash[0] + !CI);
     const int dk = dj * (ash[1] + !CJ);
+#endif
 
     // For some reason, the argument inormal cannot be captured, but a copy of
     // inormal can
@@ -55,6 +57,7 @@ public:
     const auto kernel =
         [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
             const int i, const int j, const int k) {
+#if 0
           const CCTK_REAL x =
               x0[0] + (lbnd[0] + i - CCTK_REAL(!CI) / 2) * dx[0];
           const CCTK_REAL y =
@@ -66,6 +69,8 @@ public:
                                   dx[0],     dx[1],    dx[2],     idx, dj, dk,
                                   {i, j, k}, inormal1, {x, y, z}, dx};
           f(p);
+#endif
+          f(point_desc<CI, CJ, CK>(inormal1, i, j, k));
         };
 
     array<bool, dim> bforward;
