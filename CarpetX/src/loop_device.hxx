@@ -124,6 +124,23 @@ public:
   // Loop over all interior points
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_all_device(const array<int, dim> &group_nghostzones, const F &f) const {
+    const array<int, dim> offset{!CI, !CJ, !CK};
+    array<int, dim> imin, imax;
+    for (int d = 0; d < dim; ++d) {
+      int ghost_offset = nghostzones[d] - group_nghostzones[d];
+      imin[d] = std::max(tmin[d], ghost_offset);
+      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
+                         lsh[d] + offset[d] - ghost_offset);
+    }
+    const array<int, dim> inormal{0, 0, 0};
+
+    loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
+  }
+
+  // Loop over all interior points
+  template <int CI, int CJ, int CK, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_int_device(const array<int, dim> &group_nghostzones, const F &f) const {
     const array<int, dim> offset{!CI, !CJ, !CK};
     array<int, dim> imin, imax;
