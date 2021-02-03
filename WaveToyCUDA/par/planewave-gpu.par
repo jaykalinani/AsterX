@@ -30,6 +30,8 @@ CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = 1.0   #TODO 0.01
 
+CarpetX::kernel_launch_method = "cuda"
+
 ODESolvers::method = "RK4"
 CarpetX::dtfac = 0.5
 
