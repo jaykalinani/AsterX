@@ -3,7 +3,7 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-#include <loop_device.hxx>
+#include <loop.hxx>
 
 #include <array>
 #include <cassert>
@@ -33,9 +33,7 @@ template <typename T> T spline(T r) {
 }
 
 // The potential for the spline
-template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
-spline_potential(T r) {
+template <typename T> T spline_potential(T r) {
   // \Laplace u = 4 \pi \rho
   if (r >= 1.0)
     return -1 / r;
@@ -230,9 +228,6 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
-#if 0
-  // CPU
-
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     CCTK_REAL ddx_phi =
         (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
@@ -251,50 +246,6 @@ extern "C" void WaveToyCarpetX_Evolve(CCTK_ARGUMENTS) {
               4 * M_PI * central_potential(t, p.x, p.y, p.z));
     phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
   });
-
-#else
-  // CPU or GPU
-
-  const auto central_potential =
-      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-          CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z) {
-        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-        return -central_point_charge * pow(central_point_radius, -dim) *
-               spline_potential(r / central_point_radius);
-      };
-
-  // Determine loop extent
-  const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
-                                    cctkGH->cctk_nghostzones[1],
-                                    cctkGH->cctk_nghostzones[2]};
-  const Loop::GridDescBaseDevice griddesc(cctkGH);
-  griddesc.loop_int_device<1, 1, 1>(
-      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                       const Loop::PointDesc &p) {
-        // TODO: Remove this
-        // Create a new PointDesc structure that is cell centred (<1,
-        // 1, 1>) from a given PointDesc structure that might have a
-        // different centering
-        const auto p1 = griddesc.point_desc<1, 1, 1>(p);
-        assert(p1.idx == p.idx);
-        CCTK_REAL ddx_phi =
-            (phi_p[p.idx - p.di] - 2 * phi_p[p.idx] + phi_p[p.idx + p.di]) /
-            pow(dx, 2);
-        CCTK_REAL ddy_phi =
-            (phi_p[p.idx - p.dj] - 2 * phi_p[p.idx] + phi_p[p.idx + p.dj]) /
-            pow(dy, 2);
-        CCTK_REAL ddz_phi =
-            (phi_p[p.idx - p.dk] - 2 * phi_p[p.idx] + phi_p[p.idx + p.dk]) /
-            pow(dz, 2);
-        // phi[p.idx] = 2 * phi_p[p.idx] - phi_p_p[p.idx] +
-        //            pow(dt, 2) * (ddx_phi + ddy_phi + ddz_phi);
-        psi[p.idx] =
-            psi_p[p.idx] +
-            dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[p.idx] +
-                  4 * M_PI * central_potential(t, p.x, p.y, p.z));
-        phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
-      });
-#endif
 
   // Dirichlet boundary conditions
   Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
