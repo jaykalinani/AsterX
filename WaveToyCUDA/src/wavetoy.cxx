@@ -233,12 +233,19 @@ extern "C" void WaveToyCUDA_Boundaries(CCTK_ARGUMENTS) {
   const CCTK_REAL t = cctk_time;
   const CCTK_REAL dt = CCTK_DELTA_TIME;
 
-  const auto central_potential = [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
-                                     CCTK_REAL z) {
-    CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-    return -central_point_charge / pow(central_point_radius, dim) *
-           spline_potential(r / central_point_radius);
-  };
+  const auto central_potential =
+      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+          CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z) {
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        return -central_point_charge / pow(central_point_radius, dim) *
+               spline_potential(r / central_point_radius);
+      };
+
+  // Determine loop extent
+  const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
+                                    cctkGH->cctk_nghostzones[1],
+                                    cctkGH->cctk_nghostzones[2]};
+  const Loop::GridDescBaseDevice griddesc(cctkGH);
 
   if (CCTK_EQUALS(boundary_condition, "none")) {
 
@@ -248,10 +255,12 @@ extern "C" void WaveToyCUDA_Boundaries(CCTK_ARGUMENTS) {
 
     if (CCTK_EQUALS(initial_condition, "central potential")) {
 
-      Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-        phi[p.idx] = central_potential(t, p.x, p.y, p.z);
-        psi[p.idx] = timederiv(central_potential, dt)(t, p.x, p.y, p.z);
-      });
+      griddesc.loop_bnd_device<1, 1, 1>(
+          nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                           const Loop::PointDesc &p) {
+            phi[p.idx] = central_potential(t, p.x, p.y, p.z);
+            psi[p.idx] = timederiv(central_potential, dt)(t, p.x, p.y, p.z);
+          });
 
     } else {
       assert(0);
@@ -357,11 +366,19 @@ extern "C" void WaveToyCUDA_RHSBoundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_RHSBoundaries;
   DECLARE_CCTK_PARAMETERS;
 
+  // Determine loop extent
+  const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
+                                    cctkGH->cctk_nghostzones[1],
+                                    cctkGH->cctk_nghostzones[2]};
+  const Loop::GridDescBaseDevice griddesc(cctkGH);
+
   // Dirichlet boundary conditions
-  Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    psirhs[p.idx] = 0;
-    phirhs[p.idx] = 0;
-  });
+  griddesc.loop_bnd_device<1, 1, 1>(
+      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                       const Loop::PointDesc &p) {
+        psirhs[p.idx] = 0;
+        phirhs[p.idx] = 0;
+      });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
