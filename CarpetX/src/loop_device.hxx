@@ -45,50 +45,52 @@ public:
     for (int d = 0; d < dim; ++d)
       assert(!(imin[d] >= imax[d]));
 
-#if 0
-    constexpr int di = 1;
-    const int dj = di * (ash[0] + !CI);
-    const int dk = dj * (ash[1] + !CJ);
-#endif
-
     // For some reason, the argument inormal cannot be captured, but a copy of
     // inormal can
     const auto inormal1 = inormal;
     const auto kernel =
         [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
             const int i, const int j, const int k) {
-#if 0
-          const CCTK_REAL x =
-              x0[0] + (lbnd[0] + i - CCTK_REAL(!CI) / 2) * dx[0];
-          const CCTK_REAL y =
-              x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
-          const CCTK_REAL z =
-              x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
-          const int idx = i * di + j * dj + k * dk;
-          const Loop::PointDesc p{i,         j,        k,         x,   y,  z,
-                                  dx[0],     dx[1],    dx[2],     idx, dj, dk,
-                                  {i, j, k}, inormal1, {x, y, z}, dx};
-          f(p);
-#endif
           f(point_desc<CI, CJ, CK>(inormal1, i, j, k));
         };
 
-    array<bool, dim> bforward;
-    for (int d = 0; d < dim; ++d)
-      bforward[d] = inormal[d] >= 0;
-    bool all_forward = true;
-    for (int d = 0; d < dim; ++d)
-      all_forward &= bforward[d];
-    assert(all_forward);
+    // array<bool, dim> bforward;
+    // for (int d = 0; d < dim; ++d)
+    //   bforward[d] = inormal[d] >= 0;
+    // bool all_forward = true;
+    // for (int d = 0; d < dim; ++d)
+    //   all_forward &= bforward[d];
+
+    // TODO: introduce loop_bnd_stepped, have stepping loop there
+    constexpr array<bool, dim> bforward{false, false, false};
+    constexpr bool all_forward = false;
 
 #ifndef AMREX_USE_GPU
     // Run on CPU
 
-    for (int k = imin[2]; k < imax[2]; ++k) {
-      for (int j = imin[1]; j < imax[1]; ++j) {
+    if (all_forward) {
+
+      for (int k = imin[2]; k < imax[2]; ++k) {
+        for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
-        for (int i = imin[0]; i < imax[0]; ++i) {
-          kernel(i, j, k);
+          for (int i = imin[0]; i < imax[0]; ++i) {
+            kernel(i, j, k);
+          }
+        }
+      }
+
+    } else {
+      // At least one direction is reversed; loop from the inside out
+
+      for (int k0 = 0; k0 < imax[2] - imin[2]; ++k0) {
+        for (int j0 = 0; j0 < imax[1] - imin[1]; ++j0) {
+#pragma omp simd
+          for (int i0 = 0; i0 < imax[0] - imin[0]; ++i0) {
+            const int i = bforward[0] ? imin[0] + i0 : imax[0] - 1 - i0;
+            const int j = bforward[1] ? imin[1] + j0 : imax[1] - 1 - j0;
+            const int k = bforward[2] ? imin[2] + k0 : imax[2] - 1 - k0;
+            kernel(i, j, k);
+          }
         }
       }
     }
@@ -105,6 +107,7 @@ public:
                        CK ? amrex::IndexType::CELL : amrex::IndexType::NODE));
     amrex::launch(box, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE(
                            const amrex::Box &box) {
+#if 0
       const amrex::IntVect bmin = box.smallEnd();
       const amrex::IntVect bend = box.bigEnd();
       const array<int, dim> imin{bmin[0], bmin[1], bmin[2]};
@@ -117,7 +120,16 @@ public:
           }
         }
       }
+#endif
+      assert(box.bigEnd()[0] == box.smallEnd()[0] &&
+             box.bigEnd()[1] == box.smallEnd()[1] &&
+             box.bigEnd()[2] == box.smallEnd()[2]);
+      const int i = box.smallEnd()[0];
+      const int j = box.smallEnd()[1];
+      const int k = box.smallEnd()[2];
+      kernel(i, j, k);
     });
+
 #endif
   }
 
@@ -152,6 +164,67 @@ public:
     const array<int, dim> inormal{0, 0, 0};
 
     loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
+  }
+
+  // Loop over all outer boundary points. This excludes ghost faces, but
+  // includes ghost edges/corners on non-ghost faces. Loop over faces first,
+  // then edges, then corners.
+  template <int CI, int CJ, int CK, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_bnd_device(const array<int, dim> &group_nghostzones, const F &f) const {
+    const array<int, dim> offset{!CI, !CJ, !CK};
+
+    for (int rank = dim - 1; rank >= 0; --rank) {
+
+      for (int nk = -1; nk <= +1; ++nk) {
+        for (int nj = -1; nj <= +1; ++nj) {
+          for (int ni = -1; ni <= +1; ++ni) {
+            if ((ni == 0) + (nj == 0) + (nk == 0) == rank) {
+
+              if ((ni != 0 && bbox[0 + (ni == -1 ? 0 : 1)]) ||
+                  (nj != 0 && bbox[2 + (nj == -1 ? 0 : 1)]) ||
+                  (nk != 0 && bbox[4 + (nk == -1 ? 0 : 1)])) {
+
+                const array<int, dim> inormal{ni, nj, nk};
+
+                array<int, dim> imin, imax;
+                for (int d = 0; d < dim; ++d) {
+                  const int ghost_offset =
+                      nghostzones[d] - group_nghostzones[d];
+                  const int begin_bnd = ghost_offset;
+                  const int begin_int = nghostzones[d];
+                  const int end_int = lsh[d] + offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+                  switch (inormal[d]) {
+                  case -1: // lower boundary
+                    imin[d] = begin_bnd;
+                    imax[d] = begin_int;
+                    break;
+                  case 0: // interior
+                    imin[d] = begin_int;
+                    imax[d] = end_int;
+                    break;
+                  case +1: // upper boundary
+                    imin[d] = end_int;
+                    imax[d] = end_bnd;
+                    break;
+                  default:
+                    assert(0);
+                  }
+
+                  imin[d] = std::max(tmin[d], imin[d]);
+                  imax[d] = std::min(
+                      tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                }
+
+                loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
+              }
+            } // if rank
+          }
+        }
+      }
+
+    } // for rank
   }
 };
 
