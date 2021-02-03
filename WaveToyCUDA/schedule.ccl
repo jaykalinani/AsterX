@@ -67,7 +67,7 @@ SCHEDULE WaveToyCUDA_EstimateError IN WaveToyCUDA_PostStepGroup AFTER (WaveToyCU
 {
   LANG: C
   READS: phi(interior) psi(interior)
-  WRITES: CUDA::regrid_error(interior)
+  WRITES: CarpetX::regrid_error(interior)
 } "Estimate local error for regridding initial conditions"
 
 
