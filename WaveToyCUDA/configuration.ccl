@@ -1,0 +1,3 @@
+# Configuration definitions for thorn WaveToyCUDA
+
+REQUIRES CarpetX

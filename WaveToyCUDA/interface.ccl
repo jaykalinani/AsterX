@@ -1,0 +1,34 @@
+# Interface definition for thorn WaveToyCUDA
+
+IMPLEMENTS: WaveToyCUDA
+
+INHERITS: CarpetX
+
+
+
+USES INCLUDE HEADER: loop_device.hxx
+
+
+
+CCTK_REAL state TYPE=gf TAGS='rhs="rhs"'
+{
+  phi
+  psi
+} "Scalar potential for wave equation"
+
+CCTK_REAL rhs TYPE=gf TAGS='checkpoint="no"'
+{
+  phirhs
+  psirhs
+} "RHS for scalar potential for wave equation"
+
+CCTK_REAL energy TYPE=gf TAGS='checkpoint="no"'
+{
+  eps
+} "Energy density for wave equation"
+
+CCTK_REAL err TYPE=gf TAGS='checkpoint="no"'
+{
+  phierr
+  psierr
+} "Error of wave equation solution"
