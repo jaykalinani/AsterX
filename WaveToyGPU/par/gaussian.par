@@ -1,7 +1,7 @@
 ActiveThorns = "
     CarpetX
     IOUtil
-    WaveToyCUDA
+    WaveToyGPU
 "
  
 $nlevels = 5
@@ -23,7 +23,7 @@ CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::dtfac = 0.5
 
-WaveToyCUDA::initial_condition = "Gaussian"
+WaveToyGPU::initial_condition = "Gaussian"
 
 IO::out_dir = $parfile
 IO::out_every = 2   #TODO $ncells * 2 ** ($nlevels - 1) / 32

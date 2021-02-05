@@ -1,6 +1,6 @@
-# Interface definition for thorn WaveToyCUDA
+# Interface definition for thorn WaveToyGPU
 
-IMPLEMENTS: WaveToyCUDA
+IMPLEMENTS: WaveToyGPU
 
 INHERITS: CarpetX
 

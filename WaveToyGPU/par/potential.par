@@ -1,7 +1,7 @@
 ActiveThorns = "
     CarpetX
     IOUtil
-    WaveToyCUDA
+    WaveToyGPU
 "
  
 $nlevels = 7
@@ -38,12 +38,12 @@ CarpetX::regrid_error_threshold = 0.1
 
 CarpetX::dtfac = 0.5
 
-WaveToyCUDA::initial_condition = "central potential"
+WaveToyGPU::initial_condition = "central potential"
 
-WaveToyCUDA::boundary_condition = "initial"
+WaveToyGPU::boundary_condition = "initial"
 
-WaveToyCUDA::central_point_charge = 1.0
-WaveToyCUDA::central_point_radius = 1.0
+WaveToyGPU::central_point_charge = 1.0
+WaveToyGPU::central_point_radius = 1.0
 
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32

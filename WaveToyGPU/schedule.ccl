@@ -1,40 +1,40 @@
-# Schedule definitions for thorn WaveToyCUDA
+# Schedule definitions for thorn WaveToyGPU
 
 
 
 # Define some schedule groups to organize the schedule
 
-SCHEDULE GROUP WaveToyCUDA_InitialGroup AT initial
+SCHEDULE GROUP WaveToyGPU_InitialGroup AT initial
 {
 } "Set up initial conditions"
 
 
 
-SCHEDULE GROUP WaveToyCUDA_PostStepGroup AT postinitial
+SCHEDULE GROUP WaveToyGPU_PostStepGroup AT postinitial
 {
 } "Post-process state variables"
 
-SCHEDULE GROUP WaveToyCUDA_PostStepGroup AT postrestrict
+SCHEDULE GROUP WaveToyGPU_PostStepGroup AT postrestrict
 {
 } "Post-process state variables"
 
-SCHEDULE GROUP WaveToyCUDA_PostStepGroup AT postregrid
+SCHEDULE GROUP WaveToyGPU_PostStepGroup AT postregrid
 {
 } "Post-process state variables"
 
 
 
-SCHEDULE GROUP WaveToyCUDA_PostStepGroup IN ODESolvers_PostStep
+SCHEDULE GROUP WaveToyGPU_PostStepGroup IN ODESolvers_PostStep
 {
 } "Post-process state variables"
 
-SCHEDULE GROUP WaveToyCUDA_RHSGroup IN ODESolvers_RHS
+SCHEDULE GROUP WaveToyGPU_RHSGroup IN ODESolvers_RHS
 {
 } "Calculate RHS"
 
 
 
-SCHEDULE GROUP WaveToyCUDA_AnalysisGroup AT analysis
+SCHEDULE GROUP WaveToyGPU_AnalysisGroup AT analysis
 {
 } "Analyse state"
 
@@ -42,19 +42,19 @@ SCHEDULE GROUP WaveToyCUDA_AnalysisGroup AT analysis
 
 
 
-SCHEDULE WaveToyCUDA_Initialize IN WaveToyCUDA_InitialGroup
+SCHEDULE WaveToyGPU_Initialize IN WaveToyGPU_InitialGroup
 {
   LANG: C
   WRITES: phi(interior) psi(interior)
 } "Set up initial conditions for the wave equation"
 
-SCHEDULE WaveToyCUDA_Sync IN WaveToyCUDA_PostStepGroup
+SCHEDULE WaveToyGPU_Sync IN WaveToyGPU_PostStepGroup
 {
   LANG: C
   SYNC: state
 } "Boundary conditions for the wave equation"
 
-SCHEDULE WaveToyCUDA_Boundaries IN WaveToyCUDA_PostStepGroup AFTER WaveToyCUDA_Sync
+SCHEDULE WaveToyGPU_Boundaries IN WaveToyGPU_PostStepGroup AFTER WaveToyCUDA_Sync
 {
   LANG: C
   READS: state(interior)
@@ -63,7 +63,7 @@ SCHEDULE WaveToyCUDA_Boundaries IN WaveToyCUDA_PostStepGroup AFTER WaveToyCUDA_S
 
 
 
-SCHEDULE WaveToyCUDA_EstimateError IN WaveToyCUDA_PostStepGroup AFTER (WaveToyCUDA_Sync WaveToyCUDA_Boundaries)
+SCHEDULE WaveToyGPU_EstimateError IN WaveToyGPU_PostStepGroup AFTER (WaveToyCUDA_Sync WaveToyCUDA_Boundaries)
 {
   LANG: C
   READS: phi(interior) psi(interior)
@@ -72,7 +72,7 @@ SCHEDULE WaveToyCUDA_EstimateError IN WaveToyCUDA_PostStepGroup AFTER (WaveToyCU
 
 
 
-SCHEDULE WaveToyCUDA_RHS IN WaveToyCUDA_RHSGroup
+SCHEDULE WaveToyGPU_RHS IN WaveToyGPU_RHSGroup
 {
   LANG: C
   READS: phi(everywhere) psi(everywhere)
@@ -80,13 +80,13 @@ SCHEDULE WaveToyCUDA_RHS IN WaveToyCUDA_RHSGroup
   SYNC: rhs
 } "Calculate RHS for the wave equation"
 
-SCHEDULE WaveToyCUDA_RHSSync IN WaveToyCUDA_RHSGroup AFTER WaveToyCUDA_RHS
+SCHEDULE WaveToyGPU_RHSSync IN WaveToyGPU_RHSGroup AFTER WaveToyCUDA_RHS
 {
   LANG: C
   SYNC: rhs
 } "Boundary conditions for the RHS of the wave equation"
 
-SCHEDULE WaveToyCUDA_RHSBoundaries IN WaveToyCUDA_RHSGroup AFTER WaveToyCUDA_RHSSync
+SCHEDULE WaveToyGPU_RHSBoundaries IN WaveToyGPU_RHSGroup AFTER WaveToyCUDA_RHSSync
 {
   LANG: C
   WRITES: phirhs(boundary) psirhs(boundary)
@@ -94,7 +94,7 @@ SCHEDULE WaveToyCUDA_RHSBoundaries IN WaveToyCUDA_RHSGroup AFTER WaveToyCUDA_RHS
 
 
 
-SCHEDULE WaveToyCUDA_Energy IN WaveToyCUDA_AnalysisGroup
+SCHEDULE WaveToyGPU_Energy IN WaveToyGPU_AnalysisGroup
 {
   LANG: C
   READS: phi(everywhere) psi(interior)
@@ -102,7 +102,7 @@ SCHEDULE WaveToyCUDA_Energy IN WaveToyCUDA_AnalysisGroup
   SYNC: energy
 } "Calculate energy density for the wave equation"
 
-SCHEDULE WaveToyCUDA_Error IN WaveToyCUDA_AnalysisGroup
+SCHEDULE WaveToyGPU_Error IN WaveToyGPU_AnalysisGroup
 {
   LANG: C
   READS: phi(everywhere) psi(everywhere)

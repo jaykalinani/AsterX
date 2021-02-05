@@ -1,4 +1,4 @@
-Cactus Code Thorn WaveToyCUDA
+Cactus Code Thorn WaveToyGPU
 Author(s)    : Erik Schnetter <schnetter@gmail.com>
 Maintainer(s): Erik Schnetter <schnetter@gmail.com>
 Licence      : LGPL
@@ -6,4 +6,4 @@ Licence      : LGPL
 
 1. Purpose
 
-A wave toy using the CarpetX driver, using CUDA kernels.
+A wave toy using the CarpetX driver, using GPU kernels.

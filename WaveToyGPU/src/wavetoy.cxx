@@ -10,7 +10,7 @@
 #include <cmath>
 #include <iostream>
 
-namespace WaveToyCUDA {
+namespace WaveToyGPU {
 using namespace std;
 
 constexpr int dim = 3;
@@ -122,8 +122,8 @@ template <typename T> T central_potential(T t, T x, T y, T z) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void WaveToyCUDA_Initialize(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_Initialize;
+extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -219,15 +219,15 @@ extern "C" void WaveToyCUDA_Initialize(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void WaveToyCUDA_Sync(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_Sync;
+extern "C" void WaveToyGPU_Sync(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_Sync;
   DECLARE_CCTK_PARAMETERS;
 
   // Do nothing
 }
 
-extern "C" void WaveToyCUDA_Boundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_Boundaries;
+extern "C" void WaveToyGPU_Boundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_Boundaries;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -273,8 +273,8 @@ extern "C" void WaveToyCUDA_Boundaries(CCTK_ARGUMENTS) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void WaveToyCUDA_EstimateError(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_EstimateError;
+extern "C" void WaveToyGPU_EstimateError(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
   // Determine loop extent
@@ -313,8 +313,8 @@ extern "C" void WaveToyCUDA_EstimateError(CCTK_ARGUMENTS) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void WaveToyCUDA_RHS(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_RHS;
+extern "C" void WaveToyGPU_RHS(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_RHS;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -355,15 +355,15 @@ extern "C" void WaveToyCUDA_RHS(CCTK_ARGUMENTS) {
       });
 }
 
-extern "C" void WaveToyCUDA_RHSSync(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_RHSSync;
+extern "C" void WaveToyGPU_RHSSync(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_RHSSync;
   DECLARE_CCTK_PARAMETERS;
 
   // Do nothing
 }
 
-extern "C" void WaveToyCUDA_RHSBoundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_RHSBoundaries;
+extern "C" void WaveToyGPU_RHSBoundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_RHSBoundaries;
   DECLARE_CCTK_PARAMETERS;
 
   // Determine loop extent
@@ -439,7 +439,7 @@ extern "C" void WaveToyCUDA_RHSBoundaries(CCTK_ARGUMENTS) {
 // different asymptotic speed, which is why the value of v is passed
 // as a parameter.
 #if 0
-extern "C" void WaveToyCUDA_RadiativeBoundaries(CCTK_ARGUMENTS) {
+extern "C" void WaveToyGPU_RadiativeBoundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
   constexpr CCTK_REAL phi_inf = 0; // value at infinity
@@ -522,8 +522,8 @@ extern "C" void WaveToyCUDA_RadiativeBoundaries(CCTK_ARGUMENTS) {
 }
 #endif
 
-extern "C" void WaveToyCUDA_Energy(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_Energy;
+extern "C" void WaveToyGPU_Energy(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_Energy;
 
   // const CCTK_REAL dt = CCTK_DELTA_TIME;
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);
@@ -549,8 +549,8 @@ extern "C" void WaveToyCUDA_Energy(CCTK_ARGUMENTS) {
       });
 }
 
-extern "C" void WaveToyCUDA_Error(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_WaveToyCUDA_Error;
+extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_WaveToyGPU_Error;
   DECLARE_CCTK_PARAMETERS;
 
   const CCTK_REAL t = cctk_time;
@@ -650,4 +650,4 @@ extern "C" void WaveToyCUDA_Error(CCTK_ARGUMENTS) {
   }
 }
 
-} // namespace WaveToyCUDA
+} // namespace WaveToyGPU

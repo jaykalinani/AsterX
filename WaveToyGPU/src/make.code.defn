@@ -1,4 +1,4 @@
-# Main make.code.defn file for thorn WaveToyCUDA
+# Main make.code.defn file for thorn WaveToyGPU
 
 # Source files in this directory
 SRCS = wavetoy.cxx
