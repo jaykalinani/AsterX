@@ -139,25 +139,8 @@ public:
       if (imin[d] >= imax[d])
         return;
 
-#if 0
-    constexpr int di = 1;
-    const int dj = di * (ash[0] + !CI);
-    const int dk = dj * (ash[1] + !CJ);
-    const int np = dk * (ash[2] + !CK);
-#endif
-
     const auto kernel{[&](const int i, const int j, const int k)
                           CCTK_ATTRIBUTE_ALWAYS_INLINE {
-#if 0
-       const CCTK_REAL x = x0[0] + (lbnd[0] + i - CCTK_REAL(!CI) / 2) * dx[0];
-       const CCTK_REAL y = x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
-       const CCTK_REAL z = x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
-       const int idx = i * di + j * dj + k * dk;
-       const PointDesc p{i,           j,       k,         x,   y,  z,
-                         dx[0],       dx[1],   dx[2],     idx, dj, dk,
-                         np{i, j, k}, inormal, {x, y, z}, dx};
-       f(p);
-#endif
                             f(point_desc<CI, CJ, CK>(inormal, i, j, k));
                           }};
 
