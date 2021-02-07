@@ -2156,11 +2156,19 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   return didsync;
 }
 
+bool sync_active = false; // Catch recursive calls
+
 int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      const int *groups0, const int *directions) {
   DECLARE_CCTK_PARAMETERS;
 
   assert(in_global_mode(cctkGH));
+
+  if (sync_active)
+    CCTK_ERROR("Recursive call to SyncGroupsByDirI. Maybe you are syncing grid "
+               "functions in the \"restrict\" bin while the parameter "
+               "\"restrict_during_sync\" is true?");
+  sync_active = true;
 
   static Timer timer("Sync");
   Interval interval(timer);
@@ -2315,6 +2323,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       }
     }
   });
+
+  assert(sync_active);
+  sync_active = false;
 
   return numgroups; // number of groups synchronized
 }
