@@ -144,6 +144,9 @@ if (calc_ADMRHS_vars) {
     WRITES: ADMBase::dtcurv(interior)
     WRITES: ADMBase::dt2lapse(interior)
     WRITES: ADMBase::dt2shift(interior)
+    SYNC: ADMBase::dtcurv
+    SYNC: ADMBase::dt2lapse
+    SYNC: ADMBase::dt2shift
   } "Calculate second time derivatives of ADM variables"
 
   SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStepGroup
@@ -152,9 +155,6 @@ if (calc_ADMRHS_vars) {
     WRITES: ADMBase::dtcurv(boundary)
     WRITES: ADMBase::dt2lapse(boundary)
     WRITES: ADMBase::dt2shift(boundary)
-    SYNC: ADMBase::dtcurv
-    SYNC: ADMBase::dt2lapse
-    SYNC: ADMBase::dt2shift
   } "Apply boundary conditions to second time derivatives of ADM variables"
 }
 
