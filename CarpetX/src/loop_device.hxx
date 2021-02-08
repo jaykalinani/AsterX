@@ -33,7 +33,7 @@ public:
   GridDescBaseDevice(const cGH *cctkGH) : GridDescBase(cctkGH) {}
 
   // Loop over a given box
-  template <int CI, int CJ, int CK, typename F>
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_box_device(const F &f, const array<int, dim> &restrict imin,
                   const array<int, dim> &restrict imax,
@@ -41,6 +41,7 @@ public:
     static_assert(CI == 0 || CI == 1, "");
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");
+    // TODO static_assert(VS is power of 2);
 
     for (int d = 0; d < dim; ++d)
       assert(!(imin[d] >= imax[d]));
@@ -51,7 +52,7 @@ public:
     const auto kernel =
         [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
             const int i, const int j, const int k) {
-          f(point_desc<CI, CJ, CK>(inormal1, i, j, k));
+          f(point_desc<CI, CJ, CK>(inormal1, imin[0], imax[0], i, j, k));
         };
 
     // array<bool, dim> bforward;
@@ -70,10 +71,14 @@ public:
 
     if (all_forward) {
 
+      // const int imin0_aligned = imin[0] & ~(VS - 1);
+
       for (int k = imin[2]; k < imax[2]; ++k) {
         for (int j = imin[1]; j < imax[1]; ++j) {
-#pragma omp simd
-          for (int i = imin[0]; i < imax[0]; ++i) {
+          // #pragma omp simd
+          // for (int i = imin[0]; i < imax[0]; ++i) {
+          // for (int i = imin0_aligned; i < imax[0]; i += VS) {
+          for (int i = imin[0]; i < imax[0]; i += VS) {
             kernel(i, j, k);
           }
         }
@@ -81,6 +86,7 @@ public:
 
     } else {
       // At least one direction is reversed; loop from the inside out
+      assert(VS == 1);
 
       for (int k0 = 0; k0 < imax[2] - imin[2]; ++k0) {
         for (int j0 = 0; j0 < imax[1] - imin[1]; ++j0) {
@@ -97,6 +103,7 @@ public:
 
 #else
     // Run on GPU
+    static_assert(VS == 1, "");
 
     // Convert to AMReX box
     const amrex::Box box(
@@ -134,7 +141,7 @@ public:
   }
 
   // Loop over all interior points
-  template <int CI, int CJ, int CK, typename F>
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_all_device(const array<int, dim> &group_nghostzones, const F &f) const {
     const array<int, dim> offset{!CI, !CJ, !CK};
@@ -147,11 +154,11 @@ public:
     }
     const array<int, dim> inormal{0, 0, 0};
 
-    loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
+    loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
   }
 
   // Loop over all interior points
-  template <int CI, int CJ, int CK, typename F>
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_int_device(const array<int, dim> &group_nghostzones, const F &f) const {
     const array<int, dim> offset{!CI, !CJ, !CK};
@@ -163,13 +170,13 @@ public:
     }
     const array<int, dim> inormal{0, 0, 0};
 
-    loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
+    loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
   }
 
   // Loop over all outer boundary points. This excludes ghost faces, but
   // includes ghost edges/corners on non-ghost faces. Loop over faces first,
   // then edges, then corners.
-  template <int CI, int CJ, int CK, typename F>
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_bnd_device(const array<int, dim> &group_nghostzones, const F &f) const {
     const array<int, dim> offset{!CI, !CJ, !CK};
@@ -217,7 +224,7 @@ public:
                       tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
                 }
 
-                loop_box_device<CI, CJ, CK>(f, imin, imax, inormal);
+                loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
               }
             } // if rank
           }

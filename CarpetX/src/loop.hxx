@@ -26,6 +26,7 @@ constexpr int dim = 3;
 enum class where_t { everywhere, interior, boundary, ghosts_inclusive, ghosts };
 
 struct PointDesc {
+  int imin, imax;
   int i, j, k;
   CCTK_REAL x, y, z;
   CCTK_REAL dx, dy, dz;
@@ -42,6 +43,7 @@ struct PointDesc {
 
   friend ostream &operator<<(ostream &os, const PointDesc &p) {
     os << "PointDesc{"
+       << "imin,imax:{" << p.imin << "," << p.imax << "}, "
        << "ijk:"
        << "{" << p.i << "," << p.j << "," << p.k << "}, "
        << "xyz:"
@@ -104,8 +106,8 @@ public:
 
   template <int CI, int CJ, int CK>
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE PointDesc
-  point_desc(const vect<int, dim> &restrict NI, const int i, const int j,
-             const int k) const {
+  point_desc(const vect<int, dim> &restrict NI, const int imin, const int imax,
+             const int i, const int j, const int k) const {
     constexpr int di = 1;
     const int dj = di * (ash[0] + !CI);
     const int dk = dj * (ash[1] + !CJ);
@@ -115,14 +117,15 @@ public:
     const CCTK_REAL y = x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
     const CCTK_REAL z = x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
     const int idx = i * di + j * dj + k * dk;
-    return PointDesc{i,   j,  k,  x,  y,         z,  dx[0],     dx[1], dx[2],
-                     idx, dj, dk, np, {i, j, k}, NI, {x, y, z}, dx};
+    return PointDesc{imin, imax,      i,     j,         k,   x,  y,
+                     z,    dx[0],     dx[1], dx[2],     idx, dj, dk,
+                     np,   {i, j, k}, NI,    {x, y, z}, dx};
   }
 
   template <int CI, int CJ, int CK>
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE PointDesc
   point_desc(const PointDesc &p) const {
-    return point_desc<CI, CJ, CK>(p.NI, p.i, p.j, p.k);
+    return point_desc<CI, CJ, CK>(p.NI, p.imin, p.imax, p.i, p.j, p.k);
   }
 
   // Loop over a given box
@@ -139,10 +142,10 @@ public:
       if (imin[d] >= imax[d])
         return;
 
-    const auto kernel{[&](const int i, const int j, const int k)
-                          CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                            f(point_desc<CI, CJ, CK>(inormal, i, j, k));
-                          }};
+    const auto kernel{[&](const int i, const int j,
+                          const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
+    }};
 
     array<bool, dim> bforward;
     for (int d = 0; d < dim; ++d)
