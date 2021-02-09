@@ -180,19 +180,8 @@ public:
   constexpr vec3(const vect<T, 3> &elts) : elts(elts) {}
   constexpr vec3(vect<T, 3> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr vector<T> make_vector(T vx, T vy, T vz) {
-    vector<T> vec;
-    vec.reserve(3);
-    vec.push_back(move(vx));
-    vec.push_back(move(vy));
-    vec.push_back(move(vz));
-    return vec;
-  }
-
-public:
   explicit constexpr vec3(T vx, T vy, T vz)
-      : elts(make_vector(move(vx), move(vy), move(vz))) {}
+      : elts(make_tuple(move(vx), move(vy), move(vz))) {}
 
   constexpr vec3(initializer_list<T> v) : elts(v) {}
   constexpr vec3(const vector<T> &v) : elts(v) {}
@@ -211,9 +200,9 @@ public:
   template <typename F, typename = result_of_t<F(int)> >
   constexpr vec3(const F &f) : elts{f(0), f(1), f(2)} {}
 
-  vec3(const cGH *const cctkGH, allocate)
-      : vec3(T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate())) {}
+  template <typename U>
+  vec3(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : vec3(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
 
   void store(const GF3D<T, 0, 0, 0> &gf_vx_, const GF3D<T, 0, 0, 0> &gf_vy_,
              const GF3D<T, 0, 0, 0> &gf_vz_, const vect<int, 3> &I) const {
@@ -351,24 +340,9 @@ public:
   constexpr mat3(const vect<T, 6> &elts) : elts(elts) {}
   constexpr mat3(vect<T, 6> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr vector<T> make_vector(T Axx, T Axy, T Axz, T Ayy, T Ayz,
-                                         T Azz) {
-    vector<T> vec;
-    vec.reserve(6);
-    vec.push_back(move(Axx));
-    vec.push_back(move(Axy));
-    vec.push_back(move(Axz));
-    vec.push_back(move(Ayy));
-    vec.push_back(move(Ayz));
-    vec.push_back(move(Azz));
-    return vec;
-  }
-
-public:
   explicit constexpr mat3(T Axx, T Axy, T Axz, T Ayy, T Ayz, T Azz)
-      : elts(make_vector(move(Axx), move(Axy), move(Axz), move(Ayy), move(Ayz),
-                         move(Azz))) {}
+      : elts(make_tuple(move(Axx), move(Axy), move(Axz), move(Ayy), move(Ayz),
+                        move(Azz))) {}
 
   constexpr mat3(initializer_list<T> A) : elts(A) {}
   constexpr mat3(const vector<T> &A) : elts(A) {}
@@ -423,10 +397,10 @@ public:
 #endif
   }
 
-  mat3(const cGH *const cctkGH, allocate)
-      : mat3(T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate())) {}
+  template <typename U>
+  mat3(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : mat3(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
 
   void store(const GF3D<T, 0, 0, 0> &gf_Axx_, const GF3D<T, 0, 0, 0> &gf_Axy_,
              const GF3D<T, 0, 0, 0> &gf_Axz_, const GF3D<T, 0, 0, 0> &gf_Ayy_,
@@ -618,20 +592,8 @@ public:
   constexpr vec4(const vect<T, 4> &elts) : elts(elts) {}
   constexpr vec4(vect<T, 4> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr vector<T> make_vector(T vt, T vx, T vy, T vz) {
-    vector<T> vec;
-    vec.reserve(4);
-    vec.push_back(move(vt));
-    vec.push_back(move(vx));
-    vec.push_back(move(vy));
-    vec.push_back(move(vz));
-    return vec;
-  }
-
-public:
   explicit constexpr vec4(T vt, T vx, T vy, T vz)
-      : elts(make_vector(move(vt), move(vx), move(vy), move(vz))) {}
+      : elts(make_tuple(move(vt), move(vx), move(vy), move(vz))) {}
 
   constexpr vec4(initializer_list<T> v) : elts(v) {}
   constexpr vec4(const vector<T> &v) : elts(v) {}
@@ -652,9 +614,10 @@ public:
   template <typename F, typename = result_of_t<F(int)> >
   constexpr vec4(const F &f) : elts{f(0), f(1), f(2), f(3)} {}
 
-  vec4(const cGH *const cctkGH, allocate)
-      : vec4(T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate())) {}
+  template <typename U>
+  vec4(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : vec4(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+             T(cctkGH, buffers)) {}
 
   void store(const GF3D<T, 0, 0, 0> &gf_vt_, const GF3D<T, 0, 0, 0> &gf_vx_,
              const GF3D<T, 0, 0, 0> &gf_vy_, const GF3D<T, 0, 0, 0> &gf_vz_,
@@ -821,30 +784,11 @@ public:
   constexpr mat4(const vect<T, 10> &elts) : elts(elts) {}
   constexpr mat4(vect<T, 10> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr vector<T> make_vector(T Att, T Atx, T Aty, T Atz, T Axx,
-                                         T Axy, T Axz, T Ayy, T Ayz, T Azz) {
-    vector<T> vec;
-    vec.reserve(10);
-    vec.push_back(move(Att));
-    vec.push_back(move(Atx));
-    vec.push_back(move(Aty));
-    vec.push_back(move(Atz));
-    vec.push_back(move(Axx));
-    vec.push_back(move(Axy));
-    vec.push_back(move(Axz));
-    vec.push_back(move(Ayy));
-    vec.push_back(move(Ayz));
-    vec.push_back(move(Azz));
-    return vec;
-  }
-
-public:
   explicit constexpr mat4(T Att, T Atx, T Aty, T Atz, T Axx, T Axy, T Axz,
                           T Ayy, T Ayz, T Azz)
-      : elts(make_vector(move(Att), move(Atx), move(Aty), move(Atz), move(Axx),
-                         move(Axy), move(Axz), move(Ayy), move(Ayz),
-                         move(Azz))) {}
+      : elts(make_tuple(move(Att), move(Atx), move(Aty), move(Atz), move(Axx),
+                        move(Axy), move(Axz), move(Ayy), move(Ayz),
+                        move(Azz))) {}
 
   constexpr mat4(initializer_list<T> A) : elts(A) {}
   constexpr mat4(const vector<T> &A) : elts(A) {}
@@ -923,12 +867,12 @@ public:
 #endif
   }
 
-  mat4(const cGH *const cctkGH, allocate)
-      : mat4(T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate())) {}
+  template <typename U>
+  mat4(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : mat4(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+             T(cctkGH, buffers)) {}
 
   void store(const GF3D<T, 0, 0, 0> &gf_Att_, const GF3D<T, 0, 0, 0> &gf_Atx_,
              const GF3D<T, 0, 0, 0> &gf_Aty_, const GF3D<T, 0, 0, 0> &gf_Atz_,
@@ -1325,10 +1269,10 @@ public:
 #endif
   }
 
-  amat4(const cGH *const cctkGH, allocate)
-      : amat4(T(cctkGH, allocate()), T(cctkGH, allocate()),
-              T(cctkGH, allocate()), T(cctkGH, allocate()),
-              T(cctkGH, allocate()), T(cctkGH, allocate())) {}
+  template <typename U>
+  amat4(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : amat4(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+              T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
 
   void store(const GF3D<T, 0, 0, 0> &gf_Atx_, const GF3D<T, 0, 0, 0> &gf_Aty_,
              const GF3D<T, 0, 0, 0> &gf_Atz_, const GF3D<T, 0, 0, 0> &gf_Axy_,

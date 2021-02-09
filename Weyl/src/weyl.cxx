@@ -78,31 +78,32 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
+  vector<vector<CCTK_REAL> > buffers;
+
   const mat3<vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN>, DN, DN> gf_dgamma_(cctkGH,
-                                                                    allocate());
+                                                                    buffers);
   const mat3<mat3<GF3D<CCTK_REAL, 0, 0, 0>, DN, DN>, DN, DN> gf_ddgamma_(
-      cctkGH, allocate());
+      cctkGH, buffers);
   calc_derivs2(cctkGH, gf_gamma_, gf_dgamma_, gf_ddgamma_);
 
-  const vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN> gf_dalpha_(cctkGH, allocate());
-  const mat3<GF3D<CCTK_REAL, 0, 0, 0>, DN, DN> gf_ddalpha_(cctkGH, allocate());
+  const vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN> gf_dalpha_(cctkGH, buffers);
+  const mat3<GF3D<CCTK_REAL, 0, 0, 0>, DN, DN> gf_ddalpha_(cctkGH, buffers);
   calc_derivs2(cctkGH, gf_alpha_, gf_dalpha_, gf_ddalpha_);
 
-  const vec3<vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN>, UP> gf_dbeta_(cctkGH,
-                                                               allocate());
+  const vec3<vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN>, UP> gf_dbeta_(cctkGH, buffers);
   const vec3<mat3<GF3D<CCTK_REAL, 0, 0, 0>, DN, DN>, UP> gf_ddbeta_(cctkGH,
-                                                                    allocate());
+                                                                    buffers);
   calc_derivs2(cctkGH, gf_beta_, gf_dbeta_, gf_ddbeta_);
 
   const mat3<vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN>, DN, DN> gf_dk_(cctkGH,
-                                                                allocate());
+                                                                buffers);
   calc_derivs(cctkGH, gf_k_, gf_dk_);
 
-  const vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN> gf_ddtalpha_(cctkGH, allocate());
+  const vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN> gf_ddtalpha_(cctkGH, buffers);
   calc_derivs(cctkGH, gf_dtalpha_, gf_ddtalpha_);
 
   const vec3<vec3<GF3D<CCTK_REAL, 0, 0, 0>, DN>, UP> gf_ddtbeta_(cctkGH,
-                                                                 allocate());
+                                                                 buffers);
   calc_derivs(cctkGH, gf_dtbeta_, gf_ddtbeta_);
 
   //
