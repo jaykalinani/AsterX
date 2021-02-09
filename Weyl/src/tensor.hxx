@@ -116,7 +116,7 @@ template <typename F, typename T> constexpr T fold(const F &f, const T &x) {
   return x;
 }
 template <typename F, typename T, typename... Ts>
-constexpr T fold(const F &f, const T &x0, const T &x1, const Ts &... xs) {
+constexpr T fold(const F &f, const T &x0, const T &x1, const Ts &...xs) {
   return fold(f, fold(f, x0, x1), xs...);
 }
 
@@ -126,7 +126,7 @@ template <typename T> constexpr T add() { return T(0); }
 //   return x;
 // }
 template <typename T, typename... Ts>
-constexpr T add(const T &x, const Ts &... xs) {
+constexpr T add(const T &x, const Ts &...xs) {
   return x + add(xs...);
 }
 
