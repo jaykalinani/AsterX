@@ -35,9 +35,9 @@ inline Z4C_INLINE T deriv1d(const T *restrict const var, const ptrdiff_t di,
     return (1 / T(12) * (var[-2 * di] - var[+2 * di]) //
             - 2 / T(3) * (var[-di] - var[+di])) /
            dx;
-  default:
-    assert(0);
   }
+  assert(0);
+  return T{};
 }
 
 template <typename T>
@@ -79,9 +79,9 @@ inline Z4C_INLINE T deriv1d_upwind(const T *restrict const var,
               - 1 / T(2) * var[+2 * di] //
               + 1 / T(12) * var[+3 * di]) /
              dx;
-  default:
-    assert(0);
   }
+  assert(0);
+  return T{};
 }
 
 template <typename T>
@@ -97,9 +97,9 @@ inline Z4C_INLINE T deriv2_1d(const T *restrict const var, const ptrdiff_t di,
             + 4 / T(3) * (var[-di] + var[+di])         //
             - 5 / T(2) * var[0]) /
            pow2(dx);
-  default:
-    assert(0);
   }
+  assert(0);
+  return T{};
 }
 
 template <typename T>
@@ -127,9 +127,9 @@ inline Z4C_INLINE T deriv1d_diss(const T *restrict const var,
             + 15 * (var[-di] + var[+di])        //
             - 20 * var[0]) /
            dx;
-  default:
-    assert(0);
   }
+  assert(0);
+  return T{};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
