@@ -78,7 +78,7 @@ constexpr Z4C_INLINE T fold(const F &f, const T &x) {
 }
 template <typename F, typename T, typename... Ts>
 constexpr Z4C_INLINE T fold(const F &f, const T &x0, const T &x1,
-                            const Ts &... xs) {
+                            const Ts &...xs) {
   return fold(f, fold(f, x0, x1), xs...);
 }
 
@@ -88,7 +88,7 @@ template <typename T> constexpr Z4C_INLINE T add() { return T(0); }
 //   return x;
 // }
 template <typename T, typename... Ts>
-constexpr Z4C_INLINE T add(const T &x, const Ts &... xs) {
+constexpr Z4C_INLINE T add(const T &x, const Ts &...xs) {
   return x + add(xs...);
 }
 
