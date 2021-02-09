@@ -607,8 +607,8 @@ template <typename T> struct GF3D1 {
   GF3D1(GF3D1 &&) = default;
   GF3D1 &operator=(const GF3D1 &) = delete;
   GF3D1 &operator=(GF3D1 &&) = default;
-  inline GF3D1(T *restrict ptr, const array<int, dim> &imin,
-               const array<int, dim> &imax, const array<int, dim> &ash)
+  GF3D1(T *restrict ptr, const array<int, dim> &imin,
+        const array<int, dim> &imax, const array<int, dim> &ash)
       : ptr(ptr),
 #ifdef CCTK_DEBUG
         imin(imin), imax(imax), ash(ash),
@@ -616,8 +616,8 @@ template <typename T> struct GF3D1 {
         dj(di * ash[0]), dk(dj * ash[1]), np(dk * ash[2]),
         off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
   }
-  inline GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
-               const array<int, dim> &nghostzones, T *restrict ptr) {
+  GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
+        const array<int, dim> &nghostzones, T *restrict ptr) {
     for (int d = 0; d < dim; ++d)
       assert(indextype[d] == 0 || indextype[d] == 1);
     for (int d = 0; d < dim; ++d) {
