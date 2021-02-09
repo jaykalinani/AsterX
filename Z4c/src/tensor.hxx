@@ -10,6 +10,7 @@
 #include <initializer_list>
 #include <ostream>
 #include <sstream>
+#include <tuple>
 #include <type_traits>
 
 #ifdef CCTK_DEBUG
@@ -172,19 +173,8 @@ public:
   constexpr Z4C_INLINE vec3(const vect<T, 3> &elts) : elts(elts) {}
   constexpr Z4C_INLINE vec3(vect<T, 3> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr Z4C_INLINE vector<T> make_vector(T vx, T vy, T vz) {
-    vector<T> vec;
-    vec.reserve(3);
-    vec.push_back(move(vx));
-    vec.push_back(move(vy));
-    vec.push_back(move(vz));
-    return vec;
-  }
-
-public:
   explicit constexpr Z4C_INLINE vec3(T vx, T vy, T vz)
-      : elts(make_vector(move(vx), move(vy), move(vz))) {}
+      : elts(make_tuple(move(vx), move(vy), move(vz))) {}
 
   constexpr Z4C_INLINE vec3(initializer_list<T> v) : elts(v) {}
   constexpr Z4C_INLINE vec3(const vector<T> &v) : elts(v) {}
@@ -205,9 +195,9 @@ public:
   template <typename F, typename = result_of_t<F(int)> >
   constexpr Z4C_INLINE vec3(const F &f) : elts{f(0), f(1), f(2)} {}
 
-  vec3(const cGH *const cctkGH, allocate)
-      : vec3(T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate())) {}
+  template <typename U>
+  vec3(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : vec3(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
 
   Z4C_INLINE void store(const GF3D<T, 0, 0, 0> &gf_vx_,
                         const GF3D<T, 0, 0, 0> &gf_vy_,
@@ -341,24 +331,9 @@ public:
   constexpr Z4C_INLINE mat3(const vect<T, 6> &elts) : elts(elts) {}
   constexpr Z4C_INLINE mat3(vect<T, 6> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr Z4C_INLINE vector<T> make_vector(T Axx, T Axy, T Axz, T Ayy,
-                                                    T Ayz, T Azz) {
-    vector<T> vec;
-    vec.reserve(6);
-    vec.push_back(move(Axx));
-    vec.push_back(move(Axy));
-    vec.push_back(move(Axz));
-    vec.push_back(move(Ayy));
-    vec.push_back(move(Ayz));
-    vec.push_back(move(Azz));
-    return vec;
-  }
-
-public:
   explicit constexpr Z4C_INLINE mat3(T Axx, T Axy, T Axz, T Ayy, T Ayz, T Azz)
-      : elts(make_vector(move(Axx), move(Axy), move(Axz), move(Ayy), move(Ayz),
-                         move(Azz))) {}
+      : elts(make_tuple(move(Axx), move(Axy), move(Axz), move(Ayy), move(Ayz),
+                        move(Azz))) {}
 
   constexpr Z4C_INLINE mat3(initializer_list<T> A) : elts(A) {}
   constexpr Z4C_INLINE mat3(const vector<T> &A) : elts(A) {}
@@ -413,10 +388,10 @@ public:
 #endif
   }
 
-  mat3(const cGH *const cctkGH, allocate)
-      : mat3(T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate()),
-             T(cctkGH, allocate()), T(cctkGH, allocate())) {}
+  template <typename U>
+  mat3(const cGH *const cctkGH, vector<vector<U> > &buffers)
+      : mat3(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
+             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
 
   Z4C_INLINE void
   store(const GF3D<T, 0, 0, 0> &gf_Axx_, const GF3D<T, 0, 0, 0> &gf_Axy_,
