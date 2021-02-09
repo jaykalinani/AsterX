@@ -7,12 +7,22 @@
 #include <array>
 #include <complex>
 #include <initializer_list>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace Arith {
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T, size_t N> struct ntuple {
+  typedef decltype(tuple_cat(declval<tuple<T> >(),
+                             declval<typename ntuple<T, N - 1>::type>())) type;
+};
+template <typename T> struct ntuple<T, 0> { typedef tuple<> type; };
+template <typename T, size_t N> using ntuple_t = typename ntuple<T, N>::type;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,6 +117,33 @@ array_from_initializer_list(initializer_list<T> l) {
 #endif
   const T *restrict const p = l.begin();
   return {p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 3>
+array_from_tuple(tuple<T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 4>
+array_from_tuple(tuple<T, T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)), move(get<3>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 6>
+array_from_tuple(tuple<T, T, T, T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)),
+          move(get<3>(t)), move(get<4>(t)), move(get<5>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 10>
+array_from_tuple(tuple<T, T, T, T, T, T, T, T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)), move(get<3>(t)),
+          move(get<4>(t)), move(get<5>(t)), move(get<6>(t)), move(get<7>(t)),
+          move(get<8>(t)), move(get<9>(t))};
 }
 
 template <typename T, size_t N>
@@ -210,18 +247,17 @@ template <typename T, int D> struct vect {
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect &operator=(vect &&) = default;
 
   template <typename U>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const vect<U, D> &x) : elts() {
-    for (int d = 0; d < D; ++d)
-      elts[d] = x.elts[d];
-  }
-  template <typename U>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect<U, D> &&x) : elts() {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect<U, D> x) : elts() {
     for (int d = 0; d < D; ++d)
       elts[d] = move(x.elts[d]);
   }
 
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const array<T, D> &arr)
-      : elts(arr) {}
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(array<T, D> arr)
+      : elts(move(arr)) {}
+
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(ntuple_t<T, D> tup)
+      : elts(array_from_tuple(move(tup))) {}
+
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(initializer_list<T> lst)
       : elts(array_from_initializer_list<T, D>(lst)) {
 #ifdef CCTK_DEBUG
