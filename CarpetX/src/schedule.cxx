@@ -100,6 +100,8 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
 } // namespace CarpetX
 namespace Loop {
 
+bool CarpetX_poison_undefined_values = true;
+
 GridDescBase::GridDescBase() {}
 
 GridDescBase::GridDescBase(const cGH *restrict cctkGH) {

@@ -529,8 +529,8 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_ghosts(const cGH *cctkGH,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: remove this
-struct allocate {};
+extern bool CarpetX_poison_undefined_values;
+
 template <typename T, int CI, int CJ, int CK> struct GF3D {
   static_assert(CI == 0 || CI == 1, "");
   static_assert(CJ == 0 || CJ == 1, "");
@@ -539,29 +539,39 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
   static constexpr int di = 1;
   const int dj, dk, np;
   const int ni, nj, nk;
-  vector<remove_cv_t<T> > data;
   T *restrict const ptr;
   static constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<int, dim> indextype() {
     return {CI, CJ, CK};
   }
   GF3D() = delete;
-  GF3D(const GF3D &) = delete;
+  GF3D(const GF3D &gf) = default;
   GF3D(GF3D &&) = default;
-  GF3D &operator=(const GF3D &) = delete;
+  GF3D &operator=(const GF3D &gf) = default;
   GF3D &operator=(GF3D &&) = default;
-  inline GF3D(const cGH *restrict cctkGH, T *restrict ptr)
+  GF3D(const cGH *restrict cctkGH, T *restrict ptr)
       : dj(di * (cctkGH->cctk_ash[0] + !CI)),
         dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
         np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
         nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK), ptr(ptr) {
   }
-  inline GF3D(const cGH *restrict cctkGH, allocate)
+  GF3D(const cGH *restrict cctkGH, vector<vector<T> > &buffers)
       : dj(di * (cctkGH->cctk_ash[0] + !CI)),
         dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
         np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
         nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK),
-        data(np, numeric_limits<T>::quiet_NaN()), ptr(data.data()) {}
-  inline int offset(int i, int j, int k) const {
+        ptr(alloc_buffer(buffers, np)) {}
+
+private:
+  static T *restrict alloc_buffer(vector<vector<T> > &buffers, const int np) {
+    if (CarpetX_poison_undefined_values)
+      buffers.emplace_back(np, numeric_limits<T>::quiet_NaN());
+    else
+      buffers.emplace_back(np);
+    return buffers.back().data();
+  }
+
+public:
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
 #ifdef CCTK_DEBUG
