@@ -588,8 +588,7 @@ void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
   // Ensure the error estimate has been set
   error_if_invalid(groupdata, vi, tl, make_valid_int(),
                    [] { return "ErrorEst"; });
-  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
   for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     GridPtrDesc1 grid(groupdata, mfi);
@@ -1025,8 +1024,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                                 }));
       if (poison_undefined_values) {
         // Set new grid functions to nan
-        auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+        auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
@@ -1390,13 +1388,14 @@ int InitGH(cGH *restrict cctkGH) {
   // know them when its constructor is running, but there are no
   // constructor arguments for them
   amrex::ParmParse pp;
-  pp.add("amr.blocking_factor_x", blocking_factor_x);
-  pp.add("amr.blocking_factor_y", blocking_factor_y);
-  pp.add("amr.blocking_factor_z", blocking_factor_z);
-  pp.add("amr.max_grid_size_x", max_grid_size_x);
-  pp.add("amr.max_grid_size_y", max_grid_size_y);
-  pp.add("amr.max_grid_size_z", max_grid_size_z);
+  pp.addarr(
+      "amr.blocking_factor",
+      vector<int>{blocking_factor_x, blocking_factor_y, blocking_factor_z});
+  pp.addarr("amr.max_grid_size",
+            vector<int>{max_grid_size_x, max_grid_size_y, max_grid_size_z});
   pp.add("amr.grid_eff", grid_efficiency);
+  pp.addarr("fabarray.mfiter_tile_size",
+            vector<int>{max_tile_size_x, max_tile_size_y, max_tile_size_z});
 
   ghext->amrcore = make_unique<CactusAmrCore>(
       domain, max_num_levels - 1, ncells, coord, reffacts, is_periodic);

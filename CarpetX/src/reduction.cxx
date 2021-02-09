@@ -146,8 +146,7 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
           makeFineMask(mfab, fine_mfab.boxArray(), reffact));
     }
 
-    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-        {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel reduction(reduction : red)
     for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
       const amrex::Box &bx = mfi.tilebox(); // current region (without ghosts)

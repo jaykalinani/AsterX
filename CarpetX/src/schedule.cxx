@@ -316,8 +316,7 @@ void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
     return;
 
   const auto &leveldata = groupdata.leveldata();
-  const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+  const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
   for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     const GridPtrDesc1 grid(groupdata, mfi);
@@ -393,8 +392,7 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
       nan_update(grid, p);
   };
   const auto &leveldata = groupdata.leveldata();
-  const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+  const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
   for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     const GridPtrDesc1 grid(groupdata, mfi);
@@ -639,8 +637,7 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
 
   assert(active_levels);
   active_levels->loop([&](auto &restrict leveldata) {
-    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-        {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
     for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
 
@@ -709,8 +706,7 @@ void check_checksums(const checksums_t checksums) {
 
   assert(active_levels);
   active_levels->loop([&](auto &restrict leveldata) {
-    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-        {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
     for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
 
@@ -1938,8 +1934,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       TileBox &restrict thread_tilebox = thread_info.tilebox;
       active_levels->loop([&](const auto &restrict leveldata) {
         enter_level_mode(threadGH, leveldata);
-        const auto mfitinfo = amrex::MFItInfo().EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
           const MFPointer mfp(mfi);
@@ -1956,8 +1951,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
       vector<std::function<void()> > tasks;
       active_levels->loop([&](const auto &restrict leveldata) {
-        const auto mfitinfo = amrex::MFItInfo().EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
         // Note: The amrex::MFIter uses global variables and OpenMP barriers
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
