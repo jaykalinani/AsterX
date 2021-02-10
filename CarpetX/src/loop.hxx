@@ -1,12 +1,17 @@
 #ifndef LOOP_HXX
 #define LOOP_HXX
 
+#include "mempool.hxx"
+
 #include <vect.hxx>
 
 #include <cctk.h>
 
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <initializer_list>
 #include <limits>
@@ -554,23 +559,12 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
         np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
         nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK), ptr(ptr) {
   }
-  GF3D(const cGH *restrict cctkGH, vector<vector<T> > &buffers)
+  GF3D(const cGH *restrict cctkGH, mempool_t &mempool)
       : dj(di * (cctkGH->cctk_ash[0] + !CI)),
         dk(dj * (cctkGH->cctk_ash[1] + !CJ)),
         np(dk * (cctkGH->cctk_ash[2] + !CK)), ni(cctkGH->cctk_lsh[0] + !CI),
         nj(cctkGH->cctk_lsh[1] + !CJ), nk(cctkGH->cctk_lsh[2] + !CK),
-        ptr(alloc_buffer(buffers, np)) {}
-
-private:
-  static T *restrict alloc_buffer(vector<vector<T> > &buffers, const int np) {
-    if (CarpetX_poison_undefined_values)
-      buffers.emplace_back(np, numeric_limits<T>::quiet_NaN());
-    else
-      buffers.emplace_back(np);
-    return buffers.back().data();
-  }
-
-public:
+        ptr(mempool.alloc<T>(np)) {}
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
@@ -603,9 +597,9 @@ template <typename T> struct GF3D1 {
   int dj, dk, np;
   int off;
   GF3D1() = delete;
-  GF3D1(const GF3D1 &) = delete;
+  GF3D1(const GF3D1 &) = default;
   GF3D1(GF3D1 &&) = default;
-  GF3D1 &operator=(const GF3D1 &) = delete;
+  GF3D1 &operator=(const GF3D1 &) = default;
   GF3D1 &operator=(GF3D1 &&) = default;
   GF3D1(T *restrict ptr, const array<int, dim> &imin,
         const array<int, dim> &imax, const array<int, dim> &ash)
@@ -636,6 +630,11 @@ template <typename T> struct GF3D1 {
                2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     *this = GF3D1(ptr, imin, imax, ash);
   }
+  GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
+        const array<int, dim> &nghostzones, mempool_t &mempool)
+      : GF3D1(cctkGH, indextype, nghostzones, nullptr) {
+    ptr = mempool.alloc<T>(np);
+  }
   inline int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
@@ -646,11 +645,14 @@ template <typename T> struct GF3D1 {
 #endif
     return i * di + j * dj + k * dk - off;
   }
+  inline int offset(const vect<int, dim> &I) const {
+    return offset(I[0], I[1], I[2]);
+  }
   inline T &restrict operator()(int i, int j, int k) const {
     return ptr[offset(i, j, k)];
   }
   inline T &restrict operator()(const vect<int, dim> &I) const {
-    return ptr[offset(I[0], I[1], I[2])];
+    return ptr[offset(I)];
   }
   inline T &restrict operator()(const PointDesc &p) const {
     return (*this)(p.I);
