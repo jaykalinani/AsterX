@@ -59,8 +59,8 @@ RUN mkdir src && \
 # Install Silo
 RUN mkdir src && \
     (cd src && \
-    wget https://wci.llnl.gov/content/assets/docs/simulation/computer-codes/silo/silo-4.10.2/silo-4.10.2-bsd.tar.gz && \
-    tar xzf silo-4.10.2-bsd.tar.gz && \
+    wget https://wci.llnl.gov/sites/wci/files/2021-01/silo-4.10.2-bsd.tgz && \
+    tar xzf silo-4.10.2-bsd.tgz && \
     cd silo-4.10.2-bsd && \
     mkdir build && \
     cd build && \
