@@ -6,6 +6,7 @@ INHERITS: ADMBase TmunuBase
 
 USES INCLUDE HEADER: dual.hxx
 USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: mempool.hxx
 USES INCLUDE HEADER: vect.hxx
 
 

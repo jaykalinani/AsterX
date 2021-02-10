@@ -23,16 +23,26 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
       CCTK_DELTA_SPACE(2),
   };
 
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatxx_(cctkGH, gammatxx);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatxy_(cctkGH, gammatxy);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatxz_(cctkGH, gammatxz);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatyy_(cctkGH, gammatyy);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatyz_(cctkGH, gammatyz);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gammatzz_(cctkGH, gammatzz);
+  const array<int, dim> indextype = {0, 0, 0};
+  const array<int, dim> nghostzones = {cctk_nghostzones[0], cctk_nghostzones[1],
+                                       cctk_nghostzones[2]};
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Gamtx_(cctkGH, Gamtx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Gamty_(cctkGH, Gamty);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Gamtz_(cctkGH, Gamtz);
+  const GF3D1<const CCTK_REAL> gf_gammatxx_(cctkGH, indextype, nghostzones,
+                                            gammatxx);
+  const GF3D1<const CCTK_REAL> gf_gammatxy_(cctkGH, indextype, nghostzones,
+                                            gammatxy);
+  const GF3D1<const CCTK_REAL> gf_gammatxz_(cctkGH, indextype, nghostzones,
+                                            gammatxz);
+  const GF3D1<const CCTK_REAL> gf_gammatyy_(cctkGH, indextype, nghostzones,
+                                            gammatyy);
+  const GF3D1<const CCTK_REAL> gf_gammatyz_(cctkGH, indextype, nghostzones,
+                                            gammatyz);
+  const GF3D1<const CCTK_REAL> gf_gammatzz_(cctkGH, indextype, nghostzones,
+                                            gammatzz);
+
+  const GF3D1<CCTK_REAL> gf_Gamtx_(cctkGH, indextype, nghostzones, Gamtx);
+  const GF3D1<CCTK_REAL> gf_Gamty_(cctkGH, indextype, nghostzones, Gamty);
+  const GF3D1<CCTK_REAL> gf_Gamtz_(cctkGH, indextype, nghostzones, Gamtz);
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     // Load

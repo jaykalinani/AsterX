@@ -109,53 +109,42 @@ template <typename T> struct z4c_vars_noderivs {
   {}
 
   Z4C_INLINE
-  z4c_vars_noderivs(const T &kappa1, const T &kappa2, const T &f_mu_L,
-                    const T &f_mu_S, const T &eta,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_chi_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_gammatxx_,
-                    const GF3D<const T, 0, 0, 0> &gf_gammatxy_,
-                    const GF3D<const T, 0, 0, 0> &gf_gammatxz_,
-                    const GF3D<const T, 0, 0, 0> &gf_gammatyy_,
-                    const GF3D<const T, 0, 0, 0> &gf_gammatyz_,
-                    const GF3D<const T, 0, 0, 0> &gf_gammatzz_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_Kh_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_Atxx_,
-                    const GF3D<const T, 0, 0, 0> &gf_Atxy_,
-                    const GF3D<const T, 0, 0, 0> &gf_Atxz_,
-                    const GF3D<const T, 0, 0, 0> &gf_Atyy_,
-                    const GF3D<const T, 0, 0, 0> &gf_Atyz_,
-                    const GF3D<const T, 0, 0, 0> &gf_Atzz_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_Gamtx_,
-                    const GF3D<const T, 0, 0, 0> &gf_Gamty_,
-                    const GF3D<const T, 0, 0, 0> &gf_Gamtz_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_Theta_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_alphaG_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_betaGx_,
-                    const GF3D<const T, 0, 0, 0> &gf_betaGy_,
-                    const GF3D<const T, 0, 0, 0> &gf_betaGz_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_eTtt_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_eTtx_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTty_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTtz_,
-                    //
-                    const GF3D<const T, 0, 0, 0> &gf_eTxx_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTxy_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTxz_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTyy_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTyz_,
-                    const GF3D<const T, 0, 0, 0> &gf_eTzz_,
-                    //
-                    const vect<int, 3> &I)
+  z4c_vars_noderivs(
+      const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
+      const T &eta,
+      //
+      const GF3D1<const T> &gf_chi_,
+      //
+      const GF3D1<const T> &gf_gammatxx_, const GF3D1<const T> &gf_gammatxy_,
+      const GF3D1<const T> &gf_gammatxz_, const GF3D1<const T> &gf_gammatyy_,
+      const GF3D1<const T> &gf_gammatyz_, const GF3D1<const T> &gf_gammatzz_,
+      //
+      const GF3D1<const T> &gf_Kh_,
+      //
+      const GF3D1<const T> &gf_Atxx_, const GF3D1<const T> &gf_Atxy_,
+      const GF3D1<const T> &gf_Atxz_, const GF3D1<const T> &gf_Atyy_,
+      const GF3D1<const T> &gf_Atyz_, const GF3D1<const T> &gf_Atzz_,
+      //
+      const GF3D1<const T> &gf_Gamtx_, const GF3D1<const T> &gf_Gamty_,
+      const GF3D1<const T> &gf_Gamtz_,
+      //
+      const GF3D1<const T> &gf_Theta_,
+      //
+      const GF3D1<const T> &gf_alphaG_,
+      //
+      const GF3D1<const T> &gf_betaGx_, const GF3D1<const T> &gf_betaGy_,
+      const GF3D1<const T> &gf_betaGz_,
+      //
+      const GF3D1<const T> &gf_eTtt_,
+      //
+      const GF3D1<const T> &gf_eTtx_, const GF3D1<const T> &gf_eTty_,
+      const GF3D1<const T> &gf_eTtz_,
+      //
+      const GF3D1<const T> &gf_eTxx_, const GF3D1<const T> &gf_eTxy_,
+      const GF3D1<const T> &gf_eTxz_, const GF3D1<const T> &gf_eTyy_,
+      const GF3D1<const T> &gf_eTyz_, const GF3D1<const T> &gf_eTzz_,
+      //
+      const vect<int, 3> &I)
       : z4c_vars_noderivs<T>(kappa1, kappa2, f_mu_L, f_mu_S, eta,
                              //
                              gf_chi_(I),
@@ -551,48 +540,39 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   z4c_vars(const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
            const T &eta,
            //
-           const GF3D<const T, 0, 0, 0> &gf_chi_,
+           const GF3D1<const T> &gf_chi_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_gammatxx_,
-           const GF3D<const T, 0, 0, 0> &gf_gammatxy_,
-           const GF3D<const T, 0, 0, 0> &gf_gammatxz_,
-           const GF3D<const T, 0, 0, 0> &gf_gammatyy_,
-           const GF3D<const T, 0, 0, 0> &gf_gammatyz_,
-           const GF3D<const T, 0, 0, 0> &gf_gammatzz_,
+           const GF3D1<const T> &gf_gammatxx_,
+           const GF3D1<const T> &gf_gammatxy_,
+           const GF3D1<const T> &gf_gammatxz_,
+           const GF3D1<const T> &gf_gammatyy_,
+           const GF3D1<const T> &gf_gammatyz_,
+           const GF3D1<const T> &gf_gammatzz_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_Kh_,
+           const GF3D1<const T> &gf_Kh_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_Atxx_,
-           const GF3D<const T, 0, 0, 0> &gf_Atxy_,
-           const GF3D<const T, 0, 0, 0> &gf_Atxz_,
-           const GF3D<const T, 0, 0, 0> &gf_Atyy_,
-           const GF3D<const T, 0, 0, 0> &gf_Atyz_,
-           const GF3D<const T, 0, 0, 0> &gf_Atzz_,
+           const GF3D1<const T> &gf_Atxx_, const GF3D1<const T> &gf_Atxy_,
+           const GF3D1<const T> &gf_Atxz_, const GF3D1<const T> &gf_Atyy_,
+           const GF3D1<const T> &gf_Atyz_, const GF3D1<const T> &gf_Atzz_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_Gamtx_,
-           const GF3D<const T, 0, 0, 0> &gf_Gamty_,
-           const GF3D<const T, 0, 0, 0> &gf_Gamtz_,
+           const GF3D1<const T> &gf_Gamtx_, const GF3D1<const T> &gf_Gamty_,
+           const GF3D1<const T> &gf_Gamtz_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_Theta_,
+           const GF3D1<const T> &gf_Theta_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_alphaG_,
+           const GF3D1<const T> &gf_alphaG_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_betaGx_,
-           const GF3D<const T, 0, 0, 0> &gf_betaGy_,
-           const GF3D<const T, 0, 0, 0> &gf_betaGz_,
+           const GF3D1<const T> &gf_betaGx_, const GF3D1<const T> &gf_betaGy_,
+           const GF3D1<const T> &gf_betaGz_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_eTtt_,
+           const GF3D1<const T> &gf_eTtt_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_eTtx_,
-           const GF3D<const T, 0, 0, 0> &gf_eTty_,
-           const GF3D<const T, 0, 0, 0> &gf_eTtz_,
+           const GF3D1<const T> &gf_eTtx_, const GF3D1<const T> &gf_eTty_,
+           const GF3D1<const T> &gf_eTtz_,
            //
-           const GF3D<const T, 0, 0, 0> &gf_eTxx_,
-           const GF3D<const T, 0, 0, 0> &gf_eTxy_,
-           const GF3D<const T, 0, 0, 0> &gf_eTxz_,
-           const GF3D<const T, 0, 0, 0> &gf_eTyy_,
-           const GF3D<const T, 0, 0, 0> &gf_eTyz_,
-           const GF3D<const T, 0, 0, 0> &gf_eTzz_,
+           const GF3D1<const T> &gf_eTxx_, const GF3D1<const T> &gf_eTxy_,
+           const GF3D1<const T> &gf_eTxz_, const GF3D1<const T> &gf_eTyy_,
+           const GF3D1<const T> &gf_eTyz_, const GF3D1<const T> &gf_eTzz_,
            //
            const vect<int, 3> &I, const vec3<T, UP> &dx)
       : z4c_vars(kappa1, kappa2, f_mu_L, f_mu_S, eta,
