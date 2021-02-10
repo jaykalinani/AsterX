@@ -1363,6 +1363,13 @@ int Initialise(tFleshConfig *config) {
       {
         CCTK_VINFO("Grid extent:");
         CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
+        const auto &bf = ghext->amrcore->blockingFactor(0);
+        CCTK_VINFO("  blocking_factor=[%d,%d,%d]", bf[0], bf[1], bf[2]);
+        const auto &mgs = ghext->amrcore->maxGridSize(0);
+        CCTK_VINFO("  max_grid_size=[%d,%d,%d]", mgs[0], mgs[1], mgs[2]);
+        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+        const auto &ts = mfitinfo.tilesize;
+        CCTK_VINFO("  max_tile_size=[%d,%d,%d]", ts[0], ts[1], ts[2]);
         CCTK_VINFO("Domain extent:");
         CCTK_VINFO("  xmin=[%.17g,%.17g,%.17g]", double(x0[0]), double(x0[1]),
                    double(x0[2]));
