@@ -184,28 +184,24 @@ public:
       : elts(make_tuple(move(vx), move(vy), move(vz))) {}
 
   constexpr vec3(initializer_list<T> v) : elts(v) {}
-  constexpr vec3(const vector<T> &v) : elts(v) {}
-  constexpr vec3(vector<T> &&v) : elts(move(v)) {}
+  // constexpr vec3(const vector<T> &v) : elts(v) {}
+  // constexpr vec3(vector<T> &&v) : elts(move(v)) {}
 
-  vec3(const GF3D<add_const_t<T>, 0, 0, 0> &gf_vx_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_vy_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_vz_, const vect<int, 3> &I)
+  vec3(const GF3D1<add_const_t<T> > &gf_vx_,
+       const GF3D1<add_const_t<T> > &gf_vy_,
+       const GF3D1<add_const_t<T> > &gf_vz_, const vect<int, 3> &I)
       : vec3{gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
 
-  vec3(const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vx_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vy_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vz_, const vect<int, 3> &I)
+  vec3(const GF3D1<remove_const_t<T> > &gf_vx_,
+       const GF3D1<remove_const_t<T> > &gf_vy_,
+       const GF3D1<remove_const_t<T> > &gf_vz_, const vect<int, 3> &I)
       : vec3{gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
 
   template <typename F, typename = result_of_t<F(int)> >
   constexpr vec3(const F &f) : elts{f(0), f(1), f(2)} {}
 
-  template <typename U>
-  vec3(const cGH *const cctkGH, vector<vector<U> > &buffers)
-      : vec3(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
-
-  void store(const GF3D<T, 0, 0, 0> &gf_vx_, const GF3D<T, 0, 0, 0> &gf_vy_,
-             const GF3D<T, 0, 0, 0> &gf_vz_, const vect<int, 3> &I) const {
+  void store(const GF3D1<T> &gf_vx_, const GF3D1<T> &gf_vy_,
+             const GF3D1<T> &gf_vz_, const vect<int, 3> &I) const {
     const auto &v = *this;
 #ifdef CCTK_DEBUG
     if (!((CCTK_isfinite(v(0))) && (CCTK_isfinite(v(1))) &&
@@ -345,24 +341,24 @@ public:
                         move(Azz))) {}
 
   constexpr mat3(initializer_list<T> A) : elts(A) {}
-  constexpr mat3(const vector<T> &A) : elts(A) {}
-  constexpr mat3(vector<T> &&A) : elts(move(A)) {}
+  // constexpr mat3(const vector<T> &A) : elts(A) {}
+  // constexpr mat3(vector<T> &&A) : elts(move(A)) {}
 
-  mat3(const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axx_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axy_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axz_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Ayy_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Ayz_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Azz_, const vect<int, 3> &I)
+  mat3(const GF3D1<add_const_t<T> > &gf_Axx_,
+       const GF3D1<add_const_t<T> > &gf_Axy_,
+       const GF3D1<add_const_t<T> > &gf_Axz_,
+       const GF3D1<add_const_t<T> > &gf_Ayy_,
+       const GF3D1<add_const_t<T> > &gf_Ayz_,
+       const GF3D1<add_const_t<T> > &gf_Azz_, const vect<int, 3> &I)
       : mat3{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
              gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
 
-  mat3(const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axx_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axy_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axz_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Ayy_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Ayz_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Azz_, const vect<int, 3> &I)
+  mat3(const GF3D1<remove_const_t<T> > &gf_Axx_,
+       const GF3D1<remove_const_t<T> > &gf_Axy_,
+       const GF3D1<remove_const_t<T> > &gf_Axz_,
+       const GF3D1<remove_const_t<T> > &gf_Ayy_,
+       const GF3D1<remove_const_t<T> > &gf_Ayz_,
+       const GF3D1<remove_const_t<T> > &gf_Azz_, const vect<int, 3> &I)
       : mat3{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
              gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
 
@@ -397,14 +393,9 @@ public:
 #endif
   }
 
-  template <typename U>
-  mat3(const cGH *const cctkGH, vector<vector<U> > &buffers)
-      : mat3(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
-             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
-
-  void store(const GF3D<T, 0, 0, 0> &gf_Axx_, const GF3D<T, 0, 0, 0> &gf_Axy_,
-             const GF3D<T, 0, 0, 0> &gf_Axz_, const GF3D<T, 0, 0, 0> &gf_Ayy_,
-             const GF3D<T, 0, 0, 0> &gf_Ayz_, const GF3D<T, 0, 0, 0> &gf_Azz_,
+  void store(const GF3D1<T> &gf_Axx_, const GF3D1<T> &gf_Axy_,
+             const GF3D1<T> &gf_Axz_, const GF3D1<T> &gf_Ayy_,
+             const GF3D1<T> &gf_Ayz_, const GF3D1<T> &gf_Azz_,
              const vect<int, 3> &I) const {
     const auto &A = *this;
 #ifdef CCTK_DEBUG
@@ -596,31 +587,26 @@ public:
       : elts(make_tuple(move(vt), move(vx), move(vy), move(vz))) {}
 
   constexpr vec4(initializer_list<T> v) : elts(v) {}
-  constexpr vec4(const vector<T> &v) : elts(v) {}
-  constexpr vec4(vector<T> &&v) : elts(move(v)) {}
+  // constexpr vec4(const vector<T> &v) : elts(v) {}
+  // constexpr vec4(vector<T> &&v) : elts(move(v)) {}
 
-  vec4(const GF3D<add_const_t<T>, 0, 0, 0> &gf_vt_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_vx_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_vy_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_vz_, const vect<int, 3> &I)
+  vec4(const GF3D1<add_const_t<T> > &gf_vt_,
+       const GF3D1<add_const_t<T> > &gf_vx_,
+       const GF3D1<add_const_t<T> > &gf_vy_,
+       const GF3D1<add_const_t<T> > &gf_vz_, const vect<int, 3> &I)
       : vec4{gf_vt_(I), gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
 
-  vec4(const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vt_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vx_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vy_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_vz_, const vect<int, 3> &I)
+  vec4(const GF3D1<remove_const_t<T> > &gf_vt_,
+       const GF3D1<remove_const_t<T> > &gf_vx_,
+       const GF3D1<remove_const_t<T> > &gf_vy_,
+       const GF3D1<remove_const_t<T> > &gf_vz_, const vect<int, 3> &I)
       : vec4{gf_vt_(I), gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
 
   template <typename F, typename = result_of_t<F(int)> >
   constexpr vec4(const F &f) : elts{f(0), f(1), f(2), f(3)} {}
 
-  template <typename U>
-  vec4(const cGH *const cctkGH, vector<vector<U> > &buffers)
-      : vec4(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
-             T(cctkGH, buffers)) {}
-
-  void store(const GF3D<T, 0, 0, 0> &gf_vt_, const GF3D<T, 0, 0, 0> &gf_vx_,
-             const GF3D<T, 0, 0, 0> &gf_vy_, const GF3D<T, 0, 0, 0> &gf_vz_,
+  void store(const GF3D1<T> &gf_vt_, const GF3D1<T> &gf_vx_,
+             const GF3D1<T> &gf_vy_, const GF3D1<T> &gf_vz_,
              const vect<int, 3> &I) const {
     const auto &v = *this;
 #ifdef CCTK_DEBUG
@@ -791,32 +777,32 @@ public:
                         move(Azz))) {}
 
   constexpr mat4(initializer_list<T> A) : elts(A) {}
-  constexpr mat4(const vector<T> &A) : elts(A) {}
-  constexpr mat4(vector<T> &&A) : elts(move(A)) {}
+  // constexpr mat4(const vector<T> &A) : elts(A) {}
+  // constexpr mat4(vector<T> &&A) : elts(move(A)) {}
 
-  mat4(const GF3D<add_const_t<T>, 0, 0, 0> &gf_Att_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Atx_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Aty_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Atz_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axx_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axy_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axz_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Ayy_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Ayz_,
-       const GF3D<add_const_t<T>, 0, 0, 0> &gf_Azz_, const vect<int, 3> &I)
+  mat4(const GF3D1<add_const_t<T> > &gf_Att_,
+       const GF3D1<add_const_t<T> > &gf_Atx_,
+       const GF3D1<add_const_t<T> > &gf_Aty_,
+       const GF3D1<add_const_t<T> > &gf_Atz_,
+       const GF3D1<add_const_t<T> > &gf_Axx_,
+       const GF3D1<add_const_t<T> > &gf_Axy_,
+       const GF3D1<add_const_t<T> > &gf_Axz_,
+       const GF3D1<add_const_t<T> > &gf_Ayy_,
+       const GF3D1<add_const_t<T> > &gf_Ayz_,
+       const GF3D1<add_const_t<T> > &gf_Azz_, const vect<int, 3> &I)
       : mat4{gf_Att_(I), gf_Atx_(I), gf_Aty_(I), gf_Atz_(I), gf_Axx_(I),
              gf_Axy_(I), gf_Axz_(I), gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
 
-  mat4(const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Att_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Atx_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Aty_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Atz_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axx_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axy_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axz_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Ayy_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Ayz_,
-       const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Azz_, const vect<int, 3> &I)
+  mat4(const GF3D1<remove_const_t<T> > &gf_Att_,
+       const GF3D1<remove_const_t<T> > &gf_Atx_,
+       const GF3D1<remove_const_t<T> > &gf_Aty_,
+       const GF3D1<remove_const_t<T> > &gf_Atz_,
+       const GF3D1<remove_const_t<T> > &gf_Axx_,
+       const GF3D1<remove_const_t<T> > &gf_Axy_,
+       const GF3D1<remove_const_t<T> > &gf_Axz_,
+       const GF3D1<remove_const_t<T> > &gf_Ayy_,
+       const GF3D1<remove_const_t<T> > &gf_Ayz_,
+       const GF3D1<remove_const_t<T> > &gf_Azz_, const vect<int, 3> &I)
       : mat4{gf_Att_(I), gf_Atx_(I), gf_Aty_(I), gf_Atz_(I), gf_Axx_(I),
              gf_Axy_(I), gf_Axz_(I), gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
 
@@ -867,18 +853,11 @@ public:
 #endif
   }
 
-  template <typename U>
-  mat4(const cGH *const cctkGH, vector<vector<U> > &buffers)
-      : mat4(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
-             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
-             T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
-             T(cctkGH, buffers)) {}
-
-  void store(const GF3D<T, 0, 0, 0> &gf_Att_, const GF3D<T, 0, 0, 0> &gf_Atx_,
-             const GF3D<T, 0, 0, 0> &gf_Aty_, const GF3D<T, 0, 0, 0> &gf_Atz_,
-             const GF3D<T, 0, 0, 0> &gf_Axx_, const GF3D<T, 0, 0, 0> &gf_Axy_,
-             const GF3D<T, 0, 0, 0> &gf_Axz_, const GF3D<T, 0, 0, 0> &gf_Ayy_,
-             const GF3D<T, 0, 0, 0> &gf_Ayz_, const GF3D<T, 0, 0, 0> &gf_Azz_,
+  void store(const GF3D1<T> &gf_Att_, const GF3D1<T> &gf_Atx_,
+             const GF3D1<T> &gf_Aty_, const GF3D1<T> &gf_Atz_,
+             const GF3D1<T> &gf_Axx_, const GF3D1<T> &gf_Axy_,
+             const GF3D1<T> &gf_Axz_, const GF3D1<T> &gf_Ayy_,
+             const GF3D1<T> &gf_Ayz_, const GF3D1<T> &gf_Azz_,
              const vect<int, 3> &I) const {
     const auto &A = *this;
 #ifdef CCTK_DEBUG
@@ -1169,44 +1148,29 @@ public:
   constexpr amat4(const vect<T, 6> &elts) : elts(elts) {}
   constexpr amat4(vect<T, 6> &&elts) : elts(move(elts)) {}
 
-private:
-  static constexpr vector<T> make_vector(T Atx, T Aty, T Atz, T Axy, T Axz,
-                                         T Ayz) {
-    vector<T> vec;
-    vec.reserve(6);
-    vec.push_back(move(Atx));
-    vec.push_back(move(Aty));
-    vec.push_back(move(Atz));
-    vec.push_back(move(Axy));
-    vec.push_back(move(Axz));
-    vec.push_back(move(Ayz));
-    return vec;
-  }
-
-public:
   explicit constexpr amat4(T Atx, T Aty, T Atz, T Axy, T Axz, T Ayz)
-      : elts(make_vector(move(Atx), move(Aty), move(Atz), move(Axy), move(Axz),
-                         move(Ayz))) {}
+      : elts(make_tuple(move(Atx), move(Aty), move(Atz), move(Axy), move(Axz),
+                        move(Ayz))) {}
 
   constexpr amat4(initializer_list<T> A) : elts(A) {}
-  constexpr amat4(const vector<T> &A) : elts(A) {}
-  constexpr amat4(vector<T> &&A) : elts(move(A)) {}
+  // constexpr amat4(const vector<T> &A) : elts(A) {}
+  // constexpr amat4(vector<T> &&A) : elts(move(A)) {}
 
-  amat4(const GF3D<add_const_t<T>, 0, 0, 0> &gf_Atx_,
-        const GF3D<add_const_t<T>, 0, 0, 0> &gf_Aty_,
-        const GF3D<add_const_t<T>, 0, 0, 0> &gf_Atz_,
-        const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axy_,
-        const GF3D<add_const_t<T>, 0, 0, 0> &gf_Axz_,
-        const GF3D<add_const_t<T>, 0, 0, 0> &gf_Ayz_, const vect<int, 3> &I)
+  amat4(const GF3D1<add_const_t<T> > &gf_Atx_,
+        const GF3D1<add_const_t<T> > &gf_Aty_,
+        const GF3D1<add_const_t<T> > &gf_Atz_,
+        const GF3D1<add_const_t<T> > &gf_Axy_,
+        const GF3D1<add_const_t<T> > &gf_Axz_,
+        const GF3D1<add_const_t<T> > &gf_Ayz_, const vect<int, 3> &I)
       : amat4{gf_Atx_(I), gf_Aty_(I), gf_Atz_(I),
               gf_Axy_(I), gf_Axz_(I), gf_Ayz_(I)} {}
 
-  amat4(const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Atx_,
-        const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Aty_,
-        const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Atz_,
-        const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axy_,
-        const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Axz_,
-        const GF3D<remove_const_t<T>, 0, 0, 0> &gf_Ayz_, const vect<int, 3> &I)
+  amat4(const GF3D1<remove_const_t<T> > &gf_Atx_,
+        const GF3D1<remove_const_t<T> > &gf_Aty_,
+        const GF3D1<remove_const_t<T> > &gf_Atz_,
+        const GF3D1<remove_const_t<T> > &gf_Axy_,
+        const GF3D1<remove_const_t<T> > &gf_Axz_,
+        const GF3D1<remove_const_t<T> > &gf_Ayz_, const vect<int, 3> &I)
       : amat4{gf_Atx_(I), gf_Aty_(I), gf_Atz_(I),
               gf_Axy_(I), gf_Axz_(I), gf_Ayz_(I)} {}
 
@@ -1269,14 +1233,9 @@ public:
 #endif
   }
 
-  template <typename U>
-  amat4(const cGH *const cctkGH, vector<vector<U> > &buffers)
-      : amat4(T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers),
-              T(cctkGH, buffers), T(cctkGH, buffers), T(cctkGH, buffers)) {}
-
-  void store(const GF3D<T, 0, 0, 0> &gf_Atx_, const GF3D<T, 0, 0, 0> &gf_Aty_,
-             const GF3D<T, 0, 0, 0> &gf_Atz_, const GF3D<T, 0, 0, 0> &gf_Axy_,
-             const GF3D<T, 0, 0, 0> &gf_Axz_, const GF3D<T, 0, 0, 0> &gf_Ayz_,
+  void store(const GF3D1<T> &gf_Atx_, const GF3D1<T> &gf_Aty_,
+             const GF3D1<T> &gf_Atz_, const GF3D1<T> &gf_Axy_,
+             const GF3D1<T> &gf_Axz_, const GF3D1<T> &gf_Ayz_,
              const vect<int, 3> &I) const {
     const auto &A = *this;
 #ifdef CCTK_DEBUG
