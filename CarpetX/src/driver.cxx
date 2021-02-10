@@ -1354,6 +1354,9 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
   // Throw exceptions for failing AMReX assertions. With exceptions,
   // we get core files.
   pp.add("amrex.throw_exception", 1);
+  // Set tile size
+  pp.addarr("fabarray.mfiter_tile_size",
+            vector<int>{max_tile_size_x, max_tile_size_y, max_tile_size_z});
   pamrex = amrex::Initialize(MPI_COMM_WORLD);
 
   // Create grid structure
@@ -1397,8 +1400,6 @@ int InitGH(cGH *restrict cctkGH) {
   pp.addarr("amr.max_grid_size",
             vector<int>{max_grid_size_x, max_grid_size_y, max_grid_size_z});
   pp.add("amr.grid_eff", grid_efficiency);
-  pp.addarr("fabarray.mfiter_tile_size",
-            vector<int>{max_tile_size_x, max_tile_size_y, max_tile_size_z});
 
   ghext->amrcore = make_unique<CactusAmrCore>(
       domain, max_num_levels - 1, ncells, coord, reffacts, is_periodic);
