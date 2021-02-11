@@ -140,7 +140,7 @@ public:
 #endif
   }
 
-  // Loop over all interior points
+  // Loop over all points
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_all_device(const array<int, dim> &group_nghostzones, const F &f) const {
