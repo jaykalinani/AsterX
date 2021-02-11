@@ -33,53 +33,50 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
   //
 
   const array<int, dim> indextype = {0, 0, 0};
-  const array<int, dim> nghostzones = {cctk_nghostzones[0], cctk_nghostzones[1],
-                                       cctk_nghostzones[2]};
   const array<int, dim> noghosts = {0, 0, 0};
+  const GF3D2layout layout(cctkGH, indextype);
+  const GF3D2layout layout0(cctkGH, indextype, noghosts);
 
-  const GF3D1<const CCTK_REAL> gf_chi_(cctkGH, indextype, nghostzones, chi);
+  const GF3D2<const CCTK_REAL> gf_chi_(&layout, chi);
 
-  const mat3<GF3D1<const CCTK_REAL>, DN, DN> gf_gammat_(
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, gammatxx),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, gammatxy),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, gammatxz),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, gammatyy),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, gammatyz),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, gammatzz));
+  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_gammat_(
+      GF3D2<const CCTK_REAL>(&layout, gammatxx),
+      GF3D2<const CCTK_REAL>(&layout, gammatxy),
+      GF3D2<const CCTK_REAL>(&layout, gammatxz),
+      GF3D2<const CCTK_REAL>(&layout, gammatyy),
+      GF3D2<const CCTK_REAL>(&layout, gammatyz),
+      GF3D2<const CCTK_REAL>(&layout, gammatzz));
 
-  const GF3D1<const CCTK_REAL> gf_Kh_(cctkGH, indextype, nghostzones, Kh);
+  const GF3D2<const CCTK_REAL> gf_Kh_(&layout, Kh);
 
-  const mat3<GF3D1<const CCTK_REAL>, DN, DN> gf_At_(
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Atxx),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Atxy),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Atxz),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Atyy),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Atyz),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Atzz));
+  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_At_(
+      GF3D2<const CCTK_REAL>(&layout, Atxx),
+      GF3D2<const CCTK_REAL>(&layout, Atxy),
+      GF3D2<const CCTK_REAL>(&layout, Atxz),
+      GF3D2<const CCTK_REAL>(&layout, Atyy),
+      GF3D2<const CCTK_REAL>(&layout, Atyz),
+      GF3D2<const CCTK_REAL>(&layout, Atzz));
 
-  const vec3<GF3D1<const CCTK_REAL>, UP> gf_Gamt_(
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Gamtx),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Gamty),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, Gamtz));
+  const vec3<GF3D2<const CCTK_REAL>, UP> gf_Gamt_(
+      GF3D2<const CCTK_REAL>(&layout, Gamtx),
+      GF3D2<const CCTK_REAL>(&layout, Gamty),
+      GF3D2<const CCTK_REAL>(&layout, Gamtz));
 
-  const GF3D1<const CCTK_REAL> gf_Theta_(cctkGH, indextype, nghostzones, Theta);
+  const GF3D2<const CCTK_REAL> gf_Theta_(&layout, Theta);
 
-  const GF3D1<const CCTK_REAL> gf_alphaG_(cctkGH, indextype, nghostzones,
-                                          alphaG);
+  const GF3D2<const CCTK_REAL> gf_alphaG_(&layout, alphaG);
 
-  const vec3<GF3D1<const CCTK_REAL>, UP> gf_betaG_(
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, betaGx),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, betaGy),
-      GF3D1<const CCTK_REAL>(cctkGH, indextype, nghostzones, betaGz));
+  const vec3<GF3D2<const CCTK_REAL>, UP> gf_betaG_(
+      GF3D2<const CCTK_REAL>(&layout, betaGx),
+      GF3D2<const CCTK_REAL>(&layout, betaGy),
+      GF3D2<const CCTK_REAL>(&layout, betaGz));
 
   //
 
   static mempool_set_t mempools;
   mempool_t &restrict mempool = mempools.get_mempool();
 
-  const auto make_gf = [&]() {
-    return GF3D1<CCTK_REAL>(cctkGH, indextype, noghosts, mempool);
-  };
+  const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(&layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
   const auto make_mat_gf = [&](int, int) { return make_gf(); };
   const auto make_vec_vec_gf = [&](int) {
@@ -95,49 +92,49 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
     return [&](int, int) { return make_gf(); };
   };
 
-  const vec3<GF3D1<CCTK_REAL>, DN> gf_dchi_(make_vec_gf);
-  const mat3<GF3D1<CCTK_REAL>, DN, DN> gf_ddchi_(make_mat_gf);
+  const vec3<GF3D2<CCTK_REAL>, DN> gf_dchi_(make_vec_gf);
+  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_ddchi_(make_mat_gf);
   calc_derivs2(cctkGH, gf_chi_, gf_dchi_, gf_ddchi_);
 
-  const mat3<vec3<GF3D1<CCTK_REAL>, DN>, DN, DN> gf_dgammat_(make_mat_vec_gf);
-  const mat3<mat3<GF3D1<CCTK_REAL>, DN, DN>, DN, DN> gf_ddgammat_(
+  const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dgammat_(make_mat_vec_gf);
+  const mat3<mat3<GF3D2<CCTK_REAL>, DN, DN>, DN, DN> gf_ddgammat_(
       make_mat_mat_gf);
   calc_derivs2(cctkGH, gf_gammat_, gf_dgammat_, gf_ddgammat_);
 
-  const vec3<GF3D1<CCTK_REAL>, DN> gf_dKh_(make_vec_gf);
+  const vec3<GF3D2<CCTK_REAL>, DN> gf_dKh_(make_vec_gf);
   calc_derivs(cctkGH, gf_Kh_, gf_dKh_);
 
-  const mat3<vec3<GF3D1<CCTK_REAL>, DN>, DN, DN> gf_dAt_(make_mat_vec_gf);
+  const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dAt_(make_mat_vec_gf);
   calc_derivs(cctkGH, gf_At_, gf_dAt_);
 
-  const vec3<vec3<GF3D1<CCTK_REAL>, DN>, UP> gf_dGamt_(make_vec_vec_gf);
+  const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dGamt_(make_vec_vec_gf);
   calc_derivs(cctkGH, gf_Gamt_, gf_dGamt_);
 
-  const vec3<GF3D1<CCTK_REAL>, DN> gf_dTheta_(make_vec_gf);
+  const vec3<GF3D2<CCTK_REAL>, DN> gf_dTheta_(make_vec_gf);
   calc_derivs(cctkGH, gf_Theta_, gf_dTheta_);
 
-  const vec3<GF3D1<CCTK_REAL>, DN> gf_dalphaG_(make_vec_gf);
-  const mat3<GF3D1<CCTK_REAL>, DN, DN> gf_ddalphaG_(make_mat_gf);
+  const vec3<GF3D2<CCTK_REAL>, DN> gf_dalphaG_(make_vec_gf);
+  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_ddalphaG_(make_mat_gf);
   calc_derivs2(cctkGH, gf_alphaG_, gf_dalphaG_, gf_ddalphaG_);
 
-  const vec3<vec3<GF3D1<CCTK_REAL>, DN>, UP> gf_dbetaG_(make_vec_vec_gf);
-  const vec3<mat3<GF3D1<CCTK_REAL>, DN, DN>, UP> gf_ddbetaG_(make_vec_mat_gf);
+  const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dbetaG_(make_vec_vec_gf);
+  const vec3<mat3<GF3D2<CCTK_REAL>, DN, DN>, UP> gf_ddbetaG_(make_vec_mat_gf);
   calc_derivs2(cctkGH, gf_betaG_, gf_dbetaG_, gf_ddbetaG_);
 
   //
 
-  const GF3D1<CCTK_REAL> gf_dtkxx_(cctkGH, indextype, nghostzones, dtkxx);
-  const GF3D1<CCTK_REAL> gf_dtkxy_(cctkGH, indextype, nghostzones, dtkxy);
-  const GF3D1<CCTK_REAL> gf_dtkxz_(cctkGH, indextype, nghostzones, dtkxz);
-  const GF3D1<CCTK_REAL> gf_dtkyy_(cctkGH, indextype, nghostzones, dtkyy);
-  const GF3D1<CCTK_REAL> gf_dtkyz_(cctkGH, indextype, nghostzones, dtkyz);
-  const GF3D1<CCTK_REAL> gf_dtkzz_(cctkGH, indextype, nghostzones, dtkzz);
+  const GF3D2<CCTK_REAL> gf_dtkxx_(&layout, dtkxx);
+  const GF3D2<CCTK_REAL> gf_dtkxy_(&layout, dtkxy);
+  const GF3D2<CCTK_REAL> gf_dtkxz_(&layout, dtkxz);
+  const GF3D2<CCTK_REAL> gf_dtkyy_(&layout, dtkyy);
+  const GF3D2<CCTK_REAL> gf_dtkyz_(&layout, dtkyz);
+  const GF3D2<CCTK_REAL> gf_dtkzz_(&layout, dtkzz);
 
-  const GF3D1<CCTK_REAL> gf_dt2alp_(cctkGH, indextype, nghostzones, dt2alp);
+  const GF3D2<CCTK_REAL> gf_dt2alp_(&layout, dt2alp);
 
-  const GF3D1<CCTK_REAL> gf_dt2betax_(cctkGH, indextype, nghostzones, dt2betax);
-  const GF3D1<CCTK_REAL> gf_dt2betay_(cctkGH, indextype, nghostzones, dt2betay);
-  const GF3D1<CCTK_REAL> gf_dt2betaz_(cctkGH, indextype, nghostzones, dt2betaz);
+  const GF3D2<CCTK_REAL> gf_dt2betax_(&layout, dt2betax);
+  const GF3D2<CCTK_REAL> gf_dt2betay_(&layout, dt2betay);
+  const GF3D2<CCTK_REAL> gf_dt2betaz_(&layout, dt2betaz);
 
   //
 

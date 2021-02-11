@@ -15,54 +15,53 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_Initial1;
 
   const array<int, dim> indextype = {0, 0, 0};
-  const array<int, dim> nghostzones = {cctk_nghostzones[0], cctk_nghostzones[1],
-                                       cctk_nghostzones[2]};
+  const GF3D2layout layout(cctkGH, indextype);
 
-  const GF3D1<const CCTK_REAL> gf_gxx_(cctkGH, indextype, nghostzones, gxx);
-  const GF3D1<const CCTK_REAL> gf_gxy_(cctkGH, indextype, nghostzones, gxy);
-  const GF3D1<const CCTK_REAL> gf_gxz_(cctkGH, indextype, nghostzones, gxz);
-  const GF3D1<const CCTK_REAL> gf_gyy_(cctkGH, indextype, nghostzones, gyy);
-  const GF3D1<const CCTK_REAL> gf_gyz_(cctkGH, indextype, nghostzones, gyz);
-  const GF3D1<const CCTK_REAL> gf_gzz_(cctkGH, indextype, nghostzones, gzz);
+  const GF3D2<const CCTK_REAL> gf_gxx_(&layout, gxx);
+  const GF3D2<const CCTK_REAL> gf_gxy_(&layout, gxy);
+  const GF3D2<const CCTK_REAL> gf_gxz_(&layout, gxz);
+  const GF3D2<const CCTK_REAL> gf_gyy_(&layout, gyy);
+  const GF3D2<const CCTK_REAL> gf_gyz_(&layout, gyz);
+  const GF3D2<const CCTK_REAL> gf_gzz_(&layout, gzz);
 
-  const GF3D1<const CCTK_REAL> gf_kxx_(cctkGH, indextype, nghostzones, kxx);
-  const GF3D1<const CCTK_REAL> gf_kxy_(cctkGH, indextype, nghostzones, kxy);
-  const GF3D1<const CCTK_REAL> gf_kxz_(cctkGH, indextype, nghostzones, kxz);
-  const GF3D1<const CCTK_REAL> gf_kyy_(cctkGH, indextype, nghostzones, kyy);
-  const GF3D1<const CCTK_REAL> gf_kyz_(cctkGH, indextype, nghostzones, kyz);
-  const GF3D1<const CCTK_REAL> gf_kzz_(cctkGH, indextype, nghostzones, kzz);
+  const GF3D2<const CCTK_REAL> gf_kxx_(&layout, kxx);
+  const GF3D2<const CCTK_REAL> gf_kxy_(&layout, kxy);
+  const GF3D2<const CCTK_REAL> gf_kxz_(&layout, kxz);
+  const GF3D2<const CCTK_REAL> gf_kyy_(&layout, kyy);
+  const GF3D2<const CCTK_REAL> gf_kyz_(&layout, kyz);
+  const GF3D2<const CCTK_REAL> gf_kzz_(&layout, kzz);
 
-  const GF3D1<const CCTK_REAL> gf_alp_(cctkGH, indextype, nghostzones, alp);
+  const GF3D2<const CCTK_REAL> gf_alp_(&layout, alp);
 
-  const GF3D1<const CCTK_REAL> gf_betax_(cctkGH, indextype, nghostzones, betax);
-  const GF3D1<const CCTK_REAL> gf_betay_(cctkGH, indextype, nghostzones, betay);
-  const GF3D1<const CCTK_REAL> gf_betaz_(cctkGH, indextype, nghostzones, betaz);
+  const GF3D2<const CCTK_REAL> gf_betax_(&layout, betax);
+  const GF3D2<const CCTK_REAL> gf_betay_(&layout, betay);
+  const GF3D2<const CCTK_REAL> gf_betaz_(&layout, betaz);
 
-  const GF3D1<CCTK_REAL> gf_chi_(cctkGH, indextype, nghostzones, chi);
+  const GF3D2<CCTK_REAL> gf_chi_(&layout, chi);
 
-  const GF3D1<CCTK_REAL> gf_gammatxx_(cctkGH, indextype, nghostzones, gammatxx);
-  const GF3D1<CCTK_REAL> gf_gammatxy_(cctkGH, indextype, nghostzones, gammatxy);
-  const GF3D1<CCTK_REAL> gf_gammatxz_(cctkGH, indextype, nghostzones, gammatxz);
-  const GF3D1<CCTK_REAL> gf_gammatyy_(cctkGH, indextype, nghostzones, gammatyy);
-  const GF3D1<CCTK_REAL> gf_gammatyz_(cctkGH, indextype, nghostzones, gammatyz);
-  const GF3D1<CCTK_REAL> gf_gammatzz_(cctkGH, indextype, nghostzones, gammatzz);
+  const GF3D2<CCTK_REAL> gf_gammatxx_(&layout, gammatxx);
+  const GF3D2<CCTK_REAL> gf_gammatxy_(&layout, gammatxy);
+  const GF3D2<CCTK_REAL> gf_gammatxz_(&layout, gammatxz);
+  const GF3D2<CCTK_REAL> gf_gammatyy_(&layout, gammatyy);
+  const GF3D2<CCTK_REAL> gf_gammatyz_(&layout, gammatyz);
+  const GF3D2<CCTK_REAL> gf_gammatzz_(&layout, gammatzz);
 
-  const GF3D1<CCTK_REAL> gf_Kh_(cctkGH, indextype, nghostzones, Kh);
+  const GF3D2<CCTK_REAL> gf_Kh_(&layout, Kh);
 
-  const GF3D1<CCTK_REAL> gf_Atxx_(cctkGH, indextype, nghostzones, Atxx);
-  const GF3D1<CCTK_REAL> gf_Atxy_(cctkGH, indextype, nghostzones, Atxy);
-  const GF3D1<CCTK_REAL> gf_Atxz_(cctkGH, indextype, nghostzones, Atxz);
-  const GF3D1<CCTK_REAL> gf_Atyy_(cctkGH, indextype, nghostzones, Atyy);
-  const GF3D1<CCTK_REAL> gf_Atyz_(cctkGH, indextype, nghostzones, Atyz);
-  const GF3D1<CCTK_REAL> gf_Atzz_(cctkGH, indextype, nghostzones, Atzz);
+  const GF3D2<CCTK_REAL> gf_Atxx_(&layout, Atxx);
+  const GF3D2<CCTK_REAL> gf_Atxy_(&layout, Atxy);
+  const GF3D2<CCTK_REAL> gf_Atxz_(&layout, Atxz);
+  const GF3D2<CCTK_REAL> gf_Atyy_(&layout, Atyy);
+  const GF3D2<CCTK_REAL> gf_Atyz_(&layout, Atyz);
+  const GF3D2<CCTK_REAL> gf_Atzz_(&layout, Atzz);
 
-  const GF3D1<CCTK_REAL> gf_Theta_(cctkGH, indextype, nghostzones, Theta);
+  const GF3D2<CCTK_REAL> gf_Theta_(&layout, Theta);
 
-  const GF3D1<CCTK_REAL> gf_alphaG_(cctkGH, indextype, nghostzones, alphaG);
+  const GF3D2<CCTK_REAL> gf_alphaG_(&layout, alphaG);
 
-  const GF3D1<CCTK_REAL> gf_betaGx_(cctkGH, indextype, nghostzones, betaGx);
-  const GF3D1<CCTK_REAL> gf_betaGy_(cctkGH, indextype, nghostzones, betaGy);
-  const GF3D1<CCTK_REAL> gf_betaGz_(cctkGH, indextype, nghostzones, betaGz);
+  const GF3D2<CCTK_REAL> gf_betaGx_(&layout, betaGx);
+  const GF3D2<CCTK_REAL> gf_betaGy_(&layout, betaGy);
+  const GF3D2<CCTK_REAL> gf_betaGz_(&layout, betaGz);
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     // Load

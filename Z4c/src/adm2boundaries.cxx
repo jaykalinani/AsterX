@@ -10,21 +10,20 @@ extern "C" void Z4c_ADM2Boundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_ADM2Boundaries;
 
   const array<int, dim> indextype = {0, 0, 0};
-  const array<int, dim> nghostzones = {cctk_nghostzones[0], cctk_nghostzones[1],
-                                       cctk_nghostzones[2]};
+  const GF3D2layout layout(cctkGH, indextype);
 
-  const GF3D1<CCTK_REAL> gf_dtkxx_(cctkGH, indextype, nghostzones, dtkxx);
-  const GF3D1<CCTK_REAL> gf_dtkxy_(cctkGH, indextype, nghostzones, dtkxy);
-  const GF3D1<CCTK_REAL> gf_dtkxz_(cctkGH, indextype, nghostzones, dtkxz);
-  const GF3D1<CCTK_REAL> gf_dtkyy_(cctkGH, indextype, nghostzones, dtkyy);
-  const GF3D1<CCTK_REAL> gf_dtkyz_(cctkGH, indextype, nghostzones, dtkyz);
-  const GF3D1<CCTK_REAL> gf_dtkzz_(cctkGH, indextype, nghostzones, dtkzz);
+  const GF3D2<CCTK_REAL> gf_dtkxx_(&layout, dtkxx);
+  const GF3D2<CCTK_REAL> gf_dtkxy_(&layout, dtkxy);
+  const GF3D2<CCTK_REAL> gf_dtkxz_(&layout, dtkxz);
+  const GF3D2<CCTK_REAL> gf_dtkyy_(&layout, dtkyy);
+  const GF3D2<CCTK_REAL> gf_dtkyz_(&layout, dtkyz);
+  const GF3D2<CCTK_REAL> gf_dtkzz_(&layout, dtkzz);
 
-  const GF3D1<CCTK_REAL> gf_dt2alp_(cctkGH, indextype, nghostzones, dt2alp);
+  const GF3D2<CCTK_REAL> gf_dt2alp_(&layout, dt2alp);
 
-  const GF3D1<CCTK_REAL> gf_dt2betax_(cctkGH, indextype, nghostzones, dt2betax);
-  const GF3D1<CCTK_REAL> gf_dt2betay_(cctkGH, indextype, nghostzones, dt2betay);
-  const GF3D1<CCTK_REAL> gf_dt2betaz_(cctkGH, indextype, nghostzones, dt2betaz);
+  const GF3D2<CCTK_REAL> gf_dt2betax_(&layout, dt2betax);
+  const GF3D2<CCTK_REAL> gf_dt2betay_(&layout, dt2betay);
+  const GF3D2<CCTK_REAL> gf_dt2betaz_(&layout, dt2betaz);
 
   //
 
