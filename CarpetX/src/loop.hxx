@@ -718,7 +718,6 @@ struct GF3D2layout {
   inline int offset(const vect<int, dim> &I) const {
     return offset(I[0], I[1], I[2]);
   }
-  // inline int offset(const PointDesc &p) const { return offset(p.I); }
 };
 
 template <typename T> struct GF3D2 {
@@ -746,9 +745,6 @@ template <typename T> struct GF3D2 {
   inline T &restrict operator()(const vect<int, dim> &I) const {
     return ptr[offset(I)];
   }
-  // inline T &restrict operator()(const PointDesc &p) const {
-  //   return ptr[offset(p)];
-  // }
 };
 
 } // namespace Loop
