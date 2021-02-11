@@ -37,7 +37,7 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   const GF3D2layout layout(cctkGH, indextype);
   const GF3D2layout layout0(cctkGH, indextype, noghosts);
 
-  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_gamma_(
+  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_gamma0_(
       GF3D2<const CCTK_REAL>(&layout, gxx),
       GF3D2<const CCTK_REAL>(&layout, gxy),
       GF3D2<const CCTK_REAL>(&layout, gxz),
@@ -45,14 +45,14 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
       GF3D2<const CCTK_REAL>(&layout, gyz),
       GF3D2<const CCTK_REAL>(&layout, gzz));
 
-  const GF3D2<const CCTK_REAL> gf_alpha_(&layout, alp);
+  const GF3D2<const CCTK_REAL> gf_alpha0_(&layout, alp);
 
-  const vec3<GF3D2<const CCTK_REAL>, UP> gf_beta_(
+  const vec3<GF3D2<const CCTK_REAL>, UP> gf_beta0_(
       GF3D2<const CCTK_REAL>(&layout, betax),
       GF3D2<const CCTK_REAL>(&layout, betay),
       GF3D2<const CCTK_REAL>(&layout, betaz));
 
-  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_k_(
+  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_k0_(
       GF3D2<const CCTK_REAL>(&layout, kxx),
       GF3D2<const CCTK_REAL>(&layout, kxy),
       GF3D2<const CCTK_REAL>(&layout, kxz),
@@ -60,9 +60,9 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
       GF3D2<const CCTK_REAL>(&layout, kyz),
       GF3D2<const CCTK_REAL>(&layout, kzz));
 
-  const GF3D2<const CCTK_REAL> gf_dtalpha_(&layout, dtalp);
+  const GF3D2<const CCTK_REAL> gf_dtalpha0_(&layout, dtalp);
 
-  const vec3<GF3D2<const CCTK_REAL>, UP> gf_dtbeta_(
+  const vec3<GF3D2<const CCTK_REAL>, UP> gf_dtbeta0_(
       GF3D2<const CCTK_REAL>(&layout, dtbetax),
       GF3D2<const CCTK_REAL>(&layout, dtbetay),
       GF3D2<const CCTK_REAL>(&layout, dtbetaz));
@@ -103,27 +103,33 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
     return [&](int, int) { return make_gf(); };
   };
 
+  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_gamma_(make_mat_gf);
   const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dgamma_(make_mat_vec_gf);
   const mat3<mat3<GF3D2<CCTK_REAL>, DN, DN>, DN, DN> gf_ddgamma_(
       make_mat_mat_gf);
-  calc_derivs2(cctkGH, gf_gamma_, gf_dgamma_, gf_ddgamma_);
+  calc_derivs2(cctkGH, gf_gamma0_, gf_gamma_, gf_dgamma_, gf_ddgamma_);
 
+  const GF3D2<CCTK_REAL> gf_alpha_(make_gf());
   const vec3<GF3D2<CCTK_REAL>, DN> gf_dalpha_(make_vec_gf);
   const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_ddalpha_(make_mat_gf);
-  calc_derivs2(cctkGH, gf_alpha_, gf_dalpha_, gf_ddalpha_);
+  calc_derivs2(cctkGH, gf_alpha0_, gf_alpha_, gf_dalpha_, gf_ddalpha_);
 
+  const vec3<GF3D2<CCTK_REAL>, UP> gf_beta_(make_vec_gf);
   const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dbeta_(make_vec_vec_gf);
   const vec3<mat3<GF3D2<CCTK_REAL>, DN, DN>, UP> gf_ddbeta_(make_vec_mat_gf);
-  calc_derivs2(cctkGH, gf_beta_, gf_dbeta_, gf_ddbeta_);
+  calc_derivs2(cctkGH, gf_beta0_, gf_beta_, gf_dbeta_, gf_ddbeta_);
 
+  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_k_(make_mat_gf);
   const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dk_(make_mat_vec_gf);
-  calc_derivs(cctkGH, gf_k_, gf_dk_);
+  calc_derivs(cctkGH, gf_k0_, gf_k_, gf_dk_);
 
+  const GF3D2<CCTK_REAL> gf_dtalpha_(make_gf());
   const vec3<GF3D2<CCTK_REAL>, DN> gf_ddtalpha_(make_vec_gf);
-  calc_derivs(cctkGH, gf_dtalpha_, gf_ddtalpha_);
+  calc_derivs(cctkGH, gf_dtalpha0_, gf_dtalpha_, gf_ddtalpha_);
 
+  const vec3<GF3D2<CCTK_REAL>, UP> gf_dtbeta_(make_vec_gf);
   const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_ddtbeta_(make_vec_vec_gf);
-  calc_derivs(cctkGH, gf_dtbeta_, gf_ddtbeta_);
+  calc_derivs(cctkGH, gf_dtbeta0_, gf_dtbeta_, gf_ddtbeta_);
 
   //
 

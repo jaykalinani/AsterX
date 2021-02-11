@@ -121,78 +121,86 @@ inline mat3<T, DN, DN> deriv2(const GF3D2<const T> &gf_,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-CCTK_ATTRIBUTE_NOINLINE void calc_derivs(const cGH *restrict const cctkGH,
-                                         const GF3D2<const T> &gf_,
-                                         const vec3<GF3D2<T>, DN> &dgf_) {
+CCTK_ATTRIBUTE_NOINLINE void
+calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf0_,
+            const GF3D2<T> &gf_, const vec3<GF3D2<T>, DN> &dgf_) {
   DECLARE_CCTK_ARGUMENTS;
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
-  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
-    const auto dval = deriv(gf_, p.I, dx);
-    for (int a = 0; a < 3; ++a)
-      dgf_(a)(p.I) = dval(a);
-  });
+  loop_int<0, 0, 0>(cctkGH,
+                    [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                      const auto val = gf0_(p.I);
+                      gf_(p.I) = val;
+                      const auto dval = deriv(gf0_, p.I, dx);
+                      for (int a = 0; a < 3; ++a)
+                        dgf_(a)(p.I) = dval(a);
+                    });
 }
 
 template <typename T>
-CCTK_ATTRIBUTE_NOINLINE void calc_derivs2(const cGH *restrict const cctkGH,
-                                          const GF3D2<const T> &gf_,
-                                          const vec3<GF3D2<T>, DN> &dgf_,
-                                          const mat3<GF3D2<T>, DN, DN> &ddgf_) {
+CCTK_ATTRIBUTE_NOINLINE void
+calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf0_,
+             const GF3D2<T> &gf_, const vec3<GF3D2<T>, DN> &dgf_,
+             const mat3<GF3D2<T>, DN, DN> &ddgf_) {
   DECLARE_CCTK_ARGUMENTS;
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
-  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
-    const auto dval = deriv(gf_, p.I, dx);
-    for (int a = 0; a < 3; ++a)
-      dgf_(a)(p.I) = dval(a);
-    const auto ddval = deriv2(gf_, p.I, dx);
-    for (int a = 0; a < 3; ++a)
-      for (int b = a; b < 3; ++b)
-        ddgf_(a, b)(p.I) = ddval(a, b);
-  });
+  loop_int<0, 0, 0>(cctkGH,
+                    [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                      const auto val = gf0_(p.I);
+                      gf_(p.I) = val;
+                      const auto dval = deriv(gf0_, p.I, dx);
+                      for (int a = 0; a < 3; ++a)
+                        dgf_(a)(p.I) = dval(a);
+                      const auto ddval = deriv2(gf0_, p.I, dx);
+                      for (int a = 0; a < 3; ++a)
+                        for (int b = a; b < 3; ++b)
+                          ddgf_(a, b)(p.I) = ddval(a, b);
+                    });
 }
 
 template <typename T, dnup_t dnup>
 CCTK_ATTRIBUTE_NOINLINE void
 calc_derivs(const cGH *restrict const cctkGH,
-            const vec3<GF3D2<const T>, dnup> &gf_,
+            const vec3<GF3D2<const T>, dnup> &gf0_,
+            const vec3<GF3D2<T>, dnup> &gf_,
             const vec3<vec3<GF3D2<T>, DN>, dnup> &dgf_) {
   for (int a = 0; a < 3; ++a)
-    calc_derivs(cctkGH, gf_(a), dgf_(a));
+    calc_derivs(cctkGH, gf0_(a), gf_(a), dgf_(a));
 }
 
 template <typename T, dnup_t dnup>
-CCTK_ATTRIBUTE_NOINLINE void
-calc_derivs2(const cGH *restrict const cctkGH,
-             const vec3<GF3D2<const T>, dnup> &gf_,
-             const vec3<vec3<GF3D2<T>, DN>, dnup> &dgf_,
-             const vec3<mat3<GF3D2<T>, DN, DN>, dnup> &ddgf_) {
+CCTK_ATTRIBUTE_NOINLINE void calc_derivs2(
+    const cGH *restrict const cctkGH, const vec3<GF3D2<const T>, dnup> &gf0_,
+    const vec3<GF3D2<T>, dnup> &gf_, const vec3<vec3<GF3D2<T>, DN>, dnup> &dgf_,
+    const vec3<mat3<GF3D2<T>, DN, DN>, dnup> &ddgf_) {
   for (int a = 0; a < 3; ++a)
-    calc_derivs2(cctkGH, gf_(a), dgf_(a), ddgf_(a));
+    calc_derivs2(cctkGH, gf0_(a), gf_(a), dgf_(a), ddgf_(a));
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 CCTK_ATTRIBUTE_NOINLINE void
 calc_derivs(const cGH *restrict const cctkGH,
-            const mat3<GF3D2<const T>, dnup1, dnup2> &gf_,
+            const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
+            const mat3<GF3D2<T>, dnup1, dnup2> &gf_,
             const mat3<vec3<GF3D2<T>, DN>, dnup1, dnup2> &dgf_) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
-      calc_derivs(cctkGH, gf_(a, b), dgf_(a, b));
+      calc_derivs(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b));
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 CCTK_ATTRIBUTE_NOINLINE void
 calc_derivs2(const cGH *restrict const cctkGH,
-             const mat3<GF3D2<const T>, dnup1, dnup2> &gf_,
+             const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
+             const mat3<GF3D2<T>, dnup1, dnup2> &gf_,
              const mat3<vec3<GF3D2<T>, DN>, dnup1, dnup2> &dgf_,
              const mat3<mat3<GF3D2<T>, DN, DN>, dnup1, dnup2> &ddgf_) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
-      calc_derivs2(cctkGH, gf_(a, b), dgf_(a, b), ddgf_(a, b));
+      calc_derivs2(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), ddgf_(a, b));
 }
 
 } // namespace Weyl
