@@ -74,6 +74,7 @@ mempool_t &restrict mempool_set_t::get_mempool() {
       if (!have_mempools) {
         const int max_threads = omp_get_max_threads();
         mempools.resize(max_threads);
+#pragma omp flush
         have_mempools = true;
       }
     }
