@@ -1,6 +1,7 @@
 /* TwoPunctures:  File  "TwoPunctures.c"*/
 
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -422,7 +423,12 @@ TwoPunctures (CCTK_ARGUMENTS)
                "with exp %f.",
                (double)initial_lapse_psi_exponent);
 
-  CCTK_INFO ("Interpolating result");
+  static atomic_flag did_print = ATOMIC_FLAG_INIT;
+  const bool dp = atomic_flag_test_and_set(&did_print);
+  if (!dp)
+  {
+    CCTK_INFO ("Interpolating result");
+  }
 
   const int di = 1;
   const int dj = di * (cctk_ash[0] + 1); // one extra grid point for vertex centering
