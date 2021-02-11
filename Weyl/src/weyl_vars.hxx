@@ -42,11 +42,13 @@ template <typename T> struct weyl_vars_noderivs {
         //
         gamma(gamma), alpha(alpha), beta(beta),
         //
-        betal([&](int a) {
-          return sum1([&](int x) { return gamma(a, x) * beta(x); });
+        betal([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+            return gamma(a, x) * beta(x);
+          });
         }),
         //
-        g([&](int a, int b) {
+        g([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           if (a == 0 && b == 0)
             return -pow(alpha, 2);
           if (a == 0)
@@ -61,9 +63,15 @@ template <typename T> struct weyl_vars_noderivs {
         ephi(calc_ephi(coord, g)),           //
         etheta(calc_etheta(coord, g, ephi)), //
         er(calc_er(coord, g, etheta, ephi)), //
-        l([&](int a) { return (et(a) + er(a)) / sqrt(T(2)); }),
-        n([&](int a) { return (et(a) - er(a)) / sqrt(T(2)); }),
-        m([&](int a) { return complex<T>(etheta(a), ephi(a)) / sqrt(T(2)); })
+        l([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return (et(a) + er(a)) / sqrt(T(2));
+        }),
+        n([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return (et(a) - er(a)) / sqrt(T(2));
+        }),
+        m([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return complex<T>(etheta(a), ephi(a)) / sqrt(T(2));
+        })
   //
   {}
 };
@@ -201,69 +209,75 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
         // dt gamma_ij = -2 alpha K_ij
         //               + gamma_kj beta^k,i + gamma_ik beta^k,j
         //               + beta^k gamma_ij,k
-        dtgamma([&](int a, int b) {
-          return -2 * alpha * k(a, b)                                     //
-                 + sum1([&](int x) { return gamma(x, b) * dbeta(x)(a); }) //
-                 + sum1([&](int x) { return gamma(a, x) * dbeta(x)(b); }) //
-                 + sum1([&](int x) { return beta(x) * dgamma(a, b)(x); });
+        dtgamma([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+          return -2 * alpha * k(a, b) //
+                 + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+                     return gamma(x, b) * dbeta(x)(a);
+                   }) //
+                 + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+                     return gamma(a, x) * dbeta(x)(b);
+                   }) //
+                 + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+                     return beta(x) * dgamma(a, b)(x);
+                   });
         }),
-        dtbetal([&](int a) {
-          return sum1([&](int x) {
+        dtbetal([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
             return dtgamma(a, x) * beta(x) + gamma(a, x) * dtbeta(x);
           });
         }),
-        dbetal([&](int a) {
-          return vec3<T, DN>([&](int b) {
-            return sum1([&](int x) {
+        dbetal([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return vec3<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+            return sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
               return dgamma(a, x)(b) * beta(x) + gamma(a, x) * dbeta(x)(b);
             });
           });
         }),
         //
-        dt2gamma([&](int a, int b) {
+        dt2gamma([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return -2 * dtalpha * k(a, b)  //
                  - 2 * alpha * dtk(a, b) //
-                 + sum1([&](int x) {
+                 + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
                      return dtgamma(x, b) * dbeta(x)(a) +
                             gamma(x, b) * ddtbeta(x)(a);
                    }) //
-                 + sum1([&](int x) {
+                 + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
                      return dtgamma(a, x) * dbeta(x)(b) +
                             gamma(a, x) * ddtbeta(x)(b);
                    }) //
-                 + sum1([&](int x) {
+                 + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
                      return dtbeta(x) * dgamma(a, b)(x) +
                             beta(x) * ddtgamma(a, b)(x);
                    });
         }),
-        ddtgamma([&](int a, int b) {
-          return vec3<T, DN>([&](int c) {
+        ddtgamma([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+          return vec3<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
             return -2 * dalpha(c) * k(a, b)  //
                    - 2 * alpha * dk(a, b)(c) //
-                   + sum1([&](int x) {
+                   + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
                        return dgamma(x, b)(c) * dbeta(x)(a) +
                               gamma(x, b) * ddbeta(x)(a, c);
                      }) //
-                   + sum1([&](int x) {
+                   + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
                        return dgamma(a, x)(c) * dbeta(x)(b) +
                               gamma(a, x) * ddbeta(x)(b, c);
                      }) //
-                   + sum1([&](int x) {
+                   + sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
                        return dbeta(x)(c) * dgamma(a, b)(x) +
                               beta(x) * ddgamma(a, b)(x, c);
                      });
           });
         }),
-        dt2betal([&](int a) {
-          return sum1([&](int x) {
+        dt2betal([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
             return dt2gamma(a, x) * beta(x)        //
                    + 2 * dtgamma(a, x) * dtbeta(x) //
                    + dtgamma(a, x) * dt2beta(x);
           });
         }),
-        ddtbetal([&](int a) {
-          return vec3<T, DN>([&](int b) {
-            return sum1([&](int x) {
+        ddtbetal([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return vec3<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+            return sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
               return ddtgamma(a, x)(b) * beta(x)   //
                      + dgamma(a, x)(b) * dtbeta(x) //
                      + dtgamma(a, x) * dbeta(x)(b) //
@@ -271,19 +285,20 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
             });
           });
         }),
-        ddbetal([&](int a) {
-          return mat3<T, DN, DN>([&](int b, int c) {
-            return sum1([&](int x) {
-              return ddgamma(a, x)(b, c) * beta(x)   //
-                     + dgamma(a, x)(b) * dbeta(x)(c) //
-                     + dgamma(a, x)(c) * dbeta(x)(b) //
-                     + gamma(a, x) * ddbeta(x)(b, c);
-            });
-          });
+        ddbetal([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return mat3<T, DN, DN>(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b, int c) {
+                return sum1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+                  return ddgamma(a, x)(b, c) * beta(x)   //
+                         + dgamma(a, x)(b) * dbeta(x)(c) //
+                         + dgamma(a, x)(c) * dbeta(x)(b) //
+                         + gamma(a, x) * ddbeta(x)(b, c);
+                });
+              });
         }),
         //
-        dg([&](int a, int b) {
-          return vec4<T, DN>([&](int c) {
+        dg([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+          return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
             if (c == 0) {
               if (a == 0 && b == 0)
                 return dtalpha;
@@ -303,43 +318,44 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
           });
         }),
         //
-        ddg([&](int a, int b) {
-          return mat4<T, DN, DN>([&](int c, int d) {
-            if (c == 0 && d == 0) {
-              if (a == 0 && b == 0)
-                return dt2alpha;
-              if (a == 0)
-                return dt2betal(b - 1);
-              if (b == 0)
-                return dt2betal(a - 1);
-              return dt2gamma(a - 1, b - 1);
-            }
-            if (c == 0) {
-              if (a == 0 && b == 0)
-                return ddtalpha(d - 1);
-              if (a == 0)
-                return ddtbetal(b - 1)(d - 1);
-              if (b == 0)
-                return ddtbetal(a - 1)(d - 1);
-              return ddtgamma(a - 1, b - 1)(d - 1);
-            }
-            if (d == 0) {
-              if (a == 0 && b == 0)
-                return ddtalpha(c - 1);
-              if (a == 0)
-                return ddtbetal(b - 1)(c - 1);
-              if (b == 0)
-                return ddtbetal(a - 1)(c - 1);
-              return ddtgamma(a - 1, b - 1)(c - 1);
-            }
-            if (a == 0 && b == 0)
-              return ddalpha(c - 1, d - 1);
-            if (a == 0)
-              return ddbetal(b - 1)(c - 1, d - 1);
-            if (b == 0)
-              return ddbetal(a - 1)(c - 1, d - 1);
-            return ddgamma(a - 1, b - 1)(c - 1, d - 1);
-          });
+        ddg([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+          return mat4<T, DN, DN>(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c, int d) {
+                if (c == 0 && d == 0) {
+                  if (a == 0 && b == 0)
+                    return dt2alpha;
+                  if (a == 0)
+                    return dt2betal(b - 1);
+                  if (b == 0)
+                    return dt2betal(a - 1);
+                  return dt2gamma(a - 1, b - 1);
+                }
+                if (c == 0) {
+                  if (a == 0 && b == 0)
+                    return ddtalpha(d - 1);
+                  if (a == 0)
+                    return ddtbetal(b - 1)(d - 1);
+                  if (b == 0)
+                    return ddtbetal(a - 1)(d - 1);
+                  return ddtgamma(a - 1, b - 1)(d - 1);
+                }
+                if (d == 0) {
+                  if (a == 0 && b == 0)
+                    return ddtalpha(c - 1);
+                  if (a == 0)
+                    return ddtbetal(b - 1)(c - 1);
+                  if (b == 0)
+                    return ddtbetal(a - 1)(c - 1);
+                  return ddtgamma(a - 1, b - 1)(c - 1);
+                }
+                if (a == 0 && b == 0)
+                  return ddalpha(c - 1, d - 1);
+                if (a == 0)
+                  return ddbetal(b - 1)(c - 1, d - 1);
+                if (b == 0)
+                  return ddbetal(a - 1)(c - 1, d - 1);
+                return ddgamma(a - 1, b - 1)(c - 1, d - 1);
+              });
         }),
         //
         dgu(calc_dgu(gu, dg)),
@@ -357,119 +373,145 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
         //
         // Badri Krishnan's PhD thesis, appendix A
         Lambda(Rsc / 24), //
-        Phi00([&] {
-          return sum42([&](int a, int b) { return R(a, b) * l(a) * l(b) / 2; });
+        Phi00([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return R(a, b) * l(a) * l(b) / 2;
+          });
         }()),
-        Phi11([&] {
-          return sum42([&](int a, int b) {
+        Phi11([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
             return R(a, b) * (l(a) * n(b) + real(m(a) * conj(m(b)))) / 4;
           });
         }()),
-        Phi22([&] {
-          return sum42([&](int a, int b) { return R(a, b) * n(a) * n(b) / 2; });
+        Phi22([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return R(a, b) * n(a) * n(b) / 2;
+          });
         }()),
-        Phi10([&] {
-          return sum42(
-              [&](int a, int b) { return R(a, b) * l(a) * conj(m(b)) / T(2); });
+        Phi10([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return R(a, b) * l(a) * conj(m(b)) / T(2);
+          });
         }()),
-        Phi20([&] {
-          return sum42([&](int a, int b) {
+        Phi20([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
             return R(a, b) * conj(m(a)) * conj(m(b)) / T(2);
           });
         }()),
-        Phi21([&] {
-          return sum42(
-              [&](int a, int b) { return R(a, b) * conj(m(a)) * n(b) / T(2); });
-        }()),
-        Psi0([&] {
-          return sum44([&](int a, int b, int c, int d) {
-            return C(a, b)(c, d) * l(a) * m(b) * l(c) * m(d);
+        Phi21([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return R(a, b) * conj(m(a)) * n(b) / T(2);
           });
         }()),
-        Psi1([&] {
-          return sum44([&](int a, int b, int c, int d) {
-            return C(a, b)(c, d) * l(a) * m(b) * l(c) * n(d);
-          });
+        Psi0([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum44(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+                return C(a, b)(c, d) * l(a) * m(b) * l(c) * m(d);
+              });
         }()),
-        Psi2([&] {
-          return sum44([&](int a, int b, int c, int d) {
-            return C(a, b)(c, d) * l(a) * m(b) * conj(m(c)) * n(d);
-          });
+        Psi1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum44(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+                return C(a, b)(c, d) * l(a) * m(b) * l(c) * n(d);
+              });
         }()),
-        Psi3([&] {
-          return sum44([&](int a, int b, int c, int d) {
-            return C(a, b)(c, d) * l(a) * n(b) * conj(m(c)) * n(d);
-          });
+        Psi2([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum44(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+                return C(a, b)(c, d) * l(a) * m(b) * conj(m(c)) * n(d);
+              });
         }()),
-        Psi4([&] {
-          return sum44([&](int a, int b, int c, int d) {
-            return C(a, b)(c, d) * conj(m(a)) * n(b) * conj(m(c)) * n(d);
-          });
+        Psi3([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum44(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+                return C(a, b)(c, d) * l(a) * n(b) * conj(m(c)) * n(d);
+              });
+        }()),
+        Psi4([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum44(
+              [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+                return C(a, b)(c, d) * conj(m(a)) * n(b) * conj(m(c)) * n(d);
+              });
         }()),
         det(calc_det(gu, dgu, et, Gamma)),                                    //
         dephi(calc_dephi(coord, g, dg, ephi, Gamma)),                         //
         detheta(calc_detheta(coord, g, dg, ephi, dephi, etheta, Gamma)),      //
         der(calc_der(coord, g, dg, ephi, dephi, etheta, detheta, er, Gamma)), //
-        dl([&](int a) { return (det(a) + der(a)) / sqrt(T(2)); }),
-        dn([&](int a) { return (det(a) - der(a)) / sqrt(T(2)); }),
-        dm([&](int a) {
-          return vec4<complex<T>, DN>([&](int b) {
+        dl([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return (det(a) + der(a)) / sqrt(T(2));
+        }),
+        dn([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return (det(a) - der(a)) / sqrt(T(2));
+        }),
+        dm([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+          return vec4<complex<T>, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
             return complex<T>(detheta(a)(b), dephi(a)(b)) / sqrt(T(2));
           });
         }),
-        npkappa([&] {
-          return sum42([&](int a, int b) { return -m(a) * l(b) * dl(a)(b); });
+        npkappa([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return -m(a) * l(b) * dl(a)(b);
+          });
         }()),
-        npsigma([&] {
-          return sum42([&](int a, int b) { return -m(a) * m(b) * dl(a)(b); });
+        npsigma([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return -m(a) * m(b) * dl(a)(b);
+          });
         }()),
-        nprho([&] {
-          return sum42(
-              [&](int a, int b) { return -m(a) * conj(m(b)) * dl(a)(b); });
+        nprho([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return -m(a) * conj(m(b)) * dl(a)(b);
+          });
         }()),
-        nptau([&] {
-          return sum42([&](int a, int b) { return -m(a) * n(b) * dl(a)(b); });
+        nptau([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return -m(a) * n(b) * dl(a)(b);
+          });
         }()),
-        npepsilon([&] {
-          return sum42([&](int a, int b) {
+        npepsilon([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
             return (conj(m(a)) * l(b) * dm(a)(b) - n(a) * l(b) * dl(a)(b)) /
                    T(2);
           });
         }()),
-        npbeta([&] {
-          return sum42([&](int a, int b) {
+        npbeta([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
             return (conj(m(a)) * m(b) * dm(a)(b) - n(a) * m(b) * dl(a)(b)) /
                    T(2);
           });
         }()),
-        npalpha([&] {
-          return sum42([&](int a, int b) {
+        npalpha([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
             return (conj(m(a)) * conj(m(b)) * dm(a)(b) -
                     n(a) * conj(m(b)) * dl(a)(b)) /
                    T(2);
           });
         }()),
-        npgamma([&] {
-          return sum42([&](int a, int b) {
+        npgamma([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
             return (conj(m(a)) * n(b) * dm(a)(b) - n(a) * n(b) * dl(a)(b)) /
                    T(2);
           });
         }()),
-        nppi([&] {
-          return sum42(
-              [&](int a, int b) { return conj(m(a)) * l(b) * dn(a)(b); });
+        nppi([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return conj(m(a)) * l(b) * dn(a)(b);
+          });
         }()),
-        npmu([&] {
-          return sum42(
-              [&](int a, int b) { return conj(m(a)) * m(b) * dn(a)(b); });
+        npmu([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return conj(m(a)) * m(b) * dn(a)(b);
+          });
         }()),
-        nplambda([&] {
-          return sum42(
-              [&](int a, int b) { return conj(m(a)) * conj(m(b)) * dn(a)(b); });
+        nplambda([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return conj(m(a)) * conj(m(b)) * dn(a)(b);
+          });
         }()),
-        npnu([&] {
-          return sum42(
-              [&](int a, int b) { return conj(m(a)) * n(b) * dn(a)(b); });
+        npnu([&] CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+            return conj(m(a)) * n(b) * dn(a)(b);
+          });
         }())
   //
   {}
