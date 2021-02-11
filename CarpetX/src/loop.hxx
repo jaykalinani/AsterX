@@ -37,7 +37,9 @@ struct PointDesc {
   CCTK_REAL dx, dy, dz;
   int idx;
   static constexpr int di = 1;
-  int dj, dk, np;
+  int dj; // stride in the j direction
+  int dk; // stride in the k direction
+  int np; // number of grid points
   vect<int, dim> I;
   vect<int, dim> NI; // outward boundary normal, or zero
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<int, dim> DI(int d) const {
