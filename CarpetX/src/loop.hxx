@@ -659,6 +659,98 @@ template <typename T> struct GF3D1 {
   }
 };
 
+struct GF3D2layout {
+#ifdef CCTK_DEBUG
+  array<int, dim> imin, imax;
+  array<int, dim> ash;
+#endif
+  static constexpr int di = 1;
+  int dj, dk, np;
+  int off;
+  GF3D2layout() = delete;
+  GF3D2layout(const GF3D2layout &) = default;
+  GF3D2layout(GF3D2layout &&) = default;
+  GF3D2layout &operator=(const GF3D2layout &) = default;
+  GF3D2layout &operator=(GF3D2layout &&) = default;
+  GF3D2layout(const array<int, dim> &imin, const array<int, dim> &imax,
+              const array<int, dim> &ash)
+      :
+#ifdef CCTK_DEBUG
+        imin(imin), imax(imax), ash(ash),
+#endif
+        dj(di * ash[0]), dk(dj * ash[1]), np(dk * ash[2]),
+        off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
+  }
+  GF3D2layout(const cGH *restrict cctkGH, const array<int, dim> &indextype,
+              const array<int, dim> &nghostzones) {
+    for (int d = 0; d < dim; ++d)
+      assert(indextype[d] == 0 || indextype[d] == 1);
+    for (int d = 0; d < dim; ++d) {
+      assert(nghostzones[d] >= 0);
+      assert(nghostzones[d] <= cctkGH->cctk_nghostzones[d]);
+    }
+    array<int, dim> imin, imax;
+    for (int d = 0; d < dim; ++d) {
+      imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
+      imax[d] = cctkGH->cctk_lsh[d] + (1 - indextype[d]) -
+                (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    }
+    array<int, dim> ash;
+    for (int d = 0; d < dim; ++d)
+      ash[d] = cctkGH->cctk_ash[d] + (1 - indextype[d]) -
+               2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    *this = GF3D2layout(imin, imax, ash);
+  }
+  GF3D2layout(const cGH *restrict cctkGH, const array<int, dim> &indextype)
+      : GF3D2layout(cctkGH, indextype,
+                    {cctkGH->cctk_nghostzones[0], cctkGH->cctk_nghostzones[1],
+                     cctkGH->cctk_nghostzones[2]}) {}
+  inline int offset(int i, int j, int k) const {
+    // These index checks prevent vectorization. We thus only enable
+    // them in debug mode.
+#ifdef CCTK_DEBUG
+    assert(i >= imin[0] && i < imax[0]);
+    assert(j >= imin[1] && j < imax[1]);
+    assert(k >= imin[2] && k < imax[2]);
+#endif
+    return i * di + j * dj + k * dk - off;
+  }
+  inline int offset(const vect<int, dim> &I) const {
+    return offset(I[0], I[1], I[2]);
+  }
+  // inline int offset(const PointDesc &p) const { return offset(p.I); }
+};
+
+template <typename T> struct GF3D2 {
+  typedef T value_type;
+  // TODO: disallow inf, nan
+  // Note: Keep `ptr` as first member, this improves speed a bit
+  T *restrict ptr;
+  GF3D2layout layout;
+  GF3D2() = delete;
+  GF3D2(const GF3D2 &) = default;
+  GF3D2(GF3D2 &&) = default;
+  GF3D2 &operator=(const GF3D2 &) = default;
+  GF3D2 &operator=(GF3D2 &&) = default;
+  GF3D2(const GF3D2layout *restrict layout, T *restrict ptr)
+      : ptr(ptr), layout(*layout) {}
+  GF3D2(const GF3D2layout *restrict layout, mempool_t &mempool)
+      : GF3D2(layout, mempool.alloc<T>(layout->np)) {}
+  inline int offset(int i, int j, int k) const {
+    return layout.offset(i, j, k);
+  }
+  inline int offset(const vect<int, dim> &I) const { return layout.offset(I); }
+  inline T &restrict operator()(int i, int j, int k) const {
+    return ptr[offset(i, j, k)];
+  }
+  inline T &restrict operator()(const vect<int, dim> &I) const {
+    return ptr[offset(I)];
+  }
+  // inline T &restrict operator()(const PointDesc &p) const {
+  //   return ptr[offset(p)];
+  // }
+};
+
 } // namespace Loop
 
 #endif // #ifndef LOOP_HXX
