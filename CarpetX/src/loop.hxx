@@ -13,13 +13,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
-#include <initializer_list>
 #include <limits>
 #include <ostream>
 #include <string>
-#include <tuple>
 #include <type_traits>
-#include <vector>
 
 namespace Loop {
 using namespace std;
