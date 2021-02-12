@@ -1,18 +1,18 @@
 # Schedule definitions for thorn TmunuBase
 
-SCHEDULE GROUP TmunuBase_SetTmunuVars AT initial
+SCHEDULE GROUP TmunuBase_SetTmunuVars AT initial AFTER ADMBase_SetADMVars
 {
 } "Schedule group for setting T_munu"
 
-SCHEDULE GROUP TmunuBase_SetTmunuVars AT postregrid
+SCHEDULE GROUP TmunuBase_SetTmunuVars AT postregrid AFTER ADMBase_SetADMVars
 {
 } "Schedule group for setting T_munu"
 
-SCHEDULE GROUP TmunuBase_SetTmunuVars AT poststep
+SCHEDULE GROUP TmunuBase_SetTmunuVars AT poststep AFTER ADMBase_SetADMVars
 {
 } "Schedule group for setting T_munu"
 
-SCHEDULE GROUP TmunuBase_SetTmunuVars IN ODESolvers_PostStep
+SCHEDULE GROUP TmunuBase_SetTmunuVars IN ODESolvers_PostStep AFTER ADMBase_SetADMVars
 {
 } "Schedule group for setting T_munu"
 
