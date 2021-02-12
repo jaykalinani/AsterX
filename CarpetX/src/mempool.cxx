@@ -61,8 +61,10 @@ unsigned char *restrict mempool_t::alloc_bytes(size_t count) {
   assert(arena.size() + count <= arena.capacity());
   auto ptr = arena.data() + arena.size();
   auto old_data = arena.data();
-  arena.reserve(arena.size() + count);
+  auto old_size = arena.size();
+  arena.resize(arena.size() + count);
   assert(arena.data() == old_data);
+  assert(ptr + count <= arena.data() + arena.size());
   total_size += count;
   return ptr;
 }
