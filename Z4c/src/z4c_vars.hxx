@@ -6,6 +6,7 @@
 #include "tensor.hxx"
 
 #include <cmath>
+#include <iostream>
 
 namespace Z4c {
 
@@ -51,6 +52,36 @@ template <typename T> struct z4c_vars_noderivs {
   const T dtalp;            // W = 0
   const vec3<T, UP> beta;   // W = 0
   const vec3<T, UP> dtbeta; // W = 0
+
+  friend CCTK_ATTRIBUTE_NOINLINE ostream &
+  operator<<(ostream &os, const z4c_vars_noderivs &vars) {
+    return os << "z4c_vars_noderivs{"            //
+              << "kappa1:" << vars.kappa1 << "," //
+              << "kappa2:" << vars.kappa2 << "," //
+              << "f_mu_L:" << vars.f_mu_L << "," //
+              << "f_mu_S:" << vars.f_mu_S << "," //
+              << "eta:" << vars.eta << ","       //
+              << "chi:" << vars.chi << ","       //
+              << "gammat:" << vars.gammat << "," //
+              << "Kh:" << vars.Kh << ","         //
+              << "At:" << vars.At << ","         //
+              << "Gamt:" << vars.Gamt << ","     //
+              << "Theta:" << vars.Theta << ","   //
+              << "alphaG:" << vars.alphaG << "," //
+              << "betaG:" << vars.betaG << ","   //
+              << "eTtt:" << vars.eTtt << ","     //
+              << "eTti:" << vars.eTti << ","     //
+              << "eTij:" << vars.eTij << ","     //
+              << "rho:" << vars.rho << ","       //
+              << "Si:" << vars.Si << ","         //
+              << "Sij:" << vars.Sij << ","       //
+              << "g:" << vars.g << ","           //
+              << "K:" << vars.K << ","           //
+              << "alp:" << vars.alp << ","       //
+              << "dtalp:" << vars.dtalp << ","   //
+              << "dtbeta:" << vars.dtbeta << "," //
+              << "}";
+  }
 
   Z4C_INLINE
   z4c_vars_noderivs(const T &kappa1, const T &kappa2, const T &f_mu_L,
@@ -273,6 +304,81 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   const mat3<T, DN, DN> K_rhs;
   const T dtalpha_rhs;
   const vec3<T, UP> dtbeta_rhs;
+
+  friend CCTK_ATTRIBUTE_NOINLINE ostream &operator<<(ostream &os,
+                                                     const z4c_vars &vars) {
+    return os << "z4c_vars{"                               //
+              << "kappa1:" << vars.kappa1 << ","           //
+              << "kappa2:" << vars.kappa2 << ","           //
+              << "f_mu_L:" << vars.f_mu_L << ","           //
+              << "f_mu_S:" << vars.f_mu_S << ","           //
+              << "eta:" << vars.eta << ","                 //
+              << "chi:" << vars.chi << ","                 //
+              << "gammat:" << vars.gammat << ","           //
+              << "Kh:" << vars.Kh << ","                   //
+              << "At:" << vars.At << ","                   //
+              << "Gamt:" << vars.Gamt << ","               //
+              << "Theta:" << vars.Theta << ","             //
+              << "alphaG:" << vars.alphaG << ","           //
+              << "betaG:" << vars.betaG << ","             //
+              << "eTtt:" << vars.eTtt << ","               //
+              << "eTti:" << vars.eTti << ","               //
+              << "eTij:" << vars.eTij << ","               //
+              << "rho:" << vars.rho << ","                 //
+              << "Si:" << vars.Si << ","                   //
+              << "Sij:" << vars.Sij << ","                 //
+              << "g:" << vars.g << ","                     //
+              << "K:" << vars.K << ","                     //
+              << "alp:" << vars.alp << ","                 //
+              << "dtalp:" << vars.dtalp << ","             //
+              << "dtbeta:" << vars.dtbeta << ","           //
+              << "dchi:" << vars.dchi << ","               //
+              << "ddchi:" << vars.ddchi << ","             //
+              << "dgammat:" << vars.dgammat << ","         //
+              << "ddgammat:" << vars.ddgammat << ","       //
+              << "dKh:" << vars.dKh << ","                 //
+              << "dAt:" << vars.dAt << ","                 //
+              << "dGamt:" << vars.dGamt << ","             //
+              << "dTheta:" << vars.dTheta << ","           //
+              << "dalphaG:" << vars.dalphaG << ","         //
+              << "ddalphaG:" << vars.ddalphaG << ","       //
+              << "dbetaG:" << vars.dbetaG << ","           //
+              << "ddbetaG:" << vars.ddbetaG << ","         //
+              << "gammatu:" << vars.gammatu << ","         //
+              << "dgammatu:" << vars.dgammatu << ","       //
+              << "Gammatl:" << vars.Gammatl << ","         //
+              << "Gammat:" << vars.Gammat << ","           //
+              << "Gamtd:" << vars.Gamtd << ","             //
+              << "DDchi:" << vars.DDchi << ","             //
+              << "gu:" << vars.gu << ","                   //
+              << "dg:" << vars.dg << ","                   //
+              << "Gammal:" << vars.Gammal << ","           //
+              << "Gamma:" << vars.Gamma << ","             //
+              << "DDalphaG:" << vars.DDalphaG << ","       //
+              << "Rchi:" << vars.Rchi << ","               //
+              << "Rt:" << vars.Rt << ","                   //
+              << "R:" << vars.R << ","                     //
+              << "Rsc:" << vars.Rsc << ","                 //
+              << "Atu:" << vars.Atu << ","                 //
+              << "dAtu:" << vars.dAtu << ","               //
+              << "traceSij:" << vars.traceSij << ","       //
+              << "ZtC:" << vars.ZtC << ","                 //
+              << "HC:" << vars.HC << ","                   //
+              << "MtC:" << vars.MtC << ","                 //
+              << "allC:" << vars.allC << ","               //
+              << "chi_rhs:" << vars.chi_rhs << ","         //
+              << "gammat_rhs:" << vars.gammat_rhs << ","   //
+              << "Kh_rhs:" << vars.Kh_rhs << ","           //
+              << "At_rhs:" << vars.At_rhs << ","           //
+              << "Gamt_rhs:" << vars.Gamt_rhs << ","       //
+              << "Theta_rhs:" << vars.Theta_rhs << ","     //
+              << "alphaG_rhs:" << vars.alphaG_rhs << ","   //
+              << "betaG_rhs:" << vars.betaG_rhs << ","     //
+              << "K_rhs:" << vars.K_rhs << ","             //
+              << "dtalpha_rhs:" << vars.dtalpha_rhs << "," //
+              << "dtbeta_rhs:" << vars.dtbeta_rhs << ","   //
+              << "}";
+  }
 
   // See arXiv:1212.2901 [gr-qc]
   Z4C_INLINE
