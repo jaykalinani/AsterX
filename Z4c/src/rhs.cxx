@@ -10,6 +10,19 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
+#if 0
+#ifdef _OPENMP
+#include <omp.h>
+#else
+extern "C" {
+static inline int omp_get_max_threads(void) { return 1; }
+static inline int omp_get_num_threads(void) { return 1; }
+static inline int omp_get_thread_num(void) { return 0; }
+static inline int omp_in_parallel(void) { return 0; }
+}
+#endif
+#endif
+
 #include <cmath>
 
 namespace Z4c {
@@ -73,6 +86,16 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   //
 
+  // Ideas:
+  //
+  // - Choose (maximum) tile size at compile time. Then allocate all
+  //   buffers in one 4d array on the heap. This will simplify index
+  //   calculations a lot. [See below -- this works, but is messy.]
+  //
+  // - Outline certain functions, e.g. `det` or `raise_index`. Ensure
+  //   they are called with floating-point arguments, not tensor
+  //   indices.
+
   static mempool_set_t mempools;
   mempool_t &restrict mempool = mempools.get_mempool();
 
@@ -128,6 +151,108 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dbetaG_(make_vec_vec_gf);
   const vec3<mat3<GF3D2<CCTK_REAL>, DN, DN>, UP> gf_ddbetaG_(make_vec_mat_gf);
   calc_derivs2(cctkGH, gf_betaG0_, gf_betaG_, gf_dbetaG_, gf_ddbetaG_);
+
+#if 0
+  
+  // constexpr array<int, dim> max_tile_size = {5, 5, 5};
+  // constexpr array<int, dim> max_tile_size = {9, 9, 9};
+  constexpr array<int, dim> max_tile_size = {17, 9, 9};
+  // constexpr array<int, dim> max_tile_size = {17, 17, 17};
+  constexpr int max_threads = 20;
+  constexpr int max_vars = 154;
+
+  typedef GF3D3<CCTK_REAL, max_tile_size[0], max_tile_size[1], max_tile_size[2]>
+      GF3D3_t;
+  typedef GF3D3ptr<CCTK_REAL, max_tile_size[0], max_tile_size[1],
+                   max_tile_size[2]>
+      GF3D3ptr_t;
+  static GF3D3_t vars[max_threads][max_vars];
+
+  const int thread_num = omp_get_thread_num();
+  if (thread_num >= max_threads)
+    CCTK_VERROR("Too many threads (reserved %d, need at least %d)", max_threads,
+                thread_num + 1);
+
+  vect<int, dim> imin, imax;
+  Loop::GridDescBase(cctkGH).box_int<0, 0, 0>(
+      {cctk_nghostzones[0], cctk_nghostzones[1], cctk_nghostzones[2]}, imin,
+      imax);
+  for (int d = 0; d < dim; ++d)
+    if (imax[d] - imin[d] > max_tile_size[d])
+      CCTK_VERROR(
+          "Tile too large (reserved [%d,%d,%d], need at least [%d,%d,%d])",
+          max_tile_size[0], max_tile_size[1], max_tile_size[2],
+          imax[0] - imin[0], imax[1] - imin[1], imax[2] - imin[2]);
+  const int offset =
+      GF3D3layout<max_tile_size[0], max_tile_size[1], max_tile_size[2]>()
+          .offset(imin[0], imin[1], imin[2]);
+
+  int var_num = 0;
+  const auto alloc_var = [&]() -> CCTK_REAL *restrict {
+    if (var_num >= max_vars)
+      CCTK_VERROR("Too many variables (reserved %d, need at least %d)",
+                  max_vars, var_num + 1);
+    return vars[thread_num][var_num++].arr.data() - offset;
+  };
+
+  const auto make_gf = [&]() { return GF3D3ptr_t(alloc_var()); };
+  const auto make_vec_gf = [&](int) { return make_gf(); };
+  const auto make_mat_gf = [&](int, int) { return make_gf(); };
+  const auto make_vec_vec_gf = [&](int) {
+    return [&](int) { return make_gf(); };
+  };
+  const auto make_vec_mat_gf = [&](int) {
+    return [&](int, int) { return make_gf(); };
+  };
+  const auto make_mat_vec_gf = [&](int, int) {
+    return [&](int) { return make_gf(); };
+  };
+  const auto make_mat_mat_gf = [&](int, int) {
+    return [&](int, int) { return make_gf(); };
+  };
+
+  const GF3D3ptr_t gf_chi_(make_gf());
+  const vec3<GF3D3ptr_t, DN> gf_dchi_(make_vec_gf);
+  const mat3<GF3D3ptr_t, DN, DN> gf_ddchi_(make_mat_gf);
+  calc_derivs2(cctkGH, gf_chi0_, gf_chi_, gf_dchi_, gf_ddchi_);
+
+  const mat3<GF3D3ptr_t, DN, DN> gf_gammat_(make_mat_gf);
+  const mat3<vec3<GF3D3ptr_t, DN>, DN, DN> gf_dgammat_(make_mat_vec_gf);
+  const mat3<mat3<GF3D3ptr_t, DN, DN>, DN, DN> gf_ddgammat_(make_mat_mat_gf);
+  calc_derivs2(cctkGH, gf_gammat0_, gf_gammat_, gf_dgammat_, gf_ddgammat_);
+
+  const GF3D3ptr_t gf_Kh_(make_gf());
+  const vec3<GF3D3ptr_t, DN> gf_dKh_(make_vec_gf);
+  calc_derivs(cctkGH, gf_Kh0_, gf_Kh_, gf_dKh_);
+
+  const mat3<GF3D3ptr_t, DN, DN> gf_At_(make_mat_gf);
+  const mat3<vec3<GF3D3ptr_t, DN>, DN, DN> gf_dAt_(make_mat_vec_gf);
+  calc_derivs(cctkGH, gf_At0_, gf_At_, gf_dAt_);
+
+  const vec3<GF3D3ptr_t, UP> gf_Gamt_(make_vec_gf);
+  const vec3<vec3<GF3D3ptr_t, DN>, UP> gf_dGamt_(make_vec_vec_gf);
+  calc_derivs(cctkGH, gf_Gamt0_, gf_Gamt_, gf_dGamt_);
+
+  const GF3D3ptr_t gf_Theta_(make_gf());
+  const vec3<GF3D3ptr_t, DN> gf_dTheta_(make_vec_gf);
+  calc_derivs(cctkGH, gf_Theta0_, gf_Theta_, gf_dTheta_);
+
+  const GF3D3ptr_t gf_alphaG_(make_gf());
+  const vec3<GF3D3ptr_t, DN> gf_dalphaG_(make_vec_gf);
+  const mat3<GF3D3ptr_t, DN, DN> gf_ddalphaG_(make_mat_gf);
+  calc_derivs2(cctkGH, gf_alphaG0_, gf_alphaG_, gf_dalphaG_, gf_ddalphaG_);
+
+  const vec3<GF3D3ptr_t, UP> gf_betaG_(make_vec_gf);
+  const vec3<vec3<GF3D3ptr_t, DN>, UP> gf_dbetaG_(make_vec_vec_gf);
+  const vec3<mat3<GF3D3ptr_t, DN, DN>, UP> gf_ddbetaG_(make_vec_mat_gf);
+  calc_derivs2(cctkGH, gf_betaG0_, gf_betaG_, gf_dbetaG_, gf_ddbetaG_);
+
+  if (var_num < max_vars)
+    CCTK_VWARN(CCTK_WARN_ALERT,
+               "Reserved too many variables (reserved %d, used %d)", max_vars,
+               var_num);
+
+#endif
 
   //
 
