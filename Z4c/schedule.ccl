@@ -25,6 +25,58 @@ STORAGE: betaG_rhs
 
 
 
+################################################################################
+
+
+
+SCHEDULE GROUP Z4c_InitialGroup AT initial AFTER ADMBase_PostInitial
+{
+} "Convert ADM to Z4c variables"
+
+SCHEDULE GROUP Z4c_PostStepGroup AT initial AFTER Z4c_InitialGroup BEFORE ADMBase_SetADMVars
+{
+} "Post-process Z4c variables"
+
+SCHEDULE GROUP Z4c_PostStepGroup2 AT initial AFTER (TmunuBase_SetTmunuVars, Z4c_PostStepGroup) BEFORE ADMBase_SetADMRHS
+{
+} "Post-process Z4c variables, part 2"
+
+
+
+SCHEDULE GROUP Z4c_PostStepGroup AT postregrid BEFORE ADMBase_SetADMVars
+{
+} "Post-process Z4c variables"
+
+SCHEDULE GROUP Z4c_PostStepGroup2 AT postregrid AFTER (TmunuBase_SetTmunuVars, Z4c_PostStepGroup) BEFORE ADMBase_SetADMRHS
+{
+} "Post-process Z4c variables, part 2"
+
+
+
+SCHEDULE GROUP Z4c_AnalysisGroup AT analysis
+{
+} "Analyse Z4c variables"
+
+
+
+SCHEDULE GROUP Z4c_PostStepGroup IN ODESolvers_PostStep BEFORE ADMBase_SetADMVars
+{
+} "Post-process Z4c variables"
+
+SCHEDULE GROUP Z4c_PostStepGroup2 IN ODESolvers_PostStep AFTER (TmunuBase_SetTmunuVars, Z4c_PostStepGroup) BEFORE ADMBase_SetADMRHS
+{
+} "Post-process Z4c variables, part 2"
+
+SCHEDULE GROUP Z4c_RHSGroup IN ODESolvers_RHS
+{
+} "Calculate Z4c RHS"
+
+
+
+################################################################################
+
+
+
 SCHEDULE Z4c_Test AT wragh
 {
   LANG: C
@@ -130,7 +182,7 @@ if (calc_ADM_vars) {
 }
 
 if (calc_ADMRHS_vars) {
-  SCHEDULE Z4c_ADM2 IN Z4c_PostStepGroup AFTER Z4c_Enforce
+  SCHEDULE Z4c_ADM2 IN Z4c_PostStepGroup2
   {
     LANG: C
     READS: chi(everywhere)
@@ -152,7 +204,7 @@ if (calc_ADMRHS_vars) {
     SYNC: ADMBase::dt2shift
   } "Calculate second time derivatives of ADM variables"
 
-  SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStepGroup
+  SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStepGroup2
   {
     LANG: C
     WRITES: ADMBase::dtcurv(boundary)
@@ -173,6 +225,9 @@ if (calc_constraints) {
     READS: A_tilde(everywhere)
     READS: Gam_tilde(everywhere)
     READS: Theta(everywhere)
+    READS: TmunuBase::eTtt(interior)
+    READS: TmunuBase::eTti(interior)
+    READS: TmunuBase::eTij(interior)
     WRITES: ZtC(interior)
     WRITES: HC(interior)
     WRITES: MtC(interior)
@@ -239,45 +294,3 @@ SCHEDULE Z4c_RHSBoundaries IN Z4c_RHSGroup AFTER Z4c_RHS
   WRITES: alphaG_rhs(boundary)
   WRITES: betaG_rhs(boundary)
 } "Apply boundary conditions to Z4c RHS variables"
-
-
-
-################################################################################
-
-
-
-SCHEDULE GROUP Z4c_InitialGroup AT initial AFTER ADMBase_PostInitial
-{
-} "Convert ADM to Z4c variables"
-
-SCHEDULE GROUP Z4c_PostStepGroup AT initial AFTER Z4c_Initial
-{
-} "Post-process Z4c variables"
-
-
-
-SCHEDULE GROUP Z4c_PostStepGroup AT postregrid
-{
-} "Post-process Z4c variables"
-
-
-
-SCHEDULE GROUP Z4c_AnalysisGroup AT analysis
-{
-} "Analyse Z4c variables"
-
-
-
-SCHEDULE GROUP Z4c_PostStepGroup IN ODESolvers_PostStep BEFORE (ADMBase_SetADMVars, ADMBase_SetADMRHS)
-{
-} "Post-process Z4c variables"
-
-SCHEDULE GROUP Z4c_RHSGroup IN ODESolvers_RHS
-{
-} "Calculate Z4c RHS"
-
-
-
-# SCHEDULE GROUP Z4c_PostStep AT postrestrict
-# {
-# } "Post-process Z4c variables"
