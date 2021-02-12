@@ -346,30 +346,31 @@ public:
   template <typename F, typename = result_of_t<F(int, int)> >
   constexpr Z4C_INLINE mat3(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(1, 1), f(1, 2), f(2, 2)} {
-#ifdef CCTK_DEBUG
-    // Check symmetry
-    const T f10 = f(1, 0);
-    const T f20 = f(0, 2);
-    const T f21 = f(1, 2);
-    const auto is_symmetric{[](const T &fgood, const T &fother) {
-      return norm1<T>()(fother - fgood) <=
-             1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
-    }};
-    if (!(is_symmetric(f(0, 1), f10) && is_symmetric(f(0, 2), f20) &&
-          is_symmetric(f(1, 2), f21))) {
-      ostringstream buf;
-      buf << "f(0,1)=" << f(0, 1) << "\n"
-          << "f(1,0)=" << f10 << "\n"
-          << "f(0,2)=" << f(0, 2) << "\n"
-          << "f(2,0)=" << f20 << "\n"
-          << "f(1,2)=" << f(1, 2) << "\n"
-          << "f(2,1)=" << f21 << "\n";
-      CCTK_VERROR("symmetric matrix is not symmetric:\n%s", buf.str().c_str());
-    }
-    assert(is_symmetric(f(0, 1), f10));
-    assert(is_symmetric(f(0, 2), f20));
-    assert(is_symmetric(f(1, 2), f21));
-#endif
+    // #ifdef CCTK_DEBUG
+    //     // Check symmetry
+    //     const T f10 = f(1, 0);
+    //     const T f20 = f(0, 2);
+    //     const T f21 = f(1, 2);
+    //     const auto is_symmetric{[](const T &fgood, const T &fother) {
+    //       return norm1<T>()(fother - fgood) <=
+    //              1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
+    //     }};
+    //     if (!(is_symmetric(f(0, 1), f10) && is_symmetric(f(0, 2), f20) &&
+    //           is_symmetric(f(1, 2), f21))) {
+    //       ostringstream buf;
+    //       buf << "f(0,1)=" << f(0, 1) << "\n"
+    //           << "f(1,0)=" << f10 << "\n"
+    //           << "f(0,2)=" << f(0, 2) << "\n"
+    //           << "f(2,0)=" << f20 << "\n"
+    //           << "f(1,2)=" << f(1, 2) << "\n"
+    //           << "f(2,1)=" << f21 << "\n";
+    //       CCTK_VERROR("symmetric matrix is not symmetric:\n%s",
+    //       buf.str().c_str());
+    //     }
+    //     assert(is_symmetric(f(0, 1), f10));
+    //     assert(is_symmetric(f(0, 2), f20));
+    //     assert(is_symmetric(f(1, 2), f21));
+    // #endif
   }
 
   Z4C_INLINE void store(const GF3D2<T> &gf_Axx_, const GF3D2<T> &gf_Axy_,
