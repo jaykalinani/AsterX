@@ -105,6 +105,23 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
   //
 
+  const GF3D2<const CCTK_REAL> gf_eTtt_(&layout, eTtt);
+
+  const vec3<GF3D2<const CCTK_REAL>, DN> gf_eTti_(
+      GF3D2<const CCTK_REAL>(&layout, eTtx),
+      GF3D2<const CCTK_REAL>(&layout, eTty),
+      GF3D2<const CCTK_REAL>(&layout, eTtz));
+
+  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_eTij_(
+      GF3D2<const CCTK_REAL>(&layout, eTxx),
+      GF3D2<const CCTK_REAL>(&layout, eTxy),
+      GF3D2<const CCTK_REAL>(&layout, eTxz),
+      GF3D2<const CCTK_REAL>(&layout, eTyy),
+      GF3D2<const CCTK_REAL>(&layout, eTyz),
+      GF3D2<const CCTK_REAL>(&layout, eTzz));
+
+  //
+
   const GF3D2<CCTK_REAL> gf_ZtCx_(&layout, ZtCx);
   const GF3D2<CCTK_REAL> gf_ZtCy_(&layout, ZtCy);
   const GF3D2<CCTK_REAL> gf_ZtCz_(&layout, ZtCz);
@@ -124,16 +141,12 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
     const CCTK_REAL alphaG{1};
     const vec3<CCTK_REAL, DN> dalphaG{0, 0, 0};
-    const mat3<CCTK_REAL, DN, DN> ddalphaG{0, 0, 0};
+    const mat3<CCTK_REAL, DN, DN> ddalphaG{0, 0, 0, 0, 0, 0};
 
     const vec3<CCTK_REAL, UP> betaG{0, 0, 0};
     const vec3<vec3<CCTK_REAL, DN>, UP> dbetaG{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
     const vec3<mat3<CCTK_REAL, DN, DN>, UP> ddbetaG{
-        {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
-
-    const CCTK_REAL rho{0};
-    const vec3<CCTK_REAL, DN> Si{0, 0, 0};
-    const mat3<CCTK_REAL, DN, DN> Sij{0, 0, 0};
+        {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}};
 
     const z4c_vars<CCTK_REAL> vars(
         kappa1, kappa2, f_mu_L, f_mu_S, eta,                  //
@@ -145,9 +158,7 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
         gf_Theta_(p.I), gf_dTheta_(p.I),                      //
         alphaG, dalphaG, ddalphaG,                            //
         betaG, dbetaG, ddbetaG,                               //
-        rho,                                                  //
-        Si,                                                   //
-        Sij);
+        gf_eTtt_(p.I), gf_eTti_(p.I), gf_eTij_(p.I));
 
     // Store
     vars.ZtC.store(gf_ZtCx_, gf_ZtCy_, gf_ZtCz_, p.I);
