@@ -22,7 +22,7 @@ CCTK_REAL dtshift TYPE=gf TAGS='index={0 0 0}' { dtbetax dtbetay dtbetaz } "Time
 
 
 
-# Variables necessary to calculate second time derivatives of four-metric
+# Variables necessary to calculate second time derivatives of the four-metric
 
 CCTK_REAL dtcurv TYPE=gf TAGS='index={0 0 0} checkpoint="no"' { dtkxx dtkxy dtkxz dtkyy dtkyz dtkzz } "Time derivative of ADM extrinsic curvature K_ij"
 
