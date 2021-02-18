@@ -292,16 +292,16 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   // //
 
-   const GF3D2<CCTK_REAL> gf_Psi0re_(&layout, Psi0re);
-   const GF3D2<CCTK_REAL> gf_Psi0im_(&layout, Psi0im);
-   const GF3D2<CCTK_REAL> gf_Psi1re_(&layout, Psi1re);
-   const GF3D2<CCTK_REAL> gf_Psi1im_(&layout, Psi1im);
-   const GF3D2<CCTK_REAL> gf_Psi2re_(&layout, Psi2re);
-   const GF3D2<CCTK_REAL> gf_Psi2im_(&layout, Psi2im);
-   const GF3D2<CCTK_REAL> gf_Psi3re_(&layout, Psi3re);
-   const GF3D2<CCTK_REAL> gf_Psi3im_(&layout, Psi3im);
-   const GF3D2<CCTK_REAL> gf_Psi4re_(&layout, Psi4re);
-   const GF3D2<CCTK_REAL> gf_Psi4im_(&layout, Psi4im);
+  const GF3D2<CCTK_REAL> gf_Psi0re_(&layout, Psi0re);
+  const GF3D2<CCTK_REAL> gf_Psi0im_(&layout, Psi0im);
+  const GF3D2<CCTK_REAL> gf_Psi1re_(&layout, Psi1re);
+  const GF3D2<CCTK_REAL> gf_Psi1im_(&layout, Psi1im);
+  const GF3D2<CCTK_REAL> gf_Psi2re_(&layout, Psi2re);
+  const GF3D2<CCTK_REAL> gf_Psi2im_(&layout, Psi2im);
+  const GF3D2<CCTK_REAL> gf_Psi3re_(&layout, Psi3re);
+  const GF3D2<CCTK_REAL> gf_Psi3im_(&layout, Psi3im);
+  const GF3D2<CCTK_REAL> gf_Psi4re_(&layout, Psi4re);
+  const GF3D2<CCTK_REAL> gf_Psi4im_(&layout, Psi4im);
 
   // //
 
@@ -422,7 +422,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
         // gf_rm4yzyz_(p.I) = vars.Rm(2, 3)(2, 3);
 
-        // vars.R.store(gf_r4tt_, gf_r4tx_, gf_r4ty_, gf_r4tz_, gf_r4xx_, gf_r4xy_,
+        // vars.R.store(gf_r4tt_, gf_r4tx_, gf_r4ty_, gf_r4tz_, gf_r4xx_,
+        // gf_r4xy_,
         //              gf_r4xz_, gf_r4yy_, gf_r4yz_, gf_r4zz_, p.I);
 
         // gf_rsc4_(p.I) = vars.Rsc;
