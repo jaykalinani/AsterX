@@ -1,12 +1,18 @@
 # Schedule definitions for thorn Weyl
 
 STORAGE: metric4
-STORAGE: Gamma4
-STORAGE: riemann4
-STORAGE: ricci4
-STORAGE: ricciscalar4
-STORAGE: weyl4
-STORAGE: tetrad_l tetrad_n tetrad_mre tetrad_mim
+## STORAGE: Gamma4
+## STORAGE: riemann4
+## STORAGE: ricci4
+## STORAGE: ricciscalar4
+## STORAGE: weyl4
+## STORAGE: tetrad_l
+## STORAGE: tetrad_n
+## STORAGE: tetrad_mre
+## STORAGE: tetrad_mim
+## STORAGE: ricci_scalars
+STORAGE: weyl_scalars
+## STORAGE: spin_coefficients
 
 
 
@@ -31,16 +37,16 @@ SCHEDULE Weyl_Weyl AT analysis
   READS: ADMBase::dt2lapse(everywhere)
   READS: ADMBase::dt2shift(everywhere)
   WRITES: metric4(interior)   # We could write this everywhere
-  WRITES: Gamma4(interior)
-  WRITES: riemann4(interior)
-  WRITES: ricci4(interior)
-  WRITES: ricciscalar4(interior)
-  WRITES: weyl4(interior)
-  WRITES: tetrad_l(interior)
-  WRITES: tetrad_n(interior)
-  WRITES: tetrad_mre(interior)
-  WRITES: tetrad_mim(interior)
-  WRITES: ricci_scalars(interior)
+  ## WRITES: Gamma4(interior)
+  ## WRITES: riemann4(interior)
+  ## WRITES: ricci4(interior)
+  ## WRITES: ricciscalar4(interior)
+  ## WRITES: weyl4(interior)
+  ## WRITES: tetrad_l(interior)
+  ## WRITES: tetrad_n(interior)
+  ## WRITES: tetrad_mre(interior)
+  ## WRITES: tetrad_mim(interior)
+  ## WRITES: ricci_scalars(interior)
   WRITES: weyl_scalars(interior)
-  WRITES: spin_coefficients(interior)
+  ## WRITES: spin_coefficients(interior)
 } "Calculate Weyl tensor"
