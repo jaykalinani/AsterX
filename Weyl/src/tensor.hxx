@@ -365,32 +365,34 @@ public:
   template <typename F, typename = result_of_t<F(int, int)> >
   constexpr mat3(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(1, 1), f(1, 2), f(2, 2)} {
-#ifdef CCTK_DEBUG
-    // Check symmetry
-    const T f10 = f(1, 0);
-    const T f20 = f(2, 0);
-    const T f21 = f(1, 2);
-    const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
-                       norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
-                       norm1<T>()(elts[4]) + norm1<T>()(elts[5]);
-    const auto is_approx{[scale](const T &fgood, const T &fother) {
-      return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
-    }};
-    if (!(is_approx((*this)(0, 1), f10) && is_approx((*this)(0, 2), f20) &&
-          is_approx((*this)(1, 2), f21))) {
-      ostringstream buf;
-      buf << "f(0,1)=" << (*this)(0, 1) << "\n"
-          << "f(1,0)=" << f10 << "\n"
-          << "f(0,2)=" << (*this)(0, 2) << "\n"
-          << "f(2,0)=" << f20 << "\n"
-          << "f(1,2)=" << (*this)(1, 2) << "\n"
-          << "f(2,1)=" << f21 << "\n";
-      CCTK_VERROR("symmetric matrix is not symmetric:\n%s", buf.str().c_str());
-    }
-    assert(is_approx(f10, (*this)(0, 1)));
-    assert(is_approx(f20, (*this)(0, 2)));
-    assert(is_approx(f21, (*this)(1, 2)));
-#endif
+    // #ifdef CCTK_DEBUG
+    //     // Check symmetry
+    //     const T f10 = f(1, 0);
+    //     const T f20 = f(2, 0);
+    //     const T f21 = f(1, 2);
+    //     const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
+    //                        norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
+    //                        norm1<T>()(elts[4]) + norm1<T>()(elts[5]);
+    //     const auto is_approx{[scale](const T &fgood, const T &fother) {
+    //       return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
+    //     }};
+    //     if (!(is_approx((*this)(0, 1), f10) && is_approx((*this)(0, 2), f20)
+    //     &&
+    //           is_approx((*this)(1, 2), f21))) {
+    //       ostringstream buf;
+    //       buf << "f(0,1)=" << (*this)(0, 1) << "\n"
+    //           << "f(1,0)=" << f10 << "\n"
+    //           << "f(0,2)=" << (*this)(0, 2) << "\n"
+    //           << "f(2,0)=" << f20 << "\n"
+    //           << "f(1,2)=" << (*this)(1, 2) << "\n"
+    //           << "f(2,1)=" << f21 << "\n";
+    //       CCTK_VERROR("symmetric matrix is not symmetric:\n%s",
+    //       buf.str().c_str());
+    //     }
+    //     assert(is_approx(f10, (*this)(0, 1)));
+    //     assert(is_approx(f20, (*this)(0, 2)));
+    //     assert(is_approx(f21, (*this)(1, 2)));
+    // #endif
   }
 
   void store(const GF3D2<T> &gf_Axx_, const GF3D2<T> &gf_Axy_,
