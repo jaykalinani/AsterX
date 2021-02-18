@@ -195,8 +195,7 @@ public:
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d],
-                         lsh[d] - offset[d] - ghost_offset);
+      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - ghost_offset);
     }
   }
 
@@ -208,8 +207,7 @@ public:
     const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d],
-                         lsh[d] - offset[d] - nghostzones[d]);
+      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
     }
   }
 
@@ -222,8 +220,7 @@ public:
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d],
-                         lsh[d] - offset[d] - ghost_offset);
+      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - ghost_offset);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -238,8 +235,7 @@ public:
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d],
-                         lsh[d] - offset[d] - nghostzones[d]);
+      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -545,9 +541,9 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
     return {CI, CJ, CK};
   }
   GF3D() = delete;
-  GF3D(const GF3D &gf) = default;
+  GF3D(const GF3D &) = default;
   GF3D(GF3D &&) = default;
-  GF3D &operator=(const GF3D &gf) = default;
+  GF3D &operator=(const GF3D &) = default;
   GF3D &operator=(GF3D &&) = default;
   GF3D(const cGH *restrict cctkGH, T *restrict ptr)
       : dj(di * (cctkGH->cctk_ash[0] - CI)),
