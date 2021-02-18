@@ -149,8 +149,7 @@ public:
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - ghost_offset);
+      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - ghost_offset);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -165,8 +164,7 @@ public:
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0),
-                         lsh[d] + offset[d] - nghostzones[d]);
+      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -200,8 +198,8 @@ public:
                       nghostzones[d] - group_nghostzones[d];
                   const int begin_bnd = ghost_offset;
                   const int begin_int = nghostzones[d];
-                  const int end_int = lsh[d] + offset[d] - nghostzones[d];
-                  const int end_bnd = lsh[d] + offset[d] - ghost_offset;
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
                   switch (inormal[d]) {
                   case -1: // lower boundary
                     imin[d] = begin_bnd;
@@ -220,8 +218,7 @@ public:
                   }
 
                   imin[d] = std::max(tmin[d], imin[d]);
-                  imax[d] = std::min(
-                      tmax[d] + (tmax[d] >= lsh[d] ? offset[d] : 0), imax[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
                 }
 
                 loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);

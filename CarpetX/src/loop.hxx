@@ -692,12 +692,12 @@ struct GF3D2layout {
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
-      imax[d] = cctkGH->cctk_lsh[d] + (1 - indextype[d]) -
+      imax[d] = cctkGH->cctk_lsh[d] - indextype[d] -
                 (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     }
     array<int, dim> ash;
     for (int d = 0; d < dim; ++d)
-      ash[d] = cctkGH->cctk_ash[d] + (1 - indextype[d]) -
+      ash[d] = cctkGH->cctk_ash[d] - indextype[d] -
                2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     *this = GF3D2layout(imin, imax, ash);
   }
