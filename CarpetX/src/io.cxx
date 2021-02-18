@@ -256,7 +256,7 @@ void OutputScalars(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  static Timer timer("OutputNorms");
+  static Timer timer("OutputScalars");
   Interval interval(timer);
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
