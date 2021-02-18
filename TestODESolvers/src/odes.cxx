@@ -13,11 +13,15 @@ extern "C" void TestODESolvers_Initial(CCTK_ARGUMENTS) {
 
   const CCTK_REAL u0 = pow(1 + cctk_time, order);
 
-  for (int k = 0; k < cctk_lsh[2]; ++k) {
-    for (int j = 0; j < cctk_lsh[1]; ++j) {
+  const int di = 1;
+  const int dj = di * (cctk_ash[0] - 1);
+  const int dk = dj * (cctk_ash[1] - 1);
+
+  for (int k = 0; k < cctk_lsh[2] - 1; ++k) {
+    for (int j = 0; j < cctk_lsh[1] - 1; ++j) {
 #pragma omp simd
-      for (int i = 0; i < cctk_lsh[0]; ++i) {
-        int ind = CCTK_GFINDEX3D(cctkGH, i, j, k);
+      for (int i = 0; i < cctk_lsh[0] - 1; ++i) {
+        int ind = i * di + j * dj + k * dk;
         state[ind] = u0;
         state2[ind] = u0;
       }
@@ -51,11 +55,15 @@ extern "C" void TestODESolvers_RHS(CCTK_ARGUMENTS) {
   // u(t) = (1+t)^p
   // d/dt u = p (1+t)^(p-1)
 
-  for (int k = 0; k < cctk_lsh[2]; ++k) {
-    for (int j = 0; j < cctk_lsh[1]; ++j) {
+  const int di = 1;
+  const int dj = di * (cctk_ash[0] - 1);
+  const int dk = dj * (cctk_ash[1] - 1);
+
+  for (int k = 0; k < cctk_lsh[2] - 1; ++k) {
+    for (int j = 0; j < cctk_lsh[1] - 1; ++j) {
 #pragma omp simd
-      for (int i = 0; i < cctk_lsh[0]; ++i) {
-        int ind = CCTK_GFINDEX3D(cctkGH, i, j, k);
+      for (int i = 0; i < cctk_lsh[0] - 1; ++i) {
+        int ind = i * di + j * dj + k * dk;
         // solving u(t) for (1 + t)^(order - 1) = u_inverse gives:
         const CCTK_REAL u_inverse =
             pow(state[ind], (order - 1) / CCTK_REAL(order));
@@ -81,11 +89,15 @@ extern "C" void TestODESolvers_Error(CCTK_ARGUMENTS) {
 
   const CCTK_REAL u0 = pow(1 + cctk_time, order);
 
-  for (int k = 0; k < cctk_lsh[2]; ++k) {
-    for (int j = 0; j < cctk_lsh[1]; ++j) {
+  const int di = 1;
+  const int dj = di * (cctk_ash[0] - 1);
+  const int dk = dj * (cctk_ash[1] - 1);
+
+  for (int k = 0; k < cctk_lsh[2] - 1; ++k) {
+    for (int j = 0; j < cctk_lsh[1] - 1; ++j) {
 #pragma omp simd
-      for (int i = 0; i < cctk_lsh[0]; ++i) {
-        int ind = CCTK_GFINDEX3D(cctkGH, i, j, k);
+      for (int i = 0; i < cctk_lsh[0] - 1; ++i) {
+        int ind = i * di + j * dj + k * dk;
         error[ind] = state[ind] - u0;
         error2[ind] = state2[ind] - u0;
 

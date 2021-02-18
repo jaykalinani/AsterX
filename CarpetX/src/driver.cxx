@@ -134,7 +134,7 @@ array<int, dim> get_group_indextype(const int gi) {
   array<CCTK_INT, dim> index;
   int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    index = {1, 1, 1}; // default: cell-centred
+    index = {0, 0, 0}; // default: vertex-centred
   } else if (iret >= 0) {
     assert(iret == dim);
   } else {
@@ -783,6 +783,10 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
         assert(geom.Domain().length(d) >= groupdata.nghostzones[d]);
 
     // Allocate grid hierarchies
+    // FIXME: CarpetX and AMReX use opposite numbers for cell/vertex data.
+    // Namely AMReX uses (AMReX_IndexType.H): enum   CellIndex { CELL = 0, NODE
+    // = 1 } while CarpetX uses indextype == 0 for vertex (node) and indextype
+    // == 1 for cell data.
     const amrex::BoxArray &gba = convert(
         ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
                                                     : amrex::IndexType::NODE,
@@ -1617,7 +1621,7 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
   cGroup group;
   int ierr = CCTK_GroupData(gi, &group);
   assert(!ierr);
-  if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY) {
+  if (group.grouptype == CCTK_GF) {
     data->dim = group.dim;
     data->lsh = cctkGH->cctk_lsh;
     data->ash = cctkGH->cctk_ash;
@@ -1627,7 +1631,7 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->bbox = cctkGH->cctk_bbox;
     data->nghostzones = cctkGH->cctk_nghostzones;
     data->activetimelevels = CCTK_ActiveTimeLevelsGI(cctkGH, gi);
-  } else { // CCTK_ARRAY or CCTK_SCALAR
+  } else if (group.grouptype == CCTK_SCALAR or group.grouptype == CCTK_ARRAY) {
     GHExt::GlobalData &globaldata = ghext->globaldata;
     GHExt::GlobalData::ArrayGroupData &arraygroupdata =
         *globaldata.arraygroupdata.at(gi);
@@ -1640,6 +1644,11 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->bbox = arraygroupdata.bbox;
     data->nghostzones = arraygroupdata.nghostzones;
     data->activetimelevels = arraygroupdata.activetimelevels;
+  } else {
+    char* gname = CCTK_GroupName(gi);
+    CCTK_VERROR("Internal error: unexpected group type %d for group '%s'",
+                (int)group.grouptype, gname);
+    free(gname);
   }
   return 0;
 }

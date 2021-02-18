@@ -102,6 +102,8 @@ namespace Loop {
 
 bool CarpetX_poison_undefined_values = true;
 
+// FIXME: this struct is defined in loop.hxx and thus these should be either in
+// loop.cxx or the definiton moved to schedule.hxx
 GridDescBase::GridDescBase() {}
 
 GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
@@ -169,20 +171,20 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Global shape
   for (int d = 0; d < dim; ++d)
     gsh[d] =
-        domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 2 * nghostzones[d];
+        domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + (domain.type(d) == amrex::IndexType::CELL ? 1 : 0) + 2 * nghostzones[d];
 
   // Local shape
   for (int d = 0; d < dim; ++d)
-    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 + (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0);
 
   // Allocated shape
   for (int d = 0; d < dim; ++d)
-    ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1;
+    ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 + (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0);
 
   // Local extent
   for (int d = 0; d < dim; ++d) {
     lbnd[d] = fbx[orient(d, 0)] + nghostzones[d];
-    ubnd[d] = fbx[orient(d, 1)] + nghostzones[d];
+    ubnd[d] = fbx[orient(d, 1)] + (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0) + nghostzones[d];
   }
 
   // Boundaries
@@ -206,7 +208,9 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
     tmin[d] = gbx[orient(d, 0)] - fbx[orient(d, 0)];
-    tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)];
+    // the allocated box is 1 vertex larger than the number of cells, and AMReX
+    // assigns this extra vertex to the final tile
+    tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)] + (fbx.type(d) == amrex::IndexType::CELL ? gbx[orient(d, 1)] == fbx[orient(d, 1)] : 0);
   }
 
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
@@ -272,10 +276,10 @@ GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
   for (int d = 0; d < dim; ++d)
     gimin[d] = nghostzones[d] - groupdata.nghostzones[d];
   for (int d = 0; d < dim; ++d)
-    gimax[d] = lsh[d] + (1 - groupdata.indextype[d]) -
+    gimax[d] = lsh[d] - groupdata.indextype[d] -
                (nghostzones[d] - groupdata.nghostzones[d]);
   for (int d = 0; d < dim; ++d)
-    gash[d] = ash[d] + (1 - groupdata.indextype[d]) -
+    gash[d] = ash[d] - groupdata.indextype[d] -
               2 * (nghostzones[d] - groupdata.nghostzones[d]);
 }
 
@@ -800,6 +804,7 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 enum class mode_t { unknown, local, level, global, meta };
 
 mode_t current_mode(const cGH *restrict cctkGH) {
+  // FIXME: this will fail if lsh actually has a value of 666 (which happens to be "undefined")
   if (cctkGH->cctk_lsh[0] != undefined)
     return mode_t::local;
   else if (cctkGH->cctk_gsh[0] != undefined)
@@ -956,10 +961,12 @@ void enter_level_mode(cGH *restrict cctkGH,
   assert(in_global_mode(cctkGH));
 
   // Global shape
-  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+  const auto mfitinfo = amrex::MFItInfo().EnableTiling({max_tile_size_x, max_tile_size_y, max_tile_size_z});
+  amrex::MFIter mfi(*leveldata.fab, mfitinfo);
+  const MFPointer mfp(mfi);
+  const GridPtrDesc grid(leveldata, mfp);
   for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_gsh[d] = domain[orient(d, 1)] - domain[orient(d, 0)] + 1 +
-                          2 * cctkGH->cctk_nghostzones[d];
+    cctkGH->cctk_gsh[d] = grid.gsh[d];
 
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
@@ -2207,11 +2214,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     groups.push_back(gi);
   }
 
-  if (restrict_during_sync)
+  if (restrict_during_sync) {
     active_levels->loop_reverse([&](const auto &leveldata) {
       if (leveldata.level < int(ghext->leveldata.size()) - 1)
         Restrict(leveldata.level, groups);
     });
+    // FIXME: cannot call POSTRESTRICT since this could contain a SYNC leading
+    // to an infinite loop. This means that outer boundaries will be left
+    // invalid after an implicit restrict
+    // CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+  }
 
   active_levels->loop([&](auto &restrict leveldata) {
     for (const int gi : groups) {

@@ -50,5 +50,5 @@ CCTK_REAL divb TYPE=gf TAGS='index={1 1 1} checkpoint="no"' "Magnetic constraint
 
 # Cell-centred variables
 
-CCTK_REAL avgd TYPE=gf TAGS='checkpoint="no"' { avgdyz avgdzx avgdxy } "Cell-averaged electric flux"
-CCTK_REAL avgb TYPE=gf TAGS='checkpoint="no"' { avgbyz avgbzx avgbxy } "Cell-averaged magnetic flux"
+CCTK_REAL avgd TYPE=gf TAGS='index={1 1 1} checkpoint="no"' { avgdyz avgdzx avgdxy } "Cell-averaged electric flux"
+CCTK_REAL avgb TYPE=gf TAGS='index={1 1 1} checkpoint="no"' { avgbyz avgbzx avgbxy } "Cell-averaged magnetic flux"

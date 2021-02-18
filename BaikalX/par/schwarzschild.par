@@ -41,6 +41,7 @@ CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = 0.125
 
 CarpetX::prolongation_type = "ddf"
+CarpetX::restrict_during_sync = no # this interferes (badly) with having a SYNC on a fine grid
 
 CarpetX::dtfac = 0.25
 

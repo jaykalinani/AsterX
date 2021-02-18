@@ -12,5 +12,5 @@ USES INCLUDE HEADER: vect.hxx
 
 PUBLIC:
 
-CCTK_REAL coords TYPE=gf { coordx coordy coordz } "Coordinates"
-CCTK_REAL volume TYPE=gf { cvol } "Cell volume"
+CCTK_REAL coords TYPE=gf TAGS='index={1 1 1}' { coordx coordy coordz } "Coordinates"
+CCTK_REAL volume TYPE=gf TAGS='index={1 1 1}' { cvol } "Cell volume"

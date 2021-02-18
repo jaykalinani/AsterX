@@ -147,6 +147,21 @@ struct GridPtrDesc1 : GridDesc {
   GF3D1<T> gf3d(const amrex::Array4<T> &vars, int vi) const {
     return GF3D1<T>(ptr(vars, vi), gimin, gimax, gash);
   }
+
+  friend ostream &operator<<(ostream &os, const GridPtrDesc1 &p) {
+    os << "GridPtrDesc1{"
+       << (const GridDescBase &)p << ", "
+       << "cactus_offset:"
+       << "{" << p.cactus_offset.x << "," << p.cactus_offset.y << "," << p.cactus_offset.z << "}, "
+       << "gimin:"
+       << "{" << p.gimin[0] << "," << p.gimin[1] << "," << p.gimin[2] << "}, "
+       << "gimax:"
+       << "{" << p.gimax[0] << "," << p.gimax[1] << "," << p.gimax[2] << "}, "
+       << "gash:"
+       << "{" << p.gash[0] << "," << p.gash[1] << "," << p.gash[2]
+       << "}";
+    return os;
+  }
 };
 
 bool in_local_mode(const cGH *restrict cctkGH);

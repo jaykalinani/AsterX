@@ -90,9 +90,13 @@ reduce_array(const amrex::Array4<const T> &restrict vars, const int n,
              const amrex::Array4<const int> *restrict const finemask,
              const vect<T, dim> &x0, const vect<T, dim> &dx) {
   CCTK_REAL dV = 1.0;
+  // TODO: correct this for vertex quantities or document / remove sum like
+  // reductions for vertex quantities (though this would affect things like
+  // norm2 as well as "sum" itself)
   for (int d = 0; d < dim; ++d)
     dV *= dx[d];
   reduction<T, dim> red;
+  // TODO: use loop.hxx codoe to loop over grid
   for (int k = imin[2]; k < imax[2]; ++k) {
     for (int j = imin[1]; j < imax[1]; ++j) {
       // #pragma omp simd reduction(red : reduction_CCTK_REAL)
@@ -132,8 +136,10 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
     const CCTK_REAL *restrict const x01 = geom.ProbLo();
     const CCTK_REAL *restrict const dx1 = geom.CellSize();
-    const vect<CCTK_REAL, dim> x0{x01[0], x01[1], x01[2]};
     const vect<CCTK_REAL, dim> dx{dx1[0], dx1[1], dx1[2]};
+    const vect<CCTK_REAL, dim> x0{x01[0] + (mfab.ixType()[0] == amrex::IndexType::CELL? dx[0]/2. : 0.),
+                                  x01[1] + (mfab.ixType()[1] == amrex::IndexType::CELL? dx[1]/2. : 0.),
+                                  x01[2] + (mfab.ixType()[2] == amrex::IndexType::CELL? dx[2]/2. : 0.)};
 
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
@@ -147,6 +153,9 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     }
 
     auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
+    // TODO: check that multi-threading actually helps and we are not dominated
+    // my memory latency anyway
+    // TODO: document required version of OpenMP to use custom reductions
 #pragma omp parallel reduction(reduction : red)
     for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
       const amrex::Box &bx = mfi.tilebox(); // current region (without ghosts)

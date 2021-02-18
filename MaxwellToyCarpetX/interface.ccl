@@ -36,25 +36,25 @@ USES INCLUDE HEADER: loop.hxx
 
 
 
-# CCTK_REAL potential TYPE=gf TIMELEVELS=2a
+# CCTK_REAL potential TYPE=gf TIMELEVELS=2a TAGS='index={1 1 1}'
 # {
 #   phi
 #   ax ay az
 # } "Electromagnetic potential"
 # 
-# CCTK_REAL field TYPE=gf TIMELEVELS=2
+# CCTK_REAL field TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1}'
 # {
 #   ex ey ez
 #   bx by bz   # B_yz B_zx B_xy
 # } "Electromagnetic field"
 # 
-# CCTK_REAL current TYPE=gf TIMELEVELS=2
+# CCTK_REAL current TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1}'
 # {
 #   rho
 #   jx jy jz
 # } "Electric charge current"
 # 
-# CCTK_REAL errors TYPE=gf
+# CCTK_REAL errors TYPE=gf TAGS='index={1 1 1}'
 # {
 #   phierr
 #   axerr ayerr azerr
@@ -64,7 +64,7 @@ USES INCLUDE HEADER: loop.hxx
 #   jxerr jyerr jzerr
 # } "Errors"
 # 
-# CCTK_REAL constraints TYPE=gf
+# CCTK_REAL constraints TYPE=gf TAGS='index={1 1 1}'
 # {
 #   dive
 #   divb
@@ -209,12 +209,12 @@ CCTK_REAL errors_current_jz TYPE=gf TAGS='index={0 0 1} checkpoint="no"'
 
 
 
-# CCTK_REAL poynting TYPE=gf
+# CCTK_REAL poynting TYPE=gf TAGS='index={1 1 1}'
 # {
 #   sx sy sz
 # } "Poynting vector"
 # 
-# CCTK_REAL energy TYPE=gf
+# CCTK_REAL energy TYPE=gf TAGS='index={1 1 1}'
 # {
 #   eps
 # } "Electromagnetic energy density"
