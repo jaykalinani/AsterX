@@ -657,8 +657,8 @@ template <typename T> struct GF3D1 {
 
 struct GF3D2layout {
 #ifdef CCTK_DEBUG
-  array<int, dim> imin, imax;
-  array<int, dim> ash;
+  vect<int, dim> imin, imax;
+  vect<int, dim> ash;
 #endif
   static constexpr int di = 1;
   int dj, dk, np;
@@ -668,8 +668,8 @@ struct GF3D2layout {
   GF3D2layout(GF3D2layout &&) = default;
   GF3D2layout &operator=(const GF3D2layout &) = default;
   GF3D2layout &operator=(GF3D2layout &&) = default;
-  GF3D2layout(const array<int, dim> &imin, const array<int, dim> &imax,
-              const array<int, dim> &ash)
+  GF3D2layout(const vect<int, dim> &imin, const vect<int, dim> &imax,
+              const vect<int, dim> &ash)
       :
 #ifdef CCTK_DEBUG
         imin(imin), imax(imax), ash(ash),
@@ -677,27 +677,27 @@ struct GF3D2layout {
         dj(di * ash[0]), dk(dj * ash[1]), np(dk * ash[2]),
         off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
   }
-  GF3D2layout(const cGH *restrict cctkGH, const array<int, dim> &indextype,
-              const array<int, dim> &nghostzones) {
+  GF3D2layout(const cGH *restrict cctkGH, const vect<int, dim> &indextype,
+              const vect<int, dim> &nghostzones) {
     for (int d = 0; d < dim; ++d)
       assert(indextype[d] == 0 || indextype[d] == 1);
     for (int d = 0; d < dim; ++d) {
       assert(nghostzones[d] >= 0);
       assert(nghostzones[d] <= cctkGH->cctk_nghostzones[d]);
     }
-    array<int, dim> imin, imax;
+    vect<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
       imax[d] = cctkGH->cctk_lsh[d] - indextype[d] -
                 (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     }
-    array<int, dim> ash;
+    vect<int, dim> ash;
     for (int d = 0; d < dim; ++d)
       ash[d] = cctkGH->cctk_ash[d] - indextype[d] -
                2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     *this = GF3D2layout(imin, imax, ash);
   }
-  GF3D2layout(const cGH *restrict cctkGH, const array<int, dim> &indextype)
+  GF3D2layout(const cGH *restrict cctkGH, const vect<int, dim> &indextype)
       : GF3D2layout(cctkGH, indextype,
                     {cctkGH->cctk_nghostzones[0], cctkGH->cctk_nghostzones[1],
                      cctkGH->cctk_nghostzones[2]}) {}
