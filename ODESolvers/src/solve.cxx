@@ -296,7 +296,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt / 2, rhs);
-    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) += dt / 2;
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
     // Step 2
