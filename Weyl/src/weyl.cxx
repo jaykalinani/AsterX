@@ -33,9 +33,11 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   //
 
   const array<int, dim> indextype = {0, 0, 0};
-  const array<int, dim> noghosts = {0, 0, 0};
   const GF3D2layout layout(cctkGH, indextype);
-  const GF3D2layout layout0(cctkGH, indextype, noghosts);
+  const array<int, dim> noghosts = {0, 0, 0};
+  vect<int, dim> imin0, imax0;
+  GridDescBase(cctkGH).box_int<0, 0, 0>(noghosts, imin0, imax0);
+  const GF3D2layout layout0(imin0, imax0);
 
   const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_gamma0_(
       GF3D2<const CCTK_REAL>(&layout, gxx),
