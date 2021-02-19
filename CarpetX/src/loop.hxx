@@ -549,8 +549,7 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
       : dj(di * (cctkGH->cctk_ash[0] - CI)),
         dk(dj * (cctkGH->cctk_ash[1] - CJ)),
         np(dk * (cctkGH->cctk_ash[2] - CK)), ni(cctkGH->cctk_lsh[0] - CI),
-        nj(cctkGH->cctk_lsh[1] - CJ), nk(cctkGH->cctk_lsh[2] - CK), ptr(ptr) {
-  }
+        nj(cctkGH->cctk_lsh[1] - CJ), nk(cctkGH->cctk_lsh[2] - CK), ptr(ptr) {}
   GF3D(const cGH *restrict cctkGH, mempool_t &mempool)
       : dj(di * (cctkGH->cctk_ash[0] - CI)),
         dk(dj * (cctkGH->cctk_ash[1] - CJ)),

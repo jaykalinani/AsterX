@@ -416,8 +416,8 @@ int OutputGH(const cGH *restrict cctkGH) {
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root)
-    CCTK_VINFO("OutputGH: iteration %d, time %f, run time %d s",
-               cctk_iteration, double(cctk_time), CCTK_RunTime());
+    CCTK_VINFO("OutputGH: iteration %d, time %f, run time %d s", cctk_iteration,
+               double(cctk_time), CCTK_RunTime());
 
   if (out_every > 0 && cctk_iteration % out_every == 0) {
     OutputMetadata(cctkGH);

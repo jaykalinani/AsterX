@@ -149,17 +149,16 @@ struct GridPtrDesc1 : GridDesc {
   }
 
   friend ostream &operator<<(ostream &os, const GridPtrDesc1 &p) {
-    os << "GridPtrDesc1{"
-       << (const GridDescBase &)p << ", "
+    os << "GridPtrDesc1{" << (const GridDescBase &)p << ", "
        << "cactus_offset:"
-       << "{" << p.cactus_offset.x << "," << p.cactus_offset.y << "," << p.cactus_offset.z << "}, "
+       << "{" << p.cactus_offset.x << "," << p.cactus_offset.y << ","
+       << p.cactus_offset.z << "}, "
        << "gimin:"
        << "{" << p.gimin[0] << "," << p.gimin[1] << "," << p.gimin[2] << "}, "
        << "gimax:"
        << "{" << p.gimax[0] << "," << p.gimax[1] << "," << p.gimax[2] << "}, "
        << "gash:"
-       << "{" << p.gash[0] << "," << p.gash[1] << "," << p.gash[2]
-       << "}";
+       << "{" << p.gash[0] << "," << p.gash[1] << "," << p.gash[2] << "}";
     return os;
   }
 };
@@ -183,8 +182,8 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,
                       const function<string()> &msg);
-void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
-                     int vi, int tl, const valid_t &required,
+void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
+                     int tl, const valid_t &required,
                      const function<string()> &msg);
 void poison_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
                     int tl);

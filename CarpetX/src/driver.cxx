@@ -1645,7 +1645,7 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->nghostzones = arraygroupdata.nghostzones;
     data->activetimelevels = arraygroupdata.activetimelevels;
   } else {
-    char* gname = CCTK_GroupName(gi);
+    char *gname = CCTK_GroupName(gi);
     CCTK_VERROR("Internal error: unexpected group type %d for group '%s'",
                 (int)group.grouptype, gname);
     free(gname);
