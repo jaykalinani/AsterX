@@ -32,24 +32,24 @@ USES FUNCTION Boundary_SelectGroupForBC
 
 
 
-CCTK_REAL state TYPE=gf TIMELEVELS=2
+CCTK_REAL state TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1}'
 {
   phi
   psi
 } "Scalar potential for wave equation"
 
-CCTK_REAL state_rhs TYPE=gf TAGS='checkpoint="no"'
+CCTK_REAL state_rhs TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
 {
   phi_rhs
   psi_rhs
 } "RHS of scalar potential for wave equation"
 
-CCTK_REAL energy TYPE=gf TAGS='checkpoint="no"'
+CCTK_REAL energy TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
 {
   eps
 } "Energy density for wave equation"
 
-CCTK_REAL err TYPE=gf TAGS='checkpoint="no"'
+CCTK_REAL err TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
 {
   phierr
   psierr
