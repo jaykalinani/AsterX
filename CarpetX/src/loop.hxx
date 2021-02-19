@@ -676,6 +676,8 @@ struct GF3D2layout {
         dj(di * ash[0]), dk(dj * ash[1]), np(dk * ash[2]),
         off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
   }
+  GF3D2layout(const vect<int, dim> &imin, const vect<int, dim> &imax)
+      : GF3D2layout(imin, imax, imax - imin) {}
   GF3D2layout(const cGH *restrict cctkGH, const vect<int, dim> &indextype,
               const vect<int, dim> &nghostzones) {
     for (int d = 0; d < dim; ++d)
