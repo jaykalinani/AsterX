@@ -58,16 +58,14 @@ using namespace std;
 // positive values often lead to segfault, exposing bugs.
 constexpr int undefined = (INT_MAX / 2 + 1) + 666;
 
-// Tile boxes, should be part of cGH
-struct TileBox {
-  array<int, dim> tile_min;
-  array<int, dim> tile_max;
-};
+#ifndef CCTK_HAVE_CGH_TILE
+#error                                                                         \
+    "The Cactus flesh does not support cctk_tile_min etc. in the cGH structure. Update the flesh."
+#endif
 
 struct thread_local_info_t {
   // TODO: store only amrex::MFIter here; recalculate other things from it
   cGH cctkGH;
-  TileBox tilebox;
   const MFPointer *restrict mfpointer;
   unsigned char padding[128]; // Prevent false sharing
 };
@@ -113,19 +111,10 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
     lbnd[d] = cctkGH->cctk_lbnd[d];
     ubnd[d] = cctkGH->cctk_ubnd[d];
   }
-#ifdef CCTK_HAVE_CGH_TILE
   for (int d = 0; d < dim; ++d) {
     tmin[d] = cctkGH->cctk_tile_min[d];
     tmax[d] = cctkGH->cctk_tile_max[d];
   }
-#else
-  const CarpetX::TileBox &restrict tilebox =
-      CarpetX::thread_local_info.at(thread_num)->tilebox;
-  for (int d = 0; d < dim; ++d) {
-    tmin[d] = tilebox.tile_min[d];
-    tmax[d] = tilebox.tile_max[d];
-  }
-#endif
   for (int d = 0; d < dim; ++d)
     lsh[d] = cctkGH->cctk_lsh[d];
   for (int d = 0; d < dim; ++d)
@@ -1015,7 +1004,7 @@ void leave_level_mode(cGH *restrict cctkGH,
 
 // Set cctkGH entries for local mode
 // TODO: Have separate cctkGH for each level, each local box, and each tile
-void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
+void enter_local_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata,
                       const MFPointer &mfp) {
   assert(in_level_mode(cctkGH));
@@ -1036,11 +1025,6 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = grid.bbox[2 * d + f];
-
-  for (int d = 0; d < dim; ++d) {
-    tilebox.tile_min[d] = grid.tmin[d];
-    tilebox.tile_max[d] = grid.tmax[d];
-  }
 
   // Grid function pointers
   const int num_groups = CCTK_NumGroups();
@@ -1086,14 +1070,9 @@ void enter_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
     // Ghost zones
     assert(cctkGH->cctk_nghostzones[d] >= 0);
     assert(2 * cctkGH->cctk_nghostzones[d] <= cctkGH->cctk_lsh[d]);
-
-    // Tiles
-    assert(tilebox.tile_min[d] >= 0);
-    assert(tilebox.tile_max[d] >= tilebox.tile_min[d]);
-    assert(tilebox.tile_max[d] <= cctkGH->cctk_lsh[d]);
   }
 }
-void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
+void leave_local_mode(cGH *restrict cctkGH,
                       const GHExt::LevelData &restrict leveldata,
                       const MFPointer &mfp) {
   assert(in_local_mode(cctkGH));
@@ -1112,10 +1091,6 @@ void leave_local_mode(cGH *restrict cctkGH, TileBox &restrict tilebox,
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       cctkGH->cctk_bbox[2 * d + f] = undefined;
-  for (int d = 0; d < dim; ++d) {
-    tilebox.tile_min[d] = undefined;
-    tilebox.tile_max[d] = undefined;
-  }
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
     cGroup group;
@@ -1146,10 +1121,9 @@ extern "C" void CarpetX_GetTileExtent(const void *restrict const cctkGH_,
     assert(cctkGH == threadGH);
   }
 
-  const TileBox &restrict tilebox = thread_local_info.at(thread_num)->tilebox;
   for (int d = 0; d < dim; ++d) {
-    tile_min[d] = tilebox.tile_min[d];
-    tile_max[d] = tilebox.tile_max[d];
+    tile_min[d] = cctkGH->cctk_tile_min[d];
+    tile_max[d] = cctkGH->cctk_tile_max[d];
   }
 }
 
@@ -1954,7 +1928,6 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       thread_local_info_t &restrict thread_info =
           *thread_local_info.at(thread_num);
       cGH *restrict const threadGH = &thread_info.cctkGH;
-      TileBox &restrict thread_tilebox = thread_info.tilebox;
       active_levels->loop([&](const auto &restrict leveldata) {
         enter_level_mode(threadGH, leveldata);
         const auto mfitinfo = amrex::MFItInfo().EnableTiling();
@@ -1962,9 +1935,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
              ++mfi) {
           const MFPointer mfp(mfi);
           thread_info.mfpointer = &mfp;
-          enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          enter_local_mode(threadGH, leveldata, mfp);
           CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          leave_local_mode(threadGH, leveldata, mfp);
           thread_info.mfpointer = nullptr;
         }
         leave_level_mode(threadGH, leveldata);
@@ -1986,15 +1959,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
             thread_local_info_t &restrict thread_info =
                 *thread_local_info.at(thread_num);
             cGH *restrict const threadGH = &thread_info.cctkGH;
-            TileBox &restrict thread_tilebox = thread_info.tilebox;
 
             const auto &restrict leveldata = ghext->leveldata.at(level);
             thread_info.mfpointer = &mfp;
 
             enter_level_mode(threadGH, leveldata);
-            enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+            enter_local_mode(threadGH, leveldata, mfp);
             CCTK_CallFunction(function, attribute, threadGH);
-            leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+            leave_local_mode(threadGH, leveldata, mfp);
             leave_level_mode(threadGH, leveldata);
             thread_info.mfpointer = nullptr;
           };
@@ -2023,16 +1995,15 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       thread_local_info_t &restrict thread_info =
           *thread_local_info.at(thread_num);
       cGH *restrict const threadGH = &thread_info.cctkGH;
-      TileBox &restrict thread_tilebox = thread_info.tilebox;
       active_levels->loop([&](const auto &restrict leveldata) {
         enter_level_mode(threadGH, leveldata);
         // No tiling on a GPU
         for (amrex::MFIter mfi(*leveldata.fab); mfi.isValid(); ++mfi) {
           const MFPointer mfp(mfi);
           thread_info.mfpointer = &mfp;
-          enter_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          enter_local_mode(threadGH, leveldata, mfp);
           CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, thread_tilebox, leveldata, mfp);
+          leave_local_mode(threadGH, leveldata, mfp);
           thread_info.mfpointer = nullptr;
         }
         leave_level_mode(threadGH, leveldata);
