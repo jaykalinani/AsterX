@@ -56,7 +56,7 @@ using namespace std;
 // Value for undefined cctkGH entries
 // Note: Don't use a negative value, which tends to leave bugs undetected. Large
 // positive values often lead to segfault, exposing bugs.
-constexpr int undefined = 666;
+constexpr int undefined = (INT_MAX / 2 + 1) + 666;
 
 // Tile boxes, should be part of cGH
 struct TileBox {
@@ -811,8 +811,6 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 enum class mode_t { unknown, local, level, global, meta };
 
 mode_t current_mode(const cGH *restrict cctkGH) {
-  // FIXME: this will fail if lsh actually has a value of 666 (which happens to
-  // be "undefined")
   if (cctkGH->cctk_lsh[0] != undefined)
     return mode_t::local;
   else if (cctkGH->cctk_gsh[0] != undefined)
