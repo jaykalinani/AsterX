@@ -422,8 +422,9 @@ public:
   }
 
   template <int CI, int CJ, int CK, typename F>
-  void loop(where_t where, const array<int, dim> &group_nghostzones,
-            const F &f) const {
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop(where_t where, const array<int, dim> &group_nghostzones,
+       const F &f) const {
     switch (where) {
     case where_t::everywhere:
       return loop_all<CI, CJ, CK>(group_nghostzones, f);
@@ -441,13 +442,15 @@ public:
   }
 
   template <int CI, int CJ, int CK, typename F>
-  void loop(where_t where, const F &f) const {
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(where_t where,
+                                                const F &f) const {
     loop<CI, CJ, CK>(where, nghostzones, f);
   }
 
   template <typename F>
-  void loop_idx(where_t where, const array<int, dim> &indextype,
-                const array<int, dim> &group_nghostzones, const F &f) const {
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_idx(where_t where, const array<int, dim> &indextype,
+           const array<int, dim> &group_nghostzones, const F &f) const {
     switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
     case 0b000:
       return loop<0, 0, 0>(where, group_nghostzones, f);
@@ -471,27 +474,29 @@ public:
   }
 
   template <typename F>
-  void loop_idx(where_t where, const array<int, dim> &indextype,
-                const F &f) const {
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_idx(where_t where, const array<int, dim> &indextype, const F &f) const {
     loop_idx(where, indextype, nghostzones, f);
   }
 };
 
 template <typename F>
-void loop_idx(const cGH *cctkGH, where_t where,
-              const array<int, dim> &indextype,
-              const array<int, dim> &nghostzones, const F &f) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+loop_idx(const cGH *cctkGH, where_t where, const array<int, dim> &indextype,
+         const array<int, dim> &nghostzones, const F &f) {
   GridDescBase(cctkGH).loop_idx(where, indextype, nghostzones, f);
 }
 
 template <typename F>
-void loop_idx(const cGH *cctkGH, where_t where,
-              const array<int, dim> &indextype, const F &f) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+loop_idx(const cGH *cctkGH, where_t where, const array<int, dim> &indextype,
+         const F &f) {
   GridDescBase(cctkGH).loop_idx(where, indextype, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
-void loop(const cGH *cctkGH, where_t where, const F &f) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(const cGH *cctkGH, where_t where,
+                                              const F &f) {
   GridDescBase(cctkGH).loop<CI, CJ, CK>(where, f);
 }
 
