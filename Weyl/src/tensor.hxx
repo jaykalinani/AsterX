@@ -223,10 +223,17 @@ public:
   T &operator()(int i) { return elts[ind(i)]; }
 
   template <typename U = T>
-
   vec3<remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 3>)> > >, dnup>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I)};
+  }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  vec3<remove_cv_t<
+           remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+       dnup>
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I)};
   }
 
   friend constexpr vec3<T, dnup> operator+(const vec3<T, dnup> &x) {
@@ -422,12 +429,20 @@ public:
   T &operator()(int i, int j) { return elts[ind(i, j)]; }
 
   template <typename U = T>
-
   mat3<remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 3>)> > >, dnup1,
        dnup2>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I),
             elts[3](I), elts[4](I), elts[5](I)};
+  }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  mat3<remove_cv_t<
+           remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+       dnup1, dnup2>
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
+            elts[3](layout, I), elts[4](layout, I), elts[5](layout, I)};
   }
 
   friend constexpr mat3<T, dnup1, dnup2>
@@ -633,10 +648,18 @@ public:
   T &operator()(int i) { return elts[ind(i)]; }
 
   template <typename U = T>
-
   vec4<remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 3>)> > >, dnup>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I), elts[3](I)};
+  }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  vec4<remove_cv_t<
+           remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 4>)> > >,
+       dnup>
+  operator()(const GF3D5layout &layout, const vect<int, 4> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
+            elts[3](layout, I)};
   }
 
   friend constexpr vec4<T, dnup> operator+(const vec4<T, dnup> &x) {
@@ -892,12 +915,22 @@ public:
   T &operator()(int i, int j) { return elts[ind(i, j)]; }
 
   template <typename U = T>
-
   mat4<remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 10>)> > >, dnup1,
        dnup2>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I), elts[4](I), elts[4](I),
             elts[5](I), elts[6](I), elts[7](I), elts[8](I), elts[9](I)};
+  }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  mat4<remove_cv_t<
+           remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+       dnup1, dnup2>
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
+            elts[4](layout, I), elts[4](layout, I), elts[5](layout, I),
+            elts[6](layout, I), elts[7](layout, I), elts[8](layout, I),
+            elts[9](layout, I)};
   }
 
   friend constexpr mat4<T, dnup1, dnup2>
@@ -1271,12 +1304,20 @@ public:
   }
 
   template <typename U = T>
-
   amat4<remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 6>)> > >, dnup1,
         dnup2>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I),
             elts[3](I), elts[4](I), elts[5](I)};
+  }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  amat4<remove_cv_t<
+            remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+        dnup1, dnup2>
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
+            elts[4](layout, I), elts[4](layout, I), elts[5](layout, I)};
   }
 
   friend constexpr amat4<T, dnup1, dnup2>
