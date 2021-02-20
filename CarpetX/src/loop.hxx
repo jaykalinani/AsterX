@@ -709,6 +709,17 @@ struct GF3D2layout {
       : GF3D2layout(cctkGH, indextype,
                     {cctkGH->cctk_nghostzones[0], cctkGH->cctk_nghostzones[1],
                      cctkGH->cctk_nghostzones[2]}) {}
+  bool operator==(const GF3D2layout &other) const {
+    bool iseq = true;
+#ifdef CCTK_DEBUG
+    iseq &= equal_to<vect<int, dim> >()(imin, other.imin) &&
+            equal_to<vect<int, dim> >()(imax, other.imax);
+    iseq &= equal_to<vect<int, dim> >()(ash, other.ash);
+#endif
+    iseq &= dj == other.dj && dk == other.dk && np == other.np;
+    iseq &= off == other.off;
+    return iseq;
+  }
   inline int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
@@ -727,7 +738,7 @@ struct GF3D2layout {
 template <typename T> struct GF3D2 {
   typedef T value_type;
   // TODO: disallow inf, nan
-  // Note: Keep `ptr` as first member, this improves speed a bit
+  // Note: Keep `ptr` as first member, this improves performance a bit (?)
   T *restrict ptr;
   GF3D2layout layout;
   GF3D2() = delete;
@@ -735,10 +746,10 @@ template <typename T> struct GF3D2 {
   GF3D2(GF3D2 &&) = default;
   GF3D2 &operator=(const GF3D2 &) = default;
   GF3D2 &operator=(GF3D2 &&) = default;
-  GF3D2(const GF3D2layout *restrict layout, T *restrict ptr)
-      : ptr(ptr), layout(*layout) {}
-  GF3D2(const GF3D2layout *restrict layout, mempool_t &mempool)
-      : GF3D2(layout, mempool.alloc<T>(layout->np)) {}
+  GF3D2(const GF3D2layout &layout, T *restrict ptr)
+      : ptr(ptr), layout(layout) {}
+  GF3D2(const GF3D2layout &layout, mempool_t &mempool)
+      : GF3D2(layout, mempool.alloc<T>(layout.np)) {}
   inline int offset(int i, int j, int k) const {
     return layout.offset(i, j, k);
   }
@@ -831,6 +842,42 @@ struct GF3D3ptr : GF3D3layout<NI, NJ, NK, OFF> {
   }
   constexpr T &restrict operator()(const vect<int, dim> &I) const {
     return (*this)(I[0], I[1], I[2]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+typedef GF3D2layout GF3D5layout;
+
+template <typename T> struct GF3D5 {
+#ifdef CCTK_DEBUG
+  GF3D5layout layout;
+#endif
+  T *restrict ptr;
+  GF3D5() = delete;
+  GF3D5(const GF3D5 &) = default;
+  GF3D5(GF3D5 &&) = default;
+  GF3D5 &operator=(const GF3D5 &) = default;
+  GF3D5 &operator=(GF3D5 &&) = default;
+  GF3D5(const GF3D2layout &layout, T *restrict ptr)
+      :
+#ifdef CCTK_DEBUG
+        layout(layout),
+#endif
+        ptr(ptr) {
+  }
+  GF3D5(const GF3D2layout &layout, mempool_t &mempool)
+      : GF3D5(layout, mempool.alloc<T>(layout.np)) {}
+  constexpr T &restrict operator()(const GF3D5layout &layout, int i, int j,
+                                   int k) const {
+#ifdef CCTK_DEBUG
+    assert(layout == this->layout);
+#endif
+    return ptr[layout.offset(i, j, k)];
+  }
+  constexpr T &restrict operator()(const GF3D5layout &layout,
+                                   const vect<int, dim> &I) const {
+    return (*this)(layout, I[0], I[1], I[2]);
   }
 };
 
