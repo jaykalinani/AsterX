@@ -431,13 +431,13 @@ TwoPunctures (CCTK_ARGUMENTS)
   }
 
   const int di = 1;
-  const int dj = di * (cctk_ash[0] + 1); // one extra grid point for vertex centering
-  const int dk = dj * (cctk_ash[1] + 1); // one extra grid point for vertex centering
-  const int np = dk * (cctk_ash[2] + 1); // one extra grid point for vertex centering
+  const int dj = di * cctk_ash[0];
+  const int dk = dj * cctk_ash[1];
+  const int np = dk * cctk_ash[2];
   CCTK_LOOP3_ALL(TwoPunctures, cctkGH, i,j,k)
       {
 
-        const int ind = i*di + j*dj + k*dk;
+        const int ind = CCTK_GFINDEX3D(cctkGH, i,j,k);
 
         CCTK_REAL xx, yy, zz;
         xx = vcoordx[ind] - center_offset[0];
