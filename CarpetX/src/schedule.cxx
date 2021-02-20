@@ -160,24 +160,22 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Global shape
   for (int d = 0; d < dim; ++d)
     gsh[d] = domain[orient(d, 1)] + 1 - domain[orient(d, 0)] +
-             (domain.type(d) == amrex::IndexType::CELL ? 1 : 0) +
-             2 * nghostzones[d];
+             (domain.type(d) == amrex::IndexType::CELL) + 2 * nghostzones[d];
 
   // Local shape
   for (int d = 0; d < dim; ++d)
     lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 +
-             (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0);
+             (fbx.type(d) == amrex::IndexType::CELL);
 
   // Allocated shape
   for (int d = 0; d < dim; ++d)
-    ash[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 +
-             (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0);
+    ash[d] = lsh[d];
 
   // Local extent
   for (int d = 0; d < dim; ++d) {
     lbnd[d] = fbx[orient(d, 0)] + nghostzones[d];
-    ubnd[d] = fbx[orient(d, 1)] +
-              (fbx.type(d) == amrex::IndexType::CELL ? 1 : 0) + nghostzones[d];
+    ubnd[d] = fbx[orient(d, 1)] + (fbx.type(d) == amrex::IndexType::CELL) +
+              nghostzones[d];
   }
 
   // Boundaries
@@ -214,8 +212,8 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
     const int levfac = 1 << leveldata.level;
-    // Offset between this level's and the coarsest level's origin as multiple
-    // of the grid spacing
+    // Offset between this level's and the coarsest level's origin as
+    // multiple of the grid spacing
     const int levoff = (1 - levfac) * (1 - 2 * nghostzones[d]);
     const int levoffdenom = 2;
     // Cell-centred coordinates on coarse level
@@ -248,7 +246,7 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
 
     // Tiles
     assert(tmin[d] >= 0);
-    assert(tmax[d] >= tmin[d]);
+    assert(tmin[d] <= tmax[d]);
     assert(tmax[d] <= lsh[d]);
   }
 }
