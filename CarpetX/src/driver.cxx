@@ -1628,6 +1628,8 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->gsh = cctkGH->cctk_gsh;
     data->lbnd = cctkGH->cctk_lbnd;
     data->ubnd = cctkGH->cctk_ubnd;
+    data->tile_min = cctkGH->cctk_tile_min;
+    data->tile_max = cctkGH->cctk_tile_max;
     data->bbox = cctkGH->cctk_bbox;
     data->nghostzones = cctkGH->cctk_nghostzones;
     data->activetimelevels = CCTK_ActiveTimeLevelsGI(cctkGH, gi);
