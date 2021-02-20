@@ -532,18 +532,19 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                    });
         }),
         // arXiv:1111.2177, (73)
-        allC(sqrt(pow2(HC) //
-                  + sum1([&] Z4C_INLINE(int x) {
-                      return MtC(x) * sum1([&] Z4C_INLINE(int y) {
-                               return gammat(x, y) * MtC(y);
-                             });
-                    })          //
-                  + pow2(Theta) //
-                  + 2 * sum1([&] Z4C_INLINE(int x) {
-                      return ZtC(x) * sum1([&] Z4C_INLINE(int y) {
-                               return gammat(x, y) * ZtC(y);
-                             });
-                    }))),
+        allC(
+            sqrt(fmax(T(0), pow2(HC) //
+                                + sum1([&] Z4C_INLINE(int x) {
+                                    return MtC(x) * sum1([&] Z4C_INLINE(int y) {
+                                             return gammat(x, y) * MtC(y);
+                                           });
+                                  })          //
+                                + pow2(Theta) //
+                                + 2 * sum1([&] Z4C_INLINE(int x) {
+                                    return ZtC(x) * sum1([&] Z4C_INLINE(int y) {
+                                             return gammat(x, y) * ZtC(y);
+                                           });
+                                  })))),
         // RHS
         // (1)
         chi_rhs(2 / T(3) * chi *

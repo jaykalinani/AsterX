@@ -339,118 +339,89 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T, int NI, int NJ, int NK>
+template <typename T>
 CCTK_ATTRIBUTE_NOINLINE void
-calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf0_,
-            const GF3D3ptr<T, NI, NJ, NK> &gf_,
-            const vec3<GF3D3ptr<T, NI, NJ, NK>, DN> &dgf_) {
+calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
+            const GF3D5<T> &gf0, const vec3<GF3D5<T>, DN> &dgf0,
+            const GF3D5layout &layout0) {
   DECLARE_CCTK_ARGUMENTS;
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
-    const auto val = gf0_(p.I);
-    gf_(p.I) = val;
-    const auto dval = deriv(gf0_, p.I, dx);
+    const auto val = gf1(p.I);
+    gf0(layout0, p.I) = val;
+    const auto dval = deriv(gf1, p.I, dx);
     for (int a = 0; a < 3; ++a)
-      dgf_(a)(p.I) = dval(a);
+      dgf0(a)(layout0, p.I) = dval(a);
   });
 }
 
-template <typename T, int NI, int NJ, int NK>
+template <typename T>
 CCTK_ATTRIBUTE_NOINLINE void
-calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf0_,
-             const GF3D3ptr<T, NI, NJ, NK> &gf_,
-             const vec3<GF3D3ptr<T, NI, NJ, NK>, DN> &dgf_,
-             const mat3<GF3D3ptr<T, NI, NJ, NK>, DN, DN> &ddgf_) {
+calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
+             const GF3D5<T> &gf0, const vec3<GF3D5<T>, DN> &dgf0,
+             const mat3<GF3D5<T>, DN, DN> &ddgf0, const GF3D5layout &layout0) {
   DECLARE_CCTK_ARGUMENTS;
 
   const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
-    const auto val = gf0_(p.I);
-    gf_(p.I) = val;
-    const auto dval = deriv(gf0_, p.I, dx);
+    const auto val = gf1(p.I);
+    gf0(layout0, p.I) = val;
+    const auto dval = deriv(gf1, p.I, dx);
     for (int a = 0; a < 3; ++a)
-      dgf_(a)(p.I) = dval(a);
-    const auto ddval = deriv2(gf0_, p.I, dx);
+      dgf0(a)(layout0, p.I) = dval(a);
+    const auto ddval = deriv2(gf1, p.I, dx);
     for (int a = 0; a < 3; ++a)
       for (int b = a; b < 3; ++b)
-        ddgf_(a, b)(p.I) = ddval(a, b);
+        ddgf0(a, b)(layout0, p.I) = ddval(a, b);
   });
 }
 
-template <typename T, int NI, int NJ, int NK, dnup_t dnup>
-CCTK_ATTRIBUTE_NOINLINE void
-calc_derivs(const cGH *restrict const cctkGH,
-            const vec3<GF3D2<const T>, dnup> &gf0_,
-            const vec3<GF3D3ptr<T, NI, NJ, NK>, dnup> &gf_,
-            const vec3<vec3<GF3D3ptr<T, NI, NJ, NK>, DN>, dnup> &dgf_) {
+template <typename T, dnup_t dnup>
+CCTK_ATTRIBUTE_NOINLINE void calc_derivs(
+    const cGH *restrict const cctkGH, const vec3<GF3D2<const T>, dnup> &gf0_,
+    const vec3<GF3D5<T>, dnup> &gf_, const vec3<vec3<GF3D5<T>, DN>, dnup> &dgf_,
+    const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
-    calc_derivs(cctkGH, gf0_(a), gf_(a), dgf_(a));
+    calc_derivs(cctkGH, gf0_(a), gf_(a), dgf_(a), layout);
 }
 
-template <typename T, int NI, int NJ, int NK, dnup_t dnup>
-CCTK_ATTRIBUTE_NOINLINE void
-calc_derivs2(const cGH *restrict const cctkGH,
-             const vec3<GF3D2<const T>, dnup> &gf0_,
-             const vec3<GF3D3ptr<T, NI, NJ, NK>, dnup> &gf_,
-             const vec3<vec3<GF3D3ptr<T, NI, NJ, NK>, DN>, dnup> &dgf_,
-             const vec3<mat3<GF3D3ptr<T, NI, NJ, NK>, DN, DN>, dnup> &ddgf_) {
+template <typename T, dnup_t dnup>
+CCTK_ATTRIBUTE_NOINLINE void calc_derivs2(
+    const cGH *restrict const cctkGH, const vec3<GF3D2<const T>, dnup> &gf0_,
+    const vec3<GF3D5<T>, dnup> &gf_, const vec3<vec3<GF3D5<T>, DN>, dnup> &dgf_,
+    const vec3<mat3<GF3D5<T>, DN, DN>, dnup> &ddgf_,
+    const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
-    calc_derivs2(cctkGH, gf0_(a), gf_(a), dgf_(a), ddgf_(a));
+    calc_derivs2(cctkGH, gf0_(a), gf_(a), dgf_(a), ddgf_(a), layout);
 }
 
-template <typename T, int NI, int NJ, int NK, dnup_t dnup1, dnup_t dnup2>
+template <typename T, dnup_t dnup1, dnup_t dnup2>
 CCTK_ATTRIBUTE_NOINLINE void
 calc_derivs(const cGH *restrict const cctkGH,
             const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
-            const mat3<GF3D3ptr<T, NI, NJ, NK>, dnup1, dnup2> &gf_,
-            const mat3<vec3<GF3D3ptr<T, NI, NJ, NK>, DN>, dnup1, dnup2> &dgf_) {
+            const mat3<GF3D5<T>, dnup1, dnup2> &gf_,
+            const mat3<vec3<GF3D5<T>, DN>, dnup1, dnup2> &dgf_,
+            const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
-      calc_derivs(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b));
+      calc_derivs(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), layout);
 }
 
-template <typename T, int NI, int NJ, int NK, dnup_t dnup1, dnup_t dnup2>
-CCTK_ATTRIBUTE_NOINLINE void calc_derivs2(
-    const cGH *restrict const cctkGH,
-    const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
-    const mat3<GF3D3ptr<T, NI, NJ, NK>, dnup1, dnup2> &gf_,
-    const mat3<vec3<GF3D3ptr<T, NI, NJ, NK>, DN>, dnup1, dnup2> &dgf_,
-    const mat3<mat3<GF3D3ptr<T, NI, NJ, NK>, DN, DN>, dnup1, dnup2> &ddgf_) {
-  for (int a = 0; a < 3; ++a)
-    for (int b = a; b < 3; ++b)
-      calc_derivs2(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), ddgf_(a, b));
-}
-
-template <typename T, int NI, int NJ, int NK>
+template <typename T, dnup_t dnup1, dnup_t dnup2>
 CCTK_ATTRIBUTE_NOINLINE void
-apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
-                  const vec3<GF3D2<const T>, UP> &gf_betaG_,
-                  const GF3D3ptr<T, NI, NJ, NK> &gf_rhs_) {
-  DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
-
-  const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
-
-  if (epsdiss == 0) {
-
-    loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
-      const vec3<CCTK_REAL, UP> betaG = gf_betaG_(p.I);
-      const vec3<CCTK_REAL, DN> dgf_upwind(deriv_upwind(gf_, p.I, betaG, dx));
-      gf_rhs_(p.I) += sum1([&](int x) { return betaG(x) * dgf_upwind(x); });
-    });
-
-  } else {
-
-    loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
-      const vec3<CCTK_REAL, UP> betaG = gf_betaG_(p.I);
-      const vec3<CCTK_REAL, DN> dgf_upwind(deriv_upwind(gf_, p.I, betaG, dx));
-      gf_rhs_(p.I) += sum1([&](int x) { return betaG(x) * dgf_upwind(x); }) //
-                      + epsdiss * diss(gf_, p.I, dx);
-    });
-  }
+calc_derivs2(const cGH *restrict const cctkGH,
+             const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
+             const mat3<GF3D5<T>, dnup1, dnup2> &gf_,
+             const mat3<vec3<GF3D5<T>, DN>, dnup1, dnup2> &dgf_,
+             const mat3<mat3<GF3D5<T>, DN, DN>, dnup1, dnup2> &ddgf_,
+             const GF3D5layout &layout) {
+  for (int a = 0; a < 3; ++a)
+    for (int b = a; b < 3; ++b)
+      calc_derivs2(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), ddgf_(a, b),
+                   layout);
 }
 
 } // namespace Z4c

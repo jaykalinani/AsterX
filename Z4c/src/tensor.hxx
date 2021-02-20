@@ -216,6 +216,15 @@ public:
       operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I)};
   }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  Z4C_INLINE
+      vec3<remove_cv_t<
+               remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+           dnup>
+      operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I)};
+  }
 
   friend constexpr Z4C_INLINE vec3<T, dnup> operator+(const vec3<T, dnup> &x) {
     return {+x.elts};
@@ -406,6 +415,16 @@ public:
       operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I),
             elts[3](I), elts[4](I), elts[5](I)};
+  }
+  // TODO: Only if T is GF3D5<U>
+  template <typename U = T>
+  Z4C_INLINE
+      mat3<remove_cv_t<
+               remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+           dnup1, dnup2>
+      operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+    return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
+            elts[3](layout, I), elts[4](layout, I), elts[5](layout, I)};
   }
 
   friend constexpr Z4C_INLINE mat3<T, dnup1, dnup2>

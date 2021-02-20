@@ -10,31 +10,31 @@ extern "C" void Z4c_ConstraintBoundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_ConstraintBoundaries;
 
   const array<int, dim> indextype = {0, 0, 0};
-  const GF3D2layout layout(cctkGH, indextype);
+  const GF3D2layout layout1(cctkGH, indextype);
 
-  const GF3D2<CCTK_REAL> gf_ZtCx_(&layout, ZtCx);
-  const GF3D2<CCTK_REAL> gf_ZtCy_(&layout, ZtCy);
-  const GF3D2<CCTK_REAL> gf_ZtCz_(&layout, ZtCz);
+  const GF3D2<CCTK_REAL> gf_ZtCx1(layout1, ZtCx);
+  const GF3D2<CCTK_REAL> gf_ZtCy1(layout1, ZtCy);
+  const GF3D2<CCTK_REAL> gf_ZtCz1(layout1, ZtCz);
 
-  const GF3D2<CCTK_REAL> gf_HC_(&layout, HC);
+  const GF3D2<CCTK_REAL> gf_HC1(layout1, HC);
 
-  const GF3D2<CCTK_REAL> gf_MtCx_(&layout, MtCx);
-  const GF3D2<CCTK_REAL> gf_MtCy_(&layout, MtCy);
-  const GF3D2<CCTK_REAL> gf_MtCz_(&layout, MtCz);
+  const GF3D2<CCTK_REAL> gf_MtCx1(layout1, MtCx);
+  const GF3D2<CCTK_REAL> gf_MtCy1(layout1, MtCy);
+  const GF3D2<CCTK_REAL> gf_MtCz1(layout1, MtCz);
 
-  const GF3D2<CCTK_REAL> gf_allC_(&layout, allC);
+  const GF3D2<CCTK_REAL> gf_allC1(layout1, allC);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCx_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCy_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCz_(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCx1(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCy1(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCz1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_HC_(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_HC1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCx_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCy_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCz_(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCx1(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCy1(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCz1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_allC_(p.I) = 0; });
+  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_allC1(p.I) = 0; });
 }
 
 } // namespace Z4c

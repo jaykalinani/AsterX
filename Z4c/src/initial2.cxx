@@ -24,32 +24,32 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
   };
 
   const array<int, dim> indextype = {0, 0, 0};
-  const GF3D2layout layout(cctkGH, indextype);
+  const GF3D2layout layout1(cctkGH, indextype);
 
-  const GF3D2<const CCTK_REAL> gf_gammatxx_(&layout, gammatxx);
-  const GF3D2<const CCTK_REAL> gf_gammatxy_(&layout, gammatxy);
-  const GF3D2<const CCTK_REAL> gf_gammatxz_(&layout, gammatxz);
-  const GF3D2<const CCTK_REAL> gf_gammatyy_(&layout, gammatyy);
-  const GF3D2<const CCTK_REAL> gf_gammatyz_(&layout, gammatyz);
-  const GF3D2<const CCTK_REAL> gf_gammatzz_(&layout, gammatzz);
+  const GF3D2<const CCTK_REAL> gf_gammatxx1(layout1, gammatxx);
+  const GF3D2<const CCTK_REAL> gf_gammatxy1(layout1, gammatxy);
+  const GF3D2<const CCTK_REAL> gf_gammatxz1(layout1, gammatxz);
+  const GF3D2<const CCTK_REAL> gf_gammatyy1(layout1, gammatyy);
+  const GF3D2<const CCTK_REAL> gf_gammatyz1(layout1, gammatyz);
+  const GF3D2<const CCTK_REAL> gf_gammatzz1(layout1, gammatzz);
 
-  const GF3D2<CCTK_REAL> gf_Gamtx_(&layout, Gamtx);
-  const GF3D2<CCTK_REAL> gf_Gamty_(&layout, Gamty);
-  const GF3D2<CCTK_REAL> gf_Gamtz_(&layout, Gamtz);
+  const GF3D2<CCTK_REAL> gf_Gamtx1(layout1, Gamtx);
+  const GF3D2<CCTK_REAL> gf_Gamty1(layout1, Gamty);
+  const GF3D2<CCTK_REAL> gf_Gamtz1(layout1, Gamtz);
 
   loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     // Load
-    const mat3<CCTK_REAL, DN, DN> gammat(gf_gammatxx_, gf_gammatxy_,
-                                         gf_gammatxz_, gf_gammatyy_,
-                                         gf_gammatyz_, gf_gammatzz_, p.I);
+    const mat3<CCTK_REAL, DN, DN> gammat(gf_gammatxx1, gf_gammatxy1,
+                                         gf_gammatxz1, gf_gammatyy1,
+                                         gf_gammatyz1, gf_gammatzz1, p.I);
 
     // Calculate Z4c variables (only Gamt)
     const mat3<CCTK_REAL, UP, UP> gammatu = gammat.inv(1);
 
     const mat3<vec3<CCTK_REAL, DN>, DN, DN> dgammat{
-        deriv(gf_gammatxx_, p.I, dx), deriv(gf_gammatxy_, p.I, dx),
-        deriv(gf_gammatxz_, p.I, dx), deriv(gf_gammatyy_, p.I, dx),
-        deriv(gf_gammatyz_, p.I, dx), deriv(gf_gammatzz_, p.I, dx),
+        deriv(gf_gammatxx1, p.I, dx), deriv(gf_gammatxy1, p.I, dx),
+        deriv(gf_gammatxz1, p.I, dx), deriv(gf_gammatyy1, p.I, dx),
+        deriv(gf_gammatyz1, p.I, dx), deriv(gf_gammatzz1, p.I, dx),
     };
 
     const vec3<mat3<CCTK_REAL, DN, DN>, DN> Gammatl = calc_gammal(dgammat);
@@ -61,7 +61,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
     });
 
     // Store
-    Gamt.store(gf_Gamtx_, gf_Gamty_, gf_Gamtz_, p.I);
+    Gamt.store(gf_Gamtx1, gf_Gamty1, gf_Gamtz1, p.I);
   });
 }
 
