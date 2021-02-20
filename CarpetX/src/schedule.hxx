@@ -139,8 +139,8 @@ struct GridPtrDesc1 : GridDesc {
   }
   template <typename T>
   T &idx(const amrex::Array4<T> &vars, int i, int j, int k, int vi) const {
-    return vars(cactus_offset.x + gimin[0] + i, cactus_offset.y + gimin[1] + i,
-                cactus_offset.z + gimin[2] + j, vi);
+    return vars(cactus_offset.x + gimin[0] + i, cactus_offset.y + gimin[1] + j,
+                cactus_offset.z + gimin[2] + k, vi);
   }
 
   template <typename T>
