@@ -215,6 +215,7 @@ public:
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_all(const array<int, dim> &group_nghostzones, const F &f) const {
+    // TODO: call box_all instead
     const array<int, dim> offset{CI, CJ, CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
@@ -231,6 +232,7 @@ public:
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_int(const array<int, dim> &group_nghostzones, const F &f) const {
+    // TODO: call box_int instead
     const array<int, dim> offset{CI, CJ, CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
