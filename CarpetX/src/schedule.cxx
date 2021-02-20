@@ -424,9 +424,9 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
 #pragma omp critical
     {
       CCTK_VINFO(
-          "%s: Grid function \"%s\" has %td nans on refinement level %d, time "
-          "level %d, in box [%d,%d,%d]:[%d,%d,%d] (%g,%g,%g):(%g,%g,%g); "
-          "expected valid %s",
+          "%s: Grid function \"%s\" has %td nans or infinities on refinement "
+          "level %d, time level %d, in box [%d,%d,%d]:[%d,%d,%d] "
+          "(%g,%g,%g):(%g,%g,%g); expected valid %s",
           msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
           size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
           nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2],
@@ -469,11 +469,11 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
               });
       }
 
-      CCTK_VERROR(
-          "%s: Grid function \"%s\" has nans on refinement level %d, time "
-          "level %d; expected valid %s",
-          msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-          leveldata.level, tl, string(groupdata.valid.at(tl).at(vi)).c_str());
+      CCTK_VERROR("%s: Grid function \"%s\" has nans or infinities on "
+                  "refinement level %d, time level %d; expected valid %s",
+                  msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
+                  leveldata.level, tl,
+                  string(groupdata.valid.at(tl).at(vi)).c_str());
     }
   }
 }
