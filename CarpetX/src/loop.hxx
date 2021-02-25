@@ -177,13 +177,13 @@ public:
     } else {
       // At least one direction is reversed; loop from the inside out
 
-      for (int k0 = 0; k0 < imax[2] - imin[2]; ++k0) {
-        for (int j0 = 0; j0 < imax[1] - imin[1]; ++j0) {
+      for (int k0 = imin[2]; k0 < imax[2]; ++k0) {
+        for (int j0 = imin[1]; j0 < imax[1]; ++j0) {
 #pragma omp simd
-          for (int i0 = 0; i0 < imax[0] - imin[0]; ++i0) {
-            const int i = bforward[0] ? imin[0] + i0 : imax[0] - 1 - i0;
-            const int j = bforward[1] ? imin[1] + j0 : imax[1] - 1 - j0;
-            const int k = bforward[2] ? imin[2] + k0 : imax[2] - 1 - k0;
+          for (int i0 = imin[0]; i0 < imax[0]; ++i0) {
+            const int i = bforward[0] ? i0 : imax[0] - 1 - (i0 - imin[0]);
+            const int j = bforward[1] ? j0 : imax[1] - 1 - (j0 - imin[1]);
+            const int k = bforward[2] ? k0 : imax[2] - 1 - (k0 - imin[2]);
             kernel(i, j, k);
           }
         }
