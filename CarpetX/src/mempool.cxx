@@ -16,6 +16,8 @@ static inline int omp_in_parallel(void) { return 0; }
 
 namespace Loop {
 
+const size_t cacheline_size = 64;
+
 mempool_t::mempool_t() : arena_size(1024 * 1024), total_size(0) {}
 
 mempool_t::mempool_t(mempool_t &&mp) : mempool_t() { swap(*this, mp); }
@@ -45,41 +47,43 @@ void mempool_t::reset() {
 }
 
 unsigned char *restrict mempool_t::alloc_bytes(size_t count) {
-  // Align request to cache line size
-  count &= ~64;
-  // Initialize arena if uninitialized
-  if (arena.empty()) {
-    arena.reserve(arena_size);
-  }
+  // Handle empty objects
+  if (count == 0)
+    return nullptr;
+  // Align count to cache line size
+  count = (count + cacheline_size - 1) / cacheline_size * cacheline_size;
   // Ensure the new object fits into the arena
   if (!(arena.size() + count <= arena.capacity())) {
-    old_arenas.push_back(move(arena));
+    if (!arena.empty())
+      old_arenas.push_back(move(arena));
     arena_size = max(count, 2 * arena_size);
     arena.reserve(arena_size);
   }
+  // Check alignment
+  const auto ptr = arena.data() + arena.size();
+  if (uintptr_t(ptr) % cacheline_size != 0)
+    CCTK_VERROR("A large system memory allocation returned an unaligned "
+                "pointer (pointer=0x%p, required alignment=%td)",
+                arena.data(), cacheline_size);
   // Allocate
   assert(arena.size() + count <= arena.capacity());
-  auto ptr = arena.data() + arena.size();
   auto old_data = arena.data();
   auto old_size = arena.size();
   arena.resize(arena.size() + count);
   assert(arena.data() == old_data);
+  assert(arena.size() == old_size + count);
   assert(ptr + count <= arena.data() + arena.size());
   total_size += count;
   return ptr;
 }
 
+// TODO: Keep a global mempool here, not in the callers
 mempool_t &restrict mempool_set_t::get_mempool() {
-  if (!have_mempools) {
 #pragma omp critical(CarpetX_mempool_get)
-    {
-      if (!have_mempools) {
-        const int max_threads = omp_get_max_threads();
-        mempools.resize(max_threads);
-#pragma omp flush
-        have_mempools = true;
-      }
-    }
+  if (!have_mempools) {
+    const int max_threads = omp_get_max_threads();
+    mempools.resize(max_threads);
+    have_mempools = true;
   }
   const int thread_num = omp_get_thread_num();
   mempool_t &restrict mempool = mempools.at(thread_num);
