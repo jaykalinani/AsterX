@@ -86,7 +86,7 @@ struct MFPointer {
   MFPointer &operator=(const MFPointer &) = default;
   MFPointer &operator=(MFPointer &&) = default;
   MFPointer(const amrex::MFIter &mfi)
-      : m_index(mfi.index()), m_fabbox(mfi.fabbox()),
+      : m_index((assert(mfi.isValid()), mfi.index())), m_fabbox(mfi.fabbox()),
         m_growntilebox(mfi.growntilebox()), m_validbox(mfi.validbox()),
         m_nGrowVect(mfi.theFabArrayBase().nGrowVect()) {}
 

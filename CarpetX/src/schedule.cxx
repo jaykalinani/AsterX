@@ -970,19 +970,16 @@ void enter_level_mode(cGH *restrict cctkGH,
   DECLARE_CCTK_PARAMETERS;
   assert(in_global_mode(cctkGH));
 
-  // Global shape
-  const auto mfitinfo = amrex::MFItInfo().EnableTiling(
-      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-  amrex::MFIter mfi(*leveldata.fab, mfitinfo);
-  const MFPointer mfp(mfi);
-  const GridPtrDesc grid(leveldata, mfp);
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_gsh[d] = grid.gsh[d];
-
+  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
+    // Global shape
+    assert(cctkGH->cctk_nghostzones[d] != undefined);
+    assert(domain.type(d) == amrex::IndexType::CELL);
+    cctkGH->cctk_gsh[d] = domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 1 +
+                          2 * cctkGH->cctk_nghostzones[d];
     // The refinement factor over the top level (coarsest) grid
     const int levfac = 1 << leveldata.level;
     cctkGH->cctk_levfac[d] = levfac;
@@ -1359,7 +1356,7 @@ int Initialise(tFleshConfig *config) {
         dx[d] = cctkGH->cctk_delta_space[d];
         x0[d] =
             cctkGH->cctk_origin_space[d] - (1 - 2 * nghostzones[d]) * dx[d] / 2;
-        x1[d] = x0[d] + (gsh[d] - 2 * nghostzones[d]) * dx[d];
+        x1[d] = x0[d] + (gsh[d] - 1 - 2 * nghostzones[d]) * dx[d];
       }
 #pragma omp critical
       {
@@ -1965,8 +1962,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
              ++mfi) {
           const MFPointer mfp(mfi);
 
-          const auto task = [level = leveldata.level, mfp, function,
-                             attribute] {
+          auto task = [level = leveldata.level, mfp, function, attribute] {
             const int thread_num = omp_get_thread_num();
             thread_local_info_t &restrict thread_info =
                 *thread_local_info.at(thread_num);
@@ -1980,7 +1976,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
             leave_local_mode(threadGH, leveldata, mfp);
             leave_level_mode(threadGH, leveldata);
           };
-          tasks.emplace_back(task);
+          tasks.emplace_back(move(task));
         }
       });
 
