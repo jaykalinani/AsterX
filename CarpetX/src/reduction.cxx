@@ -131,7 +131,7 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     unique_ptr<amrex::iMultiFab> finemask_imfab;
 
     warn_if_invalid(groupdata, vi, tl, make_valid_int(),
-                    [] { return "Before reduction"; });
+                    []() { return "Before reduction"; });
 
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
     const CCTK_REAL *restrict const x01 = geom.ProbLo();

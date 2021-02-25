@@ -425,7 +425,7 @@ void InputSilo(const cGH *restrict const cctkGH) {
           if (recv_this_fab)
             for (int vi = 0; vi < numvars; ++vi)
               groupdata.valid.at(tl).at(vi).set(
-                  valid_t(true), [] { return "read from file"; });
+                  valid_t(true), []() { return "read from file"; });
           interval_wait = nullptr;
 
         } // for component

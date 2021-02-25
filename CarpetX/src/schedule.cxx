@@ -1524,7 +1524,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
           const int ntls = groupdata.mfab.size();
           for (int tl = 0; tl < ntls; ++tl) {
             for (int vi = 0; vi < groupdata.numvars; ++vi) {
-              groupdata.valid.at(tl).at(vi).set(valid_t(), [] {
+              groupdata.valid.at(tl).at(vi).set(valid_t(), []() {
                 return "InvalidateTimelevels (invalidate all "
                        "non-checkpointed variables)";
               });
@@ -1543,7 +1543,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
         for (int tl = 0; tl < ntls; ++tl) {
           for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
             // TODO: handle this more nicely
-            arraygroupdata.valid.at(tl).at(vi).set_int(false, [] {
+            arraygroupdata.valid.at(tl).at(vi).set_int(false, []() {
               return "InvalidateTimelevels (invalidate all non-checkpointed "
                      "variables)";
             });
@@ -1581,7 +1581,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
           rotate(groupdata.valid.begin(), groupdata.valid.end() - 1,
                  groupdata.valid.end());
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            groupdata.valid.at(0).at(vi).set(valid_t(), [] {
+            groupdata.valid.at(0).at(vi).set(valid_t(), []() {
               return "CycletimeLevels (invalidate current time level)";
             });
             poison_invalid(groupdata, vi, 0);
@@ -1589,7 +1589,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
         }
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            check_valid(groupdata, vi, tl, [&]() { return "CycleTimelevels"; });
+            check_valid(groupdata, vi, tl, []() { return "CycleTimelevels"; });
       });
     } else { // CCTK_ARRAY or CCTK_SCALAR
 
@@ -1603,7 +1603,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
         rotate(arraygroupdata.valid.begin(), arraygroupdata.valid.end() - 1,
                arraygroupdata.valid.end());
         for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
-          arraygroupdata.valid.at(0).at(vi).set_int(false, [] {
+          arraygroupdata.valid.at(0).at(vi).set_int(false, []() {
             return "CycletimeLevels (invalidate current time level)";
           });
           poison_invalid(arraygroupdata, vi, 0);
@@ -1612,7 +1612,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       for (int tl = 0; tl < ntls; ++tl)
         for (int vi = 0; vi < arraygroupdata.numvars; ++vi)
           check_valid(arraygroupdata, vi, tl,
-                      [&]() { return "CycleTimelevels"; });
+                      []() { return "CycleTimelevels"; });
     }
 
   } // for gi
@@ -1796,14 +1796,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         active_levels->loop([&](const auto &restrict leveldata) {
           const auto &restrict groupdata = *leveldata.groupdata.at(rd.gi);
           const valid_t &need = rd.valid;
-          error_if_invalid(groupdata, rd.vi, rd.tl, need, [&] {
+          error_if_invalid(groupdata, rd.vi, rd.tl, need, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
                 << "::" << attribute->routine << " checking input";
             return buf.str();
           });
-          check_valid(groupdata, rd.vi, rd.tl, [&] {
+          check_valid(groupdata, rd.vi, rd.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -1816,14 +1816,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         const auto &restrict arraygroupdata =
             *ghext->globaldata.arraygroupdata.at(rd.gi);
         const valid_t &need = rd.valid;
-        error_if_invalid(arraygroupdata, rd.vi, rd.tl, need, [&] {
+        error_if_invalid(arraygroupdata, rd.vi, rd.tl, need, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
               << "::" << attribute->routine << " checking input";
           return buf.str();
         });
-        check_valid(arraygroupdata, rd.vi, rd.tl, [&] {
+        check_valid(arraygroupdata, rd.vi, rd.tl, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
@@ -2227,15 +2227,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             // Synchronization only uses the interior
-            error_if_invalid(groupdata, vi, tl, make_valid_int(),
-                             [] { return "SyncGroupsByDirI before syncing"; });
-            groupdata.valid.at(tl).at(vi).set_and(~make_valid_ghosts(), [] {
+            error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
+              return "SyncGroupsByDirI before syncing";
+            });
+            groupdata.valid.at(tl).at(vi).set_and(~make_valid_ghosts(), []() {
               return "SyncGroupsByDirI before syncing: Mark ghost zones as "
                      "invalid";
             });
             poison_invalid(groupdata, vi, tl);
             check_valid(groupdata, vi, tl,
-                        [] { return "SyncGroupsByDirI before syncing"; });
+                        []() { return "SyncGroupsByDirI before syncing"; });
           }
           {
             static Timer timer("Sync::FillPatchSingleLevel");
@@ -2246,7 +2247,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                 physbc, 0);
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            groupdata.valid.at(tl).at(vi).set_ghosts(true, [] {
+            groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
                      "valid";
             });
@@ -2269,21 +2270,20 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
 #warning "TODO: interpolation does not require boundaries: also for regridding!"
-            error_if_invalid(coarsegroupdata, vi, tl, make_valid_int(), [] {
-              return "SyncGroupsByDirI on coarse level "
-                     "before prolongation";
+            error_if_invalid(coarsegroupdata, vi, tl, make_valid_int(), []() {
+              return "SyncGroupsByDirI on coarse level before prolongation";
             });
-            error_if_invalid(groupdata, vi, tl, make_valid_int(), [] {
+            error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             poison_invalid(groupdata, vi, tl);
-            check_valid(coarsegroupdata, vi, tl, [] {
+            check_valid(coarsegroupdata, vi, tl, []() {
               return "SyncGroupsByDirI on coarse level before prolongation";
             });
-            check_valid(groupdata, vi, tl, [] {
+            check_valid(groupdata, vi, tl, []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
-            groupdata.valid.at(tl).at(vi).set_ghosts(false, [] {
+            groupdata.valid.at(tl).at(vi).set_ghosts(false, []() {
               return "SyncGroupsByDirI before prolongation: Mark ghosts as "
                      "invalid";
             });
@@ -2300,7 +2300,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(
-                true, [] { return "SyncGroupsByDirI after prolongation"; });
+                true, []() { return "SyncGroupsByDirI after prolongation"; });
           }
         } // if not all_invalid
       }   // for tl
@@ -2309,7 +2309,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           poison_invalid(groupdata, vi, tl);
           check_valid(groupdata, vi, tl,
-                      [&]() { return "SyncGroupsByDirI after syncing"; });
+                      []() { return "SyncGroupsByDirI after syncing"; });
         }
       }
     }
@@ -2349,10 +2349,10 @@ void Reflux(int level) {
 
       // Check coarse and fine data and fluxes are valid
       for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        error_if_invalid(finegroupdata, vi, tl, make_valid_int(), [] {
+        error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
           return "Reflux before refluxing: Fine level data";
         });
-        error_if_invalid(groupdata, vi, tl, make_valid_int(), [] {
+        error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
           return "Reflux before refluxing: Coarse level data";
         });
       }
@@ -2361,12 +2361,12 @@ void Reflux(int level) {
         const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
         const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
         for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-          error_if_invalid(flux_finegroupdata, vi, tl, make_valid_int(), [&] {
+          error_if_invalid(flux_finegroupdata, vi, tl, make_valid_int(), [&]() {
             ostringstream buf;
             buf << "Reflux: Fine level flux in direction " << d;
             return buf.str();
           });
-          error_if_invalid(flux_groupdata, vi, tl, make_valid_int(), [&] {
+          error_if_invalid(flux_groupdata, vi, tl, make_valid_int(), [&]() {
             ostringstream buf;
             buf << "Reflux: Coarse level flux in direction " << d;
             return buf.str();
@@ -2388,9 +2388,8 @@ void Reflux(int level) {
                                  groupdata.numvars, geom);
 
       for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        check_valid(finegroupdata, vi, tl, [&]() {
-          return "Reflux after refluxing: Fine level data";
-        });
+        check_valid(finegroupdata, vi, tl,
+                    []() { return "Reflux after refluxing: Fine level data"; });
       }
     }
   } // for gi
@@ -2441,17 +2440,18 @@ void Restrict(int level, const vector<int> &groups) {
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
 
         // Restriction only uses the interior
-        error_if_invalid(finegroupdata, vi, tl, make_valid_int(), [] {
+        error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
           return "Restrict on fine level before restricting";
         });
         poison_invalid(finegroupdata, vi, tl);
-        check_valid(finegroupdata, vi, tl,
-                    [] { return "Restrict on fine level before restricting"; });
-        error_if_invalid(groupdata, vi, tl, make_valid_int(), [] {
+        check_valid(finegroupdata, vi, tl, []() {
+          return "Restrict on fine level before restricting";
+        });
+        error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
           return "Restrict on coarse level before restricting";
         });
         poison_invalid(groupdata, vi, tl);
-        check_valid(groupdata, vi, tl, [] {
+        check_valid(groupdata, vi, tl, []() {
           return "Restrict on coarse level before restricting";
         });
       }
@@ -2486,9 +2486,9 @@ void Restrict(int level, const vector<int> &groups) {
       // TODO: Also remember old why_valid for interior?
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         groupdata.valid.at(tl).at(vi).set(make_valid_int(),
-                                          [] { return "Restrict"; });
+                                          []() { return "Restrict"; });
         poison_invalid(groupdata, vi, tl);
-        check_valid(groupdata, vi, tl, [&]() {
+        check_valid(groupdata, vi, tl, []() {
           return "Restrict on coarse level after restricting";
         });
       }

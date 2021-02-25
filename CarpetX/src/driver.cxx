@@ -587,7 +587,7 @@ void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
   auto &restrict groupdata = *leveldata.groupdata.at(gi);
   // Ensure the error estimate has been set
   error_if_invalid(groupdata, vi, tl, make_valid_int(),
-                   [] { return "ErrorEst"; });
+                   []() { return "ErrorEst"; });
   auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
   for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
@@ -678,7 +678,7 @@ void SetupGlobals() {
     for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
       arraygroupdata.data.at(tl).resize(arraygroupdata.numvars *
                                         arraygroupdata.array_size);
-      why_valid_t why([] { return "SetupGlobals"; });
+      why_valid_t why([]() { return "SetupGlobals"; });
       arraygroupdata.valid.at(tl).resize(arraygroupdata.numvars, why);
       for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
         // TODO: decide that valid_bnd == false always and rely on
@@ -688,12 +688,12 @@ void SetupGlobals() {
         valid.valid_outer = true;
         valid.valid_ghosts = true;
         arraygroupdata.valid.at(tl).at(vi).set(valid,
-                                               [] { return "SetupGlobals"; });
+                                               []() { return "SetupGlobals"; });
 
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
         poison_invalid(arraygroupdata, vi, tl);
-        check_valid(arraygroupdata, vi, tl, [] { return "SetupGlobals"; });
+        check_valid(arraygroupdata, vi, tl, []() { return "SetupGlobals"; });
       }
     }
   }
@@ -852,7 +852,7 @@ void CactusAmrCore::MakeNewLevelFromScratch(
 #pragma omp critical
     CCTK_VINFO("MakeNewLevelFromScratch level %d", level);
 
-  SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromScratch"; });
+  SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromScratch"; });
 
   if (saved_cctkGH) {
     assert(!active_levels);
@@ -875,7 +875,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
   assert(!use_subcycling_wip);
   assert(level > 0);
 
-  SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromCoarse"; });
+  SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromCoarse"; });
 
   // Prolongate
   assert(!use_subcycling_wip);
@@ -910,10 +910,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
 
     groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
-      why_valid_t why([] { return "MakeNewLevelFromCoarse"; });
+      why_valid_t why([]() { return "MakeNewLevelFromCoarse"; });
       groupdata.valid.at(tl).resize(groupdata.numvars, why);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
+        groupdata.valid.at(tl).at(vi).set(valid_t(false), []() {
           return "MakeNewLevelFromCoarse: not prolongated because variable is "
                  "not evolved";
         });
@@ -921,10 +921,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
       if (tl < prolongate_tl) {
         // Expect coarse grid data to be valid
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), [] {
+          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
-          check_valid(coarsegroupdata, vi, tl, [] {
+          check_valid(coarsegroupdata, vi, tl, []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
         }
@@ -934,7 +934,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
             ghext->amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
             interpolator, bcs, 0);
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(tl).at(vi).set(make_valid_int(), [] {
+          groupdata.valid.at(tl).at(vi).set(make_valid_int(), []() {
             return "MakeNewLevelFromCoarse after prolongation";
           });
       }
@@ -1022,7 +1022,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<amrex::MultiFab>(
           gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
-      vector<why_valid_t> valid(groupdata.numvars, why_valid_t([] {
+      vector<why_valid_t> valid(groupdata.numvars, why_valid_t([]() {
                                   return "RemakeLevel: not prolongated/copied "
                                          "because variable is not evolved";
                                 }));
@@ -1046,11 +1046,11 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
       if (tl < prolongate_tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(),
-                           [] { return "RemakeLevel before prolongation"; });
+                           []() { return "RemakeLevel before prolongation"; });
           error_if_invalid(groupdata, vi, tl, make_valid_all(),
-                           [] { return "RemakeLevel before prolongation"; });
+                           []() { return "RemakeLevel before prolongation"; });
           check_valid(coarsegroupdata, vi, tl,
-                      [] { return "RemakeLevel before prolongation"; });
+                      []() { return "RemakeLevel before prolongation"; });
           // We cannot call this function since it would try to
           // traverse the old grid function with the new grid
           // structure.
@@ -1066,7 +1066,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                            reffact, interpolator, bcs, 0);
 
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          valid.at(vi) = why_valid_t(make_valid_int(), [] {
+          valid.at(vi) = why_valid_t(make_valid_int(), []() {
             return "RemakeLevel after prolongation";
           });
       }
@@ -1081,7 +1081,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         poison_invalid(groupdata, vi, tl);
         check_valid(groupdata, vi, tl,
-                    [] { return "RemakeLevel after prolongation"; });
+                    []() { return "RemakeLevel after prolongation"; });
       }
     } // for tl
 
