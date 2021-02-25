@@ -178,13 +178,12 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
 
   // Global shape
   for (int d = 0; d < dim; ++d)
-    gsh[d] = domain[orient(d, 1)] + 1 - domain[orient(d, 0)] +
-             (domain.type(d) == amrex::IndexType::CELL) + 2 * nghostzones[d];
+    gsh[d] = domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 1 +
+             2 * nghostzones[d];
 
   // Local shape
   for (int d = 0; d < dim; ++d)
-    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 +
-             (fbx.type(d) == amrex::IndexType::CELL);
+    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 + 1;
 
   // Allocated shape
   for (int d = 0; d < dim; ++d)
@@ -193,8 +192,7 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Local extent
   for (int d = 0; d < dim; ++d) {
     lbnd[d] = fbx[orient(d, 0)] + nghostzones[d];
-    ubnd[d] = fbx[orient(d, 1)] + (fbx.type(d) == amrex::IndexType::CELL) +
-              nghostzones[d];
+    ubnd[d] = fbx[orient(d, 1)] + 1 + nghostzones[d];
   }
 
   // Boundaries
@@ -218,12 +216,12 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
     tmin[d] = gbx[orient(d, 0)] - fbx[orient(d, 0)];
-    // the allocated box is 1 vertex larger than the number of cells, and AMReX
-    // assigns this extra vertex to the final tile
+    // For vertex centred grids, the allocated box is 1 vertex larger
+    // than the number of cells, and AMReX assigns this extra vertex
+    // to the final tile
+    assert(gbx[orient(d, 1)] <= fbx[orient(d, 1)]);
     tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)] +
-              (fbx.type(d) == amrex::IndexType::CELL
-                   ? gbx[orient(d, 1)] == fbx[orient(d, 1)]
-                   : 0);
+              (gbx[orient(d, 1)] == fbx[orient(d, 1)]);
   }
 
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
