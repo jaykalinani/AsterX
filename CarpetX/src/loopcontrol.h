@@ -59,19 +59,19 @@ GridDescBase_t LC_CreateGridDesc(const cGH *cctkGH);
 
 #define CCTK_LOOP3_ALL(name, cctki3_cctkGH_, i, j, k)                          \
   do {                                                                         \
-    const GridDescBase_t grid = LC_CreateGridDesc(cctki3_cctkGH_);             \
+    const GridDescBase_t lc_grid = LC_CreateGridDesc(cctki3_cctkGH_);          \
     int imin[LC_DIM] CCTK_ATTRIBUTE_UNUSED,                                    \
         imax[LC_DIM] CCTK_ATTRIBUTE_UNUSED,                                    \
         inormal[LC_DIM] CCTK_ATTRIBUTE_UNUSED;                                 \
-    const int offset[LC_DIM] = {1, 1, 1};                                      \
+    const int lc_offset[LC_DIM] = {0, 0, 0};                                   \
     for (int d = 0; d < LC_DIM; ++d) {                                         \
-      imin[d] = grid.tmin[d];                                                  \
-      imax[d] = grid.tmax[d] + (grid.tmax[d] >= grid.lsh[d] ? offset[d] : 0);  \
-      if (imax[d] > grid.lsh[d] + offset[d])                                   \
-        imax[d] = grid.lsh[d] + offset[d];                                     \
+      imin[d] = lc_grid.tmin[d];                                               \
+      imax[d] = lc_grid.tmax[d];                                               \
+      if (imax[d] > lc_grid.lsh[d] - lc_offset[d])                             \
+        imax[d] = lc_grid.lsh[d] - lc_offset[d];                               \
       inormal[d] = 0;                                                          \
     }                                                                          \
-    LC_LOOP3_BOX(name, i, j, k, grid, imin, imax, inormal) {
+    LC_LOOP3_BOX(name, i, j, k, lc_grid, imin, imax, inormal) {
 
 #define CCTK_ENDLOOP3_ALL(name)                                                \
   }                                                                            \
