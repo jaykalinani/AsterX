@@ -940,9 +940,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
       }
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        poison_invalid(groupdata, vi, tl);
-        check_valid(groupdata, vi, tl,
-                    [] { return "MakeNewLevelFromCoarse after prolongation"; });
+        // Already poisoned by SetupLevel
+        check_valid(groupdata, vi, tl, []() {
+          return "MakeNewLevelFromCoarse after prolongation";
+        });
       }
     } // for tl
 
@@ -1026,22 +1027,8 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                                   return "RemakeLevel: not prolongated/copied "
                                          "because variable is not evolved";
                                 }));
-      if (poison_undefined_values) {
-        // Set new grid functions to nan
-        auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
-#pragma omp parallel
-        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi) {
-          GridPtrDesc1 grid(groupdata, mfi);
-          const amrex::Array4<CCTK_REAL> &vars = mfab->array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            const GF3D1<CCTK_REAL> &ptr_ = grid.gf3d(vars, vi);
-            grid.loop_idx(
-                where_t::everywhere, groupdata.indextype, groupdata.nghostzones,
-                [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
-          }
-        }
-      }
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        poison_invalid(groupdata, vi, tl);
 
       if (tl < prolongate_tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
@@ -1079,7 +1066,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
             groupdata.numvars);
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        poison_invalid(groupdata, vi, tl);
+        // Already poisoned above
         check_valid(groupdata, vi, tl,
                     []() { return "RemakeLevel after prolongation"; });
       }
