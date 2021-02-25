@@ -209,6 +209,7 @@ public:
   void box_int(const array<int, dim> &group_nghostzones,
                vect<int, dim> &restrict imin,
                vect<int, dim> &restrict imax) const {
+    // TODO: call box_int instead
     const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
@@ -299,6 +300,27 @@ public:
                   imax[d] = std::min(tmax[d], imax[d]);
                 }
 
+#ifdef CCTK_DEBUG
+                bool isempty = false;
+                for (int d = 0; d < dim; ++d)
+                  isempty |= imin[d] >= imax[d];
+                if (!isempty) {
+                  vect<int, dim> all_imin, all_imax;
+                  box_all<CI, CJ, CK>(group_nghostzones, all_imin, all_imax);
+                  vect<int, dim> int_imin, int_imax;
+                  box_int<CI, CJ, CK>(group_nghostzones, int_imin, int_imax);
+                  for (int d = 0; d < dim; ++d) {
+                    assert(all_imin[d] <= imin[d]);
+                    assert(imax[d] <= all_imax[d]);
+                  }
+                  bool overlaps = true;
+                  for (int d = 0; d < dim; ++d)
+                    overlaps &=
+                        !(imax[d] <= int_imin[d] || imin[d] >= int_imax[d]);
+                  assert(!overlaps);
+                }
+#endif
+
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
               }
             } // if rank
@@ -359,6 +381,27 @@ public:
                   imax[d] = std::min(tmax[d], imax[d]);
                 }
 
+#ifdef CCTK_DEBUG
+                bool isempty = false;
+                for (int d = 0; d < dim; ++d)
+                  isempty |= imin[d] >= imax[d];
+                if (!isempty) {
+                  vect<int, dim> all_imin, all_imax;
+                  box_all<CI, CJ, CK>(group_nghostzones, all_imin, all_imax);
+                  vect<int, dim> int_imin, int_imax;
+                  box_int<CI, CJ, CK>(group_nghostzones, int_imin, int_imax);
+                  for (int d = 0; d < dim; ++d) {
+                    assert(all_imin[d] <= imin[d]);
+                    assert(imax[d] <= all_imax[d]);
+                  }
+                  bool overlaps = true;
+                  for (int d = 0; d < dim; ++d)
+                    overlaps &=
+                        !(imax[d] <= int_imin[d] || imin[d] >= int_imax[d]);
+                  assert(!overlaps);
+                }
+#endif
+
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
               }
             } // if rank
@@ -416,6 +459,27 @@ public:
                   imin[d] = std::max(tmin[d], imin[d]);
                   imax[d] = std::min(tmax[d], imax[d]);
                 }
+
+#ifdef CCTK_DEBUG
+                bool isempty = false;
+                for (int d = 0; d < dim; ++d)
+                  isempty |= imin[d] >= imax[d];
+                if (!isempty) {
+                  vect<int, dim> all_imin, all_imax;
+                  box_all<CI, CJ, CK>(group_nghostzones, all_imin, all_imax);
+                  vect<int, dim> int_imin, int_imax;
+                  box_int<CI, CJ, CK>(group_nghostzones, int_imin, int_imax);
+                  for (int d = 0; d < dim; ++d) {
+                    assert(all_imin[d] <= imin[d]);
+                    assert(imax[d] <= all_imax[d]);
+                  }
+                  bool overlaps = true;
+                  for (int d = 0; d < dim; ++d)
+                    overlaps &=
+                        !(imax[d] <= int_imin[d] || imin[d] >= int_imax[d]);
+                  assert(!overlaps);
+                }
+#endif
 
                 loop_box<CI, CJ, CK>(f, imin, imax, inormal);
               }
@@ -703,7 +767,12 @@ struct GF3D2layout {
         off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
   }
   GF3D2layout(const vect<int, dim> &imin, const vect<int, dim> &imax)
-      : GF3D2layout(imin, imax, imax - imin) {}
+      : GF3D2layout(imin, imax, imax - imin) {
+#ifdef CCTK_DEBUG
+    assert(offset(imin[0], imin[1], imin[2]) == 0);
+    assert(offset(imax[0], imax[1], imax[2]) == np - 1);
+#endif
+  }
   GF3D2layout(const cGH *restrict cctkGH, const vect<int, dim> &indextype,
               const vect<int, dim> &nghostzones) {
     for (int d = 0; d < dim; ++d)
@@ -884,6 +953,9 @@ template <typename T> struct GF3D5 {
         layout(layout),
 #endif
         ptr(ptr) {
+#ifdef CCTK_DEBUG
+    assert(&(*this)(layout, layout.imin) == ptr);
+#endif
   }
   GF3D5(const GF3D2layout &layout, mempool_t &mempool)
       : GF3D5(layout, mempool.alloc<T>(layout.np)) {}
