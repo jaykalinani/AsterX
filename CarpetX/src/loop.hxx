@@ -138,6 +138,7 @@ public:
   loop_box(const F &f, const array<int, dim> &restrict imin,
            const array<int, dim> &restrict imax,
            const array<int, dim> &restrict inormal) const {
+    // TODO: convert array to vect (and everywhere nearby)
     static_assert(CI == 0 || CI == 1, "");
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");

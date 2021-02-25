@@ -100,8 +100,8 @@ namespace Loop {
 
 bool CarpetX_poison_undefined_values = true;
 
-// FIXME: this struct is defined in loop.hxx and thus these should be either in
-// loop.cxx or the definiton moved to schedule.hxx
+// TODO: This struct is defined in loop.hxx and thus these should be
+// in loop.cxx
 GridDescBase::GridDescBase() {}
 
 GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
@@ -2431,7 +2431,8 @@ void Restrict(int level, const vector<int> &groups) {
     if (!groupdata.do_restrict)
       continue;
 
-    // If there is more than one time level, then we don't restrict the oldest.
+    // If there is more than one time level, then we don't restrict the
+    // oldest.
     // TODO: during evolution, restrict only one time level
     int ntls = groupdata.mfab.size();
     int restrict_tl = ntls > 1 ? ntls - 1 : ntls;

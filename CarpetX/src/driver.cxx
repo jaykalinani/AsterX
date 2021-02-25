@@ -746,7 +746,7 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    /* only grid functions live on levels (and the grid) */
+    // only grid functions live on levels (and the grid)
     if (group.grouptype != CCTK_GF)
       continue;
 
