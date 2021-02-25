@@ -66,7 +66,6 @@ constexpr int undefined = (INT_MAX / 2 + 1) + 666;
 struct thread_local_info_t {
   // TODO: store only amrex::MFIter here; recalculate other things from it
   cGH cctkGH;
-  const MFPointer *restrict mfpointer;
   unsigned char padding[128]; // Prevent false sharing
 };
 
@@ -1281,7 +1280,6 @@ int Initialise(tFleshConfig *config) {
     clone_cctkGH(threadGH, cctkGH);
     setup_cctkGH(threadGH);
     enter_global_mode(threadGH);
-    thread_local_info.at(n)->mfpointer = nullptr;
   }
   swap(saved_thread_local_info, thread_local_info);
   assert(thread_local_info.empty());
@@ -1932,11 +1930,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
           const MFPointer mfp(mfi);
-          thread_info.mfpointer = &mfp;
           enter_local_mode(threadGH, leveldata, mfp);
           CCTK_CallFunction(function, attribute, threadGH);
           leave_local_mode(threadGH, leveldata, mfp);
-          thread_info.mfpointer = nullptr;
         }
         leave_level_mode(threadGH, leveldata);
       });
@@ -1959,14 +1955,12 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
             cGH *restrict const threadGH = &thread_info.cctkGH;
 
             const auto &restrict leveldata = ghext->leveldata.at(level);
-            thread_info.mfpointer = &mfp;
 
             enter_level_mode(threadGH, leveldata);
             enter_local_mode(threadGH, leveldata, mfp);
             CCTK_CallFunction(function, attribute, threadGH);
             leave_local_mode(threadGH, leveldata, mfp);
             leave_level_mode(threadGH, leveldata);
-            thread_info.mfpointer = nullptr;
           };
           tasks.emplace_back(task);
         }
@@ -1998,11 +1992,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         // No tiling on a GPU
         for (amrex::MFIter mfi(*leveldata.fab); mfi.isValid(); ++mfi) {
           const MFPointer mfp(mfi);
-          thread_info.mfpointer = &mfp;
           enter_local_mode(threadGH, leveldata, mfp);
           CCTK_CallFunction(function, attribute, threadGH);
           leave_local_mode(threadGH, leveldata, mfp);
-          thread_info.mfpointer = nullptr;
         }
         leave_level_mode(threadGH, leveldata);
       });
