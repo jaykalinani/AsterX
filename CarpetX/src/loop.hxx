@@ -21,6 +21,10 @@
 namespace Loop {
 using namespace std;
 
+template <typename F> CCTK_ATTRIBUTE_NOINLINE auto noinline(const F &f) {
+  return f();
+}
+
 using Arith::vect;
 
 constexpr int dim = 3;
@@ -428,15 +432,21 @@ public:
        const F &f) const {
     switch (where) {
     case where_t::everywhere:
-      return loop_all<CI, CJ, CK>(group_nghostzones, f);
+      return noinline(
+          [&] { return loop_all<CI, CJ, CK>(group_nghostzones, f); });
     case where_t::interior:
-      return loop_int<CI, CJ, CK>(group_nghostzones, f);
+      return noinline(
+          [&] { return loop_int<CI, CJ, CK>(group_nghostzones, f); });
     case where_t::boundary:
-      return loop_bnd<CI, CJ, CK>(group_nghostzones, f);
+      return noinline(
+          [&] { return loop_bnd<CI, CJ, CK>(group_nghostzones, f); });
     case where_t::ghosts_inclusive:
-      return loop_ghosts_inclusive<CI, CJ, CK>(group_nghostzones, f);
+      return noinline([&] {
+        return loop_ghosts_inclusive<CI, CJ, CK>(group_nghostzones, f);
+      });
     case where_t::ghosts:
-      return loop_ghosts<CI, CJ, CK>(group_nghostzones, f);
+      return noinline(
+          [&] { return loop_ghosts<CI, CJ, CK>(group_nghostzones, f); });
     default:
       assert(0);
     }
@@ -454,21 +464,29 @@ public:
            const array<int, dim> &group_nghostzones, const F &f) const {
     switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
     case 0b000:
-      return loop<0, 0, 0>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<0, 0, 0>(where, group_nghostzones, f); });
     case 0b001:
-      return loop<1, 0, 0>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<1, 0, 0>(where, group_nghostzones, f); });
     case 0b010:
-      return loop<0, 1, 0>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<0, 1, 0>(where, group_nghostzones, f); });
     case 0b011:
-      return loop<1, 1, 0>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<1, 1, 0>(where, group_nghostzones, f); });
     case 0b100:
-      return loop<0, 0, 1>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<0, 0, 1>(where, group_nghostzones, f); });
     case 0b101:
-      return loop<1, 0, 1>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<1, 0, 1>(where, group_nghostzones, f); });
     case 0b110:
-      return loop<0, 1, 1>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<0, 1, 1>(where, group_nghostzones, f); });
     case 0b111:
-      return loop<1, 1, 1>(where, group_nghostzones, f);
+      return noinline(
+          [&] { return loop<1, 1, 1>(where, group_nghostzones, f); });
     default:
       assert(0);
     }
