@@ -46,13 +46,15 @@ public:
     for (int d = 0; d < dim; ++d)
       assert(!(imin[d] >= imax[d]));
 
-    // For some reason, the argument inormal cannot be captured, but a copy of
-    // inormal can
+    // For some reason, the arguments imin, imax, and inormal cannot
+    // be captured, but copies of them can
+    const auto imin1 = imin;
+    const auto imax1 = imax;
     const auto inormal1 = inormal;
     const auto kernel =
         [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
             const int i, const int j, const int k) {
-          f(point_desc<CI, CJ, CK>(inormal1, imin[0], imax[0], i, j, k));
+          f(point_desc<CI, CJ, CK>(inormal1, imin1[0], imax1[0], i, j, k));
         };
 
     // array<bool, dim> bforward;
