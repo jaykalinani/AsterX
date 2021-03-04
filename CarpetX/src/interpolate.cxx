@@ -260,7 +260,7 @@ extern "C" CCTK_INT CarpetX_DriverInterpolate(
     CCTK_ERROR("TableGetIntArray failed.");
   }
 
-  const CCTK_POINTER resultptrs = (const CCTK_POINTER)output_arrays;
+  const CCTK_POINTER resultptrs = (CCTK_POINTER)output_arrays;
   CarpetX_Interpolate(
       cctkGH, N_interp_points, static_cast<const CCTK_REAL *>(coords[0]),
       static_cast<const CCTK_REAL *>(coords[1]),
