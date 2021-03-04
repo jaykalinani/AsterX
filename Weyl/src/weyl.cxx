@@ -3,12 +3,23 @@
 #include "tensor.hxx"
 #include "weyl_vars.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 #include <mempool.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+extern "C" {
+static inline int omp_get_max_threads(void) { return 1; }
+static inline int omp_get_num_threads(void) { return 1; }
+static inline int omp_get_thread_num(void) { return 0; }
+static inline int omp_in_parallel(void) { return 0; }
+}
+#endif
 
 #include <cmath>
 
@@ -88,24 +99,20 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
   const auto make_mat_gf = [&](int, int) { return make_gf(); };
-  const auto make_vec_vec_gf = [&](int) {
-    return [&](int) { return make_gf(); };
-  };
-  const auto make_vec_mat_gf = [&](int) {
-    return [&](int, int) { return make_gf(); };
-  };
-  const auto make_mat_vec_gf = [&](int, int) {
-    return [&](int) { return make_gf(); };
-  };
-  const auto make_mat_mat_gf = [&](int, int) {
-    return [&](int, int) { return make_gf(); };
-  };
+  const auto make_vec_vec_gf = [&](int) { return make_vec_gf; };
+  const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
+  const auto make_mat_vec_gf = [&](int, int) { return make_vec_gf; };
+  const auto make_mat_mat_gf = [&](int, int) { return make_mat_gf; };
 
   const mat3<GF3D5<CCTK_REAL>, DN, DN> gf_gamma0(make_mat_gf);
   const mat3<vec3<GF3D5<CCTK_REAL>, DN>, DN, DN> gf_dgamma0(make_mat_vec_gf);
@@ -336,8 +343,10 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
-  loop_int<0, 0, 0>(
-      cctkGH, [&](const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_int_device<0, 0, 0>(
+      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) {
         // Load and calculate
 
         const vec3<CCTK_REAL, UP> coord3{p.x, p.y, p.z};
