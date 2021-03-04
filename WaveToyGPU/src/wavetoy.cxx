@@ -531,14 +531,11 @@ extern "C" void WaveToyGPU_Energy(CCTK_ARGUMENTS) {
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   // Determine loop extent
-  const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
-                                    cctkGH->cctk_nghostzones[1],
-                                    cctkGH->cctk_nghostzones[2]};
   const Loop::GridDescBaseDevice griddesc(cctkGH);
-
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                       const Loop::PointDesc &p) {
+      griddesc.nghostzones,
+      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+          const Loop::PointDesc &p) {
         CCTK_REAL dt_phi = psi[p.idx];
         CCTK_REAL dx_phi = (phi[p.idx + p.di] - phi[p.idx - p.di]) / (2 * dx);
         CCTK_REAL dy_phi = (phi[p.idx + p.dj] - phi[p.idx - p.dj]) / (2 * dy);
