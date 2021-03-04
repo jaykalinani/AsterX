@@ -1443,6 +1443,9 @@ extern "C" int CarpetX_Shutdown() {
 #pragma omp critical
     CCTK_VINFO("Shutdown");
 
+  // Deallocate memory pools
+  mempools.reset();
+
   if (false) {
     // Should we really do this? Cactus's extension handling mechanism
     // becomes inconsistent once extensions have been unregistered.

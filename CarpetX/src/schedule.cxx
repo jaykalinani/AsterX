@@ -1782,6 +1782,12 @@ int Shutdown(tFleshConfig *config) {
   return 0;
 }
 
+int CallFunction_count = -1;
+extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
+  assert(CallFunction_count >= 0);
+  return CallFunction_count;
+}
+
 // Call a scheduled function
 int CallFunction(void *function, cFunctionData *restrict attribute,
                  void *data) {
@@ -1997,21 +2003,29 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
     } else if (CCTK_EQUALS(kernel_launch_method, "cuda")) {
 
-      const int thread_num = omp_get_thread_num();
-      thread_local_info_t &restrict thread_info =
-          *thread_local_info.at(thread_num);
-      cGH *restrict const threadGH = &thread_info.cctkGH;
+      assert(CallFunction_count == -1);
+      CallFunction_count = 0;
+
       active_levels->loop([&](const auto &restrict leveldata) {
-        enter_level_mode(threadGH, leveldata);
-        // No tiling on a GPU
-        for (amrex::MFIter mfi(*leveldata.fab); mfi.isValid(); ++mfi) {
+        enter_level_mode(cctkGH, leveldata);
+        // No tiling nor OpenMP parallelization when using GPUs
+        const auto mfitinfo = amrex::MFItInfo().DisableDeviceSync();
+        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+             ++mfi) {
           const MFPointer mfp(mfi);
-          enter_local_mode(threadGH, leveldata, mfp);
-          CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, leveldata, mfp);
+          enter_local_mode(cctkGH, leveldata, mfp);
+          CCTK_CallFunction(function, attribute, cctkGH);
+          leave_local_mode(cctkGH, leveldata, mfp);
+          ++CallFunction_count;
         }
-        leave_level_mode(threadGH, leveldata);
+        leave_level_mode(cctkGH, leveldata);
       });
+#ifdef AMREX_USE_GPU
+      amrex::Gpu::synchronize();
+#endif
+
+      assert(CallFunction_count >= 0);
+      CallFunction_count = -1;
 
     } else {
       assert(0);
