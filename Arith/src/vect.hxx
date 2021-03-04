@@ -232,6 +232,38 @@ template <typename T> struct zero<complex<T> > {
   }
 };
 
+template <typename T> struct one;
+
+template <> struct one<bool> {
+  constexpr bool operator()() const { return 1; }
+};
+
+template <> struct one<short> {
+  constexpr short operator()() const { return 1; }
+};
+
+template <> struct one<int> {
+  constexpr int operator()() const { return 1; }
+};
+
+template <> struct one<long> {
+  constexpr long operator()() const { return 1; }
+};
+
+template <> struct one<float> {
+  constexpr float operator()() const { return 1; }
+};
+
+template <> struct one<double> {
+  constexpr double operator()() const { return 1; }
+};
+
+template <typename T> struct one<complex<T> > {
+  constexpr complex<T> operator()() const {
+    return complex<T>(one<T>()(), zero<T>()());
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, int D> struct vect {
