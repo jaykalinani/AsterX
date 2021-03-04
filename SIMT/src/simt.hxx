@@ -1,16 +1,10 @@
 #ifndef SIMT_HXX
 #define SIMT_HXX
 
+#include <fixmath.hxx>
+
 // We need this before including nsimd
 #include <cctk.h>
-
-#undef copysign
-#undef fpclassify
-#undef isfinite
-#undef isinf
-#undef isnan
-#undef isnormal
-#undef signbit
 
 #include <nsimd/nsimd-all.hpp>
 

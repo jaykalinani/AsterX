@@ -584,11 +584,11 @@ abs(const Arith::vect<T, D> &x) {
 
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<bool, D>
-isnan1(const Arith::vect<T, D> &x) {
-  using std::isnan1;
+isnan(const Arith::vect<T, D> &x) {
+  using std::isnan;
   Arith::vect<bool, D> r;
   for (int d = 0; d < D; ++d)
-    r.elts[d] = isnan1(x.elts[d]);
+    r.elts[d] = isnan(x.elts[d]);
   return r;
 }
 

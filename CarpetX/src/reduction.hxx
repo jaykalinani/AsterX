@@ -31,16 +31,16 @@ template <> struct mpi_datatype<long double> {
 template <typename T> constexpr T pow21(T x) noexcept { return x * x; }
 
 template <typename T> constexpr T fmax1(T x, T y) noexcept {
-  if (isnan1(x))
+  if (isnan(x))
     return x;
-  if (isnan1(y))
+  if (isnan(y))
     return y;
   return fmax(x, y);
 }
 template <typename T> constexpr T fmin1(T x, T y) noexcept {
-  if (isnan1(x))
+  if (isnan(x))
     return x;
-  if (isnan1(y))
+  if (isnan(y))
     return y;
   return fmin(x, y);
 }

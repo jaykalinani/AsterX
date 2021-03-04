@@ -83,7 +83,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
   }
   alpha = 1 / alpha1;
 
-  if (isinf1(alpha)) {
+  if (isinf(alpha)) {
     // Infinitely far away, or there are no black holes
     rhs = 0;
     psi = 1;
