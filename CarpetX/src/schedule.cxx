@@ -1941,29 +1941,31 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
     if (CCTK_EQUALS(kernel_launch_method, "serial")) {
 
-      const int thread_num = omp_get_thread_num();
-      thread_local_info_t &restrict thread_info =
-          *thread_local_info.at(thread_num);
-      cGH *restrict const threadGH = &thread_info.cctkGH;
       active_levels->loop([&](const auto &restrict leveldata) {
-        enter_level_mode(threadGH, leveldata);
+        enter_level_mode(cctkGH, leveldata);
         const auto mfitinfo = amrex::MFItInfo().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
           const MFPointer mfp(mfi);
-          enter_local_mode(threadGH, leveldata, mfp);
-          CCTK_CallFunction(function, attribute, threadGH);
-          leave_local_mode(threadGH, leveldata, mfp);
+          enter_local_mode(cctkGH, leveldata, mfp);
+          CCTK_CallFunction(function, attribute, cctkGH);
+          leave_local_mode(cctkGH, leveldata, mfp);
         }
-        leave_level_mode(threadGH, leveldata);
+        leave_level_mode(cctkGH, leveldata);
       });
 
     } else if (CCTK_EQUALS(kernel_launch_method, "openmp")) {
 
+      // TODO: Call the Cactus routines only once per block, i.e.
+      // without tiling. Tile only the loops, but execute the loops
+      // asynchronously. To make this efficient, find a way
+      // ("streams"?) to daisy-chain loop kernels.
+
       vector<std::function<void()> > tasks;
       active_levels->loop([&](const auto &restrict leveldata) {
-        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
         // Note: The amrex::MFIter uses global variables and OpenMP barriers
+        const auto mfitinfo =
+            amrex::MFItInfo().EnableTiling().SetDynamic(false);
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi) {
           const MFPointer mfp(mfi);
