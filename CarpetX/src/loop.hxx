@@ -1,6 +1,14 @@
 #ifndef LOOP_HXX
 #define LOOP_HXX
 
+#ifdef __CUDACC__
+#define CCTK_DEVICE __device__
+#define CCTK_HOST __host__
+#else
+#define CCTK_DEVICE
+#define CCTK_HOST
+#endif
+
 #include "mempool.hxx"
 
 #include <vect.hxx>
@@ -43,7 +51,8 @@ struct PointDesc {
   int np; // number of grid points
   vect<int, dim> I;
   vect<int, dim> NI; // outward boundary normal, or zero
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<int, dim> DI(int d) const {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vect<int, dim>
+  DI(int d) const {
     return vect<int, dim>::unit(d);
   }
   vect<CCTK_REAL, dim> X;
@@ -113,7 +122,7 @@ public:
   GridDescBase(const cGH *cctkGH);
 
   template <int CI, int CJ, int CK>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE PointDesc
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST PointDesc
   point_desc(const vect<int, dim> &restrict NI, const int imin, const int imax,
              const int i, const int j, const int k) const {
     constexpr int di = 1;
@@ -131,7 +140,7 @@ public:
   }
 
   template <int CI, int CJ, int CK>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE PointDesc
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST PointDesc
   point_desc(const PointDesc &p) const {
     return point_desc<CI, CJ, CK>(p.NI, p.imin, p.imax, p.i, p.j, p.k);
   }
@@ -151,11 +160,6 @@ public:
       if (imin[d] >= imax[d])
         return;
 
-    const auto kernel{[&](const int i, const int j,
-                          const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
-    }};
-
     array<bool, dim> bforward;
     for (int d = 0; d < dim; ++d)
       bforward[d] = inormal[d] >= 0;
@@ -169,7 +173,7 @@ public:
         for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
           for (int i = imin[0]; i < imax[0]; ++i) {
-            kernel(i, j, k);
+            f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
           }
         }
       }
@@ -184,7 +188,7 @@ public:
             const int i = bforward[0] ? i0 : imax[0] - 1 - (i0 - imin[0]);
             const int j = bforward[1] ? j0 : imax[1] - 1 - (j0 - imin[1]);
             const int k = bforward[2] ? k0 : imax[2] - 1 - (k0 - imin[2]);
-            kernel(i, j, k);
+            f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
           }
         }
       }
@@ -490,27 +494,63 @@ public:
     } // for rank
   }
 
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      enable_if_t<(where == where_t::everywhere), void>
+      loop(const array<int, dim> &group_nghostzones, const F &f) const {
+    loop_all<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      enable_if_t<(where == where_t::interior), void>
+      loop(const array<int, dim> &group_nghostzones, const F &f) const {
+    loop_int<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      enable_if_t<(where == where_t::boundary), void>
+      loop(const array<int, dim> &group_nghostzones, const F &f) const {
+    loop_bnd<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      enable_if_t<(where == where_t::ghosts_inclusive), void>
+      loop(const array<int, dim> &group_nghostzones, const F &f) const {
+    loop_ghosts_inclusive<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      enable_if_t<(where == where_t::ghosts), void>
+      loop(const array<int, dim> &group_nghostzones, const F &f) const {
+    loop_ghosts<CI, CJ, CK>(group_nghostzones, f);
+  }
+
   template <int CI, int CJ, int CK, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop(where_t where, const array<int, dim> &group_nghostzones,
        const F &f) const {
     switch (where) {
     case where_t::everywhere:
-      return noinline(
-          [&] { return loop_all<CI, CJ, CK>(group_nghostzones, f); });
+      return noinline([&] {
+        return loop<CI, CJ, CK, where_t::everywhere>(group_nghostzones, f);
+      });
     case where_t::interior:
-      return noinline(
-          [&] { return loop_int<CI, CJ, CK>(group_nghostzones, f); });
+      return noinline([&] {
+        return loop<CI, CJ, CK, where_t::interior>(group_nghostzones, f);
+      });
     case where_t::boundary:
-      return noinline(
-          [&] { return loop_bnd<CI, CJ, CK>(group_nghostzones, f); });
+      return noinline([&] {
+        return loop<CI, CJ, CK, where_t::boundary>(group_nghostzones, f);
+      });
     case where_t::ghosts_inclusive:
       return noinline([&] {
-        return loop_ghosts_inclusive<CI, CJ, CK>(group_nghostzones, f);
+        return loop<CI, CJ, CK, where_t::ghosts_inclusive>(group_nghostzones,
+                                                           f);
       });
     case where_t::ghosts:
-      return noinline(
-          [&] { return loop_ghosts<CI, CJ, CK>(group_nghostzones, f); });
+      return noinline([&] {
+        return loop<CI, CJ, CK, where_t::ghosts>(group_nghostzones, f);
+      });
     default:
       assert(0);
     }
@@ -520,6 +560,11 @@ public:
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(where_t where,
                                                 const F &f) const {
     loop<CI, CJ, CK>(where, nghostzones, f);
+  }
+
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(const F &f) const {
+    loop<CI, CJ, CK, where>(nghostzones, f);
   }
 
   template <typename F>
@@ -577,6 +622,11 @@ loop_idx(const cGH *cctkGH, where_t where, const array<int, dim> &indextype,
   GridDescBase(cctkGH).loop_idx(where, indextype, f);
 }
 
+template <int CI, int CJ, int CK, where_t where, typename F>
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(const cGH *cctkGH, const F &f) {
+  GridDescBase(cctkGH).loop<CI, CJ, CK, where>(f);
+}
+
 template <int CI, int CJ, int CK, typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(const cGH *cctkGH, where_t where,
                                               const F &f) {
@@ -587,31 +637,31 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop(const cGH *cctkGH, where_t where,
 template <int CI, int CJ, int CK, typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_all(const cGH *cctkGH,
                                                   const F &f) {
-  loop<CI, CJ, CK>(cctkGH, where_t::everywhere, f);
+  loop<CI, CJ, CK, where_t::everywhere>(cctkGH, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_int(const cGH *cctkGH,
                                                   const F &f) {
-  loop<CI, CJ, CK>(cctkGH, where_t::interior, f);
+  loop<CI, CJ, CK, where_t::interior>(cctkGH, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_bnd(const cGH *cctkGH,
                                                   const F &f) {
-  loop<CI, CJ, CK>(cctkGH, where_t::boundary, f);
+  loop<CI, CJ, CK, where_t::boundary>(cctkGH, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
 loop_ghosts_inclusive(const cGH *cctkGH, const F &f) {
-  loop<CI, CJ, CK>(cctkGH, where_t::ghosts_inclusive, f);
+  loop<CI, CJ, CK, where_t::ghosts_inclusive>(cctkGH, f);
 }
 
 template <int CI, int CJ, int CK, typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_ghosts(const cGH *cctkGH,
                                                      const F &f) {
-  loop<CI, CJ, CK>(cctkGH, where_t::ghosts, f);
+  loop<CI, CJ, CK, where_t::ghosts>(cctkGH, f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,8 +819,8 @@ struct GF3D2layout {
   GF3D2layout(const vect<int, dim> &imin, const vect<int, dim> &imax)
       : GF3D2layout(imin, imax, imax - imin) {
 #ifdef CCTK_DEBUG
-    assert(offset(imin[0], imin[1], imin[2]) == 0);
-    assert(offset(imax[0], imax[1], imax[2]) == np - 1);
+    assert(linear(imin[0], imin[1], imin[2]) == 0);
+    assert(linear(imax[0] - 1, imax[1] - 1, imax[2] - 1) == np - 1);
 #endif
   }
   GF3D2layout(const cGH *restrict cctkGH, const vect<int, dim> &indextype,
@@ -808,7 +858,7 @@ struct GF3D2layout {
     iseq &= off == other.off;
     return iseq;
   }
-  inline int offset(int i, int j, int k) const {
+  inline CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
 #ifdef CCTK_DEBUG
@@ -818,8 +868,14 @@ struct GF3D2layout {
 #endif
     return i * di + j * dj + k * dk - off;
   }
-  inline int offset(const vect<int, dim> &I) const {
-    return offset(I[0], I[1], I[2]);
+  inline CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
+    return linear(I[0], I[1], I[2]);
+  }
+  inline CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
+    return i * di + j * dj + k * dk;
+  }
+  inline CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
+    return delta(I[0], I[1], I[2]);
   }
 };
 
@@ -838,15 +894,25 @@ template <typename T> struct GF3D2 {
       : ptr(ptr), layout(layout) {}
   GF3D2(const GF3D2layout &layout, mempool_t &mempool)
       : GF3D2(layout, mempool.alloc<T>(layout.np)) {}
-  inline int offset(int i, int j, int k) const {
-    return layout.offset(i, j, k);
+  inline CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
+    return layout.linear(i, j, k);
   }
-  inline int offset(const vect<int, dim> &I) const { return layout.offset(I); }
-  inline T &restrict operator()(int i, int j, int k) const {
-    return ptr[offset(i, j, k)];
+  inline CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
+    return layout.linear(I);
   }
-  inline T &restrict operator()(const vect<int, dim> &I) const {
-    return ptr[offset(I)];
+  inline CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
+    return layout.delta(i, j, k);
+  }
+  inline CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
+    return layout.delta(I);
+  }
+  inline CCTK_DEVICE CCTK_HOST T &restrict operator()(int i, int j,
+                                                      int k) const {
+    return ptr[linear(i, j, k)];
+  }
+  inline CCTK_DEVICE CCTK_HOST T &restrict
+  operator()(const vect<int, dim> &I) const {
+    return ptr[linear(I)];
   }
 };
 
@@ -868,10 +934,10 @@ template <int NI, int NJ, int NK, int OFF = 0> struct GF3D3layout {
   static constexpr int dk = NJ * dj;
   static constexpr int np = NK * dk;
 
-  constexpr int offset(int i, int j, int k) const {
+  constexpr int linear(int i, int j, int k) const {
     return i * di + j * dj + k * dk - OFF;
   }
-  constexpr int offset(const vect<int, dim> &I) const {
+  constexpr int linear(const vect<int, dim> &I) const {
     return (*this)(I[0], I[1], I[2]);
   }
 };
@@ -897,15 +963,15 @@ using makeGF3D3layout_t =
 template <typename T, int NI, int NJ, int NK, int OFF = 0>
 struct GF3D3 : GF3D3layout<NI, NJ, NK, OFF> {
   using GF3D3layout<NI, NJ, NK, OFF>::np;
-  using GF3D3layout<NI, NJ, NK, OFF>::offset;
+  using GF3D3layout<NI, NJ, NK, OFF>::linear;
 
   array<T, np> arr;
 
   constexpr T &restrict operator()(int i, int j, int k) {
-    return arr[offset(i, j, k)];
+    return arr[linear(i, j, k)];
   }
   constexpr const T &restrict operator()(int i, int j, int k) const {
-    return arr[offset(i, j, k)];
+    return arr[linear(i, j, k)];
   }
   constexpr T &restrict operator()(const vect<int, dim> &I) {
     return (*this)(I[0], I[1], I[2]);
@@ -918,7 +984,7 @@ struct GF3D3 : GF3D3layout<NI, NJ, NK, OFF> {
 template <typename T, int NI, int NJ, int NK, int OFF = 0>
 struct GF3D3ptr : GF3D3layout<NI, NJ, NK, OFF> {
   using GF3D3layout<NI, NJ, NK, OFF>::np;
-  using GF3D3layout<NI, NJ, NK, OFF>::offset;
+  using GF3D3layout<NI, NJ, NK, OFF>::linear;
 
   T *restrict ptr;
 
@@ -926,7 +992,7 @@ struct GF3D3ptr : GF3D3layout<NI, NJ, NK, OFF> {
   GF3D3ptr(T *restrict ptr) : ptr(ptr) {}
 
   constexpr T &restrict operator()(int i, int j, int k) const {
-    return ptr[offset(i, j, k)];
+    return ptr[linear(i, j, k)];
   }
   constexpr T &restrict operator()(const vect<int, dim> &I) const {
     return (*this)(I[0], I[1], I[2]);
@@ -964,7 +1030,7 @@ template <typename T> struct GF3D5 {
 #ifdef CCTK_DEBUG
     assert(layout == this->layout);
 #endif
-    return ptr[layout.offset(i, j, k)];
+    return ptr[layout.linear(i, j, k)];
   }
   constexpr T &restrict operator()(const GF3D5layout &layout,
                                    const vect<int, dim> &I) const {
