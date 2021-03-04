@@ -1,7 +1,7 @@
 #include "physics.hxx"
 #include "tensor.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -39,7 +39,10 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
   const GF3D2<CCTK_REAL> gf_alphaG1(layout1, alphaG);
 
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+  // loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                      const PointDesc &p) {
     // Load
     const CCTK_REAL chi_old = gf_chi1(p.I);
     const CCTK_REAL alphaG_old = gf_alphaG1(p.I);

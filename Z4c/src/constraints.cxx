@@ -3,12 +3,23 @@
 #include "tensor.hxx"
 #include "z4c_vars.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 #include <mempool.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+extern "C" {
+static inline int omp_get_max_threads(void) { return 1; }
+static inline int omp_get_num_threads(void) { return 1; }
+static inline int omp_get_thread_num(void) { return 0; }
+static inline int omp_in_parallel(void) { return 0; }
+}
+#endif
 
 #include <cmath>
 
@@ -66,14 +77,18 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
 #if 0
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
   const auto make_mat_gf = [&](int, int) { return make_gf(); };
   const auto make_vec_vec_gf = [&](int) { return make_vec_gf; };
-  const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
+  // const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
   const auto make_mat_vec_gf = [&](int, int) { return make_vec_gf; };
   const auto make_mat_mat_gf = [&](int, int) { return make_mat_gf; };
 
@@ -108,14 +123,18 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
 #if 1
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
   const auto make_mat_gf = [&](int, int) { return make_gf(); };
   const auto make_vec_vec_gf = [&](int) { return make_vec_gf; };
-  const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
+  // const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
   const auto make_mat_vec_gf = [&](int, int) { return make_vec_gf; };
   const auto make_mat_mat_gf = [&](int, int) { return make_mat_gf; };
 
@@ -182,7 +201,10 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
   //
 
-  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+  // loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_int_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                      const PointDesc &p) {
     // Load and calculate
 
     const CCTK_REAL alphaG{1};

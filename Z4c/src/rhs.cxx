@@ -3,12 +3,26 @@
 #include "tensor.hxx"
 #include "z4c_vars.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 #include <mempool.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
+
+#warning "TODO"
+#include <AMReX.H>
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+extern "C" {
+static inline int omp_get_max_threads(void) { return 1; }
+static inline int omp_get_num_threads(void) { return 1; }
+static inline int omp_get_thread_num(void) { return 0; }
+static inline int omp_in_parallel(void) { return 0; }
+}
+#endif
 
 #include <cmath>
 #include <memory>
@@ -86,8 +100,12 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
 #if 0
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
@@ -138,8 +156,12 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
 #if 1
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
@@ -241,7 +263,12 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   //
 
-  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+#if 0
+
+  // loop_int<0, 0, 0>(cctkGH, /*[&]*/ [=](const PointDesc &p) Z4C_INLINE {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_int_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                      const PointDesc &p) {
   // Load and calculate
 #if 0
     const z4c_vars<CCTK_REAL> vars(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
@@ -290,6 +317,78 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
     gf_alphaG_rhs1(p.I) = vars.alphaG_rhs;
     vars.betaG_rhs.store(gf_betaGx_rhs1, gf_betaGy_rhs1, gf_betaGz_rhs1, p.I);
   });
+
+#endif
+
+#if 1
+
+  const Loop::GridDescBaseDevice grid(cctkGH);
+
+  noinline([&] {
+    grid.loop_int_device<0, 0, 0>(
+        grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+          // Load and calculate
+          const z4c_vars<CCTK_REAL> vars(
+              kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+              gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
+              gf_ddchi0(layout0, p.I), //
+              gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
+              gf_ddgammat0(layout0, p.I),                        //
+              gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
+              gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
+              gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
+              gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
+              gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
+              gf_ddalphaG0(layout0, p.I), //
+              gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
+              gf_ddbetaG0(layout0, p.I), //
+              gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
+
+          // Store Kh_rhs, At_rhs, Gamt_rhs, Theta_rhs
+          gf_Kh_rhs1(p.I) = vars.Kh_rhs;
+          vars.At_rhs.store(gf_Atxx_rhs1, gf_Atxy_rhs1, gf_Atxz_rhs1,
+                            gf_Atyy_rhs1, gf_Atyz_rhs1, gf_Atzz_rhs1, p.I);
+          vars.Gamt_rhs.store(gf_Gamtx_rhs1, gf_Gamty_rhs1, gf_Gamtz_rhs1, p.I);
+          gf_Theta_rhs1(p.I) = vars.Theta_rhs;
+        });
+  });
+
+  noinline([&] {
+    grid.loop_int_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                        const PointDesc &p) {
+      // Load and calculate
+      const z4c_vars<CCTK_REAL> vars(
+          kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+          gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
+          gf_ddchi0(layout0, p.I), //
+          gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
+          gf_ddgammat0(layout0, p.I),                        //
+          gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
+          gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
+          gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
+          gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
+          gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
+          gf_ddalphaG0(layout0, p.I), //
+          gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
+          gf_ddbetaG0(layout0, p.I), //
+          gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
+
+      // Store chi_rhs, gammat_rhs, alphaG_rhs, betaG_rhs
+      gf_chi_rhs1(p.I) = vars.chi_rhs;
+      vars.gammat_rhs.store(gf_gammatxx_rhs1, gf_gammatxy_rhs1,
+                            gf_gammatxz_rhs1, gf_gammatyy_rhs1,
+                            gf_gammatyz_rhs1, gf_gammatzz_rhs1, p.I);
+      gf_alphaG_rhs1(p.I) = vars.alphaG_rhs;
+      vars.betaG_rhs.store(gf_betaGx_rhs1, gf_betaGy_rhs1, gf_betaGz_rhs1, p.I);
+    });
+  });
+
+#endif
+
+#warning "TODO"
+#ifdef AMREX_USE_GPU
+  amrex::Gpu::synchronize();
+#endif
 
   // Upwind and dissipation terms
 

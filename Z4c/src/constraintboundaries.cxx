@@ -1,4 +1,6 @@
-#include <loop.hxx>
+#include "tensor.hxx"
+
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -24,17 +26,35 @@ extern "C" void Z4c_ConstraintBoundaries(CCTK_ARGUMENTS) {
 
   const GF3D2<CCTK_REAL> gf_allC1(layout1, allC);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCx1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCy1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCz1(p.I) = 0; });
+  const Loop::GridDescBaseDevice grid(cctkGH);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_HC1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCz1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCx1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCy1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_HC1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_allC1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCz1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_allC1(p.I) = 0; });
 }
 
 } // namespace Z4c

@@ -42,7 +42,7 @@ calc_dAu(const mat3<T, UP, UP> &gu, const mat3<vec3<T, DN>, UP, UP> &dgu,
 
 template <typename T>
 Z4C_INLINE constexpr vec3<mat3<T, DN, DN>, DN>
-calc_gammal(const mat3<vec3<T, DN>, DN, DN> dg) {
+calc_gammal(const mat3<vec3<T, DN>, DN, DN> &dg) {
   // Gammal_abc
   return vec3<mat3<T, DN, DN>, DN>([&](int a) Z4C_INLINE {
     return mat3<T, DN, DN>([&](int b, int c) Z4C_INLINE {
@@ -58,6 +58,21 @@ calc_gamma(const mat3<T, UP, UP> &gu, const vec3<mat3<T, DN, DN>, DN> &Gammal) {
   return vec3<mat3<T, DN, DN>, UP>([&](int a) Z4C_INLINE {
     return mat3<T, DN, DN>([&](int b, int c) Z4C_INLINE {
       return sum1([&](int x) Z4C_INLINE { return gu(a, x) * Gammal(x)(b, c); });
+    });
+  });
+}
+
+template <typename T>
+Z4C_INLINE constexpr vec3<vec3<vec3<T, UP>, DN>, DN>
+calc_gammalu(const mat3<T, UP, UP> &gu,
+             const vec3<mat3<T, DN, DN>, DN> &Gammal) {
+  // Gamma_ab^c
+  return vec3<vec3<vec3<T, UP>, DN>, DN>([&](int a) Z4C_INLINE {
+    return vec3<vec3<T, UP>, DN>([&](int b) Z4C_INLINE {
+      return vec3<T, UP>([&](int c) Z4C_INLINE {
+        return sum1([&](int x)
+                        Z4C_INLINE { return Gammal(a)(b, x) * gu(x, c); });
+      });
     });
   });
 }

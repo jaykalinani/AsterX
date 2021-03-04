@@ -3,12 +3,23 @@
 #include "tensor.hxx"
 #include "z4c_vars.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 #include <mempool.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+extern "C" {
+static inline int omp_get_max_threads(void) { return 1; }
+static inline int omp_get_num_threads(void) { return 1; }
+static inline int omp_get_thread_num(void) { return 0; }
+static inline int omp_in_parallel(void) { return 0; }
+}
+#endif
 
 #include <cmath>
 
@@ -79,8 +90,12 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
 
 #if 0
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
@@ -131,8 +146,12 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
 
 #if 1
 
-  static mempool_set_t mempools;
-  mempool_t &restrict mempool = mempools.get_mempool();
+#ifndef AMREX_USE_GPU
+  const size_t mempool_id = omp_get_thread_num();
+#else
+  const size_t mempool_id = GetCallFunctionCount();
+#endif
+  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
@@ -217,7 +236,10 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
 
   //
 
-  loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+  // loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_int_device<0, 0, 0>(
+      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
   // Load and calculate
 #if 0
     const z4c_vars<CCTK_REAL> vars(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
@@ -236,29 +258,29 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
                                    gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
 #endif
 #if 1
-    const z4c_vars<CCTK_REAL> vars(
-        kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-        gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
-        gf_ddchi0(layout0, p.I), //
-        gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
-        gf_ddgammat0(layout0, p.I),                        //
-        gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
-        gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
-        gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
-        gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
-        gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
-        gf_ddalphaG0(layout0, p.I), //
-        gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
-        gf_ddbetaG0(layout0, p.I), //
-        gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
+        const z4c_vars<CCTK_REAL> vars(
+            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
+            gf_ddchi0(layout0, p.I), //
+            gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
+            gf_ddgammat0(layout0, p.I),                        //
+            gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
+            gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
+            gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
+            gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
+            gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
+            gf_ddalphaG0(layout0, p.I), //
+            gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
+            gf_ddbetaG0(layout0, p.I), //
+            gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
 #endif
 
-    // Store
-    vars.K_rhs.store(gf_dtkxx1, gf_dtkxy1, gf_dtkxz1, gf_dtkyy1, gf_dtkyz1,
-                     gf_dtkzz1, p.I);
-    gf_dt2alp1(p.I) = vars.dtalpha_rhs;
-    vars.dtbeta_rhs.store(gf_dt2betax1, gf_dt2betay1, gf_dt2betaz1, p.I);
-  });
+        // Store
+        vars.K_rhs.store(gf_dtkxx1, gf_dtkxy1, gf_dtkxz1, gf_dtkyy1, gf_dtkyz1,
+                         gf_dtkzz1, p.I);
+        gf_dt2alp1(p.I) = vars.dtalpha_rhs;
+        vars.dtbeta_rhs.store(gf_dt2betax1, gf_dt2betay1, gf_dt2betaz1, p.I);
+      });
 }
 
 } // namespace Z4c

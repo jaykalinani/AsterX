@@ -1,6 +1,6 @@
 #include "tensor.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -63,7 +63,10 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> gf_betaGy1(layout1, betaGy);
   const GF3D2<CCTK_REAL> gf_betaGz1(layout1, betaGz);
 
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+  // loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                      const PointDesc &p) {
     // Load
     const mat3<CCTK_REAL, DN, DN> g(gf_gxx1, gf_gxy1, gf_gxz1, gf_gyy1, gf_gyz1,
                                     gf_gzz1, p.I);

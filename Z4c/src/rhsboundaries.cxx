@@ -1,4 +1,6 @@
-#include <loop.hxx>
+#include "tensor.hxx"
+
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -42,49 +44,87 @@ extern "C" void Z4c_RHSBoundaries(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> gf_betaGy_rhs1(layout1, betaGy_rhs);
   const GF3D2<CCTK_REAL> gf_betaGz_rhs1(layout1, betaGz_rhs);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_chi_rhs1(p.I) = 0; });
+  const Loop::GridDescBaseDevice grid(cctkGH);
 
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_gammatxx_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_gammatxy_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_gammatxz_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_gammatyy_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_gammatyz_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_gammatzz_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_chi_rhs1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Kh_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+                                  gf_gammatxx_rhs1(p.I) = 0;
+                                });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+                                  gf_gammatxy_rhs1(p.I) = 0;
+                                });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+                                  gf_gammatxz_rhs1(p.I) = 0;
+                                });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+                                  gf_gammatyy_rhs1(p.I) = 0;
+                                });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+                                  gf_gammatyz_rhs1(p.I) = 0;
+                                });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+                                  gf_gammatzz_rhs1(p.I) = 0;
+                                });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Atxx_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Atxy_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Atxz_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Atyy_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Atyz_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_Atzz_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Kh_rhs1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_Gamtx_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_Gamty_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_Gamtz_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atxx_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atxy_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atxz_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atyy_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atyz_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atzz_rhs1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_Theta_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Gamtx_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Gamty_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Gamtz_rhs1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_alphaG_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Theta_rhs1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_betaGx_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_betaGy_rhs1(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH,
-                    [&](const PointDesc &p) { gf_betaGz_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_alphaG_rhs1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_betaGx_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_betaGy_rhs1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_betaGz_rhs1(p.I) = 0; });
 }
 
 } // namespace Z4c
