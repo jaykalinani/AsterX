@@ -12,7 +12,7 @@ using Makie
 iterations = 10
 integrator_steps = 4
 
-bm = DataFrame(CSV.file("benchmark-minkowski-unigrid.csv"))
+bm = DataFrame(CSV.File("benchmark-minkowski-unigrid.csv"))
 
 bm.points = bm.size.^3
 bm.cores = bm.nodes .* bm.cores_node
@@ -33,5 +33,5 @@ ylims!(sc,
        (floor(minimum(log10.(bm.pointcost))),
         ceil(maximum(log10.(bm.pointcost)))))
 ylabel!(sc, "log₁₀(seconds per grid point)")
- 
+
 end

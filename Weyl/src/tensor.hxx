@@ -243,17 +243,6 @@ public:
   store(const GF3D2<T> &gf_vx_, const GF3D2<T> &gf_vy_, const GF3D2<T> &gf_vz_,
         const vect<int, 3> &I) const {
     const auto &v = *this;
-    // #ifdef CCTK_DEBUG
-    //     if (!((CCTK_isfinite(v(0))) && (CCTK_isfinite(v(1))) &&
-    //           (CCTK_isfinite(v(2))))) {
-    //       ostringstream buf;
-    //       buf << "v=" << v;
-    //       CCTK_VERROR("nan found: %s", buf.str().c_str());
-    //     }
-    //     assert(CCTK_isfinite(v(0)));
-    //     assert(CCTK_isfinite(v(1)));
-    //     assert(CCTK_isfinite(v(2)));
-    // #endif
     gf_vx_(I) = v(0);
     gf_vy_(I) = v(1);
     gf_vz_(I) = v(2);
@@ -451,34 +440,6 @@ public:
   template <typename F, typename = result_of_t<F(int, int)> >
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat3(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(1, 1), f(1, 2), f(2, 2)} {
-    // #ifdef CCTK_DEBUG
-    //     // Check symmetry
-    //     const T f10 = f(1, 0);
-    //     const T f20 = f(2, 0);
-    //     const T f21 = f(1, 2);
-    //     const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
-    //                        norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
-    //                        norm1<T>()(elts[4]) + norm1<T>()(elts[5]);
-    //     const auto is_approx{[scale](const T &fgood, const T &fother) {
-    //       return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
-    //     }};
-    //     if (!(is_approx((*this)(0, 1), f10) && is_approx((*this)(0, 2), f20)
-    //     &&
-    //           is_approx((*this)(1, 2), f21))) {
-    //       ostringstream buf;
-    //       buf << "f(0,1)=" << (*this)(0, 1) << "\n"
-    //           << "f(1,0)=" << f10 << "\n"
-    //           << "f(0,2)=" << (*this)(0, 2) << "\n"
-    //           << "f(2,0)=" << f20 << "\n"
-    //           << "f(1,2)=" << (*this)(1, 2) << "\n"
-    //           << "f(2,1)=" << f21 << "\n";
-    //       CCTK_VERROR("symmetric matrix is not symmetric:\n%s",
-    //       buf.str().c_str());
-    //     }
-    //     assert(is_approx(f10, (*this)(0, 1)));
-    //     assert(is_approx(f20, (*this)(0, 2)));
-    //     assert(is_approx(f21, (*this)(1, 2)));
-    // #endif
   }
 
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST void
@@ -487,14 +448,6 @@ public:
         const GF3D2<T> &gf_Ayz_, const GF3D2<T> &gf_Azz_,
         const vect<int, 3> &I) const {
     const auto &A = *this;
-    // #ifdef CCTK_DEBUG
-    //     assert(CCTK_isfinite(A(0, 0)));
-    //     assert(CCTK_isfinite(A(0, 1)));
-    //     assert(CCTK_isfinite(A(0, 2)));
-    //     assert(CCTK_isfinite(A(1, 1)));
-    //     assert(CCTK_isfinite(A(1, 2)));
-    //     assert(CCTK_isfinite(A(2, 2)));
-    // #endif
     gf_Axx_(I) = A(0, 0);
     gf_Axy_(I) = A(0, 1);
     gf_Axz_(I) = A(0, 2);
@@ -746,18 +699,6 @@ public:
   store(const GF3D2<T> &gf_vt_, const GF3D2<T> &gf_vx_, const GF3D2<T> &gf_vy_,
         const GF3D2<T> &gf_vz_, const vect<int, 3> &I) const {
     const auto &v = *this;
-    // #ifdef CCTK_DEBUG
-    //     if (!((CCTK_isfinite(v(0))) && (CCTK_isfinite(v(1))) &&
-    //           (CCTK_isfinite(v(2))) && (CCTK_isfinite(v(3))))) {
-    //       ostringstream buf;
-    //       buf << "v=" << v;
-    //       CCTK_VERROR("nan found: %s", buf.str().c_str());
-    //     }
-    //     assert(CCTK_isfinite(v(0)));
-    //     assert(CCTK_isfinite(v(1)));
-    //     assert(CCTK_isfinite(v(2)));
-    //     assert(CCTK_isfinite(v(3)));
-    // #endif
     gf_vt_(I) = v(0);
     gf_vx_(I) = v(1);
     gf_vy_(I) = v(2);
@@ -1004,50 +945,6 @@ public:
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat4(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(0, 3), f(1, 1),
              f(1, 2), f(1, 3), f(2, 2), f(2, 3), f(3, 3)} {
-    // #ifdef CCTK_DEBUG
-    //     // Check symmetry
-    //     const T f10 = f(1, 0);
-    //     const T f20 = f(2, 0);
-    //     const T f30 = f(3, 0);
-    //     const T f21 = f(2, 1);
-    //     const T f31 = f(3, 1);
-    //     const T f32 = f(3, 2);
-    //     const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
-    //                        norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
-    //                        norm1<T>()(elts[4]) + norm1<T>()(elts[5]) +
-    //                        norm1<T>()(elts[6]) + norm1<T>()(elts[7]) +
-    //                        norm1<T>()(elts[8]) + norm1<T>()(elts[9]);
-    //     const auto is_approx{[scale](const T &fgood, const T &fother) {
-    //       return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
-    //     }};
-    //     if (!(is_approx(f10, (*this)(0, 1)) && is_approx(f20, (*this)(0, 2))
-    //     &&
-    //           is_approx(f30, (*this)(0, 3)) && is_approx(f21, (*this)(1, 2))
-    //           && is_approx(f31, (*this)(1, 3)) && is_approx(f32, (*this)(2,
-    //           3)))) {
-    //       ostringstream buf;
-    //       buf << "f(0,1)=" << (*this)(0, 1) << "\n"
-    //           << "f(1,0)=" << f10 << "\n"
-    //           << "f(0,2)=" << (*this)(0, 2) << "\n"
-    //           << "f(2,0)=" << f20 << "\n"
-    //           << "f(0,3)=" << (*this)(0, 3) << "\n"
-    //           << "f(3,0)=" << f30 << "\n"
-    //           << "f(1,2)=" << (*this)(1, 2) << "\n"
-    //           << "f(2,1)=" << f21 << "\n"
-    //           << "f(1,3)=" << (*this)(1, 3) << "\n"
-    //           << "f(3,1)=" << f31 << "\n"
-    //           << "f(2,3)=" << (*this)(2, 3) << "\n"
-    //           << "f(3,2)=" << f32 << "\n";
-    //       CCTK_VERROR("symmetric matrix is not symmetric:\n%s",
-    //       buf.str().c_str());
-    //     }
-    //     assert(is_approx((*this)(0, 1), f10));
-    //     assert(is_approx((*this)(0, 2), f20));
-    //     assert(is_approx((*this)(0, 3), f30));
-    //     assert(is_approx((*this)(1, 2), f21));
-    //     assert(is_approx((*this)(1, 3), f31));
-    //     assert(is_approx((*this)(2, 3), f32));
-    // #endif
   }
 
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST void store(
@@ -1056,18 +953,6 @@ public:
       const GF3D2<T> &gf_Axz_, const GF3D2<T> &gf_Ayy_, const GF3D2<T> &gf_Ayz_,
       const GF3D2<T> &gf_Azz_, const vect<int, 3> &I) const {
     const auto &A = *this;
-    // #ifdef CCTK_DEBUG
-    //     assert(CCTK_isfinite(A(0, 0)));
-    //     assert(CCTK_isfinite(A(0, 1)));
-    //     assert(CCTK_isfinite(A(0, 2)));
-    //     assert(CCTK_isfinite(A(0, 3)));
-    //     assert(CCTK_isfinite(A(1, 1)));
-    //     assert(CCTK_isfinite(A(1, 2)));
-    //     assert(CCTK_isfinite(A(1, 3)));
-    //     assert(CCTK_isfinite(A(2, 2)));
-    //     assert(CCTK_isfinite(A(2, 3)));
-    //     assert(CCTK_isfinite(A(3, 3)));
-    // #endif
     gf_Att_(I) = A(0, 0);
     gf_Atx_(I) = A(0, 1);
     gf_Aty_(I) = A(0, 2);
@@ -1423,62 +1308,6 @@ public:
   template <typename F, typename = result_of_t<F(int, int)> >
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST amat4(const F &f)
       : elts{f(0, 1), f(0, 2), f(0, 3), f(1, 2), f(1, 3), f(2, 3)} {
-    // #ifdef CCTK_DEBUG
-    //     // Check antisymmetry
-    //     const T f00 = f(0, 0);
-    //     const T f10 = f(1, 0);
-    //     const T f20 = f(2, 0);
-    //     const T f30 = f(3, 0);
-    //     const T f11 = f(1, 1);
-    //     const T f21 = f(2, 1);
-    //     const T f31 = f(3, 1);
-    //     const T f22 = f(2, 2);
-    //     const T f32 = f(3, 2);
-    //     const T f33 = f(3, 3);
-    //     const auto scale = norm1<T>()(elts[0]) + norm1<T>()(elts[1]) +
-    //                        norm1<T>()(elts[2]) + norm1<T>()(elts[3]) +
-    //                        norm1<T>()(elts[4]) + norm1<T>()(elts[5]);
-    //     const auto is_approx{[scale](const T &fgood, const T &fother) {
-    //       return norm1<T>()(fother - fgood) <= 1.0e-12 * (1 + scale);
-    //     }};
-    //     if (!(is_approx(f00, zero<T>()()) && is_approx(f10, -(*this)(0, 1))
-    //     &&
-    //           is_approx(f20, -(*this)(0, 2)) && is_approx(f30, -(*this)(0,
-    //           3)) && is_approx(f11, zero<T>()()) && is_approx(f21,
-    //           -(*this)(1, 2)) && is_approx(f31, -(*this)(1, 3)) &&
-    //           is_approx(f22, zero<T>()()) && is_approx(f32, -(*this)(2, 3))
-    //           && is_approx(f33, zero<T>()()))) {
-    //       ostringstream buf;
-    //       buf << "f(0,0)=" << f00 << "\n"
-    //           << "f(0,1)=" << (*this)(0, 1) << "\n"
-    //           << "f(1,0)=" << f10 << "\n"
-    //           << "f(0,2)=" << (*this)(0, 2) << "\n"
-    //           << "f(2,0)=" << f20 << "\n"
-    //           << "f(0,3)=" << (*this)(0, 3) << "\n"
-    //           << "f(3,0)=" << f30 << "\n"
-    //           << "f(1,1)=" << f11 << "\n"
-    //           << "f(1,2)=" << (*this)(1, 2) << "\n"
-    //           << "f(2,1)=" << f21 << "\n"
-    //           << "f(1,3)=" << (*this)(1, 3) << "\n"
-    //           << "f(3,1)=" << f31 << "\n"
-    //           << "f(2,2)=" << f22 << "\n"
-    //           << "f(2,3)=" << (*this)(2, 3) << "\n"
-    //           << "f(3,2)=" << f32 << "\n"
-    //           << "f(3,3)=" << f33 << "\n";
-    //       CCTK_VERROR("antisymmetric matrix is not antisymmetric:\n%s",
-    //                   buf.str().c_str());
-    //     }
-    //     assert(is_approx(f00, zero<T>()()));
-    //     assert(is_approx(f10, -(*this)(0, 1)));
-    //     assert(is_approx(f20, -(*this)(0, 2)));
-    //     assert(is_approx(f30, -(*this)(0, 3)));
-    //     assert(is_approx(f11, zero<T>()()));
-    //     assert(is_approx(f21, -(*this)(1, 2)));
-    //     assert(is_approx(f31, -(*this)(1, 3)));
-    //     assert(is_approx(f22, zero<T>()()));
-    //     assert(is_approx(f32, -(*this)(2, 3)));
-    //     assert(is_approx(f33, zero<T>()()));
-    // #endif
   }
 
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST void
@@ -1487,14 +1316,6 @@ public:
         const GF3D2<T> &gf_Axz_, const GF3D2<T> &gf_Ayz_,
         const vect<int, 3> &I) const {
     const auto &A = *this;
-    // #ifdef CCTK_DEBUG
-    //     assert(CCTK_isfinite(A(0, 1)));
-    //     assert(CCTK_isfinite(A(0, 2)));
-    //     assert(CCTK_isfinite(A(0, 3)));
-    //     assert(CCTK_isfinite(A(1, 2)));
-    //     assert(CCTK_isfinite(A(1, 3)));
-    //     assert(CCTK_isfinite(A(2, 3)));
-    // #endif
     gf_Atx_(I) = A(0, 1);
     gf_Aty_(I) = A(0, 2);
     gf_Atz_(I) = A(0, 3);

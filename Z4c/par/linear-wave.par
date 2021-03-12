@@ -4,6 +4,7 @@ ActiveThorns = "
     Formaline
     IOUtil
     ODESolvers
+    TmunuBase
     Z4c
 "
  
@@ -11,6 +12,8 @@ $rho = 1
 $ncells = 64 * $rho
 
 Cactus::cctk_show_schedule = no
+
+Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 100.0
@@ -22,18 +25,18 @@ CarpetX::ymin = 0.0
 CarpetX::zmin = 0.0
 
 CarpetX::xmax = 1.0
-CarpetX::ymax = 2.0 / $ncells
-CarpetX::zmax = 2.0 / $ncells
+CarpetX::ymax = 3.0 / $ncells
+CarpetX::zmax = 3.0 / $ncells
 
 CarpetX::ncells_x = $ncells
-CarpetX::ncells_y = 2
-CarpetX::ncells_z = 2
+CarpetX::ncells_y = 3
+CarpetX::ncells_z = 3
 
 CarpetX::blocking_factor_x = 64
-CarpetX::blocking_factor_y = 2
-CarpetX::blocking_factor_z = 2
+CarpetX::blocking_factor_y = 3
+CarpetX::blocking_factor_z = 3
 
-CarpetX::ghost_size = 2
+CarpetX::ghost_size = 3
 
 ODESolvers::method = "RK2"
 CarpetX::dtfac = 1.0 / 4

@@ -50,6 +50,8 @@ CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = 1.0 / 4.0
 
+CarpetX::kernel_launch_method = "cuda"
+
 ErrorEstimator::region_shape = "cube"
 ErrorEstimator::scale_by_resolution = yes
 

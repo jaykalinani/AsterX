@@ -198,11 +198,6 @@ public:
                                 const GF3D2<T> &gf_vz_,
                                 const vect<int, 3> &I) const {
     const auto &v = *this;
-#ifdef CCTK_DEBUG
-    assert(CCTK_isfinite(v(0)));
-    assert(CCTK_isfinite(v(1)));
-    assert(CCTK_isfinite(v(2)));
-#endif
     gf_vx_(I) = v(0);
     gf_vy_(I) = v(1);
     gf_vz_(I) = v(2);
@@ -360,31 +355,6 @@ public:
   template <typename F, typename = result_of_t<F(int, int)> >
   constexpr Z4C_INLINE Z4C_GPU mat3(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(1, 1), f(1, 2), f(2, 2)} {
-    // #ifdef CCTK_DEBUG
-    //     // Check symmetry
-    //     const T f10 = f(1, 0);
-    //     const T f20 = f(0, 2);
-    //     const T f21 = f(1, 2);
-    //     const auto is_symmetric{[](const T &fgood, const T &fother) {
-    //       return norm1<T>()(fother - fgood) <=
-    //              1.0e-12 * (1 + norm1<T>()(fgood) + norm1<T>()(fother));
-    //     }};
-    //     if (!(is_symmetric(f(0, 1), f10) && is_symmetric(f(0, 2), f20) &&
-    //           is_symmetric(f(1, 2), f21))) {
-    //       ostringstream buf;
-    //       buf << "f(0,1)=" << f(0, 1) << "\n"
-    //           << "f(1,0)=" << f10 << "\n"
-    //           << "f(0,2)=" << f(0, 2) << "\n"
-    //           << "f(2,0)=" << f20 << "\n"
-    //           << "f(1,2)=" << f(1, 2) << "\n"
-    //           << "f(2,1)=" << f21 << "\n";
-    //       CCTK_VERROR("symmetric matrix is not symmetric:\n%s",
-    //       buf.str().c_str());
-    //     }
-    //     assert(is_symmetric(f(0, 1), f10));
-    //     assert(is_symmetric(f(0, 2), f20));
-    //     assert(is_symmetric(f(1, 2), f21));
-    // #endif
   }
 
   Z4C_INLINE Z4C_GPU void
@@ -393,14 +363,6 @@ public:
         const GF3D2<T> &gf_Ayz_, const GF3D2<T> &gf_Azz_,
         const vect<int, 3> &I) const {
     const auto &A = *this;
-#ifdef CCTK_DEBUG
-    assert(CCTK_isfinite(A(0, 0)));
-    assert(CCTK_isfinite(A(0, 1)));
-    assert(CCTK_isfinite(A(0, 2)));
-    assert(CCTK_isfinite(A(1, 1)));
-    assert(CCTK_isfinite(A(1, 2)));
-    assert(CCTK_isfinite(A(2, 2)));
-#endif
     gf_Axx_(I) = A(0, 0);
     gf_Axy_(I) = A(0, 1);
     gf_Axz_(I) = A(0, 2);

@@ -5,6 +5,7 @@ ActiveThorns = "
     IOUtil
     ODESolvers
     TimerReport
+    TmunuBase
     Z4c
 "
  
@@ -14,11 +15,20 @@ ActiveThorns = "
 # Size 512: 320 GByte
 
 $ncells = 256
+$blocking_factor = 8
+$max_grid_size = 32
+$max_tile_size_x = 16
+$max_tile_size_y = 16
+$max_tile_size_z = 16
 
 Cactus::cctk_show_schedule = yes
 
+Cactus::presync_mode = "mixed-error"
+
 Cactus::terminate = "iteration"
 Cactus::cctk_itlast = 10
+
+CarpetX::poison_undefined_values = no
 
 CarpetX::xmin = -1.0
 CarpetX::ymin = -1.0
@@ -32,6 +42,18 @@ CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
+CarpetX::blocking_factor_x = $blocking_factor
+CarpetX::blocking_factor_y = $blocking_factor
+CarpetX::blocking_factor_z = $blocking_factor
+
+CarpetX::max_grid_size_x = $max_grid_size
+CarpetX::max_grid_size_y = $max_grid_size
+CarpetX::max_grid_size_z = $max_grid_size
+
+CarpetX::max_tile_size_x = $max_tile_size_x
+CarpetX::max_tile_size_y = $max_tile_size_y
+CarpetX::max_tile_size_z = $max_tile_size_z
+
 CarpetX::ghost_size = 3
 
 ODESolvers::method = "RK4"
@@ -40,6 +62,10 @@ CarpetX::dtfac = 0.5
 ADMBase::initial_data = "Cartesian Minkowski"
 ADMBase::initial_lapse = "one"
 ADMBase::initial_shift = "zero"
+
+Z4c::calc_ADM_vars = no
+Z4c::calc_ADMRHS_vars = no
+Z4c::calc_constraints = no
 
 IO::out_dir = $parfile
 IO::out_every = 10
