@@ -6,6 +6,7 @@ INHERITS: CarpetX
 
 
 
+USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: loop.hxx
 USES INCLUDE HEADER: loop_device.hxx
 USES INCLUDE HEADER: vectors.h

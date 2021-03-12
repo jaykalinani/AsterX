@@ -1,6 +1,7 @@
 #ifndef IO_TSV_HXX
 #define IO_TSV_HXX
 
+#include <fixmath.hxx>
 #include <cctk.h>
 
 namespace CarpetX {

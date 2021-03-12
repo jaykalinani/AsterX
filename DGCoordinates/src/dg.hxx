@@ -1,6 +1,7 @@
 #ifndef DG_HXX
 #define DG_HXX
 
+#include <fixmath.hxx>
 #include <div.hxx>
 #include <loop.hxx>
 #include <vect.hxx>

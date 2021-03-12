@@ -1,6 +1,7 @@
 #ifndef MEMPOOL_HXX
 #define MEMPOOL_HXX
 
+#include <fixmath.hxx>
 #include <cctk.h>
 
 #include <atomic>

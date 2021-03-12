@@ -1,6 +1,7 @@
 #ifndef DISCRETIZATION_HXX
 #define DISCRETIZATION_HXX
 
+#include <fixmath.hxx>
 #include <cctk.h>
 
 #include <ssht/ssht.h>

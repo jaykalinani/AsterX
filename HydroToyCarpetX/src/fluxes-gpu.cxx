@@ -2,6 +2,8 @@
 
 //#include <vectors.h>
 
+#include <fixmath.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Arguments_Checked.h>

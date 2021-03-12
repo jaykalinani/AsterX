@@ -6,6 +6,7 @@ INHERITS: ADMBase
 INHERITS: Coordinates
 
 USES INCLUDE HEADER: dual.hxx
+USES INCLUDE HEADER: fixmath.hxx
 
 
 
