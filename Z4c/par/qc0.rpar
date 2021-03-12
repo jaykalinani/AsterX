@@ -26,7 +26,7 @@ ncells = int(round(2.0 * domain_size / domain_spacing))
 large_box_size = fine_box_size * 2 ** (nlevels - 2)
 error_threshold = 1.0 / large_box_size
 
-out_every = int(round(1.0 / dtfac * 2 ** (nlevels - 1)))
+out_every = 16   #TODO int(round(1.0 / dtfac * 2 ** (nlevels - 1)))
 
 try:
     run_test = int("@RUN_TEST@")
@@ -51,6 +51,7 @@ ActiveThorns = "
     TimerReport
     TmunuBase
     TwoPunctures
+    # Weyl
     Z4c
 "
 
@@ -82,6 +83,10 @@ CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
+CarpetX::max_tile_size_x = 1024000
+CarpetX::max_tile_size_y = 4
+CarpetX::max_tile_size_z = 4
+
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
 CarpetX::periodic_z = no
@@ -96,7 +101,7 @@ CarpetX::periodic = no
 CarpetX::ghost_size = 3
 
 CarpetX::max_num_levels = $nlevels
-CarpetX::regrid_every = 0   #TODO 16
+CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = $error_threshold
 
 ErrorEstimator::region_shape = "cube"
@@ -125,9 +130,9 @@ TwoPunctures::TP_Tiny    = 1.0e-2
 
 TwoPunctures::verbose = yes
 
-Z4c::calc_ADM_vars = no
-Z4c::calc_ADMRHS_vars = no
-Z4c::calc_constraints = no
+Z4c::calc_ADM_vars = yes                  # for Weyl
+Z4c::calc_ADMRHS_vars = no                # for Weyl
+Z4c::calc_constraints = yes
 
 Z4c::chi_floor = 1.0e-6
 Z4c::alphaG_floor = 1.0e-8
@@ -141,10 +146,12 @@ IO::out_proc_every = 1
 CarpetX::out_plotfile_groups = ""
 
 CarpetX::out_silo_vars = "
-    # ADMBase::metric
-    # ADMBase::curv
+    ADMBase::metric
+    ADMBase::curv
     ADMBase::lapse
-    # ADMBase::shift
+    ADMBase::shift
+    # Weyl::Psi4re
+    # Weyl::Psi4im
     # Z4c::chi
     # Z4c::gamma_tilde
     # Z4c::K_hat
@@ -153,6 +160,14 @@ CarpetX::out_silo_vars = "
     # Z4c::Theta
     # Z4c::alphaG
     # Z4c::betaG
+    # Z4c::chi_rhs
+    # Z4c::gamma_tilde_rhs
+    # Z4c::K_hat_rhs
+    # Z4c::A_tilde_rhs
+    # Z4c::Gam_tilde_rhs
+    # Z4c::Theta_rhs
+    # Z4c::alphaG_rhs
+    # Z4c::betaG_rhs
     # Z4c::ZtC
     # Z4c::HC
     # Z4c::MtC

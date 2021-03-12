@@ -16,6 +16,10 @@
 namespace CarpetX {
 using namespace std;
 
+const MPI_Datatype mpi_datatype<float>::value = MPI_FLOAT;
+const MPI_Datatype mpi_datatype<double>::value = MPI_DOUBLE;
+const MPI_Datatype mpi_datatype<long double>::value = MPI_LONG_DOUBLE;
+
 template <typename T, int D> MPI_Datatype reduction_mpi_datatype() {
   static MPI_Datatype datatype = MPI_DATATYPE_NULL;
   if (datatype == MPI_DATATYPE_NULL) {
@@ -127,15 +131,17 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     unique_ptr<amrex::iMultiFab> finemask_imfab;
 
     warn_if_invalid(groupdata, vi, tl, make_valid_int(),
-                    [] { return "Before reduction"; });
+                    []() { return "Before reduction"; });
 
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
     const CCTK_REAL *restrict const x01 = geom.ProbLo();
     const CCTK_REAL *restrict const dx1 = geom.CellSize();
     const vect<CCTK_REAL, dim> dx{dx1[0], dx1[1], dx1[2]};
-    const vect<CCTK_REAL, dim> x0{x01[0] + (mfab.ixType()[0] == amrex::IndexType::CELL? dx[0]/2. : 0.),
-                                  x01[1] + (mfab.ixType()[1] == amrex::IndexType::CELL? dx[1]/2. : 0.),
-                                  x01[2] + (mfab.ixType()[2] == amrex::IndexType::CELL? dx[2]/2. : 0.)};
+    const vect<CCTK_REAL, dim> x0{
+        x01[0] + (mfab.ixType()[0] == amrex::IndexType::CELL ? dx[0] / 2. : 0.),
+        x01[1] + (mfab.ixType()[1] == amrex::IndexType::CELL ? dx[1] / 2. : 0.),
+        x01[2] +
+            (mfab.ixType()[2] == amrex::IndexType::CELL ? dx[2] / 2. : 0.)};
 
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
@@ -148,8 +154,7 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
           makeFineMask(mfab, fine_mfab.boxArray(), reffact));
     }
 
-    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-        {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
     // TODO: check that multi-threading actually helps and we are not dominated
     // my memory latency anyway
     // TODO: document required version of OpenMP to use custom reductions

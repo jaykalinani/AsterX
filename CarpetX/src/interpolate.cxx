@@ -1,13 +1,13 @@
 #include "driver.hxx"
+#include "interp.hxx"
 #include "reduction.hxx"
 #include "schedule.hxx"
-#include "interp.hxx"
-#include "util_Table.h"
-#include "util_ErrorCodes.h"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+#include <util_ErrorCodes.h>
+#include <util_Table.h>
 
 #include <AMReX_AmrParticles.H>
 #include <AMReX_Particles.H>
@@ -260,7 +260,7 @@ extern "C" CCTK_INT CarpetX_DriverInterpolate(
     CCTK_ERROR("TableGetIntArray failed.");
   }
 
-  const CCTK_POINTER resultptrs = (const CCTK_POINTER)output_arrays;
+  const CCTK_POINTER resultptrs = (CCTK_POINTER)output_arrays;
   CarpetX_Interpolate(
       cctkGH, N_interp_points, static_cast<const CCTK_REAL *>(coords[0]),
       static_cast<const CCTK_REAL *>(coords[1]),
@@ -279,6 +279,10 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
                                     const CCTK_INT *restrict const varinds,
                                     const CCTK_INT *restrict const operations,
                                     const CCTK_POINTER resultptrs_) {
+#ifdef __CUDACC__
+  abort();
+#else
+
   DECLARE_CCTK_PARAMETERS;
   const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
   assert(in_global_mode(cctkGH));
@@ -543,12 +547,14 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
 
   // Set result
   CCTK_REAL *const restrict *const restrict resultptrs =
-      static_cast<CCTK_REAL *const *const restrict>(resultptrs_);
+      static_cast<CCTK_REAL *const *>(resultptrs_);
   for (int n = 0; n < npoints; ++n) {
     const int offset = (nvars + 1) * n;
     const int idx = int(recvbuf.at(offset));
     for (int v = 0; v < nvars; ++v)
       resultptrs[v][idx] = recvbuf.at(offset + 1 + v);
   }
+
+#endif
 }
 } // namespace CarpetX

@@ -1,3 +1,5 @@
+#include <fixmath.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Arguments_Checked.h>
@@ -5,6 +7,7 @@
 
 #include <loop.hxx>
 
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -23,9 +26,10 @@ template <typename Y, typename X> Y linterp(Y y0, Y y1, X x0, X x1, X x) {
 template <typename T> T spline(T r) {
   if (r >= 1.0)
     return 0.0;
-  constexpr CCTK_REAL f =
-      dim == 1 ? 1.0
-               : dim == 2 ? 24.0 / 7.0 / M_PI : dim == 3 ? 4.0 / M_PI : -1;
+  constexpr CCTK_REAL f = dim == 1   ? 1.0
+                          : dim == 2 ? 24.0 / 7.0 / M_PI
+                          : dim == 3 ? 4.0 / M_PI
+                                     : -1;
   const T r2 = pow(r, 2);
   return f * (r <= 0.5 ? 1 - 2 * r2 : 2 + r * (-4 + 2 * r));
 }
@@ -369,7 +373,6 @@ extern "C" void WaveToyCarpetX_EvolveParticle(CCTK_ARGUMENTS) {
 #if 0
 extern "C" void WaveToyCarpetX_RadiativeBoundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
-  DECLARE_CCTK_PARAMETERS;
 
   constexpr CCTK_REAL phi_inf = 0; // value at infinity
   constexpr CCTK_REAL phi_vel = 1; // propagation speed
@@ -498,7 +501,6 @@ extern "C" void WaveToyCarpetX_Boundaries(CCTK_ARGUMENTS) {
 
 extern "C" void WaveToyCarpetX_NaNCheck_past(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_WaveToyCarpetX_NaNCheck_past;
-  DECLARE_CCTK_PARAMETERS;
 
   Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
     assert(CCTK_isfinite(phi_p[p.idx]));
@@ -508,7 +510,6 @@ extern "C" void WaveToyCarpetX_NaNCheck_past(CCTK_ARGUMENTS) {
 
 extern "C" void WaveToyCarpetX_NaNCheck_current(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_WaveToyCarpetX_NaNCheck_current;
-  DECLARE_CCTK_PARAMETERS;
 
   int levfac = cctk_levfac[0];
   int lev = 0;
@@ -532,7 +533,6 @@ extern "C" void WaveToyCarpetX_NaNCheck_current(CCTK_ARGUMENTS) {
 
 extern "C" void WaveToyCarpetX_Energy(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_WaveToyCarpetX_Energy;
-  DECLARE_CCTK_PARAMETERS;
 
   // const CCTK_REAL dt = CCTK_DELTA_TIME;
   const CCTK_REAL dx = CCTK_DELTA_SPACE(0);

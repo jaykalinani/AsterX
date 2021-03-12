@@ -1,7 +1,7 @@
 # Main make.code.defn file for thorn HydroToyCarpetX
 
 # Source files in this directory
-SRCS = hydrotoy.cxx fluxes.cxx pressure.cxx evolve.cxx
+SRCS = hydrotoy.cxx fluxes-gpu.cxx pressure-gpu.cxx evolve-vc-gpu.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 

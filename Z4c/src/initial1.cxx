@@ -1,6 +1,6 @@
 #include "tensor.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -14,60 +14,66 @@ using namespace std;
 extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_Initial1;
 
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gxx_(cctkGH, gxx);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gxy_(cctkGH, gxy);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gxz_(cctkGH, gxz);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gyy_(cctkGH, gyy);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gyz_(cctkGH, gyz);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_gzz_(cctkGH, gzz);
+  const array<int, dim> indextype = {0, 0, 0};
+  const GF3D2layout layout1(cctkGH, indextype);
 
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_kxx_(cctkGH, kxx);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_kxy_(cctkGH, kxy);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_kxz_(cctkGH, kxz);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_kyy_(cctkGH, kyy);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_kyz_(cctkGH, kyz);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_kzz_(cctkGH, kzz);
+  const GF3D2<const CCTK_REAL> gf_gxx1(layout1, gxx);
+  const GF3D2<const CCTK_REAL> gf_gxy1(layout1, gxy);
+  const GF3D2<const CCTK_REAL> gf_gxz1(layout1, gxz);
+  const GF3D2<const CCTK_REAL> gf_gyy1(layout1, gyy);
+  const GF3D2<const CCTK_REAL> gf_gyz1(layout1, gyz);
+  const GF3D2<const CCTK_REAL> gf_gzz1(layout1, gzz);
 
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_alp_(cctkGH, alp);
+  const GF3D2<const CCTK_REAL> gf_kxx1(layout1, kxx);
+  const GF3D2<const CCTK_REAL> gf_kxy1(layout1, kxy);
+  const GF3D2<const CCTK_REAL> gf_kxz1(layout1, kxz);
+  const GF3D2<const CCTK_REAL> gf_kyy1(layout1, kyy);
+  const GF3D2<const CCTK_REAL> gf_kyz1(layout1, kyz);
+  const GF3D2<const CCTK_REAL> gf_kzz1(layout1, kzz);
 
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_betax_(cctkGH, betax);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_betay_(cctkGH, betay);
-  const GF3D<const CCTK_REAL, 0, 0, 0> gf_betaz_(cctkGH, betaz);
+  const GF3D2<const CCTK_REAL> gf_alp1(layout1, alp);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_chi_(cctkGH, chi);
+  const GF3D2<const CCTK_REAL> gf_betax1(layout1, betax);
+  const GF3D2<const CCTK_REAL> gf_betay1(layout1, betay);
+  const GF3D2<const CCTK_REAL> gf_betaz1(layout1, betaz);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxx_(cctkGH, gammatxx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxy_(cctkGH, gammatxy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxz_(cctkGH, gammatxz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatyy_(cctkGH, gammatyy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatyz_(cctkGH, gammatyz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatzz_(cctkGH, gammatzz);
+  const GF3D2<CCTK_REAL> gf_chi1(layout1, chi);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Kh_(cctkGH, Kh);
+  const GF3D2<CCTK_REAL> gf_gammatxx1(layout1, gammatxx);
+  const GF3D2<CCTK_REAL> gf_gammatxy1(layout1, gammatxy);
+  const GF3D2<CCTK_REAL> gf_gammatxz1(layout1, gammatxz);
+  const GF3D2<CCTK_REAL> gf_gammatyy1(layout1, gammatyy);
+  const GF3D2<CCTK_REAL> gf_gammatyz1(layout1, gammatyz);
+  const GF3D2<CCTK_REAL> gf_gammatzz1(layout1, gammatzz);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atxx_(cctkGH, Atxx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atxy_(cctkGH, Atxy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atxz_(cctkGH, Atxz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atyy_(cctkGH, Atyy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atyz_(cctkGH, Atyz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atzz_(cctkGH, Atzz);
+  const GF3D2<CCTK_REAL> gf_Kh1(layout1, Kh);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Theta_(cctkGH, Theta);
+  const GF3D2<CCTK_REAL> gf_Atxx1(layout1, Atxx);
+  const GF3D2<CCTK_REAL> gf_Atxy1(layout1, Atxy);
+  const GF3D2<CCTK_REAL> gf_Atxz1(layout1, Atxz);
+  const GF3D2<CCTK_REAL> gf_Atyy1(layout1, Atyy);
+  const GF3D2<CCTK_REAL> gf_Atyz1(layout1, Atyz);
+  const GF3D2<CCTK_REAL> gf_Atzz1(layout1, Atzz);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_alphaG_(cctkGH, alphaG);
+  const GF3D2<CCTK_REAL> gf_Theta1(layout1, Theta);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_betaGx_(cctkGH, betaGx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_betaGy_(cctkGH, betaGy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_betaGz_(cctkGH, betaGz);
+  const GF3D2<CCTK_REAL> gf_alphaG1(layout1, alphaG);
 
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+  const GF3D2<CCTK_REAL> gf_betaGx1(layout1, betaGx);
+  const GF3D2<CCTK_REAL> gf_betaGy1(layout1, betaGy);
+  const GF3D2<CCTK_REAL> gf_betaGz1(layout1, betaGz);
+
+  // loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                      const PointDesc &p) {
     // Load
-    const mat3<CCTK_REAL, DN, DN> g(gf_gxx_, gf_gxy_, gf_gxz_, gf_gyy_, gf_gyz_,
-                                    gf_gzz_, p.I);
-    const mat3<CCTK_REAL, DN, DN> k(gf_kxx_, gf_kxy_, gf_kxz_, gf_kyy_, gf_kyz_,
-                                    gf_kzz_, p.I);
-    const CCTK_REAL alp = gf_alp_(p.I);
-    const vec3<CCTK_REAL, UP> beta(gf_betax_, gf_betay_, gf_betaz_, p.I);
+    const mat3<CCTK_REAL, DN, DN> g(gf_gxx1, gf_gxy1, gf_gxz1, gf_gyy1, gf_gyz1,
+                                    gf_gzz1, p.I);
+    const mat3<CCTK_REAL, DN, DN> k(gf_kxx1, gf_kxy1, gf_kxz1, gf_kyy1, gf_kyz1,
+                                    gf_kzz1, p.I);
+    const CCTK_REAL alp = gf_alp1(p.I);
+    const vec3<CCTK_REAL, UP> beta(gf_betax1, gf_betay1, gf_betaz1, p.I);
 
     // Calculate Z4c variables (all except Gammat)
     const CCTK_REAL detg = g.det();
@@ -92,14 +98,14 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
     const vec3<CCTK_REAL, UP> betaG([&](int a) { return beta(a); });
 
     // Store
-    gf_chi_(p.I) = chi;
-    gammat.store(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
-                 gf_gammatyz_, gf_gammatzz_, p.I);
-    gf_Kh_(p.I) = Kh;
-    At.store(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_, gf_Atzz_, p.I);
-    gf_Theta_(p.I) = Theta;
-    gf_alphaG_(p.I) = alphaG;
-    betaG.store(gf_betaGx_, gf_betaGy_, gf_betaGz_, p.I);
+    gf_chi1(p.I) = chi;
+    gammat.store(gf_gammatxx1, gf_gammatxy1, gf_gammatxz1, gf_gammatyy1,
+                 gf_gammatyz1, gf_gammatzz1, p.I);
+    gf_Kh1(p.I) = Kh;
+    At.store(gf_Atxx1, gf_Atxy1, gf_Atxz1, gf_Atyy1, gf_Atyz1, gf_Atzz1, p.I);
+    gf_Theta1(p.I) = Theta;
+    gf_alphaG1(p.I) = alphaG;
+    betaG.store(gf_betaGx1, gf_betaGy1, gf_betaGz1, p.I);
   });
 }
 

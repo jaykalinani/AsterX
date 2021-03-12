@@ -23,5 +23,3 @@ To achieve maximum performance, NSIMD mainly relies on the inline
 optimization pass of the compiler. Therefore using any mainstream
 compiler such as GCC, Clang, MSVC, XL C/C++, ICC and others with NSIMD
 will give you a zero-cost SIMD abstraction library.
-
-

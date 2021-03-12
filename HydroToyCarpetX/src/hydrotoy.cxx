@@ -101,6 +101,10 @@ extern "C" void HydroToyCarpetX_Boundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Boundaries;
 
   // do nothing
+
+  Loop::loop_bnd<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+    assert(false); // This should not be executed
+  });
 }
 
 extern "C" void HydroToyCarpetX_CopyConserved(CCTK_ARGUMENTS) {
@@ -258,7 +262,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   // fetot^i = (etot + press) vel^i
 
   Loop::loop_int<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcflux{[&](auto &u, auto f) {
+    auto calcflux=[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(0);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -268,7 +272,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
       return dAx * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
-    }};
+    };
 
     fxrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velx_(I); });
 
@@ -282,7 +286,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   });
 
   Loop::loop_int<1, 0, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcflux{[&](auto &u, auto f) {
+    auto calcflux=[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(1);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -292,7 +296,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
       return dAy * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
-    }};
+    };
 
     fyrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * vely_(I); });
 
@@ -306,7 +310,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   });
 
   Loop::loop_int<1, 1, 0>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcflux{[&](auto &u, auto f) {
+    auto calcflux=[&](auto &u, auto f) {
       auto I_m = p.I - p.DI(2);
       auto I_p = p.I;
       auto lambda_m = 1.0;
@@ -316,7 +320,7 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       auto flux_m = f(I_m);
       auto flux_p = f(I_p);
       return dAz * llf(lambda_m, lambda_p, var_m, var_p, flux_m, flux_p);
-    }};
+    };
 
     fzrho_(p.I) = calcflux(rho_, [&](auto I) { return rho_(I) * velz_(I); });
 
@@ -397,11 +401,11 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   // dt etot + d_i (etot vel^i) = 0
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcupdate{[&](auto &fx, auto &fy, auto &fz) {
+    auto calcupdate=[&](auto &fx, auto &fy, auto &fz) {
       return dV1 *
              ((fx(p.I + p.DI(0)) - fx(p.I)) + (fy(p.I + p.DI(1)) - fy(p.I)) +
               (fz(p.I + p.DI(2)) - fz(p.I)));
-    }};
+    };
 
     rho_(p.I) = rho_p_(p.I) - calcupdate(fxrho_, fyrho_, fzrho_);
 
@@ -434,7 +438,7 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
   }
 
   Loop::loop_int<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-    auto calcerr{[&](auto &var_) {
+    auto calcerr = [&](auto &var_) {
       CCTK_REAL err{0};
       for (int d = 0; d < dim; ++d) {
         auto varm = var_(p.I - p.DI(d));
@@ -443,72 +447,72 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
         err = fmax(err, fabs(varm - 2 * var0 + varp));
       }
       return err;
-    }};
+    };
 
     regrid_error_(p.I) = fmax5(calcerr(rho_), calcerr(momx_), calcerr(momy_),
                                calcerr(momz_), calcerr(etot_));
   });
 }
 
-extern "C" void HydroToyCarpetX_Output(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Output;
-  DECLARE_CCTK_PARAMETERS;
-
-  const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
-  const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
-  const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
-  const Loop::GF3D1<const CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
-  const Loop::GF3D1<const CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
-
-  const Loop::GF3D1<const CCTK_REAL> regrid_error_(cctkGH, {1, 1, 1}, {1, 1, 1},
-                                                   regrid_error);
-
-  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, {0, 0, 0},
-                                            fxrho);
-  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, {0, 0, 0},
-                                             fxmomx);
-  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, {0, 0, 0},
-                                             fxmomy);
-  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, {0, 0, 0},
-                                             fxmomz);
-  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, {0, 0, 0},
-                                             fxetot);
-
-  int levfac = cctk_levfac[0];
-  int lev = 0;
-  while (levfac > 1) {
-    levfac >>= 1;
-    lev += 1;
-  }
-
-#pragma omp critical(HydroToyCarpetX_Output)
-  {
-    const int oldprec = cout.precision(17);
-    cout << "iteration " << cctk_iteration << " level " << lev << ":\n";
-
-    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      if (p.j == 0 && p.k == 0) {
-        cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
-             << p.y << "," << p.z << ") rho="
-             << rho_(p.I)
-             // << " momx=" << momx_(p.I) << " etot=" << etot_(p.I)
-             // << " err=" << regrid_error_(p.I)
-             << "\n";
-      }
-    });
-
-    Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
-      if (p.j == 0 && p.k == 0) {
-        cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
-             << p.y << "," << p.z << ") fxrho="
-             << fxrho_(p.I)
-             // << " fxmomx=" << fxmomx_(p.I) << " fxetot=" << fxetot_(p.I)
-             << "\n";
-      }
-    });
-
-    cout.precision(oldprec);
-  }
-}
-
+//extern "C" void HydroToyCarpetX_Output(CCTK_ARGUMENTS) {
+//  DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Output;
+//  DECLARE_CCTK_PARAMETERS;
+//
+//  const Loop::GF3D1<const CCTK_REAL> rho_(cctkGH, {1, 1, 1}, {1, 1, 1}, rho);
+//  const Loop::GF3D1<const CCTK_REAL> momx_(cctkGH, {1, 1, 1}, {1, 1, 1}, momx);
+//  const Loop::GF3D1<const CCTK_REAL> momy_(cctkGH, {1, 1, 1}, {1, 1, 1}, momy);
+//  const Loop::GF3D1<const CCTK_REAL> momz_(cctkGH, {1, 1, 1}, {1, 1, 1}, momz);
+//  const Loop::GF3D1<const CCTK_REAL> etot_(cctkGH, {1, 1, 1}, {1, 1, 1}, etot);
+//
+//  const Loop::GF3D1<const CCTK_REAL> regrid_error_(cctkGH, {1, 1, 1}, {1, 1, 1},
+//                                                   regrid_error);
+//
+//  const Loop::GF3D1<const CCTK_REAL> fxrho_(cctkGH, {0, 1, 1}, {0, 0, 0},
+//                                            fxrho);
+//  const Loop::GF3D1<const CCTK_REAL> fxmomx_(cctkGH, {0, 1, 1}, {0, 0, 0},
+//                                             fxmomx);
+//  const Loop::GF3D1<const CCTK_REAL> fxmomy_(cctkGH, {0, 1, 1}, {0, 0, 0},
+//                                             fxmomy);
+//  const Loop::GF3D1<const CCTK_REAL> fxmomz_(cctkGH, {0, 1, 1}, {0, 0, 0},
+//                                             fxmomz);
+//  const Loop::GF3D1<const CCTK_REAL> fxetot_(cctkGH, {0, 1, 1}, {0, 0, 0},
+//                                             fxetot);
+//
+//  int levfac = cctk_levfac[0];
+//  int lev = 0;
+//  while (levfac > 1) {
+//    levfac >>= 1;
+//    lev += 1;
+//  }
+//
+//#pragma omp critical(HydroToyCarpetX_Output)
+//  {
+//    const int oldprec = cout.precision(17);
+//    cout << "iteration " << cctk_iteration << " level " << lev << ":\n";
+//
+//    Loop::loop_all<1, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+//      if (p.j == 0 && p.k == 0) {
+//        cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
+//             << p.y << "," << p.z << ") rho="
+//             << rho_(p.I)
+//             // << " momx=" << momx_(p.I) << " etot=" << etot_(p.I)
+//             // << " err=" << regrid_error_(p.I)
+//             << "\n";
+//      }
+//    });
+//
+//    Loop::loop_all<0, 1, 1>(cctkGH, [&](const Loop::PointDesc &p) {
+//      if (p.j == 0 && p.k == 0) {
+//        cout << "[" << p.i << "," << p.j << "," << p.k << "] (" << p.x << ","
+//             << p.y << "," << p.z << ") fxrho="
+//             << fxrho_(p.I)
+//             // << " fxmomx=" << fxmomx_(p.I) << " fxetot=" << fxetot_(p.I)
+//             << "\n";
+//      }
+//    });
+//
+//    cout.precision(oldprec);
+//  }
+//}
+//
 } // namespace HydroToyCarpetX

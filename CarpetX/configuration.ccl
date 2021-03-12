@@ -4,6 +4,10 @@ REQUIRES AMReX MPI yaml_cpp zlib
 
 REQUIRES Arith
 
+OPTIONAL CUDA
+{
+}
+
 OPTIONAL Silo
 {
 }

@@ -517,7 +517,7 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
           !!reflection_upper_z,
       }},
   }};
-  const auto makebc{[&](const int vi, const int dir, const int face) {
+  const auto makebc = [&](const int vi, const int dir, const int face) {
     assert(dir >= 0 && dir < dim);
     assert(face >= 0 && face < 2);
     if (is_periodic[face][dir])
@@ -526,16 +526,17 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
       return groupdata.parities.at(vi)[dir] > 0 ? amrex::BCType::reflect_even
                                                 : amrex::BCType::reflect_odd;
     return amrex::BCType::ext_dir;
-  }};
+  };
 
   amrex::Vector<amrex::BCRec> bcs(groupdata.numvars);
   for (int vi = 0; vi < groupdata.numvars; ++vi)
     bcs.at(vi) =
         amrex::BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
                      makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
-  const auto apply_physbc{[](const amrex::Box &, const amrex::FArrayBox &, int,
-                             int, const amrex::Geometry &, CCTK_REAL,
-                             const amrex::Vector<amrex::BCRec> &, int, int) {}};
+  const auto apply_physbc = [](const amrex::Box &, const amrex::FArrayBox &,
+                               int, int, const amrex::Geometry &, CCTK_REAL,
+                               const amrex::Vector<amrex::BCRec> &, int,
+                               int) {};
   CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(groupdata.level), bcs,
                             apply_physbcs);
 
@@ -586,9 +587,8 @@ void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
   auto &restrict groupdata = *leveldata.groupdata.at(gi);
   // Ensure the error estimate has been set
   error_if_invalid(groupdata, vi, tl, make_valid_int(),
-                   [] { return "ErrorEst"; });
-  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-      {max_tile_size_x, max_tile_size_y, max_tile_size_z});
+                   []() { return "ErrorEst"; });
+  auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
   for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
     GridPtrDesc1 grid(groupdata, mfi);
@@ -635,8 +635,8 @@ void SetupGlobals() {
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    /* only grid functions live on levels (and the grid) */
-    if (group.grouptype != CCTK_SCALAR and group.grouptype != CCTK_ARRAY)
+    // grid functions live on levels
+    if (group.grouptype == CCTK_GF)
       continue;
     assert(group.grouptype == CCTK_ARRAY || group.grouptype == CCTK_SCALAR);
     assert(group.vartype == CCTK_VARIABLE_REAL);
@@ -678,7 +678,7 @@ void SetupGlobals() {
     for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
       arraygroupdata.data.at(tl).resize(arraygroupdata.numvars *
                                         arraygroupdata.array_size);
-      why_valid_t why([] { return "SetupGlobals"; });
+      why_valid_t why([]() { return "SetupGlobals"; });
       arraygroupdata.valid.at(tl).resize(arraygroupdata.numvars, why);
       for (int vi = 0; vi < arraygroupdata.numvars; ++vi) {
         // TODO: decide that valid_bnd == false always and rely on
@@ -688,12 +688,12 @@ void SetupGlobals() {
         valid.valid_outer = true;
         valid.valid_ghosts = true;
         arraygroupdata.valid.at(tl).at(vi).set(valid,
-                                               [] { return "SetupGlobals"; });
+                                               []() { return "SetupGlobals"; });
 
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
         poison_invalid(arraygroupdata, vi, tl);
-        check_valid(arraygroupdata, vi, tl, [] { return "SetupGlobals"; });
+        check_valid(arraygroupdata, vi, tl, []() { return "SetupGlobals"; });
       }
     }
   }
@@ -746,7 +746,7 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    /* only grid functions live on levels (and the grid) */
+    // only grid functions live on levels (and the grid)
     if (group.grouptype != CCTK_GF)
       continue;
 
@@ -783,10 +783,10 @@ void SetupLevel(const int level, const amrex::BoxArray &ba,
         assert(geom.Domain().length(d) >= groupdata.nghostzones[d]);
 
     // Allocate grid hierarchies
-    // FIXME: CarpetX and AMReX use opposite numbers for cell/vertex data.
-    // Namely AMReX uses (AMReX_IndexType.H): enum   CellIndex { CELL = 0, NODE
-    // = 1 } while CarpetX uses indextype == 0 for vertex (node) and indextype
-    // == 1 for cell data.
+    // Note: CarpetX and AMReX use opposite constants for cell/vertex
+    // data. AMReX uses (AMReX_IndexType.H): enum CellIndex { CELL =
+    // 0, NODE = 1 }, while CarpetX uses indextype == 0 for vertex
+    // (node) and indextype == 1 for cell data.
     const amrex::BoxArray &gba = convert(
         ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
                                                     : amrex::IndexType::NODE,
@@ -852,7 +852,7 @@ void CactusAmrCore::MakeNewLevelFromScratch(
 #pragma omp critical
     CCTK_VINFO("MakeNewLevelFromScratch level %d", level);
 
-  SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromScratch"; });
+  SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromScratch"; });
 
   if (saved_cctkGH) {
     assert(!active_levels);
@@ -875,7 +875,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
   assert(!use_subcycling_wip);
   assert(level > 0);
 
-  SetupLevel(level, ba, dm, [] { return "MakeNewLevelFromCoarse"; });
+  SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromCoarse"; });
 
   // Prolongate
   assert(!use_subcycling_wip);
@@ -910,10 +910,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
 
     groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
-      why_valid_t why([] { return "MakeNewLevelFromCoarse"; });
+      why_valid_t why([]() { return "MakeNewLevelFromCoarse"; });
       groupdata.valid.at(tl).resize(groupdata.numvars, why);
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        groupdata.valid.at(tl).at(vi).set(valid_t(false), [] {
+        groupdata.valid.at(tl).at(vi).set(valid_t(false), []() {
           return "MakeNewLevelFromCoarse: not prolongated because variable is "
                  "not evolved";
         });
@@ -921,10 +921,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
       if (tl < prolongate_tl) {
         // Expect coarse grid data to be valid
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), [] {
+          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
-          check_valid(coarsegroupdata, vi, tl, [] {
+          check_valid(coarsegroupdata, vi, tl, []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
         }
@@ -934,15 +934,16 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
             ghext->amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
             interpolator, bcs, 0);
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(tl).at(vi).set(make_valid_int(), [] {
+          groupdata.valid.at(tl).at(vi).set(make_valid_int(), []() {
             return "MakeNewLevelFromCoarse after prolongation";
           });
       }
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        poison_invalid(groupdata, vi, tl);
-        check_valid(groupdata, vi, tl,
-                    [] { return "MakeNewLevelFromCoarse after prolongation"; });
+        // Already poisoned by SetupLevel
+        check_valid(groupdata, vi, tl, []() {
+          return "MakeNewLevelFromCoarse after prolongation";
+        });
       }
     } // for tl
 
@@ -1022,36 +1023,21 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<amrex::MultiFab>(
           gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
-      vector<why_valid_t> valid(groupdata.numvars, why_valid_t([] {
+      vector<why_valid_t> valid(groupdata.numvars, why_valid_t([]() {
                                   return "RemakeLevel: not prolongated/copied "
                                          "because variable is not evolved";
                                 }));
-      if (poison_undefined_values) {
-        // Set new grid functions to nan
-        auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling(
-            {max_tile_size_x, max_tile_size_y, max_tile_size_z});
-#pragma omp parallel
-        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi) {
-          GridPtrDesc1 grid(groupdata, mfi);
-          const amrex::Array4<CCTK_REAL> &vars = mfab->array(mfi);
-          for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            const GF3D1<CCTK_REAL> &ptr_ = grid.gf3d(vars, vi);
-            grid.loop_idx(
-                where_t::everywhere, groupdata.indextype, groupdata.nghostzones,
-                [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
-          }
-        }
-      }
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        poison_invalid(groupdata, vi, tl);
 
       if (tl < prolongate_tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(),
-                           [] { return "RemakeLevel before prolongation"; });
+                           []() { return "RemakeLevel before prolongation"; });
           error_if_invalid(groupdata, vi, tl, make_valid_all(),
-                           [] { return "RemakeLevel before prolongation"; });
+                           []() { return "RemakeLevel before prolongation"; });
           check_valid(coarsegroupdata, vi, tl,
-                      [] { return "RemakeLevel before prolongation"; });
+                      []() { return "RemakeLevel before prolongation"; });
           // We cannot call this function since it would try to
           // traverse the old grid function with the new grid
           // structure.
@@ -1067,7 +1053,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                            reffact, interpolator, bcs, 0);
 
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          valid.at(vi) = why_valid_t(make_valid_int(), [] {
+          valid.at(vi) = why_valid_t(make_valid_int(), []() {
             return "RemakeLevel after prolongation";
           });
       }
@@ -1080,9 +1066,9 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
             groupdata.numvars);
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        poison_invalid(groupdata, vi, tl);
+        // Already poisoned above
         check_valid(groupdata, vi, tl,
-                    [] { return "RemakeLevel after prolongation"; });
+                    []() { return "RemakeLevel after prolongation"; });
       }
     } // for tl
 
@@ -1302,6 +1288,9 @@ extern "C" int CarpetX_Startup() {
   int ierr = CCTK_RegisterBanner(buf.str().c_str());
   assert(!ierr);
 
+  // Copy parameters
+  Loop::CarpetX_poison_undefined_values = poison_undefined_values;
+
   // Register a GH extension
   ghext_handle = CCTK_RegisterGHExtension("CarpetX");
   assert(ghext_handle >= 0);
@@ -1356,6 +1345,9 @@ void *SetupGH(tFleshConfig *fc, int convLevel, cGH *restrict cctkGH) {
   // Throw exceptions for failing AMReX assertions. With exceptions,
   // we get core files.
   pp.add("amrex.throw_exception", 1);
+  // Set tile size
+  pp.addarr("fabarray.mfiter_tile_size",
+            vector<int>{max_tile_size_x, max_tile_size_y, max_tile_size_z});
   pamrex = amrex::Initialize(MPI_COMM_WORLD);
 
   // Create grid structure
@@ -1383,7 +1375,7 @@ int InitGH(cGH *restrict cctkGH) {
   const int coord = -1; // undefined?
 
   // Refinement ratios
-  const amrex::Vector<amrex::IntVect> reffacts; // empty
+  const amrex::Vector<amrex::IntVect> reffacts{}; // empty
 
   // Periodicity
   const amrex::Array<int, dim> is_periodic{
@@ -1393,12 +1385,11 @@ int InitGH(cGH *restrict cctkGH) {
   // know them when its constructor is running, but there are no
   // constructor arguments for them
   amrex::ParmParse pp;
-  pp.add("amr.blocking_factor_x", blocking_factor_x);
-  pp.add("amr.blocking_factor_y", blocking_factor_y);
-  pp.add("amr.blocking_factor_z", blocking_factor_z);
-  pp.add("amr.max_grid_size_x", max_grid_size_x);
-  pp.add("amr.max_grid_size_y", max_grid_size_y);
-  pp.add("amr.max_grid_size_z", max_grid_size_z);
+  pp.addarr(
+      "amr.blocking_factor",
+      vector<int>{blocking_factor_x, blocking_factor_y, blocking_factor_z});
+  pp.addarr("amr.max_grid_size",
+            vector<int>{max_grid_size_x, max_grid_size_y, max_grid_size_z});
   pp.add("amr.grid_eff", grid_efficiency);
 
   ghext->amrcore = make_unique<CactusAmrCore>(
@@ -1451,6 +1442,9 @@ extern "C" int CarpetX_Shutdown() {
   if (verbose)
 #pragma omp critical
     CCTK_VINFO("Shutdown");
+
+  // Deallocate memory pools
+  mempools.reset();
 
   if (false) {
     // Should we really do this? Cactus's extension handling mechanism
@@ -1624,6 +1618,8 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->gsh = cctkGH->cctk_gsh;
     data->lbnd = cctkGH->cctk_lbnd;
     data->ubnd = cctkGH->cctk_ubnd;
+    data->tile_min = cctkGH->cctk_tile_min;
+    data->tile_max = cctkGH->cctk_tile_max;
     data->bbox = cctkGH->cctk_bbox;
     data->nghostzones = cctkGH->cctk_nghostzones;
     data->activetimelevels = CCTK_ActiveTimeLevelsGI(cctkGH, gi);
@@ -1641,7 +1637,7 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->nghostzones = arraygroupdata.nghostzones;
     data->activetimelevels = arraygroupdata.activetimelevels;
   } else {
-    char* gname = CCTK_GroupName(gi);
+    char *gname = CCTK_GroupName(gi);
     CCTK_VERROR("Internal error: unexpected group type %d for group '%s'",
                 (int)group.grouptype, gname);
     free(gname);

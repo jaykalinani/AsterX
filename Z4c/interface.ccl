@@ -5,8 +5,14 @@ IMPLEMENTS: Z4c
 INHERITS: ADMBase TmunuBase
 
 USES INCLUDE HEADER: dual.hxx
-USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: loop_device.hxx
+USES INCLUDE HEADER: mempool.hxx
 USES INCLUDE HEADER: vect.hxx
+
+
+
+CCTK_INT FUNCTION GetCallFunctionCount()
+REQUIRES FUNCTION GetCallFunctionCount
 
 
 

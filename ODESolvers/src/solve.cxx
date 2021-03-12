@@ -35,7 +35,7 @@ private:
   vector<unique_ptr<amrex::MultiFab> > owned_stuff;
 
 public:
-  void check_valid() const;
+  void check_valid(const string &why) const;
 
   statecomp_t copy() const;
 
@@ -49,7 +49,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 // Ensure a state vector has valid data everywhere
-void statecomp_t::check_valid() const {
+void statecomp_t::check_valid(const string &why) const {
   for (const int groupid : groupids) {
     if (groupid >= 0) {
       assert(CarpetX::active_levels);
@@ -57,9 +57,7 @@ void statecomp_t::check_valid() const {
         const auto &groupdata = *leveldata.groupdata.at(groupid);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           const int tl = 0;
-          CarpetX::check_valid(groupdata, vi, tl, [&]() {
-            return "ODESolver before calculating state vector";
-          });
+          CarpetX::check_valid(groupdata, vi, tl, [=]() { return why; });
         }
       });
     }
@@ -68,7 +66,7 @@ void statecomp_t::check_valid() const {
 
 // Copy state vector into newly allocated memory
 statecomp_t statecomp_t::copy() const {
-  check_valid();
+  check_valid("before copy");
   const size_t size = mfabs.size();
   statecomp_t result;
   result.groupnames = groupnames;
@@ -93,14 +91,14 @@ statecomp_t statecomp_t::copy() const {
     result.mfabs.push_back(y.get());
     result.owned_stuff.push_back(move(y));
   }
-  result.check_valid();
+  result.check_valid("after copy");
   return result;
 }
 
 // y = x
 void statecomp_t::assign(const statecomp_t &y, const statecomp_t &x) {
-  x.check_valid();
-  y.check_valid();
+  x.check_valid("before assign, source");
+  y.check_valid("before assign, destination");
   const size_t size = y.mfabs.size();
   assert(x.mfabs.size() == size);
   for (size_t n = 0; n < size; ++n) {
@@ -118,14 +116,15 @@ void statecomp_t::assign(const statecomp_t &y, const statecomp_t &x) {
                   y.groupnames.at(n).c_str());
 #endif
   }
-  y.check_valid();
+  y.check_valid("after assign");
 }
 
 // y += alpha * x
 void statecomp_t::axpy(const statecomp_t &y, const CCTK_REAL alpha,
                        const statecomp_t &x) {
-  x.check_valid();
-  y.check_valid();
+  // TODO: check that the grid function is marked as valid everywhere
+  x.check_valid("before axpy, source");
+  y.check_valid("before axpy, destination");
   const size_t size = y.mfabs.size();
   assert(x.mfabs.size() == size);
   for (size_t n = 0; n < size; ++n) {
@@ -143,15 +142,15 @@ void statecomp_t::axpy(const statecomp_t &y, const CCTK_REAL alpha,
                   y.groupnames.at(n).c_str());
 #endif
   }
-  y.check_valid();
+  y.check_valid("after axpy");
 }
 
 // z = alpha * x + beta * y
 void statecomp_t::lincomb(const statecomp_t &z, const CCTK_REAL alpha,
                           const statecomp_t &x, const CCTK_REAL beta,
                           const statecomp_t &y) {
-  x.check_valid();
-  y.check_valid();
+  x.check_valid("before lincomb, source 1");
+  y.check_valid("before lincomb, source 2");
   const size_t size = z.mfabs.size();
   assert(x.mfabs.size() == size);
   assert(y.mfabs.size() == size);
@@ -175,7 +174,7 @@ void statecomp_t::lincomb(const statecomp_t &z, const CCTK_REAL alpha,
                   z.groupnames.at(n).c_str());
 #endif
   }
-  z.check_valid();
+  z.check_valid("after lincomb");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +204,7 @@ int get_group_rhs(const int gi) {
     str1 = string(impl) + "::" + str1;
   }
   const int gi1 = CCTK_GroupIndex(str1.c_str());
-  assert(gi1 >= 0); // Check fluxes are valid groups
+  assert(gi1 >= 0); // Checkfluxes are valid groups
   const int flux = gi1;
 
   assert(flux != gi);
@@ -297,7 +296,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::axpy(var, dt / 2, rhs);
-    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) += dt / 2;
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
     // Step 2

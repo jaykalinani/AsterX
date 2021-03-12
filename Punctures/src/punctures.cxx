@@ -35,8 +35,7 @@ template <typename T> T pown(T x, int n) {
 
 const mat<CCTK_REAL, 3, DN, DN> g([](int a, int b) { return a == b; });
 
-const auto epsilon = [](int a, int b,
-                        int c) -> CCTK_REAL CCTK_ATTRIBUTE_ALWAYS_INLINE {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REAL epsilon(int a, int b, int c) {
   if (a == 0 && b == 1 && c == 2)
     return 1;
   if (a == 0 && b == 2 && c == 1)
@@ -50,14 +49,14 @@ const auto epsilon = [](int a, int b,
   if (a == 2 && b == 1 && c == 0)
     return -1;
   return 0;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
-                                        T &alpha, mat<T, 3, DN, DN> &K, T &rhs,
-                                        T &psi) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
+                                               T &alpha, mat<T, 3, DN, DN> &K,
+                                               T &rhs, T &psi) {
   DECLARE_CCTK_PARAMETERS;
 
   T alpha1 = 0;
@@ -84,7 +83,7 @@ CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
   }
   alpha = 1 / alpha1;
 
-  if (isinf1(alpha)) {
+  if (isinf(alpha)) {
     // Infinitely far away, or there are no black holes
     rhs = 0;
     psi = 1;

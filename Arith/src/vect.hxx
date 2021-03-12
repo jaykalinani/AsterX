@@ -7,12 +7,22 @@
 #include <array>
 #include <complex>
 #include <initializer_list>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace Arith {
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T, size_t N> struct ntuple {
+  typedef decltype(tuple_cat(declval<tuple<T> >(),
+                             declval<typename ntuple<T, N - 1>::type>())) type;
+};
+template <typename T> struct ntuple<T, 0> { typedef tuple<> type; };
+template <typename T, size_t N> using ntuple_t = typename ntuple<T, N>::type;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -72,7 +82,9 @@ using namespace std;
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 3), array<T, N> >
 array_from_initializer_list(initializer_list<T> l) {
+#ifndef __CUDACC__
   assert(l.size() >= N);
+#endif
   const T *restrict const p = l.begin();
   return {p[0], p[1], p[2]};
 }
@@ -80,7 +92,9 @@ array_from_initializer_list(initializer_list<T> l) {
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 4), array<T, N> >
 array_from_initializer_list(initializer_list<T> l) {
+#ifndef __CUDACC__
   assert(l.size() >= N);
+#endif
   const T *restrict const p = l.begin();
   return {p[0], p[1], p[2], p[3]};
 }
@@ -88,7 +102,9 @@ array_from_initializer_list(initializer_list<T> l) {
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 6), array<T, N> >
 array_from_initializer_list(initializer_list<T> l) {
+#ifndef __CUDACC__
   assert(l.size() >= N);
+#endif
   const T *restrict const p = l.begin();
   return {p[0], p[1], p[2], p[3], p[4], p[5]};
 }
@@ -96,15 +112,46 @@ array_from_initializer_list(initializer_list<T> l) {
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 10), array<T, N> >
 array_from_initializer_list(initializer_list<T> l) {
+#ifndef __CUDACC__
   assert(l.size() >= N);
+#endif
   const T *restrict const p = l.begin();
   return {p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 3>
+array_from_tuple(tuple<T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 4>
+array_from_tuple(tuple<T, T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)), move(get<3>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 6>
+array_from_tuple(tuple<T, T, T, T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)),
+          move(get<3>(t)), move(get<4>(t)), move(get<5>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 10>
+array_from_tuple(tuple<T, T, T, T, T, T, T, T, T, T> t) {
+  return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)), move(get<3>(t)),
+          move(get<4>(t)), move(get<5>(t)), move(get<6>(t)), move(get<7>(t)),
+          move(get<8>(t)), move(get<9>(t))};
 }
 
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 3), array<T, N> >
 array_from_vector(vector<T> &&v) {
+#ifndef __CUDACC__
   assert(v.size() >= N);
+#endif
   typename vector<T>::iterator const p = v.begin();
   return {move(p[0]), move(p[1]), move(p[2])};
 }
@@ -112,7 +159,9 @@ array_from_vector(vector<T> &&v) {
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 4), array<T, N> >
 array_from_vector(vector<T> &&v) {
+#ifndef __CUDACC__
   assert(v.size() >= N);
+#endif
   typename vector<T>::iterator const p = v.begin();
   return {move(p[0]), move(p[1]), move(p[2]), move(p[3])};
 }
@@ -120,7 +169,9 @@ array_from_vector(vector<T> &&v) {
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 6), array<T, N> >
 array_from_vector(vector<T> &&v) {
+#ifndef __CUDACC__
   assert(v.size() >= N);
+#endif
   typename vector<T>::iterator const p = v.begin();
   return {move(p[0]), move(p[1]), move(p[2]),
           move(p[3]), move(p[4]), move(p[5])};
@@ -129,7 +180,9 @@ array_from_vector(vector<T> &&v) {
 template <typename T, size_t N>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 10), array<T, N> >
 array_from_vector(vector<T> &&v) {
+#ifndef __CUDACC__
   assert(v.size() >= N);
+#endif
   typename vector<T>::iterator const p = v.begin();
   return {move(p[0]), move(p[1]), move(p[2]), move(p[3]), move(p[4]),
           move(p[5]), move(p[6]), move(p[7]), move(p[8]), move(p[9])};
@@ -150,32 +203,64 @@ static_assert(static_cast<const array<int, 3> &>(
 template <typename T> struct zero;
 
 template <> struct zero<bool> {
-  constexpr bool operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE bool operator()() const { return 0; }
 };
 
 template <> struct zero<short> {
-  constexpr short operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE short operator()() const { return 0; }
 };
 
 template <> struct zero<int> {
-  constexpr int operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE int operator()() const { return 0; }
 };
 
 template <> struct zero<long> {
-  constexpr long operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE long operator()() const { return 0; }
 };
 
 template <> struct zero<float> {
-  constexpr float operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE float operator()() const { return 0; }
 };
 
 template <> struct zero<double> {
-  constexpr double operator()() const { return 0; }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE double operator()() const { return 0; }
 };
 
 template <typename T> struct zero<complex<T> > {
-  constexpr complex<T> operator()() const {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE complex<T> operator()() const {
     return complex<T>(zero<T>()(), zero<T>()());
+  }
+};
+
+template <typename T> struct one;
+
+template <> struct one<bool> {
+  constexpr bool operator()() const { return 1; }
+};
+
+template <> struct one<short> {
+  constexpr short operator()() const { return 1; }
+};
+
+template <> struct one<int> {
+  constexpr int operator()() const { return 1; }
+};
+
+template <> struct one<long> {
+  constexpr long operator()() const { return 1; }
+};
+
+template <> struct one<float> {
+  constexpr float operator()() const { return 1; }
+};
+
+template <> struct one<double> {
+  constexpr double operator()() const { return 1; }
+};
+
+template <typename T> struct one<complex<T> > {
+  constexpr complex<T> operator()() const {
+    return complex<T>(one<T>()(), zero<T>()());
   }
 };
 
@@ -194,23 +279,26 @@ template <typename T, int D> struct vect {
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect &operator=(vect &&) = default;
 
   template <typename U>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const vect<U, D> &x) : elts() {
-    for (int d = 0; d < D; ++d)
-      elts[d] = x.elts[d];
-  }
-  template <typename U>
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect &&x) : elts() {
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(vect<U, D> x) : elts() {
     for (int d = 0; d < D; ++d)
       elts[d] = move(x.elts[d]);
   }
 
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const array<T, D> &arr)
-      : elts(arr) {}
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(array<T, D> arr)
+      : elts(move(arr)) {}
+
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(ntuple_t<T, D> tup)
+      : elts(array_from_tuple(move(tup))) {}
+
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(initializer_list<T> lst)
       : elts(array_from_initializer_list<T, D>(lst)) {
 #ifdef CCTK_DEBUG
     assert(lst.size() == D);
 #endif
+  }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const T (&arr)[D]) : elts() {
+    for (int d = 0; d < D; ++d)
+      elts[d] = arr[d];
   }
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect(const vector<T> &vec)
       : elts(array_from_vector<T, D>(vec)) {
@@ -307,24 +395,24 @@ template <typename T, int D> struct vect {
     return r;
   }
 
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+(const vect
-  // &x, const array<T, D> &y) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect
+  // operator+(const vect &x, const array<T, D> &y) {
   //   return x + vect(y);
   // }
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-(const vect
-  // &x, const array<T, D> &y) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect
+  // operator-(const vect &x, const array<T, D> &y) {
   //   return x - vect(y);
   // }
 
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+(const vect
-  // &x, T a) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator+(const vect &x,
+  //                                                              T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] + a;
   //   return r;
   // }
-  // friend  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-(const vect
-  // &x, T a) {
+  // friend constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect operator-(const vect &x,
+  //                                                              T a) {
   //   vect r;
   //   for (int d = 0; d < D; ++d)
   //     r.elts[d] = x.elts[d] - a;
@@ -489,7 +577,9 @@ template <typename T, int D> struct vect {
 };
 
 template <typename T, int D> struct zero<vect<T, D> > {
-  constexpr vect<T, D> operator()() { return vect<T, D>(); }
+  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE vect<T, D> operator()() {
+    return vect<T, D>();
+  }
 };
 
 } // namespace Arith
@@ -526,11 +616,11 @@ abs(const Arith::vect<T, D> &x) {
 
 template <typename T, int D>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::vect<bool, D>
-isnan1(const Arith::vect<T, D> &x) {
-  using std::isnan1;
+isnan(const Arith::vect<T, D> &x) {
+  using std::isnan;
   Arith::vect<bool, D> r;
   for (int d = 0; d < D; ++d)
-    r.elts[d] = isnan1(x.elts[d]);
+    r.elts[d] = isnan(x.elts[d]);
   return r;
 }
 
@@ -553,29 +643,6 @@ min(const Arith::vect<T, D> &x, const Arith::vect<T, D> &y) {
     r.elts[d] = min(x.elts[d], y.elts[d]);
   return r;
 }
-
-namespace static_test {
-constexpr vect<int, 3> vect1{0, 1, 2};
-static_assert(vect1[0] == 0, "");
-static_assert(vect1[1] == 1, "");
-static_assert(vect1[2] == 2, "");
-
-constexpr vect<vect<int, 3>, 3> vect2{
-    {100, 101, 102},
-    {110, 111, 112},
-    {120, 121, 122},
-};
-static_assert(vect2[0][0] == 100, "");
-static_assert(vect2[0][1] == 101, "");
-static_assert(vect2[0][2] == 102, "");
-static_assert(vect2[1][0] == 110, "");
-static_assert(vect2[1][1] == 111, "");
-static_assert(vect2[1][2] == 112, "");
-static_assert(vect2[2][0] == 120, "");
-static_assert(vect2[2][1] == 121, "");
-static_assert(vect2[2][2] == 122, "");
-
-} // namespace static_test
 
 } // namespace Arith
 

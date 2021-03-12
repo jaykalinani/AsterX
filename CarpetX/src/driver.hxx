@@ -165,6 +165,8 @@ struct GHExt {
     // Fabamrex::ArrayBase object holding a cell-centred BoxArray for
     // iterating over grid functions. This stores the grid structure
     // and its distribution over all processes, but holds no data.
+    // TODO: This fab is cell centred. Can we store a vertex centred
+    // fab instead?
     unique_ptr<amrex::FabArrayBase> fab;
 
     struct GroupData : public CommonGroupData {

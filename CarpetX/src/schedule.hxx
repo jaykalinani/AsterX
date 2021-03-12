@@ -86,7 +86,7 @@ struct MFPointer {
   MFPointer &operator=(const MFPointer &) = default;
   MFPointer &operator=(MFPointer &&) = default;
   MFPointer(const amrex::MFIter &mfi)
-      : m_index(mfi.index()), m_fabbox(mfi.fabbox()),
+      : m_index((assert(mfi.isValid()), mfi.index())), m_fabbox(mfi.fabbox()),
         m_growntilebox(mfi.growntilebox()), m_validbox(mfi.validbox()),
         m_nGrowVect(mfi.theFabArrayBase().nGrowVect()) {}
 
@@ -139,8 +139,8 @@ struct GridPtrDesc1 : GridDesc {
   }
   template <typename T>
   T &idx(const amrex::Array4<T> &vars, int i, int j, int k, int vi) const {
-    return vars(cactus_offset.x + gimin[0] + i, cactus_offset.y + gimin[1] + i,
-                cactus_offset.z + gimin[2] + j, vi);
+    return vars(cactus_offset.x + gimin[0] + i, cactus_offset.y + gimin[1] + j,
+                cactus_offset.z + gimin[2] + k, vi);
   }
 
   template <typename T>
@@ -149,17 +149,16 @@ struct GridPtrDesc1 : GridDesc {
   }
 
   friend ostream &operator<<(ostream &os, const GridPtrDesc1 &p) {
-    os << "GridPtrDesc1{"
-       << (const GridDescBase &)p << ", "
+    os << "GridPtrDesc1{" << (const GridDescBase &)p << ", "
        << "cactus_offset:"
-       << "{" << p.cactus_offset.x << "," << p.cactus_offset.y << "," << p.cactus_offset.z << "}, "
+       << "{" << p.cactus_offset.x << "," << p.cactus_offset.y << ","
+       << p.cactus_offset.z << "}, "
        << "gimin:"
        << "{" << p.gimin[0] << "," << p.gimin[1] << "," << p.gimin[2] << "}, "
        << "gimax:"
        << "{" << p.gimax[0] << "," << p.gimax[1] << "," << p.gimax[2] << "}, "
        << "gash:"
-       << "{" << p.gash[0] << "," << p.gash[1] << "," << p.gash[2]
-       << "}";
+       << "{" << p.gash[0] << "," << p.gash[1] << "," << p.gash[2] << "}";
     return os;
   }
 };
@@ -183,8 +182,8 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,
                       const function<string()> &msg);
-void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
-                     int vi, int tl, const valid_t &required,
+void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
+                     int tl, const valid_t &required,
                      const function<string()> &msg);
 void poison_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
                     int tl);

@@ -10,6 +10,8 @@ using namespace std;
 // This function is compiled, but not executed. The tests are "run" at
 // compile time. If this function compiles, the tests pass.
 void TestDual() {
+  // nvcc V11.1.74 doesn't accept this as "constexpr" values
+#ifndef __CUDACC__
   typedef dual<CCTK_REAL> DREAL;
   constexpr equal_to<CCTK_REAL> eq;
   constexpr equal_to<DREAL> eqd;
@@ -39,6 +41,7 @@ void TestDual() {
   static_assert(eqd(DREAL(4, 5) / DREAL(2, 3), DREAL(2, -0.5)));
 
   static_assert(eqd(sqrt(DREAL(4, 3)), DREAL(2, 0.75)));
+#endif
 }
 
 } // namespace Arith

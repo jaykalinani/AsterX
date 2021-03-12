@@ -1,7 +1,7 @@
 #include "physics.hxx"
 #include "tensor.hxx"
 
-#include <loop.hxx>
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -18,34 +18,40 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_Enforce;
   DECLARE_CCTK_PARAMETERS;
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_chi_(cctkGH, chi);
+  const array<int, dim> indextype = {0, 0, 0};
+  const GF3D2layout layout1(cctkGH, indextype);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxx_(cctkGH, gammatxx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxy_(cctkGH, gammatxy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatxz_(cctkGH, gammatxz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatyy_(cctkGH, gammatyy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatyz_(cctkGH, gammatyz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_gammatzz_(cctkGH, gammatzz);
+  const GF3D2<CCTK_REAL> gf_chi1(layout1, chi);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atxx_(cctkGH, Atxx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atxy_(cctkGH, Atxy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atxz_(cctkGH, Atxz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atyy_(cctkGH, Atyy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atyz_(cctkGH, Atyz);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_Atzz_(cctkGH, Atzz);
+  const GF3D2<CCTK_REAL> gf_gammatxx1(layout1, gammatxx);
+  const GF3D2<CCTK_REAL> gf_gammatxy1(layout1, gammatxy);
+  const GF3D2<CCTK_REAL> gf_gammatxz1(layout1, gammatxz);
+  const GF3D2<CCTK_REAL> gf_gammatyy1(layout1, gammatyy);
+  const GF3D2<CCTK_REAL> gf_gammatyz1(layout1, gammatyz);
+  const GF3D2<CCTK_REAL> gf_gammatzz1(layout1, gammatzz);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_alphaG_(cctkGH, alphaG);
+  const GF3D2<CCTK_REAL> gf_Atxx1(layout1, Atxx);
+  const GF3D2<CCTK_REAL> gf_Atxy1(layout1, Atxy);
+  const GF3D2<CCTK_REAL> gf_Atxz1(layout1, Atxz);
+  const GF3D2<CCTK_REAL> gf_Atyy1(layout1, Atyy);
+  const GF3D2<CCTK_REAL> gf_Atyz1(layout1, Atyz);
+  const GF3D2<CCTK_REAL> gf_Atzz1(layout1, Atzz);
 
-  loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+  const GF3D2<CCTK_REAL> gf_alphaG1(layout1, alphaG);
+
+  // loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
+                                                      const PointDesc &p) {
     // Load
-    const CCTK_REAL chi_old = gf_chi_(p.I);
-    const CCTK_REAL alphaG_old = gf_alphaG_(p.I);
+    const CCTK_REAL chi_old = gf_chi1(p.I);
+    const CCTK_REAL alphaG_old = gf_alphaG1(p.I);
 
-    const mat3<CCTK_REAL, DN, DN> gammat_old(gf_gammatxx_, gf_gammatxy_,
-                                             gf_gammatxz_, gf_gammatyy_,
-                                             gf_gammatyz_, gf_gammatzz_, p.I);
-    const mat3<CCTK_REAL, DN, DN> At_old(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_,
-                                         gf_Atyz_, gf_Atzz_, p.I);
+    const mat3<CCTK_REAL, DN, DN> gammat_old(gf_gammatxx1, gf_gammatxy1,
+                                             gf_gammatxz1, gf_gammatyy1,
+                                             gf_gammatyz1, gf_gammatzz1, p.I);
+    const mat3<CCTK_REAL, DN, DN> At_old(gf_Atxx1, gf_Atxy1, gf_Atxz1, gf_Atyy1,
+                                         gf_Atyz1, gf_Atzz1, p.I);
 
     // Enforce floors
 
@@ -94,11 +100,11 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 #endif
 
     // Store
-    gf_chi_(p.I) = chi;
-    gammat.store(gf_gammatxx_, gf_gammatxy_, gf_gammatxz_, gf_gammatyy_,
-                 gf_gammatyz_, gf_gammatzz_, p.I);
-    At.store(gf_Atxx_, gf_Atxy_, gf_Atxz_, gf_Atyy_, gf_Atyz_, gf_Atzz_, p.I);
-    gf_alphaG_(p.I) = alphaG;
+    gf_chi1(p.I) = chi;
+    gammat.store(gf_gammatxx1, gf_gammatxy1, gf_gammatxz1, gf_gammatyy1,
+                 gf_gammatyz1, gf_gammatzz1, p.I);
+    At.store(gf_Atxx1, gf_Atxy1, gf_Atxz1, gf_Atyy1, gf_Atyz1, gf_Atzz1, p.I);
+    gf_alphaG1(p.I) = alphaG;
   });
 }
 

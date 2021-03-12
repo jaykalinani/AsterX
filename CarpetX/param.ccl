@@ -252,6 +252,15 @@ CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 
 
 
+KEYWORD kernel_launch_method "Kernel launch method" STEERABLE=always
+{
+  "serial" :: "no parallelism"
+  "openmp" :: "use OpenMP"
+  "cuda"   :: "target CUDA"
+} "openmp"
+
+
+
 STRING in_dir "Input directory" STEERABLE=always
 {
   ".*" :: ""

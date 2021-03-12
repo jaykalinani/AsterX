@@ -12,7 +12,9 @@ USES INCLUDE HEADER: rational.hxx
 USES INCLUDE HEADER: vect.hxx
 
 INCLUDES HEADER: loop.hxx IN loop.hxx
+INCLUDES HEADER: loop_device.hxx IN loop_device.hxx
 INCLUDES HEADER: loopcontrol.h IN loopcontrol.h
+INCLUDES HEADER: mempool.hxx IN mempool.hxx
 
 
 
@@ -38,11 +40,15 @@ CCTK_INT FUNCTION GetBoundarySizesAndTypes
    CCTK_INT OUT ARRAY is_physbnd)
 PROVIDES FUNCTION GetBoundarySizesAndTypes WITH CarpetX_GetBoundarySizesAndTypes LANGUAGE C
 
+# Deprecated -- use cctkGH->cctk_tile_{min,max} instead
 void FUNCTION GetTileExtent(
   CCTK_POINTER_TO_CONST IN cctkGH,
   CCTK_INT ARRAY OUT tile_min,
   CCTK_INT ARRAY OUT tile_max)
 PROVIDES FUNCTION GetTileExtent WITH CarpetX_GetTileExtent LANGUAGE C
+
+CCTK_INT FUNCTION GetCallFunctionCount()
+PROVIDES FUNCTION GetCallFunctionCount WITH CarpetX_GetCallFunctionCount LANGUAGE C
 
 void FUNCTION GetLoopBoxAll(
   CCTK_POINTER_TO_CONST IN cctkGH,

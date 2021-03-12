@@ -163,7 +163,7 @@ public:
     set(valid | val, why);
   }
 
-  friend ostream &operator<<(ostream &os, const why_valid_t why) {
+  friend ostream &operator<<(ostream &os, const why_valid_t &why) {
     return os << why.valid << ","
               << "why{int:" << why.why_int() << ","
               << "outer:" << why.why_outer() << ","
@@ -175,7 +175,8 @@ public:
     return buf.str();
   }
 
-  friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const why_valid_t why) {
+  friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                   const why_valid_t &why) {
     yaml << YAML::LocalTag("why_valid-1.0.0");
     yaml << YAML::BeginMap;
     yaml << YAML::Key << "valid" << YAML::Value << why.valid;

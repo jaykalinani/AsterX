@@ -1002,7 +1002,7 @@ extern "C" void MaxwellToyCarpetX_NaNCheck(CCTK_ARGUMENTS) {
 
   const auto nancheck = [&](const CCTK_REAL *restrict var,
                             const Loop::PointDesc &p) {
-    if (isnan1(var[p.idx]))
+    if (isnan(var[p.idx]))
       CCTK_VERROR("Found nan at [%d,%d,%d]", p.i, p.j, p.k);
   };
 

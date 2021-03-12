@@ -1,9 +1,13 @@
+# run.me:
+# run.cores: 4
+# run.memory: 1.0e9
+# run.time: 60.0
+
 ActiveThorns = "
     ADMBase
     AHFinder
     CarpetX
     Coordinates
-    Formaline
     IOUtil
     SystemTopology
 "
@@ -12,6 +16,8 @@ $nlevels = 3
 $ncells = 32
 
 Cactus::cctk_show_schedule = no
+Cactus::presync_mode = "mixed-error"
+
 Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"

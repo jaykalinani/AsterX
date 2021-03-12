@@ -20,12 +20,15 @@ extern "C" void Maxwell_Constraints(CCTK_ARGUMENTS) {
   const CCTK_REAL dy = CCTK_DELTA_SPACE(1);
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
-  const auto dxp{
-      [&](const auto &u, const auto &I) { return (u(I + DI) - u(I)) / dx; }};
-  const auto dyp{
-      [&](const auto &u, const auto &I) { return (u(I + DJ) - u(I)) / dy; }};
-  const auto dzp{
-      [&](const auto &u, const auto &I) { return (u(I + DK) - u(I)) / dz; }};
+  const auto dxp = [&](const auto &u, const auto &I) {
+    return (u(I + DI) - u(I)) / dx;
+  };
+  const auto dyp = [&](const auto &u, const auto &I) {
+    return (u(I + DJ) - u(I)) / dy;
+  };
+  const auto dzp = [&](const auto &u, const auto &I) {
+    return (u(I + DK) - u(I)) / dz;
+  };
 
   const GF3D<const CCTK_REAL, 0, 1, 1> dyz_(cctkGH, dyz);
   const GF3D<const CCTK_REAL, 1, 0, 1> dzx_(cctkGH, dzx);

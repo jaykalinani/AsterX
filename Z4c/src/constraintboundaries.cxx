@@ -1,4 +1,6 @@
-#include <loop.hxx>
+#include "tensor.hxx"
+
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -9,29 +11,50 @@ using namespace Loop;
 extern "C" void Z4c_ConstraintBoundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_ConstraintBoundaries;
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_ZtCx_(cctkGH, ZtCx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_ZtCy_(cctkGH, ZtCy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_ZtCz_(cctkGH, ZtCz);
+  const array<int, dim> indextype = {0, 0, 0};
+  const GF3D2layout layout1(cctkGH, indextype);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_HC_(cctkGH, HC);
+  const GF3D2<CCTK_REAL> gf_ZtCx1(layout1, ZtCx);
+  const GF3D2<CCTK_REAL> gf_ZtCy1(layout1, ZtCy);
+  const GF3D2<CCTK_REAL> gf_ZtCz1(layout1, ZtCz);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_MtCx_(cctkGH, MtCx);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_MtCy_(cctkGH, MtCy);
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_MtCz_(cctkGH, MtCz);
+  const GF3D2<CCTK_REAL> gf_HC1(layout1, HC);
 
-  const GF3D<CCTK_REAL, 0, 0, 0> gf_allC_(cctkGH, allC);
+  const GF3D2<CCTK_REAL> gf_MtCx1(layout1, MtCx);
+  const GF3D2<CCTK_REAL> gf_MtCy1(layout1, MtCy);
+  const GF3D2<CCTK_REAL> gf_MtCz1(layout1, MtCz);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCx_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCy_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_ZtCz_(p.I) = 0; });
+  const GF3D2<CCTK_REAL> gf_allC1(layout1, allC);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_HC_(p.I) = 0; });
+  const Loop::GridDescBaseDevice grid(cctkGH);
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCx_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCy_(p.I) = 0; });
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_MtCz_(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCz1(p.I) = 0; });
 
-  loop_bnd<0, 0, 0>(cctkGH, [&](const PointDesc &p) { gf_allC_(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_HC1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCz1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_allC1(p.I) = 0; });
 }
 
 } // namespace Z4c

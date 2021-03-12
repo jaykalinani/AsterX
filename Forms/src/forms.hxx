@@ -106,27 +106,27 @@ template <typename T, size_t D, size_t R> struct form {
                              const form<T1, D1, R1> &x,
                              const form<T1, D1, R1> &y);
 
-  friend constexpr form operator+(const form &x) {
+  friend /*constexpr*/ form operator+(const form &x) {
     return fmap([](const T &xc) { return +xc; }, x);
   }
-  friend constexpr form operator-(const form &x) {
+  friend /*constexpr*/ form operator-(const form &x) {
     return fmap([](const T &xc) { return -xc; }, x);
   }
 
-  friend constexpr form operator+(const form &x, const form &y) {
+  friend /*constexpr*/ form operator+(const form &x, const form &y) {
     return fmap([](const T &xc, const T &yc) { return xc + yc; }, x, y);
   }
-  friend constexpr form operator-(const form &x, const form &y) {
+  friend /*constexpr*/ form operator-(const form &x, const form &y) {
     return fmap([](const T &xc, const T &yc) { return xc - yc; }, x, y);
   }
 
-  friend constexpr form operator*(const T &a, const form &x) {
+  friend /*constexpr*/ form operator*(const T &a, const form &x) {
     return fmap([&](const T &xc) { return a * xc; }, x);
   }
-  friend constexpr form operator*(const form &x, const T &a) {
+  friend /*constexpr*/ form operator*(const form &x, const T &a) {
     return fmap([&](const T &xc) { return xc * a; }, x);
   }
-  friend constexpr form operator/(const form &x, const T &a) {
+  friend /*constexpr*/ form operator/(const form &x, const T &a) {
     return fmap([&](const T &xc) { return xc / a; }, x);
   }
 

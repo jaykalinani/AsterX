@@ -69,27 +69,21 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   const ptrdiff_t off_fy = -str_fy[0] - str_fy[1] - str_fy[2];
   const ptrdiff_t off_fz = -str_fz[0] - str_fz[1] - str_fz[2];
 
-  constexpr int VS = 4; // TODO: choose automatically
-
   // Transport
   // dt rho + d_i (rho vel^i) = 0
   // dt mom_j + d_i (mom_j vel^i) = 0
   // dt etot + d_i (etot vel^i) = 0
 
-  const auto calcupdate{[&](auto &u_, const auto &u_p_, const auto &fx_,
-                            const auto &fy_, const auto &fz_) {
+  const auto calcupdate = [&](auto &u_, const auto &u_p_, const auto &fx_,
+                              const auto &fy_, const auto &fz_) {
     for (int k = imin[2]; k < imax[2]; ++k) {
       for (int j = imin[1]; j < imax[1]; ++j) {
         ptrdiff_t idx_i0 = off + str[1] * j + str[2] * k;
         ptrdiff_t idx_fx_i0 = off_fx + str_fx[1] * j + str_fx[2] * k;
         ptrdiff_t idx_fy_i0 = off_fy + str_fy[1] * j + str_fy[2] * k;
         ptrdiff_t idx_fz_i0 = off_fz + str_fz[1] * j + str_fz[2] * k;
-        int ni = (imax[0] - imin[0] + VS - 1) / VS * VS;
-        assert(ni % VS == 0);
-#pragma omp simd simdlen(VS)
-        // for (int i = imin[0]; i < imax[0]; ++i) {
-        for (int i0 = 0; i0 < ni; ++i0) {
-          int i = imin[0] + i0;
+#pragma omp simd
+        for (int i = imin[0]; i < imax[0]; ++i) {
           ptrdiff_t idx = idx_i0 + i;
           ptrdiff_t idx_fx = idx_fx_i0 + i;
           ptrdiff_t idx_fy = idx_fy_i0 + i;
@@ -107,7 +101,7 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
         }
       }
     }
-  }};
+  };
 
   calcupdate(rho, rho_p, fxrho, fyrho, fzrho);
   calcupdate(momx, momx_p, fxmomx, fymomx, fzmomx);
