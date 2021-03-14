@@ -10,20 +10,6 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-#warning "TODO"
-#include <AMReX.H>
-
-#ifdef _OPENMP
-#include <omp.h>
-#else
-extern "C" {
-static inline int omp_get_max_threads(void) { return 1; }
-static inline int omp_get_num_threads(void) { return 1; }
-static inline int omp_get_thread_num(void) { return 0; }
-static inline int omp_in_parallel(void) { return 0; }
-}
-#endif
-
 #include <cmath>
 #include <memory>
 
@@ -100,11 +86,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
 #if 0
 
-#ifndef AMREX_USE_GPU
-  const size_t mempool_id = omp_get_thread_num();
-#else
   const size_t mempool_id = GetCallFunctionCount();
-#endif
   mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(layout0, mempool); };
@@ -156,11 +138,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
 #if 1
 
-#ifndef AMREX_USE_GPU
-  const size_t mempool_id = omp_get_thread_num();
-#else
   const size_t mempool_id = GetCallFunctionCount();
-#endif
   mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
   const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
@@ -383,11 +361,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
     });
   });
 
-#endif
-
-#warning "TODO"
-#ifdef AMREX_USE_GPU
-  amrex::Gpu::synchronize();
 #endif
 
   // Upwind and dissipation terms
