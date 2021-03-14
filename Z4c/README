@@ -29,6 +29,8 @@ Total cost for derivatives: 1617 flop
 
 RHS kernel: 1865 flop
 
-Total cost for RHS: 3482 flop
+Upwinded advection and dissipation: 90 flop per variable
 
-This excludes upwinded advection terms and dissipation.
+Total cost for upwinded advection and dissipation: 1980 flop
+
+Total cost for RHS: 5462 flop
