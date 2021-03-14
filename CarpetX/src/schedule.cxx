@@ -1784,8 +1784,12 @@ int Shutdown(tFleshConfig *config) {
 
 int CallFunction_count = -1;
 extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
+#ifndef AMREX_USE_GPU
+  return omp_get_thread_num();
+#else
   assert(CallFunction_count >= 0);
   return CallFunction_count;
+#endif
 }
 
 // Call a scheduled function

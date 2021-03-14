@@ -3,12 +3,18 @@
 
 #include "loop.hxx"
 
+#include <cctk.h>
+
 #include <AMReX.H>
 #include <AMReX_Box.H>
 #include <AMReX_IndexType.H>
 #include <AMReX_IntVect.H>
 #ifdef AMREX_USE_GPU
 #include <AMReX_Gpu.H>
+#endif
+
+#ifndef HAVE_CAPABILITY_AMReX
+#error "Using #include <loop_device.hxx> requires the capability 'AMReX' in the calling thorn. Add this to the thorn's 'configuration.ccl' file."
 #endif
 
 namespace Loop {
