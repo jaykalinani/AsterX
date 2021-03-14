@@ -10,17 +10,6 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-#ifdef _OPENMP
-#include <omp.h>
-#else
-extern "C" {
-static inline int omp_get_max_threads(void) { return 1; }
-static inline int omp_get_num_threads(void) { return 1; }
-static inline int omp_get_thread_num(void) { return 0; }
-static inline int omp_in_parallel(void) { return 0; }
-}
-#endif
-
 #include <cmath>
 
 namespace Weyl {
@@ -99,13 +88,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
-#ifndef AMREX_USE_GPU
-  const size_t mempool_id = omp_get_thread_num();
-#else
   const size_t mempool_id = GetCallFunctionCount();
-#endif
   mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
-
   const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
   const auto make_vec_gf = [&](int) { return make_gf(); };
   const auto make_mat_gf = [&](int, int) { return make_gf(); };
