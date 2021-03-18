@@ -104,8 +104,10 @@ template <typename T> struct z4c_vars_noderivs {
         rho(1 / pow2(alphaG) *
             (eTtt                                                             //
              - 2 * sum1([&] Z4C_INLINE(int x) { return betaG(x) * eTti(x); }) //
-             + sum2([&] Z4C_INLINE(int x, int y) {
-                 return betaG(x) * betaG(y) * eTij(x, y);
+             + sum1([&] Z4C_INLINE(int x) {
+                 return betaG(x) * sum1([&] Z4C_INLINE(int y) {
+                          return betaG(y) * eTij(x, y);
+                        });
                }))),
         // S_i = -p_i^a n^b T_ab
         Si([&] Z4C_INLINE(int a) {
@@ -461,8 +463,10 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                        })                                  //
                  - 1 / (4 * pow2(chi)) * dchi(a) * dchi(b) //
                  - 3 / (4 * pow2(chi)) * gammat(a, b) *
-                       sum2([&] Z4C_INLINE(int x, int y) {
-                         return gammatu(x, y) * dchi(x) * dchi(y);
+                       sum1([&] Z4C_INLINE(int x) {
+                         return dchi(x) * sum1([&] Z4C_INLINE(int y) {
+                                  return gammatu(x, y) * dchi(y);
+                                });
                        });
         }),
         // (9)
