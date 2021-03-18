@@ -246,19 +246,17 @@ amrex::Interpolater *get_interpolator(const array<int, dim> indextype) {
   DECLARE_CCTK_PARAMETERS;
 
   enum class interp_t { unset, interpolate, conservative, ddf };
-  static interp_t interp = interp_t::unset;
-  if (interp == interp_t::unset) {
+  static interp_t interp = [&]() {
     if (CCTK_EQUALS(prolongation_type, "interpolate")) {
-      interp = interp_t::interpolate;
+      return interp_t::interpolate;
     } else if (CCTK_EQUALS(prolongation_type, "conservative")) {
-      interp = interp_t::conservative;
+      return interp_t::conservative;
     } else if (CCTK_EQUALS(prolongation_type, "ddf")) {
-      interp = interp_t::ddf;
+      return interp_t::ddf;
     } else {
       assert(0);
     }
-  }
-  assert(interp != interp_t::unset);
+  }();
 
   switch (interp) {
   case interp_t::interpolate:
