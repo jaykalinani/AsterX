@@ -51,7 +51,7 @@ ActiveThorns = "
     TimerReport
     TmunuBase
     TwoPunctures
-    # Weyl
+    Weyl
     Z4c
 "
 
@@ -131,7 +131,7 @@ TwoPunctures::TP_Tiny    = 1.0e-2
 TwoPunctures::verbose = yes
 
 Z4c::calc_ADM_vars = yes                  # for Weyl
-Z4c::calc_ADMRHS_vars = no                # for Weyl
+Z4c::calc_ADMRHS_vars = yes               # for Weyl
 Z4c::calc_constraints = yes
 
 Z4c::chi_floor = 1.0e-6
@@ -150,8 +150,8 @@ CarpetX::out_silo_vars = "
     ADMBase::curv
     ADMBase::lapse
     ADMBase::shift
-    # Weyl::Psi4re
-    # Weyl::Psi4im
+    Weyl::Psi4re
+    Weyl::Psi4im
     # Z4c::chi
     # Z4c::gamma_tilde
     # Z4c::K_hat
