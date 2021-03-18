@@ -262,7 +262,7 @@ extern "C" void WaveToyCPU_RHS(CCTK_ARGUMENTS) {
 
   loop_int<1, 1, 1>(cctkGH, [&](const PointDesc &p) {
     CCTK_REAL ddx_phi =
-        (gf_phi(p.I - p.DI[2]) - 2 * gf_phi(p.I) + gf_phi(p.I + p.DI[0])) /
+        (gf_phi(p.I - p.DI[0]) - 2 * gf_phi(p.I) + gf_phi(p.I + p.DI[0])) /
         pow(p.dx, 2);
     CCTK_REAL ddy_phi =
         (gf_phi(p.I - p.DI[1]) - 2 * gf_phi(p.I) + gf_phi(p.I + p.DI[1])) /
