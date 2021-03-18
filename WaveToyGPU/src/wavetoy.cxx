@@ -52,7 +52,7 @@ spline_potential(T r) {
 }
 
 // Time derivative
-#warning "TODO: use dual numbers for derivative"
+// TODO: Use dual numbers for derivative
 template <typename F, typename T>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST auto
 timederiv(const F &f, T dt) {
