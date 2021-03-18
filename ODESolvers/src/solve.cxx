@@ -26,6 +26,14 @@ using namespace std;
 // A state vector component, with mfabs for each level, group, and variable
 struct statecomp_t {
 
+  statecomp_t() = default;
+  statecomp_t(statecomp_t &&) = default;
+  statecomp_t &operator=(statecomp_t &&) = default;
+
+  // Don't allow copies because we might own stuff
+  statecomp_t(const statecomp_t &) = delete;
+  statecomp_t &operator=(const statecomp_t &) = delete;
+
   vector<string> groupnames;
   vector<int> groupids;
   vector<amrex::MultiFab *> mfabs;
