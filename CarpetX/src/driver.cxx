@@ -1027,8 +1027,12 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                                   return "RemakeLevel: not prolongated/copied "
                                          "because variable is not evolved";
                                 }));
-      for (int vi = 0; vi < groupdata.numvars; ++vi)
-        poison_invalid(groupdata, vi, tl);
+      // We cannot poison the grid variables because the grid
+      // structure in `leveldata.fab` already changed, but the new
+      // variables in `mfab` have not yet been assigned to the driver
+      // data structure.
+      // for (int vi = 0; vi < groupdata.numvars; ++vi)
+      //   poison_invalid(groupdata, vi, tl);
 
       if (tl < prolongate_tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
