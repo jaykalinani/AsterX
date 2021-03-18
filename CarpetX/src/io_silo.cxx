@@ -566,7 +566,7 @@ void OutputSilo(const cGH *restrict const cctkGH) {
       assert(file);
     }
 
-    {
+    if (write_file) {
       // Tell VisIt that the mesh structure may change over time
       const int dims = 1;
       const int value = 1;
