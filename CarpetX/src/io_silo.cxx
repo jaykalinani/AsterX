@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <mutex>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -153,7 +154,7 @@ void InputSilo(const cGH *restrict const cctkGH) {
   // Configure Silo library
   DBShowErrors(DB_ALL_AND_DRVR, nullptr);
   // DBSetAllowEmptyObjects(1);
-  DBSetCompression("METHOD=GZIP");
+  DBSetCompression("METHOD=GZIP"); // LEVEL=1
   DBSetEnableChecksums(1);
 
   // Determine input file name
@@ -546,12 +547,11 @@ void OutputSilo(const cGH *restrict const cctkGH) {
     const string subdirname = make_subdirname(simulation_name, cctk_iteration);
     const string pathname = string(out_dir) + "/" + subdirname;
     const int mode = 0755;
-    static bool did_create_directory = false;
-    if (!did_create_directory) {
-      ierr = CCTK_CreateDirectory(mode, out_dir);
+    static once_flag create_directory;
+    call_once(create_directory, [&]() {
+      const int ierr = CCTK_CreateDirectory(mode, out_dir);
       assert(ierr >= 0);
-      did_create_directory = true;
-    }
+    });
     ierr = CCTK_CreateDirectory(mode, pathname.c_str());
     assert(ierr >= 0);
     interval_mkdir = nullptr;
