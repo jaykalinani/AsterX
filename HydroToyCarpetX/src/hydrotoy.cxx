@@ -441,9 +441,9 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
     auto calcerr = [&](auto &var_) {
       CCTK_REAL err{0};
       for (int d = 0; d < dim; ++d) {
-        auto varm = var_(p.I - p.DI(d));
+        auto varm = var_(p.I - p.DI[d]);
         auto var0 = var_(p.I);
-        auto varp = var_(p.I + p.DI(d));
+        auto varp = var_(p.I + p.DI[d]);
         err = fmax(err, fabs(varm - 2 * var0 + varp));
       }
       return err;

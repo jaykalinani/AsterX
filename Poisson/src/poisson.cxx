@@ -75,7 +75,7 @@ T laplace(const GF3D<const T, 0, 0, 0> &u, const PointDesc &p) {
               w *= smo[1 + di[d]];
           auto I = p.I;
           for (int d = 0; d < dim; ++d)
-            I += di[d] * p.DI(d);
+            I += di[d] * p.DI[d];
           r += w * u(I);
         }
       }

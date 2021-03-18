@@ -51,10 +51,9 @@ struct PointDesc {
   int np; // number of grid points
   vect<int, dim> I;
   vect<int, dim> NI; // outward boundary normal, or zero
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vect<int, dim>
-  DI(int d) const {
-    return vect<int, dim>::unit(d);
-  }
+  static constexpr vect<vect<int, dim>, dim> DI = {vect<int, dim>::unit(0),
+                                                   vect<int, dim>::unit(1),
+                                                   vect<int, dim>::unit(2)};
   vect<CCTK_REAL, dim> X;
   vect<CCTK_REAL, dim> DX;
 
