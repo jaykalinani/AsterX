@@ -27,7 +27,7 @@ CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
 CarpetX::max_num_levels = $nlevels
-CarpetX::regrid_every = 1   #TODO 16
+CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = 1.0   #TODO 0.01
 
 ODESolvers::method = "RK4"
