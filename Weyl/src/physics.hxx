@@ -25,8 +25,10 @@ constexpr
   return mat4<vec4<T, DN>, UP, UP>(
       [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
         return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
-          return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x, int y) {
-            return -gu(a, x) * gu(b, y) * dg(x, y)(c);
+          return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+            return -gu(a, x) * sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
+              return gu(b, y) * dg(x, y)(c);
+            });
           });
         });
       });
@@ -99,59 +101,53 @@ constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
 }
 
 template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
-    amat4<amat4<T, DN, DN>, DN, DN>
+constexpr
+    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST rten4<T, DN, DN, DN, DN>
     calc_riemann(const mat4<T, DN, DN> &g,
                  const vec4<mat4<T, DN, DN>, UP> &Gamma,
                  const vec4<mat4<vec4<T, DN>, DN, DN>, UP> &dGamma) {
   // Rm_abcd
-  return amat4<amat4<T, DN, DN>, DN, DN>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
-        return amat4<T, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c, int d) {
-          return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
-            const T rmuxbcd = dGamma(x)(d, b)(c)   //
-                              - dGamma(x)(c, b)(d) //
-                              + sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
-                                  return Gamma(x)(c, y) * Gamma(y)(d, b);
-                                }) //
-                              - sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
-                                  return Gamma(x)(d, y) * Gamma(y)(c, b);
-                                });
-            return g(a, x) * rmuxbcd;
-          });
+  return rten4<T, DN, DN, DN, DN>(
+      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+        return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+          const T rmuxbcd = dGamma(x)(d, b)(c)   //
+                            - dGamma(x)(c, b)(d) //
+                            + sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
+                                return Gamma(x)(c, y) * Gamma(y)(d, b);
+                              }) //
+                            - sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
+                                return Gamma(x)(d, y) * Gamma(y)(c, b);
+                              });
+          return g(a, x) * rmuxbcd;
         });
       });
 }
 
 template <typename T>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat4<T, DN, DN>
-calc_ricci(const mat4<T, UP, UP> &gu,
-           const amat4<amat4<T, DN, DN>, DN, DN> &Rm) {
+calc_ricci(const mat4<T, UP, UP> &gu, const rten4<T, DN, DN, DN, DN> &Rm) {
   // R_ab
   return mat4<T, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
     return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x, int y) {
-      return gu(x, y) * Rm(x, a)(y, b);
+      return gu(x, y) * Rm(x, a, y, b);
     });
   });
 }
 
 template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
-    amat4<amat4<T, DN, DN>, DN, DN>
-    calc_weyl(const mat4<T, DN, DN> &g,
-              const amat4<amat4<T, DN, DN>, DN, DN> &Rm,
+constexpr
+    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST rten4<T, DN, DN, DN, DN>
+    calc_weyl(const mat4<T, DN, DN> &g, const rten4<T, DN, DN, DN, DN> &Rm,
               const mat4<T, DN, DN> &R, const T &Rsc) {
   // C_abcd
-  return amat4<amat4<T, DN, DN>, DN, DN>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
-        return amat4<T, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c, int d) {
-          return Rm(a, b)(c, d) //
-                 + 1 / T{4 - 2} *
-                       (R(a, d) * g(b, c) - R(a, c) * g(b, d)    //
-                        + R(b, c) * g(a, d) - R(b, d) * g(a, c)) //
-                 + 1 / T{(4 - 1) * (4 - 2)} * Rsc *
-                       (g(a, c) * g(b, d) - g(a, d) * g(b, c));
-        });
+  return rten4<T, DN, DN, DN, DN>(
+      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+        return Rm(a, b, c, d) //
+               + 1 / T{4 - 2} *
+                     (R(a, d) * g(b, c) - R(a, c) * g(b, d)    //
+                      + R(b, c) * g(a, d) - R(b, d) * g(a, c)) //
+               + 1 / T{(4 - 1) * (4 - 2)} * Rsc *
+                     (g(a, c) * g(b, d) - g(a, d) * g(b, c));
       });
 }
 

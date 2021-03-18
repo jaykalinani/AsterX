@@ -150,6 +150,89 @@ extern "C" void Weyl_Test(CCTK_ARGUMENTS) {
     }
   }
 
+  // Test antisymmetric 4-tensors
+  {
+    mt19937 engine(42);
+    uniform_int_distribution<int> dist(-10, 10);
+    const auto rand10{[&]() { return double(dist(engine)); }};
+    const auto randamat10{[&]() {
+      array<array<double, 4>, 4> arr;
+      for (int a = 0; a < 4; ++a)
+        for (int b = 0; b < 4; ++b)
+          arr[a][b] = rand10();
+      return amat4<double, DN, DN>(
+          [&](int a, int b) { return arr[min(a, b)][max(a, b)]; });
+    }};
+
+    const amat4<double, DN, DN> Z([&](int a, int b) { return double(0); });
+
+    for (int n = 0; n < 100; ++n) {
+      const amat4<double, DN, DN> A = randamat10();
+      const amat4<double, DN, DN> B = randamat10();
+      const amat4<double, DN, DN> C = randamat10();
+      const double a = rand10();
+      const double b = rand10();
+
+      assert((A + B) + C == A + (B + C));
+      assert(Z + A == A);
+      assert(A + Z == A);
+      assert(A + (-A) == Z);
+      assert((-A) + A == Z);
+      assert(A - B == A + (-B));
+      assert(A + B == B + A);
+
+      assert(1 * A == A);
+      assert(0 * A == Z);
+      assert(-1 * A == -A);
+      assert((a * b) * A == a * (b * A));
+      assert(a * (A + B) == a * A + a * B);
+      assert((a + b) * A == a * A + b * A);
+    }
+  }
+
+  // Test Riemann tensors
+  {
+    mt19937 engine(42);
+    uniform_int_distribution<int> dist(-10, 10);
+    const auto rand10{[&]() { return double(dist(engine)); }};
+    const auto randrten10{[&]() {
+      array<array<array<array<double, 4>, 4>, 4>, 4> arr;
+      for (int a = 0; a < 4; ++a)
+        for (int b = 0; b < 4; ++b)
+          for (int c = 0; c < 4; ++c)
+            for (int d = 0; d < 4; ++d)
+              arr[a][b][c][d] = rand10();
+      return rten4<double, DN, DN, DN, DN>(
+          [&](int a, int b, int c, int d) { return arr[a][b][c][d]; });
+    }};
+
+    const rten4<double, DN, DN, DN, DN> Z(
+        [&](int a, int b, int c, int d) { return double(0); });
+
+    for (int n = 0; n < 100; ++n) {
+      const rten4<double, DN, DN, DN, DN> A = randrten10();
+      const rten4<double, DN, DN, DN, DN> B = randrten10();
+      const rten4<double, DN, DN, DN, DN> C = randrten10();
+      const double a = rand10();
+      const double b = rand10();
+
+      assert((A + B) + C == A + (B + C));
+      assert(Z + A == A);
+      assert(A + Z == A);
+      assert(A + (-A) == Z);
+      assert((-A) + A == Z);
+      assert(A - B == A + (-B));
+      assert(A + B == B + A);
+
+      assert(1 * A == A);
+      assert(0 * A == Z);
+      assert(-1 * A == -A);
+      assert((a * b) * A == a * (b * A));
+      assert(a * (A + B) == a * A + a * B);
+      assert((a + b) * A == a * A + b * A);
+    }
+  }
+
   // Test derivatives
 
   static_assert(deriv_order % 2 == 0, "");

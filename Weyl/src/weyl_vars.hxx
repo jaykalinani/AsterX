@@ -157,11 +157,12 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
   const vec4<mat4<vec4<T, DN>, DN, DN>, UP> dGamma;
 
   // Riemann, Ricci, Weyl
-  // TODO: Use Rm(a,b,c,d) == Rm(c,d,a,b)
-  const amat4<amat4<T, DN, DN>, DN, DN> Rm;
+  const rten4<T, DN, DN, DN, DN> Rm;
   const mat4<T, DN, DN> R;
   const T Rsc;
-  const amat4<amat4<T, DN, DN>, DN, DN> C;
+  // TODO: C is trace free
+  const rten4<T, DN, DN, DN, DN> C;
+  // TODO: Don't use sum42, sum44 so generously
 
   // Ricci and Weyl scalars
   const T Lambda;
@@ -392,25 +393,90 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
         Phi21(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return R(a, b) * conj(m(a)) * n(b) / T(2);
         })),
-        Psi0(
-            sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
-              return C(a, b)(c, d) * l(a) * m(b) * l(c) * m(d);
-            })),
+        Psi0(sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+          // sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int
+          // d) {
+          //   return C(a, b, c, d) * l(a) * m(b) * l(c) * m(d);
+          // })
+          return m(b) * sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int d) {
+                   return m(d) * sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+                            return l(a) *
+                                   sum41(
+                                       [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
+                                         return C(a, b, c, d) * l(c);
+                                       });
+                          });
+                 });
+        })),
         Psi1(
-            sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
-              return C(a, b)(c, d) * l(a) * m(b) * l(c) * n(d);
+            // sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int
+            // d) {
+            //   return C(a, b, c, d) * l(a) * m(b) * l(c) * n(d);
+            // })
+            sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+              return m(b) * sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+                       return l(a) *
+                              sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
+                                return l(c) *
+                                       sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(
+                                                 int d) {
+                                         return C(a, b, c, d) * n(d);
+                                       });
+                              });
+                     });
             })),
         Psi2(
-            sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
-              return C(a, b)(c, d) * l(a) * m(b) * conj(m(c)) * n(d);
+            // sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int
+            // d) {
+            //   return C(a, b, c, d) * l(a) * m(b) * conj(m(c)) * n(d);
+            // })
+            sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+              return m(b) * sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
+                       return conj(m(c)) *
+                              sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+                                return l(a) *
+                                       sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(
+                                                 int d) {
+                                         return C(a, b, c, d) * n(d);
+                                       });
+                              });
+                     });
             })),
         Psi3(
-            sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
-              return C(a, b)(c, d) * l(a) * n(b) * conj(m(c)) * n(d);
+            // sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int
+            // d) {
+            //   return C(a, b, c, d) * l(a) * n(b) * conj(m(c)) * n(d);
+            // })
+            sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
+              return conj(m(c)) *
+                     sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+                       return l(a) *
+                              sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+                                return n(b) *
+                                       sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(
+                                                 int d) {
+                                         return C(a, b, c, d) * n(d);
+                                       });
+                              });
+                     });
             })),
         Psi4(
-            sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
-              return C(a, b)(c, d) * conj(m(a)) * n(b) * conj(m(c)) * n(d);
+            // sum44([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int
+            // d) {
+            //   return C(a, b, c, d) * conj(m(a)) * n(b) * conj(m(c)) * n(d);
+            // })
+            sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+              return conj(m(a)) *
+                     sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
+                       return conj(m(c)) *
+                              sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+                                return n(b) *
+                                       sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(
+                                                 int d) {
+                                         return C(a, b, c, d) * n(d);
+                                       });
+                              });
+                     });
             })),
         det(calc_det(gu, dgu, et, Gamma)),                                    //
         dephi(calc_dephi(coord, g, dg, ephi, Gamma)),                         //
