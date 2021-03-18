@@ -119,6 +119,18 @@ array_from_initializer_list(initializer_list<T> l) {
   return {p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]};
 }
 
+template <typename T, size_t N>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 21), array<T, N> >
+array_from_initializer_list(initializer_list<T> l) {
+#ifndef __CUDACC__
+  assert(l.size() >= N);
+#endif
+  const T *restrict const p = l.begin();
+  return {p[0],  p[1],  p[2],  p[3],  p[4],  p[5],  p[6],
+          p[7],  p[8],  p[9],  p[10], p[11], p[12], p[13],
+          p[14], p[15], p[16], p[17], p[18], p[19], p[20]};
+}
+
 template <typename T>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 3>
 array_from_tuple(tuple<T, T, T> t) {
@@ -144,6 +156,18 @@ array_from_tuple(tuple<T, T, T, T, T, T, T, T, T, T> t) {
   return {move(get<0>(t)), move(get<1>(t)), move(get<2>(t)), move(get<3>(t)),
           move(get<4>(t)), move(get<5>(t)), move(get<6>(t)), move(get<7>(t)),
           move(get<8>(t)), move(get<9>(t))};
+}
+
+template <typename T>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, 21> array_from_tuple(
+    tuple<T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T> t) {
+  return {move(get<0>(t)),  move(get<1>(t)),  move(get<2>(t)),
+          move(get<3>(t)),  move(get<4>(t)),  move(get<5>(t)),
+          move(get<6>(t)),  move(get<7>(t)),  move(get<8>(t)),
+          move(get<9>(t)),  move(get<10>(t)), move(get<11>(t)),
+          move(get<12>(t)), move(get<13>(t)), move(get<14>(t)),
+          move(get<15>(t)), move(get<16>(t)), move(get<17>(t)),
+          move(get<18>(t)), move(get<19>(t)), move(get<20>(t))};
 }
 
 template <typename T, size_t N>
@@ -186,6 +210,20 @@ array_from_vector(vector<T> &&v) {
   typename vector<T>::iterator const p = v.begin();
   return {move(p[0]), move(p[1]), move(p[2]), move(p[3]), move(p[4]),
           move(p[5]), move(p[6]), move(p[7]), move(p[8]), move(p[9])};
+}
+
+template <typename T, size_t N>
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE enable_if_t<(N == 21), array<T, N> >
+array_from_vector(vector<T> &&v) {
+#ifndef __CUDACC__
+  assert(v.size() >= N);
+#endif
+  typename vector<T>::iterator const p = v.begin();
+  return {move(p[0]),  move(p[1]),  move(p[2]),  move(p[3]),  move(p[4]),
+          move(p[5]),  move(p[6]),  move(p[7]),  move(p[8]),  move(p[9]),
+          move(p[10]), move(p[11]), move(p[12]), move(p[13]), move(p[14]),
+          move(p[15]), move(p[16]), move(p[17]), move(p[18]), move(p[19]),
+          move(p[20])};
 }
 
 static_assert(static_cast<const array<int, 3> &>(
