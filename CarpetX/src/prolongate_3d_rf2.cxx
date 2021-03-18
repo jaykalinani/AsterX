@@ -13,6 +13,7 @@ static inline int omp_get_thread_num(void) { return 0; }
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <mutex>
 #include <vector>
 
 namespace CarpetX {
@@ -634,34 +635,22 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
                                        amrex::Vector<amrex::BCRec> const &bcr,
                                        int actual_comp, int actual_state,
                                        amrex::RunOn gpu_or_cpu) {
+  static once_flag have_timers;
   static vector<Timer> timers;
-  static bool have_timers = false;
 
   const int thread_num = omp_get_thread_num();
 
-  bool my_have_timers;
-#pragma omp atomic read
-  my_have_timers = have_timers;
-  if (!my_have_timers) {
-#pragma omp critical
-    {
-#pragma omp atomic read
-      my_have_timers = have_timers;
-      if (!my_have_timers) {
-        const int num_threads = omp_get_num_threads();
-        timers.reserve(num_threads);
-        for (int i = 0; i < num_threads; ++i) {
-          ostringstream buf;
-          buf << "prolongate_3d_rf2<CENT=" << CENTI << CENTJ << CENTK
-              << ",CONS=" << CONSI << CONSJ << CONSK << ",ORDER=" << ORDERI
-              << ORDERJ << ORDERK << ">[thread=" << i << "]";
-          timers.emplace_back(buf.str());
-        }
-#pragma omp atomic write
-        have_timers = true;
-      }
+  call_once(have_timers, [&]() {
+    const int num_threads = omp_get_num_threads();
+    timers.reserve(num_threads);
+    for (int i = 0; i < num_threads; ++i) {
+      ostringstream buf;
+      buf << "prolongate_3d_rf2<CENT=" << CENTI << CENTJ << CENTK
+          << ",CONS=" << CONSI << CONSJ << CONSK << ",ORDER=" << ORDERI
+          << ORDERJ << ORDERK << ">[thread=" << i << "]";
+      timers.emplace_back(buf.str());
     }
-  }
+  });
 
   const Timer &timer = timers.at(thread_num);
   Interval interval(timer);
