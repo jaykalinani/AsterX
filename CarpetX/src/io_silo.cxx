@@ -86,9 +86,7 @@ string make_varname(const int gi, const int vi, const int reflevel = -1,
   string varname;
   if (vi < 0) {
     assert(0);
-    char *const groupname = CCTK_GroupName(gi);
-    varname = groupname;
-    free(groupname);
+    varname = CCTK_FullGroupName(gi);
   } else {
     const int v0 = CCTK_FirstVarIndexI(gi);
     varname = CCTK_FullVarName(v0 + vi);
@@ -190,13 +188,9 @@ void InputSilo(const cGH *restrict const cctkGH) {
           group_enabled.begin(), group_enabled.end(), [](bool b) { return b; });
       if (have_silo_input) {
         CCTK_VINFO("Silo input for groups:");
-        for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-          if (group_enabled.at(gi)) {
-            char *const groupname = CCTK_GroupName(gi);
-            CCTK_VINFO("  %s", groupname);
-            free(groupname);
-          }
-        }
+        for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+          if (group_enabled.at(gi))
+            CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
       } else {
         CCTK_VINFO("No Silo input");
       }
@@ -304,11 +298,8 @@ void InputSilo(const cGH *restrict const cctkGH) {
           continue;
         if (CCTK_GroupTypeI(gi) != CCTK_GF)
           continue;
-        if (io_verbose) {
-          char *const groupname = CCTK_GroupName(gi);
-          CCTK_VINFO("  Reading group %s", groupname);
-          free(groupname);
-        }
+        if (io_verbose)
+          CCTK_VINFO("  Reading group %s", CCTK_FullGroupName(gi));
 
         auto &groupdata = *leveldata.groupdata.at(gi);
         const int numvars = groupdata.numvars;

@@ -97,7 +97,7 @@ void OutputTSVold(const cGH *restrict cctkGH) {
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
-      string groupname = unique_C_ptr<char>(CCTK_GroupName(gi)).get();
+      string groupname = CCTK_FullGroupName(gi);
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &c : groupname)
         c = tolower(c);
@@ -337,13 +337,9 @@ void OutputTSV(const cGH *restrict cctkGH) {
     CCTK_TraverseString(out_tsv_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
     if (verbose) {
       CCTK_VINFO("TSV output for groups:");
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (group_enabled.at(gi)) {
-          char *const groupname = CCTK_GroupName(gi);
-          CCTK_VINFO("  %s", groupname);
-          free(groupname);
-        }
-      }
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+        if (group_enabled.at(gi))
+          CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
     }
     return enabled;
   }();
@@ -355,7 +351,7 @@ void OutputTSV(const cGH *restrict cctkGH) {
   const int numgroups = CCTK_NumGroups();
   for (int gi = 0; gi < numgroups; ++gi) {
     if (group_enabled.at(gi)) {
-      string groupname = unique_ptr<char>(CCTK_GroupName(gi)).get();
+      string groupname = CCTK_FullGroupName(gi);
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &ch : groupname)
         ch = tolower(ch);

@@ -2194,7 +2194,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     for (int n = 0; n < numgroups; ++n) {
       if (n != 0)
         buf << ", ";
-      buf << unique_C_ptr<char>(CCTK_GroupName(groups0[n])).get();
+      buf << CCTK_FullGroupName(groups0[n]);
     }
 #pragma omp critical
     CCTK_VINFO("SyncGroups %s", buf.str().c_str());
@@ -2566,14 +2566,12 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
     int ntls = requested_tls[n];
     int const declared_tls = CCTK_DeclaredTimeLevelsGI(groups[n]);
     if (inc and declared_tls < 2 and ntls > declared_tls) {
-      char *groupname = CCTK_GroupName(groups[n]);
       CCTK_VWARN(CCTK_WARN_ALERT,
                  "Attempting to activate %d timelevels for group '%s' which "
                  "only has a single timelevel declared in interface.ccl. "
                  "Please declared at least 2 timelevels in interface.ccl to "
                  "allow more timelevels to be created at runtime.",
-                 ntls, groupname);
-      free(groupname);
+                 ntls, CCTK_FullGroupName(groups[n]));
       ntls = declared_tls;
     }
     if (ntls == -1) {

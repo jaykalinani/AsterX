@@ -1103,7 +1103,7 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   yaml << YAML::LocalTag("commongroupdata-1.0.0");
   yaml << YAML::BeginMap;
   yaml << YAML::Key << "groupname" << YAML::Value
-       << unique_ptr<char>(CCTK_GroupName(commongroupdata.groupindex)).get();
+       << CCTK_FullGroupName(commongroupdata.groupindex);
   yaml << YAML::Key << "numvars" << YAML::Value << commongroupdata.numvars;
   yaml << YAML::Key << "do_checkpoint" << YAML::Value
        << commongroupdata.do_checkpoint;
@@ -1169,7 +1169,7 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
        << seqs(groupdata.parities);
   yaml << YAML::Key << "fluxes" << YAML::Value << YAML::Flow << YAML::BeginSeq;
   for (const int flux : groupdata.fluxes)
-    yaml << (flux >= 0 ? unique_ptr<char>(CCTK_GroupName(flux)).get() : "");
+    yaml << (flux >= 0 ? CCTK_FullGroupName(flux) : "");
   yaml << YAML::EndSeq;
   yaml << YAML::EndMap;
   return yaml;
@@ -1639,10 +1639,8 @@ int GroupDynamicData(const cGH *cctkGH, int gi, cGroupDynamicData *data) {
     data->nghostzones = arraygroupdata.nghostzones;
     data->activetimelevels = arraygroupdata.activetimelevels;
   } else {
-    char *gname = CCTK_GroupName(gi);
     CCTK_VERROR("Internal error: unexpected group type %d for group '%s'",
-                (int)group.grouptype, gname);
-    free(gname);
+                (int)group.grouptype, CCTK_FullGroupName(gi));
   }
   return 0;
 }
