@@ -49,30 +49,13 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 5
 CarpetX::interpolation_order = 3
 
-# Initial data are set up by the file reader
-ADMBase::initial_data = "none"
-ADMBase::initial_lapse = "none"
-ADMBase::initial_shift = "none"
+ADMBase::initial_data = "Brill-Lindquist"
+ADMBase::initial_lapse = "Brill-Lindquist"
 
 BrillLindquist::x0 = 0.0
 BrillLindquist::mass = 1.0
 
+IO::checkpoint_dir = $parfile
+IO::checkpoint_ID = yes
 IO::out_mode = "np"
 IO::out_proc_every = 1
-
-CarpetX::in_dir = "/Users/eschnett/simulations/brill-lindquist-write/output-0000/brill-lindquist-write"
-CarpetX::in_file = "brill-lindquist-write"
-CarpetX::in_silo_vars = "
-    ADMBase::metric
-    ADMBase::curv
-    ADMBase::lapse
-    ADMBase::dtlapse
-    ADMBase::shift
-    ADMBase::dtshift
-"
-
-IO::out_dir = $parfile
-IO::out_every = 1
-CarpetX::out_plotfile_groups = ""
-CarpetX::out_silo_vars = "all"
-CarpetX::out_tsv = no

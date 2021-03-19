@@ -324,13 +324,22 @@ USES KEYWORD presync_mode
 
 SHARES: IO
 
+USES KEYWORD recover
+USES STRING recover_dir
+USES STRING recover_file
+
+# TODO: Use these
+# USES STRING filereader_ID_dir
+# USES STRING filereader_ID_files
+
 USES STRING out_dir
 USES CCTK_INT out_every
 USES KEYWORD out_mode
 USES CCTK_INT out_proc_every
 
-# USES STRING filereader_ID_dir
-# USES STRING filereader_ID_files
-# 
-# USES STRING checkpoint_dir
-# USES STRING recover_dir
+USES BOOLEAN checkpoint_ID
+USES INT checkpoint_every
+USES REAL checkpoint_every_walltime_hours
+USES BOOLEAN checkpoint_on_terminate
+USES STRING checkpoint_dir
+USES STRING checkpoint_file

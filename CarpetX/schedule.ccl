@@ -5,6 +5,15 @@ SCHEDULE CarpetX_Startup AT startup AS Driver_Startup
   LANG: C
 } "Start up the driver"
 
+if (!CCTK_Equals(recover, "no") && *recover_file)
+{
+  SCHEDULE CarpetX_RecoverParameters AT recover_parameters
+  {
+    LANG:C
+    OPTIONS: meta
+  } "Recover parameters"
+}
+
 SCHEDULE CarpetX_InitError AT basegrid
 {
   LANG: C
@@ -16,6 +25,24 @@ SCHEDULE CarpetX_SetLevel AT basegrid
   LANG: C
   WRITES: CarpetX::refinement_level(everywhere)
 } "Set refinemenet level grid function"
+
+SCHEDULE CarpetX_CheckpointInitial AT cpinitial
+{
+  LANG: C
+  OPTIONS: meta
+} "Checkpoint initial conditions"
+
+SCHEDULE CarpetX_Checkpoint AT checkpoint
+{
+  LANG: C
+  OPTIONS: meta
+} "Checkpoint"
+
+SCHEDULE CarpetX_CheckpointTerminate AT terminate
+{
+  LANG: C
+  OPTIONS: meta
+} "Checkpoint before terminating"
 
 SCHEDULE CarpetX_Shutdown AT shutdown AS Driver_Shutdown
 {

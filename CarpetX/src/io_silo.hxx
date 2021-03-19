@@ -8,7 +8,8 @@
 namespace CarpetX {
 
 void InputSilo(const cGH *cctkGH);
-void OutputSilo(const cGH *cctkGH);
+enum class output_type_t { scheduled, checkpoint };
+void OutputSilo(const cGH *cctkGH, output_type_t output_type);
 
 } // namespace CarpetX
 #endif

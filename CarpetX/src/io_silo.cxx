@@ -49,18 +49,18 @@ struct mesh_props_t {
   }
 };
 
-string make_subdirname(const string &simulation_name, const int iteration) {
+string make_subdirname(const string &file_name, const int iteration) {
   ostringstream buf;
-  buf << simulation_name                               //
+  buf << file_name                                     //
       << ".it" << setw(8) << setfill('0') << iteration //
       << ".silo.dir";
   return buf.str();
 }
 
-string make_filename(const string &simulation_name, const int iteration,
+string make_filename(const string &file_name, const int iteration,
                      const int ioserver = -1) {
   ostringstream buf;
-  buf << simulation_name //
+  buf << file_name //
       << ".it" << setw(8) << setfill('0') << iteration;
   if (ioserver >= 0)
     buf << ".p" << setw(6) << setfill('0') << ioserver;
@@ -431,7 +431,8 @@ void InputSilo(const cGH *restrict const cctkGH) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void OutputSilo(const cGH *restrict const cctkGH) {
+void OutputSilo(const cGH *restrict const cctkGH,
+                const output_type_t output_type) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
@@ -496,33 +497,52 @@ void OutputSilo(const cGH *restrict const cctkGH) {
     return name;
   }();
 
+  const string output_dir =
+      output_type == output_type_t::scheduled ? out_dir : checkpoint_dir;
+  const string output_file = output_type == output_type_t::scheduled
+                                 ? simulation_name
+                                 : checkpoint_file;
+
   // TODO: directories instead of carefully chosen names
 
   // Find output groups
-  const vector<bool> group_enabled = [&] {
-    vector<bool> enabled(CCTK_NumGroups(), false);
+  vector<bool> group_enabled(CCTK_NumGroups(), false);
+  if (output_type == output_type_t::scheduled) {
     const auto callback{
         [](const int index, const char *const optstring, void *const arg) {
           vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
           enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
         }};
-    CCTK_TraverseString(out_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+    CCTK_TraverseString(out_silo_vars, callback, &group_enabled,
+                        CCTK_GROUP_OR_VAR);
     if (io_verbose) {
       CCTK_VINFO("Silo output for groups:");
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (group_enabled.at(gi)) {
-          char *const groupname = CCTK_GroupName(gi);
-          CCTK_VINFO("  %s", groupname);
-          free(groupname);
-        }
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+        if (group_enabled.at(gi))
+          CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+    }
+  } else { // output_type == output_type_t::checkpoint
+    const int numgroups = CCTK_NumGroups();
+    for (int gi = 0; gi < numgroups; ++gi) {
+      const GHExt::GlobalData &globaldata = ghext->globaldata;
+      if (globaldata.arraygroupdata.at(gi)) {
+        // grid array
+        group_enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+      } else {
+        // grid function
+        const int level = 0;
+        const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+        assert(leveldata.groupdata.at(gi));
+        group_enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
       }
     }
-    return enabled;
-  }();
-  const auto num_out_vars =
-      count(group_enabled.begin(), group_enabled.end(), true);
-  if (num_out_vars == 0)
-    return;
+  }
+
+  // const auto num_out_vars =
+  //     count(group_enabled.begin(), group_enabled.end(), true);
+  // We still want the metadata. Set `out_every=0` to disable output.
+  // if (output_type == output_type_t::scheduled && num_out_vars == 0)
+  //   return;
 
   constexpr int ndims = dim;
 
@@ -535,12 +555,12 @@ void OutputSilo(const cGH *restrict const cctkGH) {
   {
     static Timer timer_mkdir("OutputSilo.mkdir");
     auto interval_mkdir = make_unique<Interval>(timer_mkdir);
-    const string subdirname = make_subdirname(simulation_name, cctk_iteration);
-    const string pathname = string(out_dir) + "/" + subdirname;
+    const string subdirname = make_subdirname(output_file, cctk_iteration);
+    const string pathname = string(output_dir) + "/" + subdirname;
     const int mode = 0755;
     static once_flag create_directory;
     call_once(create_directory, [&]() {
-      const int ierr = CCTK_CreateDirectory(mode, out_dir);
+      const int ierr = CCTK_CreateDirectory(mode, output_dir.c_str());
       assert(ierr >= 0);
     });
     ierr = CCTK_CreateDirectory(mode, pathname.c_str());
@@ -551,9 +571,9 @@ void OutputSilo(const cGH *restrict const cctkGH) {
     if (write_file) {
       const string filename =
           pathname + "/" +
-          make_filename(simulation_name, cctk_iteration, myproc / ioproc_every);
+          make_filename(output_file, cctk_iteration, myproc / ioproc_every);
       file = DB::make(DBCreate(filename.c_str(), DB_CLOBBER, DB_LOCAL,
-                               simulation_name.c_str(), DB_HDF5));
+                               output_file.c_str(), DB_HDF5));
       assert(file);
     }
 
@@ -771,10 +791,10 @@ void OutputSilo(const cGH *restrict const cctkGH) {
   if (write_metafile) {
 
     const string metafilename =
-        string(out_dir) + "/" + make_filename(simulation_name, cctk_iteration);
+        string(output_dir) + "/" + make_filename(output_file, cctk_iteration);
     const DB::ptr<DBfile> metafile =
         DB::make(DBCreate(metafilename.c_str(), DB_CLOBBER, DB_LOCAL,
-                          simulation_name.c_str(), DB_HDF5));
+                          output_file.c_str(), DB_HDF5));
     assert(metafile);
 
     {
@@ -1175,9 +1195,8 @@ void OutputSilo(const cGH *restrict const cctkGH) {
           for (int c = 0; c < nfabs; ++c) {
             const int proc = dm[c];
             const string proc_filename =
-                make_subdirname(simulation_name, cctk_iteration) + "/" +
-                make_filename(simulation_name, cctk_iteration,
-                              proc / ioproc_every);
+                make_subdirname(output_file, cctk_iteration) + "/" +
+                make_filename(output_file, cctk_iteration, proc / ioproc_every);
             const string meshname =
                 proc_filename + ":" + make_meshname(leveldata.level, c);
             meshnames.push_back(meshname);
@@ -1311,8 +1330,8 @@ void OutputSilo(const cGH *restrict const cctkGH) {
             for (int c = 0; c < nfabs; ++c) {
               const int proc = dm[c];
               const string proc_filename =
-                  make_subdirname(simulation_name, cctk_iteration) + "/" +
-                  make_filename(simulation_name, cctk_iteration,
+                  make_subdirname(output_file, cctk_iteration) + "/" +
+                  make_filename(output_file, cctk_iteration,
                                 proc / ioproc_every);
               const string varname = proc_filename + ":" +
                                      make_varname(gi, vi, leveldata.level, c);
@@ -1370,15 +1389,15 @@ void OutputSilo(const cGH *restrict const cctkGH) {
       }
     }
 
-    {
+    if (output_type == output_type_t::scheduled) {
       const string visitname = [&]() {
         ostringstream buf;
-        buf << out_dir << "/" << simulation_name << ".visit";
+        buf << output_dir << "/" << output_file << ".visit";
         return buf.str();
       }();
       ofstream visit(visitname, ios::app);
       assert(visit.good());
-      visit << make_filename(simulation_name, cctk_iteration) << "\n";
+      visit << make_filename(output_file, cctk_iteration) << "\n";
     }
 
   } // if write metadata

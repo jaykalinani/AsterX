@@ -28,6 +28,148 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Input
+
+int Input(cGH *const cctkGH, const char *const basefilename,
+          const int called_from) {
+  DECLARE_CCTK_PARAMETERS;
+
+  assert(called_from == CP_RECOVER_PARAMETERS ||
+         called_from == CP_RECOVER_DATA || called_from == FILEREADER_DATA);
+  const bool do_recover =
+      called_from == CP_RECOVER_PARAMETERS || called_from == CP_RECOVER_DATA;
+  const bool read_parameters = called_from == CP_RECOVER_PARAMETERS;
+
+  static Timer timer("InputGH");
+  Interval interval(timer);
+
+  const string projectname = [&]() -> string {
+    if (do_recover) {
+      // basename is only passed for CP_RECOVER_PARAMETERS, and needs to
+      // be remembered
+      static string saved_basefilename;
+      if (read_parameters)
+        saved_basefilename = basefilename;
+      assert(!saved_basefilename.empty());
+      return saved_basefilename;
+    } else {
+      return basefilename;
+    }
+  }();
+
+  if (do_recover)
+    if (read_parameters)
+      CCTK_VINFO("Recovering parameters  from file \"%s\"",
+                 projectname.c_str());
+    else
+      CCTK_VINFO("Recovering variables  from file \"%s\"", projectname.c_str());
+  else
+    CCTK_VINFO("Reading variables from file \"%s\"", projectname.c_str());
+
+  if (do_recover && !read_parameters) {
+    // Set global Cactus variables
+    // CCTK_SetMainLoopIndex(main_loop_index);
+#warning "TODO"
+    // cctkGH->cctk_iteration = iteration;
+    cctkGH->cctk_iteration = 0;
+  }
+
+  // Determine which variables to read
+  const auto ioUtilGH =
+      static_cast<const ioGH *>(CCTK_GHExtension(cctkGH, "IO"));
+  const vector<bool> groups_enabled = [&] {
+    vector<bool> enabled(CCTK_NumGroups(), false);
+    if (do_recover) {
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        if (!CCTK_QueryGroupStorageI(cctkGH, gi))
+          continue;
+        cGroup gdata;
+        int ierr = CCTK_GroupData(gi, &gdata);
+        assert(!ierr);
+        // Do not recover groups with a "checkpoint=no" tag
+        const int len =
+            Util_TableGetString(gdata.tagstable, 0, nullptr, "checkpoint");
+        if (len > 0) {
+          array<char, 10> buf;
+          Util_TableGetString(gdata.tagstable, buf.size(), buf.data(),
+                              "checkpoint");
+          if (CCTK_EQUALS(buf.data(), "no"))
+            continue;
+          assert(CCTK_EQUALS(buf.data(), "yes"));
+        }
+        enabled.at(gi) = true;
+      }
+    } else {
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        const int v0 = CCTK_FirstVarIndexI(gi);
+        assert(v0 >= 0);
+        const int nv = CCTK_NumVarsInGroupI(gi);
+        assert(nv >= 0);
+        for (int vi = 0; vi < nv; ++vi)
+          if (!ioUtilGH->do_inVars || ioUtilGH->do_inVars[v0 + vi])
+            enabled.at(gi) = true;
+      }
+    }
+    return enabled;
+  }();
+
+#warning "CONTINUE HERE"
+#if 0
+  io_dir_t io_dir = do_recover ? io_dir_t::recover : io_dir_t::input;
+  bool did_read_parameters = false;
+  bool did_read_grid_structure = false;
+  if (not input_file_hdf5_ptrs.count(projectname)) {
+    static HighResTimer::HighResTimer timer1("SimulationIO::read_file_hdf5");
+    auto timer1_clock = timer1.start();
+    input_file_hdf5_ptrs[projectname] = make_unique<input_file_t>(
+        io_dir, projectname, file_format::hdf5, iteration, -1, -1);
+    timer1_clock.stop(0);
+  }
+  const auto &input_file_ptr = input_file_hdf5_ptrs.at(projectname);
+  if (read_parameters) {
+    static HighResTimer::HighResTimer timer1(
+        "SimulationIO::read_parameters_hdf5");
+    auto timer1_clock = timer1.start();
+    input_file_ptr->read_params();
+    did_read_parameters = true;
+    timer1_clock.stop(0);
+  } else {
+    if (not did_read_grid_structure) {
+      static HighResTimer::HighResTimer timer1(
+          "SimulationIO::read_grid_structure_hdf5");
+      auto timer1_clock = timer1.start();
+      input_file_ptr->read_grid_structure(cctkGH);
+      did_read_grid_structure = true;
+      timer1_clock.stop(0);
+    }
+    static HighResTimer::HighResTimer timer1(
+        "SimulationIO::read_variables_hdf5");
+    auto timer1_clock = timer1.start();
+    input_file_ptr->read_vars(input_vars, -1, -1);
+    timer1_clock.stop(0);
+  }
+
+  if (read_parameters)
+    return did_read_parameters ? 1 : 0;
+
+  assert(did_read_grid_structure);
+#endif
+  return 0; // no error
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// Recovering
+
+extern "C" int CarpetX_RecoverParameters() {
+  DECLARE_CCTK_PARAMETERS;
+  const char *const out_extension = ".silo";
+  const int iret = IOUtil_RecoverParameters(Input, out_extension, "CarpetX");
+  return iret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 int InputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -427,7 +569,7 @@ int OutputGH(const cGH *restrict cctkGH) {
 #ifdef HAVE_CAPABILITY_Silo
     // TODO: Stop at paramcheck time when Silo output parameters are
     // set, but Silo is not available
-    OutputSilo(cctkGH);
+    OutputSilo(cctkGH, output_type_t::scheduled);
 #endif
 
     OutputTSVold(cctkGH);
@@ -441,148 +583,72 @@ int OutputGH(const cGH *restrict cctkGH) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
+void Checkpoint(const cGH *const restrict cctkGH) {
+  static int last_checkpoint_iteration = -1;
 
-// Input
+  if (cctkGH->cctk_iteration <= last_checkpoint_iteration) {
+    CCTK_VINFO(
+        "Already wrote checkpoint at iteration %d; skipping checkpointing",
+        cctkGH->cctk_iteration);
+    return;
+  }
+  last_checkpoint_iteration = cctkGH->cctk_iteration;
 
-int Input(cGH *const cctkGH, const char *const basefilename,
-          const int called_from) {
-  DECLARE_CCTK_PARAMETERS;
-
-  assert(called_from == CP_RECOVER_PARAMETERS ||
-         called_from == CP_RECOVER_DATA || called_from == FILEREADER_DATA);
-  const bool do_recover =
-      called_from == CP_RECOVER_PARAMETERS || called_from == CP_RECOVER_DATA;
-  const bool read_parameters = called_from == CP_RECOVER_PARAMETERS;
-
-  static Timer timer("InputGH");
+  static Timer timer("Checkpoint");
   Interval interval(timer);
 
-  const string projectname = [&]() -> string {
-    if (do_recover) {
-      // basename is only passed for CP_RECOVER_PARAMETERS, and needs to
-      // be remembered
-      static string saved_basefilename;
-      if (read_parameters)
-        saved_basefilename = basefilename;
-      assert(!saved_basefilename.empty());
-      return saved_basefilename;
-    } else {
-      return basefilename;
-    }
-  }();
-
-  if (do_recover)
-    if (read_parameters)
-      CCTK_VINFO("Recovering parameters  from file \"%s\"",
-                 projectname.c_str());
-    else
-      CCTK_VINFO("Recovering variables  from file \"%s\"", projectname.c_str());
-  else
-    CCTK_VINFO("Reading variables from file \"%s\"", projectname.c_str());
-
-  if (do_recover && !read_parameters) {
-    // Set global Cactus variables
-    // CCTK_SetMainLoopIndex(main_loop_index);
-#warning "TODO"
-    // cctkGH->cctk_iteration = iteration;
-    cctkGH->cctk_iteration = 0;
-  }
-
-  // Determine which variables to read
-  const auto ioUtilGH =
-      static_cast<const ioGH *>(CCTK_GHExtension(cctkGH, "IO"));
-  const vector<bool> groups_enabled = [&] {
-    vector<bool> enabled(CCTK_NumGroups(), false);
-    if (do_recover) {
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (!CCTK_QueryGroupStorageI(cctkGH, gi))
-          continue;
-        cGroup gdata;
-        int ierr = CCTK_GroupData(gi, &gdata);
-        assert(!ierr);
-        // Do not recover groups with a "checkpoint=no" tag
-        const int len =
-            Util_TableGetString(gdata.tagstable, 0, nullptr, "checkpoint");
-        if (len > 0) {
-          array<char, 10> buf;
-          Util_TableGetString(gdata.tagstable, buf.size(), buf.data(),
-                              "checkpoint");
-          if (CCTK_EQUALS(buf.data(), "no"))
-            continue;
-          assert(CCTK_EQUALS(buf.data(), "yes"));
-        }
-        enabled.at(gi) = true;
-      }
-    } else {
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        const int v0 = CCTK_FirstVarIndexI(gi);
-        assert(v0 >= 0);
-        const int nv = CCTK_NumVarsInGroupI(gi);
-        assert(nv >= 0);
-        for (int vi = 0; vi < nv; ++vi)
-          if (!ioUtilGH->do_inVars || ioUtilGH->do_inVars[v0 + vi])
-            enabled.at(gi) = true;
-      }
-    }
-    return enabled;
-  }();
-
-#warning "CONTINUE HERE"
-#if 0
-  io_dir_t io_dir = do_recover ? io_dir_t::recover : io_dir_t::input;
-  bool did_read_parameters = false;
-  bool did_read_grid_structure = false;
-  if (not input_file_hdf5_ptrs.count(projectname)) {
-    static HighResTimer::HighResTimer timer1("SimulationIO::read_file_hdf5");
-    auto timer1_clock = timer1.start();
-    input_file_hdf5_ptrs[projectname] = make_unique<input_file_t>(
-        io_dir, projectname, file_format::hdf5, iteration, -1, -1);
-    timer1_clock.stop(0);
-  }
-  const auto &input_file_ptr = input_file_hdf5_ptrs.at(projectname);
-  if (read_parameters) {
-    static HighResTimer::HighResTimer timer1(
-        "SimulationIO::read_parameters_hdf5");
-    auto timer1_clock = timer1.start();
-    input_file_ptr->read_params();
-    did_read_parameters = true;
-    timer1_clock.stop(0);
-  } else {
-    if (not did_read_grid_structure) {
-      static HighResTimer::HighResTimer timer1(
-          "SimulationIO::read_grid_structure_hdf5");
-      auto timer1_clock = timer1.start();
-      input_file_ptr->read_grid_structure(cctkGH);
-      did_read_grid_structure = true;
-      timer1_clock.stop(0);
-    }
-    static HighResTimer::HighResTimer timer1(
-        "SimulationIO::read_variables_hdf5");
-    auto timer1_clock = timer1.start();
-    input_file_ptr->read_vars(input_vars, -1, -1);
-    timer1_clock.stop(0);
-  }
-
-  if (read_parameters)
-    return did_read_parameters ? 1 : 0;
-
-  assert(did_read_grid_structure);
+#ifdef HAVE_CAPABILITY_Silo
+  // TODO: Stop at paramcheck time when Silo output parameters are
+  // set, but Silo is not available
+  OutputSilo(cctkGH, output_type_t::checkpoint);
+#else
+  CCTK_ERROR("No checkpointing method available");
 #endif
-  return 0; // no error
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-// Recovering
-
-extern "C" int CarpetX_RecoverParameters() {
+extern "C" void CarpetX_CheckpointInitial(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
-  const char *const out_extension = ".silo";
-  const int iret = IOUtil_RecoverParameters(Input, out_extension, "CarpetX");
-  return iret;
+
+  if (checkpoint_ID) {
+    CCTK_VINFO("Checkpointing initial conditions at iteration %d, time %f",
+               cctk_iteration, double(cctk_time));
+    Checkpoint(cctkGH);
+  }
 }
 
-#endif
+extern "C" void CarpetX_Checkpoint(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  static int last_checkpoint_runtime = -1; // seconds
+
+  const int runtime = CCTK_RunTime(); // seconds
+
+  const bool checkpoint_by_iteration =
+      checkpoint_every > 0 && cctk_iteration % checkpoint_every == 0;
+  const bool checkpoint_by_walltime =
+      checkpoint_every_walltime_hours > 0 &&
+      runtime >= last_checkpoint_runtime +
+                     lrint(checkpoint_every_walltime_hours * 3600);
+  last_checkpoint_runtime = runtime;
+
+  if (checkpoint_by_iteration || checkpoint_by_walltime) {
+    CCTK_VINFO("Checkpointing at iteration %d, time %f, run time %.2f h",
+               cctk_iteration, double(cctk_time), double(runtime / 3600));
+    Checkpoint(cctkGH);
+  }
+}
+
+extern "C" void CarpetX_CheckpointTerminate(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (checkpoint_on_terminate) {
+    CCTK_VINFO("Checkpointing before terminating at iteration %d, time %f",
+               cctk_iteration, double(cctk_time));
+    Checkpoint(cctkGH);
+  }
+}
 
 } // namespace CarpetX
