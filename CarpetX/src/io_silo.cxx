@@ -3,6 +3,8 @@
 #include "driver.hxx"
 #include "timer.hxx"
 
+#include <CactusBase/IOUtil/src/ioutil_CheckpointRecovery.h>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -22,6 +24,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <memory>
 #include <mutex>
 #include <regex>
 #include <set>
@@ -506,41 +509,43 @@ void OutputSilo(const cGH *restrict const cctkGH,
   // TODO: directories instead of carefully chosen names
 
   // Find output groups
-  vector<bool> group_enabled(CCTK_NumGroups(), false);
-  if (output_type == output_type_t::scheduled) {
-    const auto callback{
-        [](const int index, const char *const optstring, void *const arg) {
-          vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
-          enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
-        }};
-    CCTK_TraverseString(out_silo_vars, callback, &group_enabled,
-                        CCTK_GROUP_OR_VAR);
-    if (io_verbose) {
-      CCTK_VINFO("Silo output for groups:");
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
-        if (group_enabled.at(gi))
-          CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
-    }
-  } else { // output_type == output_type_t::checkpoint
-    const int numgroups = CCTK_NumGroups();
-    for (int gi = 0; gi < numgroups; ++gi) {
-      const GHExt::GlobalData &globaldata = ghext->globaldata;
-      if (globaldata.arraygroupdata.at(gi)) {
-        // grid array
-        group_enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
-      } else {
-        // grid function
-        const int level = 0;
-        const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-        assert(leveldata.groupdata.at(gi));
-        group_enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
+  const vector<bool> group_enabled = [&] {
+    vector<bool> enabled(CCTK_NumGroups(), false);
+    if (output_type == output_type_t::scheduled) {
+      const auto callback{
+          [](const int index, const char *const optstring, void *const arg) {
+            vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
+            enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
+          }};
+      CCTK_TraverseString(out_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+      if (io_verbose) {
+        CCTK_VINFO("Silo output for groups:");
+        for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+          if (enabled.at(gi))
+            CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+      }
+    } else { // output_type == output_type_t::checkpoint
+      const int numgroups = CCTK_NumGroups();
+      for (int gi = 0; gi < numgroups; ++gi) {
+        const GHExt::GlobalData &globaldata = ghext->globaldata;
+        if (globaldata.arraygroupdata.at(gi)) {
+          // grid array
+          enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+        } else {
+          // grid function
+          const int level = 0;
+          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+          assert(leveldata.groupdata.at(gi));
+          enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
+        }
       }
     }
-  }
+    return enabled;
+  }();
 
+  // We still want the metadata. Set `out_every = 0` to disable output.
   // const auto num_out_vars =
   //     count(group_enabled.begin(), group_enabled.end(), true);
-  // We still want the metadata. Set `out_every=0` to disable output.
   // if (output_type == output_type_t::scheduled && num_out_vars == 0)
   //   return;
 
@@ -578,12 +583,22 @@ void OutputSilo(const cGH *restrict const cctkGH,
     }
 
     if (write_file) {
-      // Tell VisIt that the mesh structure may change over time
-      const int dims = 1;
-      const int value = 1;
-      ierr = DBWrite(file.get(), "MetadataIsTimeVarying", &value, &dims, 1,
-                     DB_INT);
-      assert(!ierr);
+      {
+        const string parameters =
+            unique_ptr<char>(IOUtil_GetAllParameters(cctkGH, 1 /*all*/)).get();
+        const int dims = parameters.length();
+        ierr = DBWrite(file.get(), "AllParameters", parameters.data(), &dims, 1,
+                       DB_CHAR);
+        assert(!ierr);
+      }
+
+      { // Tell VisIt that the mesh structure may change over time
+        const int dims = 1;
+        const int value = 1;
+        ierr = DBWrite(file.get(), "MetadataIsTimeVarying", &value, &dims, 1,
+                       DB_INT);
+        assert(!ierr);
+      }
     }
 
     // Loop over levels
@@ -594,6 +609,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
       for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
         if (!group_enabled.at(gi))
           continue;
+#warning "TODO: Output grid arrays"
         if (CCTK_GroupTypeI(gi) != CCTK_GF)
           continue;
 
@@ -798,6 +814,15 @@ void OutputSilo(const cGH *restrict const cctkGH,
     assert(metafile);
 
     {
+      const string parameters =
+          unique_ptr<char>(IOUtil_GetAllParameters(cctkGH, 1 /*all*/)).get();
+      const int dims = parameters.length();
+      ierr = DBWrite(metafile.get(), "AllParameters", parameters.data(), &dims,
+                     1, DB_CHAR);
+      assert(!ierr);
+    }
+
+    {
       // Tell VisIt that the mesh structure may change over time
       const int dims = 1;
       const int value = 1;
@@ -811,6 +836,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
     for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
       if (!group_enabled.at(gi))
         continue;
+#warning "TODO: Output grid arrays"
       if (CCTK_GroupTypeI(gi) != CCTK_GF)
         continue;
 
