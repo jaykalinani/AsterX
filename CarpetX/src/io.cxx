@@ -59,10 +59,9 @@ int Input(cGH *const cctkGH, const char *const basefilename,
 
   if (do_recover)
     if (read_parameters)
-      CCTK_VINFO("Recovering parameters  from file \"%s\"",
-                 projectname.c_str());
+      CCTK_VINFO("Recovering parameters from file \"%s\"", projectname.c_str());
     else
-      CCTK_VINFO("Recovering variables  from file \"%s\"", projectname.c_str());
+      CCTK_VINFO("Recovering variables from file \"%s\"", projectname.c_str());
   else
     CCTK_VINFO("Reading variables from file \"%s\"", projectname.c_str());
 
@@ -77,29 +76,24 @@ int Input(cGH *const cctkGH, const char *const basefilename,
   // Determine which variables to read
   const auto ioUtilGH =
       static_cast<const ioGH *>(CCTK_GHExtension(cctkGH, "IO"));
-  const vector<bool> groups_enabled = [&] {
+  const vector<bool> group_enabled = [&] {
     vector<bool> enabled(CCTK_NumGroups(), false);
     if (do_recover) {
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (!CCTK_QueryGroupStorageI(cctkGH, gi))
-          continue;
-        cGroup gdata;
-        int ierr = CCTK_GroupData(gi, &gdata);
-        assert(!ierr);
-        // Do not recover groups with a "checkpoint=no" tag
-        const int len =
-            Util_TableGetString(gdata.tagstable, 0, nullptr, "checkpoint");
-        if (len > 0) {
-          array<char, 10> buf;
-          Util_TableGetString(gdata.tagstable, buf.size(), buf.data(),
-                              "checkpoint");
-          if (CCTK_EQUALS(buf.data(), "no"))
-            continue;
-          assert(CCTK_EQUALS(buf.data(), "yes"));
+      const int numgroups = CCTK_NumGroups();
+      for (int gi = 0; gi < numgroups; ++gi) {
+        const GHExt::GlobalData &globaldata = ghext->globaldata;
+        if (globaldata.arraygroupdata.at(gi)) {
+          // grid array
+          enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+        } else {
+          // grid function
+          const int level = 0;
+          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+          assert(leveldata.groupdata.at(gi));
+          enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
         }
-        enabled.at(gi) = true;
       }
-    } else {
+    } else { // if !do_recover
       for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
         const int v0 = CCTK_FirstVarIndexI(gi);
         assert(v0 >= 0);
