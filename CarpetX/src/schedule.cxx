@@ -858,7 +858,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
 
   // Initialize grid spacing
   const amrex::Geometry &geom = ghext->amrcore->Geom(0);
-  const CCTK_REAL *restrict const x0 = geom.ProbLo();
+  // const CCTK_REAL *restrict const x0 = geom.ProbLo();
   const CCTK_REAL *restrict const dx = geom.CellSize();
 
   for (int d = 0; d < dim; ++d) {
@@ -1287,7 +1287,7 @@ int Initialise(tFleshConfig *config) {
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
 
-  int max_threads = omp_get_max_threads();
+  const int max_threads = omp_get_max_threads();
   thread_local_info.resize(max_threads);
   for (int n = 0; n < max_threads; ++n) {
     thread_local_info.at(n) = make_unique<thread_local_info_t>();
