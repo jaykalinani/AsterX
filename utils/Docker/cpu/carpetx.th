@@ -255,7 +255,7 @@ CactusBase/Time
 CactusUtils/Formaline
 CactusUtils/MemSpeed
 CactusUtils/NaNCatcher
-CactusUtils/NaNChecker
+#DISABLED CactusUtils/NaNChecker
 CactusUtils/Nice
 CactusUtils/NoMPI
 #DISABLED CactusUtils/OpenCLRunTime
@@ -660,13 +660,11 @@ CarpetX/Punctures
 #DISABLED CarpetX/SIMT
 CarpetX/Silo
 CarpetX/StaticTrumpet
-CarpetX/TestCarpetX
 CarpetX/TestODESolvers
 CarpetX/TestODESolvers2
 CarpetX/TestProlongate
 CarpetX/TmunuBase
 CarpetX/TwoPunctures
-CarpetX/WaveToy
 CarpetX/WaveToyCarpetX
 CarpetX/WaveToyCPU
 CarpetX/WaveToyGPU
