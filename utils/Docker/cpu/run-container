@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Run this script in your main Cactus directory:
-#   ./utils/Docker/make/image-cpu/run-container-cpu
+#   ./utils/Docker/cpu/run-container
 # This opens a shell running in a container using a Docker image with
 # all Cactus dependencies installed.
 
@@ -16,7 +16,7 @@ echo $SCRIPTPATH
 
 home="$HOME"
 workdir=$(pwd)
-docker build --file "$SCRIPTPATH/make-image-gpu/Dockerfile.run" --build-arg gid=$(id -g) --build-arg home="$home" --build-arg uid=$(id -u) --build-arg username=$(id -n -u) --build-arg workdir="$workdir" "$SCRIPTPATH" --tag runme:gpu
+docker build --build-arg gid=$(id -g) --build-arg home="$home" --build-arg uid=$(id -u) --build-arg username=$(id -n -u) --build-arg workdir="$workdir" "$SCRIPTPATH" --tag runme:cpu
 
-hostname=$(hostname)-docker:gpu
-docker run --interactive --hostname "$hostname" --mount "type=bind,source=$home,target=$home" --mount "type=bind,source=$workdir,target=$workdir" --rm --tty --workdir "$workdir" runme:gpu bash
+hostname='carpetx-docker:cpu'
+docker run --interactive --hostname "$hostname" --mount "type=bind,source=$home,target=$home" --mount "type=bind,source=$workdir,target=$workdir" --rm --tty --workdir "$workdir" runme:cpu bash

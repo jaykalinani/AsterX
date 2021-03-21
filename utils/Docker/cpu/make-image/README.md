@@ -12,7 +12,7 @@ docker push eschnett/spack-ubuntu-2004:cpu
 ## Create a Docker image containing AMReX and other Cactus dependencies
 You don't need to do this; these commands are for maintainers.
 ```sh
-cd utils/Docker/make-image-cpu
+cd utils/Docker/cpu/make-image
 docker build --tag eschnett/simfactory4-cactus:cpu .
 docker push eschnett/simfactory4-cactus:cpu
 ```
@@ -20,6 +20,6 @@ docker push eschnett/simfactory4-cactus:cpu
 ## Use the Docker image to build and run Cactus
 This is what you need to do.
 ```sh
-./utils/Docker/make/image-cpu/run-container-cpu
+./utils/Docker/cpu/run-container
 ```
 This opens a shell running in a container using the image above.
