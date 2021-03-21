@@ -23,3 +23,4 @@ ENV HOME=${home}
 # WORKDIR ${workdir}
 
 USER ${uid}:${gid}
+ENV USER=${username}
