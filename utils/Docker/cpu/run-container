@@ -18,5 +18,5 @@ home="$HOME"
 workdir=$(pwd)
 docker build --build-arg gid=$(id -g) --build-arg home="$home" --build-arg uid=$(id -u) --build-arg username=$(id -n -u) --build-arg workdir="$workdir" "$SCRIPTPATH" --tag runme:cpu
 
-hostname='carpetx-docker:cpu'
+hostname='carpetx-docker-cpu'
 docker run --interactive --hostname "$hostname" --mount "type=bind,source=$home,target=$home" --mount "type=bind,source=$workdir,target=$workdir" --rm --tty --workdir "$workdir" runme:cpu bash
