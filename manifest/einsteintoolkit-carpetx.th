@@ -630,7 +630,7 @@ WVUThorns_Diagnostics/VolumeIntegrals_vacuum
 !TYPE     = git
 !URL      = https://bitbucket.org/eschnett/cactusamrex.git
 !REPO_PATH= $2
-!CHECKOUT = CarpetX/Kokkos CarpetX/NSIMD CarpetX/SHTOOLS CarpetX/Silo CarpetX/libsharp
+!CHECKOUT = CarpetX/Kokkos CarpetX/NSIMD CarpetX/SHTOOLS CarpetX/libsharp
 CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
