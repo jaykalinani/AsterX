@@ -454,7 +454,7 @@ extern "C" void HydroToyCarpetX_EstimateError(CCTK_ARGUMENTS) {
   });
 }
 
-//extern "C" void HydroToyCarpetX_Output(CCTK_ARGUMENTS) {
+// extern "C" void HydroToyCarpetX_Output(CCTK_ARGUMENTS) {
 //  DECLARE_CCTK_ARGUMENTS_HydroToyCarpetX_Output;
 //  DECLARE_CCTK_PARAMETERS;
 //
