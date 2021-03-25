@@ -14,7 +14,8 @@
 #endif
 
 #ifndef HAVE_CAPABILITY_AMReX
-#error "Using #include <loop_device.hxx> requires the capability 'AMReX' in the calling thorn. Add this to the thorn's 'configuration.ccl' file."
+#error                                                                         \
+    "Using #include <loop_device.hxx> requires the capability 'AMReX' in the calling thorn. Add this to the thorn's 'configuration.ccl' file."
 #endif
 
 namespace Loop {
@@ -175,6 +176,65 @@ public:
         }
       }
 
+    } // for rank
+  }
+
+  // Loop over all outer ghost points. This excludes ghost edges/corners on
+  // non-ghost faces. Loop over faces first, then edges, then corners.
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_ghosts_device(const array<int, dim> &group_nghostzones,
+                     const F &f) const {
+    const array<int, dim> offset{CI, CJ, CK};
+
+    for (int rank = dim - 1; rank >= 0; --rank) {
+
+      for (int nk = -1; nk <= +1; ++nk) {
+        for (int nj = -1; nj <= +1; ++nj) {
+          for (int ni = -1; ni <= +1; ++ni) {
+            if ((ni == 0) + (nj == 0) + (nk == 0) == rank) {
+
+              if ((ni == 0 || !bbox[0 + (ni == -1 ? 0 : 1)]) &&
+                  (nj == 0 || !bbox[2 + (nj == -1 ? 0 : 1)]) &&
+                  (nk == 0 || !bbox[4 + (nk == -1 ? 0 : 1)])) {
+
+                const array<int, dim> inormal{ni, nj, nk};
+
+                array<int, dim> imin, imax;
+                for (int d = 0; d < dim; ++d) {
+                  const int ghost_offset =
+                      nghostzones[d] - group_nghostzones[d];
+                  const int begin_bnd = ghost_offset;
+                  const int begin_int = nghostzones[d];
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
+                  switch (inormal[d]) {
+                  case -1: // lower boundary
+                    imin[d] = begin_bnd;
+                    imax[d] = begin_int;
+                    break;
+                  case 0: // interior
+                    imin[d] = begin_int;
+                    imax[d] = end_int;
+                    break;
+                  case +1: // upper boundary
+                    imin[d] = end_int;
+                    imax[d] = end_bnd;
+                    break;
+                  default:
+                    assert(0);
+                  }
+
+                  imin[d] = std::max(tmin[d], imin[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
+                }
+
+                loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
+              }
+            } // if rank
+          }
+        }
+      }
     } // for rank
   }
 };
