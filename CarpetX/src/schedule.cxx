@@ -1267,6 +1267,11 @@ int Initialise(tFleshConfig *config) {
   cGH *restrict const cctkGH = CCTK_SetupGH(config, 0);
   CCTKi_AddGH(config, 0, cctkGH);
 
+  // Check presync mode
+  if (!CCTK_EQUALS(presync_mode, "mixed-error"))
+    CCTK_ERROR(
+        "CarpetX currently requires Cactus::presync_mode = \"mixed-error\"");
+
   // Initialise iteration and time
   cctkGH->cctk_iteration = 0;
   cctkGH->cctk_time = *static_cast<const CCTK_REAL *>(
@@ -1274,11 +1279,6 @@ int Initialise(tFleshConfig *config) {
 
   // Initialise schedule
   CCTKi_ScheduleGHInit(cctkGH);
-
-  // Check presync mode
-  if (!CCTK_EQUALS(presync_mode, "mixed-error"))
-    CCTK_ERROR(
-        "CarpetX currently requires Cactus::presync_mode = \"mixed-error\"");
 
   // Initialise all grid extensions
   CCTKi_InitGHExtensions(cctkGH);
