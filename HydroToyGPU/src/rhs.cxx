@@ -74,7 +74,7 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
       };
 
   constexpr auto DI = PointDesc::DI;
-  grid.loop_int_device<1, 1, 1>(
+  grid.loop_all_device<1, 1, 1>(
       grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
                             const PointDesc &p) {
         // Neighbouring "plus" and "minus" face indices in the x, y, and z
@@ -101,26 +101,6 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
         gf_rhsetot(p.I) =
             calcupdate(gf_fxetot(Imx), gf_fxetot(Ipx), gf_fyetot(Imy),
                        gf_fyetot(Ipy), gf_fzetot(Imz), gf_fzetot(Ipz));
-      });
-
-  // Fill boundary and ghost cells (TODO: avoid this)
-  grid.loop_bnd_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        gf_rhsrho(p.I) = 0;
-        gf_rhsmomx(p.I) = 0;
-        gf_rhsmomy(p.I) = 0;
-        gf_rhsmomz(p.I) = 0;
-        gf_rhsetot(p.I) = 0;
-      });
-  grid.loop_ghosts_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        gf_rhsrho(p.I) = 0;
-        gf_rhsmomx(p.I) = 0;
-        gf_rhsmomy(p.I) = 0;
-        gf_rhsmomz(p.I) = 0;
-        gf_rhsetot(p.I) = 0;
       });
 }
 

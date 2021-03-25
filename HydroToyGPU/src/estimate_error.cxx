@@ -45,14 +45,14 @@ extern "C" void HydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
                             const PointDesc &p) {
-        auto calcerr = [&](auto &var_) {
+        const auto calcerr = [&](auto &gf_var) {
           CCTK_REAL err{0};
           for (int d = 0; d < dim; ++d) {
-            auto varm = var_(p.I - DI[d]);
-            auto var0 = var_(p.I);
-            auto varp = var_(p.I + DI[d]);
-            // Calculate second derivative
-            err = fmax(err, fabs(varm - 2 * var0 + varp));
+            auto varm = gf_var(p.I - DI[d]);
+            auto var0 = gf_var(p.I);
+            auto varp = gf_var(p.I + DI[d]);
+            // Calculate derivative
+            err = fmax(err, fmax(fabs(var0 - varm), fabs(varp - var0)));
           }
           return err;
         };
