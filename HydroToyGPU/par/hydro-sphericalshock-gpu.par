@@ -37,8 +37,9 @@ CarpetX::regrid_every = 16
 CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::prolongation_type = "ddf"
-
 CarpetX::dtfac = 0.25
+
+CarpetX::kernel_launch_method = "cuda"
 
 HydroToyGPU::setup = "spherical shock"
 
