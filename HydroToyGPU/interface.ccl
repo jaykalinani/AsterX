@@ -1,0 +1,55 @@
+# Interface definition for thorn HydroToyGPU
+
+IMPLEMENTS: HydroToyGPU
+
+INHERITS: CarpetX
+
+
+
+USES INCLUDE HEADER: fixmath.hxx
+USES INCLUDE HEADER: loop_device.hxx
+
+
+
+CCTK_REAL conserved TYPE=gf TAGS='index={1 1 1} fluxes="HydroToyGPU::flux_x HydroToyGPU::flux_y HydroToyGPU::flux_z" rhs="rhs"'
+{
+  rho
+  momx momy momz
+  etot
+} "Conserved variables"
+
+CCTK_REAL rhs TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
+{
+  rhsrho
+  rhsmomx rhsmomy rhsmomz
+  rhsetot
+} "Conserved variables"
+
+# TODO: These should be tile-wise temporaries
+CCTK_REAL primitive TYPE=gf TAGS='index={1 1 1} checkpoint="no" restrict="no"'
+{
+  press
+  velx vely velz
+  eint
+} "Primitive variables"
+
+CCTK_REAL flux_x TYPE=gf TAGS='index={0 1 1} checkpoint="no" restrict="no"'
+{
+  fxrho
+  fxmomx fxmomy fxmomz
+  fxetot
+} "Fluxes in x direction"
+
+CCTK_REAL flux_y TYPE=gf TAGS='index={1 0 1} checkpoint="no" restrict="no"'
+{
+  fyrho
+  fymomx fymomy fymomz
+  fyetot
+} "Fluxes in y direction"
+
+CCTK_REAL flux_z TYPE=gf TAGS='index={1 1 0} checkpoint="no" restrict="no"'
+{
+  fzrho
+  fzmomx fzmomy fzmomz
+  fzetot
+} "Fluxes in z direction"

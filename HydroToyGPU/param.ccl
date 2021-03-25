@@ -1,0 +1,26 @@
+# Parameter definitions for thorn HydroToyGPU
+
+KEYWORD setup "Initial setup" STEERABLE=never
+{
+  "equilibrium" :: ""
+  "sound wave" :: ""
+  "shock tube" :: ""
+  "spherical shock" :: ""
+} "equilibrium"
+
+CCTK_REAL amplitude "Wave amplitude" STEERABLE=never
+{
+  0.0:* :: ""
+} 1.0e-3
+
+CCTK_REAL shock_radius "Shock radius" STEERABLE=never
+{
+  0.0:* :: ""
+} 0.1
+
+
+
+CCTK_REAL gamma "EOS parameter" STEERABLE=always
+{
+  0.0:* :: ""
+} 1.6666666666666667

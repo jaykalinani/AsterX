@@ -1,0 +1,6 @@
+# Configuration definitions for thorn HydroToyGPU
+
+# REQUIRES Kokkos
+# REQUIRES NSIMD
+# REQUIRES Vectors
+REQUIRES CarpetX
