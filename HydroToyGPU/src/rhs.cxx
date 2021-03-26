@@ -5,10 +5,11 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-// #include <array>
-// #include <cassert>
-// #include <cmath>
-// #include <iostream>
+// #ifdef AMREX_USE_GPU
+// #include <AMReX_GpuDevice.H>
+// #endif
+
+#include <array>
 
 namespace HydroToyGPU {
 using namespace std;
@@ -74,6 +75,17 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
       };
 
   constexpr auto DI = PointDesc::DI;
+
+#if 0
+  // This kernel fails on GPUs for unknown reasons. Maybe it is too
+  // complex? The alternative implementation below works fine.
+
+#ifdef AMREX_USE_GPU
+  AMREX_GPU_ERROR_CHECK();
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
+
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
                             const PointDesc &p) {
@@ -102,6 +114,101 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
             calcupdate(gf_fxetot(Imx), gf_fxetot(Ipx), gf_fyetot(Imy),
                        gf_fyetot(Ipy), gf_fzetot(Imz), gf_fzetot(Ipz));
       });
+
+#ifdef AMREX_USE_GPU
+  AMREX_GPU_ERROR_CHECK();
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
+
+#else
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                            const PointDesc &p) {
+        // Neighbouring "plus" and "minus" face indices in the x, y, and z
+        // directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsrho(p.I) =
+            calcupdate(gf_fxrho(Imx), gf_fxrho(Ipx), gf_fyrho(Imy),
+                       gf_fyrho(Ipy), gf_fzrho(Imz), gf_fzrho(Ipz));
+      });
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                            const PointDesc &p) {
+        // Neighbouring "plus" and "minus" face indices in the x, y, and z
+        // directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsmomx(p.I) =
+            calcupdate(gf_fxmomx(Imx), gf_fxmomx(Ipx), gf_fymomx(Imy),
+                       gf_fymomx(Ipy), gf_fzmomx(Imz), gf_fzmomx(Ipz));
+      });
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                            const PointDesc &p) {
+        // Neighbouring "plus" and "minus" face indices in the x, y, and z
+        // directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsmomy(p.I) =
+            calcupdate(gf_fxmomy(Imx), gf_fxmomy(Ipx), gf_fymomy(Imy),
+                       gf_fymomy(Ipy), gf_fzmomy(Imz), gf_fzmomy(Ipz));
+      });
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                            const PointDesc &p) {
+        // Neighbouring "plus" and "minus" face indices in the x, y, and z
+        // directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsmomz(p.I) =
+            calcupdate(gf_fxmomz(Imx), gf_fxmomz(Ipx), gf_fymomz(Imy),
+                       gf_fymomz(Ipy), gf_fzmomz(Imz), gf_fzmomz(Ipz));
+      });
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
+                            const PointDesc &p) {
+        // Neighbouring "plus" and "minus" face indices in the x, y, and z
+        // directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsetot(p.I) =
+            calcupdate(gf_fxetot(Imx), gf_fxetot(Ipx), gf_fyetot(Imy),
+                       gf_fyetot(Ipy), gf_fzetot(Imz), gf_fzetot(Ipz));
+      });
+
+#endif
 }
 
 } // namespace HydroToyGPU
