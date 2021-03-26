@@ -39,7 +39,7 @@ extern "C" void HydroToyGPU_Pressure(CCTK_ARGUMENTS) {
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
                             const PointDesc &p) {
-        CCTK_REAL rho_inv = 1.0 / (rho[p.idx] + 1.0e-20);
+        CCTK_REAL rho_inv = 1.0 / (gf_rho(p.I) + 1.0e-20);
 
         CCTK_REAL ekin =
             0.5 * rho_inv *
