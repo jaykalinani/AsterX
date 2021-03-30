@@ -414,7 +414,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         Gammatlu(calc_gammalu(gammatu, Gammatl)), //
         Gammat(calc_gamma(gammatu, Gammatl)),     //
         Gamtd([&] Z4C_INLINE(int a) {
-          return sum2([&] Z4C_INLINE(int x, int y) {
+          return sum2sym([&] Z4C_INLINE(int x, int y) {
             return gammatu(x, y) * Gammat(a)(x, y);
           });
         }), //
@@ -458,7 +458,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         Rchi([&] Z4C_INLINE(int a, int b) {
           return 1 / (2 * chi) * DDchi(a, b) //
                  + 1 / (2 * chi) * gammat(a, b) *
-                       sum2([&] Z4C_INLINE(int x, int y) {
+                       sum2sym([&] Z4C_INLINE(int x, int y) {
                          return gammatu(x, y) * DDchi(x, y);
                        })                                  //
                  - 1 / (4 * pow2(chi)) * dchi(a) * dchi(b) //
@@ -472,7 +472,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         // (9)
         Rt([&] Z4C_INLINE(int a, int b) {
           return //
-              -1 / T(2) * sum2([&] Z4C_INLINE(int x, int y) {
+              -1 / T(2) * sum2sym([&] Z4C_INLINE(int x, int y) {
                 return gammatu(x, y) * ddgammat(a, b)(x, y);
               }) //
               + 1 / T(2) * sum1([&] Z4C_INLINE(int x) {
@@ -483,14 +483,14 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                   return (Gamtd(x) * Gammatl(a)(b, x) //
                           + Gamtd(x) * Gammatl(b)(a, x));
                 }) //
-              // + sum2([&] Z4C_INLINE(int y, int z) {
+              // + sum2sym([&] Z4C_INLINE(int y, int z) {
               //     return gammatu(y, z) * sum1([&] Z4C_INLINE(int x) {
               //              return (Gammat(x)(a, y) * Gammatl(b)(x, z)   //
               //                      + Gammat(x)(b, y) * Gammatl(a)(x, z) //
               //                      + Gammat(x)(a, y) * Gammatl(x)(b, z));
               //            });
               //   }) //
-              + sum2([&] Z4C_INLINE(int x, int y) {
+              + sum2sym([&] Z4C_INLINE(int x, int y) {
                   return Gammat(x)(a, y) * Gammatlu(b)(x)(y)   //
                          + Gammat(x)(b, y) * Gammatlu(a)(x)(y) //
                          + Gammat(x)(a, y) * Gammatlu(x)(b)(y);
@@ -514,7 +514,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         ZtC([&] Z4C_INLINE(int a) { return (Gamt(a) - Gamtd(a)) / 2; }), //
         // (14)
         HC(Rsc //
-           + sum2([&] Z4C_INLINE(int x, int y) {
+           + sum2sym([&] Z4C_INLINE(int x, int y) {
                return At(x, y) * Atu(x, y);
              })                              //
            - 2 / T(3) * pow2(Kh + 2 * Theta) //
@@ -522,7 +522,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         // (15)
         MtC([&] Z4C_INLINE(int a) {
           return sum1([&] Z4C_INLINE(int x) { return dAtu(a, x)(x); }) //
-                 + sum2([&] Z4C_INLINE(int x, int y) {
+                 + sum2sym([&] Z4C_INLINE(int x, int y) {
                      return Gammat(a)(x, y) * Atu(x, y);
                    }) //
                  - 2 / T(3) * sum1([&] Z4C_INLINE(int x) {
@@ -574,10 +574,10 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                    });
         }),
         // (3)
-        Kh_rhs(sum2([&] Z4C_INLINE(int x, int y) {
+        Kh_rhs(sum2sym([&] Z4C_INLINE(int x, int y) {
                  return -gu(x, y) * DDalphaG(x, y);
                }) //
-               + alphaG * (sum2([&] Z4C_INLINE(int x, int y) {
+               + alphaG * (sum2sym([&] Z4C_INLINE(int x, int y) {
                              return At(x, y) * Atu(x, y);
                            })                                 //
                            + 1 / T(3) * pow2(Kh + 2 * Theta)) //
@@ -585,16 +585,16 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                + alphaG * kappa1 * (1 - kappa2) * Theta),
         // (4)
         At_rhs([&] Z4C_INLINE(int a, int b) {
-          return chi *
-                     ((-DDalphaG(a, b)                      //
-                       + alphaG * (R(a, b)                  //
-                                   - 8 * M_PI * Sij(a, b))) //
-                      - 1 / T(3) * g(a, b) * sum2([&] Z4C_INLINE(int x, int y) {
-                          return gu(x, y) *
-                                 (-DDalphaG(x, y)     //
-                                  + alphaG * (R(x, y) //
-                                              - 8 * M_PI * Sij(x, y)));
-                        }))                              //
+          return chi * ((-DDalphaG(a, b)                      //
+                         + alphaG * (R(a, b)                  //
+                                     - 8 * M_PI * Sij(a, b))) //
+                        - 1 / T(3) * g(a, b) *
+                              sum2sym([&] Z4C_INLINE(int x, int y) {
+                                return gu(x, y) *
+                                       (-DDalphaG(x, y)     //
+                                        + alphaG * (R(x, y) //
+                                                    - 8 * M_PI * Sij(x, y)));
+                              }))                        //
                  + alphaG * ((Kh + 2 * Theta) * At(a, b) //
                              - 2 * sum1([&] Z4C_INLINE(int x) {
                                  return At(x, a) * sum1([&] Z4C_INLINE(int y) {
@@ -615,7 +615,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                 return Atu(a, x) * dalphaG(x);
               }) //
               + 2 * alphaG *
-                    (sum2([&] Z4C_INLINE(int x, int y) {
+                    (sum2sym([&] Z4C_INLINE(int x, int y) {
                        return Gammat(a)(x, y) * Atu(x, y);
                      }) //
                      - 3 / T(2) / chi * sum1([&] Z4C_INLINE(int x) {
@@ -627,7 +627,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                      - 8 * M_PI * sum1([&] Z4C_INLINE(int x) {
                          return gammatu(a, x) * Si(x);
                        })) //
-              + sum2([&] Z4C_INLINE(int x, int y) {
+              + sum2sym([&] Z4C_INLINE(int x, int y) {
                   return gammatu(x, y) * ddbetaG(a)(x, y);
                 }) //
               + 1 / T(3) * sum1([&] Z4C_INLINE(int x) {
@@ -644,7 +644,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         // (6)
         Theta_rhs(1 / T(2) * alphaG *
                       (Rsc //
-                       - sum2([&] Z4C_INLINE(int x, int y) {
+                       - sum2sym([&] Z4C_INLINE(int x, int y) {
                            return At(x, y) * Atu(x, y);
                          })                               //
                        + 2 / T(3) * pow2(Kh + 2 * Theta)) //

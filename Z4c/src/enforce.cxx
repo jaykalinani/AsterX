@@ -81,13 +81,13 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
     const mat3<CCTK_REAL, UP, UP> gammatu = gammat.inv(1);
 
     const CCTK_REAL traceAt_old =
-        sum2([&](int x, int y) { return gammatu(x, y) * At_old(x, y); });
+        sum2sym([&](int x, int y) { return gammatu(x, y) * At_old(x, y); });
     const mat3<CCTK_REAL, DN, DN> At([&](int a, int b) {
       return At_old(a, b) - traceAt_old / 3 * gammat(a, b);
     });
 #ifdef CCTK_DEBUG
     const CCTK_REAL traceAt =
-        sum2([&](int x, int y) { return gammatu(x, y) * At(x, y); });
+        sum2sym([&](int x, int y) { return gammatu(x, y) * At(x, y); });
     const CCTK_REAL gammatu_norm = gammatu.maxabs();
     const CCTK_REAL At_norm = At.maxabs();
     const CCTK_REAL At_scale = fmax(fmax(gammat_norm, gammatu_norm), At_norm);

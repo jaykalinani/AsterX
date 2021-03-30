@@ -93,7 +93,7 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
                                                       const PointDesc &p) {
-  // Load and calculate
+    // Load and calculate
     const z4c_vars_noderivs<CCTK_REAL> vars(
         kappa1, kappa2, f_mu_L, f_mu_S, eta, //
         gf_chi1,                             //

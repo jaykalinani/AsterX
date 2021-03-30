@@ -57,7 +57,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
         const vec3<mat3<CCTK_REAL, DN, DN>, UP> Gammat =
             calc_gamma(gammatu, Gammatl);
         const vec3<CCTK_REAL, UP> Gamt([&](int a) {
-          return sum2(
+          return sum2sym(
               [&](int x, int y) { return gammatu(x, y) * Gammat(a)(x, y); });
         });
 

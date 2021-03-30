@@ -17,7 +17,7 @@ calc_dgu(const mat3<T, UP, UP> &gu, const mat3<vec3<T, DN>, DN, DN> &dg) {
   // g^ab,c = - g^ax g^by g_xy,c
   return mat3<vec3<T, DN>, UP, UP>([&](int a, int b) Z4C_INLINE {
     return vec3<T, DN>([&](int c) Z4C_INLINE {
-      // return sum2([&](int x, int y) Z4C_INLINE {
+      // return sum2sym([&](int x, int y) Z4C_INLINE {
       //   return -gu(a, x) * gu(b, y) * dg(x, y)(c);
       // });
       return sum1([&](int x) Z4C_INLINE {
@@ -36,7 +36,7 @@ calc_dAu(const mat3<T, UP, UP> &gu, const mat3<vec3<T, DN>, UP, UP> &dgu,
   //        = g^ax,c g^by A_xy + g^ax g^by,c A_xy + g^ax g^by A_xy,c
   return mat3<vec3<T, DN>, UP, UP>([&](int a, int b) Z4C_INLINE {
     return vec3<T, DN>([&](int c) Z4C_INLINE {
-      // return sum2([&](int x, int y) Z4C_INLINE {
+      // return sum2sym([&](int x, int y) Z4C_INLINE {
       //   return dgu(a, x)(c) * gu(b, y) * A(x, y)   //
       //          + gu(a, x) * dgu(b, y)(c) * A(x, y) //
       //          + gu(a, x) * gu(b, y) * dA(x, y)(c);

@@ -84,7 +84,8 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
     const mat3<CCTK_REAL, DN, DN> gammat(
         [&](int a, int b) { return chi * g(a, b); });
 
-    const CCTK_REAL K = sum2([&](int x, int y) { return gu(x, y) * k(x, y); });
+    const CCTK_REAL K =
+        sum2sym([&](int x, int y) { return gu(x, y) * k(x, y); });
 
     const CCTK_REAL Theta = 0;
 
