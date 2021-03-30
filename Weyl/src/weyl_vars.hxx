@@ -375,19 +375,19 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
         //
         // Badri Krishnan's PhD thesis, appendix A
         Lambda(Rsc / 24), //
-        Phi00(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+        Phi00(sum42sym([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return R(a, b) * l(a) * l(b) / 2;
         })),
         Phi11(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return R(a, b) * (l(a) * n(b) + real(m(a) * conj(m(b)))) / 4;
         })),
-        Phi22(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+        Phi22(sum42sym([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return R(a, b) * n(a) * n(b) / 2;
         })),
         Phi10(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return R(a, b) * l(a) * conj(m(b)) / T(2);
         })),
-        Phi20(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+        Phi20(sum42sym([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
           return R(a, b) * conj(m(a)) * conj(m(b)) / T(2);
         })),
         Phi21(sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {

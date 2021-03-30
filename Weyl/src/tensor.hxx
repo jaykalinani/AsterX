@@ -102,6 +102,17 @@ sum42(const F &f) {
 }
 
 template <typename F, typename R = remove_cv_t<
+                          remove_reference_t<result_of_t<F(int, int)> > > >
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST R
+sum42sym(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 4; ++x)
+    for (int y = x; y < 4; ++y)
+      s += (x == y ? 1 : 2) * f(x, y);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int, int)> > > >
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST R
 sum43(const F &f) {
@@ -553,7 +564,7 @@ public:
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
   trace(const mat3<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
-    return sum2([&](int x, int y) { return gu(x, y) * A(x, y); });
+    return sum2sym([&](int x, int y) { return gu(x, y) * A(x, y); });
   }
 
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat3 trace_free(
@@ -628,6 +639,17 @@ sum2(const F &f) {
   for (int x = 0; x < 3; ++x)
     for (int y = 0; y < 3; ++y)
       s += f(x, y);
+  return s;
+}
+
+template <typename F, typename R = remove_cv_t<
+                          remove_reference_t<result_of_t<F(int, int)> > > >
+constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST R
+sum2sym(const F &f) {
+  R s = zero<R>()();
+  for (int x = 0; x < 3; ++x)
+    for (int y = x; y < 3; ++y)
+      s += (x == y ? 1 : 2) * f(x, y);
   return s;
 }
 
@@ -1133,7 +1155,7 @@ public:
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
   trace(const mat4<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
-    return sum2([&](int x, int y) { return gu(x, y) * A(x, y); });
+    return sum42sym([&](int x, int y) { return gu(x, y) * A(x, y); });
   }
 
 #if 0
@@ -1433,7 +1455,7 @@ public:
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
   trace(const amat4<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
-    return sum2([&](int x, int y) { return gu(x, y) * A(x, y); });
+    return sum42sym([&](int x, int y) { return gu(x, y) * A(x, y); });
   }
 
 #if 0
