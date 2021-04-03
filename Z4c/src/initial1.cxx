@@ -63,7 +63,6 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> gf_betaGy1(layout1, betaGy);
   const GF3D2<CCTK_REAL> gf_betaGz1(layout1, betaGz);
 
-  // loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
                                                       const PointDesc &p) {

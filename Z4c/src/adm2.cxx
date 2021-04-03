@@ -217,7 +217,6 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
 
   //
 
-  // loop_int<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
       grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {

@@ -89,7 +89,6 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> gf_dtbetay1(layout1, dtbetay);
   const GF3D2<CCTK_REAL> gf_dtbetaz1(layout1, dtbetaz);
 
-  // loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) Z4C_INLINE {
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
                                                       const PointDesc &p) {
