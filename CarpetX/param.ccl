@@ -261,20 +261,20 @@ KEYWORD kernel_launch_method "Kernel launch method" STEERABLE=always
 
 
 
-STRING in_dir "Input directory" STEERABLE=always
-{
-  ".*" :: ""
-} ""
-
-STRING in_file "Input file name" STEERABLE=always
-{
-  ".*" :: ""
-} ""
-
-STRING in_silo_vars "Variables to input in Silo format" STEERABLE=always
-{
-  ".*" :: ""
-} ""
+# STRING in_dir "Input directory" STEERABLE=always
+# {
+#   ".*" :: ""
+# } ""
+# 
+# STRING in_file "Input file name" STEERABLE=always
+# {
+#   ".*" :: ""
+# } ""
+# 
+# STRING in_vars "Variables to input" STEERABLE=always
+# {
+#   ".*" :: ""
+# } ""
 
 
 
@@ -324,13 +324,9 @@ USES KEYWORD presync_mode
 
 SHARES: IO
 
-USES KEYWORD recover
-USES STRING recover_dir
-USES STRING recover_file
-
-# TODO: Use these
-# USES STRING filereader_ID_dir
-# USES STRING filereader_ID_files
+USES STRING filereader_ID_dir
+USES STRING filereader_ID_files
+USES STRING filereader_ID_vars
 
 USES STRING out_dir
 USES CCTK_INT out_every
@@ -343,3 +339,7 @@ USES REAL checkpoint_every_walltime_hours
 USES BOOLEAN checkpoint_on_terminate
 USES STRING checkpoint_dir
 USES STRING checkpoint_file
+
+USES KEYWORD recover
+USES STRING recover_dir
+USES STRING recover_file
