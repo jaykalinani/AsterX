@@ -7,7 +7,7 @@ INHERITS: CarpetX
 
 
 USES INCLUDE HEADER: loop.hxx
-USES INCLUDE HEADER: vectors.h
+USES INCLUDE HEADER: simd.hxx
 
 
 

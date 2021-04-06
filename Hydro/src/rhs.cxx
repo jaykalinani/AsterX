@@ -76,17 +76,21 @@ extern "C" void Hydro_RHS(CCTK_ARGUMENTS) {
         for (int k = imin[2]; k < imax[2]; ++k) {
           for (int j = imin[1]; j < imax[1]; ++j) {
             for (int i = imin[0]; i < imax[0]; i += vsize) {
+              CCTK_BOOLVEC mask = mask_for_loop_tail<CCTK_BOOLVEC>(i, imax[0]);
               ptrdiff_t ind = i + dj * j + dk * k;
               ptrdiff_t indx = i + djx * j + dkx * k - offx;
               ptrdiff_t indy = i + djy * j + dky * k - offy;
               ptrdiff_t indz = i + djz * j + dkz * k - offz;
 
               CCTK_REALVEC dtvar1 =
-                  dV1 * ((vloadu(fxvar[indx + dix]) - vloadu(fxvar[indx])) +
-                         (vloadu(fyvar[indy + djy]) - vloadu(fyvar[indy])) +
-                         (vloadu(fzvar[indz + dkz]) - vloadu(fzvar[indz])));
+                  dV1 * ((maskz_loadu(mask, &fxvar[indx + dix]) -
+                          maskz_loadu(mask, &fxvar[indx])) +
+                         (maskz_loadu(mask, &fyvar[indy + djy]) -
+                          maskz_loadu(mask, &fyvar[indy])) +
+                         (maskz_loadu(mask, &fzvar[indz + dkz]) -
+                          maskz_loadu(mask, &fzvar[indz])));
 
-              dtvar1.storeu_partial(dtvar[ind], i, imin[0], imax[0]);
+              mask_storeu(mask, &dtvar[ind], dtvar1);
             }
           }
         }

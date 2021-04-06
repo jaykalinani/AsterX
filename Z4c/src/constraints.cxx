@@ -5,6 +5,7 @@
 
 #include <loop_device.hxx>
 #include <mempool.hxx>
+#include <simd.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -13,6 +14,7 @@
 #include <cmath>
 
 namespace Z4c {
+using namespace Arith;
 using namespace Loop;
 using namespace std;
 
@@ -64,54 +66,6 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
   //
 
-#if 0
-
-#ifndef AMREX_USE_GPU
-  const size_t mempool_id = omp_get_thread_num();
-#else
-  const size_t mempool_id = GetCallFunctionCount();
-#endif
-  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
-
-  const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(layout0, mempool); };
-  const auto make_vec_gf = [&](int) { return make_gf(); };
-  const auto make_mat_gf = [&](int, int) { return make_gf(); };
-  const auto make_vec_vec_gf = [&](int) { return make_vec_gf; };
-  // const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
-  const auto make_mat_vec_gf = [&](int, int) { return make_vec_gf; };
-  const auto make_mat_mat_gf = [&](int, int) { return make_mat_gf; };
-
-  const GF3D2<CCTK_REAL> gf_chi0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dchi0(make_vec_gf);
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_ddchi0(make_mat_gf);
-  calc_derivs2(cctkGH, gf_chi1, gf_chi0, gf_dchi0, gf_ddchi0);
-
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_gammat0(make_mat_gf);
-  const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dgammat0(make_mat_vec_gf);
-  const mat3<mat3<GF3D2<CCTK_REAL>, DN, DN>, DN, DN> gf_ddgammat0(
-      make_mat_mat_gf);
-  calc_derivs2(cctkGH, gf_gammat1, gf_gammat0, gf_dgammat0, gf_ddgammat0);
-
-  const GF3D2<CCTK_REAL> gf_Kh0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dKh0(make_vec_gf);
-  calc_derivs(cctkGH, gf_Kh1, gf_Kh0, gf_dKh0);
-
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_At0(make_mat_gf);
-  const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dAt0(make_mat_vec_gf);
-  calc_derivs(cctkGH, gf_At1, gf_At0, gf_dAt0);
-
-  const vec3<GF3D2<CCTK_REAL>, UP> gf_Gamt0(make_vec_gf);
-  const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dGamt0(make_vec_vec_gf);
-  calc_derivs(cctkGH, gf_Gamt1, gf_Gamt0, gf_dGamt0);
-
-  const GF3D2<CCTK_REAL> gf_Theta0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dTheta0(make_vec_gf);
-  calc_derivs(cctkGH, gf_Theta1, gf_Theta0, gf_dTheta0);
-
-#endif
-
-#if 1
-
   const size_t mempool_id = GetCallFunctionCount();
   mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
@@ -151,8 +105,6 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
   const vec3<GF3D5<CCTK_REAL>, DN> gf_dTheta0(make_vec_gf);
   calc_derivs(cctkGH, gf_Theta1, gf_Theta0, gf_dTheta0, layout0);
 
-#endif
-
   //
 
   const GF3D2<const CCTK_REAL> gf_eTtt1(layout1, eTtt);
@@ -172,70 +124,60 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
   //
 
-  const GF3D2<CCTK_REAL> gf_ZtCx1(layout1, ZtCx);
-  const GF3D2<CCTK_REAL> gf_ZtCy1(layout1, ZtCy);
-  const GF3D2<CCTK_REAL> gf_ZtCz1(layout1, ZtCz);
+  const vec3<GF3D2<CCTK_REAL>, UP> gf_ZtC1(GF3D2<CCTK_REAL>(layout1, ZtCx),
+                                           GF3D2<CCTK_REAL>(layout1, ZtCy),
+                                           GF3D2<CCTK_REAL>(layout1, ZtCz));
 
   const GF3D2<CCTK_REAL> gf_HC1(layout1, HC);
 
-  const GF3D2<CCTK_REAL> gf_MtCx1(layout1, MtCx);
-  const GF3D2<CCTK_REAL> gf_MtCy1(layout1, MtCy);
-  const GF3D2<CCTK_REAL> gf_MtCz1(layout1, MtCz);
+  const vec3<GF3D2<CCTK_REAL>, UP> gf_MtC1(GF3D2<CCTK_REAL>(layout1, MtCx),
+                                           GF3D2<CCTK_REAL>(layout1, MtCy),
+                                           GF3D2<CCTK_REAL>(layout1, MtCz));
 
   const GF3D2<CCTK_REAL> gf_allC1(layout1, allC);
 
   //
 
+  typedef simd<CCTK_REAL> vreal;
+  typedef simdl<CCTK_REAL> vbool;
+  constexpr size_t vsize = tuple_size_v<vreal>;
+
   const Loop::GridDescBaseDevice grid(cctkGH);
-  grid.loop_int_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
-                                                      const PointDesc &p) {
-    // Load and calculate
+  grid.loop_int_device<0, 0, 0, vsize>(
+      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+        const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
-    const CCTK_REAL alphaG{1};
-    const vec3<CCTK_REAL, DN> dalphaG{0, 0, 0};
-    const mat3<CCTK_REAL, DN, DN> ddalphaG{0, 0, 0, 0, 0, 0};
+        // Load and calculate
 
-    const vec3<CCTK_REAL, UP> betaG{0, 0, 0};
-    const vec3<vec3<CCTK_REAL, DN>, UP> dbetaG{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
-    const vec3<mat3<CCTK_REAL, DN, DN>, UP> ddbetaG{
-        {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}};
+        const vreal alphaG{1};
+        const vec3<vreal, DN> dalphaG{0, 0, 0};
+        const mat3<vreal, DN, DN> ddalphaG{0, 0, 0, 0, 0, 0};
 
-#if 0
-    const z4c_vars<CCTK_REAL> vars(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-                                   gf_chi0(p.I), gf_dchi0(p.I),
-                                   gf_ddchi0(p.I), //
-                                   gf_gammat0(p.I), gf_dgammat0(p.I),
-                                   gf_ddgammat0(p.I),               //
-                                   gf_Kh0(p.I), gf_dKh0(p.I),       //
-                                   gf_At0(p.I), gf_dAt0(p.I),       //
-                                   gf_Gamt0(p.I), gf_dGamt0(p.I),   //
-                                   gf_Theta0(p.I), gf_dTheta0(p.I), //
-                                   alphaG, dalphaG, ddalphaG,       //
-                                   betaG, dbetaG, ddbetaG,          //
-                                   gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
-#endif
-#if 1
-    const z4c_vars<CCTK_REAL> vars(
-        kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-        gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
-        gf_ddchi0(layout0, p.I), //
-        gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
-        gf_ddgammat0(layout0, p.I),                        //
-        gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
-        gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
-        gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
-        gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
-        alphaG, dalphaG, ddalphaG,                         //
-        betaG, dbetaG, ddbetaG,                            //
-        gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
-#endif
+        const vec3<vreal, UP> betaG{0, 0, 0};
+        const vec3<vec3<vreal, DN>, UP> dbetaG{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        const vec3<mat3<vreal, DN, DN>, UP> ddbetaG{
+            {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}};
 
-    // Store
-    vars.ZtC.store(gf_ZtCx1, gf_ZtCy1, gf_ZtCz1, p.I);
-    gf_HC1(p.I) = vars.HC;
-    vars.MtC.store(gf_MtCx1, gf_MtCy1, gf_MtCz1, p.I);
-    gf_allC1(p.I) = vars.allC;
-  });
+        const z4c_vars<vreal> vars(
+            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            gf_chi0(mask, layout0, p.I, 1), gf_dchi0(mask, layout0, p.I),
+            gf_ddchi0(mask, layout0, p.I), //
+            gf_gammat0(mask, layout0, p.I, 1), gf_dgammat0(mask, layout0, p.I),
+            gf_ddgammat0(mask, layout0, p.I),                                 //
+            gf_Kh0(mask, layout0, p.I), gf_dKh0(mask, layout0, p.I),          //
+            gf_At0(mask, layout0, p.I), gf_dAt0(mask, layout0, p.I),          //
+            gf_Gamt0(mask, layout0, p.I), gf_dGamt0(mask, layout0, p.I),      //
+            gf_Theta0(mask, layout0, p.I, 1), gf_dTheta0(mask, layout0, p.I), //
+            alphaG, dalphaG, ddalphaG,                                        //
+            betaG, dbetaG, ddbetaG,                                           //
+            gf_eTtt1(mask, p.I), gf_eTti1(mask, p.I), gf_eTij1(mask, p.I));
+
+        // Store
+        gf_ZtC1.store(mask, p.I, vars.ZtC);
+        gf_HC1.store(mask, p.I, vars.HC);
+        gf_MtC1.store(mask, p.I, vars.MtC);
+        gf_allC1.store(mask, p.I, vars.allC);
+      });
 }
 
 } // namespace Z4c

@@ -22,6 +22,7 @@
 #include <array>
 #include <cassert>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -71,6 +72,16 @@ string make_filename(const string &file_name, const int iteration,
   return buf.str();
 }
 
+int match_filename(const string &file_name) {
+  const regex filename_regex("[.]it(\\d+)[.]silo$",
+                             regex_constants::ECMAScript);
+  smatch sm;
+  regex_search(file_name, sm, filename_regex);
+  if (sm.empty())
+    return -1;
+  return stoi(sm.str(1));
+}
+
 string make_meshname(const int reflevel = -1, const int component = -1) {
   assert((reflevel == -1) == (component == -1));
   ostringstream buf;
@@ -115,11 +126,272 @@ string make_fabarraybasename(const int reflevel) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void InputSilo(const cGH *restrict const cctkGH) {
+int InputSiloParameters(const std::string &input_dir,
+                        const std::string &input_file) {
+  DECLARE_CCTK_PARAMETERS;
+
+  assert(!input_dir.empty());
+  assert(!input_file.empty());
+
+  // Set up timers
+  static Timer timer("InputSiloParameters");
+  Interval interval(timer);
+
+  static Timer timer_setup("InputSiloParameters.setup");
+  auto interval_setup = make_unique<Interval>(timer_setup);
+
+  const MPI_Comm mpi_comm = MPI_COMM_WORLD;
+  const int myproc = CCTK_MyProc(nullptr);
+
+  const int metafile_ioproc = 0;
+  const bool read_metafile = myproc == metafile_ioproc;
+
+  // Configure Silo library
+  DBShowErrors(DB_ALL_AND_DRVR, nullptr);
+
+  // TODO: directories instead of carefully chosen names
+
+  static Timer timer_parameters("InputSiloParameters.parameters");
+  auto interval_parameters = make_unique<Interval>(timer_parameters);
+
+  // Find checkpoint input iteration
+  int input_iteration = -1;
+  if (read_metafile) {
+
+    // Find latest iteration (if any)
+    for (const auto &direntry : filesystem::directory_iterator(input_dir)) {
+      const auto &filename = direntry.path().filename().string();
+      const int iter = match_filename(filename);
+      input_iteration = max(input_iteration, iter);
+    }
+  }
+
+  MPI_Bcast(&input_iteration, 1, MPI_INT, metafile_ioproc, mpi_comm);
+
+  if (input_iteration < 0) {
+    // Did not find a checkpoint file
+    return input_iteration;
+  }
+
+  // Read metadata
+  string parameters;
+  if (read_metafile) {
+    CCTK_VINFO("Recovering parameters from checkpoint iteration %d",
+               input_iteration);
+
+    const string metafilename =
+        input_dir + "/" + make_filename(input_file, input_iteration);
+    // We could use DB_UNKNOWN instead of DB_HDF5
+    const DB::ptr<DBfile> metafile =
+        DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
+    assert(metafile);
+
+    // Read parameters
+    {
+      // TODO: Put this into a "drivername" subdirectory?
+      const int type = DBGetVarType(metafile.get(), "AllParameters");
+      assert(type == DB_CHAR);
+
+      int length;
+      int ndims = DBGetVarDims(metafile.get(), "AllParameters", 1, &length);
+      assert(ndims == 1);
+
+      const auto data = unique_ptr<char>(
+          static_cast<char *>(DBGetVar(metafile.get(), "AllParameters")));
+      assert(data);
+
+      parameters = string(data.get(), length);
+    }
+
+    int length = parameters.size();
+    MPI_Bcast(&length, 1, MPI_INT, metafile_ioproc, mpi_comm);
+    MPI_Bcast(parameters.data(), length, MPI_CHAR, metafile_ioproc, mpi_comm);
+
+  } else {
+
+    int length;
+    MPI_Bcast(&length, 1, MPI_INT, metafile_ioproc, mpi_comm);
+    parameters = string(length, ' ');
+    MPI_Bcast(parameters.data(), length, MPI_CHAR, metafile_ioproc, mpi_comm);
+  }
+
+  IOUtil_SetAllParameters(parameters.data());
+
+  interval_parameters = nullptr;
+
+  return input_iteration;
+}
+
+void InputSiloGridStructure(cGH *restrict const cctkGH,
+                            const std::string &input_dir,
+                            const std::string &input_file,
+                            const int input_iteration) {
+  DECLARE_CCTK_PARAMETERS;
+
+  assert(!input_dir.empty());
+  assert(!input_file.empty());
+  assert(input_iteration >= 0);
+
+  int ierr;
+
+  // Set up timers
+  static Timer timer("InputSiloGridStructure");
+  Interval interval(timer);
+
+  static Timer timer_setup("InputSiloGridStructure.setup");
+  auto interval_setup = make_unique<Interval>(timer_setup);
+
+  const MPI_Comm mpi_comm = MPI_COMM_WORLD;
+  const int myproc = CCTK_MyProc(cctkGH);
+
+  const int metafile_ioproc = 0;
+  const bool read_metafile = myproc == metafile_ioproc;
+
+  // Configure Silo library
+  DBShowErrors(DB_ALL_AND_DRVR, nullptr);
+
+  constexpr int ndims = dim;
+
+  interval_setup = nullptr;
+
+  static Timer timer_meta("InputSiloGridStructure.meta");
+  auto interval_meta = make_unique<Interval>(timer_meta);
+
+  // TODO: Recover grid structure for grid arrays; call SetupGlobals for them?
+
+  // Read metadata
+  if (read_metafile) {
+
+    const string metafilename =
+        input_dir + "/" + make_filename(input_file, input_iteration);
+    // We could use DB_UNKNOWN instead of DB_HDF5
+    const DB::ptr<DBfile> metafile =
+        DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
+    assert(metafile);
+
+    {
+      const int type = DBGetVarType(metafile.get(), "cycle");
+      assert(type == DB_INT);
+      int dim;
+      int ndims = DBGetVarDims(metafile.get(), "cycle", 1, &dim);
+      assert(ndims == 1);
+      assert(dim == 1);
+      ierr = DBReadVar(metafile.get(), "cycle", &cctkGH->cctk_iteration);
+      assert(!ierr);
+      MPI_Bcast(&cctkGH->cctk_iteration, 1, MPI_INT, metafile_ioproc, mpi_comm);
+    }
+
+    {
+      const int type = DBGetVarType(metafile.get(), "dtime");
+      assert(type == DB_DOUBLE);
+      int dim;
+      int ndims = DBGetVarDims(metafile.get(), "dtime", 1, &dim);
+      assert(ndims == 1);
+      assert(dim == 1);
+      double dtime;
+      ierr = DBReadVar(metafile.get(), "dtime", &dtime);
+      assert(!ierr);
+      MPI_Bcast(&dtime, 1, MPI_DOUBLE, metafile_ioproc, mpi_comm);
+      cctkGH->cctk_time = dtime;
+    }
+
+    // Read internal driver state
+    const string dirname = DB::legalize_name(driver_name);
+
+    // Read number of levels
+    const int nlevels = [&] {
+      const string varname = dirname + "/" + DB::legalize_name("nlevels");
+      const int vartype = DBGetVarType(metafile.get(), varname.c_str());
+      assert(vartype == DB_INT);
+      const int varlength = DBGetVarLength(metafile.get(), varname.c_str());
+      assert(varlength == 1);
+      int result;
+      ierr = DBReadVar(metafile.get(), varname.c_str(), &result);
+      assert(!ierr);
+      return result;
+    }();
+    CCTK_VINFO("Found %d levels", nlevels);
+    MPI_Bcast(const_cast<int *>(&nlevels), 1, MPI_INT, metafile_ioproc,
+              mpi_comm);
+
+    // Read FabArrayBase (component positions and shapes)
+    for (int level = 0; level < nlevels; ++level) {
+      CCTK_VINFO("Reading level %d...", level);
+      const string varname = dirname + "/" + make_fabarraybasename(level);
+      const int vartype = DBGetVarType(metafile.get(), varname.c_str());
+      assert(vartype == DB_INT);
+      int vardims[2];
+      const int varndims =
+          DBGetVarDims(metafile.get(), varname.c_str(), 2, vardims);
+      assert(varndims >= 0);
+      assert(varndims == 2);
+      assert(vardims[1] == 2 * ndims);
+      const int nfabs = vardims[0];
+      assert(nfabs >= 0);
+      vector<int> data(2 * ndims * nfabs);
+      ierr = DBReadVar(metafile.get(), varname.c_str(), data.data());
+      assert(!ierr);
+
+      MPI_Bcast(const_cast<int *>(&nfabs), 1, MPI_INT, metafile_ioproc,
+                mpi_comm);
+      MPI_Bcast(data.data(), data.size(), MPI_INT, metafile_ioproc, mpi_comm);
+
+      amrex::Vector<amrex::Box> levboxes(nfabs);
+      for (int component = 0; component < nfabs; ++component) {
+        const amrex::IntVect small(&data.at(2 * ndims * component));
+        const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
+        levboxes.at(component) = amrex::Box(small, big);
+      }
+
+      amrex::BoxList boxlist(move(levboxes));
+      amrex::BoxArray boxarray(move(boxlist));
+      amrex::DistributionMapping dm(boxarray);
+      SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
+    }
+
+  } else {
+
+    MPI_Bcast(&cctkGH->cctk_iteration, 1, MPI_INT, metafile_ioproc, mpi_comm);
+
+    double dtime;
+    MPI_Bcast(&dtime, 1, MPI_DOUBLE, metafile_ioproc, mpi_comm);
+    cctkGH->cctk_time = dtime;
+
+    int nlevels;
+    MPI_Bcast(&nlevels, 1, MPI_INT, metafile_ioproc, mpi_comm);
+
+    for (int level = 0; level < nlevels; ++level) {
+      int nfabs;
+      MPI_Bcast(&nfabs, 1, MPI_INT, metafile_ioproc, mpi_comm);
+      vector<int> data(2 * ndims * nfabs);
+      MPI_Bcast(data.data(), data.size(), MPI_INT, metafile_ioproc, mpi_comm);
+
+      // TODO: Avoid this code duplication
+      amrex::Vector<amrex::Box> levboxes(nfabs);
+      for (int component = 0; component < nfabs; ++component) {
+        const amrex::IntVect small(&data.at(2 * ndims * component));
+        const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
+        levboxes.at(component) = amrex::Box(small, big);
+      }
+
+      amrex::BoxList boxlist(move(levboxes));
+      amrex::BoxArray boxarray(move(boxlist));
+      amrex::DistributionMapping dm(boxarray);
+      SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
+    }
+  }
+
+  interval_meta = nullptr;
+}
+
+void InputSilo(const cGH *restrict const cctkGH,
+               const std::vector<bool> &input_group,
+               const std::string &input_dir, const std::string &input_file) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  int ierr;
+  assert(!input_dir.empty());
+  assert(!input_file.empty());
 
   // Set up timers
   static Timer timer("InputSilo");
@@ -149,128 +421,12 @@ void InputSilo(const cGH *restrict const cctkGH) {
   const bool read_file = myproc % ioproc_every == 0;
   assert((myioproc == myproc) == read_file);
 
-  const int metafile_ioproc = 0;
-  const bool read_metafile = myproc == metafile_ioproc;
-
   // Configure Silo library
   DBShowErrors(DB_ALL_AND_DRVR, nullptr);
-  // DBSetAllowEmptyObjects(1);
-  DBSetCompression("METHOD=GZIP"); // LEVEL=1
-  DBSetEnableChecksums(1);
-
-  // Determine input file name
-  const string parfilename = [&]() {
-    string buf(1024, '\0');
-    const int len =
-        CCTK_ParameterFilename(buf.length(), const_cast<char *>(buf.data()));
-    buf.resize(len);
-    return buf;
-  }();
-
-  // TODO: Check wether this parameter contains multiple file names
-  // const string simulation_name = filereader_ID_files;
-  const string simulation_name = in_file;
-
-  // TODO
-  // const string pathname = string(filereader_ID_dir);
-  const string pathname = string(in_dir);
-
-  // TODO: directories instead of carefully chosen names
-
-  // Find input groups
-  const vector<bool> group_enabled = [&]() {
-    vector<bool> enabled(CCTK_NumGroups(), false);
-    const auto callback{
-        [](const int index, const char *const optstring, void *const arg) {
-          vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
-          enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
-        }};
-    CCTK_TraverseString(in_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
-    if (io_verbose) {
-      const bool have_silo_input = any_of(
-          group_enabled.begin(), group_enabled.end(), [](bool b) { return b; });
-      if (have_silo_input) {
-        CCTK_VINFO("Silo input for groups:");
-        for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
-          if (group_enabled.at(gi))
-            CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
-      } else {
-        CCTK_VINFO("No Silo input");
-      }
-    }
-    return enabled;
-  }();
-  const auto num_in_vars =
-      count(group_enabled.begin(), group_enabled.end(), true);
-  if (num_in_vars == 0)
-    return;
 
   constexpr int ndims = dim;
 
   interval_setup = nullptr;
-
-  static Timer timer_meta("InputSilo.meta");
-  auto interval_meta = make_unique<Interval>(timer_meta);
-
-  // Read metadata
-  if (read_metafile) {
-
-    const string metafilename =
-        pathname + "/" + make_filename(simulation_name, cctk_iteration);
-    // We could use DB_UNKNOWN instead of DB_HDF5
-    const DB::ptr<DBfile> metafile =
-        DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
-    assert(metafile);
-
-    // Read internal driver state
-    // TODO: Only do this when recovering. But then, we should also do
-    // this as a file reader option!
-    {
-      const string dirname = DB::legalize_name(driver_name);
-
-      // Read number of levels
-      const int nlevels = [&] {
-        const string varname = dirname + "/" + DB::legalize_name("nlevels");
-        const int vartype = DBGetVarType(metafile.get(), varname.c_str());
-        assert(vartype == DB_INT);
-        const int varlength = DBGetVarLength(metafile.get(), varname.c_str());
-        assert(varlength == 1);
-        int result;
-        ierr = DBReadVar(metafile.get(), varname.c_str(), &result);
-        assert(!ierr);
-        return result;
-      }();
-
-      // Read FabArrayBase (component positions and shapes)
-      vector<vector<amrex::Box> > boxes(nlevels);
-      for (int level = 0; level < nlevels; ++level) {
-        const string varname = dirname + "/" + make_fabarraybasename(level);
-        const int vartype = DBGetVarType(metafile.get(), varname.c_str());
-        assert(vartype == DB_INT);
-        int vardims[2];
-        const int varndims =
-            DBGetVarDims(metafile.get(), varname.c_str(), 2, vardims);
-        assert(varndims >= 0);
-        assert(varndims == 2);
-        assert(vardims[1] == 2 * ndims);
-        const int nfabs = vardims[0];
-        assert(nfabs >= 0);
-        vector<int> data(2 * ndims * nfabs);
-        ierr = DBReadVar(metafile.get(), varname.c_str(), data.data());
-
-        auto &levboxes = boxes.at(level);
-        levboxes.resize(nfabs);
-        assert(!ierr);
-        for (int component = 0; component < nfabs; ++component) {
-          const amrex::IntVect small(&data.at(2 * ndims * component));
-          const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
-          levboxes.at(component) = amrex::Box(small, big);
-        }
-      }
-    }
-  }
-
-  interval_meta = nullptr;
 
   static Timer timer_data("InputSilo.data");
   auto interval_data = make_unique<Interval>(timer_data);
@@ -279,11 +435,10 @@ void InputSilo(const cGH *restrict const cctkGH) {
   {
     DB::ptr<DBfile> file;
     if (read_file) {
-      const string subdirname =
-          make_subdirname(simulation_name, cctk_iteration);
+      const string subdirname = make_subdirname(input_file, cctk_iteration);
       const string filename =
-          pathname + "/" + subdirname + "/" +
-          make_filename(simulation_name, cctk_iteration, myproc / ioproc_every);
+          input_dir + "/" + subdirname + "/" +
+          make_filename(input_file, cctk_iteration, myproc / ioproc_every);
       // We could use DB_UNKNOWN instead of DB_HDF5
       file = DB::make(DBOpen(filename.c_str(), DB_HDF5, DB_READ));
       assert(file);
@@ -295,10 +450,11 @@ void InputSilo(const cGH *restrict const cctkGH) {
         CCTK_VINFO("Reading level %d", leveldata.level);
 
       // Loop over groups
-      set<mesh_props_t> have_meshes;
+      // set<mesh_props_t> have_meshes;
       for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (!group_enabled.at(gi))
+        if (!input_group.at(gi))
           continue;
+#warning "TODO: read grid arrays"
         if (CCTK_GroupTypeI(gi) != CCTK_GF)
           continue;
         if (io_verbose)
@@ -309,11 +465,11 @@ void InputSilo(const cGH *restrict const cctkGH) {
         const int tl = 0;
         amrex::MultiFab &mfab = *groupdata.mfab[tl];
         const amrex::IndexType &indextype = mfab.ixType();
-        const amrex::IntVect &ngrow = mfab.nGrowVect();
+        // const amrex::IntVect &ngrow = mfab.nGrowVect();
         const amrex::DistributionMapping &dm = mfab.DistributionMap();
 
-        const mesh_props_t mesh_props{ngrow};
-        const bool have_mesh = have_meshes.count(mesh_props);
+        // const mesh_props_t mesh_props{ngrow};
+        // const bool have_mesh = have_meshes.count(mesh_props);
 
         // Loop over components (AMReX boxes)
         const int nfabs = dm.size();
@@ -368,12 +524,30 @@ void InputSilo(const cGH *restrict const cctkGH) {
             const string meshname = make_meshname(leveldata.level, component);
 
             const int centering = [&]() {
-              if (indextype.nodeCentered())
+              const int rank = indextype.cellCentered(0) +
+                               indextype.cellCentered(1) +
+                               indextype.cellCentered(2);
+              switch (rank) {
+              case 0:
                 return DB_NODECENT;
-              if (indextype.cellCentered())
+              case 1:
+                return DB_EDGECENT;
+              case 2:
+                return DB_FACECENT;
+              case 3:
                 return DB_ZONECENT;
+              }
               assert(0);
             }();
+
+            if (centering == DB_EDGECENT || centering == DB_FACECENT) {
+              // Need to find the other 2 edge- or face-centered
+              // variables, and output them as well. Maybe input all 3
+              // when the x- or xy-centered value is input, for those
+              // which should be input? Maybe add a "sibling" tag to
+              // such grid functions to find these other components?
+              assert(0);
+            }
 
             for (int vi = 0; vi < numvars; ++vi) {
               const string varname =
@@ -435,7 +609,8 @@ void InputSilo(const cGH *restrict const cctkGH) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void OutputSilo(const cGH *restrict const cctkGH,
-                const output_type_t output_type) {
+                const std::vector<bool> &output_group,
+                const std::string &output_dir, const std::string &output_file) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
@@ -480,74 +655,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
   DBSetCompression("METHOD=GZIP");
   DBSetEnableChecksums(1);
 
-  // Determine output file name
-  const string parfilename = [&]() {
-    string buf(1024, '\0');
-    const int len =
-        CCTK_ParameterFilename(buf.length(), const_cast<char *>(buf.data()));
-    buf.resize(len);
-    return buf;
-  }();
-
-  const string simulation_name = [&]() {
-    string name = parfilename;
-    const size_t last_slash = name.rfind('/');
-    if (last_slash != string::npos && last_slash < name.length())
-      name = name.substr(last_slash + 1);
-    const size_t last_dot = name.rfind('.');
-    if (last_dot != string::npos && last_dot > 0)
-      name = name.substr(0, last_dot);
-    return name;
-  }();
-
-  const string output_dir =
-      output_type == output_type_t::scheduled ? out_dir : checkpoint_dir;
-  const string output_file = output_type == output_type_t::scheduled
-                                 ? simulation_name
-                                 : checkpoint_file;
-
   // TODO: directories instead of carefully chosen names
-
-  // Find output groups
-  const vector<bool> group_enabled = [&] {
-    vector<bool> enabled(CCTK_NumGroups(), false);
-    if (output_type == output_type_t::scheduled) {
-      const auto callback{
-          [](const int index, const char *const optstring, void *const arg) {
-            vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
-            enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
-          }};
-      CCTK_TraverseString(out_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
-      if (io_verbose) {
-        CCTK_VINFO("Silo output for groups:");
-        for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
-          if (enabled.at(gi))
-            CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
-      }
-    } else { // output_type == output_type_t::checkpoint
-      const int numgroups = CCTK_NumGroups();
-      for (int gi = 0; gi < numgroups; ++gi) {
-        const GHExt::GlobalData &globaldata = ghext->globaldata;
-        if (globaldata.arraygroupdata.at(gi)) {
-          // grid array
-          enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
-        } else {
-          // grid function
-          const int level = 0;
-          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-          assert(leveldata.groupdata.at(gi));
-          enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
-        }
-      }
-    }
-    return enabled;
-  }();
-
-  // We still want the metadata. Set `out_every = 0` to disable output.
-  // const auto num_out_vars =
-  //     count(group_enabled.begin(), group_enabled.end(), true);
-  // if (output_type == output_type_t::scheduled && num_out_vars == 0)
-  //   return;
 
   constexpr int ndims = dim;
 
@@ -607,7 +715,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
       // Loop over groups
       set<mesh_props_t> have_meshes;
       for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        if (!group_enabled.at(gi))
+        if (!output_group.at(gi))
           continue;
 #warning "TODO: Output grid arrays"
         if (CCTK_GroupTypeI(gi) != CCTK_GF)
@@ -744,10 +852,19 @@ void OutputSilo(const cGH *restrict const cctkGH,
             const string meshname = make_meshname(leveldata.level, component);
 
             const int centering = [&]() {
-              if (indextype.nodeCentered())
+              const int rank = indextype.cellCentered(0) +
+                               indextype.cellCentered(1) +
+                               indextype.cellCentered(2);
+              switch (rank) {
+              case 0:
                 return DB_NODECENT;
-              if (indextype.cellCentered())
+              case 1:
+                return DB_EDGECENT;
+              case 2:
+                return DB_FACECENT;
+              case 3:
                 return DB_ZONECENT;
+              }
               assert(0);
             }();
 
@@ -777,6 +894,15 @@ void OutputSilo(const cGH *restrict const cctkGH,
             ierr =
                 DBAddOption(optlist.get(), DBOPT_HIDE_FROM_GUI, &hide_from_gui);
             assert(!ierr);
+
+            if (centering == DB_EDGECENT || centering == DB_FACECENT) {
+              // Need to find the other 2 edge- or face-centered
+              // variables, and output them as well. Maybe output all
+              // 3 when the x- or xy-centered value is output? Maybe
+              // add a "sibling" tag to such grid functions to find
+              // these other components?
+              assert(0);
+            }
 
             for (int vi = 0; vi < numvars; ++vi) {
               const string varname =
@@ -834,7 +960,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
     // Loop over groups
     set<mesh_props_t> have_meshes;
     for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-      if (!group_enabled.at(gi))
+      if (!output_group.at(gi))
         continue;
 #warning "TODO: Output grid arrays"
       if (CCTK_GroupTypeI(gi) != CCTK_GF)
@@ -1415,7 +1541,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
       }
     }
 
-    if (output_type == output_type_t::scheduled) {
+    {
       const string visitname = [&]() {
         ostringstream buf;
         buf << output_dir << "/" << output_file << ".visit";

@@ -4,12 +4,21 @@
 #include <fixmath.hxx>
 #include <cctk.h>
 
+#include <string>
+#include <vector>
+
 #ifdef HAVE_CAPABILITY_Silo
 namespace CarpetX {
 
-void InputSilo(const cGH *cctkGH);
-enum class output_type_t { scheduled, checkpoint };
-void OutputSilo(const cGH *cctkGH, output_type_t output_type);
+int InputSiloParameters(const std::string &input_dir,
+                        const std::string &input_file);
+void InputSiloGridStructure(cGH *cctkGH, const std::string &input_dir,
+                            const std::string &input_file, int input_iteration);
+void InputSilo(const cGH *cctkGH, const std::vector<bool> &input_group,
+               const std::string &input_dir, const std::string &input_file);
+
+void OutputSilo(const cGH *cctkGH, const std::vector<bool> &output_group,
+                const std::string &output_dir, const std::string &output_file);
 
 } // namespace CarpetX
 #endif

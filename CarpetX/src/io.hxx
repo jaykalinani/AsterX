@@ -5,7 +5,10 @@
 
 namespace CarpetX {
 
-int InputGH(const cGH *cctkGH);
+void RecoverGridStructure(cGH *cctkGH);
+void RecoverGH(const cGH *cctkGH);
+void InputGH(const cGH *cctkGH);
+
 int OutputGH(const cGH *cctkGH);
 
 } // namespace CarpetX

@@ -1,1 +1,3 @@
 # Configuration definitions for thorn TestODESolvers2
+
+REQUIRES CarpetX

@@ -2,12 +2,14 @@
 #define DEFS_HH
 
 #include <fixmath.hxx>
-#include <vectors.h>
+#include <simd.hxx>
 
 #include <array>
 #include <cmath>
+#include <tuple>
 
 namespace Hydro {
+using namespace Arith;
 using namespace std;
 
 constexpr int dim = 3;
@@ -31,24 +33,9 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE T fmax5(T x0, T x1, T x2, T x3, T x4) {
   return x01234;
 }
 
-typedef vectype<CCTK_REAL> CCTK_REALVEC;
-constexpr int vsize = vecprops<CCTK_REAL>::size();
-
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REALVEC
-vloadu(const CCTK_REAL &restrict x) {
-  return CCTK_REALVEC::loadu(x);
-}
-
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REALVEC viota() {
-  array<CCTK_REAL, vsize> iota_;
-  for (int i = 0; i < vsize; ++i)
-    iota_[i] = i;
-  return CCTK_REALVEC::loadu(iota_[0]);
-}
-
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REALVEC vsin(CCTK_REALVEC x) {
-  return ksin(x);
-}
+typedef simd<CCTK_REAL> CCTK_REALVEC;
+typedef simdl<CCTK_REAL> CCTK_BOOLVEC;
+constexpr int vsize = tuple_size_v<CCTK_REALVEC>;
 
 } // namespace Hydro
 

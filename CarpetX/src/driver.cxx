@@ -78,9 +78,6 @@ extern "C" CCTK_INT CarpetX_GetBoundarySizesAndTypes(
     CCTK_INT *restrict const is_physbnd);
 
 // Local functions
-void SetupLevel(int level, const amrex::BoxArray &ba,
-                const amrex::DistributionMapping &dm,
-                const function<string()> &why);
 void SetupGlobals();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,6 +488,8 @@ tuple<CarpetXPhysBCFunct, amrex::Vector<amrex::BCRec> >
 get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
   DECLARE_CCTK_PARAMETERS;
 
+  // TODO: It seems that AMReX now also has `RB90`, `RB180`, and
+  // `PolarB` boundary conditions. Make these available as well.
   const array<array<bool, 3>, 2> is_periodic{{
       {{
           periodic || periodic_x,

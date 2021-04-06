@@ -11,6 +11,7 @@
 
 #include "mempool.hxx"
 
+#include <simd.hxx>
 #include <vect.hxx>
 
 #include <cctk.h>
@@ -128,14 +129,20 @@ public:
     const int dj = di * (ash[0] - CI);
     const int dk = dj * (ash[1] - CJ);
     const int np = dk * (ash[2] - CK);
-
     const CCTK_REAL x = x0[0] + (lbnd[0] + i - CCTK_REAL(!CI) / 2) * dx[0];
     const CCTK_REAL y = x0[1] + (lbnd[1] + j - CCTK_REAL(!CJ) / 2) * dx[1];
     const CCTK_REAL z = x0[2] + (lbnd[2] + k - CCTK_REAL(!CK) / 2) * dx[2];
     const int idx = i * di + j * dj + k * dk;
-    return PointDesc{imin, imax,      i,     j,         k,   x,  y,
-                     z,    dx[0],     dx[1], dx[2],     idx, dj, dk,
-                     np,   {i, j, k}, NI,    {x, y, z}, dx};
+    return PointDesc{imin,      imax,         //
+                     i,         j,     k,     //
+                     x,         y,     z,     //
+                     dx[0],     dx[1], dx[2], //
+                     idx,                     //
+                     dj,        dk,    np,    //
+                     {i, j, k},               //
+                     NI,                      //
+                     {x, y, z},               //
+                     dx};
   }
 
   template <int CI, int CJ, int CK>
@@ -145,7 +152,7 @@ public:
   }
 
   // Loop over a given box
-  template <int CI, int CJ, int CK, typename F>
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
   CCTK_ATTRIBUTE_ALWAYS_INLINE void
   loop_box(const F &f, const array<int, dim> &restrict imin,
            const array<int, dim> &restrict imax,
@@ -154,6 +161,7 @@ public:
     static_assert(CI == 0 || CI == 1, "");
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");
+    static_assert(VS > 0, "");
 
     for (int d = 0; d < dim; ++d)
       if (imin[d] >= imax[d])
@@ -171,7 +179,7 @@ public:
       for (int k = imin[2]; k < imax[2]; ++k) {
         for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
-          for (int i = imin[0]; i < imax[0]; ++i) {
+          for (int i = imin[0]; i < imax[0]; i += VS) {
             f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
           }
         }
@@ -183,7 +191,7 @@ public:
       for (int k0 = imin[2]; k0 < imax[2]; ++k0) {
         for (int j0 = imin[1]; j0 < imax[1]; ++j0) {
 #pragma omp simd
-          for (int i0 = imin[0]; i0 < imax[0]; ++i0) {
+          for (int i0 = imin[0]; i0 < imax[0]; i0 += VS) {
             const int i = bforward[0] ? i0 : imax[0] - 1 - (i0 - imin[0]);
             const int j = bforward[1] ? j0 : imax[1] - 1 - (j0 - imin[1]);
             const int k = bforward[2] ? k0 : imax[2] - 1 - (k0 - imin[2]);
@@ -767,7 +775,7 @@ template <typename T> struct GF3D1 {
       : GF3D1(cctkGH, indextype, nghostzones, nullptr) {
     ptr = mempool.alloc<T>(np);
   }
-  inline int offset(int i, int j, int k) const {
+  int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
 #ifdef CCTK_DEBUG
@@ -777,18 +785,14 @@ template <typename T> struct GF3D1 {
 #endif
     return i * di + j * dj + k * dk - off;
   }
-  inline int offset(const vect<int, dim> &I) const {
-    return offset(I[0], I[1], I[2]);
-  }
-  inline T &restrict operator()(int i, int j, int k) const {
+  int offset(const vect<int, dim> &I) const { return offset(I[0], I[1], I[2]); }
+  T &restrict operator()(int i, int j, int k) const {
     return ptr[offset(i, j, k)];
   }
-  inline T &restrict operator()(const vect<int, dim> &I) const {
+  T &restrict operator()(const vect<int, dim> &I) const {
     return ptr[offset(I)];
   }
-  inline T &restrict operator()(const PointDesc &p) const {
-    return (*this)(p.I);
-  }
+  T &restrict operator()(const PointDesc &p) const { return (*this)(p.I); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -857,7 +861,7 @@ struct GF3D2layout {
     iseq &= off == other.off;
     return iseq;
   }
-  inline CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
+  CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
 #ifdef CCTK_DEBUG
@@ -867,13 +871,13 @@ struct GF3D2layout {
 #endif
     return i * di + j * dj + k * dk - off;
   }
-  inline CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
+  CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
     return linear(I[0], I[1], I[2]);
   }
-  inline CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
+  CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
     return i * di + j * dj + k * dk;
   }
-  inline CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
+  CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
     return delta(I[0], I[1], I[2]);
   }
 };
@@ -893,25 +897,48 @@ template <typename T> struct GF3D2 {
       : ptr(ptr), layout(layout) {}
   GF3D2(const GF3D2layout &layout, mempool_t &mempool)
       : GF3D2(layout, mempool.alloc<T>(layout.np)) {}
-  inline CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
+  CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
     return layout.linear(i, j, k);
   }
-  inline CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
+  CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
     return layout.linear(I);
   }
-  inline CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
+  CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
     return layout.delta(i, j, k);
   }
-  inline CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
+  CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
     return layout.delta(I);
   }
-  inline CCTK_DEVICE CCTK_HOST T &restrict operator()(int i, int j,
-                                                      int k) const {
+  CCTK_DEVICE CCTK_HOST T &restrict operator()(int i, int j, int k) const {
     return ptr[linear(i, j, k)];
   }
-  inline CCTK_DEVICE CCTK_HOST T &restrict
-  operator()(const vect<int, dim> &I) const {
+  CCTK_DEVICE CCTK_HOST T &restrict operator()(const vect<int, dim> &I) const {
     return ptr[linear(I)];
+  }
+  CCTK_DEVICE CCTK_HOST void store(const vect<int, dim> &I,
+                                   const T &value) const {
+    ptr[linear(I)] = value;
+  }
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask,
+             const vect<int, dim> &I) const {
+    return Arith::maskz_loadu(mask, &(*this)(I));
+  }
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask, const vect<int, dim> &I,
+             const Arith::simd<remove_cv_t<T> > &other) const {
+    return Arith::masko_loadu(mask, &(*this)(I), other);
+  }
+  template <typename U, enable_if_t<is_convertible_v<T, U> > * = nullptr>
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask, const vect<int, dim> &I,
+             const U &other) const {
+    return Arith::masko_loadu(mask, &(*this)(I), other);
+  }
+  CCTK_DEVICE CCTK_HOST void store(const Arith::simdl<T> &mask,
+                                   const vect<int, dim> &I,
+                                   const Arith::simd<T> &value) const {
+    mask_storeu(mask, &ptr[linear(I)], value);
   }
 };
 
@@ -1003,6 +1030,7 @@ struct GF3D3ptr : GF3D3layout<NI, NJ, NK, OFF> {
 typedef GF3D2layout GF3D5layout;
 
 template <typename T> struct GF3D5 {
+  typedef T value_type;
 #ifdef CCTK_DEBUG
   GF3D5layout layout;
 #endif
@@ -1035,7 +1063,37 @@ template <typename T> struct GF3D5 {
                                    const vect<int, dim> &I) const {
     return (*this)(layout, I[0], I[1], I[2]);
   }
+  void store(const GF3D5layout &layout, const vect<int, dim> &I,
+             const T &value) const {
+    (*this)(layout, I) = value;
+  }
+  Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask,
+             const GF3D5layout &layout, const vect<int, dim> &I) const {
+    return Arith::maskz_loadu(mask, &(*this)(layout, I));
+  }
+  Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask,
+             const GF3D5layout &layout, const vect<int, dim> &I,
+             const Arith::simd<remove_cv_t<T> > &other) const {
+    return Arith::masko_loadu(mask, &(*this)(layout, I), other);
+  }
+  template <typename U, enable_if_t<is_convertible_v<T, U> > * = nullptr>
+  Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask,
+             const GF3D5layout &layout, const vect<int, dim> &I,
+             const U &other) const {
+    return Arith::masko_loadu(mask, &(*this)(layout, I), other);
+  }
+  void store(const Arith::simdl<T> &mask, const GF3D5layout &layout,
+             const vect<int, dim> &I, const Arith::simd<T> &value) const {
+    mask_storeu(mask, &(*this)(layout, I), value);
+  }
 };
+
+template <typename T> struct is_GF3D5 : false_type {};
+template <typename T> struct is_GF3D5<GF3D5<T> > : true_type {};
+template <typename T> inline constexpr bool is_GF3D5_v = is_GF3D5<T>::value;
 
 } // namespace Loop
 

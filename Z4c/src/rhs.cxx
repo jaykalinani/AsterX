@@ -5,6 +5,7 @@
 
 #include <loop_device.hxx>
 #include <mempool.hxx>
+#include <simd.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
@@ -14,6 +15,7 @@
 #include <memory>
 
 namespace Z4c {
+using namespace Arith;
 using namespace Loop;
 using namespace std;
 
@@ -24,12 +26,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   for (int d = 0; d < 3; ++d)
     if (cctk_nghostzones[d] < deriv_order / 2 + 1)
       CCTK_VERROR("Need at least %d ghost zones", deriv_order / 2 + 1);
-
-  const vec3<CCTK_REAL, UP> dx{
-      CCTK_DELTA_SPACE(0),
-      CCTK_DELTA_SPACE(1),
-      CCTK_DELTA_SPACE(2),
-  };
 
   //
 
@@ -84,60 +80,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   //   they are called with floating-point arguments, not tensor
   //   indices.
 
-#if 0
-
-  const size_t mempool_id = GetCallFunctionCount();
-  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
-
-  const auto make_gf = [&]() { return GF3D2<CCTK_REAL>(layout0, mempool); };
-  const auto make_vec_gf = [&](int) { return make_gf(); };
-  const auto make_mat_gf = [&](int, int) { return make_gf(); };
-  const auto make_vec_vec_gf = [&](int) { return make_vec_gf; };
-  const auto make_vec_mat_gf = [&](int) { return make_mat_gf; };
-  const auto make_mat_vec_gf = [&](int, int) { return make_vec_gf; };
-  const auto make_mat_mat_gf = [&](int, int) { return make_mat_gf; };
-
-  const GF3D2<CCTK_REAL> gf_chi0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dchi0(make_vec_gf);
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_ddchi0(make_mat_gf);
-  calc_derivs2(cctkGH, gf_chi1, gf_chi0, gf_dchi0, gf_ddchi0);
-
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_gammat0(make_mat_gf);
-  const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dgammat0(make_mat_vec_gf);
-  const mat3<mat3<GF3D2<CCTK_REAL>, DN, DN>, DN, DN> gf_ddgammat0(
-      make_mat_mat_gf);
-  calc_derivs2(cctkGH, gf_gammat1, gf_gammat0, gf_dgammat0, gf_ddgammat0);
-
-  const GF3D2<CCTK_REAL> gf_Kh0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dKh0(make_vec_gf);
-  calc_derivs(cctkGH, gf_Kh1, gf_Kh0, gf_dKh0);
-
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_At0(make_mat_gf);
-  const mat3<vec3<GF3D2<CCTK_REAL>, DN>, DN, DN> gf_dAt0(make_mat_vec_gf);
-  calc_derivs(cctkGH, gf_At1, gf_At0, gf_dAt0);
-
-  const vec3<GF3D2<CCTK_REAL>, UP> gf_Gamt0(make_vec_gf);
-  const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dGamt0(make_vec_vec_gf);
-  calc_derivs(cctkGH, gf_Gamt1, gf_Gamt0, gf_dGamt0);
-
-  const GF3D2<CCTK_REAL> gf_Theta0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dTheta0(make_vec_gf);
-  calc_derivs(cctkGH, gf_Theta1, gf_Theta0, gf_dTheta0);
-
-  const GF3D2<CCTK_REAL> gf_alphaG0(make_gf());
-  const vec3<GF3D2<CCTK_REAL>, DN> gf_dalphaG0(make_vec_gf);
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_ddalphaG0(make_mat_gf);
-  calc_derivs2(cctkGH, gf_alphaG1, gf_alphaG0, gf_dalphaG0, gf_ddalphaG0);
-
-  const vec3<GF3D2<CCTK_REAL>, UP> gf_betaG0(make_vec_gf);
-  const vec3<vec3<GF3D2<CCTK_REAL>, DN>, UP> gf_dbetaG0(make_vec_vec_gf);
-  const vec3<mat3<GF3D2<CCTK_REAL>, DN, DN>, UP> gf_ddbetaG0(make_vec_mat_gf);
-  calc_derivs2(cctkGH, gf_betaG1, gf_betaG0, gf_dbetaG0, gf_ddbetaG0);
-
-#endif
-
-#if 1
-
   const size_t mempool_id = GetCallFunctionCount();
   mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
 
@@ -188,8 +130,6 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   const vec3<mat3<GF3D5<CCTK_REAL>, DN, DN>, UP> gf_ddbetaG0(make_vec_mat_gf);
   calc_derivs2(cctkGH, gf_betaG1, gf_betaG0, gf_dbetaG0, gf_ddbetaG0, layout0);
 
-#endif
-
   //
 
   const GF3D2<const CCTK_REAL> gf_eTtt1(layout1, eTtt);
@@ -211,156 +151,108 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   const GF3D2<CCTK_REAL> gf_chi_rhs1(layout1, chi_rhs);
 
-  const GF3D2<CCTK_REAL> gf_gammatxx_rhs1(layout1, gammatxx_rhs);
-  const GF3D2<CCTK_REAL> gf_gammatxy_rhs1(layout1, gammatxy_rhs);
-  const GF3D2<CCTK_REAL> gf_gammatxz_rhs1(layout1, gammatxz_rhs);
-  const GF3D2<CCTK_REAL> gf_gammatyy_rhs1(layout1, gammatyy_rhs);
-  const GF3D2<CCTK_REAL> gf_gammatyz_rhs1(layout1, gammatyz_rhs);
-  const GF3D2<CCTK_REAL> gf_gammatzz_rhs1(layout1, gammatzz_rhs);
+  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_gammat_rhs1(
+      GF3D2<CCTK_REAL>(layout1, gammatxx_rhs),
+      GF3D2<CCTK_REAL>(layout1, gammatxy_rhs),
+      GF3D2<CCTK_REAL>(layout1, gammatxz_rhs),
+      GF3D2<CCTK_REAL>(layout1, gammatyy_rhs),
+      GF3D2<CCTK_REAL>(layout1, gammatyz_rhs),
+      GF3D2<CCTK_REAL>(layout1, gammatzz_rhs));
 
   const GF3D2<CCTK_REAL> gf_Kh_rhs1(layout1, Kh_rhs);
 
-  const GF3D2<CCTK_REAL> gf_Atxx_rhs1(layout1, Atxx_rhs);
-  const GF3D2<CCTK_REAL> gf_Atxy_rhs1(layout1, Atxy_rhs);
-  const GF3D2<CCTK_REAL> gf_Atxz_rhs1(layout1, Atxz_rhs);
-  const GF3D2<CCTK_REAL> gf_Atyy_rhs1(layout1, Atyy_rhs);
-  const GF3D2<CCTK_REAL> gf_Atyz_rhs1(layout1, Atyz_rhs);
-  const GF3D2<CCTK_REAL> gf_Atzz_rhs1(layout1, Atzz_rhs);
+  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_At_rhs1(
+      GF3D2<CCTK_REAL>(layout1, Atxx_rhs), GF3D2<CCTK_REAL>(layout1, Atxy_rhs),
+      GF3D2<CCTK_REAL>(layout1, Atxz_rhs), GF3D2<CCTK_REAL>(layout1, Atyy_rhs),
+      GF3D2<CCTK_REAL>(layout1, Atyz_rhs), GF3D2<CCTK_REAL>(layout1, Atzz_rhs));
 
-  const GF3D2<CCTK_REAL> gf_Gamtx_rhs1(layout1, Gamtx_rhs);
-  const GF3D2<CCTK_REAL> gf_Gamty_rhs1(layout1, Gamty_rhs);
-  const GF3D2<CCTK_REAL> gf_Gamtz_rhs1(layout1, Gamtz_rhs);
+  const vec3<GF3D2<CCTK_REAL>, UP> gf_Gamt_rhs1(
+      GF3D2<CCTK_REAL>(layout1, Gamtx_rhs),
+      GF3D2<CCTK_REAL>(layout1, Gamty_rhs),
+      GF3D2<CCTK_REAL>(layout1, Gamtz_rhs));
 
   const GF3D2<CCTK_REAL> gf_Theta_rhs1(layout1, Theta_rhs);
 
   const GF3D2<CCTK_REAL> gf_alphaG_rhs1(layout1, alphaG_rhs);
 
-  const GF3D2<CCTK_REAL> gf_betaGx_rhs1(layout1, betaGx_rhs);
-  const GF3D2<CCTK_REAL> gf_betaGy_rhs1(layout1, betaGy_rhs);
-  const GF3D2<CCTK_REAL> gf_betaGz_rhs1(layout1, betaGz_rhs);
+  const vec3<GF3D2<CCTK_REAL>, UP> gf_betaG_rhs1(
+      GF3D2<CCTK_REAL>(layout1, betaGx_rhs),
+      GF3D2<CCTK_REAL>(layout1, betaGy_rhs),
+      GF3D2<CCTK_REAL>(layout1, betaGz_rhs));
 
   //
 
-#if 0
-
-  const Loop::GridDescBaseDevice grid(cctkGH);
-  grid.loop_int_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
-                                                      const PointDesc &p) {
-  // Load and calculate
-#if 0
-    const z4c_vars<CCTK_REAL> vars(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-                                   gf_chi0(p.I), gf_dchi0(p.I),
-                                   gf_ddchi0(p.I), //
-                                   gf_gammat0(p.I), gf_dgammat0(p.I),
-                                   gf_ddgammat0(p.I),               //
-                                   gf_Kh0(p.I), gf_dKh0(p.I),       //
-                                   gf_At0(p.I), gf_dAt0(p.I),       //
-                                   gf_Gamt0(p.I), gf_dGamt0(p.I),   //
-                                   gf_Theta0(p.I), gf_dTheta0(p.I), //
-                                   gf_alphaG0(p.I), gf_dalphaG0(p.I),
-                                   gf_ddalphaG0(p.I), //
-                                   gf_betaG0(p.I), gf_dbetaG0(p.I),
-                                   gf_ddbetaG0(p.I), //
-                                   gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
-#endif
-#if 1
-    const z4c_vars<CCTK_REAL> vars(
-        kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-        gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
-        gf_ddchi0(layout0, p.I), //
-        gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
-        gf_ddgammat0(layout0, p.I),                        //
-        gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
-        gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
-        gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
-        gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
-        gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
-        gf_ddalphaG0(layout0, p.I), //
-        gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
-        gf_ddbetaG0(layout0, p.I), //
-        gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
-#endif
-
-    // Store
-    gf_chi_rhs1(p.I) = vars.chi_rhs;
-    vars.gammat_rhs.store(gf_gammatxx_rhs1, gf_gammatxy_rhs1, gf_gammatxz_rhs1,
-                          gf_gammatyy_rhs1, gf_gammatyz_rhs1, gf_gammatzz_rhs1,
-                          p.I);
-    gf_Kh_rhs1(p.I) = vars.Kh_rhs;
-    vars.At_rhs.store(gf_Atxx_rhs1, gf_Atxy_rhs1, gf_Atxz_rhs1, gf_Atyy_rhs1,
-                      gf_Atyz_rhs1, gf_Atzz_rhs1, p.I);
-    vars.Gamt_rhs.store(gf_Gamtx_rhs1, gf_Gamty_rhs1, gf_Gamtz_rhs1, p.I);
-    gf_Theta_rhs1(p.I) = vars.Theta_rhs;
-    gf_alphaG_rhs1(p.I) = vars.alphaG_rhs;
-    vars.betaG_rhs.store(gf_betaGx_rhs1, gf_betaGy_rhs1, gf_betaGz_rhs1, p.I);
-  });
-
-#endif
-
-#if 1
+  typedef simd<CCTK_REAL> vreal;
+  typedef simdl<CCTK_REAL> vbool;
+  constexpr size_t vsize = tuple_size_v<vreal>;
 
   const Loop::GridDescBaseDevice grid(cctkGH);
 
   noinline([&] {
-    grid.loop_int_device<0, 0, 0>(
+    grid.loop_int_device<0, 0, 0, vsize>(
         grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+          const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+
           // Load and calculate
-          const z4c_vars<CCTK_REAL> vars(
+          const z4c_vars<vreal> vars(
               kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-              gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
-              gf_ddchi0(layout0, p.I), //
-              gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
-              gf_ddgammat0(layout0, p.I),                        //
-              gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
-              gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
-              gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
-              gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
-              gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
-              gf_ddalphaG0(layout0, p.I), //
-              gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
-              gf_ddbetaG0(layout0, p.I), //
-              gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
+              gf_chi0(mask, layout0, p.I, 1), gf_dchi0(mask, layout0, p.I),
+              gf_ddchi0(mask, layout0, p.I), //
+              gf_gammat0(mask, layout0, p.I, 1),
+              gf_dgammat0(mask, layout0, p.I),
+              gf_ddgammat0(mask, layout0, p.I),                            //
+              gf_Kh0(mask, layout0, p.I), gf_dKh0(mask, layout0, p.I),     //
+              gf_At0(mask, layout0, p.I), gf_dAt0(mask, layout0, p.I),     //
+              gf_Gamt0(mask, layout0, p.I), gf_dGamt0(mask, layout0, p.I), //
+              gf_Theta0(mask, layout0, p.I, 1),
+              gf_dTheta0(mask, layout0, p.I), //
+              gf_alphaG0(mask, layout0, p.I, 1),
+              gf_dalphaG0(mask, layout0, p.I),
+              gf_ddalphaG0(mask, layout0, p.I), //
+              gf_betaG0(mask, layout0, p.I), gf_dbetaG0(mask, layout0, p.I),
+              gf_ddbetaG0(mask, layout0, p.I), //
+              gf_eTtt1(mask, p.I), gf_eTti1(mask, p.I), gf_eTij1(mask, p.I));
 
           // Store Kh_rhs, At_rhs, Gamt_rhs, Theta_rhs
-          gf_Kh_rhs1(p.I) = vars.Kh_rhs;
-          vars.At_rhs.store(gf_Atxx_rhs1, gf_Atxy_rhs1, gf_Atxz_rhs1,
-                            gf_Atyy_rhs1, gf_Atyz_rhs1, gf_Atzz_rhs1, p.I);
-          vars.Gamt_rhs.store(gf_Gamtx_rhs1, gf_Gamty_rhs1, gf_Gamtz_rhs1, p.I);
-          gf_Theta_rhs1(p.I) = vars.Theta_rhs;
+          gf_Kh_rhs1.store(mask, p.I, vars.Kh_rhs);
+          gf_At_rhs1.store(mask, p.I, vars.At_rhs);
+          gf_Gamt_rhs1.store(mask, p.I, vars.Gamt_rhs);
+          gf_Theta_rhs1.store(mask, p.I, vars.Theta_rhs);
         });
   });
 
   noinline([&] {
-    grid.loop_int_device<0, 0, 0>(grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(
-                                                        const PointDesc &p) {
-      // Load and calculate
-      const z4c_vars<CCTK_REAL> vars(
-          kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-          gf_chi0(layout0, p.I), gf_dchi0(layout0, p.I),
-          gf_ddchi0(layout0, p.I), //
-          gf_gammat0(layout0, p.I), gf_dgammat0(layout0, p.I),
-          gf_ddgammat0(layout0, p.I),                        //
-          gf_Kh0(layout0, p.I), gf_dKh0(layout0, p.I),       //
-          gf_At0(layout0, p.I), gf_dAt0(layout0, p.I),       //
-          gf_Gamt0(layout0, p.I), gf_dGamt0(layout0, p.I),   //
-          gf_Theta0(layout0, p.I), gf_dTheta0(layout0, p.I), //
-          gf_alphaG0(layout0, p.I), gf_dalphaG0(layout0, p.I),
-          gf_ddalphaG0(layout0, p.I), //
-          gf_betaG0(layout0, p.I), gf_dbetaG0(layout0, p.I),
-          gf_ddbetaG0(layout0, p.I), //
-          gf_eTtt1(p.I), gf_eTti1(p.I), gf_eTij1(p.I));
+    grid.loop_int_device<0, 0, 0, vsize>(
+        grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+          const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
-      // Store chi_rhs, gammat_rhs, alphaG_rhs, betaG_rhs
-      gf_chi_rhs1(p.I) = vars.chi_rhs;
-      vars.gammat_rhs.store(gf_gammatxx_rhs1, gf_gammatxy_rhs1,
-                            gf_gammatxz_rhs1, gf_gammatyy_rhs1,
-                            gf_gammatyz_rhs1, gf_gammatzz_rhs1, p.I);
-      gf_alphaG_rhs1(p.I) = vars.alphaG_rhs;
-      vars.betaG_rhs.store(gf_betaGx_rhs1, gf_betaGy_rhs1, gf_betaGz_rhs1, p.I);
-    });
+          // Load and calculate
+          const z4c_vars<vreal> vars(
+              kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+              gf_chi0(mask, layout0, p.I, 1), gf_dchi0(mask, layout0, p.I),
+              gf_ddchi0(mask, layout0, p.I), //
+              gf_gammat0(mask, layout0, p.I, 1),
+              gf_dgammat0(mask, layout0, p.I),
+              gf_ddgammat0(mask, layout0, p.I),                        //
+              gf_Kh0(mask, layout0, p.I), gf_dKh0(mask, layout0, p.I), //
+              gf_At0(mask, layout0, p.I), gf_dAt0(mask, layout0, p.I), //
+              gf_Gamt0(mask,layout0, p.I), gf_dGamt0(mask, layout0, p.I),   //
+              gf_Theta0(mask, layout0, p.I, 1),
+              gf_dTheta0(mask, layout0, p.I), //
+              gf_alphaG0(mask, layout0, p.I, 1),
+              gf_dalphaG0(mask, layout0, p.I),
+              gf_ddalphaG0(mask, layout0, p.I), //
+              gf_betaG0(mask, layout0, p.I), gf_dbetaG0(mask, layout0, p.I),
+              gf_ddbetaG0(mask, layout0, p.I), //
+              gf_eTtt1(mask, p.I), gf_eTti1(mask, p.I), gf_eTij1(mask, p.I));
+
+          // Store chi_rhs, gammat_rhs, alphaG_rhs, betaG_rhs
+          gf_chi_rhs1.store(mask, p.I, vars.chi_rhs);
+          gf_gammat_rhs1.store(mask, p.I, vars.gammat_rhs);
+          gf_alphaG_rhs1.store(mask, p.I, vars.alphaG_rhs);
+          gf_betaG_rhs1.store(mask, p.I, vars.betaG_rhs);
+        });
   });
-
-#endif
 
   // Upwind and dissipation terms
 
@@ -368,33 +260,26 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   apply_upwind_diss(cctkGH, gf_chi1, gf_betaG1, gf_chi_rhs1);
 
-  apply_upwind_diss(cctkGH, gf_gammat1(0, 0), gf_betaG1, gf_gammatxx_rhs1);
-  apply_upwind_diss(cctkGH, gf_gammat1(0, 1), gf_betaG1, gf_gammatxy_rhs1);
-  apply_upwind_diss(cctkGH, gf_gammat1(0, 2), gf_betaG1, gf_gammatxz_rhs1);
-  apply_upwind_diss(cctkGH, gf_gammat1(1, 1), gf_betaG1, gf_gammatyy_rhs1);
-  apply_upwind_diss(cctkGH, gf_gammat1(1, 2), gf_betaG1, gf_gammatyz_rhs1);
-  apply_upwind_diss(cctkGH, gf_gammat1(2, 2), gf_betaG1, gf_gammatzz_rhs1);
+  for (int a = 0; a < 3; ++a)
+    for (int b = a; b < 3; ++b)
+      apply_upwind_diss(cctkGH, gf_gammat1(a, b), gf_betaG1,
+                        gf_gammat_rhs1(a, b));
 
   apply_upwind_diss(cctkGH, gf_Kh1, gf_betaG1, gf_Kh_rhs1);
 
-  apply_upwind_diss(cctkGH, gf_At1(0, 0), gf_betaG1, gf_Atxx_rhs1);
-  apply_upwind_diss(cctkGH, gf_At1(0, 1), gf_betaG1, gf_Atxy_rhs1);
-  apply_upwind_diss(cctkGH, gf_At1(0, 2), gf_betaG1, gf_Atxz_rhs1);
-  apply_upwind_diss(cctkGH, gf_At1(1, 1), gf_betaG1, gf_Atyy_rhs1);
-  apply_upwind_diss(cctkGH, gf_At1(1, 2), gf_betaG1, gf_Atyz_rhs1);
-  apply_upwind_diss(cctkGH, gf_At1(2, 2), gf_betaG1, gf_Atzz_rhs1);
+  for (int a = 0; a < 3; ++a)
+    for (int b = a; b < 3; ++b)
+      apply_upwind_diss(cctkGH, gf_At1(a, b), gf_betaG1, gf_At_rhs1(a, b));
 
-  apply_upwind_diss(cctkGH, gf_Gamt1(0), gf_betaG1, gf_Gamtx_rhs1);
-  apply_upwind_diss(cctkGH, gf_Gamt1(1), gf_betaG1, gf_Gamty_rhs1);
-  apply_upwind_diss(cctkGH, gf_Gamt1(2), gf_betaG1, gf_Gamtz_rhs1);
+  for (int a = 0; a < 3; ++a)
+    apply_upwind_diss(cctkGH, gf_Gamt1(a), gf_betaG1, gf_Gamt_rhs1(a));
 
   apply_upwind_diss(cctkGH, gf_Theta1, gf_betaG1, gf_Theta_rhs1);
 
   apply_upwind_diss(cctkGH, gf_alphaG1, gf_betaG1, gf_alphaG_rhs1);
 
-  apply_upwind_diss(cctkGH, gf_betaG1(0), gf_betaG1, gf_betaGx_rhs1);
-  apply_upwind_diss(cctkGH, gf_betaG1(1), gf_betaG1, gf_betaGy_rhs1);
-  apply_upwind_diss(cctkGH, gf_betaG1(2), gf_betaG1, gf_betaGz_rhs1);
+  for (int a = 0; a < 3; ++a)
+    apply_upwind_diss(cctkGH, gf_betaG1(a), gf_betaG1, gf_betaG_rhs1(a));
 }
 
 } // namespace Z4c

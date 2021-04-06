@@ -1,5 +1,7 @@
 # Configuration definitions for thorn Arith
 
+REQUIRES NSIMD
+
 OPTIONAL yaml_cpp
 {
 }

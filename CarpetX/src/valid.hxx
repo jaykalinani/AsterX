@@ -1,12 +1,18 @@
 #ifndef VALID_HXX
 #define VALID_HXX
 
+#include <AMReX_Box.H>
+
 #include <yaml-cpp/yaml.h>
+#include <zlib.h>
 
 #include <functional>
+#include <iomanip>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <tuple>
+#include <vector>
 
 namespace CarpetX {
 using namespace std;
@@ -189,6 +195,73 @@ public:
     return yaml;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct checksum_t {
+  valid_t where;
+  uLong crc;
+  checksum_t() = default;
+  inline checksum_t(const valid_t &where)
+      : where(where), crc(crc32(0, nullptr, 0)) {}
+  template <typename T> inline void add(const T &x) {
+    crc = crc32(crc, static_cast<const Bytef *>(static_cast<const void *>(&x)),
+                sizeof x);
+  }
+
+  friend bool operator==(const checksum_t &x, const checksum_t &y) {
+    return x.where == y.where && x.crc == y.crc;
+  }
+  friend bool operator!=(const checksum_t &x, const checksum_t &y) {
+    return !(x == y);
+  }
+
+  friend ostream &operator<<(ostream &os, const checksum_t &x) {
+    return os << "checksum_t{where:" << x.where << ",crc:0x" << hex
+              << setfill('0') << setw(8) << x.crc << "}";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
+struct tiletag_t {
+  int level;
+  amrex::Box tilebox;
+  int gi, vi, tl;
+  tiletag_t() = delete;
+
+  friend bool operator==(const tiletag_t &x, const tiletag_t &y) {
+    return make_tuple(x.level, x.tilebox, x.gi, x.vi, x.tl) ==
+           make_tuple(y.level, y.tilebox, y.gi, y.vi, y.tl);
+  }
+  friend bool operator<(const tiletag_t &x, const tiletag_t &y) {
+    return make_tuple(x.level, x.tilebox, x.gi, x.vi, x.tl) <
+           make_tuple(y.level, y.tilebox, y.gi, y.vi, y.tl);
+  }
+
+  friend ostream &operator<<(ostream &os, const tiletag_t &x) {
+    return os << "tiletag_t{"
+              << "level:" << x.level << ","
+              << "tilebox:" << x.tilebox << ","
+              << "gi:" << x.gi << ","
+              << "vi:" << x.vi << ","
+              << "tl:" << x.tl << "}";
+  }
+  operator string() const {
+    ostringstream buf;
+    buf << *this;
+    return buf.str();
+  }
+};
+
+typedef map<tiletag_t, checksum_t> checksums_t;
+
+checksums_t
+calculate_checksums(const vector<vector<vector<valid_t> > > &will_write);
+void check_checksums(const checksums_t &checksums);
 
 } // namespace CarpetX
 

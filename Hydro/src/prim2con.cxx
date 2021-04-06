@@ -36,13 +36,14 @@ extern "C" void Hydro_Prim2Con(CCTK_ARGUMENTS) {
   for (int k = imin[2]; k < imax[2]; ++k) {
     for (int j = imin[1]; j < imax[1]; ++j) {
       for (int i = imin[0]; i < imax[0]; i += vsize) {
+        CCTK_BOOLVEC mask = mask_for_loop_tail<CCTK_BOOLVEC>(i, imax[0]);
         ptrdiff_t ind = i + dj * j + dk * k;
 
-        CCTK_REALVEC rho1 = vloadu(rho[ind]);
-        CCTK_REALVEC velx1 = vloadu(velx[ind]);
-        CCTK_REALVEC vely1 = vloadu(vely[ind]);
-        CCTK_REALVEC velz1 = vloadu(velz[ind]);
-        CCTK_REALVEC eint1 = vloadu(eint[ind]);
+        CCTK_REALVEC rho1 = maskz_loadu(mask, &rho[ind]);
+        CCTK_REALVEC velx1 = maskz_loadu(mask, &velx[ind]);
+        CCTK_REALVEC vely1 = maskz_loadu(mask, &vely[ind]);
+        CCTK_REALVEC velz1 = maskz_loadu(mask, &velz[ind]);
+        CCTK_REALVEC eint1 = maskz_loadu(mask, &eint[ind]);
 
         CCTK_REALVEC ekin1 =
             CCTK_REAL(0.5) * rho1 * (pow2(velx1) + pow2(vely1) + pow2(velz1));
@@ -53,11 +54,11 @@ extern "C" void Hydro_Prim2Con(CCTK_ARGUMENTS) {
         CCTK_REALVEC momz1 = rho1 * velz1;
         CCTK_REALVEC etot1 = ekin1 + eint1;
 
-        dens1.storeu_partial(dens[ind], i, imin[0], imax[0]);
-        momx1.storeu_partial(momx[ind], i, imin[0], imax[0]);
-        momy1.storeu_partial(momy[ind], i, imin[0], imax[0]);
-        momz1.storeu_partial(momz[ind], i, imin[0], imax[0]);
-        etot1.storeu_partial(etot[ind], i, imin[0], imax[0]);
+        mask_storeu(mask, &dens[ind], dens1);
+        mask_storeu(mask, &momx[ind], momx1);
+        mask_storeu(mask, &momy[ind], momy1);
+        mask_storeu(mask, &momz[ind], momz1);
+        mask_storeu(mask, &etot[ind], etot1);
       }
     }
   }

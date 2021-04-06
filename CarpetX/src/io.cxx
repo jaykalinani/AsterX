@@ -28,162 +28,130 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Input
+// Recovering
 
-int Input(cGH *const cctkGH, const char *const basefilename,
-          const int called_from) {
+int recover_iteration = -1;
+
+extern "C" int CarpetX_RecoverParameters() {
   DECLARE_CCTK_PARAMETERS;
 
-  assert(called_from == CP_RECOVER_PARAMETERS ||
-         called_from == CP_RECOVER_DATA || called_from == FILEREADER_DATA);
-  const bool do_recover =
-      called_from == CP_RECOVER_PARAMETERS || called_from == CP_RECOVER_DATA;
-  const bool read_parameters = called_from == CP_RECOVER_PARAMETERS;
-
-  static Timer timer("InputGH");
+  static Timer timer("RecoverParameters");
   Interval interval(timer);
 
-  const string projectname = [&]() -> string {
-    if (do_recover) {
-      // basename is only passed for CP_RECOVER_PARAMETERS, and needs to
-      // be remembered
-      static string saved_basefilename;
-      if (read_parameters)
-        saved_basefilename = basefilename;
-      assert(!saved_basefilename.empty());
-      return saved_basefilename;
-    } else {
-      return basefilename;
-    }
-  }();
+#ifdef HAVE_CAPABILITY_Silo
+  // TODO: Stop at paramcheck time when Silo input parameters are
+  // set, but Silo is not available
+  recover_iteration = InputSiloParameters(recover_dir, recover_file);
+#else
+  CCTK_ERROR("No parameter recovery method available");
+#endif
 
-  if (do_recover)
-    if (read_parameters)
-      CCTK_VINFO("Recovering parameters from file \"%s\"", projectname.c_str());
-    else
-      CCTK_VINFO("Recovering variables from file \"%s\"", projectname.c_str());
-  else
-    CCTK_VINFO("Reading variables from file \"%s\"", projectname.c_str());
+  return recover_iteration >= 0;
+}
 
-  if (do_recover && !read_parameters) {
-    // Set global Cactus variables
-    // CCTK_SetMainLoopIndex(main_loop_index);
-#warning "TODO"
-    // cctkGH->cctk_iteration = iteration;
-    cctkGH->cctk_iteration = 0;
-  }
+////////////////////////////////////////////////////////////////////////////////
 
-  // Determine which variables to read
-  const auto ioUtilGH =
-      static_cast<const ioGH *>(CCTK_GHExtension(cctkGH, "IO"));
+void RecoverGridStructure(cGH *restrict cctkGH) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+#ifdef HAVE_CAPABILITY_Silo
+  // TODO: Stop at paramcheck time when Silo input parameters are
+  // set, but Silo is not available
+  InputSiloGridStructure(cctkGH, recover_dir, recover_file, recover_iteration);
+#else
+  CCTK_ERROR("No grid structure recovery method available");
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void RecoverGH(const cGH *restrict cctkGH) {
+  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_PARAMETERS;
+
+  static Timer timer("RecoverGH");
+  Interval interval(timer);
+
+  const bool is_root = CCTK_MyProc(nullptr) == 0;
+  if (is_root)
+    CCTK_VINFO("RecoverGH: iteration %d, time %f", cctk_iteration,
+               double(cctk_time));
+
+  // Find input groups
   const vector<bool> group_enabled = [&] {
     vector<bool> enabled(CCTK_NumGroups(), false);
-    if (do_recover) {
-      const int numgroups = CCTK_NumGroups();
-      for (int gi = 0; gi < numgroups; ++gi) {
-        const GHExt::GlobalData &globaldata = ghext->globaldata;
-        if (globaldata.arraygroupdata.at(gi)) {
-          // grid array
-          enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
-        } else {
-          // grid function
-          const int level = 0;
-          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-          assert(leveldata.groupdata.at(gi));
-          enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
-        }
-      }
-    } else { // if !do_recover
-      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-        const int v0 = CCTK_FirstVarIndexI(gi);
-        assert(v0 >= 0);
-        const int nv = CCTK_NumVarsInGroupI(gi);
-        assert(nv >= 0);
-        for (int vi = 0; vi < nv; ++vi)
-          if (!ioUtilGH->do_inVars || ioUtilGH->do_inVars[v0 + vi])
-            enabled.at(gi) = true;
+    for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+      const GHExt::GlobalData &globaldata = ghext->globaldata;
+      if (globaldata.arraygroupdata.at(gi)) {
+        // grid array
+        enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+      } else {
+        // grid function
+        const int level = 0;
+        const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+        assert(leveldata.groupdata.at(gi));
+        enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
       }
     }
     return enabled;
   }();
 
-#warning "CONTINUE HERE"
-#if 0
-  io_dir_t io_dir = do_recover ? io_dir_t::recover : io_dir_t::input;
-  bool did_read_parameters = false;
-  bool did_read_grid_structure = false;
-  if (not input_file_hdf5_ptrs.count(projectname)) {
-    static HighResTimer::HighResTimer timer1("SimulationIO::read_file_hdf5");
-    auto timer1_clock = timer1.start();
-    input_file_hdf5_ptrs[projectname] = make_unique<input_file_t>(
-        io_dir, projectname, file_format::hdf5, iteration, -1, -1);
-    timer1_clock.stop(0);
-  }
-  const auto &input_file_ptr = input_file_hdf5_ptrs.at(projectname);
-  if (read_parameters) {
-    static HighResTimer::HighResTimer timer1(
-        "SimulationIO::read_parameters_hdf5");
-    auto timer1_clock = timer1.start();
-    input_file_ptr->read_params();
-    did_read_parameters = true;
-    timer1_clock.stop(0);
-  } else {
-    if (not did_read_grid_structure) {
-      static HighResTimer::HighResTimer timer1(
-          "SimulationIO::read_grid_structure_hdf5");
-      auto timer1_clock = timer1.start();
-      input_file_ptr->read_grid_structure(cctkGH);
-      did_read_grid_structure = true;
-      timer1_clock.stop(0);
-    }
-    static HighResTimer::HighResTimer timer1(
-        "SimulationIO::read_variables_hdf5");
-    auto timer1_clock = timer1.start();
-    input_file_ptr->read_vars(input_vars, -1, -1);
-    timer1_clock.stop(0);
-  }
-
-  if (read_parameters)
-    return did_read_parameters ? 1 : 0;
-
-  assert(did_read_grid_structure);
+#ifdef HAVE_CAPABILITY_Silo
+  // TODO: Stop at paramcheck time when Silo input parameters are
+  // set, but Silo is not available
+  InputSilo(cctkGH, group_enabled, recover_dir, recover_file);
+#else
+  CCTK_ERROR("No grid hierarchy recovery method available");
 #endif
-  return 0; // no error
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-// Recovering
-
-extern "C" int CarpetX_RecoverParameters() {
-  DECLARE_CCTK_PARAMETERS;
-  const char *const out_extension = ".silo";
-  const int iret = IOUtil_RecoverParameters(Input, out_extension, "CarpetX");
-  return iret;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-int InputGH(const cGH *restrict cctkGH) {
+void InputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
   static Timer timer("InputGH");
   Interval interval(timer);
 
+  if (filereader_ID_files[0] == '\0')
+    return;
+
+  // Find input groups
+  const vector<bool> input_group = [&]() {
+    vector<bool> enabled(CCTK_NumGroups(), false);
+    const auto callback{
+        [](const int index, const char *const optstring, void *const arg) {
+          vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
+          enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
+        }};
+    CCTK_TraverseString(filereader_ID_vars, callback, &enabled,
+                        CCTK_GROUP_OR_VAR);
+    return enabled;
+  }();
+
+  const auto num_in_groups =
+      count(input_group.begin(), input_group.end(), true);
+  if (num_in_groups == 0)
+    return;
+
   const bool is_root = CCTK_MyProc(nullptr) == 0;
-  if (is_root)
+  if (is_root) {
     CCTK_VINFO("InputGH: iteration %d, time %f", cctk_iteration,
                double(cctk_time));
+    CCTK_VINFO("Input for groups:");
+    for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+      if (input_group.at(gi))
+        CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+  }
 
 #ifdef HAVE_CAPABILITY_Silo
   // TODO: Stop at paramcheck time when Silo input parameters are
   // set, but Silo is not available
-  InputSilo(cctkGH);
+  // TODO: handle multiple file names in `filereader_ID_files`
+  InputSilo(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
+#else
+  CCTK_ERROR("No file reader method available");
 #endif
-
-  // TODO: This should be the number of variables input
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +531,54 @@ int OutputGH(const cGH *restrict cctkGH) {
 #ifdef HAVE_CAPABILITY_Silo
     // TODO: Stop at paramcheck time when Silo output parameters are
     // set, but Silo is not available
-    OutputSilo(cctkGH, output_type_t::scheduled);
+
+    // Find output groups
+    const vector<bool> group_enabled = [&] {
+      vector<bool> enabled(CCTK_NumGroups(), false);
+      const auto callback{
+          [](const int index, const char *const optstring, void *const arg) {
+            vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
+            enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
+          }};
+      CCTK_TraverseString(out_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+      if (verbose) {
+        CCTK_VINFO("Silo output for groups:");
+        for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+          if (enabled.at(gi))
+            CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+      }
+      return enabled;
+    }();
+
+    // Obtain the parameter file name
+    const string parfilename = [&] {
+      vector<char> buf(10000);
+      int ilen = CCTK_ParameterFilename(buf.size(), buf.data());
+      assert(ilen < int(buf.size() - 1));
+      string parfilename(buf.data());
+      // Remove directory prefix, if any
+      auto slash = parfilename.rfind('/');
+      if (slash != string::npos)
+        parfilename = parfilename.substr(slash + 1);
+      // Remove suffix, if it is there
+      auto suffix = parfilename.rfind('.');
+      if (suffix != string::npos && parfilename.substr(suffix) == ".par")
+        parfilename = parfilename.substr(0, suffix);
+      return parfilename;
+    }();
+
+    const string simulation_name = [&]() {
+      string name = parfilename;
+      const size_t last_slash = name.rfind('/');
+      if (last_slash != string::npos && last_slash < name.length())
+        name = name.substr(last_slash + 1);
+      const size_t last_dot = name.rfind('.');
+      if (last_dot != string::npos && last_dot > 0)
+        name = name.substr(0, last_dot);
+      return name;
+    }();
+
+    OutputSilo(cctkGH, group_enabled, out_dir, simulation_name);
 #endif
 
     OutputTSVold(cctkGH);
@@ -578,6 +593,8 @@ int OutputGH(const cGH *restrict cctkGH) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Checkpoint(const cGH *const restrict cctkGH) {
+  DECLARE_CCTK_PARAMETERS;
+
   static int last_checkpoint_iteration = -1;
 
   if (cctkGH->cctk_iteration <= last_checkpoint_iteration) {
@@ -594,7 +611,26 @@ void Checkpoint(const cGH *const restrict cctkGH) {
 #ifdef HAVE_CAPABILITY_Silo
   // TODO: Stop at paramcheck time when Silo output parameters are
   // set, but Silo is not available
-  OutputSilo(cctkGH, output_type_t::checkpoint);
+
+  const vector<bool> checkpoint_group = [&] {
+    vector<bool> enabled(CCTK_NumGroups(), false);
+    for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+      const GHExt::GlobalData &globaldata = ghext->globaldata;
+      if (globaldata.arraygroupdata.at(gi)) {
+        // grid array
+        enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+      } else {
+        // grid function
+        const int level = 0;
+        const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+        assert(leveldata.groupdata.at(gi));
+        enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
+      }
+    }
+    return enabled;
+  }();
+
+  OutputSilo(cctkGH, checkpoint_group, checkpoint_dir, checkpoint_file);
 #else
   CCTK_ERROR("No checkpointing method available");
 #endif

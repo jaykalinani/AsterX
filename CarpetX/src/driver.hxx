@@ -165,8 +165,6 @@ struct GHExt {
     // Fabamrex::ArrayBase object holding a cell-centred BoxArray for
     // iterating over grid functions. This stores the grid structure
     // and its distribution over all processes, but holds no data.
-    // TODO: This fab is cell centred. Can we store a vertex centred
-    // fab instead?
     unique_ptr<amrex::FabArrayBase> fab;
 
     struct GroupData : public CommonGroupData {
@@ -218,6 +216,10 @@ typedef void apply_physbcs_t(const amrex::Box &, const amrex::FArrayBox &, int,
 typedef amrex::PhysBCFunct<apply_physbcs_t *> CarpetXPhysBCFunct;
 tuple<CarpetXPhysBCFunct, amrex::Vector<amrex::BCRec> >
 get_boundaries(const GHExt::LevelData::GroupData &groupdata);
+
+void SetupLevel(int level, const amrex::BoxArray &ba,
+                const amrex::DistributionMapping &dm,
+                const function<string()> &why);
 
 } // namespace CarpetX
 

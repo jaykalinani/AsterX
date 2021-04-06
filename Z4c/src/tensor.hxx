@@ -2,6 +2,7 @@
 #define TENSOR_HXX
 
 #include <loop_device.hxx>
+#include <simd.hxx>
 
 #include <cctk.h>
 
@@ -22,6 +23,7 @@
 #define Z4C_GPU CCTK_DEVICE CCTK_HOST
 
 namespace Z4c {
+using namespace Arith;
 using namespace Loop;
 using namespace std;
 
@@ -204,32 +206,71 @@ public:
   template <typename F, typename = result_of_t<F(int)> >
   constexpr Z4C_INLINE Z4C_GPU vec3(const F &f) : elts{f(0), f(1), f(2)} {}
 
+#if 0
   Z4C_INLINE Z4C_GPU void store(const GF3D2<T> &gf_vx_, const GF3D2<T> &gf_vy_,
                                 const GF3D2<T> &gf_vz_,
                                 const vect<int, 3> &I) const {
     const auto &v = *this;
-    gf_vx_(I) = v(0);
-    gf_vy_(I) = v(1);
-    gf_vz_(I) = v(2);
+    gf_vx_.store(I, v(0));
+    gf_vy_.store(I, v(1));
+    gf_vz_.store(I, v(2));
+  }
+  template <typename U>
+  void store(const vect<int, 3> &I, const vec3<U, dnup> &value) const {
+    for (int a = 0; a < 3; ++a)
+      (*this)(a).store(I, value(a));
+  }
+#endif
+  template <typename S, typename U>
+  void store(const simdl<S> &mask, const vect<int, 3> &I,
+             const vec3<U, dnup> &value) const {
+    for (int a = 0; a < 3; ++a)
+      (*this)(a).store(mask, I, value(a));
+  }
+  template <typename S, typename U>
+  void store(const simdl<S> &mask, const GF3D5layout &layout,
+             const vect<int, 3> &I, const vec3<U, dnup> &value) const {
+    for (int a = 0; a < 3; ++a)
+      (*this)(a).store(mask, layout, I, value(a));
   }
 
   Z4C_INLINE Z4C_GPU const T &operator()(int i) const { return elts[ind(i)]; }
   Z4C_INLINE Z4C_GPU T &operator()(int i) { return elts[ind(i)]; }
 
-  template <typename U = T>
+#if 0
+  template <typename T1 = T>
   Z4C_INLINE Z4C_GPU vec3<
-      remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 3>)> > >, dnup>
+      remove_cv_t<remove_reference_t<result_of_t<T1(vect<int, 3>)> > >, dnup>
   operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I)};
   }
-  // TODO: Only if T is GF3D5<U>
-  template <typename U = T>
+#endif
+  template <typename S, typename T1 = T>
   Z4C_INLINE Z4C_GPU
       vec3<remove_cv_t<
-               remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+               remove_reference_t<result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
            dnup>
-      operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+      operator()(const simdl<S> &mask, const vect<int, 3> &I) const {
+    return {elts[0](mask, I), elts[1](mask, I), elts[2](mask, I)};
+  }
+#if 0
+  template <typename T1 = T>
+  Z4C_INLINE Z4C_GPU vec3<remove_cv_t<remove_reference_t<
+                              result_of_t<T1(GF3D5layout, vect<int, 3>)> > >,
+                          dnup>
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
     return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I)};
+  }
+#endif
+  template <typename S, typename T1 = T>
+  Z4C_INLINE
+      Z4C_GPU vec3<remove_cv_t<remove_reference_t<
+                       result_of_t<T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
+                   dnup>
+      operator()(const simdl<S> &mask, const GF3D5layout &layout,
+                 const vect<int, 3> &I) const {
+    return {elts[0](mask, layout, I), elts[1](mask, layout, I),
+            elts[2](mask, layout, I)};
   }
 
   friend constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup>
@@ -343,6 +384,7 @@ public:
   // constexpr Z4C_INLINE Z4C_GPU mat3(const vector<T> &A) : elts(A) {}
   // constexpr Z4C_INLINE Z4C_GPU mat3(vector<T> &&A) : elts(move(A)) {}
 
+#if 0
   Z4C_INLINE Z4C_GPU mat3(const GF3D2<add_const_t<T> > &gf_Axx_,
                           const GF3D2<add_const_t<T> > &gf_Axy_,
                           const GF3D2<add_const_t<T> > &gf_Axz_,
@@ -361,23 +403,46 @@ public:
                           const vect<int, 3> &I)
       : mat3{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
              gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
+#endif
 
   template <typename F, typename = result_of_t<F(int, int)> >
   constexpr Z4C_INLINE Z4C_GPU mat3(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(1, 1), f(1, 2), f(2, 2)} {}
 
+#if 0
   Z4C_INLINE Z4C_GPU void
   store(const GF3D2<T> &gf_Axx_, const GF3D2<T> &gf_Axy_,
         const GF3D2<T> &gf_Axz_, const GF3D2<T> &gf_Ayy_,
         const GF3D2<T> &gf_Ayz_, const GF3D2<T> &gf_Azz_,
         const vect<int, 3> &I) const {
     const auto &A = *this;
-    gf_Axx_(I) = A(0, 0);
-    gf_Axy_(I) = A(0, 1);
-    gf_Axz_(I) = A(0, 2);
-    gf_Ayy_(I) = A(1, 1);
-    gf_Ayz_(I) = A(1, 2);
-    gf_Azz_(I) = A(2, 2);
+    gf_Axx_.store(I, A(0, 0));
+    gf_Axy_.store(I, A(0, 1));
+    gf_Axz_.store(I, A(0, 2));
+    gf_Ayy_.store(I, A(1, 1));
+    gf_Ayz_.store(I, A(1, 2));
+    gf_Azz_.store(I, A(2, 2));
+  }
+  template <typename U>
+  void store(const vect<int, 3> &I, const mat3<U, dnup1, dnup2> &value) const {
+    for (int a = 0; a < 3; ++a)
+      for (int b = a; b < 3; ++b)
+        (*this)(a, b).store(I, value(a, b));
+  }
+#endif
+  template <typename S, typename U>
+  void store(const simdl<S> &mask, const vect<int, 3> &I,
+             const mat3<U, dnup1, dnup2> &value) const {
+    for (int a = 0; a < 3; ++a)
+      for (int b = a; b < 3; ++b)
+        (*this)(a, b).store(mask, I, value(a, b));
+  }
+  template <typename S, typename U>
+  void store(const simdl<S> &mask, const GF3D5layout &layout,
+             const vect<int, 3> &I, const mat3<U, dnup1, dnup2> &value) const {
+    for (int a = 0; a < 3; ++a)
+      for (int b = a; b < 3; ++b)
+        (*this)(a, b).store(mask, layout, I, value(a, b));
   }
 
   Z4C_INLINE Z4C_GPU const T &operator()(int i, int j) const {
@@ -387,23 +452,66 @@ public:
   // elts[symind(i, j)]; }
   Z4C_INLINE Z4C_GPU T &operator()(int i, int j) { return elts[ind(i, j)]; }
 
-  template <typename U = T>
+#if 0
+  template <typename T1 = T>
   Z4C_INLINE Z4C_GPU
-      mat3<remove_cv_t<remove_reference_t<result_of_t<U(vect<int, 3>)> > >,
+      mat3<remove_cv_t<remove_reference_t<result_of_t<T1(vect<int, 3>)> > >,
            dnup1, dnup2>
       operator()(const vect<int, 3> &I) const {
     return {elts[0](I), elts[1](I), elts[2](I),
             elts[3](I), elts[4](I), elts[5](I)};
   }
-  // TODO: Only if T is GF3D5<U>
-  template <typename U = T>
+#endif
+  template <typename S, typename T1 = T>
   Z4C_INLINE Z4C_GPU
       mat3<remove_cv_t<
-               remove_reference_t<result_of_t<U(GF3D5layout, vect<int, 3>)> > >,
+               remove_reference_t<result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
            dnup1, dnup2>
-      operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
+      operator()(const simdl<S> &mask, const vect<int, 3> &I) const {
+    return {elts[0](mask, I), elts[1](mask, I), elts[2](mask, I),
+            elts[3](mask, I), elts[4](mask, I), elts[5](mask, I)};
+  }
+  template <typename S, typename U, typename T1 = T>
+  Z4C_INLINE Z4C_GPU
+      mat3<remove_cv_t<
+               remove_reference_t<result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
+           dnup1, dnup2>
+      operator()(const simdl<S> &mask, const vect<int, 3> &I,
+                 const U &other) const {
+    return {elts[0](mask, I, other), elts[1](mask, I), elts[2](mask, I),
+            elts[3](mask, I, other), elts[4](mask, I), elts[5](mask, I, other)};
+  }
+#if 0
+  template <typename T1 = T>
+  Z4C_INLINE Z4C_GPU mat3<remove_cv_t<remove_reference_t<
+                              result_of_t<T1(GF3D5layout, vect<int, 3>)> > >,
+                          dnup1, dnup2>
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
     return {elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
             elts[3](layout, I), elts[4](layout, I), elts[5](layout, I)};
+  }
+#endif
+  template <typename S, typename T1 = T>
+  Z4C_INLINE
+      Z4C_GPU mat3<remove_cv_t<remove_reference_t<
+                       result_of_t<T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
+                   dnup1, dnup2>
+      operator()(const simdl<S> &mask, const GF3D5layout &layout,
+                 const vect<int, 3> &I) const {
+    return {elts[0](mask, layout, I), elts[1](mask, layout, I),
+            elts[2](mask, layout, I), elts[3](mask, layout, I),
+            elts[4](mask, layout, I), elts[5](mask, layout, I)};
+  }
+  template <typename S, typename U, typename T1 = T>
+  Z4C_INLINE
+      Z4C_GPU mat3<remove_cv_t<remove_reference_t<
+                       result_of_t<T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
+                   dnup1, dnup2>
+      operator()(const simdl<S> &mask, const GF3D5layout &layout,
+                 const vect<int, 3> &I, const U &other) const {
+    return {elts[0](mask, layout, I, other), elts[1](mask, layout, I),
+            elts[2](mask, layout, I),        elts[3](mask, layout, I, other),
+            elts[4](mask, layout, I),        elts[5](mask, layout, I, other)};
   }
 
   friend constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
@@ -462,15 +570,15 @@ public:
   constexpr Z4C_INLINE Z4C_GPU T
   trace(const mat3<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
-    return sum2sym([&](int x, int y) Z4C_INLINE { return gu(x, y) * A(x, y); });
+    return sum2sym([&] Z4C_INLINE(int x, int y) { return gu(x, y) * A(x, y); });
   }
 
   constexpr Z4C_INLINE Z4C_GPU mat3 trace_free(
       const mat3<T, dnup1, dnup2> &g, const mat3<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
     const T trA = A.trace(gu);
-    return mat3([&](int a, int b)
-                    Z4C_INLINE { return A(a, b) - trA / 3 * g(a, b); });
+    return mat3(
+        [&] Z4C_INLINE(int a, int b) { return A(a, b) - trA / 3 * g(a, b); });
   }
 
   friend ostream &operator<<(ostream &os, const mat3<T, dnup1, dnup2> &A) {
@@ -499,8 +607,8 @@ template <typename T, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3>
 constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
 mul(const mat3<T, dnup1, dnup3> &A, const mat3<T, !dnup3, dnup2> &B) {
   // C[a,b] = A[a,c] B[c,b]
-  return mat3<T, dnup1, dnup2>([&](int a, int b) Z4C_INLINE {
-    return sum1([&](int x) Z4C_INLINE { return A(a, x) * B(x, b); });
+  return mat3<T, dnup1, dnup2>([&] Z4C_INLINE(int a, int b) {
+    return sum1([&] Z4C_INLINE(int x) { return A(a, x) * B(x, b); });
   });
 }
 } // namespace Z4c

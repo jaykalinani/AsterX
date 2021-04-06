@@ -1,1 +1,3 @@
 # Configuration definitions for thorn MaxwellToyCarpetX
+
+REQUIRES CarpetX

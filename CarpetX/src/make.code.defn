@@ -15,7 +15,8 @@ SRCS =						\
 	prolongate_3d_rf2.cxx			\
 	reduction.cxx				\
 	schedule.cxx				\
-	timer.cxx
+	timer.cxx                               \
+	valid.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 

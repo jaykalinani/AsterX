@@ -38,13 +38,13 @@ public:
                   const array<int, dim> &restrict imax,
                   const array<int, dim> &restrict inormal) const {
 #ifndef AMREX_USE_GPU
-    static_assert(VS == 1, "");
-    return this->template loop_box<CI, CJ, CK>(f, imin, imax, inormal);
+    return this->template loop_box<CI, CJ, CK, VS>(f, imin, imax, inormal);
 #else
 
     static_assert(CI == 0 || CI == 1, "");
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");
+    static_assert(VS > 0, "");
     // TODO static_assert(VS is power of 2);
 
     for (int d = 0; d < dim; ++d)
