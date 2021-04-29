@@ -1061,7 +1061,115 @@ struct GF3D3ptr : GF3D3layout<NI, NJ, NK, OFF> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef GF3D2layout GF3D5layout;
+struct GF3D5layout {
+#ifdef CCTK_DEBUG
+  vect<int, dim> imin, imax;
+  vect<int, dim> ash;
+#endif
+  static constexpr int di = 1;
+  int dj, dk, np;
+  int off;
+  GF3D5layout() = delete;
+  GF3D5layout(const GF3D5layout &) = default;
+  GF3D5layout(GF3D5layout &&) = default;
+  GF3D5layout &operator=(const GF3D5layout &) = default;
+  GF3D5layout &operator=(GF3D5layout &&) = default;
+  CCTK_DEVICE CCTK_HOST GF3D5layout(const vect<int, dim> &imin,
+                                    const vect<int, dim> &imax,
+                                    const vect<int, dim> &ash)
+      :
+#ifdef CCTK_DEBUG
+        imin(imin), imax(imax), ash(ash),
+#endif
+        dj(di * ash[0]), dk(dj * ash[1]), np(dk * ash[2]),
+        off(imin[0] * di + imin[1] * dj + imin[2] * dk) {
+  }
+  CCTK_DEVICE CCTK_HOST GF3D5layout(const vect<int, dim> &imin,
+                                    const vect<int, dim> &imax)
+      : GF3D5layout(imin, imax, imax - imin) {
+#ifdef CCTK_DEBUG
+    assert(linear(imin[0], imin[1], imin[2]) == 0);
+    assert(linear(imax[0] - 1, imax[1] - 1, imax[2] - 1) == np - 1);
+#endif
+  }
+  CCTK_DEVICE CCTK_HOST GF3D5layout(const cGH *restrict cctkGH,
+                                    const vect<int, dim> &indextype,
+                                    const vect<int, dim> &nghostzones) {
+    for (int d = 0; d < dim; ++d)
+      assert(indextype[d] == 0 || indextype[d] == 1);
+    for (int d = 0; d < dim; ++d) {
+      assert(nghostzones[d] >= 0);
+      assert(nghostzones[d] <= cctkGH->cctk_nghostzones[d]);
+    }
+    vect<int, dim> imin, imax;
+    for (int d = 0; d < dim; ++d) {
+      imin[d] = cctkGH->cctk_nghostzones[d] - nghostzones[d];
+      imax[d] = cctkGH->cctk_lsh[d] - indextype[d] -
+                (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    }
+    vect<int, dim> ash;
+    for (int d = 0; d < dim; ++d)
+      ash[d] = cctkGH->cctk_ash[d] - indextype[d] -
+               2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
+    *this = GF3D5layout(imin, imax, ash);
+  }
+  CCTK_DEVICE CCTK_HOST GF3D5layout(const cGH *restrict cctkGH,
+                                    const vect<int, dim> &indextype)
+      : GF3D5layout(cctkGH, indextype,
+                    {cctkGH->cctk_nghostzones[0], cctkGH->cctk_nghostzones[1],
+                     cctkGH->cctk_nghostzones[2]}) {}
+  CCTK_DEVICE CCTK_HOST bool operator==(const GF3D5layout &other) const {
+    bool iseq = true;
+#ifdef CCTK_DEBUG
+    iseq &= equal_to<vect<int, dim> >()(imin, other.imin) &&
+            equal_to<vect<int, dim> >()(imax, other.imax);
+    iseq &= equal_to<vect<int, dim> >()(ash, other.ash);
+#endif
+    iseq &= dj == other.dj && dk == other.dk && np == other.np;
+    iseq &= off == other.off;
+    return iseq;
+  }
+  CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
+    // These index checks prevent vectorization. We thus only enable
+    // them in debug mode.
+#ifdef CCTK_DEBUG
+    assert(i >= imin[0] && i < imax[0]);
+    assert(j >= imin[1] && j < imax[1]);
+    assert(k >= imin[2] && k < imax[2]);
+#endif
+    return i * di + j * dj + k * dk - off;
+  }
+  CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
+    return linear(I[0], I[1], I[2]);
+  }
+  CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
+    return i * di + j * dj + k * dk;
+  }
+  CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
+    return delta(I[0], I[1], I[2]);
+  }
+};
+
+struct GF3D5index {
+#ifdef CCTK_DEBUG
+  GF3D5layout layout;
+#endif
+  int m_linear;
+  GF3D5index() = delete;
+  GF3D5index(const GF3D5index &) = default;
+  GF3D5index(GF3D5index &&) = default;
+  GF3D5index &operator=(const GF3D5index &) = default;
+  GF3D5index &operator=(GF3D5index &&) = default;
+  CCTK_DEVICE CCTK_HOST GF3D5index(const GF3D5layout &layout,
+                                   const vect<int, dim> &I)
+      :
+#ifdef CCTK_DEBUG
+        layout(layout),
+#endif
+        m_linear(layout.linear(I)) {
+  }
+  CCTK_DEVICE CCTK_HOST int linear() const { return m_linear; }
+};
 
 template <typename T> struct GF3D5 {
   typedef T value_type;
@@ -1074,7 +1182,7 @@ template <typename T> struct GF3D5 {
   GF3D5(GF3D5 &&) = default;
   GF3D5 &operator=(const GF3D5 &) = default;
   GF3D5 &operator=(GF3D5 &&) = default;
-  GF3D5(const GF3D2layout &layout, T *restrict ptr)
+  CCTK_DEVICE CCTK_HOST GF3D5(const GF3D5layout &layout, T *restrict ptr)
       :
 #ifdef CCTK_DEBUG
         layout(layout),
@@ -1084,22 +1192,31 @@ template <typename T> struct GF3D5 {
     assert(&(*this)(layout, layout.imin) == ptr);
 #endif
   }
-  GF3D5(const GF3D2layout &layout, mempool_t &mempool)
+  CCTK_HOST GF3D5(const GF3D5layout &layout, mempool_t &mempool)
       : GF3D5(layout, mempool.alloc<T>(layout.np)) {}
-  constexpr T &restrict operator()(const GF3D5layout &layout, int i, int j,
-                                   int k) const {
+  CCTK_DEVICE CCTK_HOST constexpr T &restrict
+  operator()(const GF3D5index &index) const {
 #ifdef CCTK_DEBUG
-    assert(layout == this->layout);
+    assert(index.layout == this->layout);
 #endif
-    return ptr[layout.linear(i, j, k)];
+    return ptr[index.linear()];
   }
-  constexpr T &restrict operator()(const GF3D5layout &layout,
-                                   const vect<int, dim> &I) const {
-    return (*this)(layout, I[0], I[1], I[2]);
+  CCTK_DEVICE CCTK_HOST constexpr T &restrict
+  operator()(const GF3D5layout &layout, const vect<int, dim> &I) const {
+    return (*this)(GF3D5index(layout, I));
   }
-  void store(const GF3D5layout &layout, const vect<int, dim> &I,
-             const T &value) const {
-    (*this)(layout, I) = value;
+  CCTK_DEVICE CCTK_HOST constexpr T &restrict
+  operator()(const GF3D5layout &layout, int i, int j, int k) const {
+    return (*this)(GF3D5index(layout, vect<int, dim>{i, j, k}));
+  }
+  CCTK_DEVICE CCTK_HOST void store(const GF3D5index &index,
+                                   const T &value) const {
+    operator()(index) = value;
+  }
+  CCTK_DEVICE CCTK_HOST void store(const GF3D5layout &layout,
+                                   const vect<int, dim> &I,
+                                   const T &value) const {
+    operator()(layout, I) = value;
   }
   Arith::simd<remove_cv_t<T> >
   operator()(const Arith::simdl<remove_cv_t<T> > &mask,
