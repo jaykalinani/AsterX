@@ -1,6 +1,12 @@
 #ifndef SIMD_HXX
 #define SIMD_HXX
 
+#ifdef __CUDACC__
+#define CCTK_CUDA __device__ __host__
+#else
+#define CCTK_CUDA
+#endif
+
 #include <fixmath.hxx>
 #include <vect.hxx>
 
@@ -22,178 +28,325 @@ template <typename T> struct simdl;
 namespace detail {
 template <typename T> struct f2i;
 template <typename T> using f2i_t = typename f2i<T>::type;
-template <> struct f2i<f64> { typedef i64 type; };
 template <> struct f2i<f32> { typedef i32 type; };
+template <> struct f2i<f64> { typedef i64 type; };
 
 template <typename T> struct f2u;
 template <typename T> using f2u_t = typename f2u<T>::type;
-template <> struct f2u<f64> { typedef u64 type; };
 template <> struct f2u<f32> { typedef u32 type; };
+template <> struct f2u<f64> { typedef u64 type; };
 } // namespace detail
 
 template <typename T> struct simd {
   typedef T value_type;
+#ifndef SIMD_CPU
   nsimd::pack<T> elts;
+#else
+  T elts;
+#endif
 
   simd(const simd &) = default;
   simd(simd &&) = default;
   simd &operator=(const simd &) = default;
   simd &operator=(simd &&) = default;
 
-  simd() {}
-  simd(const T &a) : elts(a) {}
-  simd(const nsimd::pack<T> &elts) : elts(elts) {}
+  CCTK_CUDA simd() {}
+  CCTK_CUDA simd(const T &a) : elts(a) {}
+#ifndef SIMD_CPU
+  CCTK_CUDA simd(const nsimd::pack<T> &elts) : elts(elts) {}
+#endif
 
-  constexpr std::size_t size() const {
+  CCTK_CUDA constexpr std::size_t size() const {
+#ifndef SIMD_CPU
     return sizeof(nsimd::pack<T>) / sizeof(T);
+#else
+    return 1;
+#endif
   }
 
-  simdl<T> operator!() const { return !elts; }
-  simd operator~() const { return ~elts; }
+  CCTK_CUDA simdl<T> operator!() const { return !elts; }
+  CCTK_CUDA simd operator~() const { return ~elts; }
 
-  simd operator+() const { return +elts; }
-  simd operator-() const { return -elts; }
+  CCTK_CUDA simd operator+() const { return +elts; }
+  CCTK_CUDA simd operator-() const { return -elts; }
 
-  friend simd operator&(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator&(const simd &x, const simd &y) {
     return x.elts & y.elts;
   }
-  friend simd operator|(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator|(const simd &x, const simd &y) {
     return x.elts | y.elts;
   }
-  friend simd operator^(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator^(const simd &x, const simd &y) {
     return x.elts ^ y.elts;
   }
-  friend simd operator+(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator+(const simd &x, const simd &y) {
     return x.elts + y.elts;
   }
-  friend simd operator-(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator-(const simd &x, const simd &y) {
     return x.elts - y.elts;
   }
-  friend simd operator*(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator*(const simd &x, const simd &y) {
     return x.elts * y.elts;
   }
-  friend simd operator/(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator/(const simd &x, const simd &y) {
     return x.elts / y.elts;
   }
-  friend simd operator%(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd operator%(const simd &x, const simd &y) {
     return x.elts % y.elts;
   }
 
-  friend simd operator&(const T &a, const simd &y) { return a & y.elts; }
-  friend simd operator|(const T &a, const simd &y) { return a | y.elts; }
-  friend simd operator^(const T &a, const simd &y) { return a ^ y.elts; }
-  friend simd operator+(const T &a, const simd &y) { return a + y.elts; }
-  friend simd operator-(const T &a, const simd &y) { return a - y.elts; }
-  friend simd operator*(const T &a, const simd &y) { return a * y.elts; }
-  friend simd operator/(const T &a, const simd &y) { return a / y.elts; }
-  friend simd operator%(const T &a, const simd &y) { return a % y.elts; }
+  friend CCTK_CUDA simd operator&(const T &a, const simd &y) {
+    return a & y.elts;
+  }
+  friend CCTK_CUDA simd operator|(const T &a, const simd &y) {
+    return a | y.elts;
+  }
+  friend CCTK_CUDA simd operator^(const T &a, const simd &y) {
+    return a ^ y.elts;
+  }
+  friend CCTK_CUDA simd operator+(const T &a, const simd &y) {
+    return a + y.elts;
+  }
+  friend CCTK_CUDA simd operator-(const T &a, const simd &y) {
+    return a - y.elts;
+  }
+  friend CCTK_CUDA simd operator*(const T &a, const simd &y) {
+    return a * y.elts;
+  }
+  friend CCTK_CUDA simd operator/(const T &a, const simd &y) {
+    return a / y.elts;
+  }
+  friend CCTK_CUDA simd operator%(const T &a, const simd &y) {
+    return a % y.elts;
+  }
 
-  friend simd operator&(const simd &x, const T &b) { return x.elts & b; }
-  friend simd operator|(const simd &x, const T &b) { return x.elts | b; }
-  friend simd operator^(const simd &x, const T &b) { return x.elts ^ b; }
-  friend simd operator+(const simd &x, const T &b) { return x.elts + b; }
-  friend simd operator-(const simd &x, const T &b) { return x.elts - b; }
-  friend simd operator*(const simd &x, const T &b) { return x.elts * b; }
-  friend simd operator/(const simd &x, const T &b) { return x.elts / b; }
-  friend simd operator%(const simd &x, const T &b) { return x.elts % b; }
+  friend CCTK_CUDA simd operator&(const simd &x, const T &b) {
+    return x.elts & b;
+  }
+  friend CCTK_CUDA simd operator|(const simd &x, const T &b) {
+    return x.elts | b;
+  }
+  friend CCTK_CUDA simd operator^(const simd &x, const T &b) {
+    return x.elts ^ b;
+  }
+  friend CCTK_CUDA simd operator+(const simd &x, const T &b) {
+    return x.elts + b;
+  }
+  friend CCTK_CUDA simd operator-(const simd &x, const T &b) {
+    return x.elts - b;
+  }
+  friend CCTK_CUDA simd operator*(const simd &x, const T &b) {
+    return x.elts * b;
+  }
+  friend CCTK_CUDA simd operator/(const simd &x, const T &b) {
+    return x.elts / b;
+  }
+  friend CCTK_CUDA simd operator%(const simd &x, const T &b) {
+    return x.elts % b;
+  }
 
-  simd &operator&=(const simd &x) { return *this = *this & x; }
-  simd &operator|=(const simd &x) { return *this = *this | x; }
-  simd &operator^=(const simd &x) { return *this = *this ^ x; }
-  simd &operator+=(const simd &x) { return *this = *this + x; }
-  simd &operator-=(const simd &x) { return *this = *this - x; }
-  simd &operator*=(const simd &x) { return *this = *this * x; }
-  simd &operator/=(const simd &x) { return *this = *this / x; }
-  simd &operator%=(const simd &x) { return *this = *this % x; }
+  CCTK_CUDA simd &operator&=(const simd &x) { return *this = *this & x; }
+  CCTK_CUDA simd &operator|=(const simd &x) { return *this = *this | x; }
+  CCTK_CUDA simd &operator^=(const simd &x) { return *this = *this ^ x; }
+  CCTK_CUDA simd &operator+=(const simd &x) { return *this = *this + x; }
+  CCTK_CUDA simd &operator-=(const simd &x) { return *this = *this - x; }
+  CCTK_CUDA simd &operator*=(const simd &x) { return *this = *this * x; }
+  CCTK_CUDA simd &operator/=(const simd &x) { return *this = *this / x; }
+  CCTK_CUDA simd &operator%=(const simd &x) { return *this = *this % x; }
 
-  simd &operator&=(const T &a) { return *this = *this & a; }
-  simd &operator|=(const T &a) { return *this = *this | a; }
-  simd &operator^=(const T &a) { return *this = *this ^ a; }
-  simd &operator+=(const T &a) { return *this = *this + a; }
-  simd &operator-=(const T &a) { return *this = *this - a; }
-  simd &operator*=(const T &a) { return *this = *this * a; }
-  simd &operator/=(const T &a) { return *this = *this / a; }
-  simd &operator%=(const T &a) { return *this = *this % a; }
+  CCTK_CUDA simd &operator&=(const T &a) { return *this = *this & a; }
+  CCTK_CUDA simd &operator|=(const T &a) { return *this = *this | a; }
+  CCTK_CUDA simd &operator^=(const T &a) { return *this = *this ^ a; }
+  CCTK_CUDA simd &operator+=(const T &a) { return *this = *this + a; }
+  CCTK_CUDA simd &operator-=(const T &a) { return *this = *this - a; }
+  CCTK_CUDA simd &operator*=(const T &a) { return *this = *this * a; }
+  CCTK_CUDA simd &operator/=(const T &a) { return *this = *this / a; }
+  CCTK_CUDA simd &operator%=(const T &a) { return *this = *this % a; }
 
-  friend simdl<T> operator==(const simd &x, const simd &y) {
+  friend CCTK_CUDA simdl<T> operator==(const simd &x, const simd &y) {
     return x.elts == y.elts;
   }
-  friend simdl<T> operator!=(const simd &x, const simd &y) {
+  friend CCTK_CUDA simdl<T> operator!=(const simd &x, const simd &y) {
     return x.elts != y.elts;
   }
-  friend simdl<T> operator<(const simd &x, const simd &y) {
+  friend CCTK_CUDA simdl<T> operator<(const simd &x, const simd &y) {
     return x.elts < y.elts;
   }
-  friend simdl<T> operator>(const simd &x, const simd &y) {
+  friend CCTK_CUDA simdl<T> operator>(const simd &x, const simd &y) {
     return x.elts > y.elts;
   }
-  friend simdl<T> operator<=(const simd &x, const simd &y) {
+  friend CCTK_CUDA simdl<T> operator<=(const simd &x, const simd &y) {
     return x.elts <= y.elts;
   }
-  friend simdl<T> operator>=(const simd &x, const simd &y) {
+  friend CCTK_CUDA simdl<T> operator>=(const simd &x, const simd &y) {
     return x.elts >= y.elts;
   }
 
-  friend simdl<T> operator==(const T &a, const simd &y) { return a == y.elts; }
-  friend simdl<T> operator!=(const T &a, const simd &y) { return a != y.elts; }
-  friend simdl<T> operator<(const T &a, const simd &y) { return a < y.elts; }
-  friend simdl<T> operator>(const T &a, const simd &y) { return a > y.elts; }
-  friend simdl<T> operator<=(const T &a, const simd &y) { return a <= y.elts; }
-  friend simdl<T> operator>=(const T &a, const simd &y) { return a >= y.elts; }
+  friend CCTK_CUDA simdl<T> operator==(const T &a, const simd &y) {
+    return a == y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator!=(const T &a, const simd &y) {
+    return a != y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator<(const T &a, const simd &y) {
+    return a < y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator>(const T &a, const simd &y) {
+    return a > y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator<=(const T &a, const simd &y) {
+    return a <= y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator>=(const T &a, const simd &y) {
+    return a >= y.elts;
+  }
 
-  friend simdl<T> operator==(const simd &x, const T &b) { return x.elts == b; }
-  friend simdl<T> operator!=(const simd &x, const T &b) { return x.elts != b; }
-  friend simdl<T> operator<(const simd &x, const T &b) { return x.elts < b; }
-  friend simdl<T> operator>(const simd &x, const T &b) { return x.elts > b; }
-  friend simdl<T> operator<=(const simd &x, const T &b) { return x.elts <= b; }
-  friend simdl<T> operator>=(const simd &x, const T &b) { return x.elts >= b; }
+  friend CCTK_CUDA simdl<T> operator==(const simd &x, const T &b) {
+    return x.elts == b;
+  }
+  friend CCTK_CUDA simdl<T> operator!=(const simd &x, const T &b) {
+    return x.elts != b;
+  }
+  friend CCTK_CUDA simdl<T> operator<(const simd &x, const T &b) {
+    return x.elts < b;
+  }
+  friend CCTK_CUDA simdl<T> operator>(const simd &x, const T &b) {
+    return x.elts > b;
+  }
+  friend CCTK_CUDA simdl<T> operator<=(const simd &x, const T &b) {
+    return x.elts <= b;
+  }
+  friend CCTK_CUDA simdl<T> operator>=(const simd &x, const T &b) {
+    return x.elts >= b;
+  }
 
-  friend simd abs(const simd &x) { return abs(x.elts); }
-  friend simd fabs(const simd &x) { return abs(x.elts); }
-  friend simdl<T> signbit(const simd &x) {
+  friend CCTK_CUDA simd abs(const simd &x) {
+    using std::abs;
+    return abs(x.elts);
+  }
+  friend CCTK_CUDA simd fabs(const simd &x) {
+    using std::abs;
+    return abs(x.elts);
+  }
+  friend CCTK_CUDA simdl<T> signbit(const simd &x) {
+#ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
-    constexpr U signmask = U(1) << (8 * sizeof(U) - 1);
+    constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return to_logical(x & signmask);
+#else
+    using std::signbit;
+    return signbit(x.elts);
+#endif
   }
-  friend simd sqrt(const simd &x) { return sqrt(x.elts); }
-  friend simdl<T> to_logical(const simd &x) { return to_logical(x.elts); }
+  friend CCTK_CUDA simd sqrt(const simd &x) {
+    using std::sqrt;
+    return sqrt(x.elts);
+  }
+  friend CCTK_CUDA simdl<T> to_logical(const simd &x) {
+    return to_logical(x.elts);
+  }
 
-  friend simd copysign(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd copysign(const simd &x, const simd &y) {
+#ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
-    constexpr U signmask = U(1) << (8 * sizeof(U) - 1);
+    constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return (x & ~signmask) | (y & signmask);
+#else
+    using std::copysign;
+    return copysign(x.elts, y.elts);
+#endif
   }
-  friend simd flipsign(const simd &x, const simd &y) {
+  friend CCTK_CUDA simd flipsign(const simd &x, const simd &y) {
+#ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
-    constexpr U signmask = U(1) << (8 * sizeof(U) - 1);
+    constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return x ^ (y & signmask);
+#else
+    return copysign(1, y) * x;
+#endif
   }
-  friend simd fmax(const simd &x, const simd &y) { return max(x.elts, y.elts); }
-  friend simd fmin(const simd &x, const simd &y) { return min(x.elts, y.elts); }
-  friend simd max(const simd &x, const simd &y) { return max(x.elts, y.elts); }
-  friend simd min(const simd &x, const simd &y) { return min(x.elts, y.elts); }
+  friend CCTK_CUDA simd fmax(const simd &x, const simd &y) {
+    using std::max;
+    return max(x.elts, y.elts);
+  }
+  friend CCTK_CUDA simd fmin(const simd &x, const simd &y) {
+    using std::min;
+    return min(x.elts, y.elts);
+  }
+  friend CCTK_CUDA simd max(const simd &x, const simd &y) {
+    using std::max;
+    return max(x.elts, y.elts);
+  }
+  friend CCTK_CUDA simd min(const simd &x, const simd &y) {
+    using std::min;
+    return min(x.elts, y.elts);
+  }
 
-  friend simd fmax(const T &a, const simd &y) { return max(a, y.elts); }
-  friend simd fmin(const T &a, const simd &y) { return min(a, y.elts); }
-  friend simd max(const T &a, const simd &y) { return max(a, y.elts); }
-  friend simd min(const T &a, const simd &y) { return min(a, y.elts); }
+  friend CCTK_CUDA simd fmax(const T &a, const simd &y) {
+    using std::max;
+    return max(a, y.elts);
+  }
+  friend CCTK_CUDA simd fmin(const T &a, const simd &y) {
+    using std::min;
+    return min(a, y.elts);
+  }
+  friend CCTK_CUDA simd max(const T &a, const simd &y) {
+    using std::max;
+    return max(a, y.elts);
+  }
+  friend CCTK_CUDA simd min(const T &a, const simd &y) {
+    using std::min;
+    return min(a, y.elts);
+  }
 
-  friend simd fmax(const simd &x, const T &b) { return max(x.elts, b); }
-  friend simd fmin(const simd &x, const T &b) { return min(x.elts, b); }
-  friend simd max(const simd &x, const T &b) { return max(x.elts, b); }
-  friend simd min(const simd &x, const T &b) { return min(x.elts, b); }
+  friend CCTK_CUDA simd fmax(const simd &x, const T &b) {
+    using std::max;
+    return max(x.elts, b);
+  }
+  friend CCTK_CUDA simd fmin(const simd &x, const T &b) {
+    using std::min;
+    return min(x.elts, b);
+  }
+  friend CCTK_CUDA simd max(const simd &x, const T &b) {
+    using std::max;
+    return max(x.elts, b);
+  }
+  friend CCTK_CUDA simd min(const simd &x, const T &b) {
+    using std::min;
+    return min(x.elts, b);
+  }
 
-  friend void storea(T *ptr, const simd &x) {
-    return nsimd::storea(ptr, x.elts);
+  friend CCTK_CUDA void storea(T *ptr, const simd &x) {
+#ifndef SIMD_CPU
+    nsimd::storea(ptr, x.elts);
+#else
+    *ptr = x.elts;
+#endif
   }
-  friend void storeu(T *ptr, const simd &x) {
-    return nsimd::storeu(ptr, x.elts);
+  friend CCTK_CUDA void storeu(T *ptr, const simd &x) {
+#ifndef SIMD_CPU
+    nsimd::storeu(ptr, x.elts);
+#else
+    *ptr = x.elts;
+#endif
   }
-  friend void mask_storea(const simdl<T> &mask, T *ptr, const simd &x) {
-    return nsimd::mask_storea(mask.elts, ptr, x.elts);
+  friend CCTK_CUDA void mask_storea(const simdl<T> &mask, T *ptr,
+                                    const simd &x) {
+#ifndef SIMD_CPU
+    nsimd::mask_storea(mask.elts, ptr, x.elts);
+#else
+    if (mask.elts)
+      *ptr = x.elts;
+#endif
   }
-  friend void mask_storeu(const simdl<T> &mask, T *ptr, const simd &x) {
-    return nsimd::mask_storeu(mask.elts, ptr, x.elts);
+  friend CCTK_CUDA void mask_storeu(const simdl<T> &mask, T *ptr,
+                                    const simd &x) {
+#ifndef SIMD_CPU
+    nsimd::mask_storeu(mask.elts, ptr, x.elts);
+#else
+    if (mask.elts)
+      *ptr = x.elts;
+#endif
   }
 
   friend ostream &operator<<(ostream &os, const simd &x) {
@@ -217,60 +370,102 @@ template <typename T> struct zero<Arith::simd<T> > {
 };
 
 template <typename VT, typename T = typename VT::value_type>
-inline simd<T> iota() {
+CCTK_CUDA inline simd<T> iota() {
+#ifndef SIMD_CPU
   return nsimd::iota<nsimd::pack<T> >();
+#else
+  return 0;
+#endif
 }
 
 template <typename VT, typename T = typename VT::value_type>
-inline simdl<T> mask_for_loop_tail(const int i, const int n) {
+CCTK_CUDA inline simdl<T> mask_for_loop_tail(const int i, const int n) {
+#ifndef SIMD_CPU
   return nsimd::mask_for_loop_tail<nsimd::packl<T> >(i, n);
+#else
+  return i < n;
+#endif
 }
 
 template <typename VT, typename T = typename VT::value_type>
-inline simd<T> loada(const T *ptr) {
+CCTK_CUDA inline simd<T> loada(const T *ptr) {
+#ifndef SIMD_CPU
   return nsimd::loada<nsimd::pack<T> >(ptr);
+#else
+  return *ptr;
+#endif
 }
 
 template <typename VT, typename T = typename VT::value_type>
-inline simd<T> loadu(const T *ptr) {
+CCTK_CUDA inline simd<T> loadu(const T *ptr) {
+#ifndef SIMD_CPU
   return nsimd::loadu<nsimd::pack<T> >(ptr);
+#else
+  return *ptr;
+#endif
 }
 
 template <typename T>
-inline simd<T> maskz_loada(const simdl<T> &mask, const T *ptr) {
+CCTK_CUDA inline simd<T> maskz_loada(const simdl<T> &mask, const T *ptr) {
+#ifndef SIMD_CPU
   return nsimd::maskz_loada(mask.elts, ptr);
+#else
+  return mask.elts ? *ptr : 0;
+#endif
 }
 
 template <typename T>
-inline simd<T> maskz_loadu(const simdl<T> &mask, const T *ptr) {
+CCTK_CUDA inline simd<T> maskz_loadu(const simdl<T> &mask, const T *ptr) {
+#ifndef SIMD_CPU
   return nsimd::maskz_loadu(mask.elts, ptr);
+#else
+  return mask.elts ? *ptr : 0;
+#endif
 }
 
 template <typename T>
-inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
-                           const simd<T> &other) {
+CCTK_CUDA inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
+                                     const simd<T> &other) {
+#ifndef SIMD_CPU
   return nsimd::masko_loada(mask.elts, ptr, other.elts);
+#else
+  return mask.elts ? *ptr : other.elts;
+#endif
 }
 
 template <typename T>
-inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
-                           const simd<T> &other) {
+CCTK_CUDA inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
+                                     const simd<T> &other) {
+#ifndef SIMD_CPU
   return nsimd::masko_loadu(mask.elts, ptr, other.elts);
+#else
+  return mask.elts ? *ptr : other.elts;
+#endif
 }
 
 template <typename T, typename U,
           enable_if_t<is_convertible_v<T, U> > * = nullptr>
-inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr, const U &other) {
+CCTK_CUDA inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
+                                     const U &other) {
+#ifndef SIMD_CPU
   return masko_loada(mask, ptr, simd<T>(other));
+#else
+  return mask.elts ? *ptr : other;
+#endif
 }
 
 template <typename T, typename U,
           enable_if_t<is_convertible_v<T, U> > * = nullptr>
-inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr, const U &other) {
+CCTK_CUDA inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
+                                     const U &other) {
+#ifndef SIMD_CPU
   return masko_loadu(mask, ptr, simd<T>(other));
+#else
+  return mask.elts ? *ptr : other;
+#endif
 }
 
-template <typename T> inline simd<T> cbrt(const simd<T> &x) {
+template <typename T> CCTK_CUDA inline simd<T> cbrt(const simd<T> &x) {
   // alignas(alignof(simd<T>)) T xarr[x.size()];
   // storea(xarr, x);
   // alignas(alignof(simd<T>)) T yarr[x.size()];
@@ -280,10 +475,11 @@ template <typename T> inline simd<T> cbrt(const simd<T> &x) {
   // }
   // const simd<T> y = loada<simd<T> >(yarr);
   // return y;
-  T xarr[x.size()];
+  constexpr size_t vsize = tuple_size_v<simd<T> >;
+  T xarr[vsize];
   storeu(xarr, x);
-  T yarr[x.size()];
-  for (std::size_t n = 0; n < x.size(); ++n) {
+  T yarr[vsize];
+  for (std::size_t n = 0; n < vsize; ++n) {
     using std::cbrt;
     yarr[n] = cbrt(xarr[n]);
   }
@@ -291,7 +487,7 @@ template <typename T> inline simd<T> cbrt(const simd<T> &x) {
   return y;
 }
 
-template <typename T> inline simd<T> sin(const simd<T> &x) {
+template <typename T> CCTK_CUDA inline simd<T> sin(const simd<T> &x) {
   // alignas(alignof(simd<T>)) T xarr[x.size()];
   // storea(xarr, x);
   // alignas(alignof(simd<T>)) T yarr[x.size()];
@@ -301,10 +497,11 @@ template <typename T> inline simd<T> sin(const simd<T> &x) {
   // }
   // const simd<T> y = loada<simd<T> >(yarr);
   // return y;
-  T xarr[x.size()];
+  constexpr size_t vsize = tuple_size_v<simd<T> >;
+  T xarr[vsize];
   storeu(xarr, x);
-  T yarr[x.size()];
-  for (std::size_t n = 0; n < x.size(); ++n) {
+  T yarr[vsize];
+  for (std::size_t n = 0; n < vsize; ++n) {
     using std::sin;
     yarr[n] = sin(xarr[n]);
   }
@@ -314,127 +511,195 @@ template <typename T> inline simd<T> sin(const simd<T> &x) {
 
 template <typename T> struct simdl {
   typedef T value_type;
+#ifndef SIMD_CPU
   nsimd::packl<T> elts;
+#else
+  bool elts;
+#endif
 
   simdl(const simdl &) = default;
   simdl(simdl &&) = default;
   simdl &operator=(const simdl &) = default;
   simdl &operator=(simdl &&) = default;
 
-  simdl() {}
-  simdl(T a) : elts(a) {}
-  simdl(const nsimd::packl<T> &elts) : elts(elts) {}
+  CCTK_CUDA simdl() {}
+  CCTK_CUDA simdl(bool a) : elts(a) {}
+#ifndef SIMD_CPU
+  CCTK_CUDA simdl(const nsimd::packl<T> &elts) : elts(elts) {}
+#endif
 
-  constexpr std::size_t size() const {
+  CCTK_CUDA constexpr std::size_t size() const {
+#ifndef SIMD_CPU
     return sizeof(nsimd::packl<T>) / sizeof(T);
+#else
+    return 1;
+#endif
   }
 
-  simdl operator!() const { return !elts; }
-  simdl operator~() const { return ~elts; }
+  CCTK_CUDA simdl operator!() const { return !elts; }
+  // simdl operator~() const { return ~elts; }
 
-  friend simdl operator&&(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl operator&&(const simdl &x, const simdl &y) {
     return x.elts && y.elts;
   }
-  friend simdl operator&(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl operator&(const simdl &x, const simdl &y) {
     return x.elts && y.elts;
   }
-  friend simdl operator||(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl operator||(const simdl &x, const simdl &y) {
     return x.elts || y.elts;
   }
-  friend simdl operator|(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl operator|(const simdl &x, const simdl &y) {
     return x.elts || y.elts;
   }
-  friend simdl operator^(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl operator^(const simdl &x, const simdl &y) {
     return x.elts ^ y.elts;
   }
 
-  friend simdl operator&(const bool a, const simdl &y) { return a & y.elts; }
-  friend simdl operator|(const bool a, const simdl &y) { return a | y.elts; }
-  friend simdl operator^(const bool a, const simdl &y) { return a ^ y.elts; }
+  friend CCTK_CUDA simdl operator&(const bool a, const simdl &y) {
+    return a & y.elts;
+  }
+  friend CCTK_CUDA simdl operator|(const bool a, const simdl &y) {
+    return a | y.elts;
+  }
+  friend CCTK_CUDA simdl operator^(const bool a, const simdl &y) {
+    return a ^ y.elts;
+  }
 
-  friend simdl operator&(const simdl &x, const bool b) { return x.elts & b; }
-  friend simdl operator|(const simdl &x, const bool b) { return x.elts | b; }
-  friend simdl operator^(const simdl &x, const bool b) { return x.elts ^ b; }
+  friend CCTK_CUDA simdl operator&(const simdl &x, const bool b) {
+    return x.elts & b;
+  }
+  friend CCTK_CUDA simdl operator|(const simdl &x, const bool b) {
+    return x.elts | b;
+  }
+  friend CCTK_CUDA simdl operator^(const simdl &x, const bool b) {
+    return x.elts ^ b;
+  }
 
-  simdl &operator&=(const simdl &x) { return *this = *this & x; }
-  simdl &operator|=(const simdl &x) { return *this = *this | x; }
-  simdl &operator^=(const simdl &x) { return *this = *this ^ x; }
+  CCTK_CUDA simdl &operator&=(const simdl &x) { return *this = *this & x; }
+  CCTK_CUDA simdl &operator|=(const simdl &x) { return *this = *this | x; }
+  CCTK_CUDA simdl &operator^=(const simdl &x) { return *this = *this ^ x; }
 
-  simdl &operator&=(const bool a) { return *this = *this & a; }
-  simdl &operator|=(const bool a) { return *this = *this | a; }
-  simdl &operator^=(const bool a) { return *this = *this ^ a; }
+  CCTK_CUDA simdl &operator&=(const bool a) { return *this = *this & a; }
+  CCTK_CUDA simdl &operator|=(const bool a) { return *this = *this | a; }
+  CCTK_CUDA simdl &operator^=(const bool a) { return *this = *this ^ a; }
 
-  friend simdl<T> operator==(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator==(const simdl &x, const simdl &y) {
     return x.elts == y.elts;
   }
-  friend simdl<T> operator!=(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator!=(const simdl &x, const simdl &y) {
     return x.elts != y.elts;
   }
-  friend simdl<T> operator<(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator<(const simdl &x, const simdl &y) {
     return x.elts < y.elts;
   }
-  friend simdl<T> operator>(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator>(const simdl &x, const simdl &y) {
     return x.elts > y.elts;
   }
-  friend simdl<T> operator<=(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator<=(const simdl &x, const simdl &y) {
     return x.elts <= y.elts;
   }
-  friend simdl<T> operator>=(const simdl &x, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator>=(const simdl &x, const simdl &y) {
     return x.elts >= y.elts;
   }
 
-  friend simdl<T> operator==(const bool a, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator==(const bool a, const simdl &y) {
     return a == y.elts;
   }
-  friend simdl<T> operator!=(const bool a, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator!=(const bool a, const simdl &y) {
     return a != y.elts;
   }
-  friend simdl<T> operator<(const bool a, const simdl &y) { return a < y.elts; }
-  friend simdl<T> operator>(const bool a, const simdl &y) { return a > y.elts; }
-  friend simdl<T> operator<=(const bool a, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator<(const bool a, const simdl &y) {
+    return a < y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator>(const bool a, const simdl &y) {
+    return a > y.elts;
+  }
+  friend CCTK_CUDA simdl<T> operator<=(const bool a, const simdl &y) {
     return a <= y.elts;
   }
-  friend simdl<T> operator>=(const bool a, const simdl &y) {
+  friend CCTK_CUDA simdl<T> operator>=(const bool a, const simdl &y) {
     return a >= y.elts;
   }
 
-  friend simdl<T> operator==(const simdl &x, const bool b) {
+  friend CCTK_CUDA simdl<T> operator==(const simdl &x, const bool b) {
     return x.elts == b;
   }
-  friend simdl<T> operator!=(const simdl &x, const bool b) {
+  friend CCTK_CUDA simdl<T> operator!=(const simdl &x, const bool b) {
     return x.elts != b;
   }
-  friend simdl<T> operator<(const simdl &x, const bool b) { return x.elts < b; }
-  friend simdl<T> operator>(const simdl &x, const bool b) { return x.elts > b; }
-  friend simdl<T> operator<=(const simdl &x, const bool b) {
+  friend CCTK_CUDA simdl<T> operator<(const simdl &x, const bool b) {
+    return x.elts < b;
+  }
+  friend CCTK_CUDA simdl<T> operator>(const simdl &x, const bool b) {
+    return x.elts > b;
+  }
+  friend CCTK_CUDA simdl<T> operator<=(const simdl &x, const bool b) {
     return x.elts <= b;
   }
-  friend simdl<T> operator>=(const simdl &x, const bool b) {
+  friend CCTK_CUDA simdl<T> operator>=(const simdl &x, const bool b) {
     return x.elts >= b;
   }
 
-  friend simd<T> if_else(const simdl &cond, const simd<T> &x,
-                         const simd<T> &y) {
+  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const simd<T> &x,
+                                   const simd<T> &y) {
+#ifndef SIMD_CPU
     return if_else1(cond.elts, x.elts, y.elts);
+#else
+    return cond.elts ? x.elts : y.elts;
+#endif
   }
-  friend simd<T> if_else(const simdl &cond, const T &a, const simd<T> &y) {
+  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const T &a,
+                                   const simd<T> &y) {
+#ifndef SIMD_CPU
     return if_else1(cond.elts, simd(a).elts, y.elts);
+#else
+    return cond.elts ? simd(a).elts : y.elts;
+#endif
   }
-  friend simd<T> if_else(const simdl &cond, const simd<T> &x, const T &b) {
+  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const simd<T> &x,
+                                   const T &b) {
+#ifndef SIMD_CPU
     return if_else1(cond.elts, x.elts, simd(b).elts);
+#else
+    return cond.elts ? x.elts : simd(b).elts;
+#endif
   }
-  friend simd<T> if_else(const simdl &cond, const T &a, const T &b) {
+  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const T &a, const T &b) {
+#ifndef SIMD_CPU
     return if_else1(cond.elts, simd(a).elts, simd(b).elts);
+#else
+    return cond.elts ? simd(a).elts : simd(b).elts;
+#endif
   }
 
-  friend bool all(const simdl &x) { return all(x.elts); }
-  friend bool any(const simdl &x) { return any(x.elts); }
-
-  friend void storela(T *ptr, const simdl &x) {
-    return nsimd::storela(ptr, x.elts);
+  friend CCTK_CUDA bool all(const simdl &x) {
+#ifndef SIMD_CPU
+    return all(x.elts);
+#else
+    return x.elts;
+#endif
   }
-  friend void storelu(T *ptr, const simdl &x) {
-    return nsimd::storelu(ptr, x.elts);
+  friend CCTK_CUDA bool any(const simdl &x) {
+#ifndef SIMD_CPU
+    return any(x.elts);
+#else
+    return x.elts;
+#endif
+  }
+
+  friend CCTK_CUDA void storela(T *ptr, const simdl &x) {
+#ifndef SIMD_CPU
+    nsimd::storela(ptr, x.elts);
+#else
+    *ptr = x.elts;
+#endif
+  }
+  friend CCTK_CUDA void storelu(T *ptr, const simdl &x) {
+#ifndef SIMD_CPU
+    nsimd::storelu(ptr, x.elts);
+#else
+    *ptr = x.elts;
+#endif
   }
 
   friend ostream &operator<<(ostream &os, const simdl &x) {
@@ -451,15 +716,23 @@ struct tuple_size<Arith::simdl<T> >
 } // namespace std
 namespace Arith {
 
-template <typename VT, typename T = typename VT::value_type>
-inline simdl<T> loadla(const T *ptr) {
-  return nsimd::loadla<nsimd::pack<T> >(ptr);
-}
+// template <typename VT, typename T = typename VT::value_type>
+// inline simdl<T> loadla(const T *ptr) {
+// #ifndef SIMD_CPU
+//   return nsimd::loadla<nsimd::pack<T> >(ptr);
+// #else
+//   return *ptr;
+// #endif
+// }
 
-template <typename VT, typename T = typename VT::value_type>
-inline simdl<T> loadlu(const T *ptr) {
-  return nsimd::loadlu<nsimd::pack<T> >(ptr);
-}
+// template <typename VT, typename T = typename VT::value_type>
+// inline simdl<T> loadlu(const T *ptr) {
+// #ifndef SIMD_CPU
+//   return nsimd::loadlu<nsimd::pack<T> >(ptr);
+// #else
+//   return *ptr;
+// #endif
+// }
 
 } // namespace Arith
 
