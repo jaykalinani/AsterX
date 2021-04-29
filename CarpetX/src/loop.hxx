@@ -882,6 +882,27 @@ struct GF3D2layout {
   }
 };
 
+struct GF3D2index {
+#ifdef CCTK_DEBUG
+  GF3D2layout layout;
+#endif
+  int m_linear;
+  GF3D2index() = delete;
+  GF3D2index(const GF3D2index &) = default;
+  GF3D2index(GF3D2index &&) = default;
+  GF3D2index &operator=(const GF3D2index &) = default;
+  GF3D2index &operator=(GF3D2index &&) = default;
+  CCTK_DEVICE CCTK_HOST GF3D2index(const GF3D2layout &layout,
+                                   const vect<int, dim> &I)
+      :
+#ifdef CCTK_DEBUG
+        layout(layout),
+#endif
+        m_linear(layout.linear(I)) {
+  }
+  CCTK_DEVICE CCTK_HOST int linear() const { return m_linear; }
+};
+
 template <typename T> struct GF3D2 {
   typedef T value_type;
   // TODO: disallow inf, nan
@@ -897,23 +918,36 @@ template <typename T> struct GF3D2 {
       : ptr(ptr), layout(layout) {}
   GF3D2(const GF3D2layout &layout, mempool_t &mempool)
       : GF3D2(layout, mempool.alloc<T>(layout.np)) {}
-  CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
-    return layout.linear(i, j, k);
+  CCTK_DEVICE CCTK_HOST GF3D2index index(const vect<int, dim> &I) const {
+    return GF3D2index(layout, I);
   }
   CCTK_DEVICE CCTK_HOST int linear(const vect<int, dim> &I) const {
-    return layout.linear(I);
+    return index(I).linear();
   }
-  CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
-    return layout.delta(i, j, k);
+  CCTK_DEVICE CCTK_HOST int linear(int i, int j, int k) const {
+    return index(vect<int, dim>{i, j, k}).linear();
   }
   CCTK_DEVICE CCTK_HOST int delta(const vect<int, dim> &I) const {
     return layout.delta(I);
   }
-  CCTK_DEVICE CCTK_HOST T &restrict operator()(int i, int j, int k) const {
-    return ptr[linear(i, j, k)];
+  CCTK_DEVICE CCTK_HOST int delta(int i, int j, int k) const {
+    return layout.delta(i, j, k);
+  }
+  CCTK_DEVICE CCTK_HOST T &restrict operator()(const GF3D2index &index) const {
+#ifdef CCTK_DEBUG
+    assert(index.layout == this->layout);
+#endif
+    return ptr[index.linear()];
   }
   CCTK_DEVICE CCTK_HOST T &restrict operator()(const vect<int, dim> &I) const {
     return ptr[linear(I)];
+  }
+  CCTK_DEVICE CCTK_HOST T &restrict operator()(int i, int j, int k) const {
+    return ptr[linear(i, j, k)];
+  }
+  CCTK_DEVICE CCTK_HOST void store(const GF3D2index &index,
+                                   const T &value) const {
+    ptr[index.linear()] = value;
   }
   CCTK_DEVICE CCTK_HOST void store(const vect<int, dim> &I,
                                    const T &value) const {
