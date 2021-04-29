@@ -57,80 +57,77 @@ extern "C" void Hydro_Fluxes(CCTK_ARGUMENTS) {
   const ptrdiff_t dj = di * ash[0];
   const ptrdiff_t dk = dj * ash[1];
 
-  const auto calcflux =
-      [&](const int dir, const int ddir, const CCTK_REAL dAdir,
-          const Loop::vect<int, dim> &ndir,
-          const CCTK_REAL *restrict const veldir,
-          CCTK_REAL *restrict const fdirdens,
-          CCTK_REAL *restrict const fdirmomx,
-          CCTK_REAL *restrict const fdirmomy,
-          CCTK_REAL *restrict const fdirmomz,
-          CCTK_REAL *restrict const fdiretot) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const Loop::vect<int, dim> imindir = max(tmin, nghostzones);
-        const Loop::vect<int, dim> imaxdir = min(
-            tmax + (tmax >= lsh).ifelse(ndir, zero), lsh + ndir - nghostzones);
+  const auto calcflux = [&](const int dir, const int ddir,
+                            const CCTK_REAL dAdir,
+                            const Loop::vect<int, dim> &ndir,
+                            const CCTK_REAL *restrict const veldir,
+                            CCTK_REAL *restrict const fdirdens,
+                            CCTK_REAL *restrict const fdirmomx,
+                            CCTK_REAL *restrict const fdirmomy,
+                            CCTK_REAL *restrict const fdirmomz,
+                            CCTK_REAL *restrict const
+                                fdiretot) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    const Loop::vect<int, dim> imindir = max(tmin, nghostzones);
+    const Loop::vect<int, dim> imaxdir =
+        min(tmax + (tmax >= lsh).ifelse(ndir, zero), lsh + ndir - nghostzones);
 
-        // fluxes: face-centred without ghosts
-        const Loop::vect<int, dim> ashdir = ash + ndir - 2 * nghostzones;
-        constexpr ptrdiff_t didir = 1;
-        const ptrdiff_t djdir = didir * ashdir[0];
-        const ptrdiff_t dkdir = djdir * ashdir[1];
-        const ptrdiff_t offdir = nghostzones[0] * didir +
-                                 nghostzones[1] * djdir +
-                                 nghostzones[2] * dkdir;
+    // fluxes: face-centred without ghosts
+    const Loop::vect<int, dim> ashdir = ash + ndir - 2 * nghostzones;
+    constexpr ptrdiff_t didir = 1;
+    const ptrdiff_t djdir = didir * ashdir[0];
+    const ptrdiff_t dkdir = djdir * ashdir[1];
+    const ptrdiff_t offdir = nghostzones[0] * didir + nghostzones[1] * djdir +
+                             nghostzones[2] * dkdir;
 
-        for (int k = imindir[2]; k < imaxdir[2]; ++k) {
-          for (int j = imindir[1]; j < imaxdir[1]; ++j) {
-            for (int i = imindir[0]; i < imaxdir[0]; i += vsize) {
-              CCTK_BOOLVEC mask = mask_for_loop_tail<CCTK_BOOLVEC>(i, imaxdir[0]);
-              ptrdiff_t ind = i + dj * j + dk * k;
-              ptrdiff_t inddir = i + djdir * j + dkdir * k - offdir;
+    for (int k = imindir[2]; k < imaxdir[2]; ++k) {
+      for (int j = imindir[1]; j < imaxdir[1]; ++j) {
+        for (int i = imindir[0]; i < imaxdir[0]; i += vsize) {
+          CCTK_BOOLVEC mask = mask_for_loop_tail<CCTK_BOOLVEC>(i, imaxdir[0]);
+          ptrdiff_t ind = i + dj * j + dk * k;
+          ptrdiff_t inddir = i + djdir * j + dkdir * k - offdir;
 
-              // Read conserved and primitive variables
-              array<CCTK_REALVEC, 2> dens2, momx2, momy2, momz2, etot2, press2,
-                  veldir2;
-              for (int n = 0; n < 2; ++n) {
-                dens2[n] = maskz_loadu(mask, &dens[ind + (n - 1) * ddir]);
-                momx2[n] = maskz_loadu(mask, &momx[ind + (n - 1) * ddir]);
-                momy2[n] = maskz_loadu(mask, &momy[ind + (n - 1) * ddir]);
-                momz2[n] = maskz_loadu(mask, &momz[ind + (n - 1) * ddir]);
-                etot2[n] = maskz_loadu(mask, &etot[ind + (n - 1) * ddir]);
-                press2[n] = maskz_loadu(mask, &press[ind + (n - 1) * ddir]);
-                veldir2[n] = maskz_loadu(mask, &veldir[ind + (n - 1) * ddir]);
-              }
+          // Read conserved and primitive variables
+          array<CCTK_REALVEC, 2> dens2, momx2, momy2, momz2, etot2, press2,
+              veldir2;
+          for (int n = 0; n < 2; ++n) {
+            dens2[n] = maskz_loadu(mask, &dens[ind + (n - 1) * ddir]);
+            momx2[n] = maskz_loadu(mask, &momx[ind + (n - 1) * ddir]);
+            momy2[n] = maskz_loadu(mask, &momy[ind + (n - 1) * ddir]);
+            momz2[n] = maskz_loadu(mask, &momz[ind + (n - 1) * ddir]);
+            etot2[n] = maskz_loadu(mask, &etot[ind + (n - 1) * ddir]);
+            press2[n] = maskz_loadu(mask, &press[ind + (n - 1) * ddir]);
+            veldir2[n] = maskz_loadu(mask, &veldir[ind + (n - 1) * ddir]);
+          }
 
 #warning "TODO: This calculates the fluxes twice; change this"
-              // Calculate centred fluxes
-              array<CCTK_REALVEC, 2> fdirdens2, fdirmomx2, fdirmomy2, fdirmomz2,
-                  fdiretot2;
-              for (int n = 0; n < 2; ++n) {
-                fdirdens2[n] = dens2[n] * veldir2[n];
-                fdirmomx2[n] =
-                    momx2[n] * veldir2[n] + (dir == 0 ? press2[n] : 0);
-                fdirmomy2[n] =
-                    momy2[n] * veldir2[n] + (dir == 1 ? press2[n] : 0);
-                fdirmomz2[n] =
-                    momz2[n] * veldir2[n] + (dir == 2 ? press2[n] : 0);
-                fdiretot2[n] = (etot2[n] + press2[n]) * veldir2[n];
-              }
-
-              // Calculate face fluxes
-              CCTK_REALVEC fdirdens1 = dAdir * llf(dens2, fdirdens2);
-              CCTK_REALVEC fdirmomx1 = dAdir * llf(momx2, fdirmomx2);
-              CCTK_REALVEC fdirmomy1 = dAdir * llf(momy2, fdirmomy2);
-              CCTK_REALVEC fdirmomz1 = dAdir * llf(momz2, fdirmomz2);
-              CCTK_REALVEC fdiretot1 = dAdir * llf(etot2, fdiretot2);
-
-              // Store fluxes
-              mask_storeu(mask, &fdirdens[inddir], fdirdens1);
-              mask_storeu(mask, &fdirmomx[inddir], fdirmomx1);
-              mask_storeu(mask, &fdirmomy[inddir], fdirmomy1);
-              mask_storeu(mask, &fdirmomz[inddir], fdirmomz1);
-              mask_storeu(mask, &fdiretot[inddir], fdiretot1);
-            }
+          // Calculate centred fluxes
+          array<CCTK_REALVEC, 2> fdirdens2, fdirmomx2, fdirmomy2, fdirmomz2,
+              fdiretot2;
+          for (int n = 0; n < 2; ++n) {
+            fdirdens2[n] = dens2[n] * veldir2[n];
+            fdirmomx2[n] = momx2[n] * veldir2[n] + (dir == 0 ? press2[n] : 0);
+            fdirmomy2[n] = momy2[n] * veldir2[n] + (dir == 1 ? press2[n] : 0);
+            fdirmomz2[n] = momz2[n] * veldir2[n] + (dir == 2 ? press2[n] : 0);
+            fdiretot2[n] = (etot2[n] + press2[n]) * veldir2[n];
           }
+
+          // Calculate face fluxes
+          CCTK_REALVEC fdirdens1 = dAdir * llf(dens2, fdirdens2);
+          CCTK_REALVEC fdirmomx1 = dAdir * llf(momx2, fdirmomx2);
+          CCTK_REALVEC fdirmomy1 = dAdir * llf(momy2, fdirmomy2);
+          CCTK_REALVEC fdirmomz1 = dAdir * llf(momz2, fdirmomz2);
+          CCTK_REALVEC fdiretot1 = dAdir * llf(etot2, fdiretot2);
+
+          // Store fluxes
+          mask_storeu(mask, &fdirdens[inddir], fdirdens1);
+          mask_storeu(mask, &fdirmomx[inddir], fdirmomx1);
+          mask_storeu(mask, &fdirmomy[inddir], fdirmomy1);
+          mask_storeu(mask, &fdirmomz[inddir], fdirmomz1);
+          mask_storeu(mask, &fdiretot[inddir], fdiretot1);
         }
-      };
+      }
+    }
+  };
 
   calcflux(0, di, dAx, nx, velx, fxdens, fxmomx, fxmomy, fxmomz, fxetot);
   calcflux(1, dj, dAy, ny, vely, fydens, fymomx, fymomy, fymomz, fyetot);
