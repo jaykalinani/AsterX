@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <mutex>
 #include <string>
 
 namespace CarpetX {
@@ -103,7 +104,9 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
   }
   const auto nan_update = [&](const GridDescBase &grid,
                               const Loop::PointDesc &p) {
-#pragma omp critical
+    // #pragma omp critical
+    static mutex m;
+    lock_guard<mutex> g(m);
     {
       ++nan_count;
       nan_imin[0] = min(nan_imin[0], grid.lbnd[0] + p.i);
