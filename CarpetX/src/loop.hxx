@@ -955,6 +955,22 @@ template <typename T> struct GF3D2 {
   }
   CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
   operator()(const Arith::simdl<remove_cv_t<T> > &mask,
+             const GF3D2index &index) const {
+    return Arith::maskz_loadu(mask, &(*this)(index));
+  }
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask, const GF3D2index &index,
+             const Arith::simd<remove_cv_t<T> > &other) const {
+    return Arith::masko_loadu(mask, &(*this)(index), other);
+  }
+  template <typename U, enable_if_t<is_convertible_v<T, U> > * = nullptr>
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask, const GF3D2index &index,
+             const U &other) const {
+    return Arith::masko_loadu(mask, &(*this)(index), other);
+  }
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask,
              const vect<int, dim> &I) const {
     return Arith::maskz_loadu(mask, &(*this)(I));
   }
@@ -973,6 +989,11 @@ template <typename T> struct GF3D2 {
                                    const vect<int, dim> &I,
                                    const Arith::simd<T> &value) const {
     mask_storeu(mask, &ptr[linear(I)], value);
+  }
+  CCTK_DEVICE CCTK_HOST void store(const Arith::simdl<T> &mask,
+                                   const GF3D2index &index,
+                                   const Arith::simd<T> &value) const {
+    mask_storeu(mask, &ptr[index.linear()], value);
   }
 };
 
@@ -1218,27 +1239,50 @@ template <typename T> struct GF3D5 {
                                    const T &value) const {
     operator()(layout, I) = value;
   }
-  Arith::simd<remove_cv_t<T> >
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask,
+             const GF3D5index &index) const {
+    return Arith::maskz_loadu(mask, &(*this)(index));
+  }
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
   operator()(const Arith::simdl<remove_cv_t<T> > &mask,
              const GF3D5layout &layout, const vect<int, dim> &I) const {
-    return Arith::maskz_loadu(mask, &(*this)(layout, I));
+    return (*this)(mask, GF3D5index(layout, I));
   }
-  Arith::simd<remove_cv_t<T> >
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask, const GF3D5index &index,
+             const Arith::simd<remove_cv_t<T> > &other) const {
+    return Arith::masko_loadu(mask, &(*this)(index), other);
+  }
+  template <typename U, enable_if_t<is_convertible_v<T, U> > * = nullptr>
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
+  operator()(const Arith::simdl<remove_cv_t<T> > &mask, const GF3D5index &index,
+             const U &other) const {
+    return Arith::masko_loadu(mask, &(*this)(index), other);
+  }
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
   operator()(const Arith::simdl<remove_cv_t<T> > &mask,
              const GF3D5layout &layout, const vect<int, dim> &I,
              const Arith::simd<remove_cv_t<T> > &other) const {
-    return Arith::masko_loadu(mask, &(*this)(layout, I), other);
+    return (*this)(mask, GF3D5index(layout, I), other);
   }
   template <typename U, enable_if_t<is_convertible_v<T, U> > * = nullptr>
-  Arith::simd<remove_cv_t<T> >
+  CCTK_DEVICE CCTK_HOST Arith::simd<remove_cv_t<T> >
   operator()(const Arith::simdl<remove_cv_t<T> > &mask,
              const GF3D5layout &layout, const vect<int, dim> &I,
              const U &other) const {
-    return Arith::masko_loadu(mask, &(*this)(layout, I), other);
+    return (*this)(mask, GF3D5index(layout, I), other);
   }
-  void store(const Arith::simdl<T> &mask, const GF3D5layout &layout,
-             const vect<int, dim> &I, const Arith::simd<T> &value) const {
-    mask_storeu(mask, &(*this)(layout, I), value);
+  CCTK_DEVICE CCTK_HOST void store(const Arith::simdl<T> &mask,
+                                   const GF3D5index &index,
+                                   const Arith::simd<T> &value) const {
+    mask_storeu(mask, &(*this)(index), value);
+  }
+  CCTK_DEVICE CCTK_HOST void store(const Arith::simdl<T> &mask,
+                                   const GF3D5layout &layout,
+                                   const vect<int, dim> &I,
+                                   const Arith::simd<T> &value) const {
+    store(mask, GF3D5index(layout, I), value);
   }
 };
 
