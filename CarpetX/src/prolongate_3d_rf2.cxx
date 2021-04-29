@@ -190,14 +190,15 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
     constexpr int i1max = ORDER - imin;
     // nvcc doesn't accept the constexpr terms below
 #ifndef __CUDACC__
-    static_assert(abs(imin - i0min) <= required_ghosts, "");
-    static_assert(abs(imin - i0max) <= required_ghosts, "");
-    static_assert(abs(imax - i0min) <= required_ghosts, "");
-    static_assert(abs(imax - i0max) <= required_ghosts, "");
-    static_assert(abs(i1min - i0min) <= required_ghosts, "");
-    static_assert(abs(i1min - i0max) <= required_ghosts, "");
-    static_assert(abs(i1max - i0min) <= required_ghosts, "");
-    static_assert(abs(i1max - i0max) <= required_ghosts, "");
+    const auto abs0 = [](auto x) { return x >= 0 ? x : -x; };
+    static_assert(abs0(imin - i0min) <= required_ghosts, "");
+    static_assert(abs0(imin - i0max) <= required_ghosts, "");
+    static_assert(abs0(imax - i0min) <= required_ghosts, "");
+    static_assert(abs0(imax - i0max) <= required_ghosts, "");
+    static_assert(abs0(i1min - i0min) <= required_ghosts, "");
+    static_assert(abs0(i1min - i0max) <= required_ghosts, "");
+    static_assert(abs0(i1max - i0min) <= required_ghosts, "");
+    static_assert(abs0(i1max - i0max) <= required_ghosts, "");
 #endif
     T y = 0;
     // Make use of symmetry in coefficients
@@ -239,8 +240,9 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
     constexpr int imax = ORDER;
     // nvcc doesn't accept the constexpr terms below
 #ifndef __CUDACC__
-    static_assert(abs(imin - i0) <= required_ghosts, "");
-    static_assert(abs(imax - i0) <= required_ghosts, "");
+    const auto abs0 = [](auto x) { return x >= 0 ? x : -x; };
+    static_assert(abs0(imin - i0) <= required_ghosts, "");
+    static_assert(abs0(imax - i0) <= required_ghosts, "");
 #endif
     T y = 0;
     if (off == 0)
@@ -326,8 +328,9 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
     constexpr int imax = ORDER;
     // nvcc doesn't accept the constexpr terms below
 #ifndef __CUDACC__
-    static_assert(abs(imin - i0) <= required_ghosts, "");
-    static_assert(abs(imax - i0) <= required_ghosts, "");
+    const auto abs0 = [](auto x) { return x >= 0 ? x : -x; };
+    static_assert(abs0(imin - i0) <= required_ghosts, "");
+    static_assert(abs0(imax - i0) <= required_ghosts, "");
 #endif
     T y = 0;
     if (off == 0)
