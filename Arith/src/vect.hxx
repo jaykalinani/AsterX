@@ -74,7 +74,7 @@ template <typename T, size_t N> using ntuple_t = typename ntuple<T, N>::type;
 // } // namespace
 //
 // template <typename T, size_t N>
-//  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, N>
+// constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE array<T, N>
 // array_from_initializer_list(initializer_list<T> l) {
 //   return array_from_initializer_list<T, N>(l.begin(), l.end());
 // }

@@ -22,15 +22,15 @@ void TestMat() {
   static_assert(eq(mat<CCTK_REAL, 3, UP, UP>()(1, 2), 0));
   static_assert(eq(mat<CCTK_REAL, 3, UP, UP>()(2, 2), 0));
 
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(0, 0), 1));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(0, 1), 2));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(0, 2), 3));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(1, 0), 2));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(1, 1), 4));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(1, 2), 5));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(2, 0), 3));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(2, 1), 5));
-  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>{1, 2, 3, 4, 5, 6}(2, 2), 6));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(0, 0), 1));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(0, 1), 2));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(0, 2), 3));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(1, 0), 2));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(1, 1), 4));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(1, 2), 5));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(2, 0), 3));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(2, 1), 5));
+  static_assert(eq(mat<CCTK_REAL, 3, DN, DN>({1, 2, 3, 4, 5, 6})(2, 2), 6));
 
   static_assert(eqm(mat<CCTK_REAL, 3, DN, DN>::iota1(), {0, 0, 0, 1, 1, 2}));
   static_assert(eqm(mat<CCTK_REAL, 3, DN, DN>::iota2(), {0, 1, 2, 1, 2, 2}));

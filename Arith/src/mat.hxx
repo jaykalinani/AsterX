@@ -87,6 +87,8 @@ public:
   constexpr ARITH_INLINE mat(vect<T, N> &&elts) : elts(move(elts)) {}
 
   constexpr ARITH_INLINE mat(initializer_list<T> A) : elts(A) {}
+  constexpr ARITH_INLINE mat(const array<T, 6> &A) : elts(A) {}
+  constexpr ARITH_INLINE mat(array<T, 6> &&A) : elts(move(A)) {}
   constexpr ARITH_INLINE mat(const vector<T> &A) : elts(A) {}
   constexpr ARITH_INLINE mat(vector<T> &&A) : elts(move(A)) {}
 
