@@ -530,10 +530,6 @@ get_boundaries(const GHExt::LevelData::GroupData &groupdata) {
     bcs.at(vi) =
         amrex::BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
                      makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
-  const auto apply_physbc = [](const amrex::Box &, const amrex::FArrayBox &,
-                               int, int, const amrex::Geometry &, CCTK_REAL,
-                               const amrex::Vector<amrex::BCRec> &, int,
-                               int) {};
   CarpetXPhysBCFunct physbc(ghext->amrcore->Geom(groupdata.level), bcs,
                             apply_physbcs);
 
