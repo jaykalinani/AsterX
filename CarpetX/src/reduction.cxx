@@ -103,8 +103,8 @@ reduce_array(const amrex::Array4<const T> &restrict vars, const int n,
       for (int i = imin[0]; i < imax[0]; ++i) {
         const bool is_masked = finemask && (*finemask)(i, j, k);
         if (!is_masked) {
-          const vect<T, dim> x{x0[0] + i * dx[0], x0[1] + j * dx[1],
-                               x0[2] + k * dx[2]};
+          const vect<T, dim> x = {x0[0] + i * dx[0], x0[1] + j * dx[1],
+                                  x0[2] + k * dx[2]};
           red += reduction<T, dim>(x, dV, vars(i, j, k, n));
         }
       }
@@ -136,12 +136,14 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
     const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
     const CCTK_REAL *restrict const x01 = geom.ProbLo();
     const CCTK_REAL *restrict const dx1 = geom.CellSize();
-    const vect<CCTK_REAL, dim> dx{dx1[0], dx1[1], dx1[2]};
-    const vect<CCTK_REAL, dim> x0{
-        x01[0] + (mfab.ixType()[0] == amrex::IndexType::CELL ? dx[0] / 2. : 0.),
-        x01[1] + (mfab.ixType()[1] == amrex::IndexType::CELL ? dx[1] / 2. : 0.),
+    const vect<CCTK_REAL, dim> dx = {dx1[0], dx1[1], dx1[2]};
+    const vect<CCTK_REAL, dim> x0 = {
+        x01[0] +
+            (mfab.ixType()[0] == amrex::IndexType::CELL ? dx[0] / 2.0 : 0.0),
+        x01[1] +
+            (mfab.ixType()[1] == amrex::IndexType::CELL ? dx[1] / 2.0 : 0.0),
         x01[2] +
-            (mfab.ixType()[2] == amrex::IndexType::CELL ? dx[2] / 2. : 0.)};
+            (mfab.ixType()[2] == amrex::IndexType::CELL ? dx[2] / 2.0 : 0.0)};
 
     const int fine_level = leveldata.level + 1;
     if (fine_level < int(ghext->leveldata.size())) {
