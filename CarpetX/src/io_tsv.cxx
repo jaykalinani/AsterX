@@ -190,8 +190,8 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     const auto &mfab = *groupdata.mfab.at(tl);
     for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
       const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
-      const vect<int, dim> vmin{vars.begin.x, vars.begin.y, vars.begin.z};
-      const vect<int, dim> vmax{vars.end.x, vars.end.y, vars.end.z};
+      const vect<int, dim> vmin = {vars.begin.x, vars.begin.y, vars.begin.z};
+      const vect<int, dim> vmax = {vars.end.x, vars.end.y, vars.end.z};
 
       bool output_something = true;
       vect<int, dim> imin, imax;
