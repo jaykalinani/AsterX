@@ -5,7 +5,8 @@ namespace Arith {
 template <typename T> constexpr bool test_div_floor(T x, T y) {
   T d = div_floor(x, y);
   T m = mod_floor(x, y);
-  return d * y + m == x && m >= 0 && m < abs(y);
+  T absy = y >= 0 ? y : -y;
+  return d * y + m == x && m >= 0 && m < absy;
 }
 
 // This function is compiled, but not executed. The tests are "run" at
