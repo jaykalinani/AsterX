@@ -22,7 +22,7 @@ extern "C" void DGWaveToy_Init(CCTK_ARGUMENTS) {
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> fx_(cctkGH, fx);
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> fy_(cctkGH, fy);
   const Loop::GF3D<CCTK_REAL, 1, 1, 1> fz_(cctkGH, fz);
- 
+
   const CCTK_REAL kx = 2 * M_PI;
   const CCTK_REAL ky = 2 * M_PI;
   const CCTK_REAL kz = 2 * M_PI;
