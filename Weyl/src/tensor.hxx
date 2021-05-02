@@ -1355,7 +1355,9 @@ public:
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T &
   operator()(int i, int j) {
     const int s = sign(i, j);
+#ifdef CCTK_DEBUG
     assert(s == 1);
+#endif
     return elts[ind(i, j)];
   }
 
@@ -1774,7 +1776,9 @@ public:
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T &
   operator()(int i, int j, int k, int l) {
     const int s = sign(i, j, k, l);
+#ifdef CCTK_DEBUG
     assert(s == 1);
+#endif
     return elts[ind(i, j, k, l)];
   }
 

@@ -226,7 +226,9 @@ calc_et(const mat4<T, UP, UP> &gu) {
   // This is necessary near a singularity
   if (etlen < 1.0e-12)
     return vec4<T, UP>(1, 0, 0, 0);
+#ifdef CCTK_DEBUG
   assert(!isnan(etlen) && etlen >= 1.0e-12);
+#endif
   return et / etlen;
 }
 
@@ -295,9 +297,11 @@ constexpr
              });
     });
   });
+#ifdef CCTK_DEBUG
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
       assert(!isnan(det(a)(b)));
+#endif
   return det;
 }
 
@@ -325,9 +329,11 @@ constexpr
              });
     });
   });
+#ifdef CCTK_DEBUG
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
       assert(!isnan(dephi(a)(b)));
+#endif
   return dephi;
 }
 
@@ -360,9 +366,11 @@ constexpr
              });
     });
   });
+#ifdef CCTK_DEBUG
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
       assert(!isnan(detheta(a)(b)));
+#endif
   return detheta;
 }
 
@@ -398,9 +406,11 @@ constexpr
              });
     });
   });
+#ifdef CCTK_DEBUG
   for (int a = 0; a < 4; ++a)
     for (int b = 0; b < 4; ++b)
       assert(!isnan(der(a)(b)));
+#endif
   return der;
 }
 
