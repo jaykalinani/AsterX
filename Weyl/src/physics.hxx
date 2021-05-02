@@ -23,10 +23,10 @@ constexpr
   //                  = - g_xy,c
   // g^ab,c = - g^ax g^by g_xy,c
   return mat4<vec4<T, DN>, UP, UP>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
-        return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int c) {
-          return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
-            return -gu(a, x) * sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
+      [&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return vec4<T, DN>([&](int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            return -gu(a, x) * sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
               return gu(b, y) * dg(x, y)(c);
             });
           });
@@ -39,8 +39,8 @@ constexpr
     CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<mat4<T, DN, DN>, DN>
     calc_gammal(const mat4<vec4<T, DN>, DN, DN> &dg) {
   // Gammal_abc
-  return vec4<mat4<T, DN, DN>, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return mat4<T, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b, int c) {
+  return vec4<mat4<T, DN, DN>, DN>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return mat4<T, DN, DN>([&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
       return (dg(a, b)(c) + dg(a, c)(b) - dg(b, c)(a)) / 2;
     });
   });
@@ -52,9 +52,9 @@ constexpr
     calc_gamma(const mat4<T, UP, UP> &gu,
                const vec4<mat4<T, DN, DN>, DN> &Gammal) {
   // Gamma^a_bc
-  return vec4<mat4<T, DN, DN>, UP>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return mat4<T, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b, int c) {
-      return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+  return vec4<mat4<T, DN, DN>, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return mat4<T, DN, DN>([&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         return gu(a, x) * Gammal(x)(b, c);
       });
     });
@@ -67,15 +67,16 @@ constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
     calc_dgammal(const mat4<mat4<T, DN, DN>, DN, DN> &ddg) {
   // Gamma_abc,d
   return vec4<mat4<vec4<T, DN>, DN, DN>, DN>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-        return mat4<vec4<T, DN>, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(
-                                             int b, int c) {
-          return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int d) {
-            return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
-              return (ddg(a, b)(c, d) + ddg(a, c)(b, d) - ddg(b, c)(a, d)) / 2;
+      [&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return mat4<vec4<T, DN>, DN, DN>(
+            [&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+              return vec4<T, DN>([&](int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                  return (ddg(a, b)(c, d) + ddg(a, c)(b, d) - ddg(b, c)(a, d)) /
+                         2;
+                });
+              });
             });
-          });
-        });
       });
 }
 
@@ -87,11 +88,11 @@ constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
                 const vec4<mat4<vec4<T, DN>, DN, DN>, DN> &dGammal) {
   // Gamma^a_bc,d
   return vec4<mat4<vec4<T, DN>, DN, DN>, UP>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+      [&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         return mat4<vec4<T, DN>, DN, DN>(
-            [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b, int c) {
-              return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int d) {
-                return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+            [&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+              return vec4<T, DN>([&](int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                   return dgu(a, x)(d) * Gammal(x)(b, c) +
                          gu(a, x) * dGammal(x)(b, c)(d);
                 });
@@ -108,14 +109,14 @@ constexpr
                  const vec4<mat4<vec4<T, DN>, DN, DN>, UP> &dGamma) {
   // Rm_abcd
   return rten4<T, DN, DN, DN, DN>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
-        return sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+      [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const T rmuxbcd = dGamma(x)(d, b)(c)   //
                             - dGamma(x)(c, b)(d) //
-                            + sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
+                            + sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                                 return Gamma(x)(c, y) * Gamma(y)(d, b);
                               }) //
-                            - sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int y) {
+                            - sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                                 return Gamma(x)(d, y) * Gamma(y)(c, b);
                               });
           return g(a, x) * rmuxbcd;
@@ -127,8 +128,8 @@ template <typename T>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat4<T, DN, DN>
 calc_ricci(const mat4<T, UP, UP> &gu, const rten4<T, DN, DN, DN, DN> &Rm) {
   // R_ab
-  return mat4<T, DN, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
-    return sum42([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x, int y) {
+  return mat4<T, DN, DN>([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return sum42([&](int x, int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
       return gu(x, y) * Rm(x, a, y, b);
     });
   });
@@ -141,7 +142,7 @@ constexpr
               const mat4<T, DN, DN> &R, const T &Rsc) {
   // C_abcd
   return rten4<T, DN, DN, DN, DN>(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b, int c, int d) {
+      [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         return Rm(a, b, c, d) //
                + 1 / T{4 - 2} *
                      (R(a, d) * g(b, c) - R(a, c) * g(b, d)    //
@@ -154,26 +155,26 @@ constexpr
 template <typename T>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
 raise(const mat4<T, UP, UP> &gu, const vec4<T, DN> &vl) {
-  return vec4<T, UP>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return sum41(
-        [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) { return gu(a, x) * vl(x); });
+  return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return sum41([&](int x)
+                     CCTK_ATTRIBUTE_ALWAYS_INLINE { return gu(a, x) * vl(x); });
   });
 }
 
 template <typename T>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, DN>
 lower(const mat4<T, DN, DN> &g, const vec4<T, UP> &v) {
-  return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return sum41(
-        [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) { return g(a, x) * v(x); });
+  return vec4<T, DN>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return sum41([&](int x)
+                     CCTK_ATTRIBUTE_ALWAYS_INLINE { return g(a, x) * v(x); });
   });
 }
 
 template <typename T>
 constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
 dot(const vec4<T, DN> &vl, const vec4<T, UP> &v) {
-  return sum41(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) { return vl(x) * v(x); });
+  return sum41([&](int x)
+                   CCTK_ATTRIBUTE_ALWAYS_INLINE { return vl(x) * v(x); });
 }
 
 template <typename T>
@@ -190,7 +191,7 @@ projected(const mat4<T, DN, DN> &g, const vec4<T, UP> &v,
   const auto wl = lower(g, w);
   const auto wlen2 = dot(wl, w);
   if (wlen2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) { return z; });
+    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   return dot(wl, v) / wlen2 * w;
 }
 
@@ -219,7 +220,7 @@ calc_et(const mat4<T, UP, UP> &gu) {
   const auto z = zero<T>()();
   const auto e = one<T>()();
   const vec4<T, DN> etl(
-      [&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) { return a == 0 ? e : z; });
+      [&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return a == 0 ? e : z; });
   const auto et = raise(gu, etl);
   const auto etlen = sqrt(-dot(etl, et));
   // This is necessary near a singularity
@@ -237,7 +238,7 @@ calc_ephi(const vec4<T, UP> &x, const mat4<T, DN, DN> &g) {
   const auto ephil = lower(g, ephi);
   const auto ephi_len2 = dot(ephil, ephi);
   if (ephi_len2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) { return z; });
+    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   ephi /= sqrt(ephi_len2);
   return ephi;
 }
@@ -252,7 +253,7 @@ calc_etheta(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
   const auto ethetal = lower(g, etheta);
   const auto etheta_len2 = dot(ethetal, etheta);
   if (etheta_len2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) { return z; });
+    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   etheta /= sqrt(etheta_len2); // to improve accuracy
   etheta = rejected(g, etheta, ephi);
   etheta = normalized(g, etheta);
@@ -268,7 +269,7 @@ calc_er(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
   const auto erl = lower(g, er);
   const auto er_len2 = dot(erl, er);
   if (er_len2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) { return z; });
+    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   er /= sqrt(er_len2); // to improve accuracy
   er = rejected(g, er, etheta);
   er = rejected(g, er, ephi);
@@ -283,13 +284,13 @@ constexpr
              const vec4<T, UP> &et, const vec4<mat4<T, DN, DN>, UP> &Gamma) {
   typedef vec4<T, DN> DT;
   typedef dual<T, DT> TDT;
-  const mat4<TDT, UP, UP> gu1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+  const mat4<TDT, UP, UP> gu1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(gu(a, b), dgu(a, b));
   });
   const auto det1 = calc_et(gu1);
-  const vec4<vec4<T, DN>, UP> det([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
-      return det1(a).eps(b) + sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+  const vec4<vec4<T, DN>, UP> det([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      return det1(a).eps(b) + sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                return Gamma(a)(b, x) * et(x);
              });
     });
@@ -308,18 +309,18 @@ constexpr
                const vec4<mat4<T, DN, DN>, UP> &Gamma) {
   typedef vec4<T, DN> DT;
   typedef dual<T, DT> TDT;
-  const vec4<TDT, UP> x1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return TDT(x(a), DT([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+  const vec4<TDT, UP> x1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return TDT(x(a), DT([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                  return T(a == b);
                }));
   });
-  const mat4<TDT, DN, DN> g1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+  const mat4<TDT, DN, DN> g1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(g(a, b), dg(a, b));
   });
   const auto dephi1 = calc_ephi(x1, g1);
-  const vec4<vec4<T, DN>, UP> dephi([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
-      return dephi1(a).eps(b) + sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+  const vec4<vec4<T, DN>, UP> dephi([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      return dephi1(a).eps(b) + sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                return Gamma(a)(b, x) * ephi(x);
              });
     });
@@ -339,22 +340,22 @@ constexpr
                  const vec4<mat4<T, DN, DN>, UP> &Gamma) {
   typedef vec4<T, DN> DT;
   typedef dual<T, DT> TDT;
-  const vec4<TDT, UP> x1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return TDT(x(a), DT([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+  const vec4<TDT, UP> x1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return TDT(x(a), DT([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                  return T(a == b);
                }));
   });
-  const mat4<TDT, DN, DN> g1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+  const mat4<TDT, DN, DN> g1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(g(a, b), dg(a, b));
   });
-  const vec4<TDT, UP> ephi1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+  const vec4<TDT, UP> ephi1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(ephi(a), dephi(a));
   });
   const auto detheta1 = calc_etheta(x1, g1, ephi1);
-  const vec4<vec4<T, DN>, UP> detheta([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+  const vec4<vec4<T, DN>, UP> detheta([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
       return detheta1(a).eps(b) +
-             sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+             sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                return Gamma(a)(b, x) * etheta(x);
              });
     });
@@ -375,24 +376,24 @@ constexpr
              const vec4<mat4<T, DN, DN>, UP> &Gamma) {
   typedef vec4<T, DN> DT;
   typedef dual<T, DT> TDT;
-  const vec4<TDT, UP> x1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return TDT(x(a), DT([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
+  const vec4<TDT, UP> x1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return TDT(x(a), DT([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                  return T(a == b);
                }));
   });
-  const mat4<TDT, DN, DN> g1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a, int b) {
+  const mat4<TDT, DN, DN> g1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(g(a, b), dg(a, b));
   });
-  const vec4<TDT, UP> ephi1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+  const vec4<TDT, UP> ephi1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(ephi(a), dephi(a));
   });
-  const vec4<TDT, UP> etheta1([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
+  const vec4<TDT, UP> etheta1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     return TDT(etheta(a), detheta(a));
   });
   const auto der1 = calc_er(x1, g1, ephi1, etheta1);
-  const vec4<vec4<T, DN>, UP> der([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int a) {
-    return vec4<T, DN>([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int b) {
-      return der1(a).eps(b) + sum41([&] CCTK_ATTRIBUTE_ALWAYS_INLINE(int x) {
+  const vec4<vec4<T, DN>, UP> der([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      return der1(a).eps(b) + sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
                return Gamma(a)(b, x) * er(x);
              });
     });

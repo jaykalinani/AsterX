@@ -63,7 +63,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
 deriv2_2d(const T *restrict const var, const ptrdiff_t di, const ptrdiff_t dj,
           const T dx, const T dy) {
   array<T, deriv_order + 1> arrx;
-  T *const varx = &arrx[arrx.size() / 2];
+  T *const varx = &arrx[deriv_order / 2];
   for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
     varx[j] = deriv1d(&var[j * dj], di, dx);
   return deriv1d(varx, 1, dy);
@@ -136,14 +136,14 @@ calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf0_,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) {
-        const auto val = gf0_(p.I);
-        gf_(p.I) = val;
-        const auto dval = deriv(gf0_, p.I, dx);
-        for (int a = 0; a < 3; ++a)
-          dgf_(a)(p.I) = dval(a);
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+                              const auto val = gf0_(p.I);
+                              gf_(p.I) = val;
+                              const auto dval = deriv(gf0_, p.I, dx);
+                              for (int a = 0; a < 3; ++a)
+                                dgf_(a)(p.I) = dval(a);
+                            });
 }
 
 template <typename T>
@@ -157,18 +157,18 @@ calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf0_,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) {
-        const auto val = gf0_(p.I);
-        gf_(p.I) = val;
-        const auto dval = deriv(gf0_, p.I, dx);
-        for (int a = 0; a < 3; ++a)
-          dgf_(a)(p.I) = dval(a);
-        const auto ddval = deriv2(gf0_, p.I, dx);
-        for (int a = 0; a < 3; ++a)
-          for (int b = a; b < 3; ++b)
-            ddgf_(a, b)(p.I) = ddval(a, b);
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+                              const auto val = gf0_(p.I);
+                              gf_(p.I) = val;
+                              const auto dval = deriv(gf0_, p.I, dx);
+                              for (int a = 0; a < 3; ++a)
+                                dgf_(a)(p.I) = dval(a);
+                              const auto ddval = deriv2(gf0_, p.I, dx);
+                              for (int a = 0; a < 3; ++a)
+                                for (int b = a; b < 3; ++b)
+                                  ddgf_(a, b)(p.I) = ddval(a, b);
+                            });
 }
 
 template <typename T, dnup_t dnup>
@@ -224,14 +224,14 @@ calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) {
-        const auto val = gf1(p.I);
-        gf0(layout0, p.I) = val;
-        const auto dval = deriv(gf1, p.I, dx);
-        for (int a = 0; a < 3; ++a)
-          dgf0(a)(layout0, p.I) = dval(a);
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+                              const auto val = gf1(p.I);
+                              gf0(layout0, p.I) = val;
+                              const auto dval = deriv(gf1, p.I, dx);
+                              for (int a = 0; a < 3; ++a)
+                                dgf0(a)(layout0, p.I) = dval(a);
+                            });
 }
 
 template <typename T>
@@ -245,18 +245,18 @@ calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) {
-        const auto val = gf1(p.I);
-        gf0(layout0, p.I) = val;
-        const auto dval = deriv(gf1, p.I, dx);
-        for (int a = 0; a < 3; ++a)
-          dgf0(a)(layout0, p.I) = dval(a);
-        const auto ddval = deriv2(gf1, p.I, dx);
-        for (int a = 0; a < 3; ++a)
-          for (int b = a; b < 3; ++b)
-            ddgf0(a, b)(layout0, p.I) = ddval(a, b);
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+                              const auto val = gf1(p.I);
+                              gf0(layout0, p.I) = val;
+                              const auto dval = deriv(gf1, p.I, dx);
+                              for (int a = 0; a < 3; ++a)
+                                dgf0(a)(layout0, p.I) = dval(a);
+                              const auto ddval = deriv2(gf1, p.I, dx);
+                              for (int a = 0; a < 3; ++a)
+                                for (int b = a; b < 3; ++b)
+                                  ddgf0(a, b)(layout0, p.I) = ddval(a, b);
+                            });
 }
 
 template <typename T, dnup_t dnup>
