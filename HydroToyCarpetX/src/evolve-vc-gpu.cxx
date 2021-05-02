@@ -52,15 +52,15 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
       // etot_(p.I) = etot_p_(p.I) - calcupdate(fxetot_, fyetot_, fzetot_);
     });
 #else
-   // CPU or GPU
-   // TODO: &p? 
-//  const auto calcupdate =
-//      [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-//          CCTK_REAL fx, CCTK_REAL fy, CCTK_REAL fz, &p) {  
-//	  return dt_dx * (fx(p.idx + p.di) - fx(p.idx)) +
-//             dt_dy * (fy(p.idx + p.dj) - fy(p.idx)) +
-//             dt_dz * (fz(p.idx + p.dk) - fz(p.idx));
-//      };
+  // CPU or GPU
+  // TODO: &p?
+  //  const auto calcupdate =
+  //      [=](CCTK_REAL fx, CCTK_REAL fy, CCTK_REAL fz, &p)
+  //      CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+  //	  return dt_dx * (fx(p.idx + p.di) - fx(p.idx)) +
+  //             dt_dy * (fy(p.idx + p.dj) - fy(p.idx)) +
+  //             dt_dz * (fz(p.idx + p.dk) - fz(p.idx));
+  //      };
 
   printf("Before loop\n");
 
@@ -70,28 +70,29 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
                                     cctkGH->cctk_nghostzones[2]};
   const Loop::GridDescBaseDevice griddesc(cctkGH);
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                       const Loop::PointDesc &p) {
+      nghostzones, [=](const Loop::PointDesc &p)
+                       CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+                         const auto px = griddesc.point_desc<0, 1, 1>(p);
+                         const auto py = griddesc.point_desc<1, 0, 1>(p);
+                         const auto pz = griddesc.point_desc<1, 1, 0>(p);
+                         CCTK_REAL calcupdate =
+                             dt_dx * (fxrho[px.idx + px.di] - fxrho[px.idx]) +
+                             dt_dy * (fyrho[py.idx + py.dj] - fyrho[py.idx]) +
+                             dt_dz * (fzrho[pz.idx + pz.dk] - fzrho[pz.idx]);
 
-        const auto px = griddesc.point_desc<0, 1, 1>(p);
-        const auto py = griddesc.point_desc<1, 0, 1>(p);
-        const auto pz = griddesc.point_desc<1, 1, 0>(p);
-        CCTK_REAL calcupdate = dt_dx * (fxrho[px.idx + px.di] - fxrho[px.idx]) +
-             dt_dy * (fyrho[py.idx + py.dj] - fyrho[py.idx]) +
-             dt_dz * (fzrho[pz.idx + pz.dk] - fzrho[pz.idx]);
+                         rho[p.idx] = rho_p[p.idx] - calcupdate;
+                         //        rho[p.idx] = rho_p[p.idx] - calcupdate(fxrho,
+                         //        fyrho, fzrho, &p);
 
-        rho[p.idx] = rho_p[p.idx] - calcupdate;
-//        rho[p.idx] = rho_p[p.idx] - calcupdate(fxrho, fyrho, fzrho, &p);
-
-//        psi[p.idx] =
-//            psi_p[p.idx] +
-//            dt * (ddx_phi + ddy_phi + ddz_phi - pow(mass, 2) * phi_p[p.idx] +
-//                  4 * M_PI * central_potential(t, p.x, p.y, p.z));
-//        phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
-      });
+                         //        psi[p.idx] =
+                         //            psi_p[p.idx] +
+                         //            dt * (ddx_phi + ddy_phi + ddz_phi -
+                         //            pow(mass, 2) * phi_p[p.idx] +
+                         //                  4 * M_PI * central_potential(t,
+                         //                  p.x, p.y, p.z));
+                         //        phi[p.idx] = phi_p[p.idx] + dt * psi[p.idx];
+                       });
 #endif
-
-   
 }
 
 } // namespace HydroToyCarpetX
