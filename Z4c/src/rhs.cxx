@@ -190,7 +190,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   noinline([&] {
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+        grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
           // Load and calculate
@@ -223,7 +223,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
   noinline([&] {
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+        grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
           // Load and calculate

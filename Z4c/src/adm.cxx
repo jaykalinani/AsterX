@@ -99,7 +99,7 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
         // Load and calculate

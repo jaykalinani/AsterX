@@ -564,7 +564,7 @@ calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const auto val = gf1(mask, p.I);
         gf0.store(mask, layout0, p.I, val);
@@ -588,7 +588,7 @@ calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const auto val = gf1(mask, p.I);
         gf0.store(mask, layout0, p.I, val);
@@ -662,7 +662,7 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
     const Loop::GridDescBaseDevice grid(cctkGH);
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+        grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
           const vec3<vreal, UP> betaG = gf_betaG_(mask, p.I);
           const vec3<vreal, DN> dgf_upwind(
@@ -678,7 +678,7 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
     const Loop::GridDescBaseDevice grid(cctkGH);
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+        grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
           const vec3<vreal, UP> betaG = gf_betaG_(mask, p.I);
           const vec3<vreal, DN> dgf_upwind(

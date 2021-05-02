@@ -46,79 +46,79 @@ extern "C" void Z4c_Boundaries(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
 
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_chi1(p.I) = 1; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_chi1(p.I) = 1; });
 
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_gammatxx1(p.I) = 1; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_gammatxx1(p.I) = 1; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_gammatxy1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_gammatxy1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_gammatxz1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_gammatxz1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_gammatyy1(p.I) = 1; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_gammatyy1(p.I) = 1; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_gammatyz1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_gammatyz1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_gammatzz1(p.I) = 1; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_gammatzz1(p.I) = 1; });
+
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Kh1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Atxx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Atxy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Atxz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Atyy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Atyz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Atzz1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Gamtx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Gamty1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Gamtz1(p.I) = 0; });
+
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_Theta1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Kh1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_alphaG1(p.I) = 1; });
 
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atxx1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_betaGx1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atxy1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_betaGy1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atxz1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atyy1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atyz1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Atzz1(p.I) = 0; });
-
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Gamtx1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Gamty1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Gamtz1(p.I) = 0; });
-
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_Theta1(p.I) = 0; });
-
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_alphaG1(p.I) = 1; });
-
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_betaGx1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_betaGy1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_betaGz1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_betaGz1(p.I) = 0; });
 }
 
 } // namespace Z4c

@@ -31,38 +31,38 @@ extern "C" void Z4c_ADM2Boundaries(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
 
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dtkxx1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dtkxy1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dtkxz1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dtkyy1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dtkyz1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dtkzz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_dtkxx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_dtkxy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_dtkxz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_dtkyy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_dtkyz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_dtkzz1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dt2alp1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_dt2alp1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dt2betax1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_dt2betax1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dt2betay1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_dt2betay1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
       grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_dt2betaz1(p.I) = 0; });
+      [=](const PointDesc &p) Z4C_INLINE Z4C_GPU { gf_dt2betaz1(p.I) = 0; });
 }
 
 } // namespace Z4c

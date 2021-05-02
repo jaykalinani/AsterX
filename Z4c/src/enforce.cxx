@@ -43,7 +43,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
         // Load
@@ -63,7 +63,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
         const vreal detgammat_old = gammat_old.det();
         const vreal chi1_old = 1 / cbrt(detgammat_old);
-        const mat3<vreal, DN, DN> gammat([&] Z4C_INLINE(int a, int b) {
+        const mat3<vreal, DN, DN> gammat([&](int a, int b) Z4C_INLINE {
           return chi1_old * gammat_old(a, b);
         });
 #ifdef CCTK_DEBUG
@@ -81,15 +81,15 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
         const mat3<vreal, UP, UP> gammatu = gammat.inv(1);
 
-        const vreal traceAt_old = sum2sym([&] Z4C_INLINE(int x, int y) {
+        const vreal traceAt_old = sum2sym([&](int x, int y) Z4C_INLINE {
           return gammatu(x, y) * At_old(x, y);
         });
-        const mat3<vreal, DN, DN> At([&] Z4C_INLINE(int a, int b) {
+        const mat3<vreal, DN, DN> At([&](int a, int b) Z4C_INLINE {
           return At_old(a, b) - traceAt_old / 3 * gammat(a, b);
         });
 #ifdef CCTK_DEBUG
         const vreal traceAt = sum2sym(
-            [&] Z4C_INLINE(int x, int y) { return gammatu(x, y) * At(x, y); });
+            [&](int x, int y) Z4C_INLINE { return gammatu(x, y) * At(x, y); });
         const vreal gammatu_norm = gammatu.maxabs();
         const vreal At_norm = At.maxabs();
         const vreal At_scale = fmax(fmax(gammat_norm, gammatu_norm), At_norm);

@@ -70,7 +70,7 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
         // Load
@@ -86,22 +86,22 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
         const vreal chi = 1 / cbrt(detg);
 
         const mat3<vreal, DN, DN> gammat(
-            [&] Z4C_INLINE(int a, int b) { return chi * g(a, b); });
+            [&](int a, int b) Z4C_INLINE { return chi * g(a, b); });
 
         const vreal trK = sum2sym(
-            [&] Z4C_INLINE(int x, int y) { return gu(x, y) * K(x, y); });
+            [&](int x, int y) Z4C_INLINE { return gu(x, y) * K(x, y); });
 
         const vreal Theta = 0;
 
         const vreal Kh = trK - 2 * Theta;
 
-        const mat3<vreal, DN, DN> At([&] Z4C_INLINE(int a, int b) {
+        const mat3<vreal, DN, DN> At([&](int a, int b) Z4C_INLINE {
           return chi * (K(a, b) - trK / 3 * g(a, b));
         });
 
         const vreal alphaG = alp;
 
-        const vec3<vreal, UP> betaG([&] Z4C_INLINE(int a) { return beta(a); });
+        const vec3<vreal, UP> betaG([&](int a) Z4C_INLINE { return beta(a); });
 
         // Store
         gf_chi1.store(mask, p.I, chi);

@@ -28,33 +28,33 @@ extern "C" void Z4c_ConstraintBoundaries(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
 
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCx1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCy1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_ZtCz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_ZtCx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_ZtCy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_ZtCz1(p.I) = 0; });
 
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_HC1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_HC1(p.I) = 0; });
 
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCx1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCy1(p.I) = 0; });
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_MtCz1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_MtCx1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_MtCy1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_MtCz1(p.I) = 0; });
 
-  grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) { gf_allC1(p.I) = 0; });
+  grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
+                                [=](const PointDesc &p)
+                                    Z4C_INLINE Z4C_GPU { gf_allC1(p.I) = 0; });
 }
 
 } // namespace Z4c

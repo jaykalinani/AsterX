@@ -44,7 +44,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=] Z4C_INLINE Z4C_GPU(const PointDesc &p) {
+      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
 
         // Load
@@ -60,8 +60,8 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
         const vec3<mat3<vreal, DN, DN>, DN> Gammatl = calc_gammal(dgammat);
         const vec3<mat3<vreal, DN, DN>, UP> Gammat =
             calc_gamma(gammatu, Gammatl);
-        const vec3<vreal, UP> Gamt([&] Z4C_INLINE(int a) {
-          return sum2sym([&] Z4C_INLINE(int x, int y) {
+        const vec3<vreal, UP> Gamt([&](int a) Z4C_INLINE {
+          return sum2sym([&](int x, int y) Z4C_INLINE {
             return gammatu(x, y) * Gammat(a)(x, y);
           });
         });
