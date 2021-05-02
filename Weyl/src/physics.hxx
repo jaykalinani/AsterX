@@ -108,6 +108,7 @@ constexpr
                  const vec4<mat4<T, DN, DN>, UP> &Gamma,
                  const vec4<mat4<vec4<T, DN>, DN, DN>, UP> &dGamma) {
   // Rm_abcd
+#if 1
   return rten4<T, DN, DN, DN, DN>(
       [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -122,6 +123,31 @@ constexpr
           return g(a, x) * rmuxbcd;
         });
       });
+#else
+  const vec4<vec4<amat4<T, DN, DN>, DN>, UP> rmuxbcd(
+      [&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return vec4<amat4<T, DN, DN>, DN>(
+            [&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+              return amat4<T, DN, DN>(
+                  [&](int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                    return dGamma(x)(d, b)(c)   //
+                           - dGamma(x)(c, b)(d) //
+                           + sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                               return Gamma(x)(c, y) * Gamma(y)(d, b);
+                             }) //
+                           - sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                               return Gamma(x)(d, y) * Gamma(y)(c, b);
+                             });
+                  });
+            });
+      });
+  return rten4<T, DN, DN, DN, DN>(
+      [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          return g(a, x) * rmuxbcd(x)(b)(c, d);
+        });
+      });
+#endif
 }
 
 template <typename T>
