@@ -129,7 +129,7 @@ constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat4<T, DN, DN>
 calc_ricci(const mat4<T, UP, UP> &gu, const rten4<T, DN, DN, DN, DN> &Rm) {
   // R_ab
   return mat4<T, DN, DN>([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return sum42([&](int x, int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    return sum42sym([&](int x, int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
       return gu(x, y) * Rm(x, a, y, b);
     });
   });
