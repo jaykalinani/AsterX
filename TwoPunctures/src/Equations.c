@@ -21,17 +21,16 @@
 /* U.d33[ivar]  = U[ivar]_zz;*/
 
 CCTK_REAL
-BY_KKofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-{
+BY_KKofxyz(CCTK_REAL x, CCTK_REAL y, CCTK_REAL z) {
   DECLARE_CCTK_PARAMETERS;
   int i, j;
   CCTK_REAL r_plus, r2_plus, r3_plus, r_minus, r2_minus, r3_minus, np_Pp, nm_Pm,
-    Aij, AijAij, n_plus[3], n_minus[3], np_Sp[3], nm_Sm[3];
+      Aij, AijAij, n_plus[3], n_minus[3], np_Sp[3], nm_Sm[3];
 
   r2_plus = (x - par_b) * (x - par_b) + y * y + z * z;
   r2_minus = (x + par_b) * (x + par_b) + y * y + z * z;
-  r_plus = sqrt (r2_plus);
-  r_minus = sqrt (r2_minus);
+  r_plus = sqrt(r2_plus);
+  r_minus = sqrt(r2_minus);
   r3_plus = r_plus * r2_plus;
   r3_minus = r_minus * r2_minus;
 
@@ -45,8 +44,7 @@ BY_KKofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
   /* dot product: np_Pp = (n_+).(P_+); nm_Pm = (n_-).(P_-) */
   np_Pp = 0;
   nm_Pm = 0;
-  for (i = 0; i < 3; i++)
-  {
+  for (i = 0; i < 3; i++) {
     np_Pp += n_plus[i] * par_P_plus[i];
     nm_Pm += n_minus[i] * par_P_minus[i];
   }
@@ -58,19 +56,20 @@ BY_KKofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
   nm_Sm[1] = n_minus[2] * par_S_minus[0] - n_minus[0] * par_S_minus[2];
   nm_Sm[2] = n_minus[0] * par_S_minus[1] - n_minus[1] * par_S_minus[0];
   AijAij = 0;
-  for (i = 0; i < 3; i++)
-  {
-    for (j = 0; j < 3; j++)
-    {				/* Bowen-York-Curvature :*/
-      Aij =
-	+ 1.5 * (par_P_plus[i] * n_plus[j] + par_P_plus[j] * n_plus[i]
-                 + np_Pp * n_plus[i] * n_plus[j]) / r2_plus
-	+ 1.5 * (par_P_minus[i] * n_minus[j] + par_P_minus[j] * n_minus[i]
-		 + nm_Pm * n_minus[i] * n_minus[j]) / r2_minus
-	- 3.0 * (np_Sp[i] * n_plus[j] + np_Sp[j] * n_plus[i]) / r3_plus
-	- 3.0 * (nm_Sm[i] * n_minus[j] + nm_Sm[j] * n_minus[i]) / r3_minus;
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) { /* Bowen-York-Curvature :*/
+      Aij = +1.5 *
+                (par_P_plus[i] * n_plus[j] + par_P_plus[j] * n_plus[i] +
+                 np_Pp * n_plus[i] * n_plus[j]) /
+                r2_plus +
+            1.5 *
+                (par_P_minus[i] * n_minus[j] + par_P_minus[j] * n_minus[i] +
+                 nm_Pm * n_minus[i] * n_minus[j]) /
+                r2_minus -
+            3.0 * (np_Sp[i] * n_plus[j] + np_Sp[j] * n_plus[i]) / r3_plus -
+            3.0 * (nm_Sm[i] * n_minus[j] + nm_Sm[j] * n_minus[i]) / r3_minus;
       if (i == j)
-	Aij -= +1.5 * (np_Pp / r2_plus + nm_Pm / r2_minus);
+        Aij -= +1.5 * (np_Pp / r2_plus + nm_Pm / r2_minus);
       AijAij += Aij * Aij;
     }
   }
@@ -78,24 +77,22 @@ BY_KKofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
   return AijAij;
 }
 
-void
-BY_Aijofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z, CCTK_REAL Aij[3][3])
-{
+void BY_Aijofxyz(CCTK_REAL x, CCTK_REAL y, CCTK_REAL z, CCTK_REAL Aij[3][3]) {
   DECLARE_CCTK_PARAMETERS;
   int i, j;
   CCTK_REAL r_plus, r2_plus, r3_plus, r_minus, r2_minus, r3_minus, np_Pp, nm_Pm,
-    n_plus[3], n_minus[3], np_Sp[3], nm_Sm[3];
+      n_plus[3], n_minus[3], np_Sp[3], nm_Sm[3];
 
   r2_plus = (x - par_b) * (x - par_b) + y * y + z * z;
   r2_minus = (x + par_b) * (x + par_b) + y * y + z * z;
-  r2_plus = sqrt (pow (r2_plus, 2) + pow (TP_epsilon, 4));
-  r2_minus = sqrt (pow (r2_minus, 2) + pow (TP_epsilon, 4));
-  if (r2_plus < pow(TP_Tiny,2))
-    r2_plus = pow(TP_Tiny,2);
-  if (r2_minus < pow(TP_Tiny,2))
-    r2_minus = pow(TP_Tiny,2);
-  r_plus = sqrt (r2_plus);
-  r_minus = sqrt (r2_minus);
+  r2_plus = sqrt(pow(r2_plus, 2) + pow(TP_epsilon, 4));
+  r2_minus = sqrt(pow(r2_minus, 2) + pow(TP_epsilon, 4));
+  if (r2_plus < pow(TP_Tiny, 2))
+    r2_plus = pow(TP_Tiny, 2);
+  if (r2_minus < pow(TP_Tiny, 2))
+    r2_minus = pow(TP_Tiny, 2);
+  r_plus = sqrt(r2_plus);
+  r_minus = sqrt(r2_minus);
   r3_plus = r_plus * r2_plus;
   r3_minus = r_minus * r2_minus;
 
@@ -109,8 +106,7 @@ BY_Aijofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z, CCTK_REAL Aij[3][3])
   /* dot product: np_Pp = (n_+).(P_+); nm_Pm = (n_-).(P_-) */
   np_Pp = 0;
   nm_Pm = 0;
-  for (i = 0; i < 3; i++)
-  {
+  for (i = 0; i < 3; i++) {
     np_Pp += n_plus[i] * par_P_plus[i];
     nm_Pm += n_minus[i] * par_P_minus[i];
   }
@@ -121,19 +117,21 @@ BY_Aijofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z, CCTK_REAL Aij[3][3])
   nm_Sm[0] = n_minus[1] * par_S_minus[2] - n_minus[2] * par_S_minus[1];
   nm_Sm[1] = n_minus[2] * par_S_minus[0] - n_minus[0] * par_S_minus[2];
   nm_Sm[2] = n_minus[0] * par_S_minus[1] - n_minus[1] * par_S_minus[0];
-  for (i = 0; i < 3; i++)
-  {
-    for (j = 0; j < 3; j++)
-    {				/* Bowen-York-Curvature :*/
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) { /* Bowen-York-Curvature :*/
       Aij[i][j] =
-        + 1.5 * (par_P_plus[i] * n_plus[j] + par_P_plus[j] * n_plus[i]
-		 + np_Pp * n_plus[i] * n_plus[j]) / r2_plus
-	+ 1.5 * (par_P_minus[i] * n_minus[j] + par_P_minus[j] * n_minus[i]
-		 + nm_Pm * n_minus[i] * n_minus[j]) / r2_minus
-	- 3.0 * (np_Sp[i] * n_plus[j] + np_Sp[j] * n_plus[i]) / r3_plus
-	- 3.0 * (nm_Sm[i] * n_minus[j] + nm_Sm[j] * n_minus[i]) / r3_minus;
+          +1.5 *
+              (par_P_plus[i] * n_plus[j] + par_P_plus[j] * n_plus[i] +
+               np_Pp * n_plus[i] * n_plus[j]) /
+              r2_plus +
+          1.5 *
+              (par_P_minus[i] * n_minus[j] + par_P_minus[j] * n_minus[i] +
+               nm_Pm * n_minus[i] * n_minus[j]) /
+              r2_minus -
+          3.0 * (np_Sp[i] * n_plus[j] + np_Sp[j] * n_plus[i]) / r3_plus -
+          3.0 * (nm_Sm[i] * n_minus[j] + nm_Sm[j] * n_minus[i]) / r3_minus;
       if (i == j)
-	Aij[i][j] -= +1.5 * (np_Pp / r2_plus + nm_Pm / r2_minus);
+        Aij[i][j] -= +1.5 * (np_Pp / r2_plus + nm_Pm / r2_minus);
     }
   }
 }
@@ -141,52 +139,44 @@ BY_Aijofxyz (CCTK_REAL x, CCTK_REAL y, CCTK_REAL z, CCTK_REAL Aij[3][3])
 /*-----------------------------------------------------------*/
 /********           Nonlinear Equations                ***********/
 /*-----------------------------------------------------------*/
-void
-NonLinEquations (CCTK_REAL rho_adm,
-     CCTK_REAL A, CCTK_REAL B, CCTK_REAL X, CCTK_REAL R,
-		 CCTK_REAL x, CCTK_REAL r, CCTK_REAL phi,
-		 CCTK_REAL y, CCTK_REAL z, derivs U, CCTK_REAL *values)
-{
+void NonLinEquations(CCTK_REAL rho_adm, CCTK_REAL A, CCTK_REAL B, CCTK_REAL X,
+                     CCTK_REAL R, CCTK_REAL x, CCTK_REAL r, CCTK_REAL phi,
+                     CCTK_REAL y, CCTK_REAL z, derivs U, CCTK_REAL *values) {
   DECLARE_CCTK_PARAMETERS;
   CCTK_REAL r_plus, r_minus, psi, psi2, psi4, psi7;
 
-  r_plus = sqrt ((x - par_b) * (x - par_b) + y * y + z * z);
-  r_minus = sqrt ((x + par_b) * (x + par_b) + y * y + z * z);
+  r_plus = sqrt((x - par_b) * (x - par_b) + y * y + z * z);
+  r_minus = sqrt((x + par_b) * (x + par_b) + y * y + z * z);
 
-  psi =
-    1. + 0.5 * par_m_plus / r_plus + 0.5 * par_m_minus / r_minus + U.d0[0];
+  psi = 1. + 0.5 * par_m_plus / r_plus + 0.5 * par_m_minus / r_minus + U.d0[0];
   psi2 = psi * psi;
   psi4 = psi2 * psi2;
   psi7 = psi * psi2 * psi4;
 
-  values[0] =
-    U.d11[0] + U.d22[0] + U.d33[0] + 0.125 * BY_KKofxyz (x, y, z) / psi7 +
-    2.0 * Pi / psi2/psi * rho_adm;
-
+  values[0] = U.d11[0] + U.d22[0] + U.d33[0] +
+              0.125 * BY_KKofxyz(x, y, z) / psi7 +
+              2.0 * Pi / psi2 / psi * rho_adm;
 }
 
 /*-----------------------------------------------------------*/
 /********               Linear Equations                ***********/
 /*-----------------------------------------------------------*/
-void
-LinEquations (CCTK_REAL A, CCTK_REAL B, CCTK_REAL X, CCTK_REAL R,
-	      CCTK_REAL x, CCTK_REAL r, CCTK_REAL phi,
-	      CCTK_REAL y, CCTK_REAL z, derivs dU, derivs U, CCTK_REAL *values)
-{
+void LinEquations(CCTK_REAL A, CCTK_REAL B, CCTK_REAL X, CCTK_REAL R,
+                  CCTK_REAL x, CCTK_REAL r, CCTK_REAL phi, CCTK_REAL y,
+                  CCTK_REAL z, derivs dU, derivs U, CCTK_REAL *values) {
   DECLARE_CCTK_PARAMETERS;
   CCTK_REAL r_plus, r_minus, psi, psi2, psi4, psi8;
 
-  r_plus = sqrt ((x - par_b) * (x - par_b) + y * y + z * z);
-  r_minus = sqrt ((x + par_b) * (x + par_b) + y * y + z * z);
+  r_plus = sqrt((x - par_b) * (x - par_b) + y * y + z * z);
+  r_minus = sqrt((x + par_b) * (x + par_b) + y * y + z * z);
 
-  psi =
-    1. + 0.5 * par_m_plus / r_plus + 0.5 * par_m_minus / r_minus + U.d0[0];
+  psi = 1. + 0.5 * par_m_plus / r_plus + 0.5 * par_m_minus / r_minus + U.d0[0];
   psi2 = psi * psi;
   psi4 = psi2 * psi2;
   psi8 = psi4 * psi4;
 
-  values[0] = dU.d11[0] + dU.d22[0] + dU.d33[0]
-    - 0.875 * BY_KKofxyz (x, y, z) / psi8 * dU.d0[0];
+  values[0] = dU.d11[0] + dU.d22[0] + dU.d33[0] -
+              0.875 * BY_KKofxyz(x, y, z) / psi8 * dU.d0[0];
 }
 
 /*-----------------------------------------------------------*/

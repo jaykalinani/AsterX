@@ -13,16 +13,13 @@
 #include "TwoPunctures.h"
 
 /* -------------------------------------------------------------------*/
-void
-TwoPunctures_ParamCheck (CCTK_ARGUMENTS)
-{
+void TwoPunctures_ParamCheck(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
-  
-  if (use_sources)
-  {
-    if (! CCTK_IsFunctionAliased ("Set_Rho_ADM"))
-      CCTK_WARN (0, "Matter sources have been enabled, "
-                 "but there is no aliased function for matter sources.");
+
+  if (use_sources) {
+    if (!CCTK_IsFunctionAliased("Set_Rho_ADM"))
+      CCTK_WARN(0, "Matter sources have been enabled, "
+                   "but there is no aliased function for matter sources.");
   }
 }
