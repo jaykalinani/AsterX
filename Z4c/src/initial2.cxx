@@ -46,9 +46,10 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
   grid.loop_int_device<0, 0, 0, vsize>(
       grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+        const GF3D2index index1(layout1, p.I);
 
         // Load
-        const mat3<vreal, DN, DN> gammat = gf_gammat1(mask, p.I, 1);
+        const mat3<vreal, DN, DN> gammat = gf_gammat1(mask, index1, 1);
 
         // Calculate Z4c variables (only Gamt)
         const mat3<vreal, UP, UP> gammatu = gammat.inv(1);
@@ -67,7 +68,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
         });
 
         // Store
-        gf_Gamt1.store(mask, p.I, Gamt);
+        gf_Gamt1.store(mask, index1, Gamt);
       });
 }
 

@@ -72,12 +72,13 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   grid.loop_all_device<0, 0, 0, vsize>(
       grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+        const GF3D2index index1(layout1, p.I);
 
         // Load
-        const mat3<vreal, DN, DN> g = gf_g1(mask, p.I, 1);
-        const mat3<vreal, DN, DN> K = gf_K1(mask, p.I);
-        const vreal alp = gf_alp1(mask, p.I, 1);
-        const vec3<vreal, UP> beta = gf_beta1(mask, p.I);
+        const mat3<vreal, DN, DN> g = gf_g1(mask, index1, 1);
+        const mat3<vreal, DN, DN> K = gf_K1(mask, index1);
+        const vreal alp = gf_alp1(mask, index1, 1);
+        const vec3<vreal, UP> beta = gf_beta1(mask, index1);
 
         // Calculate Z4c variables (all except Gammat)
         const vreal detg = g.det();
@@ -104,13 +105,13 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
         const vec3<vreal, UP> betaG([&](int a) Z4C_INLINE { return beta(a); });
 
         // Store
-        gf_chi1.store(mask, p.I, chi);
-        gf_gammat1.store(mask, p.I, gammat);
-        gf_Kh1.store(mask, p.I, Kh);
-        gf_At1.store(mask, p.I, At);
-        gf_Theta1.store(mask, p.I, Theta);
-        gf_alphaG1.store(mask, p.I, alphaG);
-        gf_betaG1.store(mask, p.I, betaG);
+        gf_chi1.store(mask, index1, chi);
+        gf_gammat1.store(mask, index1, gammat);
+        gf_Kh1.store(mask, index1, Kh);
+        gf_At1.store(mask, index1, At);
+        gf_Theta1.store(mask, index1, Theta);
+        gf_alphaG1.store(mask, index1, alphaG);
+        gf_betaG1.store(mask, index1, betaG);
       });
 }
 

@@ -5,14 +5,10 @@
 #include "physics.hxx"
 #include "tensor.hxx"
 
-#include <simd.hxx>
-
 #include <cmath>
 #include <iostream>
-#include <type_traits>
 
 namespace Z4c {
-using namespace Arith;
 
 // See arXiv:1212.2901 [gr-qc]
 // Note: A_(ij) there means 1/2 (A_ij + A_ji)
@@ -143,7 +139,6 @@ template <typename T> struct z4c_vars_noderivs {
   //
   {}
 
-#if 0
   Z4C_INLINE Z4C_GPU z4c_vars_noderivs(
       const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
       const T &eta,
@@ -207,84 +202,6 @@ template <typename T> struct z4c_vars_noderivs {
                              //
                              mat3<T, DN, DN>(gf_eTxx_, gf_eTxy_, gf_eTxz_,
                                              gf_eTyy_, gf_eTyz_, gf_eTzz_, I))
-  //
-  {}
-#endif
-
-  template <
-      typename S, typename T1 = T,
-      std::enable_if_t<std::is_same_v<S, typename T1::value_type> > * = nullptr>
-  Z4C_INLINE Z4C_GPU z4c_vars_noderivs(
-      const simdl<S> &mask,
-      //
-      const S &kappa1, const S &kappa2, const S &f_mu_L, const S &f_mu_S,
-      const S &eta,
-      //
-      const GF3D2<const S> &gf_chi_,
-      //
-      const GF3D2<const S> &gf_gammatxx_, const GF3D2<const S> &gf_gammatxy_,
-      const GF3D2<const S> &gf_gammatxz_, const GF3D2<const S> &gf_gammatyy_,
-      const GF3D2<const S> &gf_gammatyz_, const GF3D2<const S> &gf_gammatzz_,
-      //
-      const GF3D2<const S> &gf_Kh_,
-      //
-      const GF3D2<const S> &gf_Atxx_, const GF3D2<const S> &gf_Atxy_,
-      const GF3D2<const S> &gf_Atxz_, const GF3D2<const S> &gf_Atyy_,
-      const GF3D2<const S> &gf_Atyz_, const GF3D2<const S> &gf_Atzz_,
-      //
-      const GF3D2<const S> &gf_Gamtx_, const GF3D2<const S> &gf_Gamty_,
-      const GF3D2<const S> &gf_Gamtz_,
-      //
-      const GF3D2<const S> &gf_Theta_,
-      //
-      const GF3D2<const S> &gf_alphaG_,
-      //
-      const GF3D2<const S> &gf_betaGx_, const GF3D2<const S> &gf_betaGy_,
-      const GF3D2<const S> &gf_betaGz_,
-      //
-      const GF3D2<const S> &gf_eTtt_,
-      //
-      const GF3D2<const S> &gf_eTtx_, const GF3D2<const S> &gf_eTty_,
-      const GF3D2<const S> &gf_eTtz_,
-      //
-      const GF3D2<const S> &gf_eTxx_, const GF3D2<const S> &gf_eTxy_,
-      const GF3D2<const S> &gf_eTxz_, const GF3D2<const S> &gf_eTyy_,
-      const GF3D2<const S> &gf_eTyz_, const GF3D2<const S> &gf_eTzz_,
-      //
-      const vect<int, 3> &I)
-      : z4c_vars_noderivs<T>(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta,
-            //
-            gf_chi_(mask, I, 1),
-            //
-            mat3<T, DN, DN>(gf_gammatxx_(mask, I, 1), gf_gammatxy_(mask, I),
-                            gf_gammatxz_(mask, I), gf_gammatyy_(mask, I, 1),
-                            gf_gammatyz_(mask, I), gf_gammatzz_(mask, I, 1)),
-            //
-            maskz_loadu(mask, &gf_Kh_(I)),
-            //
-            mat3<T, DN, DN>(gf_Atxx_(mask, I), gf_Atxy_(mask, I),
-                            gf_Atxz_(mask, I), gf_Atyy_(mask, I),
-                            gf_Atyz_(mask, I), gf_Atzz_(mask, I)),
-            //
-            vec3<T, UP>(gf_Gamtx_(mask, I), gf_Gamty_(mask, I),
-                        gf_Gamtz_(mask, I)),
-            //
-            maskz_loadu(mask, &gf_Theta_(I)),
-            //
-            masko_loadu(mask, &gf_alphaG_(I), 1),
-            //
-            vec3<T, UP>(gf_betaGx_(mask, I), gf_betaGy_(mask, I),
-                        gf_betaGz_(mask, I)),
-            //
-            maskz_loadu(mask, &gf_eTtt_(I)),
-            //
-            vec3<T, UP>(gf_eTtx_(mask, I), gf_eTty_(mask, I),
-                        gf_eTtz_(mask, I)),
-            //
-            mat3<T, DN, DN>(gf_eTxx_(mask, I), gf_eTxy_(mask, I),
-                            gf_eTxz_(mask, I), gf_eTyy_(mask, I),
-                            gf_eTyz_(mask, I), gf_eTzz_(mask, I)))
   //
   {}
 };
@@ -754,7 +671,6 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   //
   {}
 
-#if 0
   Z4C_INLINE Z4C_GPU z4c_vars(
       const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
       const T &eta,
@@ -976,7 +892,6 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                                  gf_eTyz_, gf_eTzz_, I))
   //
   {}
-#endif
 };
 
 } // namespace Z4c

@@ -45,13 +45,14 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
   grid.loop_all_device<0, 0, 0, vsize>(
       grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+        const GF3D2index index1(layout1, p.I);
 
         // Load
-        const vreal chi_old = gf_chi1(mask, p.I, 1);
-        const vreal alphaG_old = gf_alphaG1(mask, p.I, 1);
+        const vreal chi_old = gf_chi1(mask, index1, 1);
+        const vreal alphaG_old = gf_alphaG1(mask, index1, 1);
 
-        const mat3<vreal, DN, DN> gammat_old = gf_gammat1(mask, p.I, 1);
-        const mat3<vreal, DN, DN> At_old = gf_At1(mask, p.I);
+        const mat3<vreal, DN, DN> gammat_old = gf_gammat1(mask, index1, 1);
+        const mat3<vreal, DN, DN> At_old = gf_At1(mask, index1);
 
         // Enforce floors
 
@@ -102,10 +103,10 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 #endif
 
         // Store
-        gf_chi1.store(mask, p.I, chi);
-        gf_gammat1.store(mask, p.I, gammat);
-        gf_At1.store(mask, p.I, At);
-        gf_alphaG1.store(mask, p.I, alphaG);
+        gf_chi1.store(mask, index1, chi);
+        gf_gammat1.store(mask, index1, gammat);
+        gf_At1.store(mask, index1, At);
+        gf_alphaG1.store(mask, index1, alphaG);
       });
 }
 

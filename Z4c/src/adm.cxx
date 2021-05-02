@@ -101,23 +101,25 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
   grid.loop_all_device<0, 0, 0, vsize>(
       grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+        const GF3D2index index1(layout1, p.I);
 
         // Load and calculate
         const z4c_vars_noderivs<vreal> vars(
-            kappa1, kappa2, f_mu_L, f_mu_S,
-            eta, //
-            gf_chi1(mask, p.I, 1), gf_gammat1(mask, p.I, 1), gf_Kh1(mask, p.I),
-            gf_At1(mask, p.I), gf_Gamt1(mask, p.I), gf_Theta1(mask, p.I),
-            gf_alphaG1(mask, p.I, 1), gf_betaG1(mask, p.I), //
-            gf_eTtt1(mask, p.I), gf_eTti1(mask, p.I), gf_eTij1(mask, p.I));
+            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            gf_chi1(mask, index1, 1), gf_gammat1(mask, index1, 1),
+            gf_Kh1(mask, index1), gf_At1(mask, index1), gf_Gamt1(mask, index1),
+            gf_Theta1(mask, index1), gf_alphaG1(mask, index1, 1),
+            gf_betaG1(mask, index1), //
+            gf_eTtt1(mask, index1), gf_eTti1(mask, index1),
+            gf_eTij1(mask, index1));
 
         // Store
-        gf_g1.store(mask, p.I, vars.g);
-        gf_K1.store(mask, p.I, vars.K);
-        gf_alp1.store(mask, p.I, vars.alp);
-        gf_dtalp1.store(mask, p.I, vars.dtalp);
-        gf_beta1.store(mask, p.I, vars.beta);
-        gf_dtbeta1.store(mask, p.I, vars.dtbeta);
+        gf_g1.store(mask, index1, vars.g);
+        gf_K1.store(mask, index1, vars.K);
+        gf_alp1.store(mask, index1, vars.alp);
+        gf_dtalp1.store(mask, index1, vars.dtalp);
+        gf_beta1.store(mask, index1, vars.beta);
+        gf_dtbeta1.store(mask, index1, vars.dtbeta);
       });
 }
 
