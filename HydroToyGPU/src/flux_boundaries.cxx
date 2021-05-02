@@ -24,20 +24,20 @@ extern "C" void HydroToyGPU_FluxBoundaries(CCTK_ARGUMENTS) {
   const GridDescBaseDevice grid(cctkGH);
 
   grid.loop_bnd_device<0, 1, 1>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        assert(false); // This should not be executed
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+                              assert(false); // This should not be executed
+                            });
   grid.loop_bnd_device<1, 0, 1>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        assert(false); // This should not be executed
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+                              assert(false); // This should not be executed
+                            });
   grid.loop_bnd_device<1, 1, 0>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        assert(false); // This should not be executed
-      });
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+                              assert(false); // This should not be executed
+                            });
 }
 
 } // namespace HydroToyGPU

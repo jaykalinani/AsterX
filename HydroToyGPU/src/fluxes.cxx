@@ -63,44 +63,46 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   // fmom^i_j = mom_j vel^i + delta^i_j press
   // fetot^i = (etot + press) vel^i
 
-  const auto calcflux = [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            CCTK_REAL var_m, CCTK_REAL var_p, CCTK_REAL flux_m,
-                            CCTK_REAL flux_p) {
-    CCTK_REAL lambda_m = 1.0;
-    CCTK_REAL lambda_p = -1.0;
-    CCTK_REAL llf =
-        0.5 * ((flux_m + flux_p) -
-               fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
-    // return dA * llf;
-    return llf;
-  };
+  const auto calcflux =
+      [=](CCTK_REAL var_m, CCTK_REAL var_p, CCTK_REAL flux_m, CCTK_REAL flux_p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+            CCTK_REAL lambda_m = 1.0;
+            CCTK_REAL lambda_p = -1.0;
+            CCTK_REAL llf =
+                0.5 * ((flux_m + flux_p) -
+                       fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
+            // return dA * llf;
+            return llf;
+          };
 
   constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        // Neighbouring "plus" and "minus" cell indices
-        const auto Im = p.I - DI[dir];
-        const auto Ip = p.I;
-        gf_fluxrho(p.I) =
-            calcflux(gf_rho(Im), gf_rho(Ip), gf_rho(Im) * gf_vel(Im),
-                     gf_rho(Ip) * gf_vel(Ip));
-        gf_fluxmomx(p.I) =
-            calcflux(gf_momx(Im), gf_momx(Ip),
-                     gf_momx(Im) * gf_vel(Im) + (dir == 0) * gf_press(Im),
-                     gf_momx(Ip) * gf_vel(Ip) + (dir == 0) * gf_press(Ip));
-        gf_fluxmomy(p.I) =
-            calcflux(gf_momy(Im), gf_momy(Ip),
-                     gf_momy(Im) * gf_vel(Im) + (dir == 1) * gf_press(Im),
-                     gf_momy(Ip) * gf_vel(Ip) + (dir == 1) * gf_press(Ip));
-        gf_fluxmomz(p.I) =
-            calcflux(gf_momz(Im), gf_momz(Ip),
-                     gf_momz(Im) * gf_vel(Im) + (dir == 2) * gf_press(Im),
-                     gf_momz(Ip) * gf_vel(Ip) + (dir == 2) * gf_press(Ip));
-        gf_fluxetot(p.I) = calcflux(gf_etot(Im), gf_etot(Ip),
-                                    (gf_etot(Im) + gf_press(Im)) * gf_vel(Im),
-                                    (gf_etot(Ip) + gf_press(Ip)) * gf_vel(Ip));
-      });
+      grid.nghostzones,
+      [=](const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+            // Neighbouring "plus" and "minus" cell indices
+            const auto Im = p.I - DI[dir];
+            const auto Ip = p.I;
+            gf_fluxrho(p.I) =
+                calcflux(gf_rho(Im), gf_rho(Ip), gf_rho(Im) * gf_vel(Im),
+                         gf_rho(Ip) * gf_vel(Ip));
+            gf_fluxmomx(p.I) =
+                calcflux(gf_momx(Im), gf_momx(Ip),
+                         gf_momx(Im) * gf_vel(Im) + (dir == 0) * gf_press(Im),
+                         gf_momx(Ip) * gf_vel(Ip) + (dir == 0) * gf_press(Ip));
+            gf_fluxmomy(p.I) =
+                calcflux(gf_momy(Im), gf_momy(Ip),
+                         gf_momy(Im) * gf_vel(Im) + (dir == 1) * gf_press(Im),
+                         gf_momy(Ip) * gf_vel(Ip) + (dir == 1) * gf_press(Ip));
+            gf_fluxmomz(p.I) =
+                calcflux(gf_momz(Im), gf_momz(Ip),
+                         gf_momz(Im) * gf_vel(Im) + (dir == 2) * gf_press(Im),
+                         gf_momz(Ip) * gf_vel(Ip) + (dir == 2) * gf_press(Ip));
+            gf_fluxetot(p.I) =
+                calcflux(gf_etot(Im), gf_etot(Ip),
+                         (gf_etot(Im) + gf_press(Im)) * gf_vel(Im),
+                         (gf_etot(Ip) + gf_press(Ip)) * gf_vel(Ip));
+          });
 }
 
 extern "C" void HydroToyGPU_Fluxes(CCTK_ARGUMENTS) {

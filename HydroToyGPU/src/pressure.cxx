@@ -37,21 +37,22 @@ extern "C" void HydroToyGPU_Pressure(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> gf_eint(gf_layout, eint);
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE(
-                            const PointDesc &p) {
-        CCTK_REAL rho_inv = 1.0 / (gf_rho(p.I) + 1.0e-20);
+      grid.nghostzones, [=](const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+                              CCTK_REAL rho_inv = 1.0 / (gf_rho(p.I) + 1.0e-20);
 
-        CCTK_REAL ekin =
-            0.5 * rho_inv *
-            sqrt(pow2(gf_momx(p.I)) + pow2(gf_momy(p.I)) + pow2(gf_momz(p.I)));
-        gf_eint(p.I) = gf_etot(p.I) - ekin;
+                              CCTK_REAL ekin =
+                                  0.5 * rho_inv *
+                                  sqrt(pow2(gf_momx(p.I)) + pow2(gf_momy(p.I)) +
+                                       pow2(gf_momz(p.I)));
+                              gf_eint(p.I) = gf_etot(p.I) - ekin;
 
-        gf_press(p.I) = (gamma - 1) * gf_eint(p.I);
+                              gf_press(p.I) = (gamma - 1) * gf_eint(p.I);
 
-        gf_velx(p.I) = rho_inv * gf_momx(p.I);
-        gf_vely(p.I) = rho_inv * gf_momy(p.I);
-        gf_velz(p.I) = rho_inv * gf_momz(p.I);
-      });
+                              gf_velx(p.I) = rho_inv * gf_momx(p.I);
+                              gf_vely(p.I) = rho_inv * gf_momy(p.I);
+                              gf_velz(p.I) = rho_inv * gf_momz(p.I);
+                            });
 }
 
 } // namespace HydroToyGPU
