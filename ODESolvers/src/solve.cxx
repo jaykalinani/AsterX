@@ -76,7 +76,10 @@ private:
   vector<unique_ptr<amrex::MultiFab> > owned_stuff;
 
 public:
-  void check_valid(const string &why) const;
+  void check_valid(const function<string()> &why) const;
+  void check_valid(const string &why) const {
+    check_valid([=]() { return why; });
+  }
 
   statecomp_t copy() const;
 
@@ -90,7 +93,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 // Ensure a state vector has valid data everywhere
-void statecomp_t::check_valid(const string &why) const {
+void statecomp_t::check_valid(const function<string()> &why) const {
   for (const int groupid : groupids) {
     if (groupid >= 0) {
       assert(CarpetX::active_levels);
@@ -98,7 +101,7 @@ void statecomp_t::check_valid(const string &why) const {
         const auto &groupdata = *leveldata.groupdata.at(groupid);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           const int tl = 0;
-          CarpetX::check_valid(groupdata, vi, tl, [=]() { return why; });
+          CarpetX::check_valid(groupdata, vi, tl, why);
         }
       });
     }
