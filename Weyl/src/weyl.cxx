@@ -39,7 +39,7 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   GridDescBase(cctkGH).box_int<0, 0, 0>(nghostzones, imin, imax);
   // Suffix 1: with ghost zones, suffix 0: without ghost zones
   const GF3D2layout layout1(cctkGH, indextype);
-  const GF3D2layout layout0(imin, imax);
+  const GF3D5layout layout0(imin, imax);
 
   const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_gamma1(
       GF3D2<const CCTK_REAL>(layout1, gxx),
@@ -327,195 +327,438 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
+#if 1
+
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) {
-        // Load and calculate
+      grid.nghostzones,
+      [=](const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+            // Load and calculate
 
-        const vec3<CCTK_REAL, UP> coord3{p.x, p.y, p.z};
+            const vec3<CCTK_REAL, UP> coord3{p.x, p.y, p.z};
 
-        const weyl_vars<CCTK_REAL> vars(
-            cctk_time, coord3, //
-            gf_gamma0(layout0, p.I), gf_alpha0(layout0, p.I),
-            gf_beta0(layout0, p.I), //
-            gf_k0(layout0, p.I), gf_dtalpha0(layout0, p.I),
-            gf_dtbeta0(layout0, p.I), //
-            gf_dgamma0(layout0, p.I), gf_dalpha0(layout0, p.I),
-            gf_dbeta0(layout0, p.I), //
-            gf_dtk1(p.I), gf_dt2alpha1(p.I),
-            gf_dt2beta1(p.I), //
-            gf_dk0(layout0, p.I), gf_ddtalpha0(layout0, p.I),
-            gf_ddtbeta0(layout0, p.I), //
-            gf_ddgamma0(layout0, p.I), gf_ddalpha0(layout0, p.I),
-            gf_ddbeta0(layout0, p.I));
+            const weyl_vars<CCTK_REAL> vars(
+                cctk_time, coord3, //
+                gf_gamma0(layout0, p.I), gf_alpha0(layout0, p.I),
+                gf_beta0(layout0, p.I), //
+                gf_k0(layout0, p.I), gf_dtalpha0(layout0, p.I),
+                gf_dtbeta0(layout0, p.I), //
+                gf_dgamma0(layout0, p.I), gf_dalpha0(layout0, p.I),
+                gf_dbeta0(layout0, p.I), //
+                gf_dtk1(p.I), gf_dt2alpha1(p.I),
+                gf_dt2beta1(p.I), //
+                gf_dk0(layout0, p.I), gf_ddtalpha0(layout0, p.I),
+                gf_ddtbeta0(layout0, p.I), //
+                gf_ddgamma0(layout0, p.I), gf_ddalpha0(layout0, p.I),
+                gf_ddbeta0(layout0, p.I));
 
-        // Store
-        vars.g.store(gf_g4tt1, gf_g4tx1, gf_g4ty1, gf_g4tz1, gf_g4xx1, gf_g4xy1,
-                     gf_g4xz1, gf_g4yy1, gf_g4yz1, gf_g4zz1, p.I);
+            // Store
+            vars.g.store(gf_g4tt1, gf_g4tx1, gf_g4ty1, gf_g4tz1, gf_g4xx1,
+                         gf_g4xy1, gf_g4xz1, gf_g4yy1, gf_g4yz1, gf_g4zz1, p.I);
 
-        // gf_Gamma4ttt1(p.I) = vars.Gamma(0)(0, 0);
-        // gf_Gamma4ttx1(p.I) = vars.Gamma(0)(0, 1);
-        // gf_Gamma4tty1(p.I) = vars.Gamma(0)(0, 2);
-        // gf_Gamma4ttz1(p.I) = vars.Gamma(0)(0, 3);
-        // gf_Gamma4txx1(p.I) = vars.Gamma(0)(1, 1);
-        // gf_Gamma4txy1(p.I) = vars.Gamma(0)(1, 2);
-        // gf_Gamma4txz1(p.I) = vars.Gamma(0)(1, 3);
-        // gf_Gamma4tyy1(p.I) = vars.Gamma(0)(2, 2);
-        // gf_Gamma4tyz1(p.I) = vars.Gamma(0)(2, 3);
-        // gf_Gamma4tzz1(p.I) = vars.Gamma(0)(3, 3);
+            // gf_Gamma4ttt1(p.I) = vars.Gamma(0)(0, 0);
+            // gf_Gamma4ttx1(p.I) = vars.Gamma(0)(0, 1);
+            // gf_Gamma4tty1(p.I) = vars.Gamma(0)(0, 2);
+            // gf_Gamma4ttz1(p.I) = vars.Gamma(0)(0, 3);
+            // gf_Gamma4txx1(p.I) = vars.Gamma(0)(1, 1);
+            // gf_Gamma4txy1(p.I) = vars.Gamma(0)(1, 2);
+            // gf_Gamma4txz1(p.I) = vars.Gamma(0)(1, 3);
+            // gf_Gamma4tyy1(p.I) = vars.Gamma(0)(2, 2);
+            // gf_Gamma4tyz1(p.I) = vars.Gamma(0)(2, 3);
+            // gf_Gamma4tzz1(p.I) = vars.Gamma(0)(3, 3);
 
-        // gf_Gamma4xtt1(p.I) = vars.Gamma(1)(0, 0);
-        // gf_Gamma4xtx1(p.I) = vars.Gamma(1)(0, 1);
-        // gf_Gamma4xty1(p.I) = vars.Gamma(1)(0, 2);
-        // gf_Gamma4xtz1(p.I) = vars.Gamma(1)(0, 3);
-        // gf_Gamma4xxx1(p.I) = vars.Gamma(1)(1, 1);
-        // gf_Gamma4xxy1(p.I) = vars.Gamma(1)(1, 2);
-        // gf_Gamma4xxz1(p.I) = vars.Gamma(1)(1, 3);
-        // gf_Gamma4xyy1(p.I) = vars.Gamma(1)(2, 2);
-        // gf_Gamma4xyz1(p.I) = vars.Gamma(1)(2, 3);
-        // gf_Gamma4xzz1(p.I) = vars.Gamma(1)(3, 3);
+            // gf_Gamma4xtt1(p.I) = vars.Gamma(1)(0, 0);
+            // gf_Gamma4xtx1(p.I) = vars.Gamma(1)(0, 1);
+            // gf_Gamma4xty1(p.I) = vars.Gamma(1)(0, 2);
+            // gf_Gamma4xtz1(p.I) = vars.Gamma(1)(0, 3);
+            // gf_Gamma4xxx1(p.I) = vars.Gamma(1)(1, 1);
+            // gf_Gamma4xxy1(p.I) = vars.Gamma(1)(1, 2);
+            // gf_Gamma4xxz1(p.I) = vars.Gamma(1)(1, 3);
+            // gf_Gamma4xyy1(p.I) = vars.Gamma(1)(2, 2);
+            // gf_Gamma4xyz1(p.I) = vars.Gamma(1)(2, 3);
+            // gf_Gamma4xzz1(p.I) = vars.Gamma(1)(3, 3);
 
-        // gf_Gamma4ytt1(p.I) = vars.Gamma(2)(0, 0);
-        // gf_Gamma4ytx1(p.I) = vars.Gamma(2)(0, 1);
-        // gf_Gamma4yty1(p.I) = vars.Gamma(2)(0, 2);
-        // gf_Gamma4ytz1(p.I) = vars.Gamma(2)(0, 3);
-        // gf_Gamma4yxx1(p.I) = vars.Gamma(2)(1, 1);
-        // gf_Gamma4yxy1(p.I) = vars.Gamma(2)(1, 2);
-        // gf_Gamma4yxz1(p.I) = vars.Gamma(2)(1, 3);
-        // gf_Gamma4yyy1(p.I) = vars.Gamma(2)(2, 2);
-        // gf_Gamma4yyz1(p.I) = vars.Gamma(2)(2, 3);
-        // gf_Gamma4yzz1(p.I) = vars.Gamma(2)(3, 3);
+            // gf_Gamma4ytt1(p.I) = vars.Gamma(2)(0, 0);
+            // gf_Gamma4ytx1(p.I) = vars.Gamma(2)(0, 1);
+            // gf_Gamma4yty1(p.I) = vars.Gamma(2)(0, 2);
+            // gf_Gamma4ytz1(p.I) = vars.Gamma(2)(0, 3);
+            // gf_Gamma4yxx1(p.I) = vars.Gamma(2)(1, 1);
+            // gf_Gamma4yxy1(p.I) = vars.Gamma(2)(1, 2);
+            // gf_Gamma4yxz1(p.I) = vars.Gamma(2)(1, 3);
+            // gf_Gamma4yyy1(p.I) = vars.Gamma(2)(2, 2);
+            // gf_Gamma4yyz1(p.I) = vars.Gamma(2)(2, 3);
+            // gf_Gamma4yzz1(p.I) = vars.Gamma(2)(3, 3);
 
-        // gf_Gamma4ztt1(p.I) = vars.Gamma(3)(0, 0);
-        // gf_Gamma4ztx1(p.I) = vars.Gamma(3)(0, 1);
-        // gf_Gamma4zty1(p.I) = vars.Gamma(3)(0, 2);
-        // gf_Gamma4ztz1(p.I) = vars.Gamma(3)(0, 3);
-        // gf_Gamma4zxx1(p.I) = vars.Gamma(3)(1, 1);
-        // gf_Gamma4zxy1(p.I) = vars.Gamma(3)(1, 2);
-        // gf_Gamma4zxz1(p.I) = vars.Gamma(3)(1, 3);
-        // gf_Gamma4zyy1(p.I) = vars.Gamma(3)(2, 2);
-        // gf_Gamma4zyz1(p.I) = vars.Gamma(3)(2, 3);
-        // gf_Gamma4zzz1(p.I) = vars.Gamma(3)(3, 3);
+            // gf_Gamma4ztt1(p.I) = vars.Gamma(3)(0, 0);
+            // gf_Gamma4ztx1(p.I) = vars.Gamma(3)(0, 1);
+            // gf_Gamma4zty1(p.I) = vars.Gamma(3)(0, 2);
+            // gf_Gamma4ztz1(p.I) = vars.Gamma(3)(0, 3);
+            // gf_Gamma4zxx1(p.I) = vars.Gamma(3)(1, 1);
+            // gf_Gamma4zxy1(p.I) = vars.Gamma(3)(1, 2);
+            // gf_Gamma4zxz1(p.I) = vars.Gamma(3)(1, 3);
+            // gf_Gamma4zyy1(p.I) = vars.Gamma(3)(2, 2);
+            // gf_Gamma4zyz1(p.I) = vars.Gamma(3)(2, 3);
+            // gf_Gamma4zzz1(p.I) = vars.Gamma(3)(3, 3);
 
-        // gf_rm4txtx1(p.I) = vars.Rm(0, 1)(0, 1);
-        // gf_rm4txty1(p.I) = vars.Rm(0, 1)(0, 2);
-        // gf_rm4txtz1(p.I) = vars.Rm(0, 1)(0, 3);
-        // gf_rm4txxy1(p.I) = vars.Rm(0, 1)(1, 2);
-        // gf_rm4txxz1(p.I) = vars.Rm(0, 1)(1, 3);
-        // gf_rm4txyz1(p.I) = vars.Rm(0, 1)(2, 3);
+            // gf_rm4txtx1(p.I) = vars.Rm(0, 1)(0, 1);
+            // gf_rm4txty1(p.I) = vars.Rm(0, 1)(0, 2);
+            // gf_rm4txtz1(p.I) = vars.Rm(0, 1)(0, 3);
+            // gf_rm4txxy1(p.I) = vars.Rm(0, 1)(1, 2);
+            // gf_rm4txxz1(p.I) = vars.Rm(0, 1)(1, 3);
+            // gf_rm4txyz1(p.I) = vars.Rm(0, 1)(2, 3);
 
-        // gf_rm4tyty1(p.I) = vars.Rm(0, 2)(0, 2);
-        // gf_rm4tytz1(p.I) = vars.Rm(0, 2)(0, 3);
-        // gf_rm4tyxy1(p.I) = vars.Rm(0, 2)(1, 2);
-        // gf_rm4tyxz1(p.I) = vars.Rm(0, 2)(1, 3);
-        // gf_rm4tyyz1(p.I) = vars.Rm(0, 2)(2, 3);
+            // gf_rm4tyty1(p.I) = vars.Rm(0, 2)(0, 2);
+            // gf_rm4tytz1(p.I) = vars.Rm(0, 2)(0, 3);
+            // gf_rm4tyxy1(p.I) = vars.Rm(0, 2)(1, 2);
+            // gf_rm4tyxz1(p.I) = vars.Rm(0, 2)(1, 3);
+            // gf_rm4tyyz1(p.I) = vars.Rm(0, 2)(2, 3);
 
-        // gf_rm4tztz1(p.I) = vars.Rm(0, 3)(0, 3);
-        // gf_rm4tzxy1(p.I) = vars.Rm(0, 3)(1, 2);
-        // gf_rm4tzxz1(p.I) = vars.Rm(0, 3)(1, 3);
-        // gf_rm4tzyz1(p.I) = vars.Rm(0, 3)(2, 3);
+            // gf_rm4tztz1(p.I) = vars.Rm(0, 3)(0, 3);
+            // gf_rm4tzxy1(p.I) = vars.Rm(0, 3)(1, 2);
+            // gf_rm4tzxz1(p.I) = vars.Rm(0, 3)(1, 3);
+            // gf_rm4tzyz1(p.I) = vars.Rm(0, 3)(2, 3);
 
-        // gf_rm4xyxy1(p.I) = vars.Rm(1, 2)(1, 2);
-        // gf_rm4xyxz1(p.I) = vars.Rm(1, 2)(1, 3);
-        // gf_rm4xyyz1(p.I) = vars.Rm(1, 2)(2, 3);
+            // gf_rm4xyxy1(p.I) = vars.Rm(1, 2)(1, 2);
+            // gf_rm4xyxz1(p.I) = vars.Rm(1, 2)(1, 3);
+            // gf_rm4xyyz1(p.I) = vars.Rm(1, 2)(2, 3);
 
-        // gf_rm4xzxz1(p.I) = vars.Rm(1, 3)(1, 3);
-        // gf_rm4xzyz1(p.I) = vars.Rm(1, 3)(2, 3);
+            // gf_rm4xzxz1(p.I) = vars.Rm(1, 3)(1, 3);
+            // gf_rm4xzyz1(p.I) = vars.Rm(1, 3)(2, 3);
 
-        // gf_rm4yzyz1(p.I) = vars.Rm(2, 3)(2, 3);
+            // gf_rm4yzyz1(p.I) = vars.Rm(2, 3)(2, 3);
 
-        // vars.R.store(gf_r4tt1, gf_r4tx1, gf_r4ty1, gf_r4tz1, gf_r4xx1,
-        // gf_r4xy1,
-        //              gf_r4xz1, gf_r4yy1, gf_r4yz1, gf_r4zz1, p.I);
+            // vars.R.store(gf_r4tt1, gf_r4tx1, gf_r4ty1, gf_r4tz1, gf_r4xx1,
+            // gf_r4xy1,
+            //              gf_r4xz1, gf_r4yy1, gf_r4yz1, gf_r4zz1, p.I);
 
-        // gf_rsc41(p.I) = vars.Rsc;
+            // gf_rsc41(p.I) = vars.Rsc;
 
-        // gf_c4txtx1(p.I) = vars.C(0, 1)(0, 1);
-        // gf_c4txty1(p.I) = vars.C(0, 1)(0, 2);
-        // gf_c4txtz1(p.I) = vars.C(0, 1)(0, 3);
-        // gf_c4txxy1(p.I) = vars.C(0, 1)(1, 2);
-        // gf_c4txxz1(p.I) = vars.C(0, 1)(1, 3);
-        // gf_c4txyz1(p.I) = vars.C(0, 1)(2, 3);
+            // gf_c4txtx1(p.I) = vars.C(0, 1)(0, 1);
+            // gf_c4txty1(p.I) = vars.C(0, 1)(0, 2);
+            // gf_c4txtz1(p.I) = vars.C(0, 1)(0, 3);
+            // gf_c4txxy1(p.I) = vars.C(0, 1)(1, 2);
+            // gf_c4txxz1(p.I) = vars.C(0, 1)(1, 3);
+            // gf_c4txyz1(p.I) = vars.C(0, 1)(2, 3);
 
-        // gf_c4tyty1(p.I) = vars.C(0, 2)(0, 2);
-        // gf_c4tytz1(p.I) = vars.C(0, 2)(0, 3);
-        // gf_c4tyxy1(p.I) = vars.C(0, 2)(1, 2);
-        // gf_c4tyxz1(p.I) = vars.C(0, 2)(1, 3);
-        // gf_c4tyyz1(p.I) = vars.C(0, 2)(2, 3);
+            // gf_c4tyty1(p.I) = vars.C(0, 2)(0, 2);
+            // gf_c4tytz1(p.I) = vars.C(0, 2)(0, 3);
+            // gf_c4tyxy1(p.I) = vars.C(0, 2)(1, 2);
+            // gf_c4tyxz1(p.I) = vars.C(0, 2)(1, 3);
+            // gf_c4tyyz1(p.I) = vars.C(0, 2)(2, 3);
 
-        // gf_c4tztz1(p.I) = vars.C(0, 3)(0, 3);
-        // gf_c4tzxy1(p.I) = vars.C(0, 3)(1, 2);
-        // gf_c4tzxz1(p.I) = vars.C(0, 3)(1, 3);
-        // gf_c4tzyz1(p.I) = vars.C(0, 3)(2, 3);
+            // gf_c4tztz1(p.I) = vars.C(0, 3)(0, 3);
+            // gf_c4tzxy1(p.I) = vars.C(0, 3)(1, 2);
+            // gf_c4tzxz1(p.I) = vars.C(0, 3)(1, 3);
+            // gf_c4tzyz1(p.I) = vars.C(0, 3)(2, 3);
 
-        // gf_c4xyxy1(p.I) = vars.C(1, 2)(1, 2);
-        // gf_c4xyxz1(p.I) = vars.C(1, 2)(1, 3);
-        // gf_c4xyyz1(p.I) = vars.C(1, 2)(2, 3);
+            // gf_c4xyxy1(p.I) = vars.C(1, 2)(1, 2);
+            // gf_c4xyxz1(p.I) = vars.C(1, 2)(1, 3);
+            // gf_c4xyyz1(p.I) = vars.C(1, 2)(2, 3);
 
-        // gf_c4xzxz1(p.I) = vars.C(1, 3)(1, 3);
-        // gf_c4xzyz1(p.I) = vars.C(1, 3)(2, 3);
+            // gf_c4xzxz1(p.I) = vars.C(1, 3)(1, 3);
+            // gf_c4xzyz1(p.I) = vars.C(1, 3)(2, 3);
 
-        // gf_c4yzyz1(p.I) = vars.C(2, 3)(2, 3);
+            // gf_c4yzyz1(p.I) = vars.C(2, 3)(2, 3);
 
-        // vars.l.store(gf_lt1, gf_lx1, gf_ly1, gf_lz1, p.I);
-        // vars.n.store(gf_nt1, gf_nx1, gf_ny1, gf_nz1, p.I);
-        // gf_mret1(p.I) = real(vars.m(0));
-        // gf_mrex1(p.I) = real(vars.m(1));
-        // gf_mrey1(p.I) = real(vars.m(2));
-        // gf_mrez1(p.I) = real(vars.m(3));
-        // gf_mimt1(p.I) = imag(vars.m(0));
-        // gf_mimx1(p.I) = imag(vars.m(1));
-        // gf_mimy1(p.I) = imag(vars.m(2));
-        // gf_mimz1(p.I) = imag(vars.m(3));
+            // vars.l.store(gf_lt1, gf_lx1, gf_ly1, gf_lz1, p.I);
+            // vars.n.store(gf_nt1, gf_nx1, gf_ny1, gf_nz1, p.I);
+            // gf_mret1(p.I) = real(vars.m(0));
+            // gf_mrex1(p.I) = real(vars.m(1));
+            // gf_mrey1(p.I) = real(vars.m(2));
+            // gf_mrez1(p.I) = real(vars.m(3));
+            // gf_mimt1(p.I) = imag(vars.m(0));
+            // gf_mimx1(p.I) = imag(vars.m(1));
+            // gf_mimy1(p.I) = imag(vars.m(2));
+            // gf_mimz1(p.I) = imag(vars.m(3));
 
-        // gf_Lambda1(p.I) = vars.Lambda;
-        // gf_Phi00(p.I) = vars.Phi00;
-        // gf_Phi111(p.I) = vars.Phi11;
-        // gf_Phi221(p.I) = vars.Phi22;
-        // gf_Phi10re1(p.I) = real(vars.Phi10);
-        // gf_Phi10im1(p.I) = imag(vars.Phi10);
-        // gf_Phi20re1(p.I) = real(vars.Phi20);
-        // gf_Phi20im1(p.I) = imag(vars.Phi20);
-        // gf_Phi21re1(p.I) = real(vars.Phi21);
-        // gf_Phi21im1(p.I) = imag(vars.Phi21);
+            // gf_Lambda1(p.I) = vars.Lambda;
+            // gf_Phi00(p.I) = vars.Phi00;
+            // gf_Phi111(p.I) = vars.Phi11;
+            // gf_Phi221(p.I) = vars.Phi22;
+            // gf_Phi10re1(p.I) = real(vars.Phi10);
+            // gf_Phi10im1(p.I) = imag(vars.Phi10);
+            // gf_Phi20re1(p.I) = real(vars.Phi20);
+            // gf_Phi20im1(p.I) = imag(vars.Phi20);
+            // gf_Phi21re1(p.I) = real(vars.Phi21);
+            // gf_Phi21im1(p.I) = imag(vars.Phi21);
 
-        gf_Psi0re1(p.I) = real(vars.Psi0);
-        gf_Psi0im1(p.I) = imag(vars.Psi0);
-        gf_Psi1re1(p.I) = real(vars.Psi1);
-        gf_Psi1im1(p.I) = imag(vars.Psi1);
-        gf_Psi2re1(p.I) = real(vars.Psi2);
-        gf_Psi2im1(p.I) = imag(vars.Psi2);
-        gf_Psi3re1(p.I) = real(vars.Psi3);
-        gf_Psi3im1(p.I) = imag(vars.Psi3);
-        gf_Psi4re1(p.I) = real(vars.Psi4);
-        gf_Psi4im1(p.I) = imag(vars.Psi4);
+            gf_Psi0re1(p.I) = real(vars.Psi0);
+            gf_Psi0im1(p.I) = imag(vars.Psi0);
+            gf_Psi1re1(p.I) = real(vars.Psi1);
+            gf_Psi1im1(p.I) = imag(vars.Psi1);
+            gf_Psi2re1(p.I) = real(vars.Psi2);
+            gf_Psi2im1(p.I) = imag(vars.Psi2);
+            gf_Psi3re1(p.I) = real(vars.Psi3);
+            gf_Psi3im1(p.I) = imag(vars.Psi3);
+            gf_Psi4re1(p.I) = real(vars.Psi4);
+            gf_Psi4im1(p.I) = imag(vars.Psi4);
 
-        // gf_npkappare1(p.I) = real(vars.npkappa);
-        // gf_npkappaim1(p.I) = imag(vars.npkappa);
-        // gf_npsigmare1(p.I) = real(vars.npsigma);
-        // gf_npsigmaim1(p.I) = imag(vars.npsigma);
-        // gf_nprhore1(p.I) = real(vars.nprho);
-        // gf_nprhoim1(p.I) = imag(vars.nprho);
-        // gf_nptaure1(p.I) = real(vars.nptau);
-        // gf_nptauim1(p.I) = imag(vars.nptau);
-        // gf_npepsilonre1(p.I) = real(vars.npepsilon);
-        // gf_npepsilonim1(p.I) = imag(vars.npepsilon);
-        // gf_npbetare1(p.I) = real(vars.npbeta);
-        // gf_npbetaim1(p.I) = imag(vars.npbeta);
-        // gf_npalphare1(p.I) = real(vars.npalpha);
-        // gf_npalphaim1(p.I) = imag(vars.npalpha);
-        // gf_npgammare1(p.I) = real(vars.npgamma);
-        // gf_npgammaim1(p.I) = imag(vars.npgamma);
-        // gf_nppire1(p.I) = real(vars.nppi);
-        // gf_nppiim1(p.I) = imag(vars.nppi);
-        // gf_npmure1(p.I) = real(vars.npmu);
-        // gf_npmuim1(p.I) = imag(vars.npmu);
-        // gf_nplambdare1(p.I) = real(vars.nplambda);
-        // gf_nplambdaim1(p.I) = imag(vars.nplambda);
-        // gf_npnure1(p.I) = real(vars.npnu);
-        // gf_npnuim1(p.I) = imag(vars.npnu);
-      });
+            // gf_npkappare1(p.I) = real(vars.npkappa);
+            // gf_npkappaim1(p.I) = imag(vars.npkappa);
+            // gf_npsigmare1(p.I) = real(vars.npsigma);
+            // gf_npsigmaim1(p.I) = imag(vars.npsigma);
+            // gf_nprhore1(p.I) = real(vars.nprho);
+            // gf_nprhoim1(p.I) = imag(vars.nprho);
+            // gf_nptaure1(p.I) = real(vars.nptau);
+            // gf_nptauim1(p.I) = imag(vars.nptau);
+            // gf_npepsilonre1(p.I) = real(vars.npepsilon);
+            // gf_npepsilonim1(p.I) = imag(vars.npepsilon);
+            // gf_npbetare1(p.I) = real(vars.npbeta);
+            // gf_npbetaim1(p.I) = imag(vars.npbeta);
+            // gf_npalphare1(p.I) = real(vars.npalpha);
+            // gf_npalphaim1(p.I) = imag(vars.npalpha);
+            // gf_npgammare1(p.I) = real(vars.npgamma);
+            // gf_npgammaim1(p.I) = imag(vars.npgamma);
+            // gf_nppire1(p.I) = real(vars.nppi);
+            // gf_nppiim1(p.I) = imag(vars.nppi);
+            // gf_npmure1(p.I) = real(vars.npmu);
+            // gf_npmuim1(p.I) = imag(vars.npmu);
+            // gf_nplambdare1(p.I) = real(vars.nplambda);
+            // gf_nplambdaim1(p.I) = imag(vars.nplambda);
+            // gf_npnure1(p.I) = real(vars.npnu);
+            // gf_npnuim1(p.I) = imag(vars.npnu);
+          });
+
+#else
+
+  const mat4<GF3D5<CCTK_REAL>, DN, DN> gf_g0(make_mat_gf);
+  const mat4<vec4<GF3D5<CCTK_REAL>, DN>, DN, DN> gf_dg0(make_mat_vec_gf);
+  const mat4<mat4<GF3D5<CCTK_REAL>, DN, DN>, DN, DN> gf_ddg0(make_mat_mat_gf);
+
+  const Loop::GridDescBaseDevice grid(cctkGH);
+  grid.loop_int_device<0, 0, 0>(
+      grid.nghostzones,
+      [=](const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+            const GF3D5index index0(layout0, p.I);
+
+            // Load and calculate
+
+            const vec3<CCTK_REAL, UP> coord3{p.x, p.y, p.z};
+
+            const weyl_vars<CCTK_REAL> vars(
+                cctk_time, coord3, //
+                gf_gamma0(layout0, p.I), gf_alpha0(layout0, p.I),
+                gf_beta0(layout0, p.I), //
+                gf_k0(layout0, p.I), gf_dtalpha0(layout0, p.I),
+                gf_dtbeta0(layout0, p.I), //
+                gf_dgamma0(layout0, p.I), gf_dalpha0(layout0, p.I),
+                gf_dbeta0(layout0, p.I), //
+                gf_dtk1(p.I), gf_dt2alpha1(p.I),
+                gf_dt2beta1(p.I), //
+                gf_dk0(layout0, p.I), gf_ddtalpha0(layout0, p.I),
+                gf_ddtbeta0(layout0, p.I), //
+                gf_ddgamma0(layout0, p.I), gf_ddalpha0(layout0, p.I),
+                gf_ddbeta0(layout0, p.I));
+
+            // Store
+            for (int a = 0; a < 4; ++a)
+              for (int b = a; b < 4; ++b)
+                gf_g0(a, b)(index0) = vars.g(a, b);
+            for (int a = 0; a < 4; ++a)
+              for (int b = a; b < 4; ++b)
+                for (int c = 0; c < 4; ++c)
+                  gf_dg0(a, b)(c)(index0) = vars.dg(a, b)(c);
+            for (int a = 0; a < 4; ++a)
+              for (int b = a; b < 4; ++b)
+                for (int c = 0; c < 4; ++c)
+                  for (int d = c; d < 4; ++d)
+                    gf_ddg0(a, b)(c, d)(index0) = vars.ddg(a, b)(c, d);
+          });
+
+  grid.loop_int_device<0, 0, 0>(
+      grid.nghostzones,
+      [=](const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST {
+            const GF3D5index index0(layout0, p.I);
+
+            // Load and calculate
+
+            const vec4<CCTK_REAL, UP> coord{cctk_time, p.x, p.y, p.z};
+
+            const weyl_vars<CCTK_REAL> vars(
+                coord, //
+                mat4<CCTK_REAL, DN, DN>(
+                    [&](int a, int b) { return gf_g0(a, b)(index0); }),
+                mat4<vec4<CCTK_REAL, DN>, DN, DN>([&](int a, int b) {
+                  return vec4<CCTK_REAL, DN>(
+                      [&](int c) { return gf_dg0(a, b)(c)(index0); });
+                }),
+                mat4<mat4<CCTK_REAL, DN, DN>, DN, DN>([&](int a, int b) {
+                  return mat4<CCTK_REAL, DN, DN>([&](int c, int d) {
+                    return gf_ddg0(a, b)(c, d)(index0);
+                  });
+                }));
+
+            // Store
+            vars.g.store(gf_g4tt1, gf_g4tx1, gf_g4ty1, gf_g4tz1, gf_g4xx1,
+                         gf_g4xy1, gf_g4xz1, gf_g4yy1, gf_g4yz1, gf_g4zz1, p.I);
+
+            // gf_Gamma4ttt1(p.I) = vars.Gamma(0)(0, 0);
+            // gf_Gamma4ttx1(p.I) = vars.Gamma(0)(0, 1);
+            // gf_Gamma4tty1(p.I) = vars.Gamma(0)(0, 2);
+            // gf_Gamma4ttz1(p.I) = vars.Gamma(0)(0, 3);
+            // gf_Gamma4txx1(p.I) = vars.Gamma(0)(1, 1);
+            // gf_Gamma4txy1(p.I) = vars.Gamma(0)(1, 2);
+            // gf_Gamma4txz1(p.I) = vars.Gamma(0)(1, 3);
+            // gf_Gamma4tyy1(p.I) = vars.Gamma(0)(2, 2);
+            // gf_Gamma4tyz1(p.I) = vars.Gamma(0)(2, 3);
+            // gf_Gamma4tzz1(p.I) = vars.Gamma(0)(3, 3);
+
+            // gf_Gamma4xtt1(p.I) = vars.Gamma(1)(0, 0);
+            // gf_Gamma4xtx1(p.I) = vars.Gamma(1)(0, 1);
+            // gf_Gamma4xty1(p.I) = vars.Gamma(1)(0, 2);
+            // gf_Gamma4xtz1(p.I) = vars.Gamma(1)(0, 3);
+            // gf_Gamma4xxx1(p.I) = vars.Gamma(1)(1, 1);
+            // gf_Gamma4xxy1(p.I) = vars.Gamma(1)(1, 2);
+            // gf_Gamma4xxz1(p.I) = vars.Gamma(1)(1, 3);
+            // gf_Gamma4xyy1(p.I) = vars.Gamma(1)(2, 2);
+            // gf_Gamma4xyz1(p.I) = vars.Gamma(1)(2, 3);
+            // gf_Gamma4xzz1(p.I) = vars.Gamma(1)(3, 3);
+
+            // gf_Gamma4ytt1(p.I) = vars.Gamma(2)(0, 0);
+            // gf_Gamma4ytx1(p.I) = vars.Gamma(2)(0, 1);
+            // gf_Gamma4yty1(p.I) = vars.Gamma(2)(0, 2);
+            // gf_Gamma4ytz1(p.I) = vars.Gamma(2)(0, 3);
+            // gf_Gamma4yxx1(p.I) = vars.Gamma(2)(1, 1);
+            // gf_Gamma4yxy1(p.I) = vars.Gamma(2)(1, 2);
+            // gf_Gamma4yxz1(p.I) = vars.Gamma(2)(1, 3);
+            // gf_Gamma4yyy1(p.I) = vars.Gamma(2)(2, 2);
+            // gf_Gamma4yyz1(p.I) = vars.Gamma(2)(2, 3);
+            // gf_Gamma4yzz1(p.I) = vars.Gamma(2)(3, 3);
+
+            // gf_Gamma4ztt1(p.I) = vars.Gamma(3)(0, 0);
+            // gf_Gamma4ztx1(p.I) = vars.Gamma(3)(0, 1);
+            // gf_Gamma4zty1(p.I) = vars.Gamma(3)(0, 2);
+            // gf_Gamma4ztz1(p.I) = vars.Gamma(3)(0, 3);
+            // gf_Gamma4zxx1(p.I) = vars.Gamma(3)(1, 1);
+            // gf_Gamma4zxy1(p.I) = vars.Gamma(3)(1, 2);
+            // gf_Gamma4zxz1(p.I) = vars.Gamma(3)(1, 3);
+            // gf_Gamma4zyy1(p.I) = vars.Gamma(3)(2, 2);
+            // gf_Gamma4zyz1(p.I) = vars.Gamma(3)(2, 3);
+            // gf_Gamma4zzz1(p.I) = vars.Gamma(3)(3, 3);
+
+            // gf_rm4txtx1(p.I) = vars.Rm(0, 1)(0, 1);
+            // gf_rm4txty1(p.I) = vars.Rm(0, 1)(0, 2);
+            // gf_rm4txtz1(p.I) = vars.Rm(0, 1)(0, 3);
+            // gf_rm4txxy1(p.I) = vars.Rm(0, 1)(1, 2);
+            // gf_rm4txxz1(p.I) = vars.Rm(0, 1)(1, 3);
+            // gf_rm4txyz1(p.I) = vars.Rm(0, 1)(2, 3);
+
+            // gf_rm4tyty1(p.I) = vars.Rm(0, 2)(0, 2);
+            // gf_rm4tytz1(p.I) = vars.Rm(0, 2)(0, 3);
+            // gf_rm4tyxy1(p.I) = vars.Rm(0, 2)(1, 2);
+            // gf_rm4tyxz1(p.I) = vars.Rm(0, 2)(1, 3);
+            // gf_rm4tyyz1(p.I) = vars.Rm(0, 2)(2, 3);
+
+            // gf_rm4tztz1(p.I) = vars.Rm(0, 3)(0, 3);
+            // gf_rm4tzxy1(p.I) = vars.Rm(0, 3)(1, 2);
+            // gf_rm4tzxz1(p.I) = vars.Rm(0, 3)(1, 3);
+            // gf_rm4tzyz1(p.I) = vars.Rm(0, 3)(2, 3);
+
+            // gf_rm4xyxy1(p.I) = vars.Rm(1, 2)(1, 2);
+            // gf_rm4xyxz1(p.I) = vars.Rm(1, 2)(1, 3);
+            // gf_rm4xyyz1(p.I) = vars.Rm(1, 2)(2, 3);
+
+            // gf_rm4xzxz1(p.I) = vars.Rm(1, 3)(1, 3);
+            // gf_rm4xzyz1(p.I) = vars.Rm(1, 3)(2, 3);
+
+            // gf_rm4yzyz1(p.I) = vars.Rm(2, 3)(2, 3);
+
+            // vars.R.store(gf_r4tt1, gf_r4tx1, gf_r4ty1, gf_r4tz1, gf_r4xx1,
+            // gf_r4xy1,
+            //              gf_r4xz1, gf_r4yy1, gf_r4yz1, gf_r4zz1, p.I);
+
+            // gf_rsc41(p.I) = vars.Rsc;
+
+            // gf_c4txtx1(p.I) = vars.C(0, 1)(0, 1);
+            // gf_c4txty1(p.I) = vars.C(0, 1)(0, 2);
+            // gf_c4txtz1(p.I) = vars.C(0, 1)(0, 3);
+            // gf_c4txxy1(p.I) = vars.C(0, 1)(1, 2);
+            // gf_c4txxz1(p.I) = vars.C(0, 1)(1, 3);
+            // gf_c4txyz1(p.I) = vars.C(0, 1)(2, 3);
+
+            // gf_c4tyty1(p.I) = vars.C(0, 2)(0, 2);
+            // gf_c4tytz1(p.I) = vars.C(0, 2)(0, 3);
+            // gf_c4tyxy1(p.I) = vars.C(0, 2)(1, 2);
+            // gf_c4tyxz1(p.I) = vars.C(0, 2)(1, 3);
+            // gf_c4tyyz1(p.I) = vars.C(0, 2)(2, 3);
+
+            // gf_c4tztz1(p.I) = vars.C(0, 3)(0, 3);
+            // gf_c4tzxy1(p.I) = vars.C(0, 3)(1, 2);
+            // gf_c4tzxz1(p.I) = vars.C(0, 3)(1, 3);
+            // gf_c4tzyz1(p.I) = vars.C(0, 3)(2, 3);
+
+            // gf_c4xyxy1(p.I) = vars.C(1, 2)(1, 2);
+            // gf_c4xyxz1(p.I) = vars.C(1, 2)(1, 3);
+            // gf_c4xyyz1(p.I) = vars.C(1, 2)(2, 3);
+
+            // gf_c4xzxz1(p.I) = vars.C(1, 3)(1, 3);
+            // gf_c4xzyz1(p.I) = vars.C(1, 3)(2, 3);
+
+            // gf_c4yzyz1(p.I) = vars.C(2, 3)(2, 3);
+
+            // vars.l.store(gf_lt1, gf_lx1, gf_ly1, gf_lz1, p.I);
+            // vars.n.store(gf_nt1, gf_nx1, gf_ny1, gf_nz1, p.I);
+            // gf_mret1(p.I) = real(vars.m(0));
+            // gf_mrex1(p.I) = real(vars.m(1));
+            // gf_mrey1(p.I) = real(vars.m(2));
+            // gf_mrez1(p.I) = real(vars.m(3));
+            // gf_mimt1(p.I) = imag(vars.m(0));
+            // gf_mimx1(p.I) = imag(vars.m(1));
+            // gf_mimy1(p.I) = imag(vars.m(2));
+            // gf_mimz1(p.I) = imag(vars.m(3));
+
+            // gf_Lambda1(p.I) = vars.Lambda;
+            // gf_Phi00(p.I) = vars.Phi00;
+            // gf_Phi111(p.I) = vars.Phi11;
+            // gf_Phi221(p.I) = vars.Phi22;
+            // gf_Phi10re1(p.I) = real(vars.Phi10);
+            // gf_Phi10im1(p.I) = imag(vars.Phi10);
+            // gf_Phi20re1(p.I) = real(vars.Phi20);
+            // gf_Phi20im1(p.I) = imag(vars.Phi20);
+            // gf_Phi21re1(p.I) = real(vars.Phi21);
+            // gf_Phi21im1(p.I) = imag(vars.Phi21);
+
+            gf_Psi0re1(p.I) = real(vars.Psi0);
+            gf_Psi0im1(p.I) = imag(vars.Psi0);
+            gf_Psi1re1(p.I) = real(vars.Psi1);
+            gf_Psi1im1(p.I) = imag(vars.Psi1);
+            gf_Psi2re1(p.I) = real(vars.Psi2);
+            gf_Psi2im1(p.I) = imag(vars.Psi2);
+            gf_Psi3re1(p.I) = real(vars.Psi3);
+            gf_Psi3im1(p.I) = imag(vars.Psi3);
+            gf_Psi4re1(p.I) = real(vars.Psi4);
+            gf_Psi4im1(p.I) = imag(vars.Psi4);
+
+            // gf_npkappare1(p.I) = real(vars.npkappa);
+            // gf_npkappaim1(p.I) = imag(vars.npkappa);
+            // gf_npsigmare1(p.I) = real(vars.npsigma);
+            // gf_npsigmaim1(p.I) = imag(vars.npsigma);
+            // gf_nprhore1(p.I) = real(vars.nprho);
+            // gf_nprhoim1(p.I) = imag(vars.nprho);
+            // gf_nptaure1(p.I) = real(vars.nptau);
+            // gf_nptauim1(p.I) = imag(vars.nptau);
+            // gf_npepsilonre1(p.I) = real(vars.npepsilon);
+            // gf_npepsilonim1(p.I) = imag(vars.npepsilon);
+            // gf_npbetare1(p.I) = real(vars.npbeta);
+            // gf_npbetaim1(p.I) = imag(vars.npbeta);
+            // gf_npalphare1(p.I) = real(vars.npalpha);
+            // gf_npalphaim1(p.I) = imag(vars.npalpha);
+            // gf_npgammare1(p.I) = real(vars.npgamma);
+            // gf_npgammaim1(p.I) = imag(vars.npgamma);
+            // gf_nppire1(p.I) = real(vars.nppi);
+            // gf_nppiim1(p.I) = imag(vars.nppi);
+            // gf_npmure1(p.I) = real(vars.npmu);
+            // gf_npmuim1(p.I) = imag(vars.npmu);
+            // gf_nplambdare1(p.I) = real(vars.nplambda);
+            // gf_nplambdaim1(p.I) = imag(vars.nplambda);
+            // gf_npnure1(p.I) = real(vars.npnu);
+            // gf_npnuim1(p.I) = imag(vars.npnu);
+          });
+
+#endif
 }
 
 } // namespace Weyl
