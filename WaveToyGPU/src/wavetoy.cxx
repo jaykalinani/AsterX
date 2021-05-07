@@ -132,18 +132,18 @@ extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
   const CCTK_REAL dt = CCTK_DELTA_TIME;
 
   const auto standing =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL kx = 2 * M_PI * spatial_frequency_x;
-            CCTK_REAL ky = 2 * M_PI * spatial_frequency_y;
-            CCTK_REAL kz = 2 * M_PI * spatial_frequency_z;
-            CCTK_REAL omega = sqrt(pow(kx, 2) + pow(ky, 2) + pow(kz, 2));
-            return cos(omega * t) * cos(kx * x) * cos(ky * y) * cos(kz * z);
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL kx = 2 * M_PI * spatial_frequency_x;
+        CCTK_REAL ky = 2 * M_PI * spatial_frequency_y;
+        CCTK_REAL kz = 2 * M_PI * spatial_frequency_z;
+        CCTK_REAL omega = sqrt(pow(kx, 2) + pow(ky, 2) + pow(kz, 2));
+        return cos(omega * t) * cos(kx * x) * cos(ky * y) * cos(kz * z);
+      };
 
   const auto periodic_gaussian =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
-          CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         CCTK_REAL kx = M_PI * spatial_frequency_x;
         CCTK_REAL ky = M_PI * spatial_frequency_y;
         CCTK_REAL kz = M_PI * spatial_frequency_z;
@@ -153,26 +153,26 @@ extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
       };
 
   const auto gaussian =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            // u(t,r) = (f(r-t) - f(r+t)) / r
-            CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-            auto f = [=](CCTK_REAL x) { return exp(-0.5 * pow(x / width, 2)); };
-            auto fx = [=](CCTK_REAL x) { return -x / pow(width, 2) * f(x); };
-            if (r < 1.0e-8)
-              // Use L'Hôpital's rule for small r
-              return fx(r - t) - fx(r + t);
-            else
-              return (f(r - t) - f(r + t)) / r;
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // u(t,r) = (f(r-t) - f(r+t)) / r
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        auto f = [=](CCTK_REAL x) { return exp(-0.5 * pow(x / width, 2)); };
+        auto fx = [=](CCTK_REAL x) { return -x / pow(width, 2) * f(x); };
+        if (r < 1.0e-8)
+          // Use L'Hôpital's rule for small r
+          return fx(r - t) - fx(r + t);
+        else
+          return (f(r - t) - f(r + t)) / r;
+      };
 
   const auto central_potential =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-            return -central_point_charge / pow(central_point_radius, dim) *
-                   spline_potential(r / central_point_radius);
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        return -central_point_charge / pow(central_point_radius, dim) *
+               spline_potential(r / central_point_radius);
+      };
 
   // Determine loop extent
   const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
@@ -183,8 +183,8 @@ extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
   if (CCTK_EQUALS(initial_condition, "standing wave")) {
 
     griddesc.loop_int_device<1, 1, 1>(
-        nghostzones, [=](const Loop::PointDesc &p)
-                         CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        nghostzones, [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+                         CCTK_ATTRIBUTE_ALWAYS_INLINE {
                            phi[p.idx] = standing(t, p.x, p.y, p.z);
                            psi[p.idx] =
                                timederiv(standing, dt)(t, p.x, p.y, p.z);
@@ -194,8 +194,8 @@ extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
 
     griddesc.loop_int_device<1, 1, 1>(
         nghostzones,
-        [=](const Loop::PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
               phi[p.idx] = periodic_gaussian(t, p.x, p.y, p.z);
               psi[p.idx] = timederiv(periodic_gaussian, dt)(t, p.x, p.y, p.z);
             });
@@ -203,8 +203,8 @@ extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
   } else if (CCTK_EQUALS(initial_condition, "Gaussian")) {
 
     griddesc.loop_int_device<1, 1, 1>(
-        nghostzones, [=](const Loop::PointDesc &p)
-                         CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        nghostzones, [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+                         CCTK_ATTRIBUTE_ALWAYS_INLINE {
                            phi[p.idx] = gaussian(t, p.x, p.y, p.z);
                            psi[p.idx] =
                                timederiv(gaussian, dt)(t, p.x, p.y, p.z);
@@ -214,8 +214,8 @@ extern "C" void WaveToyGPU_Initialize(CCTK_ARGUMENTS) {
 
     griddesc.loop_int_device<1, 1, 1>(
         nghostzones,
-        [=](const Loop::PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
               phi[p.idx] = central_potential(t, p.x, p.y, p.z);
               psi[p.idx] = timederiv(central_potential, dt)(t, p.x, p.y, p.z);
             });
@@ -240,12 +240,12 @@ extern "C" void WaveToyGPU_Boundaries(CCTK_ARGUMENTS) {
   const CCTK_REAL dt = CCTK_DELTA_TIME;
 
   const auto central_potential =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-            return -central_point_charge / pow(central_point_radius, dim) *
-                   spline_potential(r / central_point_radius);
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        return -central_point_charge / pow(central_point_radius, dim) *
+               spline_potential(r / central_point_radius);
+      };
 
   // Determine loop extent
   const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
@@ -263,8 +263,8 @@ extern "C" void WaveToyGPU_Boundaries(CCTK_ARGUMENTS) {
 
       griddesc.loop_bnd_device<1, 1, 1>(
           nghostzones,
-          [=](const Loop::PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+          [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+              CCTK_ATTRIBUTE_ALWAYS_INLINE {
                 phi[p.idx] = central_potential(t, p.x, p.y, p.z);
                 psi[p.idx] = timederiv(central_potential, dt)(t, p.x, p.y, p.z);
               });
@@ -291,32 +291,31 @@ extern "C" void WaveToyGPU_EstimateError(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice griddesc(cctkGH);
 
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones,
-      [=](const Loop::PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL base_phi = fabs(phi[p.idx]) + fabs(phi_abs);
-            CCTK_REAL errx_phi =
-                fabs(phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) /
-                base_phi;
-            CCTK_REAL erry_phi =
-                fabs(phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) /
-                base_phi;
-            CCTK_REAL errz_phi =
-                fabs(phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) /
-                base_phi;
-            CCTK_REAL base_psi = fabs(psi[p.idx]) + fabs(psi_abs);
-            CCTK_REAL errx_psi =
-                fabs(psi[p.idx - p.di] - 2 * psi[p.idx] + psi[p.idx + p.di]) /
-                base_psi;
-            CCTK_REAL erry_psi =
-                fabs(psi[p.idx - p.dj] - 2 * psi[p.idx] + psi[p.idx + p.dj]) /
-                base_psi;
-            CCTK_REAL errz_psi =
-                fabs(psi[p.idx - p.dk] - 2 * psi[p.idx] + psi[p.idx + p.dk]) /
-                base_psi;
-            regrid_error[p.idx] =
-                errx_phi + erry_phi + errz_phi + errx_psi + erry_psi + errz_psi;
-          });
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                       const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL base_phi = fabs(phi[p.idx]) + fabs(phi_abs);
+        CCTK_REAL errx_phi =
+            fabs(phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) /
+            base_phi;
+        CCTK_REAL erry_phi =
+            fabs(phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) /
+            base_phi;
+        CCTK_REAL errz_phi =
+            fabs(phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) /
+            base_phi;
+        CCTK_REAL base_psi = fabs(psi[p.idx]) + fabs(psi_abs);
+        CCTK_REAL errx_psi =
+            fabs(psi[p.idx - p.di] - 2 * psi[p.idx] + psi[p.idx + p.di]) /
+            base_psi;
+        CCTK_REAL erry_psi =
+            fabs(psi[p.idx - p.dj] - 2 * psi[p.idx] + psi[p.idx + p.dj]) /
+            base_psi;
+        CCTK_REAL errz_psi =
+            fabs(psi[p.idx - p.dk] - 2 * psi[p.idx] + psi[p.idx + p.dk]) /
+            base_psi;
+        regrid_error[p.idx] =
+            errx_phi + erry_phi + errz_phi + errx_psi + erry_psi + errz_psi;
+      });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,12 +330,12 @@ extern "C" void WaveToyGPU_RHS(CCTK_ARGUMENTS) {
   const CCTK_REAL dz = CCTK_DELTA_SPACE(2);
 
   const auto central_potential =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-            return -central_point_charge / pow(central_point_radius, dim) *
-                   spline_potential(r / central_point_radius);
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        return -central_point_charge / pow(central_point_radius, dim) *
+               spline_potential(r / central_point_radius);
+      };
 
   // Determine loop extent
   const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
@@ -345,23 +344,22 @@ extern "C" void WaveToyGPU_RHS(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice griddesc(cctkGH);
 
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones,
-      [=](const Loop::PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL ddx_phi =
-                (phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) /
-                pow(dx, 2);
-            CCTK_REAL ddy_phi =
-                (phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) /
-                pow(dy, 2);
-            CCTK_REAL ddz_phi =
-                (phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) /
-                pow(dz, 2);
-            psirhs[p.idx] = ddx_phi + ddy_phi + ddz_phi -
-                            pow(mass, 2) * phi[p.idx] +
-                            4 * M_PI * central_potential(t, p.x, p.y, p.z);
-            phirhs[p.idx] = psi[p.idx];
-          });
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                       const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL ddx_phi =
+            (phi[p.idx - p.di] - 2 * phi[p.idx] + phi[p.idx + p.di]) /
+            pow(dx, 2);
+        CCTK_REAL ddy_phi =
+            (phi[p.idx - p.dj] - 2 * phi[p.idx] + phi[p.idx + p.dj]) /
+            pow(dy, 2);
+        CCTK_REAL ddz_phi =
+            (phi[p.idx - p.dk] - 2 * phi[p.idx] + phi[p.idx + p.dk]) /
+            pow(dz, 2);
+        psirhs[p.idx] = ddx_phi + ddy_phi + ddz_phi -
+                        pow(mass, 2) * phi[p.idx] +
+                        4 * M_PI * central_potential(t, p.x, p.y, p.z);
+        phirhs[p.idx] = psi[p.idx];
+      });
 }
 
 extern "C" void WaveToyGPU_RHSSync(CCTK_ARGUMENTS) {
@@ -383,8 +381,8 @@ extern "C" void WaveToyGPU_RHSBoundaries(CCTK_ARGUMENTS) {
 
   // Dirichlet boundary conditions
   griddesc.loop_bnd_device<1, 1, 1>(
-      nghostzones, [=](const Loop::PointDesc &p)
-                       CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+                       CCTK_ATTRIBUTE_ALWAYS_INLINE {
                          psirhs[p.idx] = 0;
                          phirhs[p.idx] = 0;
                        });
@@ -543,19 +541,16 @@ extern "C" void WaveToyGPU_Energy(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice griddesc(cctkGH);
   griddesc.loop_int_device<1, 1, 1>(
       griddesc.nghostzones,
-      [=](const Loop::PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL dt_phi = psi[p.idx];
-            CCTK_REAL dx_phi =
-                (phi[p.idx + p.di] - phi[p.idx - p.di]) / (2 * dx);
-            CCTK_REAL dy_phi =
-                (phi[p.idx + p.dj] - phi[p.idx - p.dj]) / (2 * dy);
-            CCTK_REAL dz_phi =
-                (phi[p.idx + p.dk] - phi[p.idx - p.dk]) / (2 * dz);
-            eps[p.idx] = (pow(dt_phi, 2) + pow(dx_phi, 2) + pow(dy_phi, 2) +
-                          pow(dz_phi, 2)) /
-                         2;
-          });
+      [=] CCTK_DEVICE CCTK_HOST(
+          const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL dt_phi = psi[p.idx];
+        CCTK_REAL dx_phi = (phi[p.idx + p.di] - phi[p.idx - p.di]) / (2 * dx);
+        CCTK_REAL dy_phi = (phi[p.idx + p.dj] - phi[p.idx - p.dj]) / (2 * dy);
+        CCTK_REAL dz_phi = (phi[p.idx + p.dk] - phi[p.idx - p.dk]) / (2 * dz);
+        eps[p.idx] = (pow(dt_phi, 2) + pow(dx_phi, 2) + pow(dy_phi, 2) +
+                      pow(dz_phi, 2)) /
+                     2;
+      });
 }
 
 extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
@@ -566,18 +561,18 @@ extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
   const CCTK_REAL dt = CCTK_DELTA_TIME;
 
   const auto standing =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL kx = 2 * M_PI * spatial_frequency_x;
-            CCTK_REAL ky = 2 * M_PI * spatial_frequency_y;
-            CCTK_REAL kz = 2 * M_PI * spatial_frequency_z;
-            CCTK_REAL omega = sqrt(pow(kx, 2) + pow(ky, 2) + pow(kz, 2));
-            return cos(omega * t) * cos(kx * x) * cos(ky * y) * cos(kz * z);
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL kx = 2 * M_PI * spatial_frequency_x;
+        CCTK_REAL ky = 2 * M_PI * spatial_frequency_y;
+        CCTK_REAL kz = 2 * M_PI * spatial_frequency_z;
+        CCTK_REAL omega = sqrt(pow(kx, 2) + pow(ky, 2) + pow(kz, 2));
+        return cos(omega * t) * cos(kx * x) * cos(ky * y) * cos(kz * z);
+      };
 
   const auto periodic_gaussian =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
-          CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         CCTK_REAL kx = M_PI * spatial_frequency_x;
         CCTK_REAL ky = M_PI * spatial_frequency_y;
         CCTK_REAL kz = M_PI * spatial_frequency_z;
@@ -587,26 +582,26 @@ extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
       };
 
   const auto gaussian =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            // u(t,r) = (f(r-t) - f(r+t)) / r
-            CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-            auto f = [=](CCTK_REAL x) { return exp(-0.5 * pow(x / width, 2)); };
-            auto fx = [=](CCTK_REAL x) { return -x / pow(width, 2) * f(x); };
-            if (r < 1.0e-8)
-              // Use L'Hôpital's rule for small r
-              return fx(r - t) - fx(r + t);
-            else
-              return (f(r - t) - f(r + t)) / r;
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // u(t,r) = (f(r-t) - f(r+t)) / r
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        auto f = [=](CCTK_REAL x) { return exp(-0.5 * pow(x / width, 2)); };
+        auto fx = [=](CCTK_REAL x) { return -x / pow(width, 2) * f(x); };
+        if (r < 1.0e-8)
+          // Use L'Hôpital's rule for small r
+          return fx(r - t) - fx(r + t);
+        else
+          return (f(r - t) - f(r + t)) / r;
+      };
 
   const auto central_potential =
-      [=](CCTK_REAL t, CCTK_REAL x, CCTK_REAL y, CCTK_REAL z)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-            return -central_point_charge / pow(central_point_radius, dim) *
-                   spline_potential(r / central_point_radius);
-          };
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL t, CCTK_REAL x, CCTK_REAL y,
+                                CCTK_REAL z) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL r = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+        return -central_point_charge / pow(central_point_radius, dim) *
+               spline_potential(r / central_point_radius);
+      };
 
   // Determine loop extent
   const array<int, dim> nghostzones{cctkGH->cctk_nghostzones[0],
@@ -618,8 +613,8 @@ extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
 
     griddesc.loop_all_device<1, 1, 1>(
         nghostzones,
-        [=](const Loop::PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
               phierr[p.idx] = phi[p.idx] - standing(t, p.x, p.y, p.z);
               psierr[p.idx] =
                   psi[p.idx] - timederiv(standing, dt)(t, p.x, p.y, p.z);
@@ -629,8 +624,8 @@ extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
 
     griddesc.loop_all_device<1, 1, 1>(
         nghostzones,
-        [=](const Loop::PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
               phierr[p.idx] = phi[p.idx] - periodic_gaussian(t, p.x, p.y, p.z);
               psierr[p.idx] = psi[p.idx] - timederiv(periodic_gaussian,
                                                      dt)(t, p.x, p.y, p.z);
@@ -640,8 +635,8 @@ extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
 
     griddesc.loop_all_device<1, 1, 1>(
         nghostzones,
-        [=](const Loop::PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
               phierr[p.idx] = phi[p.idx] - gaussian(t, p.x, p.y, p.z);
               psierr[p.idx] =
                   psi[p.idx] - timederiv(gaussian, dt)(t, p.x, p.y, p.z);
@@ -651,8 +646,8 @@ extern "C" void WaveToyGPU_Error(CCTK_ARGUMENTS) {
 
     griddesc.loop_all_device<1, 1, 1>(
         nghostzones,
-        [=](const Loop::PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+        [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
               phierr[p.idx] = phi[p.idx] - central_potential(t, p.x, p.y, p.z);
               psierr[p.idx] = psi[p.idx] - timederiv(central_potential,
                                                      dt)(t, p.x, p.y, p.z);
