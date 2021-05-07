@@ -1,9 +1,11 @@
 #include "physics.hxx"
-#include "tensor.hxx"
 
 #include <loop_device.hxx>
+#include <mat.hxx>
 #include <simd.hxx>
+#include <vec.hxx>
 
+#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
@@ -25,15 +27,15 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
   const GF3D2<CCTK_REAL> gf_chi1(layout1, chi);
 
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_gammat1(
+  const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_gammat1{
       GF3D2<CCTK_REAL>(layout1, gammatxx), GF3D2<CCTK_REAL>(layout1, gammatxy),
       GF3D2<CCTK_REAL>(layout1, gammatxz), GF3D2<CCTK_REAL>(layout1, gammatyy),
-      GF3D2<CCTK_REAL>(layout1, gammatyz), GF3D2<CCTK_REAL>(layout1, gammatzz));
+      GF3D2<CCTK_REAL>(layout1, gammatyz), GF3D2<CCTK_REAL>(layout1, gammatzz)};
 
-  const mat3<GF3D2<CCTK_REAL>, DN, DN> gf_At1(
+  const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_At1{
       GF3D2<CCTK_REAL>(layout1, Atxx), GF3D2<CCTK_REAL>(layout1, Atxy),
       GF3D2<CCTK_REAL>(layout1, Atxz), GF3D2<CCTK_REAL>(layout1, Atyy),
-      GF3D2<CCTK_REAL>(layout1, Atyz), GF3D2<CCTK_REAL>(layout1, Atzz));
+      GF3D2<CCTK_REAL>(layout1, Atyz), GF3D2<CCTK_REAL>(layout1, Atzz)};
 
   const GF3D2<CCTK_REAL> gf_alphaG1(layout1, alphaG);
 
@@ -43,7 +45,8 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
+      grid.nghostzones,
+      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const GF3D2index index1(layout1, p.I);
 
@@ -51,8 +54,9 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         const vreal chi_old = gf_chi1(mask, index1, 1);
         const vreal alphaG_old = gf_alphaG1(mask, index1, 1);
 
-        const mat3<vreal, DN, DN> gammat_old = gf_gammat1(mask, index1, 1);
-        const mat3<vreal, DN, DN> At_old = gf_At1(mask, index1);
+        const smat<vreal, 3, DN, DN> gammat_old =
+            gf_gammat1(mask, index1, one<smat<vreal, 3, DN, DN> >()());
+        const smat<vreal, 3, DN, DN> At_old = gf_At1(mask, index1);
 
         // Enforce floors
 
@@ -62,14 +66,14 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         // Enforce algebraic constraints
         // See arXiv:1212.2901 [gr-qc].
 
-        const vreal detgammat_old = gammat_old.det();
+        const vreal detgammat_old = calc_det(gammat_old);
         const vreal chi1_old = 1 / cbrt(detgammat_old);
-        const mat3<vreal, DN, DN> gammat([&](int a, int b) Z4C_INLINE {
+        const smat<vreal, 3, DN, DN> gammat([&](int a, int b) ARITH_INLINE {
           return chi1_old * gammat_old(a, b);
         });
 #ifdef CCTK_DEBUG
-        const vreal detgammat = gammat.det();
-        const vreal gammat_norm = gammat.maxabs();
+        const vreal detgammat = calc_det(gammat);
+        const vreal gammat_norm = maxabs(gammat);
         const vreal gammat_scale = gammat_norm;
         if (!(all(fabs(detgammat - 1) <= 1.0e-12 * gammat_scale))) {
           ostringstream buf;
@@ -80,19 +84,20 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         assert(all(fabs(detgammat - 1) <= 1.0e-12 * gammat_scale));
 #endif
 
-        const mat3<vreal, UP, UP> gammatu = gammat.inv(1);
+        const smat<vreal, 3, UP, UP> gammatu = calc_inv(gammat, vreal(1));
 
-        const vreal traceAt_old = sum2sym([&](int x, int y) Z4C_INLINE {
+        const vreal traceAt_old = sum_symm<3>([&](int x, int y) ARITH_INLINE {
           return gammatu(x, y) * At_old(x, y);
         });
-        const mat3<vreal, DN, DN> At([&](int a, int b) Z4C_INLINE {
+        const smat<vreal, 3, DN, DN> At([&](int a, int b) ARITH_INLINE {
           return At_old(a, b) - traceAt_old / 3 * gammat(a, b);
         });
 #ifdef CCTK_DEBUG
-        const vreal traceAt = sum2sym(
-            [&](int x, int y) Z4C_INLINE { return gammatu(x, y) * At(x, y); });
-        const vreal gammatu_norm = gammatu.maxabs();
-        const vreal At_norm = At.maxabs();
+        const vreal traceAt = sum_symm<3>([&](int x, int y) ARITH_INLINE {
+          return gammatu(x, y) * At(x, y);
+        });
+        const vreal gammatu_norm = maxabs(gammatu);
+        const vreal At_norm = maxabs(At);
         const vreal At_scale = fmax(fmax(gammat_norm, gammatu_norm), At_norm);
         if (!(all(fabs(traceAt) <= 1.0e-12 * At_scale))) {
           ostringstream buf;

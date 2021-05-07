@@ -15,35 +15,40 @@
 #include <type_traits>
 
 #ifdef CCTK_DEBUG
-#define Z4C_INLINE
+#define ARITH_INLINE
 #else
-#define Z4C_INLINE CCTK_ATTRIBUTE_ALWAYS_INLINE
+#define ARITH_INLINE CCTK_ATTRIBUTE_ALWAYS_INLINE
 #endif
 
-#define Z4C_GPU CCTK_DEVICE CCTK_HOST
+#define ARITH_DEVICE ARITH_HOST CCTK_DEVICE CCTK_HOST
 
 namespace Z4c {
 using namespace Arith;
 using namespace Loop;
 using namespace std;
 
-template <typename T> Z4C_INLINE Z4C_GPU constexpr T pow2(const T x) {
+template <typename T>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T pow2(const T x) {
   return x * x;
 }
-template <typename T> Z4C_INLINE Z4C_GPU constexpr T pow3(const T x) {
+template <typename T>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T pow3(const T x) {
   const T x2 = x * x;
   return x2 * x;
 }
-template <typename T> Z4C_INLINE Z4C_GPU constexpr T pow4(const T x) {
+template <typename T>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T pow4(const T x) {
   const T x2 = x * x;
   return x2 * x2;
 }
-template <typename T> Z4C_INLINE Z4C_GPU constexpr T pow5(const T x) {
+template <typename T>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T pow5(const T x) {
   const T x2 = x * x;
   const T x4 = x2 * x2;
   return x4 * x;
 }
-template <typename T> Z4C_INLINE Z4C_GPU constexpr T pow6(const T x) {
+template <typename T>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T pow6(const T x) {
   const T x2 = x * x;
   const T x4 = x2 * x2;
   return x4 * x2;
@@ -79,24 +84,28 @@ constexpr int factorial(int n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename F, typename T>
-constexpr Z4C_INLINE Z4C_GPU T fold(const F &f, const T &x) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T fold(const F &f, const T &x) {
   return x;
 }
 template <typename F, typename T, typename... Ts>
-constexpr Z4C_INLINE Z4C_GPU T fold(const F &f, const T &x0, const T &x1,
-                                    const Ts &...xs) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T fold(const F &f, const T &x0,
+                                                      const T &x1,
+                                                      const Ts &...xs) {
   return fold(f, fold(f, x0, x1), xs...);
 }
 
-template <typename T> constexpr Z4C_INLINE Z4C_GPU T add() { return T(0); }
+template <typename T> constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T add() {
+  return T(0);
+}
 template <typename T, typename... Ts>
-constexpr Z4C_INLINE Z4C_GPU T add(const T &x, const Ts &...xs) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T add(const T &x,
+                                                     const Ts &...xs) {
   return x + add(xs...);
 }
 
 template <typename F,
           typename R = remove_cv_t<remove_reference_t<result_of_t<F(int)> > > >
-constexpr Z4C_INLINE Z4C_GPU R sum1(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST R sum1(const F &f) {
   R s{0};
   for (int x = 0; x < 3; ++x)
     s += f(x);
@@ -105,7 +114,7 @@ constexpr Z4C_INLINE Z4C_GPU R sum1(const F &f) {
 
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int)> > > >
-constexpr Z4C_INLINE Z4C_GPU R sum2(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST R sum2(const F &f) {
   R s{0};
   for (int x = 0; x < 3; ++x)
     for (int y = 0; y < 3; ++y)
@@ -115,7 +124,7 @@ constexpr Z4C_INLINE Z4C_GPU R sum2(const F &f) {
 
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int)> > > >
-constexpr Z4C_INLINE Z4C_GPU R sum2sym(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST R sum2sym(const F &f) {
   R s{0};
   for (int x = 0; x < 3; ++x)
     for (int y = x; y < 3; ++y)
@@ -125,7 +134,7 @@ constexpr Z4C_INLINE Z4C_GPU R sum2sym(const F &f) {
 
 template <typename F, typename R = remove_cv_t<
                           remove_reference_t<result_of_t<F(int, int, int)> > > >
-constexpr Z4C_INLINE Z4C_GPU R sum3(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST R sum3(const F &f) {
   R s{0};
   for (int x = 0; x < 3; ++x)
     for (int y = 0; y < 3; ++y)
@@ -137,23 +146,26 @@ constexpr Z4C_INLINE Z4C_GPU R sum3(const F &f) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T> struct nan {
-  constexpr Z4C_INLINE Z4C_GPU T operator()() const { return NAN; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T operator()() const {
+    return NAN;
+  }
 };
 template <typename T, int D> struct nan<vect<T, D> > {
-  constexpr Z4C_INLINE Z4C_GPU vect<T, D> operator()() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<T, D> operator()() const {
     return vect<T, D>::pure(nan<T>()());
   }
 };
 
 template <typename T> struct norm1 {
   typedef T result_type;
-  constexpr Z4C_INLINE Z4C_GPU result_type operator()(const T &x) const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST result_type
+  operator()(const T &x) const {
     return abs(x);
   }
 };
 template <typename T, int D> struct norm1<vect<T, D> > {
   typedef typename norm1<T>::result_type result_type;
-  constexpr Z4C_INLINE Z4C_GPU result_type
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST result_type
   operator()(const vect<T, D> &xs) const {
     typename norm1<T>::result_type r{0};
     for (int d = 0; d < D; ++d)
@@ -170,10 +182,10 @@ constexpr dnup_t UP = dnup_t::up;
 constexpr dnup_t operator!(const dnup_t dnup) { return dnup_t(!bool(dnup)); }
 
 // 3-vector
-template <typename T, dnup_t dnup> class vec3 {
+template <typename T, dnup_t dnup> class vec {
   vect<T, 3> elts;
 
-  static constexpr Z4C_INLINE Z4C_GPU int ind(const int n) {
+  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST int ind(const int n) {
 #ifdef CCTK_DEBUG
     assert(n >= 0 && n < 3);
 #endif
@@ -181,199 +193,219 @@ template <typename T, dnup_t dnup> class vec3 {
   }
 
 public:
-  explicit constexpr Z4C_INLINE Z4C_GPU vec3() : elts{nan<vect<T, 3> >()()} {}
+  explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec()
+      : elts{nan<vect<T, 3> >()()} {}
 
-  constexpr Z4C_INLINE Z4C_GPU vec3(vect<T, 3> elts) : elts(move(elts)) {}
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(vect<T, 3> elts)
+      : elts(move(elts)) {}
 
-  explicit constexpr Z4C_INLINE Z4C_GPU vec3(T vx, T vy, T vz)
+  explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(T vx, T vy, T vz)
       : elts{move(vx), move(vy), move(vz)} {}
 
-  constexpr Z4C_INLINE Z4C_GPU vec3(initializer_list<T> v) : elts(v) {}
-  // constexpr Z4C_INLINE Z4C_GPU vec3(const vector<T> &v) : elts(v) {}
-  // constexpr Z4C_INLINE Z4C_GPU vec3(vector<T> &&v) : elts(move(v)) {}
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(initializer_list<T> v)
+      : elts(v) {}
+  // constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(const vector<T> &v) :
+  // elts(v) {} constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(vector<T>
+  // &&v) : elts(move(v)) {}
 
-  Z4C_INLINE Z4C_GPU vec3(const GF3D2<add_const_t<T> > &gf_vx_,
-                          const GF3D2<add_const_t<T> > &gf_vy_,
-                          const GF3D2<add_const_t<T> > &gf_vz_,
-                          const vect<int, 3> &I)
-      : vec3{gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
-  Z4C_INLINE Z4C_GPU vec3(const GF3D2<remove_const_t<T> > &gf_vx_,
-                          const GF3D2<remove_const_t<T> > &gf_vy_,
-                          const GF3D2<remove_const_t<T> > &gf_vz_,
-                          const vect<int, 3> &I)
-      : vec3{gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(const GF3D2<add_const_t<T> > &gf_vx_,
+                                           const GF3D2<add_const_t<T> > &gf_vy_,
+                                           const GF3D2<add_const_t<T> > &gf_vz_,
+                                           const vect<int, 3> &I)
+      : vec{gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST
+  vec(const GF3D2<remove_const_t<T> > &gf_vx_,
+      const GF3D2<remove_const_t<T> > &gf_vy_,
+      const GF3D2<remove_const_t<T> > &gf_vz_, const vect<int, 3> &I)
+      : vec{gf_vx_(I), gf_vy_(I), gf_vz_(I)} {}
 
   template <typename F, typename = result_of_t<F(int)> >
-  constexpr Z4C_INLINE Z4C_GPU vec3(const F &f) : elts{f(0), f(1), f(2)} {}
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec(const F &f)
+      : elts{f(0), f(1), f(2)} {}
 
-  Z4C_INLINE Z4C_GPU void store(const GF3D2<T> &gf_vx_, const GF3D2<T> &gf_vy_,
-                                const GF3D2<T> &gf_vz_,
-                                const vect<int, 3> &I) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void store(const GF3D2<T> &gf_vx_,
+                                                  const GF3D2<T> &gf_vy_,
+                                                  const GF3D2<T> &gf_vz_,
+                                                  const vect<int, 3> &I) const {
     const auto &v = *this;
     gf_vx_.store(I, v(0));
     gf_vy_.store(I, v(1));
     gf_vz_.store(I, v(2));
   }
   template <typename U>
-  Z4C_INLINE Z4C_GPU void store(const vect<int, 3> &I,
-                                const vec3<U, dnup> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const vect<int, 3> &I, const vec<U, dnup> &value) const {
     for (int a = 0; a < 3; ++a)
       (*this)(a).store(I, value(a));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const vect<int, 3> &I,
-                                const vec3<U, dnup> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const vect<int, 3> &I,
+        const vec<U, dnup> &value) const {
     for (int a = 0; a < 3; ++a)
       (*this)(a).store(mask, I, value(a));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const GF3D2index &index,
-                                const vec3<U, dnup> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const GF3D2index &index,
+        const vec<U, dnup> &value) const {
     for (int a = 0; a < 3; ++a)
       (*this)(a).store(mask, index, value(a));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const GF3D5layout &layout,
-                                const vect<int, 3> &I,
-                                const vec3<U, dnup> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const GF3D5layout &layout, const vect<int, 3> &I,
+        const vec<U, dnup> &value) const {
     for (int a = 0; a < 3; ++a)
       (*this)(a).store(mask, layout, I, value(a));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const GF3D5index &index,
-                                const vec3<U, dnup> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const GF3D5index &index,
+        const vec<U, dnup> &value) const {
     for (int a = 0; a < 3; ++a)
       (*this)(a).store(mask, index, value(a));
   }
 
-  Z4C_INLINE Z4C_GPU const T &operator()(int i) const { return elts[ind(i)]; }
-  Z4C_INLINE Z4C_GPU T &operator()(int i) { return elts[ind(i)]; }
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST const T &operator()(int i) const {
+    return elts[ind(i)];
+  }
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST T &operator()(int i) {
+    return elts[ind(i)];
+  }
 
   template <
       typename T1 = T,
       typename R =
-          vec3<remove_cv_t<remove_reference_t<result_of_t<T1(vect<int, 3>)> > >,
-               dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const vect<int, 3> &I) const {
+          vec<remove_cv_t<remove_reference_t<result_of_t<T1(vect<int, 3>)> > >,
+              dnup> >
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const vect<int, 3> &I) const {
     return R(elts[0](I), elts[1](I), elts[2](I));
   }
   template <typename S, typename T1 = T,
-            typename R = vec3<remove_cv_t<remove_reference_t<
-                                  result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
-                              dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const vect<int, 3> &I) const {
+            typename R = vec<remove_cv_t<remove_reference_t<
+                                 result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
+                             dnup> >
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const vect<int, 3> &I) const {
     return R(elts[0](mask, I), elts[1](mask, I), elts[2](mask, I));
   }
   template <typename T1 = T,
-            typename R = vec3<
+            typename R = vec<
                 remove_cv_t<remove_reference_t<result_of_t<T1(GF3D2index)> > >,
                 dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const GF3D2index &index) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const GF3D2index &index) const {
     return R(elts[0](index), elts[1](index), elts[2](index));
   }
   template <typename T1 = T,
-            typename R = vec3<remove_cv_t<remove_reference_t<result_of_t<
-                                  T1(GF3D5layout, vect<int, 3>)> > >,
-                              dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const GF3D5layout &layout,
-                                  const vect<int, 3> &I) const {
+            typename R = vec<remove_cv_t<remove_reference_t<
+                                 result_of_t<T1(GF3D5layout, vect<int, 3>)> > >,
+                             dnup> >
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
     return R(elts[0](layout, I), elts[1](layout, I), elts[2](layout, I));
   }
   template <typename T1 = T,
-            typename R = vec3<
+            typename R = vec<
                 remove_cv_t<remove_reference_t<result_of_t<T1(GF3D5index)> > >,
                 dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const GF3D5index &index) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const GF3D5index &index) const {
     return R(elts[0](index), elts[1](index), elts[2](index));
   }
   template <typename S, typename T1 = T,
-            typename R = vec3<remove_cv_t<remove_reference_t<
-                                  result_of_t<T1(simdl<S>, GF3D2index)> > >,
-                              dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D2index &index) const {
+            typename R = vec<remove_cv_t<remove_reference_t<
+                                 result_of_t<T1(simdl<S>, GF3D2index)> > >,
+                             dnup> >
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const GF3D2index &index) const {
     return R(elts[0](mask, index), elts[1](mask, index), elts[2](mask, index));
   }
   template <typename S, typename T1 = T,
-            typename R = vec3<remove_cv_t<remove_reference_t<result_of_t<
-                                  T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
-                              dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D5layout &layout,
-                                  const vect<int, 3> &I) const {
+            typename R = vec<remove_cv_t<remove_reference_t<result_of_t<
+                                 T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
+                             dnup> >
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const GF3D5layout &layout,
+             const vect<int, 3> &I) const {
     return R(elts[0](mask, layout, I), elts[1](mask, layout, I),
              elts[2](mask, layout, I));
   }
   template <typename S, typename T1 = T,
-            typename R = vec3<remove_cv_t<remove_reference_t<
-                                  result_of_t<T1(simdl<S>, GF3D5index)> > >,
-                              dnup> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D5index &index) const {
+            typename R = vec<remove_cv_t<remove_reference_t<
+                                 result_of_t<T1(simdl<S>, GF3D5index)> > >,
+                             dnup> >
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const GF3D5index &index) const {
     return R(elts[0](mask, index), elts[1](mask, index), elts[2](mask, index));
   }
 
-  friend constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup>
-  operator+(const vec3<T, dnup> &x) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dnup>
+  operator+(const vec<T, dnup> &x) {
     return +x.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup>
-  operator-(const vec3<T, dnup> &x) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dnup>
+  operator-(const vec<T, dnup> &x) {
     return -x.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup>
-  operator+(const vec3<T, dnup> &x, const vec3<T, dnup> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dnup>
+  operator+(const vec<T, dnup> &x, const vec<T, dnup> &y) {
     return x.elts + y.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup>
-  operator-(const vec3<T, dnup> &x, const vec3<T, dnup> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dnup>
+  operator-(const vec<T, dnup> &x, const vec<T, dnup> &y) {
     return x.elts - y.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup>
-  operator*(const T &a, const vec3<T, dnup> &x) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dnup>
+  operator*(const T &a, const vec<T, dnup> &x) {
     return a * x.elts;
   }
 
-  friend constexpr Z4C_INLINE Z4C_GPU bool operator==(const vec3<T, dnup> &x,
-                                                      const vec3<T, dnup> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  operator==(const vec<T, dnup> &x, const vec<T, dnup> &y) {
     return equal_to<vect<T, 3> >()(x.elts, y.elts);
   }
-  friend constexpr Z4C_INLINE Z4C_GPU bool operator!=(const vec3<T, dnup> &x,
-                                                      const vec3<T, dnup> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  operator!=(const vec<T, dnup> &x, const vec<T, dnup> &y) {
     return !(x == y);
   }
 
-  constexpr Z4C_INLINE Z4C_GPU T maxabs() const { return elts.maxabs(); }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T maxabs() const {
+    return elts.maxabs();
+  }
 
-  friend struct norm1<vec3>;
+  friend struct norm1<vec>;
 
-  friend ostream &operator<<(ostream &os, const vec3<T, dnup> &v) {
+  friend ostream &operator<<(ostream &os, const vec<T, dnup> &v) {
     return os << "[" << v(0) << "," << v(1) << "," << v(2) << "]";
   }
 };
 
 } // namespace Z4c
 namespace Arith {
-template <typename T, Z4c::dnup_t dnup> struct zero<Z4c::vec3<T, dnup> > {
-  constexpr Z4C_INLINE Z4C_GPU Z4c::vec3<T, dnup> operator()() const {
+template <typename T, Z4c::dnup_t dnup> struct zero<Z4c::vec<T, dnup> > {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST Z4c::vec<T, dnup>
+  operator()() const {
     constexpr auto z = zero<T>()();
-    return Z4c::vec3<T, dnup>(z, z, z);
+    return Z4c::vec<T, dnup>(z, z, z);
   }
 };
 } // namespace Arith
 namespace Z4c {
 
-template <typename T, dnup_t dnup> struct nan<vec3<T, dnup> > {
-  constexpr Z4C_INLINE Z4C_GPU vec3<T, dnup> operator()() const {
-    return vec3<T, dnup>();
+template <typename T, dnup_t dnup> struct nan<vec<T, dnup> > {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dnup>
+  operator()() const {
+    return vec<T, dnup>();
   }
 };
 
-template <typename T, dnup_t dnup> struct norm1<vec3<T, dnup> > {
+template <typename T, dnup_t dnup> struct norm1<vec<T, dnup> > {
   typedef typename norm1<vect<T, 3> >::result_type result_type;
-  constexpr Z4C_INLINE Z4C_GPU result_type
-  operator()(const vec3<T, dnup> &x) const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST result_type
+  operator()(const vec<T, dnup> &x) const {
     return norm1<vect<T, 3> >()(x.elts);
   }
 };
@@ -381,12 +413,13 @@ template <typename T, dnup_t dnup> struct norm1<vec3<T, dnup> > {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Symmetric 3-matrix
-template <typename T, dnup_t dnup1, dnup_t dnup2> class mat3 {
+template <typename T, dnup_t dnup1, dnup_t dnup2> class smat {
   static_assert(dnup1 == dnup2, "");
 
   vect<T, 6> elts;
 
-  static constexpr Z4C_INLINE Z4C_GPU int symind(const int i, const int j) {
+  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST int
+  symind(const int i, const int j) {
 #ifdef CCTK_DEBUG
     assert(i >= 0 && i <= j && j < 3);
 #endif
@@ -404,7 +437,8 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class mat3 {
 #endif
     return n;
   }
-  static constexpr Z4C_INLINE Z4C_GPU int ind(const int i, const int j) {
+  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST int ind(const int i,
+                                                                const int j) {
     return symind(min(i, j), max(i, j));
   }
 
@@ -423,43 +457,48 @@ template <typename T, dnup_t dnup1, dnup_t dnup2> class mat3 {
 #endif
 
 public:
-  explicit constexpr Z4C_INLINE Z4C_GPU mat3() : elts{nan<vect<T, 6> >()()} {}
+  explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat()
+      : elts{nan<vect<T, 6> >()()} {}
 
-  constexpr Z4C_INLINE Z4C_GPU mat3(vect<T, 6> elts) : elts(move(elts)) {}
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat(vect<T, 6> elts)
+      : elts(move(elts)) {}
 
-  explicit constexpr Z4C_INLINE Z4C_GPU mat3(T Axx, T Axy, T Axz, T Ayy, T Ayz,
-                                             T Azz)
+  explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat(T Axx, T Axy,
+                                                               T Axz, T Ayy,
+                                                               T Ayz, T Azz)
       : elts{move(Axx), move(Axy), move(Axz), move(Ayy), move(Ayz), move(Azz)} {
   }
 
-  constexpr Z4C_INLINE Z4C_GPU mat3(initializer_list<T> A) : elts(A) {}
-  // constexpr Z4C_INLINE Z4C_GPU mat3(const vector<T> &A) : elts(A) {}
-  // constexpr Z4C_INLINE Z4C_GPU mat3(vector<T> &&A) : elts(move(A)) {}
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat(initializer_list<T> A)
+      : elts(A) {}
+  // constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat(const vector<T> &A) :
+  // elts(A) {} constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat(vector<T>
+  // &&A) : elts(move(A)) {}
 
-  Z4C_INLINE Z4C_GPU mat3(const GF3D2<add_const_t<T> > &gf_Axx_,
-                          const GF3D2<add_const_t<T> > &gf_Axy_,
-                          const GF3D2<add_const_t<T> > &gf_Axz_,
-                          const GF3D2<add_const_t<T> > &gf_Ayy_,
-                          const GF3D2<add_const_t<T> > &gf_Ayz_,
-                          const GF3D2<add_const_t<T> > &gf_Azz_,
-                          const vect<int, 3> &I)
-      : mat3{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST
+  smat(const GF3D2<add_const_t<T> > &gf_Axx_,
+       const GF3D2<add_const_t<T> > &gf_Axy_,
+       const GF3D2<add_const_t<T> > &gf_Axz_,
+       const GF3D2<add_const_t<T> > &gf_Ayy_,
+       const GF3D2<add_const_t<T> > &gf_Ayz_,
+       const GF3D2<add_const_t<T> > &gf_Azz_, const vect<int, 3> &I)
+      : smat{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
              gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
-  Z4C_INLINE Z4C_GPU mat3(const GF3D2<remove_const_t<T> > &gf_Axx_,
-                          const GF3D2<remove_const_t<T> > &gf_Axy_,
-                          const GF3D2<remove_const_t<T> > &gf_Axz_,
-                          const GF3D2<remove_const_t<T> > &gf_Ayy_,
-                          const GF3D2<remove_const_t<T> > &gf_Ayz_,
-                          const GF3D2<remove_const_t<T> > &gf_Azz_,
-                          const vect<int, 3> &I)
-      : mat3{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST
+  smat(const GF3D2<remove_const_t<T> > &gf_Axx_,
+       const GF3D2<remove_const_t<T> > &gf_Axy_,
+       const GF3D2<remove_const_t<T> > &gf_Axz_,
+       const GF3D2<remove_const_t<T> > &gf_Ayy_,
+       const GF3D2<remove_const_t<T> > &gf_Ayz_,
+       const GF3D2<remove_const_t<T> > &gf_Azz_, const vect<int, 3> &I)
+      : smat{gf_Axx_(I), gf_Axy_(I), gf_Axz_(I),
              gf_Ayy_(I), gf_Ayz_(I), gf_Azz_(I)} {}
 
   template <typename F, typename = result_of_t<F(int, int)> >
-  constexpr Z4C_INLINE Z4C_GPU mat3(const F &f)
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat(const F &f)
       : elts{f(0, 0), f(0, 1), f(0, 2), f(1, 1), f(1, 2), f(2, 2)} {}
 
-  Z4C_INLINE Z4C_GPU void
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
   store(const GF3D2<T> &gf_Axx_, const GF3D2<T> &gf_Axy_,
         const GF3D2<T> &gf_Axz_, const GF3D2<T> &gf_Ayy_,
         const GF3D2<T> &gf_Ayz_, const GF3D2<T> &gf_Azz_,
@@ -473,208 +512,223 @@ public:
     gf_Azz_.store(I, A(2, 2));
   }
   template <typename U>
-  Z4C_INLINE Z4C_GPU void store(const vect<int, 3> &I,
-                                const mat3<U, dnup1, dnup2> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const vect<int, 3> &I, const smat<U, dnup1, dnup2> &value) const {
     for (int a = 0; a < 3; ++a)
       for (int b = a; b < 3; ++b)
         (*this)(a, b).store(I, value(a, b));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const vect<int, 3> &I,
-                                const mat3<U, dnup1, dnup2> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const vect<int, 3> &I,
+        const smat<U, dnup1, dnup2> &value) const {
     for (int a = 0; a < 3; ++a)
       for (int b = a; b < 3; ++b)
         (*this)(a, b).store(mask, I, value(a, b));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const GF3D2index &index,
-                                const mat3<U, dnup1, dnup2> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const GF3D2index &index,
+        const smat<U, dnup1, dnup2> &value) const {
     for (int a = 0; a < 3; ++a)
       for (int b = a; b < 3; ++b)
         (*this)(a, b).store(mask, index, value(a, b));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const GF3D5layout &layout,
-                                const vect<int, 3> &I,
-                                const mat3<U, dnup1, dnup2> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const GF3D5layout &layout, const vect<int, 3> &I,
+        const smat<U, dnup1, dnup2> &value) const {
     for (int a = 0; a < 3; ++a)
       for (int b = a; b < 3; ++b)
         (*this)(a, b).store(mask, layout, I, value(a, b));
   }
   template <typename S, typename U>
-  Z4C_INLINE Z4C_GPU void store(const simdl<S> &mask, const GF3D5index &index,
-                                const mat3<U, dnup1, dnup2> &value) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST void
+  store(const simdl<S> &mask, const GF3D5index &index,
+        const smat<U, dnup1, dnup2> &value) const {
     for (int a = 0; a < 3; ++a)
       for (int b = a; b < 3; ++b)
         (*this)(a, b).store(mask, index, value(a, b));
   }
 
-  Z4C_INLINE Z4C_GPU const T &operator()(int i, int j) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST const T &operator()(int i, int j) const {
     return elts[ind(i, j)];
   }
-  // Z4C_INLINE Z4C_GPU T &operator()(int i, int j) { return
+  // ARITH_INLINE ARITH_DEVICE ARITH_HOST T &operator()(int i, int j) { return
   // elts[symind(i, j)]; }
-  Z4C_INLINE Z4C_GPU T &operator()(int i, int j) { return elts[ind(i, j)]; }
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST T &operator()(int i, int j) {
+    return elts[ind(i, j)];
+  }
 
   template <
       typename T1 = T,
       typename R =
-          mat3<remove_cv_t<remove_reference_t<result_of_t<T1(vect<int, 3>)> > >,
+          smat<remove_cv_t<remove_reference_t<result_of_t<T1(vect<int, 3>)> > >,
                dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const vect<int, 3> &I) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const vect<int, 3> &I) const {
     return R(elts[0](I), elts[1](I), elts[2](I), elts[3](I), elts[4](I),
              elts[5](I));
   }
   template <typename S, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<
+            typename R = smat<remove_cv_t<remove_reference_t<
                                   result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const vect<int, 3> &I) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const vect<int, 3> &I) const {
     return R(elts[0](mask, I), elts[1](mask, I), elts[2](mask, I),
              elts[3](mask, I), elts[4](mask, I), elts[5](mask, I));
   }
   template <typename S, typename U, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<
+            typename R = smat<remove_cv_t<remove_reference_t<
                                   result_of_t<T1(simdl<S>, vect<int, 3>)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask, const vect<int, 3> &I,
-                                  const U &other) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R operator()(const simdl<S> &mask,
+                                                    const vect<int, 3> &I,
+                                                    const U &other) const {
     return R(elts[0](mask, I, other), elts[1](mask, I), elts[2](mask, I),
              elts[3](mask, I, other), elts[4](mask, I),
              elts[5](mask, I, other));
   }
   template <typename T1 = T,
-            typename R = mat3<
+            typename R = smat<
                 remove_cv_t<remove_reference_t<result_of_t<T1(GF3D2index)> > >,
                 dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const GF3D2index &index) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const GF3D2index &index) const {
     return R(elts[0](index), elts[1](index), elts[2](index), elts[3](index),
              elts[4](index), elts[5](index));
   }
   template <typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<result_of_t<
+            typename R = smat<remove_cv_t<remove_reference_t<result_of_t<
                                   T1(GF3D5layout, vect<int, 3>)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const GF3D5layout &layout,
-                                  const vect<int, 3> &I) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const GF3D5layout &layout, const vect<int, 3> &I) const {
     return R(elts[0](layout, I), elts[1](layout, I), elts[2](layout, I),
              elts[3](layout, I), elts[4](layout, I), elts[5](layout, I));
   }
   template <typename T1 = T,
-            typename R = mat3<
+            typename R = smat<
                 remove_cv_t<remove_reference_t<result_of_t<T1(GF3D5index)> > >,
                 dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const GF3D5index &index) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const GF3D5index &index) const {
     return R(elts[0](index), elts[1](index), elts[2](index), elts[3](index),
              elts[4](index), elts[5](index));
   }
   template <typename S, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<
+            typename R = smat<remove_cv_t<remove_reference_t<
                                   result_of_t<T1(simdl<S>, GF3D2index)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D2index &index) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const GF3D2index &index) const {
     return R(elts[0](mask, index), elts[1](mask, index), elts[2](mask, index),
              elts[3](mask, index), elts[4](mask, index), elts[5](mask, index));
   }
   template <typename S, typename U, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<
+            typename R = smat<remove_cv_t<remove_reference_t<
                                   result_of_t<T1(simdl<S>, GF3D2index)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask, const GF3D2index &index,
-                                  const U &other) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R operator()(const simdl<S> &mask,
+                                                    const GF3D2index &index,
+                                                    const U &other) const {
     return R(elts[0](mask, index, other), elts[1](mask, index),
              elts[2](mask, index), elts[3](mask, index, other),
              elts[4](mask, index), elts[5](mask, index, other));
   }
   template <typename S, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<result_of_t<
+            typename R = smat<remove_cv_t<remove_reference_t<result_of_t<
                                   T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D5layout &layout,
-                                  const vect<int, 3> &I) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const GF3D5layout &layout,
+             const vect<int, 3> &I) const {
     return R(elts[0](mask, layout, I), elts[1](mask, layout, I),
              elts[2](mask, layout, I), elts[3](mask, layout, I),
              elts[4](mask, layout, I), elts[5](mask, layout, I));
   }
   template <typename S, typename U, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<result_of_t<
+            typename R = smat<remove_cv_t<remove_reference_t<result_of_t<
                                   T1(simdl<S>, GF3D5layout, vect<int, 3>)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D5layout &layout,
-                                  const vect<int, 3> &I, const U &other) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R operator()(const simdl<S> &mask,
+                                                    const GF3D5layout &layout,
+                                                    const vect<int, 3> &I,
+                                                    const U &other) const {
     return R(elts[0](mask, layout, I, other), elts[1](mask, layout, I),
              elts[2](mask, layout, I), elts[3](mask, layout, I, other),
              elts[4](mask, layout, I), elts[5](mask, layout, I, other));
   }
   template <typename S, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<
+            typename R = smat<remove_cv_t<remove_reference_t<
                                   result_of_t<T1(simdl<S>, GF3D5index)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask,
-                                  const GF3D5index &index) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R
+  operator()(const simdl<S> &mask, const GF3D5index &index) const {
     return R(elts[0](mask, index), elts[1](mask, index), elts[2](mask, index),
              elts[3](mask, index), elts[4](mask, index), elts[5](mask, index));
   }
   template <typename S, typename U, typename T1 = T,
-            typename R = mat3<remove_cv_t<remove_reference_t<
+            typename R = smat<remove_cv_t<remove_reference_t<
                                   result_of_t<T1(simdl<S>, GF3D5index)> > >,
                               dnup1, dnup2> >
-  Z4C_INLINE Z4C_GPU R operator()(const simdl<S> &mask, const GF3D5index &index,
-                                  const U &other) const {
+  ARITH_INLINE ARITH_DEVICE ARITH_HOST R operator()(const simdl<S> &mask,
+                                                    const GF3D5index &index,
+                                                    const U &other) const {
     return R(elts[0](mask, index, other), elts[1](mask, index),
              elts[2](mask, index), elts[3](mask, index, other),
              elts[4](mask, index), elts[5](mask, index, other));
   }
 
-  friend constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
-  operator+(const mat3<T, dnup1, dnup2> &x) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+  operator+(const smat<T, dnup1, dnup2> &x) {
     return +x.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
-  operator-(const mat3<T, dnup1, dnup2> &x) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+  operator-(const smat<T, dnup1, dnup2> &x) {
     return -x.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
-  operator+(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+  operator+(const smat<T, dnup1, dnup2> &x, const smat<T, dnup1, dnup2> &y) {
     return x.elts + y.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
-  operator-(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+  operator-(const smat<T, dnup1, dnup2> &x, const smat<T, dnup1, dnup2> &y) {
     return x.elts - y.elts;
   }
-  friend constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
-  operator*(const T &a, const mat3<T, dnup1, dnup2> &x) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+  operator*(const T &a, const smat<T, dnup1, dnup2> &x) {
     return a * x.elts;
   }
 
-  friend constexpr Z4C_INLINE Z4C_GPU bool
-  operator==(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  operator==(const smat<T, dnup1, dnup2> &x, const smat<T, dnup1, dnup2> &y) {
     return equal_to<vect<T, 6> >()(x.elts, y.elts);
   }
-  friend constexpr Z4C_INLINE Z4C_GPU bool
-  operator!=(const mat3<T, dnup1, dnup2> &x, const mat3<T, dnup1, dnup2> &y) {
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  operator!=(const smat<T, dnup1, dnup2> &x, const smat<T, dnup1, dnup2> &y) {
     return !(x == y);
   }
 
-  constexpr Z4C_INLINE Z4C_GPU T maxabs() const { return elts.maxabs(); }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T maxabs() const {
+    return maxabs(elts);
+  }
 
-  friend struct norm1<mat3>;
+  friend struct norm1<smat>;
 
-  constexpr Z4C_INLINE Z4C_GPU T det() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T det() const {
     const auto &A = *this;
     return A(0, 0) * (A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1)) -
            A(1, 0) * (A(0, 1) * A(2, 2) - A(0, 2) * A(2, 1)) +
            A(2, 0) * (A(0, 1) * A(1, 2) - A(0, 2) * A(1, 1));
   }
 
-  constexpr Z4C_INLINE Z4C_GPU mat3<T, !dnup1, !dnup2> inv(const T detA) const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, !dnup1, !dnup2>
+  inv(const T detA) const {
     const auto &A = *this;
     const T detA1 = 1 / detA;
-    return mat3<T, !dnup1, !dnup2>{
+    return smat<T, !dnup1, !dnup2>{
         detA1 * (A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1)),
         detA1 * (A(1, 2) * A(2, 0) - A(1, 0) * A(2, 2)),
         detA1 * (A(1, 0) * A(2, 1) - A(1, 1) * A(2, 0)),
@@ -683,21 +737,22 @@ public:
         detA1 * (A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0))};
   }
 
-  constexpr Z4C_INLINE Z4C_GPU T
-  trace(const mat3<T, !dnup1, !dnup2> &gu) const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+  trace(const smat<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
-    return sum2sym([&](int x, int y) Z4C_INLINE { return gu(x, y) * A(x, y); });
+    return sum2sym([&](int x, int y)
+                       ARITH_INLINE { return gu(x, y) * A(x, y); });
   }
 
-  constexpr Z4C_INLINE Z4C_GPU mat3 trace_free(
-      const mat3<T, dnup1, dnup2> &g, const mat3<T, !dnup1, !dnup2> &gu) const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat trace_free(
+      const smat<T, dnup1, dnup2> &g, const smat<T, !dnup1, !dnup2> &gu) const {
     const auto &A = *this;
     const T trA = A.trace(gu);
-    return mat3([&](int a, int b)
-                    Z4C_INLINE { return A(a, b) - trA / 3 * g(a, b); });
+    return smat([&](int a, int b)
+                    ARITH_INLINE { return A(a, b) - trA / 3 * g(a, b); });
   }
 
-  friend ostream &operator<<(ostream &os, const mat3<T, dnup1, dnup2> &A) {
+  friend ostream &operator<<(ostream &os, const smat<T, dnup1, dnup2> &A) {
     return os << "[[" << A(0, 0) << "," << A(0, 1) << "," << A(0, 2) << "],["
               << A(1, 0) << "," << A(1, 1) << "," << A(1, 2) << "],[" << A(2, 0)
               << "," << A(2, 1) << "," << A(2, 2) << "]]";
@@ -707,46 +762,49 @@ public:
 } // namespace Z4c
 namespace Arith {
 template <typename T, Z4c::dnup_t dnup1, Z4c::dnup_t dnup2>
-struct zero<Z4c::mat3<T, dnup1, dnup2> > {
-  constexpr Z4C_INLINE Z4C_GPU Z4c::mat3<T, dnup1, dnup2> operator()() const {
+struct zero<Z4c::smat<T, dnup1, dnup2> > {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST Z4c::smat<T, dnup1, dnup2>
+  operator()() const {
     constexpr auto z = zero<T>()();
-    return Z4c::mat3<T, dnup1, dnup2>(z, z, z, z, z, z);
+    return Z4c::smat<T, dnup1, dnup2>(z, z, z, z, z, z);
   }
 };
 
 template <typename T, Z4c::dnup_t dnup1, Z4c::dnup_t dnup2>
-struct one<Z4c::mat3<T, dnup1, dnup2> > {
-  constexpr Z4C_INLINE Z4C_GPU Z4c::mat3<T, dnup1, dnup2> operator()() const {
+struct one<Z4c::smat<T, dnup1, dnup2> > {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST Z4c::smat<T, dnup1, dnup2>
+  operator()() const {
     constexpr auto z = zero<T>()();
     constexpr auto e = one<T>()();
-    return Z4c::mat3<T, dnup1, dnup2>(e, z, z, e, z, e);
+    return Z4c::smat<T, dnup1, dnup2>(e, z, z, e, z, e);
   }
 };
 } // namespace Arith
 namespace Z4c {
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
-struct nan<mat3<T, dnup1, dnup2> > {
-  constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2> operator()() const {
-    return mat3<T, dnup1, dnup2>();
+struct nan<smat<T, dnup1, dnup2> > {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+  operator()() const {
+    return smat<T, dnup1, dnup2>();
   }
 };
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
-struct norm1<mat3<T, dnup1, dnup2> > {
+struct norm1<smat<T, dnup1, dnup2> > {
   typedef typename norm1<vect<T, 6> >::result_type result_type;
-  constexpr Z4C_INLINE Z4C_GPU result_type
-  operator()(const mat3<T, dnup1, dnup2> &x) const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST result_type
+  operator()(const smat<T, dnup1, dnup2> &x) const {
     return norm1<vect<T, 6> >()(x.elts);
   }
 };
 
 template <typename T, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3>
-constexpr Z4C_INLINE Z4C_GPU mat3<T, dnup1, dnup2>
-mul(const mat3<T, dnup1, dnup3> &A, const mat3<T, !dnup3, dnup2> &B) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dnup1, dnup2>
+mul(const smat<T, dnup1, dnup3> &A, const smat<T, !dnup3, dnup2> &B) {
   // C[a,b] = A[a,c] B[c,b]
-  return mat3<T, dnup1, dnup2>([&](int a, int b) Z4C_INLINE {
-    return sum1([&](int x) Z4C_INLINE { return A(a, x) * B(x, b); });
+  return smat<T, dnup1, dnup2>([&](int a, int b) ARITH_INLINE {
+    return sum1([&](int x) ARITH_INLINE { return A(a, x) * B(x, b); });
   });
 }
 } // namespace Z4c

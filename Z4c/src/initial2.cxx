@@ -1,11 +1,10 @@
 #include "derivs.hxx"
-#include "field.hxx"
 #include "physics.hxx"
-#include "tensor.hxx"
 
 #include <loop_device.hxx>
 #include <simd.hxx>
 
+#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 
@@ -17,7 +16,7 @@ using namespace std;
 extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Z4c_Initial2;
 
-  const vec3<CCTK_REAL, UP> dx{
+  const vec<CCTK_REAL, 3, UP> dx{
       CCTK_DELTA_SPACE(0),
       CCTK_DELTA_SPACE(1),
       CCTK_DELTA_SPACE(2),
@@ -26,17 +25,17 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
   const array<int, dim> indextype = {0, 0, 0};
   const GF3D2layout layout1(cctkGH, indextype);
 
-  const mat3<GF3D2<const CCTK_REAL>, DN, DN> gf_gammat1(
+  const smat<GF3D2<const CCTK_REAL>, 3, DN, DN> gf_gammat1{
       GF3D2<const CCTK_REAL>(layout1, gammatxx),
       GF3D2<const CCTK_REAL>(layout1, gammatxy),
       GF3D2<const CCTK_REAL>(layout1, gammatxz),
       GF3D2<const CCTK_REAL>(layout1, gammatyy),
       GF3D2<const CCTK_REAL>(layout1, gammatyz),
-      GF3D2<const CCTK_REAL>(layout1, gammatzz));
+      GF3D2<const CCTK_REAL>(layout1, gammatzz)};
 
-  const vec3<GF3D2<CCTK_REAL>, UP> gf_Gamt1(GF3D2<CCTK_REAL>(layout1, Gamtx),
-                                            GF3D2<CCTK_REAL>(layout1, Gamty),
-                                            GF3D2<CCTK_REAL>(layout1, Gamtz));
+  const vec<GF3D2<CCTK_REAL>, 3, UP> gf_Gamt1{GF3D2<CCTK_REAL>(layout1, Gamtx),
+                                              GF3D2<CCTK_REAL>(layout1, Gamty),
+                                              GF3D2<CCTK_REAL>(layout1, Gamtz)};
 
   typedef simd<CCTK_REAL> vreal;
   typedef simdl<CCTK_REAL> vbool;
@@ -44,25 +43,27 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
+      grid.nghostzones,
+      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const GF3D2index index1(layout1, p.I);
 
         // Load
-        const mat3<vreal, DN, DN> gammat = gf_gammat1(mask, index1, 1);
+        const smat<vreal, 3, DN, DN> gammat =
+            gf_gammat1(mask, index1, one<smat<vreal, 3, DN, DN> >()());
 
         // Calculate Z4c variables (only Gamt)
-        const mat3<vreal, UP, UP> gammatu = gammat.inv(1);
+        const smat<vreal, 3, UP, UP> gammatu = calc_inv(gammat, vreal(1));
 
-        const mat3<vec3<vreal, DN>, DN, DN> dgammat([&](int a, int b) {
+        const smat<vec<vreal, 3, DN>, 3, DN, DN> dgammat([&](int a, int b) {
           return deriv(mask, gf_gammat1(a, b), p.I, dx);
         });
 
-        const vec3<mat3<vreal, DN, DN>, DN> Gammatl = calc_gammal(dgammat);
-        const vec3<mat3<vreal, DN, DN>, UP> Gammat =
+        const vec<smat<vreal, 3, DN, DN>, 3, DN> Gammatl = calc_gammal(dgammat);
+        const vec<smat<vreal, 3, DN, DN>, 3, UP> Gammat =
             calc_gamma(gammatu, Gammatl);
-        const vec3<vreal, UP> Gamt([&](int a) Z4C_INLINE {
-          return sum2sym([&](int x, int y) Z4C_INLINE {
+        const vec<vreal, 3, UP> Gamt([&](int a) ARITH_INLINE {
+          return sum_symm<3>([&](int x, int y) ARITH_INLINE {
             return gammatu(x, y) * Gammat(a)(x, y);
           });
         });

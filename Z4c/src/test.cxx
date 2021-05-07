@@ -1,7 +1,7 @@
 #include "derivs.hxx"
 #include "physics.hxx"
-#include "tensor.hxx"
 
+#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 
 #include <algorithm>
@@ -30,21 +30,21 @@ extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
     for (int a = 0; a < 3; ++a)
       for (int b = 0; b < 3; ++b)
         arr[a][b] = rand10();
-    return mat3<double, DN, DN>(
+    return smat<double, DN, DN>(
         [&](int a, int b) { return arr[min(a, b)][max(a, b)]; });
   }};
 
-  const mat3<double, DN, DN> Z([&](int a, int b) { return double(0); });
-  const mat3<double, DN, DN> I([&](int a, int b) { return double(a == b); });
+  const smat<double, DN, DN> Z([&](int a, int b) { return double(0); });
+  const smat<double, DN, DN> I([&](int a, int b) { return double(a == b); });
   assert(I != Z);
-  const mat3<double, UP, UP> Zup([&](int a, int b) { return double(0); });
-  const mat3<double, UP, UP> Iup([&](int a, int b) { return double(a == b); });
+  const smat<double, UP, UP> Zup([&](int a, int b) { return double(0); });
+  const smat<double, UP, UP> Iup([&](int a, int b) { return double(a == b); });
   assert(Iup != Zup);
 
   for (int n = 0; n < 100; ++n) {
-    const mat3<double, DN, DN> A = randmat10();
-    const mat3<double, DN, DN> B = randmat10();
-    const mat3<double, DN, DN> C = randmat10();
+    const smat<double, DN, DN> A = randmat10();
+    const smat<double, DN, DN> B = randmat10();
+    const smat<double, DN, DN> C = randmat10();
     const double a = rand10();
     const double b = rand10();
 

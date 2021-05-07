@@ -1,11 +1,12 @@
 #ifndef DERIVS_HXX
 #define DERIVS_HXX
 
-#include "tensor.hxx"
-
 #include <loop_device.hxx>
+#include <mat.hxx>
 #include <simd.hxx>
+#include <vec.hxx>
 
+#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
@@ -22,11 +23,6 @@ using namespace Arith;
 using namespace Loop;
 using namespace std;
 
-template <typename T>
-inline Z4C_INLINE Z4C_GPU T flipsign(const T &x, const T &y) {
-  return copysign(T(1), y) * x;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 constexpr int deriv_order = 4;
@@ -34,25 +30,21 @@ constexpr int deriv_order = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU T deriv1d(const T *restrict const var,
-                                    const ptrdiff_t di, const T dx) {
-  switch (deriv_order) {
-  case 2:
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+deriv1d(const T *restrict const var, const ptrdiff_t di, const T dx) {
+  if constexpr (deriv_order == 2)
     return -1 / T(2) * (var[-di] - var[+di]) / dx;
-  case 4:
+  if constexpr (deriv_order == 4)
     return (1 / T(12) * (var[-2 * di] - var[+2 * di]) //
             - 2 / T(3) * (var[-di] - var[+di])) /
            dx;
-  }
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU T deriv1d_upwind(const T *restrict const var,
-                                           const ptrdiff_t di, const T sign,
-                                           const T dx) {
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv1d_upwind(
+    const T *restrict const var, const ptrdiff_t di, const T sign, const T dx) {
   // arXiv:1111.2177 [gr-qc], (71)
-  switch (deriv_order) {
-  case 2: {
+  if constexpr (deriv_order == 2) {
     // if (sign)
     //   // +     [ 0   -1   +1    0    0]
     //   // + 1/2 [+1   -2   +1    0    0]
@@ -83,7 +75,7 @@ inline Z4C_INLINE Z4C_GPU T deriv1d_upwind(const T *restrict const var,
                    + 3 / T(2) * var[0];
     return (symm - flipsign(anti, sign)) / dx;
   }
-  case 4:
+  if constexpr (deriv_order == 4) {
     // A fourth order stencil for a first derivative, shifted by one grid point
 
     // if (sign)
@@ -113,25 +105,23 @@ inline Z4C_INLINE Z4C_GPU T deriv1d_upwind(const T *restrict const var,
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU T deriv2_1d(const T *restrict const var,
-                                      const ptrdiff_t di, const T dx) {
-  switch (deriv_order) {
-  case 2:
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+deriv2_1d(const T *restrict const var, const ptrdiff_t di, const T dx) {
+  if constexpr (deriv_order == 2)
     return ((var[-di] + var[+di]) //
             - 2 * var[0]) /
            pow2(dx);
-  case 4:
+  if constexpr (deriv_order == 4)
     return (-1 / T(12) * (var[-2 * di] + var[+2 * di]) //
             + 4 / T(3) * (var[-di] + var[+di])         //
             - 5 / T(2) * var[0]) /
            pow2(dx);
-  }
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU T deriv2_2d(const T *restrict const var,
-                                      const ptrdiff_t di, const ptrdiff_t dj,
-                                      const T dx, const T dy) {
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+deriv2_2d(const T *restrict const var, const ptrdiff_t di, const ptrdiff_t dj,
+          const T dx, const T dy) {
   array<T, deriv_order + 1> arrx;
   T *const varx = &arrx[deriv_order / 2];
   for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
@@ -140,34 +130,31 @@ inline Z4C_INLINE Z4C_GPU T deriv2_2d(const T *restrict const var,
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU T deriv1d_diss(const T *restrict const var,
-                                         const ptrdiff_t di, const T dx) {
-  switch (deriv_order) {
-  case 2:
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+deriv1d_diss(const T *restrict const var, const ptrdiff_t di, const T dx) {
+  if constexpr (deriv_order == 2)
     return ((var[-2 * di] + var[+2 * di]) //
             - 4 * (var[-di] + var[+di])   //
             + 6 * var[0]) /
            dx;
-  case 4:
+  if constexpr (deriv_order == 4)
     return ((var[-3 * di] + var[+3 * di])       //
             - 6 * (var[-2 * di] + var[+2 * di]) //
             + 15 * (var[-di] + var[+di])        //
             - 20 * var[0]) /
            dx;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T> deriv1d(const simdl<T> &mask,
-                                          const T *restrict const var,
-                                          const ptrdiff_t di, const T dx) {
-  switch (deriv_order) {
-  case 2:
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
+deriv1d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
+        const T dx) {
+  if constexpr (deriv_order == 2)
     return -1 / T(2) *
            (maskz_loadu(mask, &var[-di]) - maskz_loadu(mask, &var[+di])) / dx;
-  case 4:
+  if constexpr (deriv_order == 4)
     return (1 / T(12) *
                 (maskz_loadu(mask, &var[-2 * di]) -
                  maskz_loadu(mask, &var[+2 * di])) //
@@ -175,16 +162,14 @@ inline Z4C_INLINE Z4C_GPU simd<T> deriv1d(const simdl<T> &mask,
             2 / T(3) *
                 (maskz_loadu(mask, &var[-di]) - maskz_loadu(mask, &var[+di]))) /
            dx;
-  }
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv1d_upwind(const simdl<T> &mask, const T *restrict const var,
                const ptrdiff_t di, const simd<T> &vel, const T dx) {
   // arXiv:1111.2177 [gr-qc], (71)
-  switch (deriv_order) {
-  case 2: {
+  if constexpr (deriv_order == 2) {
     // if (sign)
     //   // +     [ 0   -1   +1    0    0]
     //   // + 1/2 [+1   -2   +1    0    0]
@@ -221,7 +206,7 @@ deriv1d_upwind(const simdl<T> &mask, const T *restrict const var,
         + 3 / T(2) * maskz_loadu(mask, &var[0]);
     return (vel * symm - fabs(vel) * anti) / dx;
   }
-  case 4:
+  if constexpr (deriv_order == 4) {
     // A fourth order stencil for a first derivative, shifted by one grid point
 
     // if (sign)
@@ -263,15 +248,14 @@ deriv1d_upwind(const simdl<T> &mask, const T *restrict const var,
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T> deriv2_1d(const simdl<T> &mask,
-                                            const T *restrict const var,
-                                            const ptrdiff_t di, const T dx) {
-  switch (deriv_order) {
-  case 2:
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
+deriv2_1d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
+          const T dx) {
+  if constexpr (deriv_order == 2)
     return ((maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[+di])) //
             - 2 * maskz_loadu(mask, &var[0])) /
            pow2(dx);
-  case 4:
+  if constexpr (deriv_order == 4)
     return (-1 / T(12) *
                 (maskz_loadu(mask, &var[-2 * di]) +
                  maskz_loadu(mask, &var[+2 * di])) //
@@ -280,11 +264,10 @@ inline Z4C_INLINE Z4C_GPU simd<T> deriv2_1d(const simdl<T> &mask,
                 (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[+di])) //
             - 5 / T(2) * maskz_loadu(mask, &var[0])) /
            pow2(dx);
-  }
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv2_2d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
           const ptrdiff_t dj, const T dx, const T dy) {
   constexpr size_t vsize = tuple_size_v<simd<T> >;
@@ -311,18 +294,17 @@ deriv2_2d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T> deriv1d_diss(const simdl<T> &mask,
-                                               const T *restrict const var,
-                                               const ptrdiff_t di, const T dx) {
-  switch (deriv_order) {
-  case 2:
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
+deriv1d_diss(const simdl<T> &mask, const T *restrict const var,
+             const ptrdiff_t di, const T dx) {
+  if constexpr (deriv_order == 2)
     return ((maskz_loadu(mask, &var[-2 * di]) +
              maskz_loadu(mask, &var[+2 * di])) //
             -
             4 * (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[+di])) //
             + 6 * maskz_loadu(mask, &var[0])) /
            dx;
-  case 4:
+  if constexpr (deriv_order == 4)
     return ((maskz_loadu(mask, &var[-3 * di]) +
              maskz_loadu(mask, &var[+3 * di])) //
             - 6 * (maskz_loadu(mask, &var[-2 * di]) +
@@ -331,102 +313,119 @@ inline Z4C_INLINE Z4C_GPU simd<T> deriv1d_diss(const simdl<T> &mask,
                     maskz_loadu(mask, &var[+di])) //
             - 20 * maskz_loadu(mask, &var[0])) /
            dx;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <int dir, typename T>
-inline Z4C_INLINE Z4C_GPU T deriv(const GF3D2<const T> &gf_,
+#if 0
+template <int dir, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv(const GF3D2<const T> &gf_,
                                   const vect<int, dim> &I,
-                                  const vec3<T, UP> &dx) {
+                                  const vec<T, D, UP> &dx) {
+  static_assert(dir >= 0 && dir < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d(&gf_(I), di, dx(dir));
 }
 
-template <int dir, typename T>
-inline Z4C_INLINE Z4C_GPU T deriv_upwind(const GF3D2<const T> &gf_,
+template <int dir, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv_upwind(const GF3D2<const T> &gf_,
                                          const vect<int, dim> &I,
-                                         const vec3<T, UP> &sign,
-                                         const vec3<T, UP> &dx) {
+                                         const vec<T, D, UP> &sign,
+                                         const vec<T, D, UP> &dx) {
+  static_assert(dir >= 0 && dir < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d_upwind(&gf_(I), di, sign(dir), dx(dir));
 }
 
-template <int dir1, int dir2, typename T>
-inline Z4C_INLINE Z4C_GPU enable_if_t<(dir1 == dir2), T>
+template <int dir1, int dir2, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 == dir2), T>
 deriv2(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec3<T, UP> &dx) {
+       const vec<T, D, UP> &dx) {
+  static_assert(dir1 >= 0 && dir1 < D, "");
+  static_assert(dir2 >= 0 && dir2 < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir1));
   return deriv2_1d(&gf_(I), di, dx(dir1));
 }
 
-template <int dir1, int dir2, typename T>
-inline Z4C_INLINE Z4C_GPU enable_if_t<(dir1 != dir2), T>
+template <int dir1, int dir2, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 != dir2), T>
 deriv2(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec3<T, UP> &dx) {
+       const vec<T, D, UP> &dx) {
+  static_assert(dir1 >= 0 && dir1 < D, "");
+  static_assert(dir2 >= 0 && dir2 < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir1));
   const ptrdiff_t dj = gf_.delta(DI(dir2));
   return deriv2_2d(&gf_(I), di, dj, dx(dir1), dx(dir2));
 }
 
-template <int dir, typename T>
-inline Z4C_INLINE Z4C_GPU T deriv_diss(const GF3D2<const T> &gf_,
+template <int dir, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv_diss(const GF3D2<const T> &gf_,
                                        const vect<int, dim> &I,
-                                       const vec3<T, UP> &dx) {
+                                       const vec<T, D, UP> &dx) {
+  static_assert(dir >= 0 && dir < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d_diss(&gf_(I), di, dx(dir));
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <int dir, typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+template <int dir, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-      const vec3<T, UP> &dx) {
+      const vec<T, D, UP> &dx) {
+  static_assert(dir >= 0 && dir < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d(mask, &gf_(I), di, dx(dir));
 }
 
-template <int dir, typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+template <int dir, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv_upwind(const simdl<T> &mask, const GF3D2<const T> &gf_,
-             const vect<int, dim> &I, const vec3<simd<T>, UP> &vel,
-             const vec3<T, UP> &dx) {
+             const vect<int, dim> &I, const vec<simd<T>, D, UP> &vel,
+             const vec<T, D, UP> &dx) {
+  static_assert(dir >= 0 && dir < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d_upwind(mask, &gf_(I), di, vel(dir), dx(dir));
 }
 
-template <int dir1, int dir2, typename T>
-inline Z4C_INLINE Z4C_GPU enable_if_t<(dir1 == dir2), simd<T> >
-deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec3<T, UP> &dx) {
+template <int dir1, int dir2, typename T, int D>
+inline ARITH_INLINE
+    ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 == dir2), simd<T> >
+    deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_,
+           const vect<int, dim> &I, const vec<T, D, UP> &dx) {
+  static_assert(dir1 >= 0 && dir1 < D, "");
+  static_assert(dir2 >= 0 && dir2 < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir1));
   return deriv2_1d(mask, &gf_(I), di, dx(dir1));
 }
 
-template <int dir1, int dir2, typename T>
-inline Z4C_INLINE Z4C_GPU enable_if_t<(dir1 != dir2), simd<T> >
-deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec3<T, UP> &dx) {
+template <int dir1, int dir2, typename T, int D>
+inline ARITH_INLINE
+    ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 != dir2), simd<T> >
+    deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_,
+           const vect<int, dim> &I, const vec<T, D, UP> &dx) {
+  static_assert(dir1 >= 0 && dir1 < D, "");
+  static_assert(dir2 >= 0 && dir2 < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir1));
   const ptrdiff_t dj = gf_.delta(DI(dir2));
   return deriv2_2d(mask, &gf_(I), di, dj, dx(dir1), dx(dir2));
 }
 
-template <int dir, typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+template <int dir, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv_diss(const simdl<T> &mask, const GF3D2<const T> &gf_,
-           const vect<int, dim> &I, const vec3<T, UP> &dx) {
+           const vect<int, dim> &I, const vec<T, D, UP> &dx) {
+  static_assert(dir >= 0 && dir < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d_diss(mask, &gf_(I), di, dx(dir));
@@ -434,36 +433,38 @@ deriv_diss(const simdl<T> &mask, const GF3D2<const T> &gf_,
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 template <typename T>
-inline Z4C_INLINE Z4C_GPU vec3<T, DN> deriv(const GF3D2<const T> &gf_,
-                                            const vect<int, dim> &I,
-                                            const vec3<T, UP> &dx) {
-  return vec3<T, DN>(deriv<0>(gf_, I, dx), deriv<1>(gf_, I, dx),
-                     deriv<2>(gf_, I, dx));
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dim, DN> deriv(const GF3D2<const T> &gf_,
+                                                const vect<int, dim> &I,
+                                                const vec<T, dim, UP> &dx) {
+  return vec<T, dim, DN>(deriv<0>(gf_, I, dx), deriv<1>(gf_, I, dx),
+                         deriv<2>(gf_, I, dx));
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU vec3<T, DN>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dim, DN>
 deriv_upwind(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-             const vec3<T, UP> &dir, const vec3<T, UP> &dx) {
-  return vec3<T, DN>(deriv_upwind<0>(gf_, I, dir, dx),
-                     deriv_upwind<1>(gf_, I, dir, dx),
-                     deriv_upwind<2>(gf_, I, dir, dx));
+             const vec<T, dim, UP> &dir, const vec<T, dim, UP> &dx) {
+  return vec<T, D, DN>(deriv_upwind<0>(gf_, I, dir, dx),
+                       deriv_upwind<1>(gf_, I, dir, dx),
+                       deriv_upwind<2>(gf_, I, dir, dx));
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU mat3<T, DN, DN> deriv2(const GF3D2<const T> &gf_,
-                                                 const vect<int, dim> &I,
-                                                 const vec3<T, UP> &dx) {
-  return mat3<T, DN, DN>(deriv2<0, 0>(gf_, I, dx), deriv2<0, 1>(gf_, I, dx),
-                         deriv2<0, 2>(gf_, I, dx), deriv2<1, 1>(gf_, I, dx),
-                         deriv2<1, 2>(gf_, I, dx), deriv2<2, 2>(gf_, I, dx));
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dim, DN, DN>
+deriv2(const GF3D2<const T> &gf_, const vect<int, dim> &I,
+       const vec<T, dim, UP> &dx) {
+  return smat<T, dim, DN, DN>(
+      deriv2<0, 0>(gf_, I, dx), deriv2<0, 1>(gf_, I, dx),
+      deriv2<0, 2>(gf_, I, dx), deriv2<1, 1>(gf_, I, dx),
+      deriv2<1, 2>(gf_, I, dx), deriv2<2, 2>(gf_, I, dx));
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU T diss(const GF3D2<const T> &gf_,
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T diss(const GF3D2<const T> &gf_,
                                  const vect<int, dim> &I,
-                                 const vec3<T, UP> &dx) {
+                                 const vec<T, dim, UP> &dx) {
   // arXiv:gr-qc/0610128, (63), with r=2
   constexpr int diss_order = deriv_order + 2;
   constexpr int sign = diss_order % 4 == 0 ? -1 : +1;
@@ -472,42 +473,41 @@ inline Z4C_INLINE Z4C_GPU T diss(const GF3D2<const T> &gf_,
           + deriv_diss<1>(gf_, I, dx) //
           + deriv_diss<2>(gf_, I, dx));
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU vec3<simd<T>, DN>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<simd<T>, dim, DN>
 deriv(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-      const vec3<T, UP> &dx) {
-  return vec3<simd<T>, DN>(deriv<0>(mask, gf_, I, dx),
-                           deriv<1>(mask, gf_, I, dx),
-                           deriv<2>(mask, gf_, I, dx));
+      const vec<T, dim, UP> &dx) {
+  return {deriv<0>(mask, gf_, I, dx), deriv<1>(mask, gf_, I, dx),
+          deriv<2>(mask, gf_, I, dx)};
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv_upwind(const simdl<T> &mask, const GF3D2<const T> &gf_,
-             const vect<int, dim> &I, const vec3<simd<T>, UP> &vel,
-             const vec3<T, UP> &dx) {
+             const vect<int, dim> &I, const vec<simd<T>, dim, UP> &vel,
+             const vec<T, dim, UP> &dx) {
   return deriv_upwind<0>(mask, gf_, I, vel, dx) +
          deriv_upwind<1>(mask, gf_, I, vel, dx) +
          deriv_upwind<2>(mask, gf_, I, vel, dx);
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU mat3<simd<T>, DN, DN>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<simd<T>, dim, DN, DN>
 deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec3<T, UP> &dx) {
-  return mat3<simd<T>, DN, DN>(
-      deriv2<0, 0>(mask, gf_, I, dx), deriv2<0, 1>(mask, gf_, I, dx),
-      deriv2<0, 2>(mask, gf_, I, dx), deriv2<1, 1>(mask, gf_, I, dx),
-      deriv2<1, 2>(mask, gf_, I, dx), deriv2<2, 2>(mask, gf_, I, dx));
+       const vec<T, dim, UP> &dx) {
+  return {deriv2<0, 0>(mask, gf_, I, dx), deriv2<0, 1>(mask, gf_, I, dx),
+          deriv2<0, 2>(mask, gf_, I, dx), deriv2<1, 1>(mask, gf_, I, dx),
+          deriv2<1, 2>(mask, gf_, I, dx), deriv2<2, 2>(mask, gf_, I, dx)};
 }
 
 template <typename T>
-inline Z4C_INLINE Z4C_GPU simd<T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 diss(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-     const vec3<T, UP> &dx) {
+     const vec<T, dim, UP> &dx) {
   // arXiv:gr-qc/0610128, (63), with r=2
   constexpr int diss_order = deriv_order + 2;
   constexpr int sign = diss_order % 4 == 0 ? -1 : +1;
@@ -522,7 +522,7 @@ diss(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
 template <typename T>
 CCTK_ATTRIBUTE_NOINLINE void
 calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
-            const GF3D5<T> &gf0, const vec3<GF3D5<T>, DN> &dgf0,
+            const GF3D5<T> &gf0, const vec<GF3D5<T>, dim, DN> &dgf0,
             const GF3D5layout &layout0) {
   DECLARE_CCTK_ARGUMENTS;
 
@@ -530,50 +530,55 @@ calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
   typedef simdl<CCTK_REAL> vbool;
   constexpr size_t vsize = tuple_size_v<vreal>;
 
-  const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
+  const vec<CCTK_REAL, dim, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
+      grid.nghostzones,
+      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+        const GF3D5index index0(layout0, p.I);
         const auto val = gf1(mask, p.I);
-        gf0.store(mask, layout0, p.I, val);
+        gf0.store(mask, index0, val);
         const auto dval = deriv(mask, gf1, p.I, dx);
-        dgf0.store(mask, layout0, p.I, dval);
+        dgf0.store(mask, index0, dval);
       });
 }
 
 template <typename T>
 CCTK_ATTRIBUTE_NOINLINE void
 calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
-             const GF3D5<T> &gf0, const vec3<GF3D5<T>, DN> &dgf0,
-             const mat3<GF3D5<T>, DN, DN> &ddgf0, const GF3D5layout &layout0) {
+             const GF3D5<T> &gf0, const vec<GF3D5<T>, dim, DN> &dgf0,
+             const smat<GF3D5<T>, dim, DN, DN> &ddgf0,
+             const GF3D5layout &layout0) {
   DECLARE_CCTK_ARGUMENTS;
 
   typedef simd<CCTK_REAL> vreal;
   typedef simdl<CCTK_REAL> vbool;
   constexpr size_t vsize = tuple_size_v<vreal>;
 
-  const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
+  const vec<CCTK_REAL, dim, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
+      grid.nghostzones,
+      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
+        const GF3D5index index0(layout0, p.I);
         const auto val = gf1(mask, p.I);
-        gf0.store(mask, layout0, p.I, val);
+        gf0.store(mask, index0, val);
         const auto dval = deriv(mask, gf1, p.I, dx);
-        dgf0.store(mask, layout0, p.I, dval);
+        dgf0.store(mask, index0, dval);
         const auto ddval = deriv2(mask, gf1, p.I, dx);
-        ddgf0.store(mask, layout0, p.I, ddval);
+        ddgf0.store(mask, index0, ddval);
       });
 }
 
 template <typename T, dnup_t dnup>
 void calc_derivs(const cGH *restrict const cctkGH,
-                 const vec3<GF3D2<const T>, dnup> &gf0_,
-                 const vec3<GF3D5<T>, dnup> &gf_,
-                 const vec3<vec3<GF3D5<T>, DN>, dnup> &dgf_,
+                 const vec<GF3D2<const T>, dim, dnup> &gf0_,
+                 const vec<GF3D5<T>, dim, dnup> &gf_,
+                 const vec<vec<GF3D5<T>, dim, DN>, dim, dnup> &dgf_,
                  const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     calc_derivs(cctkGH, gf0_(a), gf_(a), dgf_(a), layout);
@@ -581,10 +586,10 @@ void calc_derivs(const cGH *restrict const cctkGH,
 
 template <typename T, dnup_t dnup>
 void calc_derivs2(const cGH *restrict const cctkGH,
-                  const vec3<GF3D2<const T>, dnup> &gf0_,
-                  const vec3<GF3D5<T>, dnup> &gf_,
-                  const vec3<vec3<GF3D5<T>, DN>, dnup> &dgf_,
-                  const vec3<mat3<GF3D5<T>, DN, DN>, dnup> &ddgf_,
+                  const vec<GF3D2<const T>, dim, dnup> &gf0_,
+                  const vec<GF3D5<T>, dim, dnup> &gf_,
+                  const vec<vec<GF3D5<T>, dim, DN>, dim, dnup> &dgf_,
+                  const vec<smat<GF3D5<T>, dim, DN, DN>, dim, dnup> &ddgf_,
                   const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     calc_derivs2(cctkGH, gf0_(a), gf_(a), dgf_(a), ddgf_(a), layout);
@@ -592,9 +597,9 @@ void calc_derivs2(const cGH *restrict const cctkGH,
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 void calc_derivs(const cGH *restrict const cctkGH,
-                 const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
-                 const mat3<GF3D5<T>, dnup1, dnup2> &gf_,
-                 const mat3<vec3<GF3D5<T>, DN>, dnup1, dnup2> &dgf_,
+                 const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
+                 const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
+                 const smat<vec<GF3D5<T>, dim, DN>, dim, dnup1, dnup2> &dgf_,
                  const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
@@ -602,12 +607,13 @@ void calc_derivs(const cGH *restrict const cctkGH,
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
-void calc_derivs2(const cGH *restrict const cctkGH,
-                  const mat3<GF3D2<const T>, dnup1, dnup2> &gf0_,
-                  const mat3<GF3D5<T>, dnup1, dnup2> &gf_,
-                  const mat3<vec3<GF3D5<T>, DN>, dnup1, dnup2> &dgf_,
-                  const mat3<mat3<GF3D5<T>, DN, DN>, dnup1, dnup2> &ddgf_,
-                  const GF3D5layout &layout) {
+void calc_derivs2(
+    const cGH *restrict const cctkGH,
+    const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
+    const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
+    const smat<vec<GF3D5<T>, dim, DN>, dim, dnup1, dnup2> &dgf_,
+    const smat<smat<GF3D5<T>, dim, DN, DN>, dim, dnup1, dnup2> &ddgf_,
+    const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
       calc_derivs2(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), ddgf_(a, b),
@@ -617,12 +623,12 @@ void calc_derivs2(const cGH *restrict const cctkGH,
 template <typename T>
 CCTK_ATTRIBUTE_NOINLINE void
 apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
-                  const vec3<GF3D2<const T>, UP> &gf_betaG_,
+                  const vec<GF3D2<const T>, dim, UP> &gf_betaG_,
                   const GF3D2<T> &gf_rhs_) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-  const vec3<CCTK_REAL, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
+  const vec<CCTK_REAL, dim, UP> dx([&](int a) { return CCTK_DELTA_SPACE(a); });
 
   typedef simd<CCTK_REAL> vreal;
   typedef simdl<CCTK_REAL> vbool;
@@ -632,9 +638,10 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
     const Loop::GridDescBaseDevice grid(cctkGH);
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
+        grid.nghostzones,
+        [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
-          const vec3<vreal, UP> betaG = gf_betaG_(mask, p.I);
+          const vec<vreal, dim, UP> betaG = gf_betaG_(mask, p.I);
           const vreal rhs_old = gf_rhs_(mask, p.I);
           const vreal rhs_new =
               rhs_old + deriv_upwind(mask, gf_, p.I, betaG, dx);
@@ -645,9 +652,10 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
     const Loop::GridDescBaseDevice grid(cctkGH);
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones, [=](const PointDesc &p) Z4C_INLINE Z4C_GPU {
+        grid.nghostzones,
+        [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
-          const vec3<vreal, UP> betaG = gf_betaG_(mask, p.I);
+          const vec<vreal, dim, UP> betaG = gf_betaG_(mask, p.I);
           const vreal rhs_old = gf_rhs_(mask, p.I);
           const vreal rhs_new = rhs_old +
                                 deriv_upwind(mask, gf_, p.I, betaG, dx) +
