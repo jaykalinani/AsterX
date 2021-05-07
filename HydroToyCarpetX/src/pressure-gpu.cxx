@@ -42,8 +42,8 @@ extern "C" void HydroToyCarpetX_Pressure(CCTK_ARGUMENTS) {
                                     cctkGH->cctk_nghostzones[2]};
   const Loop::GridDescBaseDevice griddesc(cctkGH);
   griddesc.loop_all_device<1, 1, 1>(
-      nghostzones, [=](const Loop::PointDesc &p)
-                       CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(const Loop::PointDesc &p)
+                       CCTK_ATTRIBUTE_ALWAYS_INLINE {
                          CCTK_REAL rho_inv = 1.0 / rho[p.idx];
                          //        printf("rho = %g\n", rho[p.idx]);
                          //        printf("etot = %g\n", etot[p.idx]);

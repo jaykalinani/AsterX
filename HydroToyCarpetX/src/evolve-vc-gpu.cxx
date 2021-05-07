@@ -55,8 +55,8 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
   // CPU or GPU
   // TODO: &p?
   //  const auto calcupdate =
-  //      [=](CCTK_REAL fx, CCTK_REAL fy, CCTK_REAL fz, &p)
-  //      CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+  //      [=] CCTK_DEVICE CCTK_HOST (CCTK_REAL fx, CCTK_REAL fy, CCTK_REAL fz, &p)
+  //      CCTK_ATTRIBUTE_ALWAYS_INLINE {
   //	  return dt_dx * (fx(p.idx + p.di) - fx(p.idx)) +
   //             dt_dy * (fy(p.idx + p.dj) - fy(p.idx)) +
   //             dt_dz * (fz(p.idx + p.dk) - fz(p.idx));
@@ -70,8 +70,8 @@ extern "C" void HydroToyCarpetX_Evolve(CCTK_ARGUMENTS) {
                                     cctkGH->cctk_nghostzones[2]};
   const Loop::GridDescBaseDevice griddesc(cctkGH);
   griddesc.loop_int_device<1, 1, 1>(
-      nghostzones, [=](const Loop::PointDesc &p)
-                       CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      nghostzones, [=] CCTK_DEVICE  CCTK_HOST (const Loop::PointDesc &p)
+                       CCTK_ATTRIBUTE_ALWAYS_INLINE{
                          const auto px = griddesc.point_desc<0, 1, 1>(p);
                          const auto py = griddesc.point_desc<1, 0, 1>(p);
                          const auto pz = griddesc.point_desc<1, 1, 0>(p);

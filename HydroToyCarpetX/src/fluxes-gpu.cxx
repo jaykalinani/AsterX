@@ -38,21 +38,21 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   // fmom^i_j = mom_j vel^i + delta^i_j press
   // fetot^i = (etot + press) vel^i
 
-  const auto calcflux =
-      [=](CCTK_REAL var_p, CCTK_REAL var_m, CCTK_REAL flux_p, CCTK_REAL flux_m)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-            CCTK_REAL lambda_m = 1.0;
-            CCTK_REAL lambda_p = -1.0;
-            //            CCTK_REAL var_m = u[p.idx-p.di];
-            //            CCTK_REAL var_p = u[p.idx];
-            //            CCTK_REAL flux_m = f[p1.idx-p1.di];
-            //            CCTK_REAL flux_p = f[p1.idx];
-            CCTK_REAL llf =
-                0.5 * ((flux_m + flux_p) -
-                       fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
-            //            printf("llf = %g, dAx = %g\n",llf,dAx);
-            return dAx * llf;
-          };
+  const auto calcflux = [=] CCTK_DEVICE CCTK_HOST(
+                            CCTK_REAL var_p, CCTK_REAL var_m, CCTK_REAL flux_p,
+                            CCTK_REAL flux_m) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    CCTK_REAL lambda_m = 1.0;
+    CCTK_REAL lambda_p = -1.0;
+    //            CCTK_REAL var_m = u[p.idx-p.di];
+    //            CCTK_REAL var_p = u[p.idx];
+    //            CCTK_REAL flux_m = f[p1.idx-p1.di];
+    //            CCTK_REAL flux_p = f[p1.idx];
+    CCTK_REAL llf =
+        0.5 * ((flux_m + flux_p) -
+               fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
+    //            printf("llf = %g, dAx = %g\n",llf,dAx);
+    return dAx * llf;
+  };
 
   //  printf("Before loop\n");
 
@@ -64,9 +64,8 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice griddesc(cctkGH);
 
   griddesc.loop_all_device<1, 1, 1>(
-      nghostzones,
-      [=](const Loop::PointDesc
-              &p) CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                       const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         const auto p1 = griddesc.point_desc<0, 1, 1>(p);
         //      const auto p2 = griddesc.point_desc<1, 1, 1>(p);
         //      printf("p: x = %g, y = %g, z = %g\n", p.x, p.y, p.z);
@@ -145,9 +144,8 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       });
 
   griddesc.loop_all_device<1, 1, 1>(
-      nghostzones,
-      [=](const Loop::PointDesc
-              &p) CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                       const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         const auto p1 = griddesc.point_desc<1, 0, 1>(p);
         if (p1.i == 3 && p1.j == 4 && p1.k == 5) {
           printf("p: x = %g, y = %g, z = %g\n", p.x, p.y, p.z);
@@ -215,9 +213,8 @@ extern "C" void HydroToyCarpetX_Fluxes(CCTK_ARGUMENTS) {
       });
 
   griddesc.loop_all_device<1, 1, 1>(
-      nghostzones,
-      [=](const Loop::PointDesc
-              &p) CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                       const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         const auto p1 = griddesc.point_desc<1, 1, 0>(p);
         if (p1.i == 3 && p1.j == 4 && p1.k == 5) {
           printf("p: x = %g, y = %g, z = %g\n", p.x, p.y, p.z);
