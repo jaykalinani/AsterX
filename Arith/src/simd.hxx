@@ -1,14 +1,7 @@
 #ifndef SIMD_HXX
 #define SIMD_HXX
 
-#ifdef __CUDACC__
-#define CCTK_CUDA __device__ __host__
-#else
-#define CCTK_CUDA
-#endif
-
-#include <fixmath.hxx>
-#include <vect.hxx>
+#include "defs.hxx"
 
 #include <nsimd/nsimd-all.hpp>
 #undef vec // This should arguably not be defined in C++
@@ -21,6 +14,7 @@
 #include <type_traits>
 
 namespace Arith {
+using namespace std;
 
 template <typename T> struct simd;
 template <typename T> struct simdl;
@@ -45,18 +39,21 @@ template <typename T> struct simd {
   T elts;
 #endif
 
-  simd(const simd &) = default;
-  simd(simd &&) = default;
-  simd &operator=(const simd &) = default;
-  simd &operator=(simd &&) = default;
+  constexpr simd(const simd &) = default;
+  constexpr simd(simd &&) = default;
+  constexpr simd &operator=(const simd &) = default;
+  constexpr simd &operator=(simd &&) = default;
 
-  CCTK_CUDA simd() {}
-  CCTK_CUDA simd(const T &a) : elts(a) {}
+  constexpr ARITH_DEVICE ARITH_HOST simd() {}
+  constexpr ARITH_DEVICE ARITH_HOST simd(const T &a) : elts(a) {}
 #ifndef SIMD_CPU
-  CCTK_CUDA simd(const nsimd::pack<T> &elts) : elts(elts) {}
+  template <typename U = T,
+            enable_if_t<!is_same_v<nsimd::pack<T>, T> > * = nullptr>
+  constexpr ARITH_DEVICE ARITH_HOST simd(const nsimd::pack<T> &elts)
+      : elts(elts) {}
 #endif
 
-  CCTK_CUDA constexpr std::size_t size() const {
+  constexpr ARITH_DEVICE ARITH_HOST std::size_t size() const {
 #ifndef SIMD_CPU
     return sizeof(nsimd::pack<T>) / sizeof(T);
 #else
@@ -64,171 +61,245 @@ template <typename T> struct simd {
 #endif
   }
 
-  CCTK_CUDA simdl<T> operator!() const { return !elts; }
-  CCTK_CUDA simd operator~() const { return ~elts; }
+  constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!() const { return !elts; }
+  constexpr ARITH_DEVICE ARITH_HOST simd operator~() const { return ~elts; }
 
-  CCTK_CUDA simd operator+() const { return +elts; }
-  CCTK_CUDA simd operator-() const { return -elts; }
+  constexpr ARITH_DEVICE ARITH_HOST simd operator+() const { return +elts; }
+  constexpr ARITH_DEVICE ARITH_HOST simd operator-() const { return -elts; }
 
-  friend CCTK_CUDA simd operator&(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator&(const simd &x,
+                                                          const simd &y) {
     return x.elts & y.elts;
   }
-  friend CCTK_CUDA simd operator|(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator|(const simd &x,
+                                                          const simd &y) {
     return x.elts | y.elts;
   }
-  friend CCTK_CUDA simd operator^(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator^(const simd &x,
+                                                          const simd &y) {
     return x.elts ^ y.elts;
   }
-  friend CCTK_CUDA simd operator+(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator+(const simd &x,
+                                                          const simd &y) {
     return x.elts + y.elts;
   }
-  friend CCTK_CUDA simd operator-(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator-(const simd &x,
+                                                          const simd &y) {
     return x.elts - y.elts;
   }
-  friend CCTK_CUDA simd operator*(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator*(const simd &x,
+                                                          const simd &y) {
     return x.elts * y.elts;
   }
-  friend CCTK_CUDA simd operator/(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator/(const simd &x,
+                                                          const simd &y) {
     return x.elts / y.elts;
   }
-  friend CCTK_CUDA simd operator%(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator%(const simd &x,
+                                                          const simd &y) {
     return x.elts % y.elts;
   }
 
-  friend CCTK_CUDA simd operator&(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator&(const T &a,
+                                                          const simd &y) {
     return a & y.elts;
   }
-  friend CCTK_CUDA simd operator|(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator|(const T &a,
+                                                          const simd &y) {
     return a | y.elts;
   }
-  friend CCTK_CUDA simd operator^(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator^(const T &a,
+                                                          const simd &y) {
     return a ^ y.elts;
   }
-  friend CCTK_CUDA simd operator+(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator+(const T &a,
+                                                          const simd &y) {
     return a + y.elts;
   }
-  friend CCTK_CUDA simd operator-(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator-(const T &a,
+                                                          const simd &y) {
     return a - y.elts;
   }
-  friend CCTK_CUDA simd operator*(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator*(const T &a,
+                                                          const simd &y) {
     return a * y.elts;
   }
-  friend CCTK_CUDA simd operator/(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator/(const T &a,
+                                                          const simd &y) {
     return a / y.elts;
   }
-  friend CCTK_CUDA simd operator%(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator%(const T &a,
+                                                          const simd &y) {
     return a % y.elts;
   }
 
-  friend CCTK_CUDA simd operator&(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator&(const simd &x,
+                                                          const T &b) {
     return x.elts & b;
   }
-  friend CCTK_CUDA simd operator|(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator|(const simd &x,
+                                                          const T &b) {
     return x.elts | b;
   }
-  friend CCTK_CUDA simd operator^(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator^(const simd &x,
+                                                          const T &b) {
     return x.elts ^ b;
   }
-  friend CCTK_CUDA simd operator+(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator+(const simd &x,
+                                                          const T &b) {
     return x.elts + b;
   }
-  friend CCTK_CUDA simd operator-(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator-(const simd &x,
+                                                          const T &b) {
     return x.elts - b;
   }
-  friend CCTK_CUDA simd operator*(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator*(const simd &x,
+                                                          const T &b) {
     return x.elts * b;
   }
-  friend CCTK_CUDA simd operator/(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator/(const simd &x,
+                                                          const T &b) {
     return x.elts / b;
   }
-  friend CCTK_CUDA simd operator%(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator%(const simd &x,
+                                                          const T &b) {
     return x.elts % b;
   }
 
-  CCTK_CUDA simd &operator&=(const simd &x) { return *this = *this & x; }
-  CCTK_CUDA simd &operator|=(const simd &x) { return *this = *this | x; }
-  CCTK_CUDA simd &operator^=(const simd &x) { return *this = *this ^ x; }
-  CCTK_CUDA simd &operator+=(const simd &x) { return *this = *this + x; }
-  CCTK_CUDA simd &operator-=(const simd &x) { return *this = *this - x; }
-  CCTK_CUDA simd &operator*=(const simd &x) { return *this = *this * x; }
-  CCTK_CUDA simd &operator/=(const simd &x) { return *this = *this / x; }
-  CCTK_CUDA simd &operator%=(const simd &x) { return *this = *this % x; }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator&=(const simd &x) {
+    return *this = *this & x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator|=(const simd &x) {
+    return *this = *this | x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator^=(const simd &x) {
+    return *this = *this ^ x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator+=(const simd &x) {
+    return *this = *this + x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator-=(const simd &x) {
+    return *this = *this - x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator*=(const simd &x) {
+    return *this = *this * x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator/=(const simd &x) {
+    return *this = *this / x;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator%=(const simd &x) {
+    return *this = *this % x;
+  }
 
-  CCTK_CUDA simd &operator&=(const T &a) { return *this = *this & a; }
-  CCTK_CUDA simd &operator|=(const T &a) { return *this = *this | a; }
-  CCTK_CUDA simd &operator^=(const T &a) { return *this = *this ^ a; }
-  CCTK_CUDA simd &operator+=(const T &a) { return *this = *this + a; }
-  CCTK_CUDA simd &operator-=(const T &a) { return *this = *this - a; }
-  CCTK_CUDA simd &operator*=(const T &a) { return *this = *this * a; }
-  CCTK_CUDA simd &operator/=(const T &a) { return *this = *this / a; }
-  CCTK_CUDA simd &operator%=(const T &a) { return *this = *this % a; }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator&=(const T &a) {
+    return *this = *this & a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator|=(const T &a) {
+    return *this = *this | a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator^=(const T &a) {
+    return *this = *this ^ a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator+=(const T &a) {
+    return *this = *this + a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator-=(const T &a) {
+    return *this = *this - a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator*=(const T &a) {
+    return *this = *this * a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator/=(const T &a) {
+    return *this = *this / a;
+  }
+  constexpr ARITH_DEVICE ARITH_HOST simd &operator%=(const T &a) {
+    return *this = *this % a;
+  }
 
-  friend CCTK_CUDA simdl<T> operator==(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator==(const simd &x,
+                                                               const simd &y) {
     return x.elts == y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator!=(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const simd &x,
+                                                               const simd &y) {
     return x.elts != y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator<(const simd &x,
+                                                              const simd &y) {
     return x.elts < y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator>(const simd &x,
+                                                              const simd &y) {
     return x.elts > y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<=(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const simd &x,
+                                                               const simd &y) {
     return x.elts <= y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>=(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const simd &x,
+                                                               const simd &y) {
     return x.elts >= y.elts;
   }
 
-  friend CCTK_CUDA simdl<T> operator==(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator==(const T &a,
+                                                               const simd &y) {
     return a == y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator!=(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const T &a,
+                                                               const simd &y) {
     return a != y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator<(const T &a,
+                                                              const simd &y) {
     return a < y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator>(const T &a,
+                                                              const simd &y) {
     return a > y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<=(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const T &a,
+                                                               const simd &y) {
     return a <= y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>=(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const T &a,
+                                                               const simd &y) {
     return a >= y.elts;
   }
 
-  friend CCTK_CUDA simdl<T> operator==(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator==(const simd &x,
+                                                               const T &b) {
     return x.elts == b;
   }
-  friend CCTK_CUDA simdl<T> operator!=(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const simd &x,
+                                                               const T &b) {
     return x.elts != b;
   }
-  friend CCTK_CUDA simdl<T> operator<(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator<(const simd &x,
+                                                              const T &b) {
     return x.elts < b;
   }
-  friend CCTK_CUDA simdl<T> operator>(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator>(const simd &x,
+                                                              const T &b) {
     return x.elts > b;
   }
-  friend CCTK_CUDA simdl<T> operator<=(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const simd &x,
+                                                               const T &b) {
     return x.elts <= b;
   }
-  friend CCTK_CUDA simdl<T> operator>=(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const simd &x,
+                                                               const T &b) {
     return x.elts >= b;
   }
 
-  friend CCTK_CUDA simd abs(const simd &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd abs(const simd &x) {
     using std::abs;
     return abs(x.elts);
   }
-  friend CCTK_CUDA simd fabs(const simd &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fabs(const simd &x) {
     using std::abs;
     return abs(x.elts);
   }
-  friend CCTK_CUDA simdl<T> signbit(const simd &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> signbit(const simd &x) {
 #ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
     constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
@@ -238,15 +309,16 @@ template <typename T> struct simd {
     return signbit(x.elts);
 #endif
   }
-  friend CCTK_CUDA simd sqrt(const simd &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd sqrt(const simd &x) {
     using std::sqrt;
     return sqrt(x.elts);
   }
-  friend CCTK_CUDA simdl<T> to_logical(const simd &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> to_logical(const simd &x) {
     return to_logical(x.elts);
   }
 
-  friend CCTK_CUDA simd copysign(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd copysign(const simd &x,
+                                                         const simd &y) {
 #ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
     constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
@@ -256,7 +328,8 @@ template <typename T> struct simd {
     return copysign(x.elts, y.elts);
 #endif
   }
-  friend CCTK_CUDA simd flipsign(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd flipsign(const simd &x,
+                                                         const simd &y) {
 #ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
     constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
@@ -265,73 +338,87 @@ template <typename T> struct simd {
     return copysign(1, y) * x;
 #endif
   }
-  friend CCTK_CUDA simd fmax(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fmax(const simd &x,
+                                                     const simd &y) {
     using std::max;
     return max(x.elts, y.elts);
   }
-  friend CCTK_CUDA simd fmin(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fmin(const simd &x,
+                                                     const simd &y) {
     using std::min;
     return min(x.elts, y.elts);
   }
-  friend CCTK_CUDA simd max(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd max(const simd &x,
+                                                    const simd &y) {
     using std::max;
     return max(x.elts, y.elts);
   }
-  friend CCTK_CUDA simd min(const simd &x, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd min(const simd &x,
+                                                    const simd &y) {
     using std::min;
     return min(x.elts, y.elts);
   }
 
-  friend CCTK_CUDA simd fmax(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fmax(const T &a,
+                                                     const simd &y) {
     using std::max;
     return max(a, y.elts);
   }
-  friend CCTK_CUDA simd fmin(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fmin(const T &a,
+                                                     const simd &y) {
     using std::min;
     return min(a, y.elts);
   }
-  friend CCTK_CUDA simd max(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd max(const T &a, const simd &y) {
     using std::max;
     return max(a, y.elts);
   }
-  friend CCTK_CUDA simd min(const T &a, const simd &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd min(const T &a, const simd &y) {
     using std::min;
     return min(a, y.elts);
   }
 
-  friend CCTK_CUDA simd fmax(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fmax(const simd &x,
+                                                     const T &b) {
     using std::max;
     return max(x.elts, b);
   }
-  friend CCTK_CUDA simd fmin(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd fmin(const simd &x,
+                                                     const T &b) {
     using std::min;
     return min(x.elts, b);
   }
-  friend CCTK_CUDA simd max(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd max(const simd &x, const T &b) {
     using std::max;
     return max(x.elts, b);
   }
-  friend CCTK_CUDA simd min(const simd &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST simd min(const simd &x, const T &b) {
     using std::min;
     return min(x.elts, b);
   }
 
-  friend CCTK_CUDA void storea(T *ptr, const simd &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool isnan(const simd &x) {
+    // using std::isnan;
+    // return isnan(x.elts);
+    return any(x != x);
+  }
+
+  friend ARITH_DEVICE ARITH_HOST void storea(T *ptr, const simd &x) {
 #ifndef SIMD_CPU
     nsimd::storea(ptr, x.elts);
 #else
     *ptr = x.elts;
 #endif
   }
-  friend CCTK_CUDA void storeu(T *ptr, const simd &x) {
+  friend ARITH_DEVICE ARITH_HOST void storeu(T *ptr, const simd &x) {
 #ifndef SIMD_CPU
     nsimd::storeu(ptr, x.elts);
 #else
     *ptr = x.elts;
 #endif
   }
-  friend CCTK_CUDA void mask_storea(const simdl<T> &mask, T *ptr,
-                                    const simd &x) {
+  friend ARITH_DEVICE ARITH_HOST void mask_storea(const simdl<T> &mask, T *ptr,
+                                                  const simd &x) {
 #ifndef SIMD_CPU
     nsimd::mask_storea(mask.elts, ptr, x.elts);
 #else
@@ -339,8 +426,8 @@ template <typename T> struct simd {
       *ptr = x.elts;
 #endif
   }
-  friend CCTK_CUDA void mask_storeu(const simdl<T> &mask, T *ptr,
-                                    const simd &x) {
+  friend ARITH_DEVICE ARITH_HOST void mask_storeu(const simdl<T> &mask, T *ptr,
+                                                  const simd &x) {
 #ifndef SIMD_CPU
     nsimd::mask_storeu(mask.elts, ptr, x.elts);
 #else
@@ -350,7 +437,17 @@ template <typename T> struct simd {
   }
 
   friend ostream &operator<<(ostream &os, const simd &x) {
-    return os << "simd";
+    os << "Ⓢ[";
+    constexpr size_t vsize = tuple_size_v<simd>;
+    T xarr[vsize];
+    storeu(xarr, x);
+    for (size_t n = 0; n < vsize; ++n) {
+      if (n != 0)
+        os << ",";
+      os << xarr[n];
+    }
+    os << "]";
+    return os;
   }
 };
 
@@ -363,14 +460,41 @@ struct tuple_size<Arith::simd<T> >
 } // namespace std
 namespace Arith {
 
-template <typename T> struct zero<Arith::simd<T> > {
-  constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE Arith::simd<T> operator()() const {
-    return 0;
+template <typename T> struct zero<simd<T> > {
+  typedef simd<T> value_type;
+  // static constexpr value_type value = simd<T>(zero_v<T>);
+  constexpr ARITH_INLINE operator value_type() const {
+    return simd<T>(zero<T>());
+  }
+  constexpr ARITH_INLINE value_type operator()() const {
+    return simd<T>(zero<T>());
+  }
+};
+
+template <typename T> struct one<simd<T> > {
+  typedef simd<T> value_type;
+  // static constexpr value_type value = simd<T>(one_v<T>);
+  constexpr ARITH_INLINE operator value_type() const {
+    return simd<T>(one<T>());
+  }
+  constexpr ARITH_INLINE value_type operator()() const {
+    return simd<T>(one<T>());
+  }
+};
+
+template <typename T> struct nan<simd<T> > {
+  typedef simd<T> value_type;
+  // static constexpr value_type value = simd<T>(nan_v<T>);
+  constexpr ARITH_INLINE operator value_type() const {
+    return simd<T>(nan<T>());
+  }
+  constexpr ARITH_INLINE value_type operator()() const {
+    return simd<T>(nan<T>());
   }
 };
 
 template <typename VT, typename T = typename VT::value_type>
-CCTK_CUDA inline simd<T> iota() {
+ARITH_DEVICE ARITH_HOST inline simd<T> iota() {
 #ifndef SIMD_CPU
   return nsimd::iota<nsimd::pack<T> >();
 #else
@@ -379,7 +503,8 @@ CCTK_CUDA inline simd<T> iota() {
 }
 
 template <typename VT, typename T = typename VT::value_type>
-CCTK_CUDA inline simdl<T> mask_for_loop_tail(const int i, const int n) {
+ARITH_DEVICE ARITH_HOST inline simdl<T> mask_for_loop_tail(const int i,
+                                                           const int n) {
 #ifndef SIMD_CPU
   return nsimd::mask_for_loop_tail<nsimd::packl<T> >(i, n);
 #else
@@ -388,7 +513,7 @@ CCTK_CUDA inline simdl<T> mask_for_loop_tail(const int i, const int n) {
 }
 
 template <typename VT, typename T = typename VT::value_type>
-CCTK_CUDA inline simd<T> loada(const T *ptr) {
+ARITH_DEVICE ARITH_HOST inline simd<T> loada(const T *ptr) {
 #ifndef SIMD_CPU
   return nsimd::loada<nsimd::pack<T> >(ptr);
 #else
@@ -397,7 +522,7 @@ CCTK_CUDA inline simd<T> loada(const T *ptr) {
 }
 
 template <typename VT, typename T = typename VT::value_type>
-CCTK_CUDA inline simd<T> loadu(const T *ptr) {
+ARITH_DEVICE ARITH_HOST inline simd<T> loadu(const T *ptr) {
 #ifndef SIMD_CPU
   return nsimd::loadu<nsimd::pack<T> >(ptr);
 #else
@@ -406,7 +531,8 @@ CCTK_CUDA inline simd<T> loadu(const T *ptr) {
 }
 
 template <typename T>
-CCTK_CUDA inline simd<T> maskz_loada(const simdl<T> &mask, const T *ptr) {
+ARITH_DEVICE ARITH_HOST inline simd<T> maskz_loada(const simdl<T> &mask,
+                                                   const T *ptr) {
 #ifndef SIMD_CPU
   return nsimd::maskz_loada(mask.elts, ptr);
 #else
@@ -415,7 +541,8 @@ CCTK_CUDA inline simd<T> maskz_loada(const simdl<T> &mask, const T *ptr) {
 }
 
 template <typename T>
-CCTK_CUDA inline simd<T> maskz_loadu(const simdl<T> &mask, const T *ptr) {
+ARITH_DEVICE ARITH_HOST inline simd<T> maskz_loadu(const simdl<T> &mask,
+                                                   const T *ptr) {
 #ifndef SIMD_CPU
   return nsimd::maskz_loadu(mask.elts, ptr);
 #else
@@ -424,8 +551,8 @@ CCTK_CUDA inline simd<T> maskz_loadu(const simdl<T> &mask, const T *ptr) {
 }
 
 template <typename T>
-CCTK_CUDA inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
-                                     const simd<T> &other) {
+ARITH_DEVICE ARITH_HOST inline simd<T>
+masko_loada(const simdl<T> &mask, const T *ptr, const simd<T> &other) {
 #ifndef SIMD_CPU
   return nsimd::masko_loada(mask.elts, ptr, other.elts);
 #else
@@ -434,8 +561,8 @@ CCTK_CUDA inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
 }
 
 template <typename T>
-CCTK_CUDA inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
-                                     const simd<T> &other) {
+ARITH_DEVICE ARITH_HOST inline simd<T>
+masko_loadu(const simdl<T> &mask, const T *ptr, const simd<T> &other) {
 #ifndef SIMD_CPU
   return nsimd::masko_loadu(mask.elts, ptr, other.elts);
 #else
@@ -445,8 +572,8 @@ CCTK_CUDA inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
 
 template <typename T, typename U,
           enable_if_t<is_convertible_v<T, U> > * = nullptr>
-CCTK_CUDA inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
-                                     const U &other) {
+ARITH_DEVICE ARITH_HOST inline simd<T>
+masko_loada(const simdl<T> &mask, const T *ptr, const U &other) {
 #ifndef SIMD_CPU
   return masko_loada(mask, ptr, simd<T>(other));
 #else
@@ -456,8 +583,8 @@ CCTK_CUDA inline simd<T> masko_loada(const simdl<T> &mask, const T *ptr,
 
 template <typename T, typename U,
           enable_if_t<is_convertible_v<T, U> > * = nullptr>
-CCTK_CUDA inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
-                                     const U &other) {
+ARITH_DEVICE ARITH_HOST inline simd<T>
+masko_loadu(const simdl<T> &mask, const T *ptr, const U &other) {
 #ifndef SIMD_CPU
   return masko_loadu(mask, ptr, simd<T>(other));
 #else
@@ -465,7 +592,8 @@ CCTK_CUDA inline simd<T> masko_loadu(const simdl<T> &mask, const T *ptr,
 #endif
 }
 
-template <typename T> CCTK_CUDA inline simd<T> cbrt(const simd<T> &x) {
+template <typename T>
+ARITH_DEVICE ARITH_HOST inline simd<T> cbrt(const simd<T> &x) {
   // alignas(alignof(simd<T>)) T xarr[x.size()];
   // storea(xarr, x);
   // alignas(alignof(simd<T>)) T yarr[x.size()];
@@ -487,7 +615,8 @@ template <typename T> CCTK_CUDA inline simd<T> cbrt(const simd<T> &x) {
   return y;
 }
 
-template <typename T> CCTK_CUDA inline simd<T> sin(const simd<T> &x) {
+template <typename T>
+ARITH_DEVICE ARITH_HOST inline simd<T> sin(const simd<T> &x) {
   // alignas(alignof(simd<T>)) T xarr[x.size()];
   // storea(xarr, x);
   // alignas(alignof(simd<T>)) T yarr[x.size()];
@@ -522,13 +651,14 @@ template <typename T> struct simdl {
   simdl &operator=(const simdl &) = default;
   simdl &operator=(simdl &&) = default;
 
-  CCTK_CUDA simdl() {}
-  CCTK_CUDA simdl(bool a) : elts(a) {}
+  constexpr ARITH_DEVICE ARITH_HOST simdl() {}
+  constexpr ARITH_DEVICE ARITH_HOST simdl(bool a) : elts(a) {}
 #ifndef SIMD_CPU
-  CCTK_CUDA simdl(const nsimd::packl<T> &elts) : elts(elts) {}
+  constexpr ARITH_DEVICE ARITH_HOST simdl(const nsimd::packl<T> &elts)
+      : elts(elts) {}
 #endif
 
-  CCTK_CUDA constexpr std::size_t size() const {
+  constexpr ARITH_DEVICE ARITH_HOST std::size_t size() const {
 #ifndef SIMD_CPU
     return sizeof(nsimd::packl<T>) / sizeof(T);
 #else
@@ -536,135 +666,171 @@ template <typename T> struct simdl {
 #endif
   }
 
-  CCTK_CUDA simdl operator!() const { return !elts; }
+  ARITH_DEVICE ARITH_HOST simdl operator!() const { return !elts; }
   // simdl operator~() const { return ~elts; }
 
-  friend CCTK_CUDA simdl operator&&(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator&&(const simdl &x,
+                                                  const simdl &y) {
     return x.elts && y.elts;
   }
-  friend CCTK_CUDA simdl operator&(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator&(const simdl &x,
+                                                 const simdl &y) {
     return x.elts && y.elts;
   }
-  friend CCTK_CUDA simdl operator||(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator||(const simdl &x,
+                                                  const simdl &y) {
     return x.elts || y.elts;
   }
-  friend CCTK_CUDA simdl operator|(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator|(const simdl &x,
+                                                 const simdl &y) {
     return x.elts || y.elts;
   }
-  friend CCTK_CUDA simdl operator^(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator^(const simdl &x,
+                                                 const simdl &y) {
     return x.elts ^ y.elts;
   }
 
-  friend CCTK_CUDA simdl operator&(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator&(const bool a, const simdl &y) {
     return a & y.elts;
   }
-  friend CCTK_CUDA simdl operator|(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator|(const bool a, const simdl &y) {
     return a | y.elts;
   }
-  friend CCTK_CUDA simdl operator^(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator^(const bool a, const simdl &y) {
     return a ^ y.elts;
   }
 
-  friend CCTK_CUDA simdl operator&(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator&(const simdl &x, const bool b) {
     return x.elts & b;
   }
-  friend CCTK_CUDA simdl operator|(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator|(const simdl &x, const bool b) {
     return x.elts | b;
   }
-  friend CCTK_CUDA simdl operator^(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator^(const simdl &x, const bool b) {
     return x.elts ^ b;
   }
 
-  CCTK_CUDA simdl &operator&=(const simdl &x) { return *this = *this & x; }
-  CCTK_CUDA simdl &operator|=(const simdl &x) { return *this = *this | x; }
-  CCTK_CUDA simdl &operator^=(const simdl &x) { return *this = *this ^ x; }
+  ARITH_DEVICE ARITH_HOST simdl &operator&=(const simdl &x) {
+    return *this = *this & x;
+  }
+  ARITH_DEVICE ARITH_HOST simdl &operator|=(const simdl &x) {
+    return *this = *this | x;
+  }
+  ARITH_DEVICE ARITH_HOST simdl &operator^=(const simdl &x) {
+    return *this = *this ^ x;
+  }
 
-  CCTK_CUDA simdl &operator&=(const bool a) { return *this = *this & a; }
-  CCTK_CUDA simdl &operator|=(const bool a) { return *this = *this | a; }
-  CCTK_CUDA simdl &operator^=(const bool a) { return *this = *this ^ a; }
+  ARITH_DEVICE ARITH_HOST simdl &operator&=(const bool a) {
+    return *this = *this & a;
+  }
+  ARITH_DEVICE ARITH_HOST simdl &operator|=(const bool a) {
+    return *this = *this | a;
+  }
+  ARITH_DEVICE ARITH_HOST simdl &operator^=(const bool a) {
+    return *this = *this ^ a;
+  }
 
-  friend CCTK_CUDA simdl<T> operator==(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator==(const simdl &x,
+                                                     const simdl &y) {
     return x.elts == y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator!=(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const simdl &x,
+                                                     const simdl &y) {
     return x.elts != y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<(const simdl &x,
+                                                    const simdl &y) {
     return x.elts < y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>(const simdl &x,
+                                                    const simdl &y) {
     return x.elts > y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<=(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const simdl &x,
+                                                     const simdl &y) {
     return x.elts <= y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>=(const simdl &x, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const simdl &x,
+                                                     const simdl &y) {
     return x.elts >= y.elts;
   }
 
-  friend CCTK_CUDA simdl<T> operator==(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator==(const bool a,
+                                                     const simdl &y) {
     return a == y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator!=(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const bool a,
+                                                     const simdl &y) {
     return a != y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<(const bool a,
+                                                    const simdl &y) {
     return a < y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>(const bool a,
+                                                    const simdl &y) {
     return a > y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator<=(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const bool a,
+                                                     const simdl &y) {
     return a <= y.elts;
   }
-  friend CCTK_CUDA simdl<T> operator>=(const bool a, const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const bool a,
+                                                     const simdl &y) {
     return a >= y.elts;
   }
 
-  friend CCTK_CUDA simdl<T> operator==(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator==(const simdl &x,
+                                                     const bool b) {
     return x.elts == b;
   }
-  friend CCTK_CUDA simdl<T> operator!=(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const simdl &x,
+                                                     const bool b) {
     return x.elts != b;
   }
-  friend CCTK_CUDA simdl<T> operator<(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<(const simdl &x,
+                                                    const bool b) {
     return x.elts < b;
   }
-  friend CCTK_CUDA simdl<T> operator>(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>(const simdl &x,
+                                                    const bool b) {
     return x.elts > b;
   }
-  friend CCTK_CUDA simdl<T> operator<=(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const simdl &x,
+                                                     const bool b) {
     return x.elts <= b;
   }
-  friend CCTK_CUDA simdl<T> operator>=(const simdl &x, const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const simdl &x,
+                                                     const bool b) {
     return x.elts >= b;
   }
 
-  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const simd<T> &x,
-                                   const simd<T> &y) {
+  friend ARITH_DEVICE ARITH_HOST simd<T>
+  if_else(const simdl &cond, const simd<T> &x, const simd<T> &y) {
 #ifndef SIMD_CPU
     return if_else1(cond.elts, x.elts, y.elts);
 #else
     return cond.elts ? x.elts : y.elts;
 #endif
   }
-  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const T &a,
-                                   const simd<T> &y) {
+  friend ARITH_DEVICE ARITH_HOST simd<T> if_else(const simdl &cond, const T &a,
+                                                 const simd<T> &y) {
 #ifndef SIMD_CPU
     return if_else1(cond.elts, simd(a).elts, y.elts);
 #else
     return cond.elts ? simd(a).elts : y.elts;
 #endif
   }
-  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const simd<T> &x,
-                                   const T &b) {
+  friend ARITH_DEVICE ARITH_HOST simd<T> if_else(const simdl &cond,
+                                                 const simd<T> &x, const T &b) {
 #ifndef SIMD_CPU
     return if_else1(cond.elts, x.elts, simd(b).elts);
 #else
     return cond.elts ? x.elts : simd(b).elts;
 #endif
   }
-  friend CCTK_CUDA simd<T> if_else(const simdl &cond, const T &a, const T &b) {
+  friend ARITH_DEVICE ARITH_HOST simd<T> if_else(const simdl &cond, const T &a,
+                                                 const T &b) {
 #ifndef SIMD_CPU
     return if_else1(cond.elts, simd(a).elts, simd(b).elts);
 #else
@@ -672,14 +838,14 @@ template <typename T> struct simdl {
 #endif
   }
 
-  friend CCTK_CUDA bool all(const simdl &x) {
+  friend ARITH_DEVICE ARITH_HOST bool all(const simdl &x) {
 #ifndef SIMD_CPU
     return all(x.elts);
 #else
     return x.elts;
 #endif
   }
-  friend CCTK_CUDA bool any(const simdl &x) {
+  friend ARITH_DEVICE ARITH_HOST bool any(const simdl &x) {
 #ifndef SIMD_CPU
     return any(x.elts);
 #else
@@ -687,14 +853,14 @@ template <typename T> struct simdl {
 #endif
   }
 
-  friend CCTK_CUDA void storela(T *ptr, const simdl &x) {
+  friend ARITH_DEVICE ARITH_HOST void storela(T *ptr, const simdl &x) {
 #ifndef SIMD_CPU
     nsimd::storela(ptr, x.elts);
 #else
     *ptr = x.elts;
 #endif
   }
-  friend CCTK_CUDA void storelu(T *ptr, const simdl &x) {
+  friend ARITH_DEVICE ARITH_HOST void storelu(T *ptr, const simdl &x) {
 #ifndef SIMD_CPU
     nsimd::storelu(ptr, x.elts);
 #else
@@ -714,26 +880,5 @@ struct tuple_size<Arith::simdl<T> >
     : std::integral_constant<std::size_t, sizeof(Arith::simdl<T>) / sizeof(T)> {
 };
 } // namespace std
-namespace Arith {
-
-// template <typename VT, typename T = typename VT::value_type>
-// inline simdl<T> loadla(const T *ptr) {
-// #ifndef SIMD_CPU
-//   return nsimd::loadla<nsimd::pack<T> >(ptr);
-// #else
-//   return *ptr;
-// #endif
-// }
-
-// template <typename VT, typename T = typename VT::value_type>
-// inline simdl<T> loadlu(const T *ptr) {
-// #ifndef SIMD_CPU
-//   return nsimd::loadlu<nsimd::pack<T> >(ptr);
-// #else
-//   return *ptr;
-// #endif
-// }
-
-} // namespace Arith
 
 #endif // #ifndef SIMD_HXX
