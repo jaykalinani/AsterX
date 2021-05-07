@@ -73,8 +73,8 @@ public:
         amrex::IntVect(CI ? amrex::IndexType::CELL : amrex::IndexType::NODE,
                        CJ ? amrex::IndexType::CELL : amrex::IndexType::NODE,
                        CK ? amrex::IndexType::CELL : amrex::IndexType::NODE));
-    amrex::launch(box, [=, *this] CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE(
-                           const amrex::Box &box) {
+    amrex::launch(box, [=, *this] CCTK_DEVICE(
+                           const amrex::Box &box) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 #ifdef CCTK_DEBUG
       assert(box.bigEnd()[0] == box.smallEnd()[0] &&
              box.bigEnd()[1] == box.smallEnd()[1] &&
