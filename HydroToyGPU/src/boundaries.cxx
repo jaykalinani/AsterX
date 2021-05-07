@@ -24,8 +24,8 @@ extern "C" void HydroToyGPU_Boundaries(CCTK_ARGUMENTS) {
   const GridDescBaseDevice grid(cctkGH);
 
   grid.loop_bnd_device<1, 1, 1>(
-      grid.nghostzones, [=](const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE {
                               assert(false); // This should not be executed
                             });
 }

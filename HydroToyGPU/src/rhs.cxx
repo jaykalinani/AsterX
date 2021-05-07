@@ -66,9 +66,9 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
   // dt etot + d_i (etot vel^i) = 0
 
   const auto calcupdate =
-      [=](CCTK_REAL fx_m, CCTK_REAL fx_p, CCTK_REAL fy_m, CCTK_REAL fy_p,
-          CCTK_REAL fz_m, CCTK_REAL fz_p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL fx_m, CCTK_REAL fx_p, CCTK_REAL fy_m,
+                                CCTK_REAL fy_p, CCTK_REAL fz_m, CCTK_REAL fz_p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE {
             // return -dV1 * (fx_p - fx_m + fy_p - fy_m + fz_p - fz_m);
             return -dx1[0] * (fx_p - fx_m) - dx1[1] * (fy_p - fy_m) -
                    dx1[2] * (fz_p - fz_m);
@@ -87,8 +87,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
 #endif
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] (
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE{
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE  {
         // Neighbouring "plus" and "minus" face indices in the x, y, and z
         // directions
         const auto Imx = p.I;
@@ -124,93 +124,89 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
 #else
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=](const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-                              // Neighbouring "plus" and "minus" face indices in
-                              // the x, y, and z directions
-                              const auto Imx = p.I;
-                              const auto Imy = p.I;
-                              const auto Imz = p.I;
-                              const auto Ipx = p.I + DI[0];
-                              const auto Ipy = p.I + DI[1];
-                              const auto Ipz = p.I + DI[2];
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // Neighbouring "plus" and "minus" face indices in
+        // the x, y, and z directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
 
-                              gf_rhsrho(p.I) = calcupdate(
-                                  gf_fxrho(Imx), gf_fxrho(Ipx), gf_fyrho(Imy),
-                                  gf_fyrho(Ipy), gf_fzrho(Imz), gf_fzrho(Ipz));
-                            });
-
-  grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=](const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-                              // Neighbouring "plus" and "minus" face indices in
-                              // the x, y, and z directions
-                              const auto Imx = p.I;
-                              const auto Imy = p.I;
-                              const auto Imz = p.I;
-                              const auto Ipx = p.I + DI[0];
-                              const auto Ipy = p.I + DI[1];
-                              const auto Ipz = p.I + DI[2];
-
-                              gf_rhsmomx(p.I) =
-                                  calcupdate(gf_fxmomx(Imx), gf_fxmomx(Ipx),
-                                             gf_fymomx(Imy), gf_fymomx(Ipy),
-                                             gf_fzmomx(Imz), gf_fzmomx(Ipz));
-                            });
+        gf_rhsrho(p.I) =
+            calcupdate(gf_fxrho(Imx), gf_fxrho(Ipx), gf_fyrho(Imy),
+                       gf_fyrho(Ipy), gf_fzrho(Imz), gf_fzrho(Ipz));
+      });
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=](const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-                              // Neighbouring "plus" and "minus" face indices in
-                              // the x, y, and z directions
-                              const auto Imx = p.I;
-                              const auto Imy = p.I;
-                              const auto Imz = p.I;
-                              const auto Ipx = p.I + DI[0];
-                              const auto Ipy = p.I + DI[1];
-                              const auto Ipz = p.I + DI[2];
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // Neighbouring "plus" and "minus" face indices in
+        // the x, y, and z directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
 
-                              gf_rhsmomy(p.I) =
-                                  calcupdate(gf_fxmomy(Imx), gf_fxmomy(Ipx),
-                                             gf_fymomy(Imy), gf_fymomy(Ipy),
-                                             gf_fzmomy(Imz), gf_fzmomy(Ipz));
-                            });
-
-  grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=](const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-                              // Neighbouring "plus" and "minus" face indices in
-                              // the x, y, and z directions
-                              const auto Imx = p.I;
-                              const auto Imy = p.I;
-                              const auto Imz = p.I;
-                              const auto Ipx = p.I + DI[0];
-                              const auto Ipy = p.I + DI[1];
-                              const auto Ipz = p.I + DI[2];
-
-                              gf_rhsmomz(p.I) =
-                                  calcupdate(gf_fxmomz(Imx), gf_fxmomz(Ipx),
-                                             gf_fymomz(Imy), gf_fymomz(Ipy),
-                                             gf_fzmomz(Imz), gf_fzmomz(Ipz));
-                            });
+        gf_rhsmomx(p.I) =
+            calcupdate(gf_fxmomx(Imx), gf_fxmomx(Ipx), gf_fymomx(Imy),
+                       gf_fymomx(Ipy), gf_fzmomx(Imz), gf_fzmomx(Ipz));
+      });
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=](const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
-                              // Neighbouring "plus" and "minus" face indices in
-                              // the x, y, and z directions
-                              const auto Imx = p.I;
-                              const auto Imy = p.I;
-                              const auto Imz = p.I;
-                              const auto Ipx = p.I + DI[0];
-                              const auto Ipy = p.I + DI[1];
-                              const auto Ipz = p.I + DI[2];
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // Neighbouring "plus" and "minus" face indices in
+        // the x, y, and z directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
 
-                              gf_rhsetot(p.I) =
-                                  calcupdate(gf_fxetot(Imx), gf_fxetot(Ipx),
-                                             gf_fyetot(Imy), gf_fyetot(Ipy),
-                                             gf_fzetot(Imz), gf_fzetot(Ipz));
-                            });
+        gf_rhsmomy(p.I) =
+            calcupdate(gf_fxmomy(Imx), gf_fxmomy(Ipx), gf_fymomy(Imy),
+                       gf_fymomy(Ipy), gf_fzmomy(Imz), gf_fzmomy(Ipz));
+      });
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // Neighbouring "plus" and "minus" face indices in
+        // the x, y, and z directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsmomz(p.I) =
+            calcupdate(gf_fxmomz(Imx), gf_fxmomz(Ipx), gf_fymomz(Imy),
+                       gf_fymomz(Ipy), gf_fzmomz(Imz), gf_fzmomz(Ipz));
+      });
+
+  grid.loop_all_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        // Neighbouring "plus" and "minus" face indices in
+        // the x, y, and z directions
+        const auto Imx = p.I;
+        const auto Imy = p.I;
+        const auto Imz = p.I;
+        const auto Ipx = p.I + DI[0];
+        const auto Ipy = p.I + DI[1];
+        const auto Ipz = p.I + DI[2];
+
+        gf_rhsetot(p.I) =
+            calcupdate(gf_fxetot(Imx), gf_fxetot(Ipx), gf_fyetot(Imy),
+                       gf_fyetot(Ipy), gf_fzetot(Imz), gf_fzetot(Ipz));
+      });
 
 #endif
 }

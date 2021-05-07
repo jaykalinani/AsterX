@@ -13,7 +13,7 @@ using namespace Loop;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE T fmax5(T x0, T x1,
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T fmax5(T x0, T x1,
                                                                   T x2, T x3,
                                                                   T x4) {
   T r01 = fmax(x0, x1);
@@ -44,8 +44,8 @@ extern "C" void HydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
   constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
-      [=](const PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE {
+      [=]CCTK_DEVICE CCTK_HOST (const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE {
             const auto calcerr = [&](auto &gf_var) {
               CCTK_REAL err{0};
               for (int d = 0; d < dim; ++d) {
