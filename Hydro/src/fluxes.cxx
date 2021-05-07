@@ -69,7 +69,7 @@ extern "C" void Hydro_Fluxes(CCTK_ARGUMENTS) {
                                 fdiretot) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     const Loop::vect<int, dim> imindir = max(tmin, nghostzones);
     const Loop::vect<int, dim> imaxdir =
-        min(tmax + (tmax >= lsh).ifelse(ndir, zero), lsh + ndir - nghostzones);
+        min(tmax + if_else(tmax >= lsh, ndir, zero), lsh + ndir - nghostzones);
 
     // fluxes: face-centred without ghosts
     const Loop::vect<int, dim> ashdir = ash + ndir - 2 * nghostzones;

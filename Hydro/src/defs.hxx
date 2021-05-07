@@ -14,10 +14,6 @@ using namespace std;
 
 constexpr int dim = 3;
 
-template <typename T> inline CCTK_ATTRIBUTE_ALWAYS_INLINE T pow2(T x) {
-  return x * x;
-}
-
 template <typename T> inline T fmax3(T x0, T x1, T x2) {
   T x01 = fmax(x0, x1);
   T x012 = fmax(x2, x01);
