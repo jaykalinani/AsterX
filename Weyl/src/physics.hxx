@@ -1,20 +1,343 @@
 #ifndef PHYSICS_HXX
 #define PHYSICS_HXX
 
-#include "tensor.hxx"
-
 #include <dual.hxx>
+#include <mat.hxx>
+#include <rten.hxx>
+#include <simd.hxx>
+#include <sum.hxx>
+#include <vec.hxx>
 
 #include <cmath>
-#include <sstream>
+#include <limits>
 
 namespace Weyl {
+using namespace Arith;
 using namespace std;
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat4<vec4<T, DN>, UP, UP>
-    calc_dgu(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, DN, DN> &dg) {
+#if 0
+template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
+gmat<T, D - 1, dnup1, dnup2, symm>
+calc_submatrix(const gmat<T, D, dnup1, dnup2, symm> A, int i0, int j0) {
+  return gmat<T, D - 1, dnup1, dnup2, symm>([&](int is, int js) {
+    const int i = is + (is >= i0);
+    const int j = js + (js >= j0);
+    return A(i, j);
+  });
+}
+
+template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const gmat<T, D, dnup1, dnup2, symm> &g) {
+  if constexpr (D == 0) {
+    return one<T>();
+  } else {
+    T detg = zero<T>();
+    for (int i = 0; i < D; ++i)
+      detg += bitsign(i) * calc_det(calc_submatrix(g, i, 0));
+    return detg;
+  }
+}
+
+template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr gmat<T, D, !dnup1, !dnup2, symm>
+calc_inv(const gmat<T, D, dnup1, dnup2, symm> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return gmat<T, D, !dnup1, !dnup2, symm>([&](int i, int j) {
+    return bitsign(i) * bitsign(j) * detg1 * calc_det(calc_submatrix(g, j, i));
+  });
+}
+#endif
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const smat<T, 0, dnup1, dnup2> &g) {
+  return one<T>();
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const smat<T, 1, dnup1, dnup2> &g) {
+  return g(0, 0);
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const smat<T, 2, dnup1, dnup2> &g) {
+  return g(0, 0) * g(1, 1) - pow2(g(0, 1));
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const smat<T, 3, dnup1, dnup2> &g) {
+  return 2 * g(0, 1) * g(0, 2) * g(1, 2) - g(2, 2) * pow2(g(0, 1)) -
+         g(1, 1) * pow2(g(0, 2)) +
+         g(0, 0) * (g(1, 1) * g(2, 2) - pow2(g(1, 2)));
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const smat<T, 4, dnup1, dnup2> &g) {
+  return 2 * g(0, 0) * g(1, 2) * g(1, 3) * g(2, 3) -
+         2 * g(0, 3) *
+             (g(0, 2) * (g(1, 2) * g(1, 3) - g(1, 1) * g(2, 3)) +
+              g(0, 1) * (-(g(1, 3) * g(2, 2)) + g(1, 2) * g(2, 3))) +
+         g(0, 0) * g(1, 1) * g(2, 2) * g(3, 3) +
+         2 * g(0, 1) * g(0, 2) * (-(g(1, 3) * g(2, 3)) + g(1, 2) * g(3, 3)) -
+         g(2, 2) * g(3, 3) * pow2(g(0, 1)) - g(0, 0) * g(3, 3) * pow2(g(1, 2)) +
+         pow2(g(0, 3)) * (-(g(1, 1) * g(2, 2)) + pow2(g(1, 2))) -
+         g(0, 0) * g(2, 2) * pow2(g(1, 3)) +
+         pow2(g(0, 2)) * (-(g(1, 1) * g(3, 3)) + pow2(g(1, 3))) -
+         g(0, 0) * g(1, 1) * pow2(g(2, 3)) + pow2(g(0, 1)) * pow2(g(2, 3));
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const mat<T, 0, dnup1, dnup2> &g) {
+  return one<T>();
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const mat<T, 1, dnup1, dnup2> &g) {
+  return g(0, 0);
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const mat<T, 2, dnup1, dnup2> &g) {
+  return -(g(0, 1) * g(1, 0)) + g(0, 0) * g(1, 1);
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const mat<T, 3, dnup1, dnup2> &g) {
+  return g(0, 2) * (-(g(1, 1) * g(2, 0)) + g(1, 0) * g(2, 1)) +
+         g(0, 1) * (g(1, 2) * g(2, 0) - g(1, 0) * g(2, 2)) +
+         g(0, 0) * (-(g(1, 2) * g(2, 1)) + g(1, 1) * g(2, 2));
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_det(const mat<T, 4, dnup1, dnup2> &g) {
+  return g(0, 1) * g(1, 3) * g(2, 2) * g(3, 0) -
+         g(0, 1) * g(1, 2) * g(2, 3) * g(3, 0) -
+         g(0, 0) * g(1, 3) * g(2, 2) * g(3, 1) +
+         g(0, 0) * g(1, 2) * g(2, 3) * g(3, 1) -
+         g(0, 1) * g(1, 3) * g(2, 0) * g(3, 2) +
+         g(0, 0) * g(1, 3) * g(2, 1) * g(3, 2) +
+         g(0, 1) * g(1, 0) * g(2, 3) * g(3, 2) -
+         g(0, 0) * g(1, 1) * g(2, 3) * g(3, 2) +
+         g(0, 3) * (g(1, 2) * (g(2, 1) * g(3, 0) - g(2, 0) * g(3, 1)) +
+                    g(1, 1) * (-(g(2, 2) * g(3, 0)) + g(2, 0) * g(3, 2)) +
+                    g(1, 0) * (g(2, 2) * g(3, 1) - g(2, 1) * g(3, 2))) +
+         g(0, 1) * g(1, 2) * g(2, 0) * g(3, 3) -
+         g(0, 0) * g(1, 2) * g(2, 1) * g(3, 3) -
+         g(0, 1) * g(1, 0) * g(2, 2) * g(3, 3) +
+         g(0, 0) * g(1, 1) * g(2, 2) * g(3, 3) +
+         g(0, 2) * (g(1, 3) * (-(g(2, 1) * g(3, 0)) + g(2, 0) * g(3, 1)) +
+                    g(1, 1) * (g(2, 3) * g(3, 0) - g(2, 0) * g(3, 3)) +
+                    g(1, 0) * (-(g(2, 3) * g(3, 1)) + g(2, 1) * g(3, 3)));
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<T, 0, !dnup1, !dnup2>
+calc_inv(const smat<T, 0, dnup1, dnup2> &g, const T &detg) {
+  return smat<T, 0, !dnup1, !dnup2>([&](int i, int j) { return one<T>()(); });
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<T, 1, !dnup1, !dnup2>
+calc_inv(const smat<T, 1, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return smat<T, 1, !dnup1, !dnup2>{detg1};
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<T, 2, !dnup1, !dnup2>
+calc_inv(const smat<T, 2, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return detg1 * smat<T, 2, !dnup1, !dnup2>{
+                     g(1, 1),
+                     -g(0, 1),
+
+                     g(0, 0),
+                 };
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<T, 3, !dnup1, !dnup2>
+calc_inv(const smat<T, 3, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return detg1 * smat<T, 3, !dnup1, !dnup2>{
+                     g(1, 1) * g(2, 2) - pow2(g(1, 2)),
+                     g(0, 2) * g(1, 2) - g(0, 1) * g(2, 2),
+                     -(g(0, 2) * g(1, 1)) + g(0, 1) * g(1, 2),
+                     g(0, 0) * g(2, 2) - pow2(g(0, 2)),
+                     g(0, 1) * g(0, 2) - g(0, 0) * g(1, 2),
+                     g(0, 0) * g(1, 1) - pow2(g(0, 1)),
+                 };
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<T, 4, !dnup1, !dnup2>
+calc_inv(const smat<T, 4, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return detg1 * smat<T, 4, !dnup1, !dnup2>{
+                     2 * g(1, 2) * g(1, 3) * g(2, 3) - g(3, 3) * pow2(g(1, 2)) -
+                         g(2, 2) * pow2(g(1, 3)) +
+                         g(1, 1) * (g(2, 2) * g(3, 3) - pow2(g(2, 3))),
+                     g(0, 3) * (g(1, 3) * g(2, 2) - g(1, 2) * g(2, 3)) +
+                         g(0, 2) * (-(g(1, 3) * g(2, 3)) + g(1, 2) * g(3, 3)) +
+                         g(0, 1) * (-(g(2, 2) * g(3, 3)) + pow2(g(2, 3))),
+                     g(0, 3) * (-(g(1, 2) * g(1, 3)) + g(1, 1) * g(2, 3)) +
+                         g(0, 1) * (-(g(1, 3) * g(2, 3)) + g(1, 2) * g(3, 3)) +
+                         g(0, 2) * (-(g(1, 1) * g(3, 3)) + pow2(g(1, 3))),
+                     g(0, 2) * (-(g(1, 2) * g(1, 3)) + g(1, 1) * g(2, 3)) +
+                         g(0, 1) * (g(1, 3) * g(2, 2) - g(1, 2) * g(2, 3)) +
+                         g(0, 3) * (-(g(1, 1) * g(2, 2)) + pow2(g(1, 2))),
+
+                     2 * g(0, 2) * g(0, 3) * g(2, 3) - g(3, 3) * pow2(g(0, 2)) -
+                         g(2, 2) * pow2(g(0, 3)) +
+                         g(0, 0) * (g(2, 2) * g(3, 3) - pow2(g(2, 3))),
+                     -(g(0, 3) * (g(0, 2) * g(1, 3) + g(0, 1) * g(2, 3))) +
+                         g(0, 1) * g(0, 2) * g(3, 3) +
+                         g(0, 0) * (g(1, 3) * g(2, 3) - g(1, 2) * g(3, 3)) +
+                         g(1, 2) * pow2(g(0, 3)),
+                     g(0, 1) * g(0, 3) * g(2, 2) -
+                         g(0, 2) * (g(0, 3) * g(1, 2) + g(0, 1) * g(2, 3)) +
+                         g(0, 0) * (-(g(1, 3) * g(2, 2)) + g(1, 2) * g(2, 3)) +
+                         g(1, 3) * pow2(g(0, 2)),
+
+                     2 * g(0, 1) * g(0, 3) * g(1, 3) - g(3, 3) * pow2(g(0, 1)) -
+                         g(1, 1) * pow2(g(0, 3)) +
+                         g(0, 0) * (g(1, 1) * g(3, 3) - pow2(g(1, 3))),
+                     -(g(0, 1) * g(0, 3) * g(1, 2)) +
+                         g(0, 2) * (g(0, 3) * g(1, 1) - g(0, 1) * g(1, 3)) +
+                         g(0, 0) * (g(1, 2) * g(1, 3) - g(1, 1) * g(2, 3)) +
+                         g(2, 3) * pow2(g(0, 1)),
+
+                     2 * g(0, 1) * g(0, 2) * g(1, 2) - g(2, 2) * pow2(g(0, 1)) -
+                         g(1, 1) * pow2(g(0, 2)) +
+                         g(0, 0) * (g(1, 1) * g(2, 2) - pow2(g(1, 2))),
+                 };
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr mat<T, 0, !dnup1, !dnup2>
+calc_inv(const mat<T, 0, dnup1, dnup2> &g, const T &detg) {
+  return mat<T, 0, !dnup1, !dnup2>([&](int i, int j) { return one<T>()(); });
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr mat<T, 1, !dnup1, !dnup2>
+calc_inv(const mat<T, 1, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return mat<T, 1, !dnup1, !dnup2>{detg1};
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr mat<T, 2, !dnup1, !dnup2>
+calc_inv(const mat<T, 2, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return detg1 * mat<T, 2, !dnup1, !dnup2>{
+                     g(1, 1),
+                     -g(0, 1),
+
+                     -g(1, 0),
+                     g(0, 0),
+                 };
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr mat<T, 3, !dnup1, !dnup2>
+calc_inv(const mat<T, 3, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return detg1 * mat<T, 3, !dnup1, !dnup2>{
+                     -(g(1, 2) * g(2, 1)) + g(1, 1) * g(2, 2),
+                     g(0, 2) * g(2, 1) - g(0, 1) * g(2, 2),
+                     -(g(0, 2) * g(1, 1)) + g(0, 1) * g(1, 2),
+
+                     g(1, 2) * g(2, 0) - g(1, 0) * g(2, 2),
+                     -(g(0, 2) * g(2, 0)) + g(0, 0) * g(2, 2),
+                     g(0, 2) * g(1, 0) - g(0, 0) * g(1, 2),
+
+                     -(g(1, 1) * g(2, 0)) + g(1, 0) * g(2, 1),
+                     g(0, 1) * g(2, 0) - g(0, 0) * g(2, 1),
+                     -(g(0, 1) * g(1, 0)) + g(0, 0) * g(1, 1),
+                 };
+}
+
+template <typename T, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr mat<T, 4, !dnup1, !dnup2>
+calc_inv(const mat<T, 4, dnup1, dnup2> &g, const T &detg) {
+  const T detg1 = 1 / detg;
+  return detg1 * mat<T, 4, !dnup1, !dnup2>{
+                     g(1, 3) * (-(g(2, 2) * g(3, 1)) + g(2, 1) * g(3, 2)) +
+                         g(1, 2) * (g(2, 3) * g(3, 1) - g(2, 1) * g(3, 3)) +
+                         g(1, 1) * (-(g(2, 3) * g(3, 2)) + g(2, 2) * g(3, 3)),
+                     g(0, 3) * (g(2, 2) * g(3, 1) - g(2, 1) * g(3, 2)) +
+                         g(0, 2) * (-(g(2, 3) * g(3, 1)) + g(2, 1) * g(3, 3)) +
+                         g(0, 1) * (g(2, 3) * g(3, 2) - g(2, 2) * g(3, 3)),
+                     g(0, 3) * (-(g(1, 2) * g(3, 1)) + g(1, 1) * g(3, 2)) +
+                         g(0, 2) * (g(1, 3) * g(3, 1) - g(1, 1) * g(3, 3)) +
+                         g(0, 1) * (-(g(1, 3) * g(3, 2)) + g(1, 2) * g(3, 3)),
+                     g(0, 3) * (g(1, 2) * g(2, 1) - g(1, 1) * g(2, 2)) +
+                         g(0, 2) * (-(g(1, 3) * g(2, 1)) + g(1, 1) * g(2, 3)) +
+                         g(0, 1) * (g(1, 3) * g(2, 2) - g(1, 2) * g(2, 3)),
+
+                     g(1, 3) * (g(2, 2) * g(3, 0) - g(2, 0) * g(3, 2)) +
+                         g(1, 2) * (-(g(2, 3) * g(3, 0)) + g(2, 0) * g(3, 3)) +
+                         g(1, 0) * (g(2, 3) * g(3, 2) - g(2, 2) * g(3, 3)),
+                     g(0, 3) * (-(g(2, 2) * g(3, 0)) + g(2, 0) * g(3, 2)) +
+                         g(0, 2) * (g(2, 3) * g(3, 0) - g(2, 0) * g(3, 3)) +
+                         g(0, 0) * (-(g(2, 3) * g(3, 2)) + g(2, 2) * g(3, 3)),
+                     g(0, 3) * (g(1, 2) * g(3, 0) - g(1, 0) * g(3, 2)) +
+                         g(0, 2) * (-(g(1, 3) * g(3, 0)) + g(1, 0) * g(3, 3)) +
+                         g(0, 0) * (g(1, 3) * g(3, 2) - g(1, 2) * g(3, 3)),
+                     g(0, 3) * (-(g(1, 2) * g(2, 0)) + g(1, 0) * g(2, 2)) +
+                         g(0, 2) * (g(1, 3) * g(2, 0) - g(1, 0) * g(2, 3)) +
+                         g(0, 0) * (-(g(1, 3) * g(2, 2)) + g(1, 2) * g(2, 3)),
+
+                     g(1, 3) * (-(g(2, 1) * g(3, 0)) + g(2, 0) * g(3, 1)) +
+                         g(1, 1) * (g(2, 3) * g(3, 0) - g(2, 0) * g(3, 3)) +
+                         g(1, 0) * (-(g(2, 3) * g(3, 1)) + g(2, 1) * g(3, 3)),
+                     g(0, 3) * (g(2, 1) * g(3, 0) - g(2, 0) * g(3, 1)) +
+                         g(0, 1) * (-(g(2, 3) * g(3, 0)) + g(2, 0) * g(3, 3)) +
+                         g(0, 0) * (g(2, 3) * g(3, 1) - g(2, 1) * g(3, 3)),
+                     g(0, 3) * (-(g(1, 1) * g(3, 0)) + g(1, 0) * g(3, 1)) +
+                         g(0, 1) * (g(1, 3) * g(3, 0) - g(1, 0) * g(3, 3)) +
+                         g(0, 0) * (-(g(1, 3) * g(3, 1)) + g(1, 1) * g(3, 3)),
+                     g(0, 3) * (g(1, 1) * g(2, 0) - g(1, 0) * g(2, 1)) +
+                         g(0, 1) * (-(g(1, 3) * g(2, 0)) + g(1, 0) * g(2, 3)) +
+                         g(0, 0) * (g(1, 3) * g(2, 1) - g(1, 1) * g(2, 3)),
+
+                     g(1, 2) * (g(2, 1) * g(3, 0) - g(2, 0) * g(3, 1)) +
+                         g(1, 1) * (-(g(2, 2) * g(3, 0)) + g(2, 0) * g(3, 2)) +
+                         g(1, 0) * (g(2, 2) * g(3, 1) - g(2, 1) * g(3, 2)),
+                     g(0, 2) * (-(g(2, 1) * g(3, 0)) + g(2, 0) * g(3, 1)) +
+                         g(0, 1) * (g(2, 2) * g(3, 0) - g(2, 0) * g(3, 2)) +
+                         g(0, 0) * (-(g(2, 2) * g(3, 1)) + g(2, 1) * g(3, 2)),
+                     g(0, 2) * (g(1, 1) * g(3, 0) - g(1, 0) * g(3, 1)) +
+                         g(0, 1) * (-(g(1, 2) * g(3, 0)) + g(1, 0) * g(3, 2)) +
+                         g(0, 0) * (g(1, 2) * g(3, 1) - g(1, 1) * g(3, 2)),
+                     g(0, 2) * (-(g(1, 1) * g(2, 0)) + g(1, 0) * g(2, 1)) +
+                         g(0, 1) * (g(1, 2) * g(2, 0) - g(1, 0) * g(2, 2)) +
+                         g(0, 0) * (-(g(1, 2) * g(2, 1)) + g(1, 1) * g(2, 2)),
+                 };
+}
+
+template <typename T, int D, dnup_t dnup1, dnup_t dnup2>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T calc_trace(
+    const smat<T, D, dnup1, dnup2> &A, const smat<T, D, !dnup1, !dnup2> &gu) {
+  return sum_symm<D>([&](int x, int y)
+                         ARITH_INLINE { return gu(x, y) * A(x, y); });
+}
+
+template <typename T, int D>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<vec<T, D, DN>, D, UP, UP>
+calc_dgu(const smat<T, D, UP, UP> &gu,
+         const smat<vec<T, D, DN>, D, DN, DN> &dg) {
   // g_xy = g_xa g_yb g^ab
   // g_xy,c = (g_xa g_yb g^ab),c
   //        = g_xa,c g_yb g^ab + g_xa g_yb,c g^ab + g_xa g_yb g^ab,c
@@ -22,420 +345,399 @@ constexpr
   //                  = g_xy,c - g_xy,c - g_xy,c
   //                  = - g_xy,c
   // g^ab,c = - g^ax g^by g_xy,c
-  return mat4<vec4<T, DN>, UP, UP>(
-      [&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return vec4<T, DN>([&](int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            return -gu(a, x) * sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-              return gu(b, y) * dg(x, y)(c);
-            });
-          });
+  return smat<vec<T, D, DN>, D, UP, UP>([&](int a, int b) ARITH_INLINE {
+    return vec<T, D, DN>([&](int c) ARITH_INLINE {
+      // return sum2sym([&](int x, int y) ARITH_INLINE {
+      //   return -gu(a, x) * gu(b, y) * dg(x, y)(c);
+      // });
+      return sum<D>([&](int x) ARITH_INLINE {
+        return -gu(a, x) * sum<D>([&](int y) ARITH_INLINE {
+          return gu(b, y) * dg(x, y)(c);
         });
       });
+    });
+  });
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<mat4<T, DN, DN>, DN>
-    calc_gammal(const mat4<vec4<T, DN>, DN, DN> &dg) {
+template <typename T, int D>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<vec<T, D, DN>, D, UP, UP>
+calc_dAu(const smat<T, D, UP, UP> &gu,
+         const smat<vec<T, D, DN>, D, UP, UP> &dgu, const smat<T, D, DN, DN> &A,
+         const smat<vec<T, D, DN>, D, DN, DN> &dA) {
+  // A^ab,c = (g^ax g^by A_xy),c
+  //        = g^ax,c g^by A_xy + g^ax g^by,c A_xy + g^ax g^by A_xy,c
+  return smat<vec<T, D, DN>, D, UP, UP>([&](int a, int b) ARITH_INLINE {
+    return vec<T, D, DN>([&](int c) ARITH_INLINE {
+      // return sum2sym([&](int x, int y) ARITH_INLINE {
+      //   return dgu(a, x)(c) * gu(b, y) * A(x, y)   //
+      //          + gu(a, x) * dgu(b, y)(c) * A(x, y) //
+      //          + gu(a, x) * gu(b, y) * dA(x, y)(c);
+      // });
+      return sum<D>([&](int x) ARITH_INLINE {
+        return gu(b, x) * sum<D>([&](int y) ARITH_INLINE {
+                 return dgu(a, y)(c) * A(x, y)   //
+                        + dgu(b, y)(c) * A(x, y) //
+                        + gu(b, y) * dA(x, y)(c);
+               });
+      });
+    });
+  });
+}
+
+template <typename T, int D>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr vec<smat<T, D, DN, DN>, D, DN>
+calc_gammal(const smat<vec<T, D, DN>, D, DN, DN> &dg) {
   // Gammal_abc
-  return vec4<mat4<T, DN, DN>, DN>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return mat4<T, DN, DN>([&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  return vec<smat<T, D, DN, DN>, D, DN>([&](int a) ARITH_INLINE {
+    return smat<T, D, DN, DN>([&](int b, int c) ARITH_INLINE {
       return (dg(a, b)(c) + dg(a, c)(b) - dg(b, c)(a)) / 2;
     });
   });
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<mat4<T, DN, DN>, UP>
-    calc_gamma(const mat4<T, UP, UP> &gu,
-               const vec4<mat4<T, DN, DN>, DN> &Gammal) {
+template <typename T, int D>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr vec<smat<T, D, DN, DN>, D, UP>
+calc_gamma(const smat<T, D, UP, UP> &gu,
+           const vec<smat<T, D, DN, DN>, D, DN> &Gammal) {
   // Gamma^a_bc
-  return vec4<mat4<T, DN, DN>, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return mat4<T, DN, DN>([&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return gu(a, x) * Gammal(x)(b, c);
+  return vec<smat<T, D, DN, DN>, D, UP>([&](int a) ARITH_INLINE {
+    return smat<T, D, DN, DN>([&](int b, int c) ARITH_INLINE {
+      return sum<D>([&](int x)
+                        ARITH_INLINE { return gu(a, x) * Gammal(x)(b, c); });
+    });
+  });
+}
+
+template <typename T, int D>
+ARITH_INLINE
+    ARITH_DEVICE ARITH_HOST constexpr vec<vec<vec<T, D, UP>, D, DN>, D, DN>
+    calc_gammalu(const smat<T, D, UP, UP> &gu,
+                 const vec<smat<T, D, DN, DN>, D, DN> &Gammal) {
+  // Gamma_ab^c
+  return vec<vec<vec<T, D, UP>, D, DN>, D, DN>([&](int a) ARITH_INLINE {
+    return vec<vec<T, D, UP>, D, DN>([&](int b) ARITH_INLINE {
+      return vec<T, D, UP>([&](int c) ARITH_INLINE {
+        return sum<D>([&](int x)
+                          ARITH_INLINE { return Gammal(a)(b, x) * gu(x, c); });
       });
     });
   });
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
-    vec4<mat4<vec4<T, DN>, DN, DN>, DN>
-    calc_dgammal(const mat4<mat4<T, DN, DN>, DN, DN> &ddg) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
+    vec<smat<vec<T, D, DN>, D, DN, DN>, D, DN>
+    calc_dgammal(const smat<smat<T, D, DN, DN>, D, DN, DN> &ddg) {
   // Gamma_abc,d
-  return vec4<mat4<vec4<T, DN>, DN, DN>, DN>(
-      [&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return mat4<vec4<T, DN>, DN, DN>(
-            [&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-              return vec4<T, DN>([&](int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                  return (ddg(a, b)(c, d) + ddg(a, c)(b, d) - ddg(b, c)(a, d)) /
-                         2;
-                });
-              });
-            });
+  return vec<smat<vec<T, D, DN>, D, DN, DN>, D, DN>([&](int a) ARITH_INLINE {
+    return smat<vec<T, D, DN>, D, DN, DN>([&](int b, int c) ARITH_INLINE {
+      return vec<T, D, DN>([&](int d) ARITH_INLINE {
+        return sum<D>([&](int x) ARITH_INLINE {
+          return (ddg(a, b)(c, d) + ddg(a, c)(b, d) - ddg(b, c)(a, d)) / 2;
+        });
       });
+    });
+  });
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
-    vec4<mat4<vec4<T, DN>, DN, DN>, UP>
-    calc_dgamma(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, UP, UP> &dgu,
-                const vec4<mat4<T, DN, DN>, DN> &Gammal,
-                const vec4<mat4<vec4<T, DN>, DN, DN>, DN> &dGammal) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
+    vec<smat<vec<T, D, DN>, D, DN, DN>, D, UP>
+    calc_dgamma(const smat<T, D, UP, UP> &gu,
+                const smat<vec<T, D, DN>, D, UP, UP> &dgu,
+                const vec<smat<T, D, DN, DN>, D, DN> &Gammal,
+                const vec<smat<vec<T, D, DN>, D, DN, DN>, D, DN> &dGammal) {
   // Gamma^a_bc,d
-  return vec4<mat4<vec4<T, DN>, DN, DN>, UP>(
-      [&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return mat4<vec4<T, DN>, DN, DN>(
-            [&](int b, int c) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-              return vec4<T, DN>([&](int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                  return dgu(a, x)(d) * Gammal(x)(b, c) +
-                         gu(a, x) * dGammal(x)(b, c)(d);
-                });
-              });
-            });
+  return vec<smat<vec<T, D, DN>, D, DN, DN>, D, UP>([&](int a) ARITH_INLINE {
+    return smat<vec<T, D, DN>, D, DN, DN>([&](int b, int c) ARITH_INLINE {
+      return vec<T, D, DN>([&](int d) ARITH_INLINE {
+        return sum<D>([&](int x) ARITH_INLINE {
+          return dgu(a, x)(d) * Gammal(x)(b, c) +
+                 gu(a, x) * dGammal(x)(b, c)(d);
+        });
       });
+    });
+  });
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST rten4<T, DN, DN, DN, DN>
-    calc_riemann(const mat4<T, DN, DN> &g,
-                 const vec4<mat4<T, DN, DN>, UP> &Gamma,
-                 const vec4<mat4<vec4<T, DN>, DN, DN>, UP> &dGamma) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST rten<T, D, DN, DN, DN, DN>
+calc_riemann(const smat<T, D, DN, DN> &g,
+             const vec<smat<T, D, DN, DN>, D, UP> &Gamma,
+             const vec<smat<vec<T, D, DN>, D, DN, DN>, D, UP> &dGamma) {
   // Rm_abcd
-#if 1
-  return rten4<T, DN, DN, DN, DN>(
-      [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  return rten<T, D, DN, DN, DN, DN>(
+      [&](int a, int b, int c, int d) ARITH_INLINE {
+        return sum<D>([&](int x) ARITH_INLINE {
           const T rmuxbcd = dGamma(x)(d, b)(c)   //
                             - dGamma(x)(c, b)(d) //
-                            + sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                            + sum<D>([&](int y) ARITH_INLINE {
                                 return Gamma(x)(c, y) * Gamma(y)(d, b);
                               }) //
-                            - sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                            - sum<D>([&](int y) ARITH_INLINE {
                                 return Gamma(x)(d, y) * Gamma(y)(c, b);
                               });
           return g(a, x) * rmuxbcd;
         });
       });
-#else
-  const vec4<vec4<amat4<T, DN, DN>, DN>, UP> rmuxbcd(
-      [&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return vec4<amat4<T, DN, DN>, DN>(
-            [&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-              return amat4<T, DN, DN>(
-                  [&](int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                    return dGamma(x)(d, b)(c)   //
-                           - dGamma(x)(c, b)(d) //
-                           + sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                               return Gamma(x)(c, y) * Gamma(y)(d, b);
-                             }) //
-                           - sum41([&](int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                               return Gamma(x)(d, y) * Gamma(y)(c, b);
-                             });
-                  });
-            });
-      });
-  return rten4<T, DN, DN, DN, DN>(
-      [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          return g(a, x) * rmuxbcd(x)(b)(c, d);
-        });
-      });
-#endif
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST mat4<T, DN, DN>
-calc_ricci(const mat4<T, UP, UP> &gu, const rten4<T, DN, DN, DN, DN> &Rm) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, D, DN, DN>
+calc_ricci(const smat<T, D, UP, UP> &gu, const rten<T, D, DN, DN, DN, DN> &Rm) {
   // R_ab
-  return mat4<T, DN, DN>([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return sum42sym([&](int x, int y) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      return gu(x, y) * Rm(x, a, y, b);
-    });
+  return smat<T, D, DN, DN>([&](int a, int b) ARITH_INLINE {
+    return sum_symm<D>([&](int x, int y)
+                           ARITH_INLINE { return gu(x, y) * Rm(x, a, y, b); });
   });
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST rten4<T, DN, DN, DN, DN>
-    calc_weyl(const mat4<T, DN, DN> &g, const rten4<T, DN, DN, DN, DN> &Rm,
-              const mat4<T, DN, DN> &R, const T &Rsc) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST rten<T, D, DN, DN, DN, DN>
+calc_weyl(const smat<T, D, DN, DN> &g, const rten<T, D, DN, DN, DN, DN> &Rm,
+          const smat<T, D, DN, DN> &R, const T &Rsc) {
   // C_abcd
-  return rten4<T, DN, DN, DN, DN>(
-      [&](int a, int b, int c, int d) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  return rten<T, D, DN, DN, DN, DN>(
+      [&](int a, int b, int c, int d) ARITH_INLINE {
         return Rm(a, b, c, d) //
-               + 1 / T{4 - 2} *
+               + 1 / T{D - 2} *
                      (R(a, d) * g(b, c) - R(a, c) * g(b, d)    //
                       + R(b, c) * g(a, d) - R(b, d) * g(a, c)) //
-               + 1 / T{(4 - 1) * (4 - 2)} * Rsc *
+               + 1 / T{(D - 1) * (D - 2)} * Rsc *
                      (g(a, c) * g(b, d) - g(a, d) * g(b, c));
       });
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-raise(const mat4<T, UP, UP> &gu, const vec4<T, DN> &vl) {
-  return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return sum41([&](int x)
-                     CCTK_ATTRIBUTE_ALWAYS_INLINE { return gu(a, x) * vl(x); });
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+raise(const gmat<T, D, UP, UP, symm> &gu, const vec<T, D, DN> &vl) {
+  return vec<T, D, UP>([&](int a) ARITH_INLINE {
+    return sum<D>([&](int x) ARITH_INLINE { return gu(a, x) * vl(x); });
   });
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, DN>
-lower(const mat4<T, DN, DN> &g, const vec4<T, UP> &v) {
-  return vec4<T, DN>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return sum41([&](int x)
-                     CCTK_ATTRIBUTE_ALWAYS_INLINE { return g(a, x) * v(x); });
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, DN>
+lower(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v) {
+  return vec<T, D, DN>([&](int a) ARITH_INLINE {
+    return sum<D>([&](int x) ARITH_INLINE { return g(a, x) * v(x); });
   });
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
-dot(const vec4<T, DN> &vl, const vec4<T, UP> &v) {
-  return sum41([&](int x)
-                   CCTK_ATTRIBUTE_ALWAYS_INLINE { return vl(x) * v(x); });
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T dot(const vec<T, D, DN> &vl,
+                                                     const vec<T, D, UP> &v) {
+  return sum<D>([&](int x) ARITH_INLINE { return vl(x) * v(x); });
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-normalized(const mat4<T, DN, DN> &g, const vec4<T, UP> &v) {
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+normalized(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v) {
   return v / sqrt(dot(lower(g, v), v));
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-projected(const mat4<T, DN, DN> &g, const vec4<T, UP> &v,
-          const vec4<T, UP> &w) {
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+projected(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v,
+          const vec<T, D, UP> &w) {
   const auto z = zero<T>()();
   const auto wl = lower(g, w);
   const auto wlen2 = dot(wl, w);
-  if (wlen2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
-  return dot(wl, v) / wlen2 * w;
+  return if_else(wlen2 <= numeric_limits<T>::epsilon(), vec<T, D, UP>::pure(z),
+                 dot(wl, v) / wlen2 * w);
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-projected1(const vec4<T, UP> &v, const vec4<T, DN> &wl, const vec4<T, UP> &w) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+projected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
+           const vec<T, D, UP> &w) {
   // assuming dot(wl, w) == 1
   return dot(wl, v) * w;
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-rejected(const mat4<T, DN, DN> &g, const vec4<T, UP> &v, const vec4<T, UP> &w) {
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+rejected(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v,
+         const vec<T, D, UP> &w) {
   return v - projected(g, v, w);
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-rejected1(const vec4<T, UP> &v, const vec4<T, DN> &wl, const vec4<T, UP> &w) {
+template <typename T, int D>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+rejected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
+          const vec<T, D, UP> &w) {
   return v - projected1(v, wl, w);
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-calc_et(const mat4<T, UP, UP> &gu) {
-  const auto z = zero<T>()();
-  const auto e = one<T>()();
-  const vec4<T, DN> etl(
-      [&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return a == 0 ? e : z; });
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+calc_et(const gmat<T, D, UP, UP, symm> &gu) {
+  const T z = zero<T>();
+  const T e = one<T>();
+  const vec<T, D, DN> etl([&](int a) ARITH_INLINE { return a == 0 ? e : z; });
   const auto et = raise(gu, etl);
-  const auto etlen = sqrt(-dot(etl, et));
-  // This is necessary near a singularity
-  if (etlen < 1.0e-12)
-    return vec4<T, UP>(1, 0, 0, 0);
+  const auto etlen2 = -dot(etl, et);
 #ifdef CCTK_DEBUG
-  assert(!isnan(etlen) && etlen >= 1.0e-12);
+  assert(!isnan(etlen2));
+  assert(all(etlen2 > numeric_limits<T>::epsilon()));
 #endif
-  return et / etlen;
+  // This is necessary near a singularity
+  return if_else(etlen2 <= numeric_limits<T>::epsilon(), vec<T, D, UP>::unit(0),
+                 et / sqrt(etlen2));
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-calc_ephi(const vec4<T, UP> &x, const mat4<T, DN, DN> &g) {
-  const auto z = zero<T>()();
-  vec4<T, UP> ephi(z, -x(2), x(1), z);
+template <typename T, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, 4, UP>
+calc_ephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g) {
+  const T z = zero<T>();
+  vec<T, 4, UP> ephi{z, -x(2), x(1), z};
   const auto ephil = lower(g, ephi);
   const auto ephi_len2 = dot(ephil, ephi);
-  if (ephi_len2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   ephi /= sqrt(ephi_len2);
-  return ephi;
+  return if_else(ephi_len2 < numeric_limits<T>::epsilon(),
+                 vec<T, 4, UP>::pure(z), ephi);
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-calc_etheta(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
-            const vec4<T, UP> &ephi) {
-  const auto z = zero<T>()();
-  const T rho2 = pow(x(1), 2) + pow(x(2), 2);
-  vec4<T, UP> etheta(z, x(1) * x(3), x(2) * x(3), -rho2);
+template <typename T, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, 4, UP>
+calc_etheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
+            const vec<T, 4, UP> &ephi) {
+  const T z = zero<T>();
+  const T rho2 = pow2(x(1)) + pow2(x(2));
+  vec<T, 4, UP> etheta{z, x(1) * x(3), x(2) * x(3), -rho2};
   const auto ethetal = lower(g, etheta);
   const auto etheta_len2 = dot(ethetal, etheta);
-  if (etheta_len2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   etheta /= sqrt(etheta_len2); // to improve accuracy
   etheta = rejected(g, etheta, ephi);
   etheta = normalized(g, etheta);
-  return etheta;
+  return if_else(etheta_len2 < numeric_limits<T>::epsilon(),
+                 vec<T, 4, UP>::pure(z), etheta);
 }
 
-template <typename T>
-constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<T, UP>
-calc_er(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
-        const vec4<T, UP> &etheta, const vec4<T, UP> &ephi) {
-  const auto z = zero<T>()();
-  vec4<T, UP> er(z, x(1), x(2), x(3));
+template <typename T, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, 4, UP>
+calc_er(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
+        const vec<T, 4, UP> &etheta, const vec<T, 4, UP> &ephi) {
+  const T z = zero<T>();
+  vec<T, 4, UP> er{z, x(1), x(2), x(3)};
   const auto erl = lower(g, er);
   const auto er_len2 = dot(erl, er);
-  if (er_len2 < pow(1.0e-12, 2))
-    return vec4<T, UP>([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE { return z; });
   er /= sqrt(er_len2); // to improve accuracy
   er = rejected(g, er, etheta);
   er = rejected(g, er, ephi);
   er = normalized(g, er);
-  return er;
+  return if_else(er_len2 < numeric_limits<T>::epsilon(), vec<T, 4, UP>::pure(z),
+                 er);
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<vec4<T, DN>, UP>
-    calc_det(const mat4<T, UP, UP> &gu, const mat4<vec4<T, DN>, UP, UP> &dgu,
-             const vec4<T, UP> &et, const vec4<mat4<T, DN, DN>, UP> &Gamma) {
-  typedef vec4<T, DN> DT;
+template <typename T, int D, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<vec<T, D, DN>, D, UP>
+calc_det(const gmat<T, D, UP, UP, symm> &gu,
+         const gmat<vec<T, D, DN>, D, UP, UP, symm> &dgu,
+         const vec<T, D, UP> &et,
+         const vec<gmat<T, D, DN, DN, symm>, D, UP> &Gamma) {
+  typedef vec<T, D, DN> DT;
   typedef dual<T, DT> TDT;
-  const mat4<TDT, UP, UP> gu1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(gu(a, b), dgu(a, b));
-  });
+  const gmat<TDT, D, UP, UP, symm> gu1(
+      [&](int a, int b) ARITH_INLINE { return TDT(gu(a, b), dgu(a, b)); });
   const auto det1 = calc_et(gu1);
-  const vec4<vec4<T, DN>, UP> det([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      return det1(a).eps(b) + sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-               return Gamma(a)(b, x) * et(x);
-             });
+  const vec<vec<T, D, DN>, D, UP> det([&](int a) ARITH_INLINE {
+    return vec<T, D, DN>([&](int b) ARITH_INLINE {
+      return det1(a).eps(b) +
+             sum<D>([&](int x) ARITH_INLINE { return Gamma(a)(b, x) * et(x); });
     });
   });
 #ifdef CCTK_DEBUG
-  for (int a = 0; a < 4; ++a)
-    for (int b = 0; b < 4; ++b)
-      assert(!isnan(det(a)(b)));
+  assert(!isnan(det));
 #endif
   return det;
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<vec4<T, DN>, UP>
-    calc_dephi(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
-               const mat4<vec4<T, DN>, DN, DN> &dg, const vec4<T, UP> &ephi,
-               const vec4<mat4<T, DN, DN>, UP> &Gamma) {
-  typedef vec4<T, DN> DT;
+template <typename T, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<vec<T, 4, DN>, 4, UP>
+calc_dephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
+           const gmat<vec<T, 4, DN>, 4, DN, DN, symm> &dg,
+           const vec<T, 4, UP> &ephi,
+           const vec<gmat<T, 4, DN, DN, symm>, 4, UP> &Gamma) {
+  typedef vec<T, 4, DN> DT;
   typedef dual<T, DT> TDT;
-  const vec4<TDT, UP> x1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(x(a), DT([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                 return T(a == b);
-               }));
+  const vec<TDT, 4, UP> x1([&](int a) ARITH_INLINE {
+    return TDT(x(a), DT([&](int b) ARITH_INLINE { return T(a == b); }));
   });
-  const mat4<TDT, DN, DN> g1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(g(a, b), dg(a, b));
-  });
+  const gmat<TDT, 4, DN, DN, symm> g1(
+      [&](int a, int b) ARITH_INLINE { return TDT(g(a, b), dg(a, b)); });
   const auto dephi1 = calc_ephi(x1, g1);
-  const vec4<vec4<T, DN>, UP> dephi([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      return dephi1(a).eps(b) + sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  const vec<vec<T, 4, DN>, 4, UP> dephi([&](int a) ARITH_INLINE {
+    return vec<T, 4, DN>([&](int b) ARITH_INLINE {
+      return dephi1(a).eps(b) + sum<4>([&](int x) ARITH_INLINE {
                return Gamma(a)(b, x) * ephi(x);
              });
     });
   });
 #ifdef CCTK_DEBUG
-  for (int a = 0; a < 4; ++a)
-    for (int b = 0; b < 4; ++b)
-      assert(!isnan(dephi(a)(b)));
+  assert(!isnan(dephi));
 #endif
   return dephi;
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<vec4<T, DN>, UP>
-    calc_detheta(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
-                 const mat4<vec4<T, DN>, DN, DN> &dg, const vec4<T, UP> &ephi,
-                 const vec4<vec4<T, DN>, UP> &dephi, const vec4<T, UP> &etheta,
-                 const vec4<mat4<T, DN, DN>, UP> &Gamma) {
-  typedef vec4<T, DN> DT;
+template <typename T, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<vec<T, 4, DN>, 4, UP>
+calc_detheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
+             const gmat<vec<T, 4, DN>, 4, DN, DN, symm> &dg,
+             const vec<T, 4, UP> &ephi, const vec<vec<T, 4, DN>, 4, UP> &dephi,
+             const vec<T, 4, UP> &etheta,
+             const vec<gmat<T, 4, DN, DN, symm>, 4, UP> &Gamma) {
+  typedef vec<T, 4, DN> DT;
   typedef dual<T, DT> TDT;
-  const vec4<TDT, UP> x1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(x(a), DT([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                 return T(a == b);
-               }));
+  const vec<TDT, 4, UP> x1([&](int a) ARITH_INLINE {
+    return TDT(x(a), DT([&](int b) ARITH_INLINE { return T(a == b); }));
   });
-  const mat4<TDT, DN, DN> g1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(g(a, b), dg(a, b));
-  });
-  const vec4<TDT, UP> ephi1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(ephi(a), dephi(a));
-  });
+  const gmat<TDT, 4, DN, DN, symm> g1(
+      [&](int a, int b) ARITH_INLINE { return TDT(g(a, b), dg(a, b)); });
+  const vec<TDT, 4, UP> ephi1(
+      [&](int a) ARITH_INLINE { return TDT(ephi(a), dephi(a)); });
   const auto detheta1 = calc_etheta(x1, g1, ephi1);
-  const vec4<vec4<T, DN>, UP> detheta([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      return detheta1(a).eps(b) +
-             sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  const vec<vec<T, 4, DN>, 4, UP> detheta([&](int a) ARITH_INLINE {
+    return vec<T, 4, DN>([&](int b) ARITH_INLINE {
+      return detheta1(a).eps(b) + sum<4>([&](int x) ARITH_INLINE {
                return Gamma(a)(b, x) * etheta(x);
              });
     });
   });
 #ifdef CCTK_DEBUG
-  for (int a = 0; a < 4; ++a)
-    for (int b = 0; b < 4; ++b)
-      assert(!isnan(detheta(a)(b)));
+  assert(!isnan(detheta));
 #endif
   return detheta;
 }
 
-template <typename T>
-constexpr
-    CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST vec4<vec4<T, DN>, UP>
-    calc_der(const vec4<T, UP> &x, const mat4<T, DN, DN> &g,
-             const mat4<vec4<T, DN>, DN, DN> &dg, const vec4<T, UP> &ephi,
-             const vec4<vec4<T, DN>, UP> &dephi, const vec4<T, UP> &etheta,
-             const vec4<vec4<T, DN>, UP> &detheta, const vec4<T, UP> &er,
-             const vec4<mat4<T, DN, DN>, UP> &Gamma) {
-  typedef vec4<T, DN> DT;
+template <typename T, symm_t symm>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<vec<T, 4, DN>, 4, UP>
+calc_der(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
+         const gmat<vec<T, 4, DN>, 4, DN, DN, symm> &dg,
+         const vec<T, 4, UP> &ephi, const vec<vec<T, 4, DN>, 4, UP> &dephi,
+         const vec<T, 4, UP> &etheta, const vec<vec<T, 4, DN>, 4, UP> &detheta,
+         const vec<T, 4, UP> &er,
+         const vec<gmat<T, 4, DN, DN, symm>, 4, UP> &Gamma) {
+  typedef vec<T, 4, DN> DT;
   typedef dual<T, DT> TDT;
-  const vec4<TDT, UP> x1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(x(a), DT([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                 return T(a == b);
-               }));
+  const vec<TDT, 4, UP> x1([&](int a) ARITH_INLINE {
+    return TDT(x(a), DT([&](int b) ARITH_INLINE { return T(a == b); }));
   });
-  const mat4<TDT, DN, DN> g1([&](int a, int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(g(a, b), dg(a, b));
-  });
-  const vec4<TDT, UP> ephi1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(ephi(a), dephi(a));
-  });
-  const vec4<TDT, UP> etheta1([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return TDT(etheta(a), detheta(a));
-  });
+  const gmat<TDT, 4, DN, DN, symm> g1(
+      [&](int a, int b) ARITH_INLINE { return TDT(g(a, b), dg(a, b)); });
+  const vec<TDT, 4, UP> ephi1(
+      [&](int a) ARITH_INLINE { return TDT(ephi(a), dephi(a)); });
+  const vec<TDT, 4, UP> etheta1(
+      [&](int a) ARITH_INLINE { return TDT(etheta(a), detheta(a)); });
   const auto der1 = calc_er(x1, g1, ephi1, etheta1);
-  const vec4<vec4<T, DN>, UP> der([&](int a) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    return vec4<T, DN>([&](int b) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-      return der1(a).eps(b) + sum41([&](int x) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-               return Gamma(a)(b, x) * er(x);
-             });
+  const vec<vec<T, 4, DN>, 4, UP> der([&](int a) ARITH_INLINE {
+    return vec<T, 4, DN>([&](int b) ARITH_INLINE {
+      return der1(a).eps(b) +
+             sum<4>([&](int x) ARITH_INLINE { return Gamma(a)(b, x) * er(x); });
     });
   });
 #ifdef CCTK_DEBUG
-  for (int a = 0; a < 4; ++a)
-    for (int b = 0; b < 4; ++b)
-      assert(!isnan(der(a)(b)));
+  assert(!isnan(der));
 #endif
   return der;
 }

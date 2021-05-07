@@ -814,11 +814,11 @@ public:
 
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST bool
   any() const {
-    return elts.any();
+    return any(elts);
   }
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T
   maxabs() const {
-    return elts.maxabs();
+    return maxabs(elts);
   }
 
   friend struct norm1<vec4>;
