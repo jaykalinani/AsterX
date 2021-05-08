@@ -80,7 +80,7 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
 
         // Load
         const smat<vreal, 3, DN, DN> g =
-            gf_g1(mask, index1, one<smat<vreal, 3, DN, DN> >()());
+            gf_g1(mask, index1, one<smat<int, 3, DN, DN> >()());
         const smat<vreal, 3, DN, DN> K = gf_K1(mask, index1);
         const vreal alp = gf_alp1(mask, index1, 1);
         const vec<vreal, 3, UP> beta = gf_beta1(mask, index1);

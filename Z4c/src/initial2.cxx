@@ -50,7 +50,7 @@ extern "C" void Z4c_Initial2(CCTK_ARGUMENTS) {
 
         // Load
         const smat<vreal, 3, DN, DN> gammat =
-            gf_gammat1(mask, index1, one<smat<vreal, 3, DN, DN> >()());
+            gf_gammat1(mask, index1, one<smat<int, 3, DN, DN> >()());
 
         // Calculate Z4c variables (only Gamt)
         const smat<vreal, 3, UP, UP> gammatu = calc_inv(gammat, vreal(1));

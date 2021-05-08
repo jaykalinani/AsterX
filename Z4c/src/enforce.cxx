@@ -55,7 +55,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         const vreal alphaG_old = gf_alphaG1(mask, index1, 1);
 
         const smat<vreal, 3, DN, DN> gammat_old =
-            gf_gammat1(mask, index1, one<smat<vreal, 3, DN, DN> >()());
+            gf_gammat1(mask, index1, one<smat<int, 3, DN, DN> >()());
         const smat<vreal, 3, DN, DN> At_old = gf_At1(mask, index1);
 
         // Enforce floors
