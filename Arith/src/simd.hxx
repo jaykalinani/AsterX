@@ -61,11 +61,19 @@ template <typename T> struct simd {
 #endif
   }
 
-  constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!() const { return !elts; }
-  constexpr ARITH_DEVICE ARITH_HOST simd operator~() const { return ~elts; }
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!(const simd &x) {
+    return !x.elts;
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator~(const simd &x) {
+    return ~x.elts;
+  }
 
-  constexpr ARITH_DEVICE ARITH_HOST simd operator+() const { return +elts; }
-  constexpr ARITH_DEVICE ARITH_HOST simd operator-() const { return -elts; }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator+(const simd &x) {
+    return +x.elts;
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd operator-(const simd &x) {
+    return -x.elts;
+  }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simd operator&(const simd &x,
                                                           const simd &y) {
@@ -299,10 +307,19 @@ template <typename T> struct simd {
     using std::abs;
     return abs(x.elts);
   }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd andnot(const simd &x,
+                                                       const simd &y) {
+#ifndef SIMD_CPU
+    return nsimd::andnotb(x.elts, y.elts);
+#else
+    return x & ~y;
+#endif
+  }
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> signbit(const simd &x) {
 #ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
-    constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
+    const T signmask =
+        nsimd::scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return to_logical(x & signmask);
 #else
     using std::signbit;
@@ -321,8 +338,9 @@ template <typename T> struct simd {
                                                          const simd &y) {
 #ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
-    constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
-    return (x & ~signmask) | (y & signmask);
+    const T signmask =
+        nsimd::scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
+    return andnot(x, signmask) | (y & signmask);
 #else
     using std::copysign;
     return copysign(x.elts, y.elts);
@@ -332,9 +350,11 @@ template <typename T> struct simd {
                                                          const simd &y) {
 #ifndef SIMD_CPU
     typedef detail::f2u_t<T> U;
-    constexpr T signmask = scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
+    const T signmask =
+        nsimd::scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return x ^ (y & signmask);
 #else
+    using std::copysign;
     return copysign(1, y) * x;
 #endif
   }
@@ -666,8 +686,10 @@ template <typename T> struct simdl {
 #endif
   }
 
-  ARITH_DEVICE ARITH_HOST simdl operator!() const { return !elts; }
-  // simdl operator~() const { return ~elts; }
+  friend ARITH_DEVICE ARITH_HOST simdl operator!(const simdl &x) {
+    return !x.elts;
+  }
+  simdl operator~() const { return !elts; }
 
   friend ARITH_DEVICE ARITH_HOST simdl operator&&(const simdl &x,
                                                   const simdl &y) {
@@ -730,81 +752,84 @@ template <typename T> struct simdl {
     return *this = *this ^ a;
   }
 
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator==(const simdl &x,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator==(const simdl &x,
+                                                  const simdl &y) {
     return x.elts == y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const simdl &x,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator!=(const simdl &x,
+                                                  const simdl &y) {
     return x.elts != y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<(const simdl &x,
-                                                    const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator<(const simdl &x,
+                                                 const simdl &y) {
     return x.elts < y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>(const simdl &x,
-                                                    const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator>(const simdl &x,
+                                                 const simdl &y) {
     return x.elts > y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const simdl &x,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator<=(const simdl &x,
+                                                  const simdl &y) {
     return x.elts <= y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const simdl &x,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator>=(const simdl &x,
+                                                  const simdl &y) {
     return x.elts >= y.elts;
   }
 
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator==(const bool a,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator==(const bool a,
+                                                  const simdl &y) {
     return a == y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const bool a,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator!=(const bool a,
+                                                  const simdl &y) {
     return a != y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<(const bool a,
-                                                    const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator<(const bool a, const simdl &y) {
     return a < y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>(const bool a,
-                                                    const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator>(const bool a, const simdl &y) {
     return a > y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const bool a,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator<=(const bool a,
+                                                  const simdl &y) {
     return a <= y.elts;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const bool a,
-                                                     const simdl &y) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator>=(const bool a,
+                                                  const simdl &y) {
     return a >= y.elts;
   }
 
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator==(const simdl &x,
-                                                     const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator==(const simdl &x,
+                                                  const bool b) {
     return x.elts == b;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator!=(const simdl &x,
-                                                     const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator!=(const simdl &x,
+                                                  const bool b) {
     return x.elts != b;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<(const simdl &x,
-                                                    const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator<(const simdl &x, const bool b) {
     return x.elts < b;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>(const simdl &x,
-                                                    const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator>(const simdl &x, const bool b) {
     return x.elts > b;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator<=(const simdl &x,
-                                                     const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator<=(const simdl &x,
+                                                  const bool b) {
     return x.elts <= b;
   }
-  friend ARITH_DEVICE ARITH_HOST simdl<T> operator>=(const simdl &x,
-                                                     const bool b) {
+  friend ARITH_DEVICE ARITH_HOST simdl operator>=(const simdl &x,
+                                                  const bool b) {
     return x.elts >= b;
   }
 
+  friend ARITH_DEVICE ARITH_HOST simdl andnot(const simdl &x, const simdl &y) {
+#ifndef SIMD_CPU
+    return nsimd::andnotl(x.elts, y.elts);
+#else
+    return x && !y;
+#endif
+  }
   friend ARITH_DEVICE ARITH_HOST simd<T>
   if_else(const simdl &cond, const simd<T> &x, const simd<T> &y) {
 #ifndef SIMD_CPU
