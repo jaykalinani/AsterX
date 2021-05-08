@@ -29,6 +29,7 @@ constexpr int deriv_order = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 template <typename T>
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
 deriv1d(const T *restrict const var, const ptrdiff_t di, const T dx) {
@@ -144,6 +145,7 @@ deriv1d_diss(const T *restrict const var, const ptrdiff_t di, const T dx) {
             - 20 * var[0]) /
            dx;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -271,7 +273,7 @@ inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv2_2d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
           const ptrdiff_t dj, const T dx, const T dy) {
   constexpr size_t vsize = tuple_size_v<simd<T> >;
-  if (di == 1) {
+  if (false && di == 1) {
     alignas(alignof(simd<T>))
         array<T, (deriv_order + 1 + vsize - 1) / vsize * vsize>
             arrx;

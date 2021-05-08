@@ -569,6 +569,12 @@ rejected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
   return v - projected1(v, wl, w);
 }
 
+template <typename T>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto isbad(const T &x) {
+  return x != x || abs(x) <= numeric_limits<T>::epsilon() ||
+         abs(x) >= T(1) / numeric_limits<T>::epsilon();
+}
+
 template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
 calc_et(const gmat<T, D, UP, UP, symm> &gu) {
@@ -577,13 +583,8 @@ calc_et(const gmat<T, D, UP, UP, symm> &gu) {
   const vec<T, D, DN> etl([&](int a) ARITH_INLINE { return a == 0 ? e : z; });
   const auto et = raise(gu, etl);
   const auto etlen2 = -dot(etl, et);
-#ifdef CCTK_DEBUG
-  assert(!isnan(etlen2));
-  assert(all(etlen2 > numeric_limits<T>::epsilon()));
-#endif
   // This is necessary near a singularity
-  return if_else(etlen2 <= numeric_limits<T>::epsilon(), vec<T, D, UP>::unit(0),
-                 et / sqrt(etlen2));
+  return if_else(isbad(etlen2), vec<T, D, UP>::unit(0), et / sqrt(etlen2));
 }
 
 template <typename T, symm_t symm>
@@ -594,8 +595,7 @@ calc_ephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g) {
   const auto ephil = lower(g, ephi);
   const auto ephi_len2 = dot(ephil, ephi);
   ephi /= sqrt(ephi_len2);
-  return if_else(ephi_len2 < numeric_limits<T>::epsilon(),
-                 vec<T, 4, UP>::pure(z), ephi);
+  return if_else(isbad(ephi_len2), vec<T, 4, UP>::pure(z), ephi);
 }
 
 template <typename T, symm_t symm>
@@ -610,8 +610,7 @@ calc_etheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
   etheta /= sqrt(etheta_len2); // to improve accuracy
   etheta = rejected(g, etheta, ephi);
   etheta = normalized(g, etheta);
-  return if_else(etheta_len2 < numeric_limits<T>::epsilon(),
-                 vec<T, 4, UP>::pure(z), etheta);
+  return if_else(isbad(etheta_len2), vec<T, 4, UP>::pure(z), etheta);
 }
 
 template <typename T, symm_t symm>
@@ -626,8 +625,7 @@ calc_er(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
   er = rejected(g, er, etheta);
   er = rejected(g, er, ephi);
   er = normalized(g, er);
-  return if_else(er_len2 < numeric_limits<T>::epsilon(), vec<T, 4, UP>::pure(z),
-                 er);
+  return if_else(isbad(er_len2), vec<T, 4, UP>::pure(z), er);
 }
 
 template <typename T, int D, symm_t symm>

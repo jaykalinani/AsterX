@@ -354,7 +354,7 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
           const weyl_vars<vreal> vars(
               cctk_time, coord3, //
-              gf_gamma0(mask, index0, one<smat<vreal, 3, DN, DN> >()()),
+              gf_gamma0(mask, index0, one<smat<int, 3, DN, DN> >()()),
               gf_alpha0(mask, index0, 1), gf_beta0(mask, index0), //
               gf_k0(mask, index0), gf_dtalpha0(mask, index0),
               gf_dtbeta0(mask, index0), //
