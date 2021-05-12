@@ -530,6 +530,20 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T dot(const vec<T, D, DN> &vl,
   return sum<D>([&](int x) ARITH_INLINE { return vl(x) * v(x); });
 }
 
+template <typename T>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto isbad(const T &x) {
+  using std::sqrt;
+  return x != x || x <= sqrt(numeric_limits<T>::epsilon()) ||
+         x >= T(1) / sqrt(numeric_limits<T>::epsilon());
+}
+
+template <typename T, int D, dnup_t dnup>
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, dnup>
+ifbad(const vec<T, D, dnup> &x, const vec<T, D, dnup> &x0) {
+  const auto xnorm = maxabs(x);
+  return if_else(isbad(xnorm), x0, x);
+}
+
 template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
 normalized(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v) {
@@ -540,20 +554,18 @@ template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
 projected(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v,
           const vec<T, D, UP> &w) {
-  const auto z = zero<T>()();
   const auto wl = lower(g, w);
   const auto wlen2 = dot(wl, w);
-  return if_else(wlen2 <= numeric_limits<T>::epsilon(), vec<T, D, UP>::pure(z),
-                 dot(wl, v) / wlen2 * w);
+  return dot(wl, v) / wlen2 * w;
 }
 
-template <typename T, int D>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
-projected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
-           const vec<T, D, UP> &w) {
-  // assuming dot(wl, w) == 1
-  return dot(wl, v) * w;
-}
+// template <typename T, int D>
+// constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+// projected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
+//            const vec<T, D, UP> &w) {
+//   // assuming dot(wl, w) == 1
+//   return dot(wl, v) * w;
+// }
 
 template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
@@ -562,29 +574,26 @@ rejected(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v,
   return v - projected(g, v, w);
 }
 
-template <typename T, int D>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
-rejected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
-          const vec<T, D, UP> &w) {
-  return v - projected1(v, wl, w);
-}
-
-template <typename T>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto isbad(const T &x) {
-  return x != x || abs(x) <= numeric_limits<T>::epsilon() ||
-         abs(x) >= T(1) / numeric_limits<T>::epsilon();
-}
+// template <typename T, int D>
+// constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
+// rejected1(const vec<T, D, UP> &v, const vec<T, D, DN> &wl,
+//           const vec<T, D, UP> &w) {
+//   return v - projected1(v, wl, w);
+// }
 
 template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
 calc_et(const gmat<T, D, UP, UP, symm> &gu) {
-  const T z = zero<T>();
-  const T e = one<T>();
-  const vec<T, D, DN> etl([&](int a) ARITH_INLINE { return a == 0 ? e : z; });
-  const auto et = raise(gu, etl);
+  const auto etl = vec<T, D, DN>::unit(0);
+  auto et = raise(gu, etl);
   const auto etlen2 = -dot(etl, et);
+  et /= sqrt(etlen2);
   // This is necessary near a singularity
-  return if_else(isbad(etlen2), vec<T, D, UP>::unit(0), et / sqrt(etlen2));
+  et = ifbad(et, vec<T, D, UP>::unit(0));
+#ifdef CCTK_DEBUG
+  assert(!anyisnan(et));
+#endif
+  return et;
 }
 
 template <typename T, symm_t symm>
@@ -595,7 +604,11 @@ calc_ephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g) {
   const auto ephil = lower(g, ephi);
   const auto ephi_len2 = dot(ephil, ephi);
   ephi /= sqrt(ephi_len2);
-  return if_else(isbad(ephi_len2), vec<T, 4, UP>::pure(z), ephi);
+  ephi = ifbad(ephi, zero<vec<T, 4, UP> >()());
+#ifdef CCTK_DEBUG
+  assert(!anyisnan(ephi));
+#endif
+  return ephi;
 }
 
 template <typename T, symm_t symm>
@@ -610,7 +623,11 @@ calc_etheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
   etheta /= sqrt(etheta_len2); // to improve accuracy
   etheta = rejected(g, etheta, ephi);
   etheta = normalized(g, etheta);
-  return if_else(isbad(etheta_len2), vec<T, 4, UP>::pure(z), etheta);
+  etheta = ifbad(etheta, zero<vec<T, 4, UP> >()());
+#ifdef CCTK_DEBUG
+  assert(!anyisnan(etheta));
+#endif
+  return etheta;
 }
 
 template <typename T, symm_t symm>
@@ -625,7 +642,11 @@ calc_er(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
   er = rejected(g, er, etheta);
   er = rejected(g, er, ephi);
   er = normalized(g, er);
-  return if_else(isbad(er_len2), vec<T, 4, UP>::pure(z), er);
+  er = ifbad(er, zero<vec<T, 4, UP> >()());
+#ifdef CCTK_DEBUG
+  assert(!anyisnan(er));
+#endif
+  return er;
 }
 
 template <typename T, int D, symm_t symm>
@@ -646,7 +667,7 @@ calc_det(const gmat<T, D, UP, UP, symm> &gu,
     });
   });
 #ifdef CCTK_DEBUG
-  assert(!isnan(det));
+  assert(!anyisnan(det));
 #endif
   return det;
 }
@@ -673,7 +694,7 @@ calc_dephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
     });
   });
 #ifdef CCTK_DEBUG
-  assert(!isnan(dephi));
+  assert(!anyisnan(dephi));
 #endif
   return dephi;
 }
@@ -703,7 +724,7 @@ calc_detheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
     });
   });
 #ifdef CCTK_DEBUG
-  assert(!isnan(detheta));
+  assert(!anyisnan(detheta));
 #endif
   return detheta;
 }
@@ -735,7 +756,7 @@ calc_der(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
     });
   });
 #ifdef CCTK_DEBUG
-  assert(!isnan(der));
+  assert(!anyisnan(der));
 #endif
   return der;
 }

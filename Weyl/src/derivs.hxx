@@ -270,18 +270,17 @@ deriv2_1d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
 
 template <typename T>
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-deriv2_2d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
-          const ptrdiff_t dj, const T dx, const T dy) {
+deriv2_2d(const int vavail, const simdl<T> &mask, const T *restrict const var,
+          const ptrdiff_t di, const ptrdiff_t dj, const T dx, const T dy) {
   constexpr size_t vsize = tuple_size_v<simd<T> >;
-  if (false && di == 1) {
-    alignas(alignof(simd<T>))
-        array<T, (deriv_order + 1 + vsize - 1) / vsize * vsize>
-            arrx;
-    for (int i = -deriv_order / 2; i <= deriv_order / 2; i += vsize) {
-      const simdl<T> mask1 =
-          mask & mask_for_loop_tail<simdl<T> >(i, deriv_order / 2 + 1);
-      mask_storea(mask1, &arrx[deriv_order / 2 + i],
-                  deriv1d(mask1, &var[i], dj, dx));
+  if (di == 1) {
+    assert(vavail > 0);
+    constexpr int maxnpoints = deriv_order + 1 + vsize - 1;
+    const int npoints = deriv_order + 1 + min(int(vsize), vavail) - 1;
+    alignas(alignof(simd<T>)) array<T, maxnpoints> arrx;
+    for (int i = 0; i < npoints; i += vsize) {
+      const simdl<T> mask1 = mask_for_loop_tail<simdl<T> >(i, npoints);
+      mask_storea(mask1, &arrx[i], deriv1d(mask1, &var[i], dj, dx));
     }
     const T *const varx = (T *)(&arrx[deriv_order / 2]);
     return deriv1d(mask, varx, 1, dy);
@@ -401,7 +400,7 @@ deriv_upwind(const simdl<T> &mask, const GF3D2<const T> &gf_,
 template <int dir1, int dir2, typename T, int D>
 inline ARITH_INLINE
     ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 == dir2), simd<T> >
-    deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_,
+    deriv2(const int vavail, const simdl<T> &mask, const GF3D2<const T> &gf_,
            const vect<int, dim> &I, const vec<T, D, UP> &dx) {
   static_assert(dir1 >= 0 && dir1 < D, "");
   static_assert(dir2 >= 0 && dir2 < D, "");
@@ -413,14 +412,14 @@ inline ARITH_INLINE
 template <int dir1, int dir2, typename T, int D>
 inline ARITH_INLINE
     ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 != dir2), simd<T> >
-    deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_,
+    deriv2(const int vavail, const simdl<T> &mask, const GF3D2<const T> &gf_,
            const vect<int, dim> &I, const vec<T, D, UP> &dx) {
   static_assert(dir1 >= 0 && dir1 < D, "");
   static_assert(dir2 >= 0 && dir2 < D, "");
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir1));
   const ptrdiff_t dj = gf_.delta(DI(dir2));
-  return deriv2_2d(mask, &gf_(I), di, dj, dx(dir1), dx(dir2));
+  return deriv2_2d(vavail, mask, &gf_(I), di, dj, dx(dir1), dx(dir2));
 }
 
 template <int dir, typename T, int D>
@@ -499,11 +498,14 @@ deriv_upwind(const simdl<T> &mask, const GF3D2<const T> &gf_,
 
 template <typename T>
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<simd<T>, dim, DN, DN>
-deriv2(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec<T, dim, UP> &dx) {
-  return {deriv2<0, 0>(mask, gf_, I, dx), deriv2<0, 1>(mask, gf_, I, dx),
-          deriv2<0, 2>(mask, gf_, I, dx), deriv2<1, 1>(mask, gf_, I, dx),
-          deriv2<1, 2>(mask, gf_, I, dx), deriv2<2, 2>(mask, gf_, I, dx)};
+deriv2(const int vavail, const simdl<T> &mask, const GF3D2<const T> &gf_,
+       const vect<int, dim> &I, const vec<T, dim, UP> &dx) {
+  return {deriv2<0, 0>(vavail, mask, gf_, I, dx),
+          deriv2<0, 1>(vavail, mask, gf_, I, dx),
+          deriv2<0, 2>(vavail, mask, gf_, I, dx),
+          deriv2<1, 1>(vavail, mask, gf_, I, dx),
+          deriv2<1, 2>(vavail, mask, gf_, I, dx),
+          deriv2<2, 2>(vavail, mask, gf_, I, dx)};
 }
 
 template <typename T>
@@ -571,7 +573,7 @@ calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
         gf0.store(mask, index0, val);
         const auto dval = deriv(mask, gf1, p.I, dx);
         dgf0.store(mask, index0, dval);
-        const auto ddval = deriv2(mask, gf1, p.I, dx);
+        const auto ddval = deriv2(p.imax - p.i, mask, gf1, p.I, dx);
         ddgf0.store(mask, index0, ddval);
       });
 }
@@ -622,6 +624,6 @@ void calc_derivs2(
                    layout);
 }
 
-} // namespace Weyl
+} // namespace Z4c
 
 #endif // #ifndef DERIVS_HXX
