@@ -255,29 +255,25 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   // const GF3D2<CCTK_REAL> gf_c4yzyz1(layout1, c4yzyz);
 
-  // //
+  //
 
-  // const GF3D2<CCTK_REAL> gf_lt1(layout1, lt);
-  // const GF3D2<CCTK_REAL> gf_lx1(layout1, lx);
-  // const GF3D2<CCTK_REAL> gf_ly1(layout1, ly);
-  // const GF3D2<CCTK_REAL> gf_lz1(layout1, lz);
+  // const vec<GF3D2<CCTK_REAL>, 4, UP> gf_l1{
+  //     GF3D2<CCTK_REAL>(layout1, lt), GF3D2<CCTK_REAL>(layout1, lx),
+  //     GF3D2<CCTK_REAL>(layout1, ly), GF3D2<CCTK_REAL>(layout1, lz)};
 
-  // const GF3D2<CCTK_REAL> gf_nt1(layout1, nt);
-  // const GF3D2<CCTK_REAL> gf_nx1(layout1, nx);
-  // const GF3D2<CCTK_REAL> gf_ny1(layout1, ny);
-  // const GF3D2<CCTK_REAL> gf_nz1(layout1, nz);
+  // const vec<GF3D2<CCTK_REAL>, 4, UP> gf_n1{
+  //     GF3D2<CCTK_REAL>(layout1, nt), GF3D2<CCTK_REAL>(layout1, nx),
+  //     GF3D2<CCTK_REAL>(layout1, ny), GF3D2<CCTK_REAL>(layout1, nz)};
 
-  // const GF3D2<CCTK_REAL> gf_mret1(layout1, mret);
-  // const GF3D2<CCTK_REAL> gf_mrex1(layout1, mrex);
-  // const GF3D2<CCTK_REAL> gf_mrey1(layout1, mrey);
-  // const GF3D2<CCTK_REAL> gf_mrez1(layout1, mrez);
+  // const vec<GF3D2<CCTK_REAL>, 4, UP> gf_mre1{
+  //     GF3D2<CCTK_REAL>(layout1, mret), GF3D2<CCTK_REAL>(layout1, mrex),
+  //     GF3D2<CCTK_REAL>(layout1, mrey), GF3D2<CCTK_REAL>(layout1, mrez)};
 
-  // const GF3D2<CCTK_REAL> gf_mimt1(layout1, mimt);
-  // const GF3D2<CCTK_REAL> gf_mimx1(layout1, mimx);
-  // const GF3D2<CCTK_REAL> gf_mimy1(layout1, mimy);
-  // const GF3D2<CCTK_REAL> gf_mimz1(layout1, mimz);
+  // const vec<GF3D2<CCTK_REAL>, 4, UP> gf_mim1{
+  //     GF3D2<CCTK_REAL>(layout1, mimt), GF3D2<CCTK_REAL>(layout1, mimx),
+  //     GF3D2<CCTK_REAL>(layout1, mimy), GF3D2<CCTK_REAL>(layout1, mimz)};
 
-  // //
+  //
 
   // const GF3D2<CCTK_REAL> gf_Lambda1(layout1, Lambda);
   // const GF3D2<CCTK_REAL> gf_Phi00(layout1, Phi00);
@@ -474,16 +470,12 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
           // gf_c4yzyz1(p.I) = vars.C(2, 3)(2, 3);
 
-          // vars.l.store(gf_lt1, gf_lx1, gf_ly1, gf_lz1, p.I);
-          // vars.n.store(gf_nt1, gf_nx1, gf_ny1, gf_nz1, p.I);
-          // gf_mret1(p.I) = real(vars.m(0));
-          // gf_mrex1(p.I) = real(vars.m(1));
-          // gf_mrey1(p.I) = real(vars.m(2));
-          // gf_mrez1(p.I) = real(vars.m(3));
-          // gf_mimt1(p.I) = imag(vars.m(0));
-          // gf_mimx1(p.I) = imag(vars.m(1));
-          // gf_mimy1(p.I) = imag(vars.m(2));
-          // gf_mimz1(p.I) = imag(vars.m(3));
+          // gf_l1.store(mask, index1, vars.l);
+          // gf_n1.store(mask, index1, vars.n);
+          // gf_mre1.store(mask, index1,
+          //               fmap([](const auto &x) { return real(x); }, vars.m));
+          // gf_mim1.store(mask, index1,
+          //               fmap([](const auto &x) { return imag(x); }, vars.m));
 
           // gf_Lambda1(p.I) = vars.Lambda;
           // gf_Phi00(p.I) = vars.Phi00;
