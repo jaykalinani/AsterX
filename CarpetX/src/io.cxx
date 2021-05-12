@@ -75,9 +75,11 @@ void RecoverGH(const cGH *restrict cctkGH) {
   Interval interval(timer);
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
-  if (is_root)
-    CCTK_VINFO("RecoverGH: iteration %d, time %f", cctk_iteration,
-               double(cctk_time));
+  if (is_root) {
+    const int runtime = CCTK_RunTime(); // seconds
+    CCTK_VINFO("RecoverGH: iteration %d, time %f, run time %.2f h",
+               cctk_iteration, double(cctk_time), double(runtime / 3600));
+  }
 
   // Find input groups
   const vector<bool> group_enabled = [&] {
@@ -137,8 +139,9 @@ void InputGH(const cGH *restrict cctkGH) {
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root) {
-    CCTK_VINFO("InputGH: iteration %d, time %f", cctk_iteration,
-               double(cctk_time));
+    const int runtime = CCTK_RunTime(); // seconds
+    CCTK_VINFO("InputGH: iteration %d, time %f, run time %.2f h",
+               cctk_iteration, double(cctk_time), double(runtime / 3600));
     CCTK_VINFO("Input for groups:");
     for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
       if (input_group.at(gi))
@@ -655,8 +658,9 @@ extern "C" void CarpetX_CheckpointInitial(CCTK_ARGUMENTS) {
   const int runtime = CCTK_RunTime(); // seconds
 
   if (checkpoint_ID) {
-    CCTK_VINFO("Checkpointing initial conditions at iteration %d, time %f",
-               cctk_iteration, double(cctk_time));
+    CCTK_VINFO("Checkpointing initial conditions at iteration %d, time %f, run "
+               "time %.2f h",
+               cctk_iteration, double(cctk_time), double(runtime / 3600));
     Checkpoint(cctkGH);
     last_checkpoint_runtime = runtime;
   }
@@ -688,8 +692,10 @@ extern "C" void CarpetX_CheckpointTerminate(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   if (checkpoint_on_terminate) {
-    CCTK_VINFO("Checkpointing before terminating at iteration %d, time %f",
-               cctk_iteration, double(cctk_time));
+    const int runtime = CCTK_RunTime(); // seconds
+    CCTK_VINFO("Checkpointing before terminating at iteration %d, time %f, run "
+               "time %.2f h",
+               cctk_iteration, double(cctk_time), double(runtime / 3600));
     Checkpoint(cctkGH);
   }
 }
