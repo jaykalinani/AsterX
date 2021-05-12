@@ -159,10 +159,14 @@ int InputSiloParameters(const std::string &input_dir,
   if (read_metafile) {
 
     // Find latest iteration (if any)
-    for (const auto &direntry : filesystem::directory_iterator(input_dir)) {
-      const auto &filename = direntry.path().filename().string();
-      const int iter = match_filename(filename);
-      input_iteration = max(input_iteration, iter);
+    try {
+      for (const auto &direntry : filesystem::directory_iterator(input_dir)) {
+        const auto &filename = direntry.path().filename().string();
+        const int iter = match_filename(filename);
+        input_iteration = max(input_iteration, iter);
+      }
+    } catch (const filesystem::filesystem_error &) {
+      // do nothing if directory does not exist
     }
   }
 
