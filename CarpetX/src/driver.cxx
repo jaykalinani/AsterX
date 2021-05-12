@@ -20,12 +20,14 @@
 #include <omp.h>
 #include <mpi.h>
 
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace CarpetX {
 using namespace std;
@@ -1093,6 +1095,119 @@ void CactusAmrCore::ClearLevel(const int level) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <typename T, size_t N> inline vector<T> seq(const array<T, N> &v) {
+  vector<T> r;
+  for (const auto &x : v)
+    r.push_back(x);
+  return r;
+}
+
+template <typename T, size_t N>
+inline vector<vector<T> > seqs(const vector<array<T, N> > &v) {
+  vector<vector<T> > r;
+  for (const auto &x : v)
+    r.push_back(seq(x));
+  return r;
+}
+
+} // namespace CarpetX
+
+namespace std {
+template <typename T, size_t N>
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const array<T, N> &arr) {
+  yaml << YAML::Flow << YAML::BeginSeq;
+  for (const auto &elt : arr)
+    yaml << elt;
+  yaml << YAML::EndSeq;
+  return yaml;
+}
+} // namespace std
+
+namespace amrex {
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::IntVect &iv) {
+  yaml << YAML::Flow << YAML::BeginSeq;
+  for (int d = 0; d < AMREX_SPACEDIM; ++d)
+    yaml << iv[d];
+  yaml << YAML::EndSeq;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::Box &box) {
+  yaml << YAML::LocalTag("box-1.0.0");
+  yaml << YAML::Flow << YAML::BeginMap;
+  yaml << YAML::Key << "small" << YAML::Value << box.smallEnd();
+  yaml << YAML::Key << "big" << YAML::Value << box.bigEnd();
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::RealBox &rbox) {
+  yaml << YAML::LocalTag("realbox-1.0.0");
+  yaml << YAML::Flow << YAML::BeginMap;
+  yaml << YAML::Key << "xlo" << YAML::Value
+       << std::vector<amrex::Real>(rbox.lo(), rbox.lo() + AMREX_SPACEDIM);
+  yaml << YAML::Key << "xhi" << YAML::Value
+       << std::vector<amrex::Real>(rbox.hi(), rbox.hi() + AMREX_SPACEDIM);
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::BoxArray &ba) {
+  yaml << YAML::LocalTag("boxarray-1.0.0");
+  yaml << YAML::BeginSeq;
+  for (int n = 0; n < ba.size(); ++n)
+    yaml << ba[n];
+  yaml << YAML::EndSeq;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::Geometry &geom) {
+  yaml << YAML::LocalTag("geometry-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "prob_domain" << YAML::Value << geom.ProbDomain();
+  yaml << YAML::Key << "domain" << YAML::Value << geom.Domain();
+  yaml << YAML::Key << "is_periodic" << YAML::Value << geom.isPeriodic();
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                          const amrex::DistributionMapping &dm) {
+  yaml << YAML::LocalTag("distributionmapping-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "processorMap" << YAML::Value << YAML::Flow
+       << dm.ProcessorMap();
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::FabArrayBase &fab) {
+  yaml << YAML::LocalTag("fabarraybase-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "ixType" << YAML::Value << fab.ixType().toIntVect();
+  yaml << YAML::Key << "nGrowVect" << YAML::Value << fab.nGrowVect();
+  yaml << YAML::Key << "boxArray" << YAML::Value << fab.boxArray();
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::AmrCore &amrcore) {
+  yaml << YAML::LocalTag("amrcore-1.0.0");
+  yaml << YAML::BeginMap;
+  yaml << YAML::Key << "maxLevel" << YAML::Value << amrcore.maxLevel();
+  yaml << YAML::Key << "finestLevel" << YAML::Value << amrcore.finestLevel();
+  yaml << YAML::Key << "geometry" << YAML::Value << amrcore.Geom();
+  yaml << YAML::Key << "distributionMapping" << YAML::Value
+       << amrcore.DistributionMap();
+  yaml << YAML::Key << "boxArray" << YAML::Value << amrcore.boxArray();
+  yaml << YAML::EndMap;
+  return yaml;
+}
+
+} // namespace amrex
+namespace CarpetX {
+
 YAML::Emitter &operator<<(YAML::Emitter &yaml,
                           const GHExt::CommonGroupData &commongroupdata) {
   yaml << YAML::LocalTag("commongroupdata-1.0.0");
@@ -1100,6 +1215,11 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   yaml << YAML::Key << "groupname" << YAML::Value
        << CCTK_FullGroupName(commongroupdata.groupindex);
   yaml << YAML::Key << "numvars" << YAML::Value << commongroupdata.numvars;
+  yaml << YAML::Key << "varnames" << YAML::Value << YAML::Flow
+       << YAML::BeginSeq;
+  for (int vi = 0; vi < commongroupdata.numvars; ++vi)
+    yaml << CCTK_VarName(commongroupdata.firstvarindex + vi);
+  yaml << YAML::EndSeq;
   yaml << YAML::Key << "do_checkpoint" << YAML::Value
        << commongroupdata.do_checkpoint;
   yaml << YAML::Key << "do_restrict" << YAML::Value
@@ -1134,21 +1254,6 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   return yaml;
 }
 
-template <typename T, size_t N> inline vector<T> seq(const array<T, N> &v) {
-  vector<T> r;
-  for (const auto &x : v)
-    r.push_back(x);
-  return r;
-}
-
-template <typename T, size_t N>
-inline vector<vector<T> > seqs(const vector<array<T, N> > &v) {
-  vector<vector<T> > r;
-  for (const auto &x : v)
-    r.push_back(seq(x));
-  return r;
-}
-
 YAML::Emitter &operator<<(YAML::Emitter &yaml,
                           const GHExt::LevelData::GroupData &groupdata) {
   yaml << YAML::LocalTag("groupdata-1.0.0");
@@ -1165,38 +1270,6 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   yaml << YAML::Key << "fluxes" << YAML::Value << YAML::Flow << YAML::BeginSeq;
   for (const int flux : groupdata.fluxes)
     yaml << (flux >= 0 ? CCTK_FullGroupName(flux) : "");
-  yaml << YAML::EndSeq;
-  yaml << YAML::EndMap;
-  return yaml;
-}
-
-YAML::Emitter &operator<<(YAML::Emitter &yaml, const amrex::FabArrayBase &fab) {
-  yaml << YAML::LocalTag("fabarraybase-1.0.0");
-  yaml << YAML::BeginMap;
-  yaml << YAML::Key << "ixType" << YAML::Value << YAML::Flow << YAML::BeginSeq;
-  const auto ixtype = fab.ixType();
-  for (int d = 0; d < dim; ++d)
-    yaml << ixtype[d];
-  yaml << YAML::EndSeq;
-  yaml << YAML::Key << "nGrowVect" << YAML::Value << YAML::Flow
-       << YAML::BeginSeq;
-  const auto ngrowvect = fab.nGrowVect();
-  for (int d = 0; d < dim; ++d)
-    yaml << ngrowvect[d];
-  yaml << YAML::EndSeq;
-  yaml << YAML::Key << "boxArray" << YAML::Value << YAML::BeginSeq;
-  for (int n = 0; n < fab.size(); ++n) {
-    yaml << YAML::Flow << YAML::BeginMap;
-    yaml << YAML::Key << "small" << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (int d = 0; d < dim; ++d)
-      yaml << fab.boxArray()[n].smallEnd(d);
-    yaml << YAML::EndSeq;
-    yaml << YAML::Key << "big" << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (int d = 0; d < dim; ++d)
-      yaml << fab.boxArray()[n].bigEnd(d);
-    yaml << YAML::EndSeq;
-    yaml << YAML::EndMap;
-  }
   yaml << YAML::EndSeq;
   yaml << YAML::EndMap;
   return yaml;
@@ -1223,9 +1296,9 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
 }
 
 YAML::Emitter &operator<<(YAML::Emitter &yaml, const GHExt &ghext) {
-  yaml << YAML::LocalTag("ghext-1.0.0");
+  yaml << YAML::LocalTag("ghext-1.1.0");
   yaml << YAML::BeginMap;
-  // yaml << YAML::Key << "amrcore" << YAML::Value << /*TODO*/ "*ghext.amrcore";
+  yaml << YAML::Key << "amrcore" << YAML::Value << *ghext.amrcore;
   yaml << YAML::Key << "globaldata" << YAML::Value << ghext.globaldata;
   yaml << YAML::Key << "leveldata" << YAML::Value << ghext.leveldata;
   yaml << YAML::EndMap;
