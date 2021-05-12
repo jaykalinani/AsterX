@@ -611,6 +611,13 @@ void Checkpoint(const cGH *const restrict cctkGH) {
 
   static int last_checkpoint_iteration = -1;
 
+  if (cctkGH->cctk_iteration == recover_iteration) {
+    CCTK_VINFO(
+        "Recovered from checkpoint at iteration %d; skipping checkpointing",
+        cctkGH->cctk_iteration);
+    return;
+  }
+
   if (cctkGH->cctk_iteration <= last_checkpoint_iteration) {
     CCTK_VINFO(
         "Already wrote checkpoint at iteration %d; skipping checkpointing",
