@@ -646,22 +646,25 @@ void Checkpoint(const cGH *const restrict cctkGH) {
 #endif
 }
 
+int last_checkpoint_runtime = -1; // seconds
+
 extern "C" void CarpetX_CheckpointInitial(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
+
+  const int runtime = CCTK_RunTime(); // seconds
 
   if (checkpoint_ID) {
     CCTK_VINFO("Checkpointing initial conditions at iteration %d, time %f",
                cctk_iteration, double(cctk_time));
     Checkpoint(cctkGH);
+    last_checkpoint_runtime = runtime;
   }
 }
 
 extern "C" void CarpetX_Checkpoint(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
-
-  static int last_checkpoint_runtime = -1; // seconds
 
   const int runtime = CCTK_RunTime(); // seconds
 
@@ -671,12 +674,12 @@ extern "C" void CarpetX_Checkpoint(CCTK_ARGUMENTS) {
       checkpoint_every_walltime_hours > 0 &&
       runtime >= last_checkpoint_runtime +
                      lrint(checkpoint_every_walltime_hours * 3600);
-  last_checkpoint_runtime = runtime;
 
   if (checkpoint_by_iteration || checkpoint_by_walltime) {
     CCTK_VINFO("Checkpointing at iteration %d, time %f, run time %.2f h",
                cctk_iteration, double(cctk_time), double(runtime / 3600));
     Checkpoint(cctkGH);
+    last_checkpoint_runtime = runtime;
   }
 }
 
