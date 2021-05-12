@@ -198,7 +198,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
         c = tolower(c);
       const string filename = [&]() {
         ostringstream buf;
-        buf << out_dir << "/" << groupname << ".it" << setw(6) << setfill('0')
+        buf << out_dir << "/" << groupname << ".it" << setw(8) << setfill('0')
             << cctk_iteration;
         return buf.str();
       }();
@@ -237,7 +237,7 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
         ofstream visit(visitname, ios::app);
         assert(visit.good());
         // visit << filename << "/Header\n";
-        visit << groupname << ".it" << setw(6) << setfill('0') << cctk_iteration
+        visit << groupname << ".it" << setw(8) << setfill('0') << cctk_iteration
               << "/Header\n";
         visit.close();
       }
@@ -285,7 +285,7 @@ void OutputNorms(const cGH *restrict cctkGH) {
   ofstream file;
   if (is_root) {
     ostringstream buf;
-    buf << out_dir << "/norms.it" << setw(6) << setfill('0') << cctk_iteration
+    buf << out_dir << "/norms.it" << setw(8) << setfill('0') << cctk_iteration
         << ".tsv";
     const string filename = buf.str();
     file = ofstream(filename);
@@ -503,7 +503,8 @@ void OutputMetadata(const cGH *restrict cctkGH) {
   yaml << YAML::EndDoc;
 
   ostringstream buf;
-  buf << out_dir << "/metadata.yaml";
+  buf << out_dir << "/metadata"
+      << ".it" << setw(8) << setfill('0') << cctk_iteration << ".yaml";
   const string filename = buf.str();
 
   ofstream file(filename.c_str(), std::ofstream::out);
