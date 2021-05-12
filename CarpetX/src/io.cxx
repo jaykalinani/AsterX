@@ -21,6 +21,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <future>
 #include <regex>
 
 namespace CarpetX {
@@ -474,16 +475,17 @@ void OutputMetadata(const cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d)
     yaml << cctk_nghostzones[d];
   yaml << YAML::EndSeq;
-  yaml << YAML::Key << "origin_space";
-  yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
-  for (int d = 0; d < dim; ++d)
-    yaml << cctk_origin_space[d];
-  yaml << YAML::EndSeq;
-  yaml << YAML::Key << "delta_space";
-  yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
-  for (int d = 0; d < dim; ++d)
-    yaml << cctk_delta_space[d];
-  yaml << YAML::EndSeq;
+  // Note: origin_space and delta_space are nan at this point
+  // yaml << YAML::Key << "origin_space";
+  // yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  // for (int d = 0; d < dim; ++d)
+  //   yaml << cctk_origin_space[d];
+  // yaml << YAML::EndSeq;
+  // yaml << YAML::Key << "delta_space";
+  // yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  // for (int d = 0; d < dim; ++d)
+  //   yaml << cctk_delta_space[d];
+  // yaml << YAML::EndSeq;
   yaml << YAML::Key << "iteration";
   yaml << YAML::Value << cctk_iteration;
   yaml << YAML::Key << "time";
@@ -520,7 +522,12 @@ int OutputGH(const cGH *restrict cctkGH) {
                double(cctk_time), CCTK_RunTime());
 
   if (out_every > 0 && cctk_iteration % out_every == 0) {
-    OutputMetadata(cctkGH);
+    vector<future<void> > tasks;
+    const auto launch = [&](const auto &fun) {
+      tasks.push_back(async(std::launch::async, fun));
+    };
+
+    launch([&]() { OutputMetadata(cctkGH); });
 
     OutputNorms(cctkGH);
 
@@ -584,6 +591,9 @@ int OutputGH(const cGH *restrict cctkGH) {
     OutputTSVold(cctkGH);
 
     OutputTSV(cctkGH);
+
+    for (auto &task : tasks)
+      task.wait();
   }
 
   // TODO: This should be the number of variables output
