@@ -127,6 +127,11 @@ template <typename T, typename U> struct dual {
     using std::abs, std::copysign;
     return {abs(x.val), copysign(T{1}, x.val) * x.eps};
   }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  anyisnan(const dual &x) {
+    return anyisnan(x.val) ||
+           any(fmap([](const auto &a) { return anyisnan(a); }, x.eps));
+  }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
   cbrt(const dual &x) {
     using std::cbrt;
@@ -150,10 +155,19 @@ template <typename T, typename U> struct dual {
     using std::abs, std::copysign;
     return {abs(x.val), copysign(T{1}, x.val) * x.eps};
   }
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   isnan(const dual &x) {
     using std::isnan;
-    return isnan(x.val) || isnan(x.eps);
+    return isnan(x.val) ||
+           any(fmap([](const auto &a) { return isnan(a); }, x.eps));
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
+  max(const dual &x, const dual &y) {
+    return if_else(x >= y, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
+  min(const dual &x, const dual &y) {
+    return if_else(x >= y, x, y);
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual pow(const dual &x,
                                                                  const int n) {

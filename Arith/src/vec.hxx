@@ -241,13 +241,38 @@ public:
     return *this = *this % a;
   }
 
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   operator==(const vec<T, D, dnup> &x, const vec<T, D, dnup> &y) {
     return all(x.elts == y.elts);
   }
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   operator!=(const vec<T, D, dnup> &x, const vec<T, D, dnup> &y) {
     return !(x == y);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  all(const vec &x) {
+    return all(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  any(const vec &x) {
+    return any(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  anyisnan(const vec &x) {
+    return anyisnan(x.elts);
+  }
+
+  friend constexpr
+      ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*vec<bool, D, dnup>*/
+      isnan(const vec &x) {
+    return isnan(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T maxabs(const vec &x) {
+    return maxabs(x.elts);
   }
 
   friend ostream &operator<<(ostream &os, const vec<T, D, dnup> &v) {
@@ -283,18 +308,6 @@ template <typename T, int D, dnup_t dnup> struct nan<vec<T, D, dnup> > {
     return vec<T, D, dnup>::pure(nan<T>());
   }
 };
-
-template <typename T, int D, dnup_t dnup>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
-isnan(const vec<T, D, dnup> &x) {
-  return isnan(vect<T, vec<T, D, dnup>::size_value>(x));
-}
-
-template <typename T, int D, dnup_t dnup>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-maxabs(const vec<T, D, dnup> &x) {
-  return maxabs(vect<T, vec<T, D, dnup>::size_value>(x));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 

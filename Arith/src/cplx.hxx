@@ -122,6 +122,10 @@ template <typename T> struct cplx {
   abs(const cplx &x) {
     return sqrt(norm(x));
   }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  anyisnan(const cplx &x) {
+    return anyisnan(x.real) || anyisnan(x.imag);
+  }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST cplx
   cbrt(const cplx &x) {
     using std::cbrt;

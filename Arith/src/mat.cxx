@@ -10,15 +10,13 @@ using namespace std;
 
 template <typename T, typename U> constexpr bool eq(const T &x, const U &y) {
   using std::isnan;
-  return equal_to<CCTK_REAL>()(x, y) || (isnan(x) && isnan(y));
+  return x == y || (isnan(x) && isnan(y));
 }
 
 template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
 constexpr bool eqm(const gmat<T, D, dnup1, dnup2, symm> &x,
                    const gmat<T, D, dnup1, dnup2, symm> &y) {
-  using std::isnan;
-  return equal_to<gmat<T, D, dnup1, dnup2, symm> >()(x, y) ||
-         (isnan(x) && isnan(y));
+  return all(fmap([](const auto &a, const auto &b) { return eq(a, b); }, x, y));
 }
 
 // This function is compiled, but not executed. The tests are "run" at

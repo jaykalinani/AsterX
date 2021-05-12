@@ -101,6 +101,14 @@ template <> struct nan<double> {
 
 constexpr ARITH_INLINE bool all(bool x) { return x; }
 constexpr ARITH_INLINE bool any(bool x) { return x; }
+constexpr ARITH_INLINE bool anyisnan(const float &x) {
+  using std::isnan;
+  return isnan(x);
+}
+constexpr ARITH_INLINE bool anyisnan(const double &x) {
+  using std::isnan;
+  return isnan(x);
+}
 template <typename T, typename U>
 constexpr ARITH_INLINE auto if_else(bool c, const T &x, const U &y) {
   return c ? x : y;

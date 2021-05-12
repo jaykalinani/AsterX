@@ -284,14 +284,20 @@ template <typename T, int D> struct vect {
     return fmap(abs, x);
   }
 
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   all(const vect &x) {
-    return fold([](const T &a, const T &b) { return a && b; }, true, x);
+    return fold([](const T &a, const T &b) { return a && b; }, one<T>()(), x);
   }
 
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   any(const vect &x) {
-    return fold([](const T &a, const T &b) { return a || b; }, false, x);
+    return fold([](const T &a, const T &b) { return a || b; }, zero<T>()(), x);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  anyisnan(const vect &x) {
+    using std::isnan;
+    return any(fmap([](const auto &a) { return anyisnan(a); }, x));
   }
 
   template <typename C>
@@ -302,10 +308,10 @@ template <typename T, int D> struct vect {
         cond, x, y);
   }
 
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*vect<bool, D>*/
   isnan(const vect &x) {
     using std::isnan;
-    return any(fmap([](const T &a) { return isnan(a); }, x));
+    return fmap([](const T &a) { return isnan(a); }, x);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect

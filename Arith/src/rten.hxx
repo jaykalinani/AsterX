@@ -314,15 +314,41 @@ public:
     return *this = *this % a;
   }
 
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   operator==(const rten<T, D, dnup1, dnup2, dnup3, dnup4> &x,
              const rten<T, D, dnup1, dnup2, dnup3, dnup4> &y) {
     return all(x.elts == y.elts);
   }
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   operator!=(const rten<T, D, dnup1, dnup2, dnup3, dnup4> &x,
              const rten<T, D, dnup1, dnup2, dnup3, dnup4> &y) {
     return !(x == y);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  all(const rten &x) {
+    return all(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  any(const rten &x) {
+    return any(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  anyisnan(const rten &x) {
+    return anyisnan(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE
+      ARITH_HOST auto /*rten<bool, D, dnup1, dnup2, dnup3, dnup4>*/
+      isnan(const rten &x) {
+    return isnan(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+  maxabs(const rten &x) {
+    return maxabs(x.elts);
   }
 
   friend ostream &operator<<(ostream &os,
@@ -365,20 +391,6 @@ struct nan<rten<T, D, dnup1, dnup2, dnup3, dnup4> > {
     return value;
   }
 };
-
-template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
-          dnup_t dnup4>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
-isnan(const rten<T, D, dnup1, dnup2, dnup3, dnup4> &x) {
-  return isnan(vect<T, rten<T, D, dnup1, dnup2, dnup3, dnup4>::size_value>(x));
-}
-
-template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
-          dnup_t dnup4>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-maxabs(const rten<T, D, dnup1, dnup2, dnup3, dnup4> &x) {
-  return maxabs(vect<T, rten<T, D, dnup1, dnup2, dnup3, dnup4>::size_value>(x));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 

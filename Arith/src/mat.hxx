@@ -309,15 +309,41 @@ public:
     return *this = *this % a;
   }
 
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   operator==(const gmat<T, D, dnup1, dnup2, symm> &x,
              const gmat<T, D, dnup1, dnup2, symm> &y) {
     return all(x.elts == y.elts);
   }
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   operator!=(const gmat<T, D, dnup1, dnup2, symm> &x,
              const gmat<T, D, dnup1, dnup2, symm> &y) {
     return !(x == y);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  all(const gmat &x) {
+    return all(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  any(const gmat &x) {
+    return any(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  anyisnan(const gmat &x) {
+    return anyisnan(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE
+      ARITH_HOST auto /*gmat<bool, D, dnup1, dnup2, symm>*/
+      isnan(const gmat &x) {
+    return isnan(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+  maxabs(const gmat &x) {
+    return maxabs(x.elts);
   }
 
   friend ostream &operator<<(ostream &os,
@@ -392,18 +418,6 @@ struct nan<gmat<T, D, dnup1, dnup2, symm> > {
     return value;
   }
 };
-
-template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
-isnan(const gmat<T, D, dnup1, dnup2, symm> &x) {
-  return isnan(vect<T, gmat<T, D, dnup1, dnup2, symm>::size_value>(x));
-}
-
-template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-maxabs(const gmat<T, D, dnup1, dnup2, symm> &x) {
-  return maxabs(vect<T, gmat<T, D, dnup1, dnup2, symm>::size_value>(x));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
