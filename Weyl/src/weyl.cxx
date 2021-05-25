@@ -346,7 +346,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
           // Load and calculate
 
-          const vec<CCTK_REAL, 3, UP> coord3{p.x, p.y, p.z};
+          const vec<vreal, 3, UP> coord3(
+              [&](int d) { return p.X[d] + iota<vreal>() * p.DX[d]; });
 
           const weyl_vars<vreal> vars(
               cctk_time, coord3, //
