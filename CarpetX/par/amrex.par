@@ -21,5 +21,24 @@ CarpetX::max_num_levels = $nlevels
 
 CarpetX::dtfac = 0.5
 
-IO::out_dir = "wavetoy"
+IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 2
+
+# CarpetX::out_adios2_vars = "
+#     WaveToyCarpetX::state
+#     WaveToyCarpetX::energy
+#     WaveToyCarpetX::err
+# "
+
+CarpetX::out_silo_vars = "
+    WaveToyCarpetX::state
+    WaveToyCarpetX::energy
+    WaveToyCarpetX::err
+"
+
+CarpetX::out_openpmd_author = "Erik Schnetter <schnetter@gmail.com>"
+CarpetX::out_openpmd_vars = "
+    WaveToyCarpetX::state
+    WaveToyCarpetX::energy
+    WaveToyCarpetX::err
+"

@@ -1506,12 +1506,18 @@ int ScheduleTraverseGH(cGH *restrict cctkGH, const char *where) {
 }
 
 // Shut down driver
+void ShutdownADIOS2();
+void ShutdownOpenPMD();
 extern "C" int CarpetX_Shutdown() {
   DECLARE_CCTK_PARAMETERS;
 
   if (verbose)
 #pragma omp critical
     CCTK_VINFO("Shutdown");
+
+  // Shut down ADIOS2
+  ShutdownADIOS2();
+  ShutdownOpenPMD();
 
   // Deallocate memory pools
   mempools.reset();

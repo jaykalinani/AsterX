@@ -4,10 +4,11 @@
 #include <fixmath.hxx>
 #include <cctk.h>
 
+#ifdef HAVE_CAPABILITY_Silo
+
 #include <string>
 #include <vector>
 
-#ifdef HAVE_CAPABILITY_Silo
 namespace CarpetX {
 
 int InputSiloParameters(const std::string &input_dir,
@@ -21,6 +22,7 @@ void OutputSilo(const cGH *cctkGH, const std::vector<bool> &output_group,
                 const std::string &output_dir, const std::string &output_file);
 
 } // namespace CarpetX
+
 #endif
 
 #endif // #ifndef IO_SILO_HXX

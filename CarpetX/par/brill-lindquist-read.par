@@ -1,6 +1,5 @@
 ActiveThorns = "
     ADMBase
-    BrillLindquist
     CarpetX
     IOUtil
     ODESolvers
@@ -54,15 +53,14 @@ ADMBase::initial_data = "none"
 ADMBase::initial_lapse = "none"
 ADMBase::initial_shift = "none"
 
-BrillLindquist::x0 = 0.0
-BrillLindquist::mass = 1.0
-
+IO::out_dir = $parfile
+IO::out_every = 1
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
-CarpetX::in_dir = "/Users/eschnett/simulations/brill-lindquist-write/output-0000/brill-lindquist-write"
-CarpetX::in_file = "brill-lindquist-write"
-CarpetX::in_silo_vars = "
+IO::filereader_ID_dir = "/Users/eschnett/simulations/brill-lindquist-write/output-0000/brill-lindquist-write"
+IO::filereader_ID_files = "brill-lindquist-write"
+CarpetX::filereader_ID_openpmd_vars = "
     ADMBase::metric
     ADMBase::curv
     ADMBase::lapse
@@ -71,8 +69,8 @@ CarpetX::in_silo_vars = "
     ADMBase::dtshift
 "
 
-IO::out_dir = $parfile
-IO::out_every = 1
+CarpetX::out_metadata = yes
+CarpetX::out_openpmd_vars = "all"
 CarpetX::out_plotfile_groups = ""
 CarpetX::out_silo_vars = "all"
 CarpetX::out_tsv = no

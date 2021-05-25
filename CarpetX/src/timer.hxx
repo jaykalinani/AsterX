@@ -19,6 +19,8 @@ class Timer {
 public:
   Timer() = delete;
   Timer(const string &name);
+
+  void print() const;
 };
 
 class Interval {

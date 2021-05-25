@@ -1,5 +1,7 @@
 #include "driver.hxx"
 #include "io.hxx"
+#include "io_adios2.hxx"
+#include "io_openpmd.hxx"
 #include "io_silo.hxx"
 #include "io_tsv.hxx"
 #include "reduction.hxx"
@@ -26,6 +28,56 @@
 
 namespace CarpetX {
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+vector<bool> find_groups(const char *const method, const char *const out_vars) {
+  DECLARE_CCTK_PARAMETERS;
+
+  vector<bool> enabled(CCTK_NumGroups(), false);
+  const auto callback{
+      [](const int index, const char *const optstring, void *const arg) {
+        vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
+        enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
+      }};
+  CCTK_TraverseString(out_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
+  if (verbose) {
+    CCTK_VINFO("%s output for groups:", method);
+    for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+      if (enabled.at(gi))
+        CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+  }
+  return enabled;
+}
+
+string get_parameter_filename() {
+  vector<char> buf(10000);
+  int ilen = CCTK_ParameterFilename(buf.size(), buf.data());
+  assert(ilen < int(buf.size() - 1));
+  string parfilename(buf.data());
+  // Remove directory prefix, if any
+  auto slash = parfilename.rfind('/');
+  if (slash != string::npos)
+    parfilename = parfilename.substr(slash + 1);
+  // Remove suffix, if it is there
+  auto suffix = parfilename.rfind('.');
+  if (suffix != string::npos && parfilename.substr(suffix) == ".par")
+    parfilename = parfilename.substr(0, suffix);
+  return parfilename;
+}
+
+string get_simulation_name() {
+  string name = get_parameter_filename();
+  const size_t last_slash = name.rfind('/');
+  if (last_slash != string::npos && last_slash < name.length())
+    name = name.substr(last_slash + 1);
+  const size_t last_dot = name.rfind('.');
+  if (last_dot != string::npos && last_dot > 0)
+    name = name.substr(0, last_dot);
+  return name;
+}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -119,43 +171,50 @@ void InputGH(const cGH *restrict cctkGH) {
   if (filereader_ID_files[0] == '\0')
     return;
 
-  // Find input groups
-  const vector<bool> input_group = [&]() {
-    vector<bool> enabled(CCTK_NumGroups(), false);
-    const auto callback{
-        [](const int index, const char *const optstring, void *const arg) {
-          vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
-          enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
-        }};
-    CCTK_TraverseString(filereader_ID_vars, callback, &enabled,
-                        CCTK_GROUP_OR_VAR);
-    return enabled;
-  }();
-
-  const auto num_in_groups =
-      count(input_group.begin(), input_group.end(), true);
-  if (num_in_groups == 0)
-    return;
+  if (std::string(filereader_ID_vars) != "all")
+    CCTK_VERROR("CarpetX does not use IO::filereader_ID_vars; you need to set "
+                "a method-specific parameter instead, e.g. "
+                "CarpetX::filereader_ID_openpmd_vars or "
+                "CarpetX::filereader_ID_silo_vars");
 
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root) {
     const int runtime = CCTK_RunTime(); // seconds
     CCTK_VINFO("InputGH: iteration %d, time %f, run time %.2f h",
-               cctk_iteration, double(cctk_time), double(runtime / 3600));
-    CCTK_VINFO("Input for groups:");
-    for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
-      if (input_group.at(gi))
-        CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+               cctk_iteration, double(cctk_time), double(runtime / 3600.0));
   }
 
-#ifdef HAVE_CAPABILITY_Silo
-  // TODO: Stop at paramcheck time when Silo input parameters are
-  // set, but Silo is not available
-  // TODO: handle multiple file names in `filereader_ID_files`
-  InputSilo(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
+  {
+    const vector<bool> input_group =
+        find_groups("openPMD", filereader_ID_openpmd_vars);
+#ifdef HAVE_CAPABILITY_openPMD_api
+    // TODO: Stop at paramcheck time when OpenPMD input parameters are
+    // set, but openPMD is not available
+    // TODO: handle multiple file names in `filereader_ID_files`
+    const string simulation_name = get_simulation_name();
+    InputOpenPMD(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
 #else
-  CCTK_ERROR("No file reader method available");
+    if (std::count(input_group.begin(), input_group.end(), true) != 0)
+      CCTK_VERROR("openPMD is not enabled. The parameter "
+                  "CarpetX::filereader_ID_openpmd_vars must be empty.");
 #endif
+  }
+
+  {
+    const vector<bool> input_group =
+        find_groups("Silo", filereader_ID_silo_vars);
+#ifdef HAVE_CAPABILITY_Silo
+    // TODO: Stop at paramcheck time when Silo input parameters are
+    // set, but Silo is not available
+    // TODO: handle multiple file names in `filereader_ID_files`
+    const string simulation_name = get_simulation_name();
+    InputSilo(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
+#else
+    if (std::count(input_group.begin(), input_group.end(), true) != 0)
+      CCTK_VERROR("Silo is not enabled. The parameter "
+                  "CarpetX::filereader_ID_silo_vars must be empty.");
+#endif
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,8 +570,6 @@ void OutputMetadata(const cGH *restrict cctkGH) {
   file << yaml.c_str();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 int OutputGH(const cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
@@ -535,62 +592,52 @@ int OutputGH(const cGH *restrict cctkGH) {
 
     OutputNorms(cctkGH);
 
-    OutputPlotfile(cctkGH);
-
     OutputScalars(cctkGH);
 
-#ifdef HAVE_CAPABILITY_Silo
-    // TODO: Stop at paramcheck time when Silo output parameters are
-    // set, but Silo is not available
-
-    // Find output groups
-    const vector<bool> group_enabled = [&] {
-      vector<bool> enabled(CCTK_NumGroups(), false);
-      const auto callback{
-          [](const int index, const char *const optstring, void *const arg) {
-            vector<bool> &enabled = *static_cast<vector<bool> *>(arg);
-            enabled.at(CCTK_GroupIndexFromVarI(index)) = true;
-          }};
-      CCTK_TraverseString(out_silo_vars, callback, &enabled, CCTK_GROUP_OR_VAR);
-      if (verbose) {
-        CCTK_VINFO("Silo output for groups:");
-        for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
-          if (enabled.at(gi))
-            CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
-      }
-      return enabled;
-    }();
-
-    // Obtain the parameter file name
-    const string parfilename = [&] {
-      vector<char> buf(10000);
-      int ilen = CCTK_ParameterFilename(buf.size(), buf.data());
-      assert(ilen < int(buf.size() - 1));
-      string parfilename(buf.data());
-      // Remove directory prefix, if any
-      auto slash = parfilename.rfind('/');
-      if (slash != string::npos)
-        parfilename = parfilename.substr(slash + 1);
-      // Remove suffix, if it is there
-      auto suffix = parfilename.rfind('.');
-      if (suffix != string::npos && parfilename.substr(suffix) == ".par")
-        parfilename = parfilename.substr(0, suffix);
-      return parfilename;
-    }();
-
-    const string simulation_name = [&]() {
-      string name = parfilename;
-      const size_t last_slash = name.rfind('/');
-      if (last_slash != string::npos && last_slash < name.length())
-        name = name.substr(last_slash + 1);
-      const size_t last_dot = name.rfind('.');
-      if (last_dot != string::npos && last_dot > 0)
-        name = name.substr(0, last_dot);
-      return name;
-    }();
-
-    OutputSilo(cctkGH, group_enabled, out_dir, simulation_name);
+    {
+      const vector<bool> group_enabled = find_groups("ADIOS2", out_adios2_vars);
+#ifdef HAVE_CAPABILITY_ADIOS2
+      // TODO: Stop at paramcheck time when ADIOS2 output parameters
+      // are set, but ADIOS2 is not available
+      const string simulation_name = get_simulation_name();
+      OutputADIOS2(cctkGH, group_enabled, out_dir, simulation_name);
+#else
+      if (std::count(output_group.begin(), input_group.end(), true) != 0)
+        CCTK_VERROR("ADIOS2 is not enabled. The parameter "
+                    "CarpetX::out_adios2_vars must be empty.");
 #endif
+    }
+
+    {
+      const vector<bool> group_enabled =
+          find_groups("openPMD", out_openpmd_vars);
+#ifdef HAVE_CAPABILITY_openPMD_api
+      // TODO: Stop at paramcheck time when openPMD output parameters
+      // are set, but openPMD is not available
+      const string simulation_name = get_simulation_name();
+      OutputOpenPMD(cctkGH, group_enabled, out_dir, simulation_name);
+#else
+      if (std::count(output_group.begin(), input_group.end(), true) != 0)
+        CCTK_VERROR("openPMD is not enabled. The parameter "
+                    "CarpetX::out_openpmd_vars must be empty.");
+#endif
+    }
+
+    OutputPlotfile(cctkGH);
+
+    {
+      const vector<bool> group_enabled = find_groups("Silo", out_silo_vars);
+#ifdef HAVE_CAPABILITY_Silo
+      // TODO: Stop at paramcheck time when Silo output parameters are
+      // set, but Silo is not available
+      const string simulation_name = get_simulation_name();
+      OutputSilo(cctkGH, group_enabled, out_dir, simulation_name);
+#else
+      if (std::count(output_group.begin(), input_group.end(), true) != 0)
+        CCTK_VERROR("Silo is not enabled. The parameter CarpetX::out_silo_vars "
+                    "must be empty.");
+#endif
+    }
 
     OutputTSVold(cctkGH);
 
@@ -598,6 +645,9 @@ int OutputGH(const cGH *restrict cctkGH) {
 
     for (auto &task : tasks)
       task.wait();
+
+    if (is_root)
+      CCTK_VINFO("OutputGH done.");
   }
 
   // TODO: This should be the number of variables output
@@ -668,7 +718,7 @@ extern "C" void CarpetX_CheckpointInitial(CCTK_ARGUMENTS) {
   if (checkpoint_ID) {
     CCTK_VINFO("Checkpointing initial conditions at iteration %d, time %f, run "
                "time %.2f h",
-               cctk_iteration, double(cctk_time), double(runtime / 3600));
+               cctk_iteration, double(cctk_time), double(runtime / 3600.0));
     Checkpoint(cctkGH);
     last_checkpoint_runtime = runtime;
   }
@@ -689,7 +739,7 @@ extern "C" void CarpetX_Checkpoint(CCTK_ARGUMENTS) {
 
   if (checkpoint_by_iteration || checkpoint_by_walltime) {
     CCTK_VINFO("Checkpointing at iteration %d, time %f, run time %.2f h",
-               cctk_iteration, double(cctk_time), double(runtime / 3600));
+               cctk_iteration, double(cctk_time), double(runtime / 3600.0));
     Checkpoint(cctkGH);
     last_checkpoint_runtime = runtime;
   }
@@ -703,7 +753,7 @@ extern "C" void CarpetX_CheckpointTerminate(CCTK_ARGUMENTS) {
     const int runtime = CCTK_RunTime(); // seconds
     CCTK_VINFO("Checkpointing before terminating at iteration %d, time %f, run "
                "time %.2f h",
-               cctk_iteration, double(cctk_time), double(runtime / 3600));
+               cctk_iteration, double(cctk_time), double(runtime / 3600.0));
     Checkpoint(cctkGH);
   }
 }

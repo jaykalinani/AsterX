@@ -17,12 +17,10 @@
 #ifdef _OPENMP
 #include <omp.h>
 #else
-extern "C" {
 static inline int omp_get_max_threads() { return 1; }
 static inline int omp_get_num_threads() { return 1; }
 static inline int omp_get_thread_num() { return 0; }
 static inline int omp_in_parallel() { return 0; }
-}
 #endif
 
 #include <sys/time.h>
@@ -809,6 +807,9 @@ int Initialise(tFleshConfig *config) {
 
     RecoverGridStructure(cctkGH);
 
+    assert(!active_levels);
+    active_levels = make_optional<active_levels_t>(0, ghext->leveldata.size());
+
     CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
 
     const char *recovery_mode = *static_cast<const char *const *>(
@@ -824,6 +825,8 @@ int Initialise(tFleshConfig *config) {
     RecoverGH(cctkGH);
     CCTK_Traverse(cctkGH, "CCTK_RECOVER_VARIABLES");
     CCTK_Traverse(cctkGH, "CCTK_POST_RECOVER_VARIABLES");
+
+    active_levels = optional<active_levels_t>();
 
   } else {
     // Set up initial conditions
@@ -971,10 +974,10 @@ int Initialise(tFleshConfig *config) {
 bool EvolutionIsDone(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
-  static timeval starttime = {0, 0};
-  // On the first time through, get the start time
-  if (starttime.tv_sec == 0 && starttime.tv_usec == 0)
-    gettimeofday(&starttime, nullptr);
+  // static timeval starttime = {0, 0};
+  // // On the first time through, get the start time
+  // if (starttime.tv_sec == 0 && starttime.tv_usec == 0)
+  //   gettimeofday(&starttime, nullptr);
 
   if (terminate_next || CCTK_TerminationReached(cctkGH))
     return true;
@@ -982,17 +985,19 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
   if (CCTK_Equals(terminate, "never"))
     return false;
 
-  bool max_iteration_reached = cctkGH->cctk_iteration >= cctk_itlast;
+  const bool max_iteration_reached = cctkGH->cctk_iteration >= cctk_itlast;
 
-  bool max_simulation_time_reached = cctk_initial_time < cctk_final_time
-                                         ? cctkGH->cctk_time >= cctk_final_time
-                                         : cctkGH->cctk_time <= cctk_final_time;
+  const bool max_simulation_time_reached =
+      cctk_initial_time < cctk_final_time
+          ? cctkGH->cctk_time >= cctk_final_time
+          : cctkGH->cctk_time <= cctk_final_time;
 
   // Get the elapsed runtime in minutes and compare with max_runtime
-  timeval currenttime;
-  gettimeofday(&currenttime, NULL);
-  bool max_runtime_reached =
-      CCTK_REAL(currenttime.tv_sec - starttime.tv_sec) / 60 >= max_runtime;
+  // timeval currenttime;
+  // gettimeofday(&currenttime, NULL);
+  // bool max_runtime_reached =
+  //     CCTK_REAL(currenttime.tv_sec - starttime.tv_sec) / 60 >= max_runtime;
+  const bool max_runtime_reached = CCTK_RunTime() >= 60 * max_runtime;
 
   if (CCTK_Equals(terminate, "iteration"))
     return max_iteration_reached;

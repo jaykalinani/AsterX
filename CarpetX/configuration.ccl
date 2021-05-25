@@ -4,7 +4,15 @@ REQUIRES AMReX MPI yaml_cpp zlib
 
 REQUIRES Arith
 
+OPTIONAL ADIOS2
+{
+}
+
 OPTIONAL CUDA
+{
+}
+
+OPTIONAL openPMD_api
 {
 }
 

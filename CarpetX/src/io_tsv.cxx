@@ -299,7 +299,7 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
       file << sep << ++col << ":"
            << "xyz"[d];
     for (const auto &varname : varnames)
-      file << sep << col++ << ":" << varname;
+      file << sep << ++col << ":" << varname;
     file << "\n";
 
     // Output data

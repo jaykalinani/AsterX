@@ -60,6 +60,8 @@ IO::out_every = 1
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
+CarpetX::out_metadata = yes
+CarpetX::out_openpmd_vars = "all"
 CarpetX::out_plotfile_groups = ""
 CarpetX::out_silo_vars = "all"
 CarpetX::out_tsv = no

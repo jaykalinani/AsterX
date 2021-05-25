@@ -8,6 +8,7 @@ USES INCLUDE HEADER: silo.hxx
 
 
 
+USES INCLUDE HEADER: div.hxx
 USES INCLUDE HEADER: rational.hxx
 USES INCLUDE HEADER: vect.hxx
 

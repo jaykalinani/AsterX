@@ -5,18 +5,19 @@
 
 #include <CactusBase/IOUtil/src/ioutil_CheckpointRecovery.h>
 
+#include <fixmath.hxx>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+
+#ifdef HAVE_CAPABILITY_Silo
 
 #include <AMReX.H>
 #include <AMReX_IntVect.H>
 
 #include <mpi.h>
 
-#ifdef HAVE_CAPABILITY_Silo
 #include <silo.hxx>
-#endif
 
 #include <algorithm>
 #include <array>
@@ -35,9 +36,10 @@
 #include <utility>
 #include <vector>
 
-#ifdef HAVE_CAPABILITY_Silo
 namespace CarpetX {
 using namespace std;
+
+namespace {
 
 constexpr bool io_verbose = true;
 
@@ -124,6 +126,8 @@ string make_fabarraybasename(const int reflevel) {
   return DB::legalize_name(buf.str());
 }
 
+} // namespace
+
 ////////////////////////////////////////////////////////////////////////////////
 
 int InputSiloParameters(const std::string &input_dir,
@@ -186,6 +190,7 @@ int InputSiloParameters(const std::string &input_dir,
     const string metafilename =
         input_dir + "/" + make_filename(input_file, input_iteration);
     // We could use DB_UNKNOWN instead of DB_HDF5
+    // assert(metafilename.size() < 256);
     const DB::ptr<DBfile> metafile =
         DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
     assert(metafile);
@@ -317,6 +322,7 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
     CCTK_VINFO("Found %d levels", nlevels);
     MPI_Bcast(const_cast<int *>(&nlevels), 1, MPI_INT, metafile_ioproc,
               mpi_comm);
+    ghext->amrcore->SetFinestLevel(nlevels - 1);
 
     // Read FabArrayBase (component positions and shapes)
     for (int level = 0; level < nlevels; ++level) {
@@ -347,9 +353,20 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
         levboxes.at(component) = amrex::Box(small, big);
       }
 
+      // Don't set coarse level domain; this is already set by the driver
+      if (level > 0) {
+        amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
+        geom.refine({2, 2, 2});
+        ghext->amrcore->SetGeometry(level, geom);
+      }
+
       amrex::BoxList boxlist(move(levboxes));
       amrex::BoxArray boxarray(move(boxlist));
+      ghext->amrcore->SetBoxArray(level, boxarray);
+
       amrex::DistributionMapping dm(boxarray);
+      ghext->amrcore->SetDistributionMap(level, dm);
+
       SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
     }
 
@@ -378,9 +395,20 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
         levboxes.at(component) = amrex::Box(small, big);
       }
 
+      // Don't set coarse level domain; this is already set by the driver
+      if (level > 0) {
+        amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
+        geom.refine({2, 2, 2});
+        ghext->amrcore->SetGeometry(level, geom);
+      }
+
       amrex::BoxList boxlist(move(levboxes));
       amrex::BoxArray boxarray(move(boxlist));
+      ghext->amrcore->SetBoxArray(level, boxarray);
+
       amrex::DistributionMapping dm(boxarray);
+      ghext->amrcore->SetDistributionMap(level, dm);
+
       SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
     }
   }
@@ -400,6 +428,17 @@ void InputSilo(const cGH *restrict const cctkGH,
   // Set up timers
   static Timer timer("InputSilo");
   Interval interval(timer);
+
+  if (std::count(input_group.begin(), input_group.end(), true) == 0)
+    return;
+
+  const bool is_root = CCTK_MyProc(nullptr) == 0;
+  if (is_root) {
+    CCTK_VINFO("Silo input for groups:");
+    for (int gi = 0; gi < CCTK_NumGroups(); ++gi)
+      if (input_group.at(gi))
+        CCTK_VINFO("  %s", CCTK_FullGroupName(gi));
+  }
 
   static Timer timer_setup("InputSilo.setup");
   auto interval_setup = make_unique<Interval>(timer_setup);
@@ -598,7 +637,7 @@ void InputSilo(const cGH *restrict const cctkGH,
           if (recv_this_fab)
             for (int vi = 0; vi < numvars; ++vi)
               groupdata.valid.at(tl).at(vi).set(
-                  valid_t(true), []() { return "read from file"; });
+                  make_valid_all(), []() { return "read from Silo file"; });
           interval_wait = nullptr;
 
         } // for component
@@ -623,6 +662,9 @@ void OutputSilo(const cGH *restrict const cctkGH,
   // Set up timers
   static Timer timer("OutputSilo");
   Interval interval(timer);
+
+  if (io_verbose)
+    CCTK_VINFO("OutputSilo...");
 
   static Timer timer_setup("OutputSilo.setup");
   auto interval_setup = make_unique<Interval>(timer_setup);
@@ -689,6 +731,8 @@ void OutputSilo(const cGH *restrict const cctkGH,
       const string filename =
           pathname + "/" +
           make_filename(output_file, cctk_iteration, myproc / ioproc_every);
+      // assert(filename.size() < 256);
+      // assert(output_file.size() < 256);
       file = DB::make(DBCreate(filename.c_str(), DB_CLOBBER, DB_LOCAL,
                                output_file.c_str(), DB_HDF5));
       assert(file);
@@ -1548,7 +1592,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
     {
       const string visitname = [&]() {
         ostringstream buf;
-        buf << output_dir << "/" << output_file << ".visit";
+        buf << output_dir << "/" << output_file << ".silo.visit";
         return buf.str();
       }();
       ofstream visit(visitname, ios::app);
@@ -1559,6 +1603,9 @@ void OutputSilo(const cGH *restrict const cctkGH,
   } // if write metadata
 
   interval_meta = nullptr;
+
+  if (io_verbose)
+    timer.print();
 }
 
 } // namespace CarpetX
