@@ -4,6 +4,7 @@
 #include <loop_device.hxx>
 #include <mat.hxx>
 #include <simd.hxx>
+#include <ten3.hxx>
 #include <vec.hxx>
 
 #include <fixmath.hxx> // include this before <cctk.h>
@@ -29,123 +30,10 @@ constexpr int deriv_order = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
 template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-deriv1d(const T *restrict const var, const ptrdiff_t di, const T dx) {
-  if constexpr (deriv_order == 2)
-    return -1 / T(2) * (var[-di] - var[+di]) / dx;
-  if constexpr (deriv_order == 4)
-    return (1 / T(12) * (var[-2 * di] - var[+2 * di]) //
-            - 2 / T(3) * (var[-di] - var[+di])) /
-           dx;
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T pow3(const T &x) {
+  return pow2(x) * x;
 }
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv1d_upwind(
-    const T *restrict const var, const ptrdiff_t di, const T sign, const T dx) {
-  // arXiv:1111.2177 [gr-qc], (71)
-  if constexpr (deriv_order == 2) {
-    // if (sign)
-    //   // +     [ 0   -1   +1    0    0]
-    //   // + 1/2 [+1   -2   +1    0    0]
-    //   //       [+1/2 -2   +3/2  0    0]
-    //   return (1 / T(2) * var[-2 * di] //
-    //           - 2 * var[-di]          //
-    //           + 3 / T(2) * var[0]) /
-    //          dx;
-    // else
-    //   // +     [ 0    0   -1   +1    0  ]
-    //   // - 1/2 [ 0    0   +1   -2   +1  ]
-    //   //       [ 0    0   -3/2 +2   -1/2]
-    //   return (-3 / T(2) * var[0] //
-    //           + 2 * var[+di]     //
-    //           - 1 / T(2) * var[+2 * di]) /
-    //          dx;
-
-    // + 1/2 [+1/2 -2   +3/2  0    0  ]
-    // + 1/2 [ 0    0   -3/2 +2   -1/2]
-    //       [+1/4 -1    0   +1   -1/4]
-    const T symm = 1 / T(4) * (var[-2 * di] - var[2 * di]) //
-                   - (var[-di] - var[di]);
-    // + 1/2 [+1/2 -2   +3/2  0    0  ]
-    // - 1/2 [ 0    0   -3/2 +2   -1/2]
-    //       [+1/4 -1   +3/2 -1   +1/4]
-    const T anti = 1 / T(4) * (var[-2 * di] + var[2 * di]) //
-                   - (var[-di] + var[di])                  //
-                   + 3 / T(2) * var[0];
-    return (symm - flipsign(anti, sign)) / dx;
-  }
-  if constexpr (deriv_order == 4) {
-    // A fourth order stencil for a first derivative, shifted by one grid point
-
-    // if (sign)
-    //   return (-1 / T(12) * var[-3 * di] //
-    //           + 1 / T(2) * var[-2 * di] //
-    //           - 3 / T(2) * var[-di]     //
-    //           + 5 / T(6) * var[0]       //
-    //           + 1 / T(4) * var[+di]) /
-    //          dx;
-    // else
-    //   return (-1 / T(4) * var[-di]      //
-    //           - 5 / T(6) * var[0]       //
-    //           + 3 / T(2) * var[+di]     //
-    //           - 1 / T(2) * var[+2 * di] //
-    //           + 1 / T(12) * var[+3 * di]) /
-    //          dx;
-
-    const T symm = -1 / T(24) * (var[-3 * di] - var[3 * di]) //
-                   + 1 / T(4) * (var[-2 * di] - var[2 * di]) //
-                   - 7 / T(8) * (var[-di] - var[di]);
-    const T anti = -1 / T(24) * (var[-3 * di] + var[3 * di]) //
-                   + 1 / T(4) * (var[-2 * di] + var[2 * di]) //
-                   - 5 / T(8) * (var[-di] + var[di])         //
-                   + 5 / T(6) * var[0];
-    return (symm - flipsign(anti, sign)) / dx;
-  }
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-deriv2_1d(const T *restrict const var, const ptrdiff_t di, const T dx) {
-  if constexpr (deriv_order == 2)
-    return ((var[-di] + var[+di]) //
-            - 2 * var[0]) /
-           pow2(dx);
-  if constexpr (deriv_order == 4)
-    return (-1 / T(12) * (var[-2 * di] + var[+2 * di]) //
-            + 4 / T(3) * (var[-di] + var[+di])         //
-            - 5 / T(2) * var[0]) /
-           pow2(dx);
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-deriv2_2d(const T *restrict const var, const ptrdiff_t di, const ptrdiff_t dj,
-          const T dx, const T dy) {
-  array<T, deriv_order + 1> arrx;
-  T *const varx = &arrx[deriv_order / 2];
-  for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
-    varx[j] = deriv1d(&var[j * dj], di, dx);
-  return deriv1d(varx, 1, dy);
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T
-deriv1d_diss(const T *restrict const var, const ptrdiff_t di, const T dx) {
-  if constexpr (deriv_order == 2)
-    return ((var[-2 * di] + var[+2 * di]) //
-            - 4 * (var[-di] + var[+di])   //
-            + 6 * var[0]) /
-           dx;
-  if constexpr (deriv_order == 4)
-    return ((var[-3 * di] + var[+3 * di])       //
-            - 6 * (var[-2 * di] + var[+2 * di]) //
-            + 15 * (var[-di] + var[+di])        //
-            - 20 * var[0]) /
-           dx;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,119 +41,52 @@ template <typename T>
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv1d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
         const T dx) {
+  const auto load = [&](const int n) {
+    return maskz_loadu(mask, &var[n * di]) - maskz_loadu(mask, &var[-n * di]);
+  };
   if constexpr (deriv_order == 2)
-    return -1 / T(2) *
-           (maskz_loadu(mask, &var[-di]) - maskz_loadu(mask, &var[+di])) / dx;
+    return 1 / T(2) * load(1) / dx;
   if constexpr (deriv_order == 4)
-    return (1 / T(12) *
-                (maskz_loadu(mask, &var[-2 * di]) -
-                 maskz_loadu(mask, &var[+2 * di])) //
-            -
-            2 / T(3) *
-                (maskz_loadu(mask, &var[-di]) - maskz_loadu(mask, &var[+di]))) /
+    return (-1 / T(12) * load(2) + 2 / T(3) * load(1)) / dx;
+  if constexpr (deriv_order == 6)
+    return (1 / T(60) * load(3) - 3 / T(20) * load(2) + 3 / T(4) * load(1)) /
            dx;
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-deriv1d_upwind(const simdl<T> &mask, const T *restrict const var,
-               const ptrdiff_t di, const simd<T> &vel, const T dx) {
-  // arXiv:1111.2177 [gr-qc], (71)
-  if constexpr (deriv_order == 2) {
-    // if (sign)
-    //   // +     [ 0   -1   +1    0    0]
-    //   // + 1/2 [+1   -2   +1    0    0]
-    //   //       [+1/2 -2   +3/2  0    0]
-    //   return (1 / T(2) * var[-2 * di] //
-    //           - 2 * var[-di]          //
-    //           + 3 / T(2) * var[0]) /
-    //          dx;
-    // else
-    //   // +     [ 0    0   -1   +1    0  ]
-    //   // - 1/2 [ 0    0   +1   -2   +1  ]
-    //   //       [ 0    0   -3/2 +2   -1/2]
-    //   return (-3 / T(2) * var[0] //
-    //           + 2 * var[+di]     //
-    //           - 1 / T(2) * var[+2 * di]) /
-    //          dx;
-
-    // + 1/2 [+1/2 -2   +3/2  0    0  ]
-    // + 1/2 [ 0    0   -3/2 +2   -1/2]
-    //       [+1/4 -1    0   +1   -1/4]
-    const simd<T> symm =
-        1 / T(4) *
-            (maskz_loadu(mask, &var[-2 * di]) -
-             maskz_loadu(mask, &var[2 * di])) //
-        - (maskz_loadu(mask, &var[-di]) - maskz_loadu(mask, &var[di]));
-    // + 1/2 [+1/2 -2   +3/2  0    0  ]
-    // - 1/2 [ 0    0   -3/2 +2   -1/2]
-    //       [+1/4 -1   +3/2 -1   +1/4]
-    const simd<T> anti =
-        1 / T(4) *
-            (maskz_loadu(mask, &var[-2 * di]) +
-             maskz_loadu(mask, &var[2 * di]))                          //
-        - (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[di])) //
-        + 3 / T(2) * maskz_loadu(mask, &var[0]);
-    return (vel * symm - fabs(vel) * anti) / dx;
-  }
-  if constexpr (deriv_order == 4) {
-    // A fourth order stencil for a first derivative, shifted by one grid point
-
-    // if (sign)
-    //   return (-1 / T(12) * var[-3 * di] //
-    //           + 1 / T(2) * var[-2 * di] //
-    //           - 3 / T(2) * var[-di]     //
-    //           + 5 / T(6) * var[0]       //
-    //           + 1 / T(4) * var[+di]) /
-    //          dx;
-    // else
-    //   return (-1 / T(4) * var[-di]      //
-    //           - 5 / T(6) * var[0]       //
-    //           + 3 / T(2) * var[+di]     //
-    //           - 1 / T(2) * var[+2 * di] //
-    //           + 1 / T(12) * var[+3 * di]) /
-    //          dx;
-
-    const simd<T> symm =
-        -1 / T(24) *
-            (maskz_loadu(mask, &var[-3 * di]) -
-             maskz_loadu(mask, &var[3 * di])) //
-        + 1 / T(4) *
-              (maskz_loadu(mask, &var[-2 * di]) -
-               maskz_loadu(mask, &var[2 * di])) //
-        -
-        7 / T(8) * (maskz_loadu(mask, &var[-di]) - maskz_loadu(mask, &var[di]));
-    const simd<T> anti =
-        -1 / T(24) *
-            (maskz_loadu(mask, &var[-3 * di]) +
-             maskz_loadu(mask, &var[3 * di])) //
-        + 1 / T(4) *
-              (maskz_loadu(mask, &var[-2 * di]) +
-               maskz_loadu(mask, &var[2 * di])) //
-        - 5 / T(8) *
-              (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[di])) //
-        + 5 / T(6) * maskz_loadu(mask, &var[0]);
-    return (symm - fabs(vel) * anti) / dx;
-  }
 }
 
 template <typename T>
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
 deriv2_1d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
           const T dx) {
+  const auto load = [&](const int n) {
+    return maskz_loadu(mask, &var[n * di]) + maskz_loadu(mask, &var[-n * di]);
+  };
+  const auto load0 = [&]() { return maskz_loadu(mask, &var[0]); };
   if constexpr (deriv_order == 2)
-    return ((maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[+di])) //
-            - 2 * maskz_loadu(mask, &var[0])) /
-           pow2(dx);
+    return (load(1) - 2 * load0()) / pow2(dx);
   if constexpr (deriv_order == 4)
-    return (-1 / T(12) *
-                (maskz_loadu(mask, &var[-2 * di]) +
-                 maskz_loadu(mask, &var[+2 * di])) //
-            +
-            4 / T(3) *
-                (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[+di])) //
-            - 5 / T(2) * maskz_loadu(mask, &var[0])) /
+    return (1 / T(12) * load(2) - 4 / T(3) * load(1) + 5 / T(2) * load0()) /
            pow2(dx);
+  if constexpr (deriv_order == 6)
+    return (1 / T(90) * load(3) - 3 / T(20) * load(2) + 3 / T(2) * load(1) -
+            49 / T(18) * load0()) /
+           pow2(dx);
+}
+
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
+deriv3_1d(const simdl<T> &mask, const T *restrict const var, const ptrdiff_t di,
+          const T dx) {
+  const auto load = [&](const int n) {
+    return maskz_loadu(mask, &var[n * di]) - maskz_loadu(mask, &var[-n * di]);
+  };
+  if constexpr (deriv_order == 2)
+    return (1 / T(2) * load(2) - load(1)) / pow3(dx);
+  if constexpr (deriv_order == 4)
+    return (-1 / T(8) * load(3) + load(2) - 13 / T(8) * load(1)) / pow3(dx);
+  if constexpr (deriv_order == 6)
+    return (7 / T(240) * load(4) - 3 / T(10) * load(3) +
+            169 / T(129) * load(2) - 61 / T(30) * load(1)) /
+           pow3(dx);
 }
 
 template <typename T>
@@ -294,86 +115,6 @@ deriv2_2d(const int vavail, const simdl<T> &mask, const T *restrict const var,
   }
 }
 
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-deriv1d_diss(const simdl<T> &mask, const T *restrict const var,
-             const ptrdiff_t di, const T dx) {
-  if constexpr (deriv_order == 2)
-    return ((maskz_loadu(mask, &var[-2 * di]) +
-             maskz_loadu(mask, &var[+2 * di])) //
-            -
-            4 * (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[+di])) //
-            + 6 * maskz_loadu(mask, &var[0])) /
-           dx;
-  if constexpr (deriv_order == 4)
-    return ((maskz_loadu(mask, &var[-3 * di]) +
-             maskz_loadu(mask, &var[+3 * di])) //
-            - 6 * (maskz_loadu(mask, &var[-2 * di]) +
-                   maskz_loadu(mask, &var[+2 * di])) //
-            + 15 * (maskz_loadu(mask, &var[-di]) +
-                    maskz_loadu(mask, &var[+di])) //
-            - 20 * maskz_loadu(mask, &var[0])) /
-           dx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-template <int dir, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv(const GF3D2<const T> &gf_,
-                                  const vect<int, dim> &I,
-                                  const vec<T, D, UP> &dx) {
-  static_assert(dir >= 0 && dir < D, "");
-  const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir));
-  return deriv1d(&gf_(I), di, dx(dir));
-}
-
-template <int dir, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv_upwind(const GF3D2<const T> &gf_,
-                                         const vect<int, dim> &I,
-                                         const vec<T, D, UP> &sign,
-                                         const vec<T, D, UP> &dx) {
-  static_assert(dir >= 0 && dir < D, "");
-  const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir));
-  return deriv1d_upwind(&gf_(I), di, sign(dir), dx(dir));
-}
-
-template <int dir1, int dir2, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 == dir2), T>
-deriv2(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec<T, D, UP> &dx) {
-  static_assert(dir1 >= 0 && dir1 < D, "");
-  static_assert(dir2 >= 0 && dir2 < D, "");
-  const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir1));
-  return deriv2_1d(&gf_(I), di, dx(dir1));
-}
-
-template <int dir1, int dir2, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST enable_if_t<(dir1 != dir2), T>
-deriv2(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec<T, D, UP> &dx) {
-  static_assert(dir1 >= 0 && dir1 < D, "");
-  static_assert(dir2 >= 0 && dir2 < D, "");
-  const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir1));
-  const ptrdiff_t dj = gf_.delta(DI(dir2));
-  return deriv2_2d(&gf_(I), di, dj, dx(dir1), dx(dir2));
-}
-
-template <int dir, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T deriv_diss(const GF3D2<const T> &gf_,
-                                       const vect<int, dim> &I,
-                                       const vec<T, D, UP> &dx) {
-  static_assert(dir >= 0 && dir < D, "");
-  const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir));
-  return deriv1d_diss(&gf_(I), di, dx(dir));
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 
 template <int dir, typename T, int D>
@@ -384,17 +125,6 @@ deriv(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
   const auto &DI = vect<int, dim>::unit;
   const ptrdiff_t di = gf_.delta(DI(dir));
   return deriv1d(mask, &gf_(I), di, dx(dir));
-}
-
-template <int dir, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-deriv_upwind(const simdl<T> &mask, const GF3D2<const T> &gf_,
-             const vect<int, dim> &I, const vec<simd<T>, D, UP> &vel,
-             const vec<T, D, UP> &dx) {
-  static_assert(dir >= 0 && dir < D, "");
-  const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir));
-  return deriv1d_upwind(mask, &gf_(I), di, vel(dir), dx(dir));
 }
 
 template <int dir1, int dir2, typename T, int D>
@@ -422,59 +152,18 @@ inline ARITH_INLINE
   return deriv2_2d(vavail, mask, &gf_(I), di, dj, dx(dir1), dx(dir2));
 }
 
-template <int dir, typename T, int D>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-deriv_diss(const simdl<T> &mask, const GF3D2<const T> &gf_,
+template <int dir1, int dir2, int dir3, typename T, int D>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST
+    enable_if_t<(dir1 == dir2 && dir1 == dir3), simd<T> >
+    deriv3(const int vavail, const simdl<T> &mask, const GF3D2<const T> &gf_,
            const vect<int, dim> &I, const vec<T, D, UP> &dx) {
-  static_assert(dir >= 0 && dir < D, "");
+  static_assert(dir1 >= 0 && dir1 < D, "");
+  static_assert(dir2 >= 0 && dir2 < D, "");
+  static_assert(dir3 >= 0 && dir3 < D, "");
   const auto &DI = vect<int, dim>::unit;
-  const ptrdiff_t di = gf_.delta(DI(dir));
-  return deriv1d_diss(mask, &gf_(I), di, dx(dir));
+  const ptrdiff_t di = gf_.delta(DI(dir1));
+  return deriv3_1d(mask, &gf_(I), di, dx(dir1));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dim, DN> deriv(const GF3D2<const T> &gf_,
-                                                const vect<int, dim> &I,
-                                                const vec<T, dim, UP> &dx) {
-  return vec<T, dim, DN>(deriv<0>(gf_, I, dx), deriv<1>(gf_, I, dx),
-                         deriv<2>(gf_, I, dx));
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, dim, DN>
-deriv_upwind(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-             const vec<T, dim, UP> &dir, const vec<T, dim, UP> &dx) {
-  return vec<T, D, DN>(deriv_upwind<0>(gf_, I, dir, dx),
-                       deriv_upwind<1>(gf_, I, dir, dx),
-                       deriv_upwind<2>(gf_, I, dir, dx));
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST smat<T, dim, DN, DN>
-deriv2(const GF3D2<const T> &gf_, const vect<int, dim> &I,
-       const vec<T, dim, UP> &dx) {
-  return smat<T, dim, DN, DN>(
-      deriv2<0, 0>(gf_, I, dx), deriv2<0, 1>(gf_, I, dx),
-      deriv2<0, 2>(gf_, I, dx), deriv2<1, 1>(gf_, I, dx),
-      deriv2<1, 2>(gf_, I, dx), deriv2<2, 2>(gf_, I, dx));
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T diss(const GF3D2<const T> &gf_,
-                                 const vect<int, dim> &I,
-                                 const vec<T, dim, UP> &dx) {
-  // arXiv:gr-qc/0610128, (63), with r=2
-  constexpr int diss_order = deriv_order + 2;
-  constexpr int sign = diss_order % 4 == 0 ? -1 : +1;
-  return sign / T(pown(2, deriv_order + 2)) *
-         (deriv_diss<0>(gf_, I, dx)   //
-          + deriv_diss<1>(gf_, I, dx) //
-          + deriv_diss<2>(gf_, I, dx));
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -484,16 +173,6 @@ deriv(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
       const vec<T, dim, UP> &dx) {
   return {deriv<0>(mask, gf_, I, dx), deriv<1>(mask, gf_, I, dx),
           deriv<2>(mask, gf_, I, dx)};
-}
-
-template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-deriv_upwind(const simdl<T> &mask, const GF3D2<const T> &gf_,
-             const vect<int, dim> &I, const vec<simd<T>, dim, UP> &vel,
-             const vec<T, dim, UP> &dx) {
-  return deriv_upwind<0>(mask, gf_, I, vel, dx) +
-         deriv_upwind<1>(mask, gf_, I, vel, dx) +
-         deriv_upwind<2>(mask, gf_, I, vel, dx);
 }
 
 template <typename T>
@@ -509,16 +188,19 @@ deriv2(const int vavail, const simdl<T> &mask, const GF3D2<const T> &gf_,
 }
 
 template <typename T>
-inline ARITH_INLINE ARITH_DEVICE ARITH_HOST simd<T>
-diss(const simdl<T> &mask, const GF3D2<const T> &gf_, const vect<int, dim> &I,
-     const vec<T, dim, UP> &dx) {
-  // arXiv:gr-qc/0610128, (63), with r=2
-  constexpr int diss_order = deriv_order + 2;
-  constexpr int sign = diss_order % 4 == 0 ? -1 : +1;
-  return sign / T(pown(2, deriv_order + 2)) *
-         (deriv_diss<0>(mask, gf_, I, dx)   //
-          + deriv_diss<1>(mask, gf_, I, dx) //
-          + deriv_diss<2>(mask, gf_, I, dx));
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST sten3<simd<T>, dim, DN, DN, DN>
+deriv3(const int vavail, const simdl<T> &mask, const GF3D2<const T> &gf_,
+       const vect<int, dim> &I, const vec<T, dim, UP> &dx) {
+  return {deriv3<0, 0, 0>(vavail, mask, gf_, I, dx),
+          deriv3<0, 0, 1>(vavail, mask, gf_, I, dx),
+          deriv3<0, 0, 2>(vavail, mask, gf_, I, dx),
+          deriv3<0, 1, 1>(vavail, mask, gf_, I, dx),
+          deriv3<0, 1, 2>(vavail, mask, gf_, I, dx),
+          deriv3<0, 2, 2>(vavail, mask, gf_, I, dx),
+          deriv3<1, 1, 1>(vavail, mask, gf_, I, dx),
+          deriv3<1, 1, 2>(vavail, mask, gf_, I, dx),
+          deriv3<1, 2, 2>(vavail, mask, gf_, I, dx),
+          deriv3<2, 2, 2>(vavail, mask, gf_, I, dx)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,6 +306,6 @@ void calc_derivs2(
                    layout);
 }
 
-} // namespace Z4c
+} // namespace Weyl
 
 #endif // #ifndef DERIVS_HXX
