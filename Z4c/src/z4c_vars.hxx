@@ -536,7 +536,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  - 2 / T(3) * sum<3>([&](int x) ARITH_INLINE {
                      return Atu(a, x) * dchi(x) / chi;
                    }) //
-                 - 8 * M_PI * sum<3>([&](int x) ARITH_INLINE {
+                 - 8 * T(M_PI) * sum<3>([&](int x) ARITH_INLINE {
                      return gammatu(a, x) * Si(x);
                    });
         }),
