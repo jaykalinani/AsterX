@@ -81,8 +81,8 @@ constexpr ARITH_INLINE
     for (int y = x; y < D; ++y)
       for (int z = y; z < D; ++z)
         s += (x == y && x == z             ? 1
-              : x == y || x == z || y == z ? 2
-                                           : 3) *
+              : x == y || x == z || y == z ? 3
+                                           : 6) *
              f(x, y, z);
   return s;
 }

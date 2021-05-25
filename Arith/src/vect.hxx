@@ -73,7 +73,7 @@ template <typename T, int D> struct vect {
 
   typedef T value_type;
   typedef int size_type;
-  static constexpr int size = D;
+  static constexpr int size() { return D; }
 
   // initializes all elements to zero
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect() : elts() {}
@@ -320,17 +320,22 @@ template <typename T, int D> struct vect {
     return fmap([](const T &x, const T &y) { return max(x, y); }, x, y);
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  max1(const vect &x, const vect &y) {
+    return fmap([](const T &x, const T &y) { return max1(x, y); }, x, y);
+  }
+
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   maxabs(const vect &x) {
-    using std::abs, std::max;
-    return fold([](const T &r, const T &a) { return max(r, abs(a)); },
+    using std::abs;
+    return fold([](const T &r, const T &a) { return max1(r, abs(a)); },
                 zero<T>()(), x);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   maximum(const vect &x) {
     using std::max;
-    return fold(max, -numeric_limits<T>::infinity(), x);
+    return fold(max1, -numeric_limits<T>::infinity(), x);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
@@ -339,10 +344,16 @@ template <typename T, int D> struct vect {
     return fmap([](const T &x, const T &y) { return min(x, y); }, x, y);
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  min1(const vect &x, const vect &y) {
+    using std::min;
+    return fmap([](const T &x, const T &y) { return min1(x, y); }, x, y);
+  }
+
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   minimum(const vect &x) {
     using std::min;
-    return fold(min, numeric_limits<T>::infinity(), x);
+    return fold(min1, numeric_limits<T>::infinity(), x);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T prod(const vect &x) {

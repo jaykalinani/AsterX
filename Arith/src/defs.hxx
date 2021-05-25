@@ -27,6 +27,7 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Return the value zero for a given type
 template <typename T> struct zero;
 // template <typename T> inline constexpr T zero_v = zero<T>::value;
 
@@ -34,6 +35,7 @@ template <> struct zero<bool> : integral_constant<bool, 0> {};
 template <> struct zero<short> : integral_constant<short, 0> {};
 template <> struct zero<int> : integral_constant<int, 0> {};
 template <> struct zero<long> : integral_constant<long, 0> {};
+template <> struct zero<long long> : integral_constant<long long, 0> {};
 
 template <> struct zero<float> {
   typedef float value_type;
@@ -49,6 +51,7 @@ template <> struct zero<double> {
   constexpr ARITH_INLINE value_type operator()() const { return value; }
 };
 
+// Return the value one for a given type
 template <typename T> struct one;
 // template <typename T> inline constexpr T one_v = one<T>::value;
 
@@ -71,6 +74,7 @@ template <> struct one<double> {
   constexpr ARITH_INLINE value_type operator()() const { return value; }
 };
 
+// Return the value nan for a given type
 template <typename T> struct nan;
 // template <typename T> inline constexpr T nan_v = nan<T>::value;
 
@@ -99,8 +103,15 @@ template <> struct nan<double> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Return true if all elements of a container are true
 constexpr ARITH_INLINE bool all(bool x) { return x; }
+
+// Return true if any elements of a container are true
 constexpr ARITH_INLINE bool any(bool x) { return x; }
+
+// Return true if there is a nan anywhere in x. This always returns a bool, even
+// when x is a vector or SIMD type that would otherwise perform operations
+// pointwise. Use this for debugging.
 constexpr ARITH_INLINE bool anyisnan(const float &x) {
   using std::isnan;
   return isnan(x);
@@ -109,6 +120,8 @@ constexpr ARITH_INLINE bool anyisnan(const double &x) {
   using std::isnan;
   return isnan(x);
 }
+
+// if-then-else function that can be used with SIMD types
 template <typename T, typename U>
 constexpr ARITH_INLINE auto if_else(bool c, const T &x, const U &y) {
   return c ? x : y;
@@ -116,18 +129,43 @@ constexpr ARITH_INLINE auto if_else(bool c, const T &x, const U &y) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// bitsign(i) = (-1)^i, the converse to signbit
 constexpr int bitsign(bool c) { return if_else(c, -1, 1); }
 constexpr int bitsign(int i) { return bitsign(i % 2 != 0); }
+
+// Return x if y>0, -x if y<0
 template <typename T>
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T flipsign(const T &x, const T &y) {
   using std::copysign;
   return copysign(T(1), y) * x;
 }
 
+// A max function that returns nan when any argument is nan
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T max1(const T &x, const T &y) {
+  using std::max;
+  return if_else(x != x, x, if_else(y != y, y, max(x, y)));
+}
+
+// The maximum of the absolute values. This is reduces over containers.
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T maxabs(const T &x) {
+  using std::abs;
+  return abs(x);
+}
+
+// A min function that returns nan when any argument is nan
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T min1(const T &x, const T &y) {
+  using std::min;
+  return if_else(x != x, x, if_else(y != y, y, min(x, y)));
+}
+
 namespace detail {
-template <typename T> constexpr T pown(const T x, int n) {
+template <typename T> constexpr T pown(const T &x, int n) {
   T r{1};
   T y{x};
+  // invariant: initial(x^n) == r * y^n
   while (n) {
     if (n & 1)
       r *= y;
@@ -138,11 +176,12 @@ template <typename T> constexpr T pown(const T x, int n) {
 }
 } // namespace detail
 
-template <typename T> constexpr T pown(const T x, const int n) {
+// Raise a value to an integer power, calculated efficiently
+template <typename T> constexpr T pown(const T &x, const int n) {
   return n >= 0 ? detail::pown(x, n) : 1 / detail::pown(x, -n);
 }
 
-template <typename T> constexpr T pow2(const T x) { return x * x; }
+template <typename T> constexpr T pow2(const T &x) { return x * x; }
 
 } // namespace Arith
 

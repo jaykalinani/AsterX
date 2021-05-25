@@ -12,6 +12,7 @@ INCLUDES HEADER: rational.hxx IN rational.hxx
 INCLUDES HEADER: rten.hxx IN rten.hxx
 INCLUDES HEADER: simd.hxx IN simd.hxx
 INCLUDES HEADER: sum.hxx IN sum.hxx
+INCLUDES HEADER: ten3.hxx IN ten3.hxx
 INCLUDES HEADER: vec.hxx IN vec.hxx
 INCLUDES HEADER: vect.hxx IN vect.hxx
 

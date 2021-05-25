@@ -139,8 +139,8 @@ public:
   static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gmat pure(const T &a) {
     return {vect<T, N>::pure(a)};
   }
-  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gmat unit(int i,
-                                                                  int j) {
+  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gmat unit(const int i,
+                                                                  const int j) {
     gmat r = zero<gmat>();
     r(i, j) = one<T>();
     return r;

@@ -125,7 +125,7 @@ public:
   static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec pure(const T &a) {
     return vect<T, N>::pure(a);
   }
-  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec unit(int i) {
+  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec unit(const int i) {
     return vect<T, N>::unit(i);
   }
 

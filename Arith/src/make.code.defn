@@ -10,6 +10,7 @@ SRCS =						\
 	rten.cxx				\
 	simd.cxx				\
 	sum.cxx					\
+	ten3.cxx				\
 	vec.cxx					\
 	vect.cxx
 

@@ -20,15 +20,29 @@ template <typename T> struct simd;
 template <typename T> struct simdl;
 
 namespace detail {
-template <typename T> struct f2i;
-template <typename T> using f2i_t = typename f2i<T>::type;
-template <> struct f2i<f32> { typedef i32 type; };
-template <> struct f2i<f64> { typedef i64 type; };
+struct reinterpret32 {
+  typedef i32 int_type;
+  typedef u32 unsigned_type;
+  typedef f32 float_type;
+};
+struct reinterpret64 {
+  typedef i64 int_type;
+  typedef u64 unsigned_type;
+  typedef f64 float_type;
+};
 
-template <typename T> struct f2u;
-template <typename T> using f2u_t = typename f2u<T>::type;
-template <> struct f2u<f32> { typedef u32 type; };
-template <> struct f2u<f64> { typedef u64 type; };
+template <typename T> struct reinterpret;
+template <> struct reinterpret<i32> : reinterpret32 {};
+template <> struct reinterpret<u32> : reinterpret32 {};
+template <> struct reinterpret<f32> : reinterpret32 {};
+template <> struct reinterpret<i64> : reinterpret64 {};
+template <> struct reinterpret<u64> : reinterpret64 {};
+template <> struct reinterpret<f64> : reinterpret64 {};
+
+template <typename T> using int_type = typename reinterpret<T>::int_type;
+template <typename T>
+using unsigned_type = typename reinterpret<T>::unsigned_type;
+template <typename T> using float_type = typename reinterpret<T>::float_type;
 } // namespace detail
 
 template <typename T> struct simd {
@@ -321,7 +335,7 @@ template <typename T> struct simd {
   friend constexpr ARITH_DEVICE ARITH_HOST simd copysign(const simd &x,
                                                          const simd &y) {
 #ifndef SIMD_CPU
-    typedef detail::f2u_t<T> U;
+    typedef detail::unsigned_type<T> U;
     const T signmask =
         nsimd::scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return andnot(x, signmask) | (y & signmask);
@@ -339,7 +353,7 @@ template <typename T> struct simd {
   friend constexpr ARITH_DEVICE ARITH_HOST simd flipsign(const simd &x,
                                                          const simd &y) {
 #ifndef SIMD_CPU
-    typedef detail::f2u_t<T> U;
+    typedef detail::unsigned_type<T> U;
     const T signmask =
         nsimd::scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return x ^ (y & signmask);
@@ -423,7 +437,7 @@ template <typename T> struct simd {
 
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> signbit(const simd &x) {
 #ifndef SIMD_CPU
-    typedef detail::f2u_t<T> U;
+    typedef detail::unsigned_type<T> U;
     const T signmask =
         nsimd::scalar_reinterpret(T{}, U(1) << (8 * sizeof(U) - 1));
     return to_logical(x & signmask);
@@ -929,5 +943,25 @@ struct tuple_size<Arith::simdl<T> >
     : std::integral_constant<std::size_t, sizeof(Arith::simdl<T>) / sizeof(T)> {
 };
 } // namespace std
+namespace Arith {
+
+template <typename T> struct zero<simdl<T> > {
+  typedef simdl<T> value_type;
+  // static constexpr value_type value = simdl<T>(false);
+  constexpr ARITH_INLINE operator value_type() const { return simdl<T>(false); }
+  constexpr ARITH_INLINE value_type operator()() const {
+    return simdl<T>(false);
+  }
+};
+
+template <typename T> struct one<simdl<T> > {
+  typedef simdl<T> value_type;
+  // static constexpr value_type value = simdl<T>(true);
+  constexpr ARITH_INLINE operator value_type() const { return simdl<T>(true); }
+  constexpr ARITH_INLINE value_type operator()() const {
+    return simdl<T>(true);
+  }
+};
+} // namespace Arith
 
 #endif // #ifndef SIMD_HXX
