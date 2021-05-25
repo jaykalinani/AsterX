@@ -540,8 +540,9 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto isbad(const T &x) {
 template <typename T, int D, dnup_t dnup>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, dnup>
 ifbad(const vec<T, D, dnup> &x, const vec<T, D, dnup> &x0) {
-  const auto xnorm = maxabs(x);
-  return if_else(isbad(xnorm), x0, x);
+  const auto xmaxabs = maxabs(x);
+  return if_else(isbad(xmaxabs), x0, x);
+  // return if_else(any(fmap([](const auto &a) { return isbad(a); }, x)), x0, x);
 }
 
 template <typename T, int D, symm_t symm>
