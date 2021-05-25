@@ -1,0 +1,10 @@
+# Configuration definitions for thorn ADIOS2
+
+PROVIDES ADIOS2
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS ADIOS2_DIR
+}
+
+REQUIRES MPI
