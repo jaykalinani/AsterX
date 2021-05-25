@@ -245,7 +245,7 @@ deriv1d_upwind(const simdl<T> &mask, const T *restrict const var,
         - 5 / T(8) *
               (maskz_loadu(mask, &var[-di]) + maskz_loadu(mask, &var[di])) //
         + 5 / T(6) * maskz_loadu(mask, &var[0]);
-    return (symm - fabs(vel) * anti) / dx;
+    return (vel * symm - fabs(vel) * anti) / dx;
   }
 }
 
