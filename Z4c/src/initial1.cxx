@@ -72,7 +72,7 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   constexpr size_t vsize = tuple_size_v<vreal>;
 
   const Loop::GridDescBaseDevice grid(cctkGH);
-  grid.loop_all_device<0, 0, 0, vsize>(
+  grid.loop_int_device<0, 0, 0, vsize>(
       grid.nghostzones,
       [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);

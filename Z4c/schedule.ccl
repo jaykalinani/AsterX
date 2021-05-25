@@ -96,25 +96,61 @@ SCHEDULE Z4c_Test AT wragh
 SCHEDULE Z4c_Initial1 IN Z4c_InitialGroup
 {
   LANG: C
-  READS: ADMBase::metric(everywhere)
-  READS: ADMBase::curv(everywhere)
-  READS: ADMBase::lapse(everywhere)
-  READS: ADMBase::shift(everywhere)
-  WRITES: chi(everywhere)
-  WRITES: gamma_tilde(everywhere)
-  WRITES: K_hat(everywhere)
-  WRITES: A_tilde(everywhere)
-  WRITES: Theta(everywhere)
-  WRITES: alphaG(everywhere)
-  WRITES: betaG(everywhere)
+  READS: ADMBase::metric(interior)
+  READS: ADMBase::curv(interior)
+  READS: ADMBase::lapse(interior)
+  READS: ADMBase::shift(interior)
+  WRITES: chi(interior)
+  WRITES: gamma_tilde(interior)
+  WRITES: K_hat(interior)
+  WRITES: A_tilde(interior)
+  WRITES: Theta(interior)
+  WRITES: alphaG(interior)
+  WRITES: betaG(interior)
 } "Convert ADM to Z4c variables, part 1"
 
-SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Initial1
+SCHEDULE Z4c_Sync1 IN Z4c_InitialGroup AFTER Z4c_Initial1
+{
+  LANG: C
+  SYNC: chi
+  SYNC: gamma_tilde
+  SYNC: K_hat
+  SYNC: A_tilde
+  SYNC: Theta
+  SYNC: alphaG
+  SYNC: betaG
+} "Synchronize Z4c variables, part 1"
+
+SCHEDULE Z4c_Boundaries1 IN Z4c_InitialGroup AFTER Z4c_Sync1
+{
+  LANG: C
+  WRITES: chi(boundary)
+  WRITES: gamma_tilde(boundary)
+  WRITES: K_hat(boundary)
+  WRITES: A_tilde(boundary)
+  WRITES: Theta(boundary)
+  WRITES: alphaG(boundary)
+  WRITES: betaG(boundary)
+} "Apply boundary conditions to Z4c variables, part 1"
+
+SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Boundaries1
 {
   LANG: C
   READS: gamma_tilde(everywhere)
   WRITES: Gam_tilde(interior)
 } "Convert ADM to Z4c variables, part 2"
+
+SCHEDULE Z4c_Sync2 IN Z4c_InitialGroup AFTER Z4c_Initial2
+{
+  LANG: C
+  SYNC: Gam_tilde
+} "Synchronize Z4c variables, part 2"
+
+SCHEDULE Z4c_Boundaries2 IN Z4c_InitialGroup AFTER Z4c_Sync2
+{
+  LANG: C
+  WRITES: Gam_tilde(boundary)
+} "Apply boundary conditions to Z4c variables, part 2"
 
 
 
