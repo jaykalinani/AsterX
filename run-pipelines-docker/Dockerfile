@@ -2,7 +2,7 @@
 #     docker build . --build-arg commit=<commit>
 #     docker build . --build-arg commit=$(git log -n 1 | awk '/^commit / { print $2; }')
 
-FROM eschnett/cactus-amrex
+FROM einsteintoolkit/cactus-amrex
 
 # Download repo
 ARG commit
@@ -12,7 +12,7 @@ RUN git clone -n https://bitbucket.org/eschnett/cactusamrex.git && \
 WORKDIR cactusamrex
 
 # Download Cactus
-RUN wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2019_10/GetComponents && \
+RUN wget https://raw.githubusercontent.com/gridaphobe/CRL/ET_2020_11/GetComponents && \
     chmod a+x GetComponents && \
     ./GetComponents --parallel azure-pipelines/carpetx.th && \
     echo 'docker' >$HOME/.hostname && \

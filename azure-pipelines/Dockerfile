@@ -103,7 +103,7 @@ RUN mkdir src && \
     cd amrex-21.05 && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_FORTRAN=OFF -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake -DCMAKE_BUILD_TYPE=Debug -DAMReX_OMP=ON -DAMReX_PARTICLES=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true)
