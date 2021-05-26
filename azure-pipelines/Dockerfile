@@ -2,9 +2,8 @@
 #     docker build . --tag einsteintoolkit/cactus-amrex
 #     docker push einsteintoolkit/cactus-amrex
 
-# Use Ubuntu
-# FROM ubuntu:20.04
-FROM debian:testing-20200607-slim
+# Use Debian
+FROM debian:testing-20210511-slim
 
 RUN mkdir /cactus
 WORKDIR /cactus
@@ -42,15 +41,15 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install NSIMD
-# Note: This assumes that the system has x86_64 CPUs with AVX2 and FMA
+# Note: This assumes that the system has x86_64 CPUs with AVX2
 RUN mkdir src && \
     (cd src && \
-    git clone -b eschnett/storeu_masked https://github.com/eschnett/nsimd.git && \
-    cd nsimd && \
-    python3 egg/hatch.py --all --force --disable-clang-format && \
+    wget https://github.com/agenium-scale/nsimd/archive/refs/tags/v2.2.tar.gz && \
+    tar xzf v2.2.tar.gz && \
+    cd nsimd-2.2 && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DSIMD=AVX2 -DSIMD_OPTIONALS=FMA -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -Dsimd=AVX2 -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true) && \
@@ -99,12 +98,12 @@ RUN mkdir src && \
 # Keep AMReX source tree around
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/20.08.tar.gz && \
-    tar xzf 20.08.tar.gz && \
-    cd amrex-20.08 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/21.05.tar.gz && \
+    tar xzf 21.05.tar.gz && \
+    cd amrex-21.05 && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_FORTRAN=ON -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PARTICLES=ON -DENABLE_ASSERTIONS=ON -DENABLE_FORTRAN=OFF -DENABLE_OMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true)
