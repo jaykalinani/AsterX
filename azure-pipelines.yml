@@ -1,6 +1,6 @@
 # Choose an agent virtual image
 pool:
-  vmImage: ubuntu-16.04
+  vmImage: ubuntu-latest
 container:
   image: einsteintoolkit/cactus-amrex
 
