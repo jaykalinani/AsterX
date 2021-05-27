@@ -51,38 +51,38 @@ template <typename T> struct z4c_vars_noderivs {
   // ADM variables
   const smat<T, 3, DN, DN> g; // W = 0
   const smat<T, 3, DN, DN> K; // W = 0
-  const T alp;                // W = 0
-  const T dtalp;              // W = 0
+  const T alpha;              // W = 0
+  const T dtalpha;            // W = 0
   const vec<T, 3, UP> beta;   // W = 0
   const vec<T, 3, UP> dtbeta; // W = 0
 
   friend CCTK_ATTRIBUTE_NOINLINE ostream &
   operator<<(ostream &os, const z4c_vars_noderivs &vars) {
-    return os << "z4c_vars_noderivs{"            //
-              << "kappa1:" << vars.kappa1 << "," //
-              << "kappa2:" << vars.kappa2 << "," //
-              << "f_mu_L:" << vars.f_mu_L << "," //
-              << "f_mu_S:" << vars.f_mu_S << "," //
-              << "eta:" << vars.eta << ","       //
-              << "chi:" << vars.chi << ","       //
-              << "gammat:" << vars.gammat << "," //
-              << "Kh:" << vars.Kh << ","         //
-              << "At:" << vars.At << ","         //
-              << "Gamt:" << vars.Gamt << ","     //
-              << "Theta:" << vars.Theta << ","   //
-              << "alphaG:" << vars.alphaG << "," //
-              << "betaG:" << vars.betaG << ","   //
-              << "eTtt:" << vars.eTtt << ","     //
-              << "eTti:" << vars.eTti << ","     //
-              << "eTij:" << vars.eTij << ","     //
-              << "rho:" << vars.rho << ","       //
-              << "Si:" << vars.Si << ","         //
-              << "Sij:" << vars.Sij << ","       //
-              << "g:" << vars.g << ","           //
-              << "K:" << vars.K << ","           //
-              << "alp:" << vars.alp << ","       //
-              << "dtalp:" << vars.dtalp << ","   //
-              << "dtbeta:" << vars.dtbeta << "," //
+    return os << "z4c_vars_noderivs{"              //
+              << "kappa1:" << vars.kappa1 << ","   //
+              << "kappa2:" << vars.kappa2 << ","   //
+              << "f_mu_L:" << vars.f_mu_L << ","   //
+              << "f_mu_S:" << vars.f_mu_S << ","   //
+              << "eta:" << vars.eta << ","         //
+              << "chi:" << vars.chi << ","         //
+              << "gammat:" << vars.gammat << ","   //
+              << "Kh:" << vars.Kh << ","           //
+              << "At:" << vars.At << ","           //
+              << "Gamt:" << vars.Gamt << ","       //
+              << "Theta:" << vars.Theta << ","     //
+              << "alphaG:" << vars.alphaG << ","   //
+              << "betaG:" << vars.betaG << ","     //
+              << "eTtt:" << vars.eTtt << ","       //
+              << "eTti:" << vars.eTti << ","       //
+              << "eTij:" << vars.eTij << ","       //
+              << "rho:" << vars.rho << ","         //
+              << "Si:" << vars.Si << ","           //
+              << "Sij:" << vars.Sij << ","         //
+              << "g:" << vars.g << ","             //
+              << "K:" << vars.K << ","             //
+              << "alpha:" << vars.alpha << ","     //
+              << "dtalpha:" << vars.dtalpha << "," //
+              << "dtbeta:" << vars.dtbeta << ","   //
               << "}";
   }
 
@@ -126,18 +126,21 @@ template <typename T> struct z4c_vars_noderivs {
         g([&](int a, int b) ARITH_INLINE { return 1 / chi * gammat(a, b); }), //
         K([&](int a, int b) ARITH_INLINE {
           return 1 / chi * (At(a, b) + (Kh + 2 * Theta) / 3 * gammat(a, b));
-        }),          //
-        alp(alphaG), //
-        // (11)
-        dtalp([&]() ARITH_INLINE {
-          const T mu_L = f_mu_L / alphaG;
-          return -pow2(alphaG) * mu_L * Kh;
-        }()),
-        beta([&](int a) ARITH_INLINE { return betaG(a); }),
+        }),            //
+        alpha(alphaG), //
+                       // (11)
+        dtalpha([&]() ARITH_INLINE {
+          // const T mu_L = f_mu_L / alphaG;
+          // return -pow2(alphaG) * mu_L * Kh;
+          return -alphaG * f_mu_L * Kh;
+        }()), //
+
         // (12)
         dtbeta([&](int a) ARITH_INLINE {
-          const T mu_S = f_mu_S / pow2(alphaG);
-          return pow2(alphaG) * mu_S * Gamt(a) //
+          // const T mu_S = f_mu_S / pow2(alphaG);
+          // return pow2(alphaG) * mu_S * Gamt(a) //
+          //        - eta * betaG(a);
+          return f_mu_S * Gamt(a) //
                  - eta * betaG(a);
         })
   //
@@ -244,9 +247,9 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   // ADM variables
   using z4c_vars_noderivs<T>::g;
   using z4c_vars_noderivs<T>::K;
-  using z4c_vars_noderivs<T>::alp;
+  using z4c_vars_noderivs<T>::alpha;
   using z4c_vars_noderivs<T>::beta;
-  using z4c_vars_noderivs<T>::dtalp;
+  using z4c_vars_noderivs<T>::dtalpha;
   using z4c_vars_noderivs<T>::dtbeta;
 
   // Derivatives of Z4c variables
@@ -329,8 +332,8 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
               << "Sij:" << vars.Sij << ","                 //
               << "g:" << vars.g << ","                     //
               << "K:" << vars.K << ","                     //
-              << "alp:" << vars.alp << ","                 //
-              << "dtalp:" << vars.dtalp << ","             //
+              << "alpha:" << vars.alpha << ","             //
+              << "dtalpha:" << vars.dtalpha << ","         //
               << "dtbeta:" << vars.dtbeta << ","           //
               << "dchi:" << vars.dchi << ","               //
               << "ddchi:" << vars.ddchi << ","             //
@@ -523,7 +526,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
            + sum_symm<3>([&](int x, int y)
                              ARITH_INLINE { return At(x, y) * Atu(x, y); }) //
            - 2 / T(3) * pow2(Kh + 2 * Theta)                                //
-           - 16 * M_PI * rho),
+           - 16 * T(M_PI) * rho),
         // (15)
         MtC([&](int a) ARITH_INLINE {
           return sum<3>([&](int x) ARITH_INLINE { return dAtu(a, x)(x); }) //
@@ -586,19 +589,19 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                              return At(x, y) * Atu(x, y);
                            })                                 //
                            + 1 / T(3) * pow2(Kh + 2 * Theta)) //
-               + 4 * M_PI * alphaG * (traceSij + rho)         //
+               + 4 * T(M_PI) * alphaG * (traceSij + rho)      //
                + alphaG * kappa1 * (1 - kappa2) * Theta),
         // (4)
         At_rhs([&](int a, int b) ARITH_INLINE {
-          return chi * ((-DDalphaG(a, b)                      //
-                         + alphaG * (R(a, b)                  //
-                                     - 8 * M_PI * Sij(a, b))) //
+          return chi * ((-DDalphaG(a, b)                         //
+                         + alphaG * (R(a, b)                     //
+                                     - 8 * T(M_PI) * Sij(a, b))) //
                         - 1 / T(3) * g(a, b) *
                               sum_symm<3>([&](int x, int y) ARITH_INLINE {
                                 return gu(x, y) *
                                        (-DDalphaG(x, y)     //
                                         + alphaG * (R(x, y) //
-                                                    - 8 * M_PI * Sij(x, y)));
+                                                    - 8 * T(M_PI) * Sij(x, y)));
                               }))                        //
                  + alphaG * ((Kh + 2 * Theta) * At(a, b) //
                              - 2 * sum<3>([&](int x) ARITH_INLINE {
@@ -631,7 +634,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                      - 1 / T(3) * sum<3>([&](int x) ARITH_INLINE {
                          return gammatu(a, x) * (2 * dKh(x) + dTheta(x));
                        }) //
-                     - 8 * M_PI * sum<3>([&](int x) ARITH_INLINE {
+                     - 8 * T(M_PI) * sum<3>([&](int x) ARITH_INLINE {
                          return gammatu(a, x) * Si(x);
                        })) //
               + sum_symm<3>([&](int x, int y) ARITH_INLINE {
@@ -655,10 +658,12 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                            return At(x, y) * Atu(x, y);
                          })                               //
                        + 2 / T(3) * pow2(Kh + 2 * Theta)) //
-                  - alphaG * (8 * M_PI * rho              //
+                  - alphaG * (8 * T(M_PI) * rho           //
                               + kappa1 * (2 + kappa2) * Theta)),
         //
-        alphaG_rhs(dtalp), betaG_rhs(dtbeta),
+        alphaG_rhs(dtalpha),
+        //
+        betaG_rhs(dtbeta),
         //
         K_rhs([&](int a, int b) ARITH_INLINE {
           return -1 / pow2(chi) * chi_rhs *
@@ -670,15 +675,13 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         }),
         //
         dtalpha_rhs([&]() ARITH_INLINE {
-          const T mu_L = f_mu_L / alphaG;
-          return -2 * alphaG * alphaG_rhs * mu_L * Kh //
-                 - pow2(alphaG) * mu_L * Kh_rhs;
+          return -alphaG_rhs * f_mu_L * Kh //
+                 - alphaG * f_mu_L * Kh_rhs;
+          ;
         }()),
         //
         dtbeta_rhs([&](int a) ARITH_INLINE {
-          const T mu_S = f_mu_S / pow2(alphaG);
-          return 2 * alphaG * alphaG_rhs * mu_S * Gamt(a) //
-                 + pow2(alphaG) * mu_S * Gamt_rhs(a)      //
+          return f_mu_S * Gamt_rhs(a) //
                  - eta * betaG_rhs(a);
         })
   //

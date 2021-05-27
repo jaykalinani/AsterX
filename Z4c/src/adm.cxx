@@ -120,8 +120,8 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
         // Store
         gf_g1.store(mask, index1, vars.g);
         gf_K1.store(mask, index1, vars.K);
-        gf_alp1.store(mask, index1, vars.alp);
-        gf_dtalp1.store(mask, index1, vars.dtalp);
+        gf_alp1.store(mask, index1, vars.alpha);
+        gf_dtalp1.store(mask, index1, vars.dtalpha);
         gf_beta1.store(mask, index1, vars.beta);
         gf_dtbeta1.store(mask, index1, vars.dtbeta);
       });
