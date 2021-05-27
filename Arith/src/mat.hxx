@@ -383,7 +383,7 @@ template <typename T, int D, dnup_t dnup1, dnup_t dnup2>
 struct one<gmat<T, D, dnup1, dnup2, symm_t::full> > {
   typedef gmat<T, D, dnup1, dnup2, symm_t::full> value_type;
   static constexpr value_type value = gmat<T, D, dnup1, dnup2, symm_t::full>(
-      [](int i, int j) { return i == j; });
+      [](int i, int j) { return i == j ? one<T>()() : zero<T>()(); });
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
     return value;
   }
@@ -398,11 +398,11 @@ struct one<gmat<T, D, dnup1, dnup2, symm_t::symm> > {
   //     [](int i, int j) { return i == j; });
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
     return gmat<T, D, dnup1, dnup2, symm_t::symm>(
-        [](int i, int j) { return i == j; });
+        [](int i, int j) { return i == j ? one<T>()() : zero<T>()(); });
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
     return gmat<T, D, dnup1, dnup2, symm_t::symm>(
-        [](int i, int j) { return i == j; });
+        [](int i, int j) { return i == j ? one<T>()() : zero<T>()(); });
   }
 };
 
