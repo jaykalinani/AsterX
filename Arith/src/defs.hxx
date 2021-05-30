@@ -8,12 +8,15 @@
 #include <limits>
 #include <type_traits>
 
+// Force a function to be inlined
 #ifdef CCTK_DEBUG
 #define ARITH_INLINE
 #else
 #define ARITH_INLINE CCTK_ATTRIBUTE_ALWAYS_INLINE
 #endif
 
+// For CUDA: Declare whether a function should live on the device or
+// the host (or both)
 #ifdef __CUDACC__
 #define ARITH_DEVICE __device__
 #define ARITH_HOST __host__
@@ -103,6 +106,8 @@ template <> struct nan<double> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// An explicitly unrolled for loop
+
 template <int imin, int imax, int istep = 1, typename F,
           enable_if_t<(istep > 0 ? imin >= imax : imin <= imax)> * = nullptr>
 ARITH_INLINE void unroll_for(const F &f) {
@@ -176,6 +181,7 @@ inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T min1(const T &x, const T &y) {
   return if_else(x != x, x, if_else(y != y, y, min(x, y)));
 }
 
+// Factorial
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST int factorial(int n) {
   int r = 1;
   while (n > 0)

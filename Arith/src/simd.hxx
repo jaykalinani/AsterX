@@ -45,6 +45,17 @@ using unsigned_type = typename reinterpret<T>::unsigned_type;
 template <typename T> using float_type = typename reinterpret<T>::float_type;
 } // namespace detail
 
+////////////////////////////////////////////////////////////////////////////////
+
+// A SIMD vector, holding elements of type `T`. `T` can be a
+// floating-point or an integer type. To represent logical values
+// (i.e. booleans), see `simdl` below.
+
+// This class is based on NSIMD
+// <https://github.com/agenium-scale/nsimd>. The NSIMD library is very
+// close to what we need; with a few bugs corrected or features added,
+// this wrapper class here might be avoided.
+
 template <typename T> struct simd {
   typedef T value_type;
 #ifndef SIMD_CPU
@@ -693,6 +704,19 @@ ARITH_DEVICE ARITH_HOST inline simd<T> sin(const simd<T> &x) {
   // return y;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+// A SIMD vector of booleans, usable with `simd<T>`.
+//
+// Booleans are special in SIMD operations. There is not just one
+// boolean type, but rather one boolean type for each (floating-point
+// or integer) type `T`. The reason is that SIMD operations do not
+// like changing the number of bits, and hence there are 64-bit
+// booleans, 32-bit booleans, 16-bit booleans, etc.
+//
+// This is described in the NSIMD documentation
+// <https://github.com/agenium-scale/nsimd>.
+  
 template <typename T> struct simdl {
   typedef T value_type;
 #ifndef SIMD_CPU

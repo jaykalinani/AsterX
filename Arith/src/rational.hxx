@@ -19,6 +19,8 @@
 namespace Arith {
 using namespace std;
 
+// Rational numbers
+
 template <typename I> struct rational {
   I num, den;
 

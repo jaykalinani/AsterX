@@ -68,6 +68,11 @@ constexpr std::array<T, N> construct_array(const F &f) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// A small vector with a length that is known at compile time, similar
+// to `std::array`. The main difference is that `vect` supports
+// arithmetic operations, which is most useful for multi-dimensional
+// array indices.
+
 template <typename T, int D> struct vect {
   array<T, D> elts;
 

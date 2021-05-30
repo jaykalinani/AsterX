@@ -22,12 +22,11 @@
 namespace Arith {
 using namespace std;
 
-// Matrix
+// A matrix, i.e. a rank-2 tensor. It can have no symmetry (full
+// storage), or be symmetric, or anti-symmetric.
 template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
 struct gmat {
   static_assert(symm == symm_t::full || dnup1 == dnup2, "");
-
-  // template <typename, int, dnup_t, dnup_t, symm_t> friend class gmat;
 
   constexpr static int Nfull = D * D;
   constexpr static int Nsymm = D * (D + 1) / 2;

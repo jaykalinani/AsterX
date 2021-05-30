@@ -22,7 +22,7 @@
 namespace Arith {
 using namespace std;
 
-// Riemann tensor
+// A rank-4 tensor with the same symmetries as the Riemann tensor
 template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
           dnup_t dnup4>
 struct rten {

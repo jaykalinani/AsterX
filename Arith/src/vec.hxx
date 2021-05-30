@@ -64,10 +64,23 @@ inline ostream &operator<<(ostream &os, const symm_t symm) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Vector
-template <typename T, int D, dnup_t dnup> struct vec {
+// A small vector.
 
-  // template <typename, int, dnup_t> friend class vec;
+// There are two small vector classes, `vect` and `vec`. The former
+// (`vect`) is a drop-in replacement for `std::array` which supports
+// arithmetic operations. The latter (`vec`, defined here) is a rank-1
+// tensor compatible with `mat`, `ten3`, and `rten`. While similar,
+// these classes have different APIs because they are used
+// differently.
+//
+// The rule of thumb is: If you are looking for a type similar to a
+// C++ array, use `vect`. If you are looking for a type for a physics
+// quantity, use `vec`.
+//
+// It might be possible to unify these two types. In practice, there
+// is little confusion, so this is not urgent.
+  
+template <typename T, int D, dnup_t dnup> struct vec {
 
   constexpr static int N = D;
   vect<T, N> elts;

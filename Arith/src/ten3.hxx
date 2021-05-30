@@ -23,7 +23,7 @@
 namespace Arith {
 using namespace std;
 
-// Rank-3 tensor
+// A rank-3 tensor with various symmetries
 template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
           symm_t symm>
 struct gten3 {

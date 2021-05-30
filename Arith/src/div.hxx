@@ -5,6 +5,9 @@
 
 namespace Arith {
 
+// Integer division (and related) functions that round towards negative or
+// positive infinity
+
 template <typename T> constexpr ARITH_INLINE T div_floor(T x, T y) {
   // C++ division truncates; we want to round towards -infinity instead
   x = y < 0 ? -x : x;

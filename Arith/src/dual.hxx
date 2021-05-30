@@ -16,7 +16,10 @@ using namespace std;
 template <typename T, typename U = T> struct dual;
 
 template <typename T, typename U> struct dual {
+  // `T` is the value type.
   T val;
+  // `U` is either `T`, or a vector (in the mathematical sense) of
+  // `T`.
   U eps;
 
   constexpr ARITH_INLINE dual(const dual &) = default;
