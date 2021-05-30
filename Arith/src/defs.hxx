@@ -176,6 +176,13 @@ inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T min1(const T &x, const T &y) {
   return if_else(x != x, x, if_else(y != y, y, min(x, y)));
 }
 
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST int factorial(int n) {
+  int r = 1;
+  while (n > 0)
+    r *= n--;
+  return r;
+}
+
 namespace detail {
 template <typename T> constexpr T pown(const T &x, int n) {
   T r{1};
