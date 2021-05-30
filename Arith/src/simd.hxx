@@ -958,7 +958,7 @@ template <typename T> struct simdl {
 namespace std {
 template <typename T>
 struct tuple_size<Arith::simdl<T> >
-    : std::integral_constant<std::size_t, sizeof(Arith::simdl<T>) / sizeof(T)> {
+    : std::integral_constant<std::size_t, sizeof(Arith::simd<T>) / sizeof(T)> {
 };
 } // namespace std
 namespace Arith {
