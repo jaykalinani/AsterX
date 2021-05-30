@@ -890,30 +890,38 @@ template <typename T> struct simdl {
     return cond.elts ? x.elts : y.elts;
 #endif
   }
-
   friend ARITH_DEVICE ARITH_HOST simd<T> if_else(const simdl &cond, const T &a,
                                                  const simd<T> &y) {
-#ifndef SIMD_CPU
-    return if_else1(cond.elts, simd(a).elts, y.elts);
-#else
-    return cond.elts ? simd(a).elts : y.elts;
-#endif
+    return if_else(cond, simd(a), y);
   }
   friend ARITH_DEVICE ARITH_HOST simd<T> if_else(const simdl &cond,
                                                  const simd<T> &x, const T &b) {
-#ifndef SIMD_CPU
-    return if_else1(cond.elts, x.elts, simd(b).elts);
-#else
-    return cond.elts ? x.elts : simd(b).elts;
-#endif
+    return if_else(cond, x, simd(b));
   }
   friend ARITH_DEVICE ARITH_HOST simd<T> if_else(const simdl &cond, const T &a,
                                                  const T &b) {
+    return if_else(cond, simd(a), simd(b));
+  }
+
+  friend ARITH_DEVICE ARITH_HOST simdl<T>
+  if_else(const simdl &cond, const simdl<T> &x, const simdl<T> &y) {
 #ifndef SIMD_CPU
-    return if_else1(cond.elts, simd(a).elts, simd(b).elts);
+    return if_else1(cond.elts, x.elts, y.elts);
 #else
-    return cond.elts ? simd(a).elts : simd(b).elts;
+    return cond.elts ? x.elts : y.elts;
 #endif
+  }
+  friend ARITH_DEVICE ARITH_HOST simdl<T>
+  if_else(const simdl &cond, const bool &a, const simdl<T> &y) {
+    return if_else(cond, simdl(a), y);
+  }
+  friend ARITH_DEVICE ARITH_HOST simdl<T>
+  if_else(const simdl &cond, const simdl<T> &x, const bool &b) {
+    return if_else(cond, x, simdl(b));
+  }
+  friend ARITH_DEVICE ARITH_HOST simdl<T>
+  if_else(const simdl &cond, const bool &a, const bool &b) {
+    return if_else(cond, simdl(a), simdl(b));
   }
 
   friend ARITH_DEVICE ARITH_HOST void storela(T *ptr, const simdl &x) {
