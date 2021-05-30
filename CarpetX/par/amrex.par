@@ -9,6 +9,8 @@ $ncells = 128
 
 Cactus::cctk_show_schedule = no
 
+Cactus::presync_mode = "mixed-error"
+
 Cactus::cctk_itlast = $ncells * 2 ** ($nlevels - 1) * 2
 
 CarpetX::ncells_x = $ncells
