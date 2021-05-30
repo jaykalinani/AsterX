@@ -18,8 +18,6 @@ using namespace std;
 extern "C" void Weyl_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
-#ifdef __CUDACC_
-
   // Test tensors
   {
     mt19937 engine(42);
@@ -287,8 +285,6 @@ extern "C" void Weyl_Test(CCTK_ARGUMENTS) {
       assert(fabs(found - expected) <= eps);
     }
   }
-
-#endif
 }
 
 } // namespace Weyl
