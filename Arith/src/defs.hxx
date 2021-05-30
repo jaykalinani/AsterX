@@ -103,6 +103,21 @@ template <> struct nan<double> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <int imin, int imax, int istep = 1, typename F,
+          enable_if_t<(istep > 0 ? imin >= imax : imin <= imax)> * = nullptr>
+ARITH_INLINE void unroll_for(const F &f) {
+  // done: do nothing
+}
+
+template <int imin, int imax, int istep = 1, typename F,
+          enable_if_t<!(istep > 0 ? imin >= imax : imin <= imax)> * = nullptr>
+ARITH_INLINE void unroll_for(const F &f) {
+  f(imin);
+  unroll_for<imin + istep, imax, istep>(f);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // Return true if all elements of a container are true
 constexpr ARITH_INLINE bool all(bool x) { return x; }
 
