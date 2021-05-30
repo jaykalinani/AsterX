@@ -1,6 +1,7 @@
 #ifndef DERIVS_HXX
 #define DERIVS_HXX
 
+#include <div.hxx>
 #include <loop_device.hxx>
 #include <mat.hxx>
 #include <simd.hxx>
@@ -98,18 +99,31 @@ deriv2_2d(const int vavail, const simdl<T> &mask, const T *restrict const var,
     assert(vavail > 0);
     constexpr int maxnpoints = deriv_order + 1 + vsize - 1;
     const int npoints = deriv_order + 1 + min(int(vsize), vavail) - 1;
-    alignas(alignof(simd<T>)) array<T, maxnpoints> arrx;
-    for (int i = 0; i < npoints; i += vsize) {
-      const simdl<T> mask1 = mask_for_loop_tail<simdl<T> >(i, npoints);
-      mask_storea(mask1, &arrx[i], deriv1d(mask1, &var[i], dj, dx));
+    array<simd<T>, div_ceil(maxnpoints, int(vsize))> arrx;
+    for (int i = 0; i < maxnpoints; i += vsize) {
+      if (i < npoints) {
+        const simdl<T> mask1 = mask_for_loop_tail<simdl<T> >(i, npoints);
+        arrx[div_floor(i, int(vsize))] =
+            deriv1d(mask1, &var[i - deriv_order / 2], dj, dy);
+      }
     }
-    const T *const varx = (T *)(&arrx[deriv_order / 2]);
-    return deriv1d(mask, varx, 1, dy);
+#ifdef CCTK_DEBUG
+    for (int i = npoints; i < align_ceil(maxnpoints, int(vsize)); ++i)
+      ((T *)&arrx[0])[i] = Arith::nan<T>()(); // unused
+#endif
+    const T *const varx = (T *)&arrx[0] + deriv_order / 2;
+    return deriv1d(mask, varx, 1, dx);
   } else {
     assert(dj != 1);
     array<simd<T>, deriv_order + 1> arrx;
     for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
-      arrx[deriv_order / 2 + j] = deriv1d(mask, &var[j * dj], di, dx);
+      if (j == 0) {
+#ifdef CCTK_DEBUG
+        arrx[deriv_order / 2 + j] = Arith::nan<simd<T> >()(); // unused
+#endif
+      } else {
+        arrx[deriv_order / 2 + j] = deriv1d(mask, &var[j * dj], di, dx);
+      }
     const T *const varx = (T *)(&arrx[deriv_order / 2]);
     return deriv1d(mask, varx, vsize, dy);
   }

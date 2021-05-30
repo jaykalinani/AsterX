@@ -235,54 +235,125 @@ extern "C" void Weyl_Test(CCTK_ARGUMENTS) {
 
   static_assert(deriv_order % 2 == 0, "");
   constexpr int required_ghosts = deriv_order / 2 + 1;
+  constexpr int fences = 3;
+  constexpr int vsize = tuple_size_v<simd<double> >;
   const double eps = 1.0e-12;
 
   // deriv
-  for (int order = 0; order <= deriv_order; ++order) {
-    // CCTK_VINFO("Testing deriv order=%d", order);
-    array<double, 2 * required_ghosts + 7> arr;
-    for (size_t i = 0; i < arr.size(); ++i)
-      arr[i] = NAN;
-    double *const var = &arr[arr.size() / 2];
-    for (int i = -deriv_order / 2; i <= deriv_order / 2; ++i)
-      var[i] = pown(i, order);
-    const double expected = order == 1 ? 1 : 0;
-    const double found = deriv1d(var, 1, 1.0);
-    assert(fabs(found - expected) <= eps);
+  for (int npoints = 1; npoints <= vsize; ++npoints) {
+    for (int order = 0; order <= deriv_order; ++order) {
+      // CCTK_VINFO("Testing deriv order=%d", order);
+      array<double, 2 * (fences + required_ghosts) + vsize> arr;
+      for (size_t i = 0; i < arr.size(); ++i)
+        arr[i] = NAN;
+      double *const var = &arr[fences + required_ghosts];
+      for (int i = -deriv_order / 2; i < vsize + deriv_order / 2; ++i)
+        var[i] = pown(i, order);
+      const simd<double> expected =
+          order == 0 ? 0 : order * pown(iota<simd<double> >(), order - 1);
+      const simdl<double> mask = mask_for_loop_tail<simdl<double> >(0, npoints);
+      const simd<double> found = deriv1d(mask, var, 1, 1.0);
+      if (!(all(fabs(found - expected) <= eps || !mask)))
+        cout << "deriv:\n"
+             << "  npoints: " << npoints << "\n"
+             << "  order: " << order << "\n"
+             << "  expected: " << expected << "\n"
+             << "  found: " << found << "\n";
+      assert(all(fabs(found - expected) <= eps || !mask));
+    }
+  }
+
+  // deriv (upwind)
+  for (int npoints = 1; npoints <= vsize; ++npoints) {
+    for (int order = 0; order <= deriv_order; ++order) {
+      for (int sign = 0; sign <= 1; ++sign) {
+        // CCTK_VINFO("Testing deriv (upwind) order=%d sign=%d", order, sign);
+        array<double, 2 * (fences + required_ghosts) + vsize> arr;
+        for (size_t i = 0; i < arr.size(); ++i)
+          arr[i] = NAN;
+        double *const var = &arr[fences + required_ghosts];
+        for (int i = -deriv_order / 2 - 1; i < vsize + deriv_order / 2 + 1; ++i)
+          var[i] = pown(i, order);
+        const simd<double> vel = sign ? -1 : +1;
+        const simd<double> expected =
+            vel *
+            (order == 0 ? 0 : order * pown(iota<simd<double> >(), order - 1));
+        const simdl<double> mask =
+            mask_for_loop_tail<simdl<double> >(0, npoints);
+        const simd<double> found = deriv1d_upwind(mask, var, 1, vel, 1.0);
+        if (!(all(fabs(found - expected) <= eps || !mask)))
+          cout << "deriv_upwind:\n"
+               << "  npoints: " << npoints << "\n"
+               << "  order: " << order << "\n"
+               << "  sign: " << sign << "\n"
+               << "  expected: " << expected << "\n"
+               << "  found: " << found << "\n";
+        assert(all(fabs(found - expected) <= eps || !mask));
+      }
+    }
   }
 
   // deriv2
-  for (int order = 0; order <= deriv_order; ++order) {
-    // CCTK_VINFO("Testing deriv2 order=%d", order);
-    array<double, 2 * required_ghosts + 7> arr;
-    for (size_t i = 0; i < arr.size(); ++i)
-      arr[i] = NAN;
-    double *const var = &arr[arr.size() / 2];
-    for (int i = -deriv_order / 2; i <= deriv_order / 2; ++i)
-      var[i] = pown(i, order);
-    const double expected = order == 2 ? 2 : 0;
-    const double found = deriv2_1d(var, 1, 1.0);
-    assert(fabs(found - expected) <= eps);
+  for (int npoints = 1; npoints <= vsize; ++npoints) {
+    for (int order = 0; order <= deriv_order; ++order) {
+      // CCTK_VINFO("Testing deriv2 order=%d", order);
+      array<double, 2 * (fences + required_ghosts) + vsize> arr;
+      for (size_t i = 0; i < arr.size(); ++i)
+        arr[i] = NAN;
+      double *const var = &arr[fences + required_ghosts];
+      for (int i = -deriv_order / 2; i < vsize + deriv_order / 2; ++i)
+        var[i] = pown(i, order);
+      const simd<double> expected =
+          order < 2
+              ? 0
+              : order * (order - 1) * pown(iota<simd<double> >(), order - 2);
+      const simdl<double> mask = mask_for_loop_tail<simdl<double> >(0, npoints);
+      const simd<double> found = deriv2_1d(mask, var, 1, 1.0);
+      if (!(all(fabs(found - expected) <= eps || !mask)))
+        cout << "deriv_upwind:\n"
+             << "  npoints: " << npoints << "\n"
+             << "  order: " << order << "\n"
+             << "  expected: " << expected << "\n"
+             << "  found: " << found << "\n";
+      assert(all(fabs(found - expected) <= eps || !mask));
+    }
   }
 
   // deriv2 (mixed)
-  for (int orderj = 0; orderj <= deriv_order; ++orderj) {
-    for (int orderi = 0; orderi <= deriv_order; ++orderi) {
-      // CCTK_VINFO("Testing deriv2 (mixed) order=%d,%d", orderi, orderj);
-      array<array<double, 2 * required_ghosts + 7>, 2 * required_ghosts + 7>
-          arr;
-      for (size_t j = 0; j < arr.size(); ++j)
-        for (size_t i = 0; i < arr[j].size(); ++i)
-          arr[j][i] = NAN;
-      const int di = 1;
-      const int dj = arr[0].size();
-      double *const var = &arr[arr.size() / 2][arr[0].size() / 2];
-      for (int j = -deriv_order / 2; j <= deriv_order / 2; ++j)
-        for (int i = -deriv_order / 2; i <= deriv_order / 2; ++i)
-          var[j * dj + i * di] = pown(i, orderi) * pown(j, orderj);
-      const double expected = orderi == 1 && orderj == 1 ? 1 : 0;
-      const double found = deriv2_2d(var, di, dj, 1.0, 1.0);
-      assert(fabs(found - expected) <= eps);
+  for (int npoints = 1; npoints <= vsize; ++npoints) {
+    for (int orderj = 0; orderj <= deriv_order; ++orderj) {
+      for (int orderi = 0; orderi <= deriv_order; ++orderi) {
+        // CCTK_VINFO("Testing deriv2 (mixed) order=%d,%d", orderi, orderj);
+        array<array<double, 2 * (fences + required_ghosts) + vsize>,
+              2 * (fences + required_ghosts) + 1>
+            arr;
+        for (size_t j = 0; j < arr.size(); ++j)
+          for (size_t i = 0; i < arr[0].size(); ++i)
+            arr[j][i] = NAN;
+        const int di = 1;
+        const int dj = arr[0].size();
+        double *const var =
+            &arr[fences + required_ghosts][fences + required_ghosts];
+        for (int j = -deriv_order / 2; j < 1 + deriv_order / 2; ++j)
+          for (int i = -deriv_order / 2; i < vsize + deriv_order / 2; ++i)
+            var[j * dj + i * di] = pown(i, orderi) * pown(j, orderj);
+        const simd<double> expected =
+            (orderi == 0 ? 0
+                         : orderi * pown(iota<simd<double> >(), orderi - 1)) *
+            (orderj == 0 ? 0 : orderj * pown(0.0, orderj - 1));
+        const simdl<double> mask =
+            mask_for_loop_tail<simdl<double> >(0, npoints);
+        const simd<double> found =
+            deriv2_2d(npoints, mask, var, di, dj, 1.0, 1.0);
+        if (!(all(fabs(found - expected) <= eps || !mask)))
+          cout << "deriv2_mixed:\n"
+               << "  npoints: " << npoints << "\n"
+               << "  orderi: " << orderi << "\n"
+               << "  orderj: " << orderj << "\n"
+               << "  expected: " << expected << "\n"
+               << "  found: " << found << "\n";
+        assert(all(fabs(found - expected) <= eps || !mask));
+      }
     }
   }
 }
