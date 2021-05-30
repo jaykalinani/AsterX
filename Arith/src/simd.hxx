@@ -940,7 +940,17 @@ template <typename T> struct simdl {
   }
 
   friend ostream &operator<<(ostream &os, const simdl &x) {
-    return os << "simdl";
+    os << "Ⓑ[";
+    constexpr size_t vsize = tuple_size_v<simdl>;
+    T xarr[vsize];
+    storeu(xarr, to_mask(x.elts));
+    for (size_t n = 0; n < vsize; ++n) {
+      if (n != 0)
+        os << ",";
+      os << (xarr[n] ? 1 : 0);
+    }
+    os << "]";
+    return os;
   }
 };
 
