@@ -126,15 +126,15 @@ template <typename T> struct z4c_vars_noderivs {
         g([&](int a, int b) ARITH_INLINE { return 1 / chi * gammat(a, b); }), //
         K([&](int a, int b) ARITH_INLINE {
           return 1 / chi * (At(a, b) + (Kh + 2 * Theta) / 3 * gammat(a, b));
-        }),            //
-        alpha(alphaG), //
-                       // (11)
+        }), //
+        alpha(alphaG),
+        // (11)
         dtalpha([&]() ARITH_INLINE {
           // const T mu_L = f_mu_L / alphaG;
           // return -pow2(alphaG) * mu_L * Kh;
           return -alphaG * f_mu_L * Kh;
         }()), //
-
+        beta(betaG),
         // (12)
         dtbeta([&](int a) ARITH_INLINE {
           // const T mu_S = f_mu_S / pow2(alphaG);
