@@ -178,14 +178,21 @@ int InputSiloParameters(const std::string &input_dir,
 
   if (input_iteration < 0) {
     // Did not find a checkpoint file
+    if (io_verbose) {
+      CCTK_VINFO("Not recovering parameters:");
+      CCTK_VINFO("  Could not find a Silo checkpoint file \"%s/%s.*.silo\"",
+                 input_dir.c_str(), input_file.c_str());
+    }
     return input_iteration;
   }
 
   // Read metadata
   string parameters;
   if (read_metafile) {
-    CCTK_VINFO("Recovering parameters from checkpoint iteration %d",
-               input_iteration);
+    CCTK_VINFO(
+        "Recovering parameters from checkpoint file \"%s\" iteration %d",
+        make_filename(input_dir + "/" + input_file, input_iteration).c_str(),
+        input_iteration);
 
     const string metafilename =
         input_dir + "/" + make_filename(input_file, input_iteration);
@@ -269,65 +276,69 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
   // TODO: Recover grid structure for grid arrays; call SetupGlobals for them?
 
   // Read metadata
-  if (read_metafile) {
 
+  DB::ptr<DBfile> metafile;
+  if (read_metafile) {
     const string metafilename =
         input_dir + "/" + make_filename(input_file, input_iteration);
     // We could use DB_UNKNOWN instead of DB_HDF5
-    const DB::ptr<DBfile> metafile =
-        DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
+    metafile = DB::make(DBOpen(metafilename.c_str(), DB_HDF5, DB_READ));
     assert(metafile);
+  }
 
-    {
-      const int type = DBGetVarType(metafile.get(), "cycle");
-      assert(type == DB_INT);
-      int dim;
-      int ndims = DBGetVarDims(metafile.get(), "cycle", 1, &dim);
-      assert(ndims == 1);
-      assert(dim == 1);
-      ierr = DBReadVar(metafile.get(), "cycle", &cctkGH->cctk_iteration);
-      assert(!ierr);
-      MPI_Bcast(&cctkGH->cctk_iteration, 1, MPI_INT, metafile_ioproc, mpi_comm);
-    }
+  if (read_metafile) {
+    const int type = DBGetVarType(metafile.get(), "cycle");
+    assert(type == DB_INT);
+    int dim;
+    int ndims = DBGetVarDims(metafile.get(), "cycle", 1, &dim);
+    assert(ndims == 1);
+    assert(dim == 1);
+    ierr = DBReadVar(metafile.get(), "cycle", &cctkGH->cctk_iteration);
+    assert(!ierr);
+  }
+  MPI_Bcast(&cctkGH->cctk_iteration, 1, MPI_INT, metafile_ioproc, mpi_comm);
 
-    {
-      const int type = DBGetVarType(metafile.get(), "dtime");
-      assert(type == DB_DOUBLE);
-      int dim;
-      int ndims = DBGetVarDims(metafile.get(), "dtime", 1, &dim);
-      assert(ndims == 1);
-      assert(dim == 1);
-      double dtime;
-      ierr = DBReadVar(metafile.get(), "dtime", &dtime);
-      assert(!ierr);
-      MPI_Bcast(&dtime, 1, MPI_DOUBLE, metafile_ioproc, mpi_comm);
-      cctkGH->cctk_time = dtime;
-    }
+  double dtime;
+  if (read_metafile) {
+    const int type = DBGetVarType(metafile.get(), "dtime");
+    assert(type == DB_DOUBLE);
+    int dim;
+    int ndims = DBGetVarDims(metafile.get(), "dtime", 1, &dim);
+    assert(ndims == 1);
+    assert(dim == 1);
+    ierr = DBReadVar(metafile.get(), "dtime", &dtime);
+    assert(!ierr);
+  }
+  MPI_Bcast(&dtime, 1, MPI_DOUBLE, metafile_ioproc, mpi_comm);
+  cctkGH->cctk_time = dtime;
 
-    // Read internal driver state
-    const string dirname = DB::legalize_name(driver_name);
+  // Read internal driver state
+  const string dirname = DB::legalize_name(driver_name);
+
+  int nlevels;
+  if (read_metafile) {
 
     // Read number of levels
-    const int nlevels = [&] {
-      const string varname = dirname + "/" + DB::legalize_name("nlevels");
-      const int vartype = DBGetVarType(metafile.get(), varname.c_str());
-      assert(vartype == DB_INT);
-      const int varlength = DBGetVarLength(metafile.get(), varname.c_str());
-      assert(varlength == 1);
-      int result;
-      ierr = DBReadVar(metafile.get(), varname.c_str(), &result);
-      assert(!ierr);
-      return result;
-    }();
-    CCTK_VINFO("Found %d levels", nlevels);
-    MPI_Bcast(const_cast<int *>(&nlevels), 1, MPI_INT, metafile_ioproc,
-              mpi_comm);
-    ghext->amrcore->SetFinestLevel(nlevels - 1);
+    const string varname = dirname + "/" + DB::legalize_name("nlevels");
+    const int vartype = DBGetVarType(metafile.get(), varname.c_str());
+    assert(vartype == DB_INT);
+    const int varlength = DBGetVarLength(metafile.get(), varname.c_str());
+    assert(varlength == 1);
+    ierr = DBReadVar(metafile.get(), varname.c_str(), &nlevels);
+    assert(!ierr);
+  }
+  CCTK_VINFO("Found %d levels", nlevels);
+  MPI_Bcast(&nlevels, 1, MPI_INT, metafile_ioproc, mpi_comm);
+  ghext->amrcore->SetFinestLevel(nlevels - 1);
 
-    // Read FabArrayBase (component positions and shapes)
-    for (int level = 0; level < nlevels; ++level) {
-      CCTK_VINFO("Reading level %d...", level);
-      const string varname = dirname + "/" + make_fabarraybasename(level);
+  // Read FabArrayBase (component positions and shapes)
+  for (int level = 0; level < nlevels; ++level) {
+    CCTK_VINFO("Reading level %d...", level);
+
+    const string varname = dirname + "/" + make_fabarraybasename(level);
+
+    int nfabs;
+    if (read_metafile) {
       const int vartype = DBGetVarType(metafile.get(), varname.c_str());
       assert(vartype == DB_INT);
       int vardims[2];
@@ -336,81 +347,40 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
       assert(varndims >= 0);
       assert(varndims == 2);
       assert(vardims[1] == 2 * ndims);
-      const int nfabs = vardims[0];
+      nfabs = vardims[0];
       assert(nfabs >= 0);
-      vector<int> data(2 * ndims * nfabs);
+    }
+    MPI_Bcast(&nfabs, 1, MPI_INT, metafile_ioproc, mpi_comm);
+
+    vector<int> data(2 * ndims * nfabs);
+    if (read_metafile) {
       ierr = DBReadVar(metafile.get(), varname.c_str(), data.data());
       assert(!ierr);
+    }
+    MPI_Bcast(data.data(), data.size(), MPI_INT, metafile_ioproc, mpi_comm);
 
-      MPI_Bcast(const_cast<int *>(&nfabs), 1, MPI_INT, metafile_ioproc,
-                mpi_comm);
-      MPI_Bcast(data.data(), data.size(), MPI_INT, metafile_ioproc, mpi_comm);
-
-      amrex::Vector<amrex::Box> levboxes(nfabs);
-      for (int component = 0; component < nfabs; ++component) {
-        const amrex::IntVect small(&data.at(2 * ndims * component));
-        const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
-        levboxes.at(component) = amrex::Box(small, big);
-      }
-
-      // Don't set coarse level domain; this is already set by the driver
-      if (level > 0) {
-        amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
-        geom.refine({2, 2, 2});
-        ghext->amrcore->SetGeometry(level, geom);
-      }
-
-      amrex::BoxList boxlist(move(levboxes));
-      amrex::BoxArray boxarray(move(boxlist));
-      ghext->amrcore->SetBoxArray(level, boxarray);
-
-      amrex::DistributionMapping dm(boxarray);
-      ghext->amrcore->SetDistributionMap(level, dm);
-
-      SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
+    amrex::Vector<amrex::Box> levboxes(nfabs);
+    for (int component = 0; component < nfabs; ++component) {
+      const amrex::IntVect small(&data.at(2 * ndims * component));
+      const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
+      levboxes.at(component) = amrex::Box(small, big);
     }
 
-  } else {
-
-    MPI_Bcast(&cctkGH->cctk_iteration, 1, MPI_INT, metafile_ioproc, mpi_comm);
-
-    double dtime;
-    MPI_Bcast(&dtime, 1, MPI_DOUBLE, metafile_ioproc, mpi_comm);
-    cctkGH->cctk_time = dtime;
-
-    int nlevels;
-    MPI_Bcast(&nlevels, 1, MPI_INT, metafile_ioproc, mpi_comm);
-
-    for (int level = 0; level < nlevels; ++level) {
-      int nfabs;
-      MPI_Bcast(&nfabs, 1, MPI_INT, metafile_ioproc, mpi_comm);
-      vector<int> data(2 * ndims * nfabs);
-      MPI_Bcast(data.data(), data.size(), MPI_INT, metafile_ioproc, mpi_comm);
-
-      // TODO: Avoid this code duplication
-      amrex::Vector<amrex::Box> levboxes(nfabs);
-      for (int component = 0; component < nfabs; ++component) {
-        const amrex::IntVect small(&data.at(2 * ndims * component));
-        const amrex::IntVect big(&data.at(ndims + 2 * ndims * component));
-        levboxes.at(component) = amrex::Box(small, big);
-      }
-
-      // Don't set coarse level domain; this is already set by the driver
-      if (level > 0) {
-        amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
-        geom.refine({2, 2, 2});
-        ghext->amrcore->SetGeometry(level, geom);
-      }
-
-      amrex::BoxList boxlist(move(levboxes));
-      amrex::BoxArray boxarray(move(boxlist));
-      ghext->amrcore->SetBoxArray(level, boxarray);
-
-      amrex::DistributionMapping dm(boxarray);
-      ghext->amrcore->SetDistributionMap(level, dm);
-
-      SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
+    // Don't set coarse level domain; this is already set by the driver
+    if (level > 0) {
+      amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
+      geom.refine({2, 2, 2});
+      ghext->amrcore->SetGeometry(level, geom);
     }
+
+    amrex::BoxList boxlist(move(levboxes));
+    amrex::BoxArray boxarray(move(boxlist));
+    ghext->amrcore->SetBoxArray(level, boxarray);
+
+    amrex::DistributionMapping dm(boxarray);
+    ghext->amrcore->SetDistributionMap(level, dm);
+
+    SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
   }
 
   interval_meta = nullptr;
