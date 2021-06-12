@@ -58,9 +58,9 @@ IO::out_every = 1
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
-IO::filereader_ID_dir = "/Users/eschnett/simulations/brill-lindquist-write/output-0000/brill-lindquist-write"
+IO::filereader_ID_dir = "../../brill-lindquist-write/output-0000/brill-lindquist-write"
 IO::filereader_ID_files = "brill-lindquist-write"
-CarpetX::filereader_ID_openpmd_vars = "
+CarpetX::filereader_ID_silo_vars = "
     ADMBase::metric
     ADMBase::curv
     ADMBase::lapse
