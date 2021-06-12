@@ -1051,7 +1051,17 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
     const std::string visitname = buf.str();
     std::ofstream visit(visitname, ios::app);
     assert(visit.good());
-    visit << *filename << "\n";
+    switch (iterationEncoding) {
+    case openPMD::IterationEncoding::fileBased:
+      visit << output_file << ".it" << setw(8) << setfill('0') << cctk_iteration
+            << suffix;
+      break;
+    case openPMD::IterationEncoding::variableBased:
+      visit << output_file << "." << suffix;
+      break;
+    default:
+      abort();
+    }
   }
 
   switch (iterationEncoding) {
