@@ -967,7 +967,12 @@ template <typename T> struct simdl {
     os << "Ⓑ[";
     constexpr size_t vsize = tuple_size_v<simdl>;
     T xarr[vsize];
+    // TOOD: Introduce `to_mask` for simd/simdl
+#ifndef SIMD_CPU
     storeu(xarr, to_mask(x.elts));
+#else
+    *xarr = x.elts;
+#endif 
     for (size_t n = 0; n < vsize; ++n) {
       if (n != 0)
         os << ",";
