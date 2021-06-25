@@ -101,10 +101,10 @@ struct Const {
 
 struct Unit {
   // We use c = G = 1, and M_solar as mass unit.
-  static constexpr CCTK_REAL velocity = Const::c;   // m s-1
-  static constexpr CCTK_REAL mass = Const::M_solar; // kg
-  static constexpr CCTK_REAL length = Const::G * mass / pow(Const::c, 2); // m
-  static constexpr CCTK_REAL time = length / velocity;                    // s
+  static constexpr CCTK_REAL velocity = Const::c;                       // m s-1
+  static constexpr CCTK_REAL mass = Const::M_solar;                     // kg
+  static constexpr CCTK_REAL length = Const::G * mass / pow2(Const::c); // m
+  static constexpr CCTK_REAL time = length / velocity;                  // s
 };
 
 ////////////////////////////////////////////////////////////////////////////////
