@@ -667,7 +667,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       // TODO: Deallocate ks that are not needed any more
       CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
       if (verbose)
-        CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+        CCTK_VINFO("Calculating RHS #%d at t=%g", int(step + 1),
+                   double(cctkGH->cctk_time));
       CallScheduleGroup(cctkGH, "ODESolvers_RHS");
       ks.push_back(rhs.copy());
     }
@@ -779,7 +780,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       // TODO: Deallocate ks that are not needed any more
       CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
       if (verbose)
-        CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+        CCTK_VINFO("Calculating RHS #%d at t=%g", int(step + 1),
+                   double(cctkGH->cctk_time));
       CallScheduleGroup(cctkGH, "ODESolvers_RHS");
       ks.push_back(rhs.copy());
     }
