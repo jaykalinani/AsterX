@@ -22,6 +22,8 @@ using namespace std;
 extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
+#ifndef __CUDACC__
+
   // Test tensors
 
   mt19937 engine(42);
@@ -237,6 +239,8 @@ extern "C" void Z4c_Test(CCTK_ARGUMENTS) {
       assert(all(fabs(found - expected) <= eps || !mask));
     }
   }
+
+#endif // #ifndef __CUDACC__
 }
 
 } // namespace Z4c
