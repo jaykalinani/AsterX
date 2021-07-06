@@ -79,19 +79,19 @@ RUN mkdir src && \
     make install) && \
     rm -fr src
 
-# # Install yaml-cpp
-# RUN mkdir src && \
-#     (cd src && \
-#     wget https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz && \
-#     tar xzf yaml-cpp-0.6.3.tar.gz && \
-#     cd yaml-cpp-yaml-cpp-0.6.3 && \
-#     mkdir build && \
-#     cd build && \
-#     cmake .. && \
-#     make -j$(nproc) && \
-#     make -j$(nproc) install && \
-#     true) && \
-#     rm -rf src
+# Install yaml-cpp
+RUN mkdir src && \
+    (cd src && \
+    wget https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz && \
+    tar xzf yaml-cpp-0.6.3.tar.gz && \
+    cd yaml-cpp-yaml-cpp-0.6.3 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make -j$(nproc) install && \
+    true) && \
+    rm -rf src
 
 # Install AMReX
 # Enable Fortran for `docker/Dockerfile`
