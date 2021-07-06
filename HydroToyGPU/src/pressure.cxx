@@ -11,10 +11,12 @@ namespace HydroToyGPU {
 using namespace std;
 using namespace Loop;
 
+namespace {
 template <typename T>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
   return x * x;
 }
+} // namespace
 
 extern "C" void HydroToyGPU_Pressure(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_HydroToyGPU_Pressure;
@@ -43,7 +45,7 @@ extern "C" void HydroToyGPU_Pressure(CCTK_ARGUMENTS) {
 
         CCTK_REAL ekin =
             0.5 * rho_inv *
-            sqrt(pow2(gf_momx(p.I)) + pow2(gf_momy(p.I)) + pow2(gf_momz(p.I)));
+            (pow2(gf_momx(p.I)) + pow2(gf_momy(p.I)) + pow2(gf_momz(p.I)));
         gf_eint(p.I) = gf_etot(p.I) - ekin;
 
         gf_press(p.I) = (gamma - 1) * gf_eint(p.I);

@@ -24,3 +24,11 @@ CCTK_REAL gamma "EOS parameter" STEERABLE=always
 {
   0.0:* :: ""
 } 1.6666666666666667
+
+
+
+KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
+{
+  "Godunov" :: ""
+  "minmod" :: ""
+} "Godunov"

@@ -53,4 +53,4 @@ CCTK_REAL rhs TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
   rhsrho
   rhsmomx rhsmomy rhsmomz
   rhsetot
-} "Conserved variables"
+} "RHS of conserved variables"
