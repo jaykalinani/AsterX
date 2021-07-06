@@ -79,28 +79,28 @@ RUN mkdir src && \
     make install) && \
     rm -fr src
 
-# Install yaml-cpp
-RUN mkdir src && \
-    (cd src && \
-    wget https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz && \
-    tar xzf yaml-cpp-0.6.3.tar.gz && \
-    cd yaml-cpp-yaml-cpp-0.6.3 && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make -j$(nproc) && \
-    make -j$(nproc) install && \
-    true) && \
-    rm -rf src
+# # Install yaml-cpp
+# RUN mkdir src && \
+#     (cd src && \
+#     wget https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz && \
+#     tar xzf yaml-cpp-0.6.3.tar.gz && \
+#     cd yaml-cpp-yaml-cpp-0.6.3 && \
+#     mkdir build && \
+#     cd build && \
+#     cmake .. && \
+#     make -j$(nproc) && \
+#     make -j$(nproc) install && \
+#     true) && \
+#     rm -rf src
 
 # Install AMReX
 # Enable Fortran for `docker/Dockerfile`
 # Keep AMReX source tree around
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/21.05.tar.gz && \
-    tar xzf 21.05.tar.gz && \
-    cd amrex-21.05 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/21.07.tar.gz && \
+    tar xzf 21.07.tar.gz && \
+    cd amrex-21.07 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DAMReX_OMP=ON -DAMReX_PARTICLES=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
