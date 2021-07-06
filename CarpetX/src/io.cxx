@@ -602,7 +602,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       const string simulation_name = get_simulation_name();
       OutputADIOS2(cctkGH, group_enabled, out_dir, simulation_name);
 #else
-      if (std::count(output_group.begin(), input_group.end(), true) != 0)
+      if (strlen(out_adios2_vars) != 0)
         CCTK_VERROR("ADIOS2 is not enabled. The parameter "
                     "CarpetX::out_adios2_vars must be empty.");
 #endif
@@ -617,7 +617,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       const string simulation_name = get_simulation_name();
       OutputOpenPMD(cctkGH, group_enabled, out_dir, simulation_name);
 #else
-      if (std::count(output_group.begin(), input_group.end(), true) != 0)
+      if (strlen(out_openpmd_vars) != 0)
         CCTK_VERROR("openPMD is not enabled. The parameter "
                     "CarpetX::out_openpmd_vars must be empty.");
 #endif
@@ -633,7 +633,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       const string simulation_name = get_simulation_name();
       OutputSilo(cctkGH, group_enabled, out_dir, simulation_name);
 #else
-      if (std::count(output_group.begin(), input_group.end(), true) != 0)
+      if (strlen(out_silo_vars) != 0)
         CCTK_VERROR("Silo is not enabled. The parameter CarpetX::out_silo_vars "
                     "must be empty.");
 #endif
