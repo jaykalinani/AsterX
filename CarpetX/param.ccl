@@ -261,22 +261,26 @@ KEYWORD kernel_launch_method "Kernel launch method" STEERABLE=always
 
 
 
-# STRING in_dir "Input directory" STEERABLE=always
-# {
-#   ".*" :: ""
-# } ""
-# 
-# STRING in_file "Input file name" STEERABLE=always
-# {
-#   ".*" :: ""
-# } ""
-# 
-# STRING in_vars "Variables to input" STEERABLE=always
-# {
-#   ".*" :: ""
-# } ""
+KEYWORD filereader_method "I/O method for file reader" STEERABLE=recover
+{
+  "error" :: "Abort with error when file reader is used"
+  "openpmd" :: ""
+  "silo" :: ""
+} "error"
 
+KEYWORD recover_method "I/O method for recovery" STEERABLE=recover
+{
+  "error" :: "Abort with error instead of recovering"
+  # "openpmd" :: ""
+  "silo" :: ""
+} "error"
 
+KEYWORD checkpoint_method "I/O method for checkpointing" STEERABLE=recover
+{
+  "error" :: "Abort with error instead of checkpointing"
+  "openpmd" :: ""
+  "silo" :: ""
+} "error"
 
 STRING out_adios2_vars "Variables to output in ADIOS2 format" STEERABLE=always
 {
@@ -296,27 +300,12 @@ BOOLEAN out_norm_omit_unstable "Omit unstable norms (e.g. maxloc)" STEERABLE=alw
 {
 } no
 
-STRING filereader_ID_openpmd_vars "Variables to input in openPMD format" STEERABLE=always
-{
-  ".*" :: ""
-} ""
-
-STRING out_openpmd_author "Author name and email address for openPMD format" STEERABLE=always
-{
-  ".*" :: "e.g.: Axel Huebl <a.huebl@hzdr.de>"
-} ""
-
 STRING out_openpmd_vars "Variables to output in openPMD format" STEERABLE=always
 {
   ".*" :: ""
 } ""
 
 STRING out_plotfile_groups "Groups to output as AMReX plotfile" STEERABLE=always
-{
-  ".*" :: ""
-} ""
-
-STRING filereader_ID_silo_vars "Variables to input in Silo format" STEERABLE=always
 {
   ".*" :: ""
 } ""
