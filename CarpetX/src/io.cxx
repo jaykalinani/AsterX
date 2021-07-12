@@ -171,12 +171,6 @@ void InputGH(const cGH *restrict cctkGH) {
   if (filereader_ID_files[0] == '\0')
     return;
 
-  if (std::string(filereader_ID_vars) != "all")
-    CCTK_VERROR("CarpetX does not use IO::filereader_ID_vars; you need to set "
-                "a method-specific parameter instead, e.g. "
-                "CarpetX::filereader_ID_openpmd_vars or "
-                "CarpetX::filereader_ID_silo_vars");
-
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   if (is_root) {
     const int runtime = CCTK_RunTime(); // seconds
@@ -184,25 +178,22 @@ void InputGH(const cGH *restrict cctkGH) {
                cctk_iteration, double(cctk_time), double(runtime / 3600.0));
   }
 
-  {
-    const vector<bool> input_group =
-        find_groups("openPMD", filereader_ID_openpmd_vars);
+  if (CCTK_EQUALS(filereader_method, "openpmd")) {
+
 #ifdef HAVE_CAPABILITY_openPMD_api
-    // TODO: Stop at paramcheck time when OpenPMD input parameters are
-    // set, but openPMD is not available
     // TODO: handle multiple file names in `filereader_ID_files`
+    const vector<bool> input_group = find_groups("openPMD", filereader_ID_vars);
     const string simulation_name = get_simulation_name();
     InputOpenPMD(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
 #else
-    if (std::count(input_group.begin(), input_group.end(), true) != 0)
-      CCTK_VERROR("openPMD is not enabled. The parameter "
-                  "CarpetX::filereader_ID_openpmd_vars must be empty.");
+    // TODO: Check this at paramcheck
+    CCTK_VERROR("CarpetX::filereader_method is set to \"openpmd\", but openPMD "
+                "is not enabled");
 #endif
-  }
 
-  {
-    const vector<bool> input_group =
-        find_groups("Silo", filereader_ID_silo_vars);
+  } else if (CCTK_EQUALS(filereader_method, "silo")) {
+
+    const vector<bool> input_group = find_groups("Silo", filereader_ID_vars);
 #ifdef HAVE_CAPABILITY_Silo
     // TODO: Stop at paramcheck time when Silo input parameters are
     // set, but Silo is not available
@@ -210,10 +201,13 @@ void InputGH(const cGH *restrict cctkGH) {
     const string simulation_name = get_simulation_name();
     InputSilo(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
 #else
-    if (std::count(input_group.begin(), input_group.end(), true) != 0)
-      CCTK_VERROR("Silo is not enabled. The parameter "
-                  "CarpetX::filereader_ID_silo_vars must be empty.");
+    // TODO: Check this at paramcheck
+    CCTK_VERROR("CarpetX::filereader_method is set to \"silo\", but Silo is "
+                "not enabled");
 #endif
+
+  } else {
+    CCTK_ERROR("unknown value for paramater CarpetX::filereader_method");
   }
 }
 
@@ -679,32 +673,64 @@ void Checkpoint(const cGH *const restrict cctkGH) {
   static Timer timer("Checkpoint");
   Interval interval(timer);
 
-#ifdef HAVE_CAPABILITY_Silo
-  // TODO: Stop at paramcheck time when Silo output parameters are
-  // set, but Silo is not available
+  if (CCTK_EQUALS(checkpoint_method, "openpmd")) {
 
-  const vector<bool> checkpoint_group = [&] {
-    vector<bool> enabled(CCTK_NumGroups(), false);
-    for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
-      const GHExt::GlobalData &globaldata = ghext->globaldata;
-      if (globaldata.arraygroupdata.at(gi)) {
-        // grid array
-        enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
-      } else {
-        // grid function
-        const int level = 0;
-        const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
-        assert(leveldata.groupdata.at(gi));
-        enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
+#ifdef HAVE_CAPABILITY_openPMD_api
+    const vector<bool> checkpoint_group = [&] {
+      vector<bool> enabled(CCTK_NumGroups(), false);
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        const GHExt::GlobalData &globaldata = ghext->globaldata;
+        if (globaldata.arraygroupdata.at(gi)) {
+          // grid array
+          enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+        } else {
+          // grid function
+          const int level = 0;
+          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+          assert(leveldata.groupdata.at(gi));
+          enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
+        }
       }
-    }
-    return enabled;
-  }();
-
-  OutputSilo(cctkGH, checkpoint_group, checkpoint_dir, checkpoint_file);
+      return enabled;
+    }();
+    OutputOpenPMD(cctkGH, checkpoint_group, checkpoint_dir, checkpoint_file);
 #else
-  CCTK_ERROR("No checkpointing method available");
+    // TODO: Check this at paramcheck
+    CCTK_VERROR(
+        "CarpetX::checkpoint_method is set to \"openpmd\", but openPMD is "
+        "not enabled");
 #endif
+
+  } else if (CCTK_EQUALS(checkpoint_method, "silo")) {
+
+#ifdef HAVE_CAPABILITY_Silo
+    const vector<bool> checkpoint_group = [&] {
+      vector<bool> enabled(CCTK_NumGroups(), false);
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        const GHExt::GlobalData &globaldata = ghext->globaldata;
+        if (globaldata.arraygroupdata.at(gi)) {
+          // grid array
+          enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
+        } else {
+          // grid function
+          const int level = 0;
+          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+          assert(leveldata.groupdata.at(gi));
+          enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
+        }
+      }
+      return enabled;
+    }();
+    OutputSilo(cctkGH, checkpoint_group, checkpoint_dir, checkpoint_file);
+#else
+    // TODO: Check this at paramcheck
+    CCTK_VERROR("CarpetX::checkpoint_method is set to \"silo\", but Silo is "
+                "not enabled");
+#endif
+
+  } else {
+    CCTK_ERROR("unknown value for paramater CarpetX::checkpoint_method");
+  }
 }
 
 int last_checkpoint_runtime = -1; // seconds

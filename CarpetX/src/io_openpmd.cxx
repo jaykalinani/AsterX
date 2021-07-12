@@ -7,9 +7,11 @@
 #include <vect.hxx>
 
 #include <fixmath.hxx>
+#include <CactusBase/IOUtil/src/ioutil_CheckpointRecovery.h>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+#include <util_Network.h>
 
 #ifdef HAVE_CAPABILITY_openPMD_api
 
@@ -31,6 +33,7 @@ static inline int omp_in_parallel() { return 0; }
 #include <array>
 #include <cassert>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <ios>
@@ -42,18 +45,22 @@ static inline int omp_in_parallel() { return 0; }
 #include <regex>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace CarpetX {
 
 constexpr bool io_verbose = true;
 
+// HDF5, ADIOS1, ADIOS2, ADIOS2_SST, ADIOS2_SSC, JSON, DUMMY
+constexpr openPMD::Format format = openPMD::Format::ADIOS2;
+
+// - fileBased: One file per iteration. Needs templated file name to encode
+//   iteration number.
+// - groupBased: Multiple iterations per file?
+// - variableBased: ???
 constexpr openPMD::IterationEncoding iterationEncoding =
     openPMD::IterationEncoding::fileBased;
-// constexpr openPMD::IterationEncoding iterationEncoding =
-//     openPMD::IterationEncoding::variableBased;
-
-static constexpr const char suffix[] = "bp"; // ["bp", "json", "h5"]
 
 //  constexpr const char options[]
 const nlohmann::json json_options{
@@ -196,6 +203,17 @@ struct carpetx_openpmd_t {
 
   template <typename T, std::size_t D> struct box_t {
     Arith::vect<T, D> lo, hi;
+    constexpr friend bool operator==(const box_t &x, const box_t &y) {
+      if (x.empty() && y.empty())
+        return true;
+      if (x.empty() || y.empty())
+        return true;
+      return all(x.lo == y.lo) && all(x.hi == y.hi);
+    }
+    constexpr friend bool operator!=(const box_t &x, const box_t &y) {
+      return !(x == y);
+    }
+    constexpr bool empty() const { return any(hi < lo); }
     constexpr Arith::vect<T, D> shape() const {
       Arith::vect<T, D> sh;
       for (std::size_t d = 0; d < D; ++d)
@@ -388,10 +406,11 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
     std::ostringstream buf;
     switch (iterationEncoding) {
     case openPMD::IterationEncoding::fileBased:
-      buf << input_dir << "/" << input_file << ".it%08T." << suffix;
+      buf << input_dir << "/" << input_file << ".it%08T"
+          << openPMD::suffix(format);
       break;
     case openPMD::IterationEncoding::variableBased:
-      buf << input_dir << "/" << input_file << "." << suffix;
+      buf << input_dir << "/" << input_file << openPMD::suffix(format);
       break;
     default:
       abort();
@@ -768,10 +787,11 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
     std::ostringstream buf;
     switch (iterationEncoding) {
     case openPMD::IterationEncoding::fileBased:
-      buf << output_dir << "/" << output_file << ".it%08T." << suffix;
+      buf << output_dir << "/" << output_file << ".it%08T"
+          << openPMD::suffix(format);
       break;
     case openPMD::IterationEncoding::variableBased:
-      buf << output_dir << "/" << output_file << "." << suffix;
+      buf << output_dir << "/" << output_file << openPMD::suffix(format);
       break;
     default:
       abort();
@@ -791,7 +811,11 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
                                                  MPI_COMM_WORLD, options);
     series->setIterationEncoding(iterationEncoding);
 
-    series->setAuthor(out_openpmd_author);
+    {
+      char const *const user = getenv("USER");
+      if (user)
+        series->setAuthor(user);
+    }
     // Software is always "openPMD-api"
     // series->setSoftware("Einstein Toolkit <https://einsteintoolkit.org>");
     // series->setSoftwareVersion("...");
@@ -801,7 +825,11 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
     // std::strftime(date, sizeof date, "%Y-%m-%dT%H:%M:%S",
     // std::localtime(&t)); series->setDate(date);
     // series->setSoftwareDependencies("...");
-    // series->setMachine("...");
+    {
+      char hostname[1000];
+      Util_GetHostName(hostname, sizeof hostname);
+      series->setMachine(hostname);
+    }
 
     write_iters =
         std::make_optional<openPMD::WriteIterations>(series->writeIterations());
@@ -816,6 +844,13 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
   iter.setTime(cctk_time);
   iter.setDt(cctk_delta_time);
   iter.setTimeUnitSI(Unit::time);
+
+  // Write parameters
+  {
+    const std::string parameters =
+        std::unique_ptr<char>(IOUtil_GetAllParameters(cctkGH, 1 /*all*/)).get();
+    iter.setAttribute("AllParameters", parameters);
+  }
 
   // Loop over levels
   for (const auto &leveldata : ghext->leveldata) {
@@ -990,6 +1025,9 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
             hi : {validbox.bigEnd(0) + 1, validbox.bigEnd(1) + 1,
                   validbox.bigEnd(2) + 1}
           };
+          // It seems that openPMD assumes that chunks do not have
+          // ghost zones
+          assert(!output_ghosts);
           const box_t<int, 3> &box = output_ghosts ? extbox : intbox;
 
           const openPMD::Offset start =
@@ -1004,7 +1042,7 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
 
           const amrex::FArrayBox &fab = mfab[component];
           for (int vi = 0; vi < numvars; ++vi) {
-            if (output_ghosts) {
+            if (output_ghosts || intbox == extbox) {
               const CCTK_REAL *const ptr = fab.dataPtr() + vi * np;
               record_components.at(vi).storeChunk(openPMD::shareRaw(ptr), start,
                                                   count);
@@ -1054,10 +1092,10 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
     switch (iterationEncoding) {
     case openPMD::IterationEncoding::fileBased:
       visit << output_file << ".it" << setw(8) << setfill('0') << cctk_iteration
-            << suffix;
+            << openPMD::suffix(format) << "\n";
       break;
     case openPMD::IterationEncoding::variableBased:
-      visit << output_file << "." << suffix;
+      visit << output_file << openPMD::suffix(format) << "\n";
       break;
     default:
       abort();

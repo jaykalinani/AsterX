@@ -3,9 +3,8 @@
 #include "driver.hxx"
 #include "timer.hxx"
 
-#include <CactusBase/IOUtil/src/ioutil_CheckpointRecovery.h>
-
 #include <fixmath.hxx>
+#include <CactusBase/IOUtil/src/ioutil_CheckpointRecovery.h>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>

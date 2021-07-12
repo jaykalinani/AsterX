@@ -54,6 +54,7 @@ IO::out_every = 1
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
+CarpetX::recover_method = "silo"
 IO::recover = "autoprobe"
 IO::recover_dir = "../../brill-lindquist-checkpoint/output-0000/brill-lindquist-checkpoint"
 
