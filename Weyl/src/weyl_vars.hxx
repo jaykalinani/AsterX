@@ -27,6 +27,7 @@ template <typename T> struct weyl_vars_noderivs {
 
   // Intermediate quantities
   const vec<T, 3, DN> betal;
+  const T gtt;
 
   // 4-metric
   const smat<T, 4, DN, DN> g;
@@ -53,9 +54,12 @@ template <typename T> struct weyl_vars_noderivs {
                             ARITH_INLINE { return gamma(a, x) * beta(x); });
         }),
         //
+        gtt(-pow2(alpha) //
+            + sum<3>([&](int x) ARITH_INLINE { return betal(x) * beta(x); })),
+        //
         g([&](int a, int b) ARITH_INLINE {
           if (a == 0 && b == 0)
-            return -pow2(alpha);
+            return gtt;
           if (a == 0)
             return betal(b - 1);
           if (b == 0)
@@ -153,12 +157,17 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
   const mat<T, 3, DN, DN> dtgamma;
   const vec<T, 3, DN> dtbetal;
   const vec<vec<T, 3, DN>, 3, DN> dbetal;
+  const T dtgtt;
+  const vec<T, 3, DN> dgtt;
 
   const smat<T, 3, DN, DN> dt2gamma;
   const smat<vec<T, 3, DN>, 3, DN, DN> ddtgamma;
   const vec<T, 3, DN> dt2betal;
   const vec<vec<T, 3, DN>, 3, DN> ddtbetal;
   const vec<smat<T, 3, DN, DN>, 3, DN> ddbetal;
+  const T dt2gtt;
+  const vec<T, 3, DN> ddtgtt;
+  const smat<T, 3, DN, DN> ddgtt;
 
   // Derivatives of 4-metric
   const smat<vec<T, 4, DN>, 4, DN, DN> dg;
@@ -253,6 +262,19 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
             });
           });
         }),
+        dtgtt(
+            -2 * alpha * dtalpha //
+            +
+            sum<3>([&](int x) ARITH_INLINE { return dtbetal(x) * beta(x); }) //
+            + sum<3>([&](int x) ARITH_INLINE { return betal(x) * dtbeta(x); })),
+        dgtt([&](int a) {
+          return -2 * alpha * dalpha(a) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return dbetal(x)(a) * beta(x);
+                   }) //
+                 + sum<3>([&](int x)
+                              ARITH_INLINE { return betal(x) * dbeta(x)(a); });
+        }),
         //
         dt2gamma([&](int a, int b) ARITH_INLINE {
           return -2 * dtalpha * k(a, b)  //
@@ -315,12 +337,53 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
             });
           });
         }),
+        dt2gtt(-2 * pow2(dtalpha)     //
+               - 2 * alpha * dt2alpha //
+               + sum<3>([&](int x)
+                            ARITH_INLINE { return dt2betal(x) * beta(x); }) //
+               + 2 * sum<3>([&](int x) ARITH_INLINE {
+                   return dtbetal(x) * dtbeta(x);
+                 }) //
+               + sum<3>([&](int x)
+                            ARITH_INLINE { return betal(x) * dt2beta(x); })),
+        ddtgtt([&](int a) {
+          return -2 * dalpha(a) * dtalpha  //
+                 - 2 * alpha * ddtalpha(a) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return ddtbetal(x)(a) * beta(x);
+                   }) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return dtbetal(x) * dbeta(x)(a);
+                   }) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return dbetal(x)(a) * dtbeta(x);
+                   }) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return betal(x) * ddtbeta(x)(a);
+                   });
+        }),
+        ddgtt([&](int a, int b) {
+          return -2 * dalpha(a) * dalpha(b)  //
+                 - 2 * alpha * ddalpha(a, b) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return ddbetal(x)(a, b) * beta(x);
+                   }) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return dbetal(x)(a) * dbeta(x)(b);
+                   }) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return dbetal(x)(b) * dbeta(x)(a);
+                   }) //
+                 + sum<3>([&](int x) ARITH_INLINE {
+                     return betal(x) * ddbeta(x)(a, b);
+                   });
+        }),
         //
         dg([&](int a, int b) ARITH_INLINE {
           return vec<T, 4, DN>([&](int c) ARITH_INLINE {
             if (c == 0) {
               if (a == 0 && b == 0)
-                return dtalpha;
+                return dtgtt;
               if (a == 0)
                 return dtbetal(b - 1);
               if (b == 0)
@@ -328,7 +391,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
               return dtgamma(a - 1, b - 1);
             }
             if (a == 0 && b == 0)
-              return dalpha(c - 1);
+              return dgtt(c - 1);
             if (a == 0)
               return dbetal(b - 1)(c - 1);
             if (b == 0)
@@ -341,7 +404,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
           return mat<T, 4, DN, DN>([&](int c, int d) ARITH_INLINE {
             if (c == 0 && d == 0) {
               if (a == 0 && b == 0)
-                return dt2alpha;
+                return dt2gtt;
               if (a == 0)
                 return dt2betal(b - 1);
               if (b == 0)
@@ -350,7 +413,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
             }
             if (c == 0) {
               if (a == 0 && b == 0)
-                return ddtalpha(d - 1);
+                return ddtgtt(d - 1);
               if (a == 0)
                 return ddtbetal(b - 1)(d - 1);
               if (b == 0)
@@ -359,7 +422,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
             }
             if (d == 0) {
               if (a == 0 && b == 0)
-                return ddtalpha(c - 1);
+                return ddtgtt(c - 1);
               if (a == 0)
                 return ddtbetal(b - 1)(c - 1);
               if (b == 0)
@@ -367,7 +430,7 @@ template <typename T> struct weyl_vars : weyl_vars_noderivs<T> {
               return ddtgamma(a - 1, b - 1)(c - 1);
             }
             if (a == 0 && b == 0)
-              return ddalpha(c - 1, d - 1);
+              return ddgtt(c - 1, d - 1);
             if (a == 0)
               return ddbetal(b - 1)(c - 1, d - 1);
             if (b == 0)
