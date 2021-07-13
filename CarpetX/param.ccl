@@ -271,7 +271,7 @@ KEYWORD filereader_method "I/O method for file reader" STEERABLE=recover
 KEYWORD recover_method "I/O method for recovery" STEERABLE=recover
 {
   "error" :: "Abort with error instead of recovering"
-  # "openpmd" :: ""
+  "openpmd" :: ""
   "silo" :: ""
 } "error"
 

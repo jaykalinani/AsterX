@@ -91,13 +91,29 @@ extern "C" int CarpetX_RecoverParameters() {
   static Timer timer("RecoverParameters");
   Interval interval(timer);
 
-#ifdef HAVE_CAPABILITY_Silo
-  // TODO: Stop at paramcheck time when Silo input parameters are
-  // set, but Silo is not available
-  recover_iteration = InputSiloParameters(recover_dir, recover_file);
+  if (CCTK_EQUALS(recover_method, "openpmd")) {
+
+#ifdef HAVE_CAPABILITY_openPMD_api
+    recover_iteration = InputOpenPMDParameters(recover_dir, recover_file);
 #else
-  CCTK_ERROR("No parameter recovery method available");
+    CCTK_VERROR(
+        "CarpetX::recover_method is set to \"openpmd\", but openPMD_api "
+        "is not enabled");
 #endif
+
+  } else if (CCTK_EQUALS(recover_method, "silo")) {
+
+#ifdef HAVE_CAPABILITY_Silo
+    if (recover_iteration < 0)
+      recover_iteration = InputSiloParameters(recover_dir, recover_file);
+#else
+    CCTK_VERROR("CarpetX::recover_method is set to \"silo\", but Silo "
+                "is not enabled");
+#endif
+
+  } else {
+    CCTK_ERROR("unknown value for paramater CarpetX::recover_method");
+  }
 
   return recover_iteration >= 0;
 }
@@ -108,13 +124,30 @@ void RecoverGridStructure(cGH *restrict cctkGH) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
-#ifdef HAVE_CAPABILITY_Silo
-  // TODO: Stop at paramcheck time when Silo input parameters are
-  // set, but Silo is not available
-  InputSiloGridStructure(cctkGH, recover_dir, recover_file, recover_iteration);
+  if (CCTK_EQUALS(recover_method, "openpmd")) {
+
+#ifdef HAVE_CAPABILITY_openPMD_api
+    InputOpenPMDGridStructure(cctkGH, recover_dir, recover_file,
+                              recover_iteration);
 #else
-  CCTK_ERROR("No grid structure recovery method available");
+    CCTK_VERROR(
+        "CarpetX::recover_method is set to \"openpmd\", but openPMD_api "
+        "is not enabled");
 #endif
+
+  } else if (CCTK_EQUALS(recover_method, "silo")) {
+
+#ifdef HAVE_CAPABILITY_Silo
+    InputSiloGridStructure(cctkGH, recover_dir, recover_file,
+                           recover_iteration);
+#else
+    CCTK_VERROR("CarpetX::recover_method is set to \"silo\", but Silo "
+                "is not enabled");
+#endif
+
+  } else {
+    CCTK_ERROR("unknown value for paramater CarpetX::recover_method");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,13 +185,28 @@ void RecoverGH(const cGH *restrict cctkGH) {
     return enabled;
   }();
 
+  if (CCTK_EQUALS(recover_method, "openpmd")) {
+
 #ifdef HAVE_CAPABILITY_Silo
-  // TODO: Stop at paramcheck time when Silo input parameters are
-  // set, but Silo is not available
-  InputSilo(cctkGH, group_enabled, recover_dir, recover_file);
+    InputOpenPMD(cctkGH, group_enabled, recover_dir, recover_file);
 #else
-  CCTK_ERROR("No grid hierarchy recovery method available");
+    CCTK_VERROR(
+        "CarpetX::recover_method is set to \"openpmd\", but openPMD_api "
+        "is not enabled");
 #endif
+
+  } else if (CCTK_EQUALS(recover_method, "silo")) {
+
+#ifdef HAVE_CAPABILITY_Silo
+    InputSilo(cctkGH, group_enabled, recover_dir, recover_file);
+#else
+    CCTK_VERROR("CarpetX::recover_method is set to \"silo\", but Silo "
+                "is not enabled");
+#endif
+
+  } else {
+    CCTK_ERROR("unknown value for paramater CarpetX::recover_method");
+  }
 }
 
 void InputGH(const cGH *restrict cctkGH) {
@@ -187,8 +235,9 @@ void InputGH(const cGH *restrict cctkGH) {
     InputOpenPMD(cctkGH, input_group, filereader_ID_dir, filereader_ID_files);
 #else
     // TODO: Check this at paramcheck
-    CCTK_VERROR("CarpetX::filereader_method is set to \"openpmd\", but openPMD "
-                "is not enabled");
+    CCTK_VERROR(
+        "CarpetX::filereader_method is set to \"openpmd\", but openPMD_api "
+        "is not enabled");
 #endif
 
   } else if (CCTK_EQUALS(filereader_method, "silo")) {
@@ -697,7 +746,7 @@ void Checkpoint(const cGH *const restrict cctkGH) {
 #else
     // TODO: Check this at paramcheck
     CCTK_VERROR(
-        "CarpetX::checkpoint_method is set to \"openpmd\", but openPMD is "
+        "CarpetX::checkpoint_method is set to \"openpmd\", but openPMD_api is "
         "not enabled");
 #endif
 

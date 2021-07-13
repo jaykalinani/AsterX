@@ -60,7 +60,7 @@ IO::out_every = 1
 IO::out_mode = "np"
 IO::out_proc_every = 1
 
-CarpetX::checkpoint_method = "silo"
+CarpetX::checkpoint_method = "openpmd"
 IO::checkpoint_dir = $parfile
 IO::checkpoint_ID = yes
 

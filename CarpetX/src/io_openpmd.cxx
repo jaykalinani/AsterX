@@ -332,8 +332,14 @@ struct carpetx_openpmd_t {
 
   std::optional<std::string> filename;
   std::optional<openPMD::Series> series;
+  std::optional<openPMD::ReadIterations> read_iters;
   std::optional<openPMD::WriteIterations> write_iters;
 
+  int InputOpenPMDParameters(const std::string &input_dir,
+                             const std::string &input_file);
+  void InputOpenPMDGridStructure(cGH *cctkGH, const std::string &input_dir,
+                                 const std::string &input_file,
+                                 int input_iteration);
   void InputOpenPMD(const cGH *const cctkGH,
                     const std::vector<bool> &input_group,
                     const std::string &input_dir,
@@ -349,6 +355,20 @@ struct carpetx_openpmd_t {
 
 std::optional<carpetx_openpmd_t> carpetx_openpmd_t::self;
 
+int InputOpenPMDParameters(const std::string &input_dir,
+                           const std::string &input_file) {
+  if (!carpetx_openpmd_t::self)
+    carpetx_openpmd_t::self = std::make_optional<carpetx_openpmd_t>();
+  return carpetx_openpmd_t::self->InputOpenPMDParameters(input_dir, input_file);
+}
+void InputOpenPMDGridStructure(cGH *cctkGH, const std::string &input_dir,
+                               const std::string &input_file,
+                               int input_iteration) {
+  if (!carpetx_openpmd_t::self)
+    carpetx_openpmd_t::self = std::make_optional<carpetx_openpmd_t>();
+  carpetx_openpmd_t::self->InputOpenPMDGridStructure(
+      cctkGH, input_dir, input_file, input_iteration);
+}
 void InputOpenPMD(const cGH *cctkGH, const std::vector<bool> &input_group,
                   const std::string &input_dir, const std::string &input_file) {
   if (!carpetx_openpmd_t::self)
@@ -371,15 +391,169 @@ void ShutdownOpenPMD() { carpetx_openpmd_t::self.reset(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+int carpetx_openpmd_t::InputOpenPMDParameters(const std::string &input_dir,
+                                              const std::string &input_file) {
+  DECLARE_CCTK_PARAMETERS;
+
+  assert(!input_dir.empty());
+  assert(!input_file.empty());
+
+  // Set up timers
+  static Timer timer("InputOpenPMDParameters");
+  Interval interval(timer);
+
+  if (io_verbose)
+    CCTK_VINFO("InputOpenPMDParameters...");
+
+  if (!series) {
+    if (io_verbose)
+      CCTK_VINFO("Creating openPMD object...");
+    std::ostringstream buf;
+    switch (iterationEncoding) {
+    case openPMD::IterationEncoding::fileBased:
+      buf << input_dir << "/" << input_file << ".it%08T"
+          << openPMD::suffix(format);
+      break;
+    case openPMD::IterationEncoding::variableBased:
+      buf << input_dir << "/" << input_file << openPMD::suffix(format);
+      break;
+    default:
+      abort();
+    }
+    filename = std::make_optional<std::string>(buf.str());
+    series = std::make_optional<openPMD::Series>(
+        *filename, openPMD::Access::READ_ONLY, MPI_COMM_WORLD, options);
+    read_iters =
+        std::make_optional<openPMD::ReadIterations>(series->readIterations());
+  }
+  assert(filename);
+  assert(series);
+  assert(read_iters);
+
+  if (read_iters->begin() == read_iters->end()) {
+    // Did not find a checkpoint file
+    if (io_verbose) {
+      CCTK_VINFO("Not recovering parameters:");
+      CCTK_VINFO("  Could not find an openPMD checkpoint file \"%s\"",
+                 filename->c_str());
+    }
+    return -1; // no iteration found
+  }
+  openPMD::IndexedIteration iter = *read_iters->begin();
+  const int input_iteration = iter.iterationIndex;
+  CCTK_VINFO("Recovering parameters from checkpoint file \"%s\" iteration %d",
+             filename->c_str(), input_iteration);
+
+  // Read metadata
+  {
+    const bool has_parameters = iter.containsAttribute("AllParameters");
+    assert(has_parameters);
+    const openPMD::Attribute parameters_attr =
+        iter.getAttribute("AllParameters");
+    assert(parameters_attr.dtype == openPMD::Datatype::STRING);
+    const string parameters = parameters_attr.get<std::string>();
+    IOUtil_SetAllParameters(parameters.data());
+  }
+
+  return input_iteration;
+}
+
+void carpetx_openpmd_t::InputOpenPMDGridStructure(cGH *cctkGH,
+                                                  const std::string &input_dir,
+                                                  const std::string &input_file,
+                                                  int input_iteration) {
+  DECLARE_CCTK_PARAMETERS;
+
+  assert(!input_dir.empty());
+  assert(!input_file.empty());
+  assert(input_iteration >= 0);
+
+  // Set up timers
+  static Timer timer("InputOpenPMDGridStructure");
+  Interval interval(timer);
+
+  if (io_verbose)
+    CCTK_VINFO("InputOpenPMDGridStructure...");
+
+  assert(filename);
+  assert(series);
+  assert(read_iters);
+
+  openPMD::IndexedIteration iter = *read_iters->begin();
+  // TODO: use non-streaming API, ask for `input_iteration` directly;
+  assert(int64_t(iter.iterationIndex) == int64_t(input_iteration));
+
+  cctkGH->cctk_iteration = input_iteration;
+  cctkGH->cctk_time = iter.time<double>();
+
+  // TODO: Check whether attribute exists and has correct type
+  const int ndims = iter.getAttribute("numDims").get<int64_t>();
+  assert(ndims >= 0);
+  const int nlevels = iter.getAttribute("numLevels").get<int64_t>();
+  assert(nlevels >= 0);
+  std::vector<std::string> level_suffixes;
+  if (nlevels == 1) {
+    assert(iter.getAttribute("levelSuffixes").dtype ==
+           openPMD::Datatype::STRING);
+    const std::string level_suffix =
+        iter.getAttribute("levelSuffixes").get<std::string>();
+    level_suffixes.resize(1);
+    level_suffixes.at(0) = level_suffix;
+  } else {
+    assert(iter.getAttribute("levelSuffixes").dtype ==
+           openPMD::Datatype::VEC_STRING);
+    level_suffixes =
+        iter.getAttribute("levelSuffixes").get<std::vector<std::string> >();
+  }
+  assert(int(level_suffixes.size()) == nlevels);
+
+  assert(ndims == 3);
+  assert(nlevels > 0);
+  ghext->amrcore->SetFinestLevel(nlevels - 1);
+
+  // Read FabArrayBase (component positions and shapes)
+  for (int level = 0; level < nlevels; ++level) {
+    const std::vector<int64_t> chunk_infos =
+        iter.getAttribute("chunkInfo" + level_suffixes.at(level))
+            .get<std::vector<int64_t> >();
+    assert(chunk_infos.size() % (2 * ndims) == 0);
+    const int nfabs = chunk_infos.size() / (2 * ndims);
+    amrex::Vector<amrex::Box> levboxes(nfabs);
+    for (int component = 0; component < nfabs; ++component) {
+      const int offset = 2 * ndims * component;
+      // TODO: Reverse
+      amrex::IntVect small, big;
+      for (int d = 0; d < ndims; ++d) {
+        small[d] = chunk_infos.at(offset + 0 * ndims + d);
+        big[d] = chunk_infos.at(offset + 1 * ndims + d);
+      }
+      levboxes.at(component) = amrex::Box(small, big - 1);
+    }
+
+    // Don't set coarse level domain; this is already set by the driver
+    if (level > 0) {
+      amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
+      geom.refine({2, 2, 2});
+      ghext->amrcore->SetGeometry(level, geom);
+    }
+
+    amrex::BoxList boxlist(move(levboxes));
+    amrex::BoxArray boxarray(move(boxlist));
+    ghext->amrcore->SetBoxArray(level, boxarray);
+
+    amrex::DistributionMapping dm(boxarray);
+    ghext->amrcore->SetDistributionMap(level, dm);
+
+    SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
+  } // for level
+}
+
 void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
                                      const std::vector<bool> &input_group,
                                      const std::string &input_dir,
                                      const std::string &input_file) {
   DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
-
-  const int lapse_gi = CCTK_GroupIndex("ADMBase::lapse");
-  assert(lapse_gi >= 0);
 
   // Set up timers
   static Timer timer("InputOpenPMD");
@@ -400,7 +574,6 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
     CCTK_VINFO("InputOpenPMD...");
 
   if (!series) {
-
     if (io_verbose)
       CCTK_VINFO("Creating openPMD object...");
     std::ostringstream buf;
@@ -418,13 +591,15 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
     filename = std::make_optional<std::string>(buf.str());
     series = std::make_optional<openPMD::Series>(
         *filename, openPMD::Access::READ_ONLY, MPI_COMM_WORLD, options);
+    read_iters =
+        std::make_optional<openPMD::ReadIterations>(series->readIterations());
   }
   assert(filename);
   assert(series);
+  assert(read_iters);
 
-  openPMD::ReadIterations readIters = series->readIterations();
-  assert(readIters.begin() != readIters.end());
-  openPMD::IndexedIteration iter = *readIters.begin();
+  assert(read_iters->begin() != read_iters->end());
+  openPMD::IndexedIteration iter = *read_iters->begin();
   const uint64_t iterIndex = iter.iterationIndex;
   CCTK_VINFO("  iteration: %d", int(iterIndex));
 
@@ -644,7 +819,7 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
           amrex::FArrayBox &fab = mfab[component];
           for (int vi = 0; vi < numvars; ++vi) {
 
-            if (input_ghosts) {
+            if (output_ghosts || intbox == extbox) {
               CCTK_REAL *const ptr = fab.dataPtr() + vi * np;
               record_components.at(vi).loadChunk(openPMD::shareRaw(ptr), start,
                                                  count);
@@ -680,44 +855,14 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
                                  contig_dj * (contig_shape[1] - 1) +
                                  contig_dk * (contig_shape[2] - 1)]);
 #endif
-              const int reflevel = leveldata.level;
-              const auto expand_box = [=](const CCTK_REAL
-                                              *restrict const contig_ptr) {
-                if (gi == lapse_gi)
-                  CCTK_VINFO("Expanding lapse on level %d component %d",
-                             reflevel, local_component);
+              const auto expand_box = [=](CCTK_REAL *const contig_ptr) {
                 for (int k = 0; k < contig_shape[2]; ++k)
                   for (int j = 0; j < contig_shape[1]; ++j)
                     for (int i = 0; i < contig_shape[0]; ++i)
                       amrex_ptr[amrex_di * i + amrex_dj * j + amrex_dk * k] =
                           contig_ptr[contig_di * i + contig_dj * j +
                                      contig_dk * k];
-                if (gi == lapse_gi) {
-                  CCTK_VINFO("amrex_shape=[%d,%d,%d]", amrex_shape[0],
-                             amrex_shape[1], amrex_shape[2]);
-                  CCTK_VINFO("contig_shape=[%d,%d,%d]", contig_shape[0],
-                             contig_shape[1], contig_shape[2]);
-                  for (int k = 0; k < contig_shape[2]; ++k)
-                    for (int j = 0; j < contig_shape[1]; ++j)
-                      for (int i = 0; i < contig_shape[0]; ++i)
-                        if (amrex_ptr[amrex_di * i + amrex_dj * j +
-                                      amrex_dk * k] == 0 ||
-                            !isfinite(amrex_ptr[amrex_di * i + amrex_dj * j +
-                                                amrex_dk * k]))
-                          CCTK_VINFO(
-                              "alpha[rl=%d; %d,%d,%d]=%f", reflevel, i, j, k,
-                              double(amrex_ptr[amrex_di * i + amrex_dj * j +
-                                               amrex_dk * k]));
-                }
               };
-              if (gi == lapse_gi)
-                CCTK_VINFO("Scheduling reading lapse on level %d component %d",
-                           reflevel, local_component);
-              if (gi == lapse_gi)
-                for (int k = 0; k < contig_shape[2]; ++k)
-                  for (int j = 0; j < contig_shape[1]; ++j)
-                    for (int i = 0; i < contig_shape[0]; ++i)
-                      ptr[i * amrex_di + j * amrex_dj + k * amrex_dk] = 0;
               record_components.at(vi).loadChunk(
                   std::shared_ptr<CCTK_REAL>(contig_ptr, expand_box), start,
                   count);
@@ -845,12 +990,47 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
   iter.setDt(cctk_delta_time);
   iter.setTimeUnitSI(Unit::time);
 
+  const int myproc = CCTK_MyProc(cctkGH);
+  const int ioproc = 0;
+
   // Write parameters
-  {
+  if (myproc == ioproc) {
     const std::string parameters =
         std::unique_ptr<char>(IOUtil_GetAllParameters(cctkGH, 1 /*all*/)).get();
     iter.setAttribute("AllParameters", parameters);
   }
+
+  if (myproc == ioproc) {
+    const int ndims = Loop::dim;
+    iter.setAttribute<int64_t>("numDims", ndims);
+    const int nlevels = ghext->leveldata.size();
+    iter.setAttribute<int64_t>("numLevels", nlevels);
+    std::vector<std::string> level_suffixes(nlevels);
+    for (const auto &leveldata : ghext->leveldata) {
+      const int level = leveldata.level;
+      std::ostringstream buf;
+      buf << "_rl" << setw(2) << setfill('0') << level;
+      level_suffixes.at(level) = buf.str();
+    }
+    iter.setAttribute("levelSuffixes", level_suffixes);
+    for (const auto &leveldata : ghext->leveldata) {
+      const int level = leveldata.level;
+      const amrex::FabArrayBase &mfab = *leveldata.fab;
+      const int nchunks = mfab.size();
+      std::vector<int64_t> chunk_infos(2 * ndims * nchunks);
+      for (int component = 0; component < nchunks; ++component) {
+        const amrex::Box &box = mfab.box(component);
+        // TODO: Reverse
+        for (int d = 0; d < ndims; ++d) {
+          chunk_infos.at(2 * ndims * component + 0 * ndims + d) =
+              box.smallEnd()[d];
+          chunk_infos.at(2 * ndims * component + 1 * ndims + d) =
+              box.bigEnd()[d] + 1;
+        }
+      }
+      iter.setAttribute("chunkInfo" + level_suffixes.at(level), chunk_infos);
+    }
+  } // if ioproc
 
   // Loop over levels
   for (const auto &leveldata : ghext->leveldata) {

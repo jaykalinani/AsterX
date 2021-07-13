@@ -11,11 +11,11 @@
 
 namespace CarpetX {
 
-// int InputOpenPMDParameters(const std::string &input_dir,
-//                         const std::string &input_file);
-// void InputOpenPMDGridStructure(cGH *cctkGH, const std::string &input_dir,
-//                             const std::string &input_file, int
-//                             input_iteration);
+int InputOpenPMDParameters(const std::string &input_dir,
+                           const std::string &input_file);
+void InputOpenPMDGridStructure(cGH *cctkGH, const std::string &input_dir,
+                               const std::string &input_file,
+                               int input_iteration);
 void InputOpenPMD(const cGH *cctkGH, const std::vector<bool> &input_group,
                   const std::string &input_dir, const std::string &input_file);
 
