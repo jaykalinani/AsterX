@@ -521,11 +521,10 @@ void carpetx_openpmd_t::InputOpenPMDGridStructure(cGH *cctkGH,
     amrex::Vector<amrex::Box> levboxes(nfabs);
     for (int component = 0; component < nfabs; ++component) {
       const int offset = 2 * ndims * component;
-      // TODO: Reverse
       amrex::IntVect small, big;
       for (int d = 0; d < ndims; ++d) {
-        small[d] = chunk_infos.at(offset + 0 * ndims + d);
-        big[d] = chunk_infos.at(offset + 1 * ndims + d);
+        small[d] = chunk_infos.at(offset + 0 * ndims + ndims - 1 - d);
+        big[d] = chunk_infos.at(offset + 1 * ndims + ndims - 1 - d);
       }
       levboxes.at(component) = amrex::Box(small, big - 1);
     }
@@ -1020,11 +1019,10 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
       std::vector<int64_t> chunk_infos(2 * ndims * nchunks);
       for (int component = 0; component < nchunks; ++component) {
         const amrex::Box &box = mfab.box(component);
-        // TODO: Reverse
         for (int d = 0; d < ndims; ++d) {
-          chunk_infos.at(2 * ndims * component + 0 * ndims + d) =
+          chunk_infos.at(2 * ndims * component + 0 * ndims + ndims - 1 - d) =
               box.smallEnd()[d];
-          chunk_infos.at(2 * ndims * component + 1 * ndims + d) =
+          chunk_infos.at(2 * ndims * component + 1 * ndims + ndims - 1 - d) =
               box.bigEnd()[d] + 1;
         }
       }
