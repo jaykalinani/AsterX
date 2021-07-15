@@ -111,13 +111,14 @@ CactusUtils/Vectors
 !TYPE     = svn
 !URL      = https://github.com/EinsteinToolkit/$1-$2.git/branches/ET_2020_05
 !REPO_BRANCH = ET_2020_05
-!CHECKOUT = ExternalLibraries/OpenCL ExternalLibraries/pciutils ExternalLibraries/PETSc
+!CHECKOUT = ExternalLibraries/OpenCL ExternalLibraries/pciutils
 ExternalLibraries/FFTW3
 ExternalLibraries/GSL
 ExternalLibraries/HDF5
 #DISABLED ExternalLibraries/LAPACK
 ExternalLibraries/MPI
 ExternalLibraries/OpenBLAS
+ExternalLibraries/PETSc
 ExternalLibraries/hwloc
 ExternalLibraries/zlib
 

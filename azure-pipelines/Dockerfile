@@ -3,7 +3,7 @@
 #     docker push einsteintoolkit/cactus-amrex
 
 # Use Debian
-FROM debian:testing-20210511-slim
+FROM debian:testing-20210621-slim
 
 RUN mkdir /cactus
 WORKDIR /cactus
@@ -27,6 +27,7 @@ RUN apt-get update && \
         libhwloc-dev \
         libopenblas-dev \
         libopenmpi-dev \
+        libpetsc-real-dev \
         libudev-dev \
         perl \
         pkg-config \

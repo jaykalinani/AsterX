@@ -13,7 +13,7 @@ steps:
     echo 'docker' >$HOME/.hostname
     cp azure-pipelines/defs.local.ini Cactus/simfactory/etc
     cp azure-pipelines/docker.ini Cactus/simfactory/mdb/machines
-    cp azure-pipelines/ubuntu.cfg Cactus/simfactory/mdb/optionlists
+    cp azure-pipelines/debian.cfg Cactus/simfactory/mdb/optionlists
     cp azure-pipelines/docker.sub Cactus/simfactory/mdb/submitscripts
     cp azure-pipelines/docker.run Cactus/simfactory/mdb/runscripts
     mkdir $HOME/simulations
