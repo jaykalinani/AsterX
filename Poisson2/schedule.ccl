@@ -1,0 +1,39 @@
+# Schedule definitions for thorn Poisson2
+
+SCHEDULE Poisson2_Init AT initial BEFORE PDESolvers_Solve
+{
+  LANG: C
+  WRITES: sol(interior)
+} "Initialize solution"
+
+
+
+SCHEDULE Poisson2_Boundaries IN PDESolvers_Residual
+{
+  LANG: C
+  WRITES: sol(boundary)
+  SYNC: sol
+} "Apply boundary condition to solution"
+
+SCHEDULE Poisson2_Residual IN PDESolvers_Residual AFTER Poisson2_Boundaries
+{
+  LANG: C
+  READS: sol(everywhere)
+  WRITES: res(interior)
+} "Evaluate residual"
+
+SCHEDULE Poisson2_Jacobian IN PDESolvers_Jacobian
+{
+  LANG: C
+  READS: PDESolvers::idx(everywhere)
+  READS: sol(interior)
+} "Evaluate Jacobian"
+
+
+
+SCHEDULE Poisson2_Boundaries AT initial AFTER PDESolvers_Solve
+{
+  LANG: C
+  WRITES: sol(boundary)
+  SYNC: sol
+} "Apply boundary condition to solution"

@@ -1,0 +1,16 @@
+# Interface definition for thorn Poisson2
+
+IMPLEMENTS: Poisson2
+
+INHERITS: PDESolvers
+
+USES INCLUDE HEADER: pdesolvers.hxx
+
+USES INCLUDE HEADER: defs.hxx
+USES INCLUDE HEADER: fixmath.hxx
+USES INCLUDE HEADER: loop.hxx
+
+
+
+CCTK_REAL sol TYPE=gf TAGS='index={0 0 0} res="res"' "Solution"
+CCTK_REAL res TYPE=gf TAGS='index={0 0 0}' "Residual"
