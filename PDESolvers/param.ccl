@@ -1,0 +1,6 @@
+# Parameter definitions for thorn PDESolvers
+
+STRING petsc_options "PETSc options" STEERABLE=recover
+{
+  ".*" :: ""
+} ""

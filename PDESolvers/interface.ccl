@@ -1,0 +1,22 @@
+# Interface definition for thorn PDESolvers
+
+IMPLEMENTS: PDESolvers
+
+INCLUDES HEADER: pdesolvers.hxx IN pdesolvers.hxx
+
+USES INCLUDE HEADER: fixmath.hxx
+USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: vect.hxx
+
+
+
+void FUNCTION CallScheduleGroup(
+  CCTK_POINTER IN cctkGH,
+  CCTK_STRING IN groupname)
+REQUIRES FUNCTION CallScheduleGroup
+
+
+
+PUBLIC:
+
+CCTK_REAL idx TYPE=gf TAGS='index={0 0 0}' "Global index"
