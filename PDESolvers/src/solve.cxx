@@ -41,10 +41,6 @@ const int onz = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::optional<jacobian_t> jacobian;
-
-////////////////////////////////////////////////////////////////////////////////
-
 // Erik Schnetter the blocks for vertex centred grids overlap by one
 // point at the block boundaries (see
 // https://amrex-codes.github.io/amrex/docs_html/Basics.html#id4).
@@ -489,20 +485,17 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
   assert(!ierr);
   ierr = MatSetFromOptions(J);
   assert(!ierr);
-  jacobian = std::make_optional<jacobian_t>(J);
+  jacobians = std::make_optional<jacobians_t>();
 
   std::function<PetscErrorCode(SNES snes, Vec x, Mat J, Mat B)> evalJ =
       [&](SNES snes, Vec x, Mat J, Mat B) {
-        ierr = MatZeroEntries(J);
-        assert(!ierr);
         copy_PETSc_to_Cactus(x, solinds, block_offsets);
+        jacobians.value().clear();
         CallScheduleGroup(cctkGH, "PDESolvers_Jacobian");
-        ierr = MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY);
-        assert(!ierr);
-        ierr = MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY);
-        assert(!ierr);
+        jacobians.value().define_matrix(J);
         if (false) {
           MatInfo info;
+          PetscErrorCode ierr;
           ierr = MatGetInfo(J, MAT_GLOBAL_SUM, &info);
           assert(!ierr);
           CCTK_VINFO("Jacobian info: nz_allocated=%g nz_used=%g nz_unneeded=%g "
@@ -512,13 +505,8 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
         }
         return 0;
       };
-#if 1
   ierr = SNESSetJacobian(snes, J, J, FormJacobian, &evalJ);
   assert(!ierr);
-#else
-  ierr = SNESSetJacobian(snes, J, J, NULL, NULL);
-  assert(!ierr);
-#endif
 
   {
     double atol, rtol, stol;
@@ -535,11 +523,6 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
   ierr = VecDuplicate(r, &x);
   assert(!ierr);
   copy_Cactus_to_PETSc(x, solinds, block_offsets);
-
-#if 0
-  ierr = FormJacobian(snes, x, J, J, &evalJ);
-  assert(!ierr);
-#endif
 
   // Solve
 
@@ -585,7 +568,7 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
 
   // Clean up
 
-  jacobian.reset();
+  jacobians.reset();
   VecDestroy(&x);
   VecDestroy(&r);
   MatDestroy(&J);
