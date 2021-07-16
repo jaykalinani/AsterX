@@ -181,17 +181,19 @@ extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
   const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
   const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, sol);
 
-  assert(PDESolvers::jacobian.has_value());
-  const PDESolvers::jacobian_t &J = PDESolvers::jacobian.value();
+  assert(PDESolvers::jacobians.has_value());
+  PDESolvers::jacobian_t &J = PDESolvers::jacobians.value().get_local();
+
+  const int fdorder1 = fdorder_jac < 0 ? fdorder : fdorder_jac;
 
   const Loop::GridDescBase grid(cctkGH);
   grid.loop_int<0, 0, 0>(
-      grid.nghostzones, [=](const Loop::PointDesc &p) ARITH_INLINE {
+      grid.nghostzones, [=, &J](const Loop::PointDesc &p) ARITH_INLINE {
         const Loop::GF3D2index index1(layout1, p.I);
         using std::lrint;
         using Arith::pow2;
         const int idx = lrint(gf_idx(index1));
-        switch (fdorder) {
+        switch (fdorder1) {
         case 2:
           for (int d = 0; d < dim; ++d) {
             J.add_value(idx,

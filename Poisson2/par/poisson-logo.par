@@ -22,9 +22,9 @@ CarpetX::xmax = +1.0
 CarpetX::ymax = +1.0
 CarpetX::zmax = +1.0
 
-CarpetX::ncells_x = 128   # TODO 64
-CarpetX::ncells_y = 128   # TODO 64
-CarpetX::ncells_z = 128   # TODO 64
+CarpetX::ncells_x = 64
+CarpetX::ncells_y = 64
+CarpetX::ncells_z = 64
 
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
@@ -40,9 +40,6 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 1
 CarpetX::interpolation_order = 1
 
-# -snes_monitor ascii
-# -ksp_monitor
-# -ksp_type {bcgs|bcgsl|gmres|...}   <https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPType.html>
 PDESolvers::petsc_options = "-snes_monitor ascii -ksp_monitor -ksp_type bcgsl"
 
 Poisson2::source = "logo"

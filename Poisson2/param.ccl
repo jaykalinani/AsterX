@@ -6,6 +6,13 @@ INT fdorder "Finite differenc order"
   4 :: ""
 } 2
 
+INT fdorder_jac "Finite differenc order for Jacobian"
+{
+  -1 :: "same as fdorder"
+  2 :: ""
+  4 :: ""
+} -1
+
 KEYWORD source "Source function"
 {
   "constant" :: ""

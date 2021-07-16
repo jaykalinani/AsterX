@@ -40,9 +40,7 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 1
 CarpetX::interpolation_order = 1
 
-# -snes_monitor ascii
-# -ksp_monitor
-PDESolvers::petsc_options = "-snes_monitor ascii"
+PDESolvers::petsc_options = "-snes_monitor ascii -ksp_monitor -ksp_type bcgsl"
 
 IO::out_dir = $parfile
 IO::out_every = 1
