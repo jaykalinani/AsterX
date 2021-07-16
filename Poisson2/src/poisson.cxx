@@ -14,6 +14,58 @@
 
 namespace Poisson2 {
 
+extern "C" void Poisson2_Source(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_Poisson2_Source;
+  DECLARE_CCTK_PARAMETERS;
+
+  const int dim = Loop::dim;
+
+  const int npoints = 27; // 3 levels
+
+  const std::array<int, dim> indextype = {0, 0, 0};
+  const std::array<int, dim> nghostzones = {
+      cctk_nghostzones[0], cctk_nghostzones[1], cctk_nghostzones[2]};
+  Arith::vect<int, dim> imin, imax;
+  Loop::GridDescBase(cctkGH).box_int<0, 0, 0>(nghostzones, imin, imax);
+  const Loop::GF3D2layout layout1(cctkGH, indextype);
+
+  const Loop::GF3D2<CCTK_REAL> gf_src(layout1, src);
+
+  const Loop::GridDescBase grid(cctkGH);
+  if (CCTK_EQUALS(source, "constant")) {
+    grid.loop_all<0, 0, 0>(grid.nghostzones,
+                           [=](const Loop::PointDesc &p) ARITH_INLINE {
+                             const Loop::GF3D2index index1(layout1, p.I);
+                             gf_src(index1) = 1;
+                           });
+  } else if (CCTK_EQUALS(source, "logo")) {
+    grid.loop_all<0, 0, 0>(
+        grid.nghostzones, [=](const Loop::PointDesc &p) ARITH_INLINE {
+          const Loop::GF3D2index index1(layout1, p.I);
+          using std::lrint;
+          Arith::vect<int, dim> i;
+          for (int d = 0; d < dim; ++d)
+            i[d] = lrint((p.X[d] / logo_width + 0.5) * npoints - 0.5);
+          if (all(i >= Arith::vect<int, dim>::pure(0) &&
+                  i < Arith::vect<int, dim>::pure(npoints))) {
+            if (all(i / 9 == Arith::vect<int, dim>::pure(1))) {
+              gf_src(index1) = 3; // red box
+            } else if (all(i / 3 % 3 == Arith::vect<int, dim>::pure(1))) {
+              gf_src(index1) = 2; // green box
+            } else if (all(i / 1 % 3 == Arith::vect<int, dim>::pure(1))) {
+              gf_src(index1) = 1; // blue box
+            } else {
+              gf_src(index1) = 0;
+            }
+          } else {
+            gf_src(index1) = 0;
+          }
+        });
+  } else {
+    CCTK_ERROR("Unknown value for parameter \"source\"");
+  }
+}
+
 extern "C" void Poisson2_Init(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson2_Init;
 
@@ -75,6 +127,7 @@ extern "C" void Poisson2_Residual(CCTK_ARGUMENTS) {
     assert(2 * nghostzones[d] >= fdorder);
 
   const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
+  const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, src);
   const Loop::GF3D2<CCTK_REAL> gf_res(layout1, res);
 
   const Loop::GridDescBase grid(cctkGH);
@@ -104,9 +157,10 @@ extern "C" void Poisson2_Residual(CCTK_ARGUMENTS) {
                 pow2(p.DX[d]);
           break;
         default:
+          assert(0);
           abort();
         }
-        gf_res(index1) = ddsol - 1;
+        gf_res(index1) = ddsol - gf_src(index1);
       });
 }
 
@@ -125,6 +179,7 @@ extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
 
   const Loop::GF3D2<const CCTK_REAL> gf_idx(layout1, idx);
   const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
+  const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, sol);
 
   assert(PDESolvers::jacobian.has_value());
   const PDESolvers::jacobian_t &J = PDESolvers::jacobian.value();
@@ -170,6 +225,7 @@ extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
           }
           break;
         default:
+          assert(0);
           abort();
         }
       });

@@ -5,3 +5,14 @@ INT fdorder "Finite differenc order"
   2 :: ""
   4 :: ""
 } 2
+
+KEYWORD source "Source function"
+{
+  "constant" :: ""
+  "logo" :: ""
+} "constant"
+
+REAL logo_width "Width of logo"
+{
+  (0:* :: ""
+} 1.6875   # 27/16
