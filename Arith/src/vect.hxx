@@ -214,6 +214,10 @@ template <typename T, int D> struct vect {
   operator/(const vect &x, const T &a) {
     return fmap([&](const T &b) { return b / a; }, x);
   }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator%(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return b % a; }, x);
+  }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator+=(const vect &x) {
@@ -231,6 +235,10 @@ template <typename T, int D> struct vect {
   operator/=(const vect &x) {
     return *this = *this / x;
   }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator%=(const vect &x) {
+    return *this = *this % x;
+  }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect operator+=(const T &a) {
     return *this = *this + a;
@@ -243,6 +251,9 @@ template <typename T, int D> struct vect {
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect operator/=(const T &a) {
     return *this = *this / a;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect operator%=(const T &a) {
+    return *this = *this % a;
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
