@@ -297,6 +297,7 @@ struct carpetx_openpmd_t {
       ch = std::tolower(ch);
     std::ostringstream buf;
     buf << groupname;
+    // TODO: The openPMD standard says to use `"_lev" << level` as mesh name
     buf << "_rl" << setw(2) << setfill('0') << level;
     return buf.str();
   }
@@ -757,6 +758,8 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
           CCTK_VINFO("Reading mesh %s...", meshname.c_str());
         assert(iter.meshes.count(meshname));
         const openPMD::Mesh &mesh = iter.meshes.at(meshname);
+        // TODO: The openPMD standard says to add an attribute
+        // `refinementRatio`, which is a vector of integers
 
         // Define tensor components
 
