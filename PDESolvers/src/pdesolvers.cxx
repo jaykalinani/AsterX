@@ -24,13 +24,13 @@ void jacobian_t::set_matrix_entries(Mat J) const {
 
 jacobians_t::jacobians_t() : jacobians(omp_get_max_threads()) {}
 
+jacobian_t &jacobians_t::get_local() {
+  return jacobians.at(omp_get_thread_num());
+}
+
 void jacobians_t::clear() {
   for (auto &j : jacobians)
     j.clear();
-}
-
-jacobian_t &jacobians_t::get_local() {
-  return jacobians.at(omp_get_thread_num());
 }
 
 void jacobians_t::define_matrix(Mat J) const {

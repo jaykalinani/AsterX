@@ -17,6 +17,16 @@ REQUIRES FUNCTION CallScheduleGroup
 
 
 
+# 1: interior (defined by user)
+# 2: outer boundary (also defined by users)
+# 3: defined via synchronization (copied from another box on same level)
+# 4: defined via prolongation (interpolated from next coarser level)
+# 5: defined via restriction (injected from next finer level)
+CCTK_REAL communication_indicator TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Temporary for studying communication effects"
+
+
+
 PUBLIC:
 
-CCTK_REAL idx TYPE=gf TAGS='index={0 0 0}' "Global index"
+CCTK_REAL point_type TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Point type"
+CCTK_REAL idx TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Global index"

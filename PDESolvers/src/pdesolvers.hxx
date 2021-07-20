@@ -38,8 +38,8 @@ public:
   jacobians_t &operator=(jacobians_t &&) = default;
 
   jacobians_t();
-  void clear();
   jacobian_t &get_local();
+  void clear();
   void define_matrix(Mat J) const;
 };
 

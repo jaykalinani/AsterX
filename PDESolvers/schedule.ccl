@@ -20,27 +20,6 @@ SCHEDULE PDESolvers_Shutdown AT terminate
 
 
 
-SCHEDULE GROUP PDESolvers_IdxInitGroup
-{
-} "Pre-initialize global index"
-  SCHEDULE PDESolvers_IdxInit IN PDESolvers_IdxInitGroup
-  {
-    LANG: C
-    WRITES: PDESolvers::idx(interior)
-  } "Pre-initialize global index"
-
-SCHEDULE GROUP PDESolvers_IdxBoundaryGroup
-{
-} "Apply boundary conditions to global index"
-  SCHEDULE PDESolvers_IdxBoundary IN PDESolvers_IdxBoundaryGroup
-  {
-    LANG: C
-    WRITES: PDESolvers::idx(boundary)
-    SYNC: PDESolvers::idx
-  } "Apply boundary conditions to global index"
-
-
-
 SCHEDULE GROUP PDESolvers_Residual
 {
 } "Evaluate residual"
