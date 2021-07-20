@@ -5,7 +5,7 @@ ActiveThorns = "
     Poisson2
 "
 
-CarpetX::verbose = no
+CarpetX::verbose = yes
 
 Cactus::cctk_show_schedule = no
 
@@ -21,6 +21,10 @@ CarpetX::zmin = -1.0
 CarpetX::xmax = +1.0
 CarpetX::ymax = +1.0
 CarpetX::zmax = +1.0
+
+# CarpetX::blocking_factor_x = 1
+# CarpetX::blocking_factor_y = 1
+# CarpetX::blocking_factor_z = 1
 
 CarpetX::ncells_x = 64
 CarpetX::ncells_y = 64
@@ -40,7 +44,10 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 1
 CarpetX::interpolation_order = 1
 
-PDESolvers::petsc_options = "-snes_monitor ascii -ksp_monitor -ksp_type bcgsl"
+# debug:      -ksp_type cg -pc_type lu
+# production: -snes_linesearch_type basic -ksp_type bcgs
+# broken:     -ksp_type bcgsl
+PDESolvers::petsc_options = "-snes_linesearch_type basic -ksp_type bcgs -snes_monitor ascii -snes_converged_reason -ksp_monitor -ksp_converged_reason"
 
 IO::out_dir = $parfile
 IO::out_every = 1
