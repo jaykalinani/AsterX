@@ -42,12 +42,6 @@ using namespace std;
 // positive values often lead to segfault, exposing bugs.
 constexpr int undefined = (INT_MAX / 2 + 1) + 666;
 
-struct thread_local_info_t {
-  // TODO: store only amrex::MFIter here; recalculate other things from it
-  cGH cctkGH;
-  unsigned char padding[128]; // Prevent false sharing
-};
-
 vector<unique_ptr<thread_local_info_t> > thread_local_info;
 vector<unique_ptr<thread_local_info_t> > saved_thread_local_info;
 
@@ -154,6 +148,117 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   // The number of ghostzones in each direction
   for (int d = 0; d < dim; ++d)
     nghostzones[d] = mfp.nGrowVect()[d];
+
+  // Global shape
+  for (int d = 0; d < dim; ++d)
+    gsh[d] = domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 1 +
+             2 * nghostzones[d];
+
+  // Local shape
+  for (int d = 0; d < dim; ++d)
+    lsh[d] = fbx[orient(d, 1)] - fbx[orient(d, 0)] + 1 + 1;
+
+  // Allocated shape
+  for (int d = 0; d < dim; ++d)
+    ash[d] = lsh[d];
+
+  // Local extent
+  for (int d = 0; d < dim; ++d) {
+    lbnd[d] = fbx[orient(d, 0)] + nghostzones[d];
+    ubnd[d] = fbx[orient(d, 1)] + 1 + nghostzones[d];
+  }
+
+  // Boundaries
+  const array<array<bool, 3>, 2> is_symmetry{{
+      {{
+          periodic || periodic_x || reflection_x,
+          periodic || periodic_y || reflection_y,
+          periodic || periodic_z || reflection_z,
+      }},
+      {{
+          periodic || periodic_x || reflection_upper_x,
+          periodic || periodic_y || reflection_upper_y,
+          periodic || periodic_z || reflection_upper_z,
+      }},
+  }};
+  for (int d = 0; d < dim; ++d)
+    for (int f = 0; f < 2; ++f)
+      bbox[2 * d + f] =
+          vbx[orient(d, f)] == domain[orient(d, f)] && !is_symmetry[f][d];
+
+  // Thread tile box
+  for (int d = 0; d < dim; ++d) {
+    tmin[d] = gbx[orient(d, 0)] - fbx[orient(d, 0)];
+    // For vertex centred grids, the allocated box is 1 vertex larger
+    // than the number of cells, and AMReX assigns this extra vertex
+    // to the final tile
+    assert(gbx[orient(d, 1)] <= fbx[orient(d, 1)]);
+    tmax[d] = gbx[orient(d, 1)] + 1 - fbx[orient(d, 0)] +
+              (gbx[orient(d, 1)] == fbx[orient(d, 1)]);
+  }
+
+  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
+  const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
+  const CCTK_REAL *restrict const global_dx = geom.CellSize();
+  for (int d = 0; d < dim; ++d) {
+    const int levfac = 1 << leveldata.level;
+    // Offset between this level's and the coarsest level's origin as
+    // multiple of the grid spacing
+    const int levoff = (1 - levfac) * (1 - 2 * nghostzones[d]);
+    const int levoffdenom = 2;
+    // Cell-centred coordinates on coarse level
+    const CCTK_REAL origin_space =
+        global_x0[d] + (1 - 2 * nghostzones[d]) * global_dx[d] / 2;
+    const CCTK_REAL delta_space = global_dx[d];
+    // Cell-centred coordinates on current level
+    dx[d] = delta_space / levfac;
+    x0[d] = origin_space + dx[d] * levoff / levoffdenom;
+  }
+
+  // Check constraints
+  for (int d = 0; d < dim; ++d) {
+    // Domain size
+    assert(gsh[d] >= 0);
+
+    // Local size
+    assert(lbnd[d] >= 0);
+    assert(lsh[d] >= 0);
+    assert(lbnd[d] + lsh[d] <= gsh[d]);
+    assert(ubnd[d] == lbnd[d] + lsh[d] - 1);
+
+    // Internal representation
+    assert(ash[d] >= 0);
+    assert(ash[d] >= lsh[d]);
+
+    // Ghost zones
+    assert(nghostzones[d] >= 0);
+    assert(2 * nghostzones[d] <= lsh[d]);
+
+    // Tiles
+    assert(tmin[d] >= 0);
+    assert(tmin[d] <= tmax[d]);
+    assert(tmax[d] <= lsh[d]);
+  }
+}
+
+GridDesc::GridDesc(const GHExt::LevelData &leveldata, const int block) {
+  // `global_block` is the global block index.
+  // There is no tiling.
+  DECLARE_CCTK_PARAMETERS;
+
+  const amrex::FabArrayBase &fab = *leveldata.fab;
+
+  const amrex::Box &fbx = fab.fabbox(block); // allocated array
+  const amrex::Box &vbx = fab.box(block);    // interior region (without ghosts)
+  const amrex::Box &gbx = fbx;               // current region (with ghosts)
+  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+
+  for (int d = 0; d < dim; ++d)
+    assert(domain.type(d) == amrex::IndexType::CELL);
+
+  // The number of ghostzones in each direction
+  for (int d = 0; d < dim; ++d)
+    nghostzones[d] = fab.nGrowVect()[d];
 
   // Global shape
   for (int d = 0; d < dim; ++d)
@@ -611,6 +716,58 @@ void leave_local_mode(cGH *restrict cctkGH,
   }
 }
 
+void loop_over_blocks(
+    const cGH *restrict const cctkGH,
+    const std::function<void(int level, int index, int block,
+                             const cGH *cctkGH)> &block_kernel) {
+  assert(thread_local_info.empty());
+  swap(thread_local_info, saved_thread_local_info);
+
+  std::vector<std::function<void()> > tasks;
+
+  active_levels->loop([&](const auto &restrict leveldata) {
+    // Note: The amrex::MFIter uses global variables and OpenMP barriers
+    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+    int block = 0;
+    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+      const MFPointer mfp(mfi);
+      auto task = [&block_kernel, &leveldata, mfp, block]() {
+        const int thread_num = omp_get_thread_num();
+        thread_local_info_t &restrict thread_info =
+            *thread_local_info.at(thread_num);
+        cGH *restrict const threadGH = &thread_info.cctkGH;
+        enter_level_mode(threadGH, leveldata);
+        enter_local_mode(threadGH, leveldata, mfp);
+        block_kernel(leveldata.level, mfp.index(), block, threadGH);
+        leave_local_mode(threadGH, leveldata, mfp);
+        leave_level_mode(threadGH, leveldata);
+      };
+      tasks.emplace_back(move(task));
+      ++block;
+    }
+  });
+
+#pragma omp parallel
+  {
+    // Initialize thread-local state variables
+    const int thread_num = omp_get_thread_num();
+    thread_local_info_t &restrict thread_info =
+        *thread_local_info.at(thread_num);
+    cGH *const threadGH = &thread_info.cctkGH;
+    update_cctkGH(threadGH, cctkGH);
+
+    // run all tasks
+#pragma omp for schedule(dynamic)
+    for (size_t i = 0; i < tasks.size(); ++i)
+      tasks[i]();
+  }
+
+  swap(saved_thread_local_info, thread_local_info);
+  assert(thread_local_info.empty());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 extern "C" void CarpetX_GetTileExtent(const void *restrict const cctkGH_,
                                       CCTK_INT *restrict const tile_min,
                                       CCTK_INT *restrict const tile_max) {
@@ -661,6 +818,8 @@ extern "C" void CarpetX_GetLoopBoxInt(const void *restrict const cctkGH_,
   for (int d = 0; d < dim; ++d)
     loop_max[d] = imax[d];
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 mode_t decode_mode(const cFunctionData *restrict attribute) {
   bool local_mode = attribute->local;
@@ -1474,14 +1633,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
              ++mfi) {
           const MFPointer mfp(mfi);
 
-          auto task = [level = leveldata.level, mfp, function, attribute] {
+          auto task = [&leveldata, mfp, function, attribute]() {
             const int thread_num = omp_get_thread_num();
             thread_local_info_t &restrict thread_info =
                 *thread_local_info.at(thread_num);
             cGH *restrict const threadGH = &thread_info.cctkGH;
-
-            const auto &restrict leveldata = ghext->leveldata.at(level);
-
             enter_level_mode(threadGH, leveldata);
             enter_local_mode(threadGH, leveldata, mfp);
             CCTK_CallFunction(function, attribute, threadGH);

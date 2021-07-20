@@ -10,7 +10,10 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <functional>
 #include <optional>
+#include <type_traits>
+#include <vector>
 
 namespace CarpetX {
 using namespace std;
@@ -33,6 +36,14 @@ int EnableGroupStorage(const cGH *cctkGH, const char *groupname);
 int DisableGroupStorage(const cGH *cctkGH, const char *groupname);
 
 ////////////////////////////////////////////////////////////////////////////////
+
+struct thread_local_info_t {
+  // TODO: store only amrex::MFIter here; recalculate other things from it
+  cGH cctkGH;
+  unsigned char padding[128]; // Prevent false sharing
+};
+
+extern vector<unique_ptr<thread_local_info_t> > thread_local_info;
 
 // This global variable passes the current cctkGH to CactusAmrCore.
 // (When it is null, then CactusAmrCore does not call any scheduled
@@ -101,6 +112,7 @@ struct GridDesc : GridDescBase {
 
   GridDesc() = delete;
   GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp);
+  GridDesc(const GHExt::LevelData &leveldata, const int global_block);
   GridDesc(const cGH *cctkGH) : GridDescBase(cctkGH) {}
 };
 
@@ -167,6 +179,25 @@ bool in_local_mode(const cGH *restrict cctkGH);
 bool in_level_mode(const cGH *restrict cctkGH);
 bool in_global_mode(const cGH *restrict cctkGH);
 bool in_meta_mode(const cGH *restrict cctkGH);
+
+void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH);
+void enter_global_mode(cGH *restrict cctkGH);
+void leave_global_mode(cGH *restrict cctkGH);
+void enter_level_mode(cGH *restrict cctkGH,
+                      const GHExt::LevelData &restrict leveldata);
+void leave_level_mode(cGH *restrict cctkGH,
+                      const GHExt::LevelData &restrict leveldata);
+void enter_local_mode(cGH *restrict cctkGH,
+                      const GHExt::LevelData &restrict leveldata,
+                      const MFPointer &mfp);
+void leave_local_mode(cGH *restrict cctkGH,
+                      const GHExt::LevelData &restrict leveldata,
+                      const MFPointer &mfp);
+
+void loop_over_blocks(
+    const cGH *restrict const cctkGH,
+    const std::function<void(int level, int index, int block,
+                             const cGH *cctkGH)> &block_kernel);
 
 void error_if_invalid(const GHExt::LevelData ::GroupData &grouppdata, int vi,
                       int tl, const valid_t &required,
