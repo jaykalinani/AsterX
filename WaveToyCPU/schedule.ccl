@@ -51,6 +51,7 @@ SCHEDULE WaveToyCPU_Initialize IN WaveToyCPU_InitialGroup
 SCHEDULE WaveToyCPU_Sync IN WaveToyCPU_PostStepGroup
 {
   LANG: C
+  OPTIONS: global
   SYNC: state
 } "Boundary conditions for the wave equation"
 
@@ -83,6 +84,7 @@ SCHEDULE WaveToyCPU_RHS IN WaveToyCPU_RHSGroup
 SCHEDULE WaveToyCPU_RHSSync IN WaveToyCPU_RHSGroup AFTER WaveToyCPU_RHS
 {
   LANG: C
+  OPTIONS: global
   SYNC: rhs
 } "Boundary conditions for the RHS of the wave equation"
 
