@@ -38,6 +38,7 @@ SCHEDULE HydroToyCarpetX_EstimateError AT postinitial
 SCHEDULE HydroToyCarpetX_Boundaries AT postregrid
 {
   LANG: C
+  OPTIONS: global
   SYNC: conserved
 } "Apply boundary conditions after regridding"
 
@@ -132,6 +133,7 @@ SCHEDULE HydroToyCarpetX_Evolve AT evol AFTER HydroToyCarpetX_Fluxes
 SCHEDULE HydroToyCarpetX_Boundaries AT postrestrict
 {
   LANG: C
+  OPTIONS: global
   # Refluxing is over, we can now mark the fluxes as invalid
   INVALIDATES: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
   SYNC: conserved
