@@ -42,6 +42,7 @@ SCHEDULE Hydro_EstimateError AT postinitial AFTER Hydro_Prim2Con
 SCHEDULE Hydro_Boundaries AT postregrid
 {
   LANG: C
+  OPTIONS: global
   SYNC: conserved
   INVALIDATES: primitive(everywhere)
 } "Apply boundary conditions after regridding"
