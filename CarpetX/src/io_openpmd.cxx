@@ -1090,6 +1090,8 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
         cGroup cgroup;
         const int ierr = CCTK_GroupData(gi, &cgroup);
         assert(!ierr);
+        if (cgroup.grouptype != CCTK_GF)
+          continue;
         assert(cgroup.grouptype == CCTK_GF);
         assert(cgroup.vartype == CCTK_VARIABLE_REAL);
         assert(cgroup.dim == 3);
