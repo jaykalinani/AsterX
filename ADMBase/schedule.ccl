@@ -12,17 +12,31 @@ SCHEDULE GROUP ADMBase_PostInitial AT initial AFTER (ADMBase_InitialData ADMBase
 {
 } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
 
-SCHEDULE GROUP ADMBase_InitialData AT postregrid
-{
-} "Schedule group for calculating ADM initial data"
+# SCHEDULE GROUP ADMBase_InitialData AT postregrid
+# {
+# } "Schedule group for calculating ADM initial data"
+# 
+# SCHEDULE GROUP ADMBase_InitialGauge AT postregrid AFTER ADMBase_InitialData
+# {
+# } "Schedule group for the ADM initial gauge condition"
+# 
+# SCHEDULE GROUP ADMBase_PostInitial AT postregrid AFTER (ADMBase_InitialData ADMBase_InitialGauge)
+# {
+# } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
 
-SCHEDULE GROUP ADMBase_InitialGauge AT postregrid AFTER ADMBase_InitialData
-{
-} "Schedule group for the ADM initial gauge condition"
-
-SCHEDULE GROUP ADMBase_PostInitial AT postregrid AFTER (ADMBase_InitialData ADMBase_InitialGauge)
-{
-} "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
+if (cowling) {
+  SCHEDULE GROUP ADMBase_InitialData IN ODESolvers_PostStep
+  {
+  } "Schedule group for calculating ADM initial data"
+  
+  SCHEDULE GROUP ADMBase_InitialGauge IN ODESolvers_PostStep AFTER ADMBase_InitialData
+  {
+  } "Schedule group for the ADM initial gauge condition"
+  
+  SCHEDULE GROUP ADMBase_PostInitial IN ODESolvers_PostStep AFTER (ADMBase_InitialData ADMBase_InitialGauge)
+  {
+  } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
+}
 
 SCHEDULE GROUP ADMBase_SetADMVars AT postregrid
 {
@@ -54,13 +68,13 @@ if (CCTK_EQUALS(initial_data, "Cartesian Minkowski")) {
   SCHEDULE ADMBase_initial_data IN ADMBase_InitialData
   {
     LANG: C
-    WRITES: metric(interior) curv(interior)
+    WRITES: metric(everywhere) curv(everywhere)
   } "Set up Cartesian Minkowski initial data"
 } else if (CCTK_EQUALS(initial_data, "linear wave")) {
   SCHEDULE ADMBase_linear_wave IN ADMBase_InitialData
   {
     LANG: C
-    WRITES: metric(interior) curv(interior)
+    WRITES: metric(everywhere) curv(everywhere)
   } "Set up linear wave initial data"
 }
 
@@ -68,7 +82,7 @@ if (CCTK_EQUALS(initial_lapse, "one")) {
   SCHEDULE ADMBase_initial_lapse IN ADMBase_InitialGauge
   {
     LANG: C
-    WRITES: lapse(interior)
+    WRITES: lapse(everywhere)
   } "Set lapse to one"
 }
 
@@ -76,7 +90,7 @@ if (CCTK_EQUALS(initial_dtlapse, "zero")) {
   SCHEDULE ADMBase_initial_dtlapse IN ADMBase_InitialGauge
   {
     LANG: C
-    WRITES: dtlapse(interior)
+    WRITES: dtlapse(everywhere)
   } "Set dtlapse to zero"
 }
 
@@ -84,7 +98,7 @@ if (CCTK_EQUALS(initial_shift, "zero")) {
   SCHEDULE ADMBase_initial_shift IN ADMBase_InitialGauge
   {
     LANG: C
-    WRITES: shift(interior)
+    WRITES: shift(everywhere)
   } "Set shift to zero"
 }
 
@@ -92,13 +106,16 @@ if (CCTK_EQUALS(initial_dtshift, "zero")) {
   SCHEDULE ADMBase_initial_dtshift IN ADMBase_InitialGauge
   {
     LANG: C
-    WRITES: dtshift(interior)
+    WRITES: dtshift(everywhere)
   } "Set dtshift to zero"
 }
 
 
 
 if (noise_amplitude != 0) {
+  # TODO: Also add noise during evolution?
+  # TODO: Noise should be added by a separate thorn.
+
   SCHEDULE ADMBase_add_noise IN ADMBase_PostInitial
   {
     LANG: C
