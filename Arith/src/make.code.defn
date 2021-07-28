@@ -9,6 +9,7 @@ SRCS =						\
 	rational.cxx				\
 	rten.cxx				\
 	simd.cxx				\
+        spvect.cxx				\
 	sum.cxx					\
 	ten3.cxx				\
 	vec.cxx					\

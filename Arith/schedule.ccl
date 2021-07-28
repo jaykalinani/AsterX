@@ -1,1 +1,7 @@
 # Schedule definitions for thorn Arith
+
+SCHEDULE TestSpvect AT wragh
+{
+  LANG: C
+  OPTIONS: meta
+} "Test sparse vectors"
