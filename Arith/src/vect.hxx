@@ -2,6 +2,7 @@
 #define VECT_HXX
 
 #include "defs.hxx"
+#include "div.hxx"
 #include "simd.hxx"
 
 #include <array>
@@ -220,6 +221,14 @@ template <typename T, int D> struct vect {
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator%(const vect &x, const T &a) {
     return fmap([&](const T &b) { return b % a; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  div_floor(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return div_floor(b, a); }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  mod_floor(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return mod_floor(b, a); }, x);
   }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
