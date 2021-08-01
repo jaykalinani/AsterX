@@ -4,6 +4,7 @@ ActiveThorns = "
     Formaline
     IOUtil
     ODESolvers
+    SystemTopology
     TimerReport
     TmunuBase
     Z4c

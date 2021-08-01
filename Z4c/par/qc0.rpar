@@ -48,6 +48,7 @@ ActiveThorns = "
     Formaline
     IOUtil
     ODESolvers
+    SystemTopology
     TimerReport
     TmunuBase
     TwoPunctures
