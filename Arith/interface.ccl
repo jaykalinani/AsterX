@@ -11,6 +11,7 @@ INCLUDES HEADER: mat.hxx IN mat.hxx
 INCLUDES HEADER: rational.hxx IN rational.hxx
 INCLUDES HEADER: rten.hxx IN rten.hxx
 INCLUDES HEADER: simd.hxx IN simd.hxx
+INCLUDES HEADER: smallvector.hxx IN smallvector.hxx
 INCLUDES HEADER: spvect.hxx IN spvect.hxx
 INCLUDES HEADER: sum.hxx IN sum.hxx
 INCLUDES HEADER: ten3.hxx IN ten3.hxx
