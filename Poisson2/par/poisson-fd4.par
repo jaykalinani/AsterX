@@ -3,6 +3,7 @@ ActiveThorns = "
     IOUtil
     PDESolvers
     Poisson2
+    SystemTopology
 "
 
 CarpetX::verbose = no
@@ -22,9 +23,9 @@ CarpetX::xmax = +1.0
 CarpetX::ymax = +1.0
 CarpetX::zmax = +1.0
 
-CarpetX::ncells_x = 64
-CarpetX::ncells_y = 64
-CarpetX::ncells_z = 64
+CarpetX::ncells_x = 16
+CarpetX::ncells_y = 16
+CarpetX::ncells_z = 16
 
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
@@ -40,7 +41,7 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 3
 CarpetX::interpolation_order = 3
 
-PDESolvers::petsc_options = "-snes_monitor ascii -ksp_monitor -ksp_type bcgsl"
+PDESolvers::petsc_options = "-snes_linesearch_type basic -ksp_type bcgs -snes_monitor ascii -snes_converged_reason -ksp_monitor -ksp_converged_reason"
 
 Poisson2::fdorder = 4
 

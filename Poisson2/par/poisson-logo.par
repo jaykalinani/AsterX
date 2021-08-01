@@ -40,7 +40,7 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 1
 CarpetX::interpolation_order = 1
 
-PDESolvers::petsc_options = "-snes_monitor ascii -ksp_monitor -ksp_type bcgsl"
+PDESolvers::petsc_options = "-snes_linesearch_type basic -ksp_type bcgs -snes_monitor ascii -snes_converged_reason -ksp_monitor -ksp_converged_reason"
 
 Poisson2::source = "logo"
 

@@ -4,7 +4,11 @@
 #include <pdesolvers.hxx>
 
 #include <defs.hxx>
+#include <dual.hxx>
 #include <loop.hxx>
+#include <smallvector.hxx>
+#include <spvect.hxx>
+#include <vect.hxx>
 
 #include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
@@ -14,14 +18,15 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <utility>
 
 namespace Poisson2 {
+
+constexpr int dim = Loop::dim;
 
 extern "C" void Poisson2_Source(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson2_Source;
   DECLARE_CCTK_PARAMETERS;
-
-  const int dim = Loop::dim;
 
   const int npoints = 27; // 3 levels
 
@@ -60,13 +65,6 @@ extern "C" void Poisson2_Source(CCTK_ARGUMENTS) {
   } else {
     CCTK_ERROR("Unknown value for parameter \"source\"");
   }
-
-  // On the boundary, we use the source for the boundary condition
-  grid.loop_bnd<0, 0, 0>(grid.nghostzones,
-                         [=](const Loop::PointDesc &p)
-                             ARITH_INLINE { gf_src(p.I) = 0; });
-
-  // TODO: Split this routine, add sync statement?
 }
 
 extern "C" void Poisson2_ChooseInitialGuess(CCTK_ARGUMENTS) {
@@ -80,8 +78,6 @@ extern "C" void Poisson2_ChooseInitialGuess(CCTK_ARGUMENTS) {
 extern "C" void Poisson2_Init(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson2_Init;
 
-  const int dim = Loop::dim;
-
   const std::array<int, dim> indextype = {0, 0, 0};
   const Loop::GF3D2layout layout1(cctkGH, indextype);
   const Loop::GridDescBase grid(cctkGH);
@@ -93,10 +89,13 @@ extern "C" void Poisson2_Init(CCTK_ARGUMENTS) {
                              ARITH_INLINE { gf_sol(p.I) = 0; });
 }
 
-extern "C" void Poisson2_InitBoundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_Poisson2_InitBoundaries;
+extern "C" void Poisson2_Sync(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_Poisson2_Sync;
+  // do nothing
+}
 
-  const int dim = Loop::dim;
+extern "C" void Poisson2_Boundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_Poisson2_Boundaries;
 
   const std::array<int, dim> indextype = {0, 0, 0};
   const Loop::GF3D2layout layout1(cctkGH, indextype);
@@ -109,16 +108,54 @@ extern "C" void Poisson2_InitBoundaries(CCTK_ARGUMENTS) {
                              ARITH_INLINE { gf_sol(p.I) = 0; });
 }
 
-extern "C" void Poisson2_Sync(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_Poisson2_Sync;
-  // do nothing
+constexpr std::size_t max_small_size = 16;
+template <typename T>
+using smallvector1 = Arith::smallvector<T, max_small_size>;
+template <typename T>
+using spvect1 = Arith::spvect<Arith::vect<int, dim>, T, smallvector1>;
+template <typename T> using dual1 = Arith::dual<T, spvect1<T> >;
+
+template <typename T>
+dual1<T> residual(const int fdorder, const Loop::GF3D2<const T> &point_type,
+                  const Loop::GF3D2<const T> &sol_,
+                  const Loop::GF3D2<const T> &src, const Loop::PointDesc &p) {
+  const auto sol = [&](const Arith::vect<int, dim> &I) {
+    const T val = sol_(I);
+    spvect1<T> eps;
+    eps.emplace_back(I, 1);
+    return dual1<T>(val, std::move(eps));
+  };
+
+  assert(point_type(p.I) == 1 /*intr*/ || point_type(p.I) == 5 /*rest*/);
+  using Arith::pow2;
+  dual1<T> ddsol = 0;
+  switch (fdorder) {
+  case 2:
+    for (int d = 0; d < dim; ++d)
+      ddsol += (sol(p.I - p.DI[d]) //
+                - 2 * sol(p.I)     //
+                + sol(p.I + p.DI[d])) /
+               pow2(p.DX[d]);
+    break;
+  case 4:
+    for (int d = 0; d < dim; ++d)
+      ddsol += (-1 / 12.0 * sol(p.I - 2 * p.DI[d]) //
+                + 4 / 3.0 * sol(p.I - p.DI[d])     //
+                - 5 / 2.0 * sol(p.I)               //
+                + 4 / 3.0 * sol(p.I + p.DI[d])     //
+                - 1 / 12.0 * sol(p.I + 2 * p.DI[d])) /
+               pow2(p.DX[d]);
+    break;
+  default:
+    assert(0);
+    abort();
+  }
+  return ddsol - src(p.I);
 }
 
 extern "C" void Poisson2_Residual(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson2_Residual;
   DECLARE_CCTK_PARAMETERS;
-
-  const int dim = Loop::dim;
 
   const std::array<int, dim> indextype = {0, 0, 0};
   const std::array<int, dim> nghostzones = {
@@ -134,8 +171,9 @@ extern "C" void Poisson2_Residual(CCTK_ARGUMENTS) {
   const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, src);
   const Loop::GF3D2<CCTK_REAL> gf_res(layout1, res);
 
-  grid.loop_int<0, 0, 0>(
-      grid.nghostzones, [=](const Loop::PointDesc &p) ARITH_INLINE {
+  grid.loop_int<0, 0, 0>(grid.nghostzones,
+                         [=](const Loop::PointDesc &p) ARITH_INLINE {
+#if 0
         assert(gf_point_type(p.I) == 1);
         using Arith::pow2;
         CCTK_REAL ddsol = 0;
@@ -161,41 +199,40 @@ extern "C" void Poisson2_Residual(CCTK_ARGUMENTS) {
           abort();
         }
         gf_res(p.I) = ddsol - gf_src(p.I);
-      });
-}
-
-extern "C" void Poisson2_ResidualBoundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualBoundaries;
-  DECLARE_CCTK_PARAMETERS;
-
-  const int dim = Loop::dim;
-
-  const std::array<int, dim> indextype = {0, 0, 0};
-  const Loop::GF3D2layout layout1(cctkGH, indextype);
-  const Loop::GridDescBase grid(cctkGH);
-
-  const Loop::GF3D2<const CCTK_REAL> gf_point_type(layout1, point_type);
-  const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
-  const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, src);
-  const Loop::GF3D2<CCTK_REAL> gf_res(layout1, res);
-
-  grid.loop_bnd<0, 0, 0>(grid.nghostzones,
-                         [=](const Loop::PointDesc &p) ARITH_INLINE {
-                           assert(gf_point_type(p.I) == 2);
-                           gf_res(p.I) = gf_sol(p.I) - gf_src(p.I);
+#else
+        gf_res(p.I) = residual(fdorder,gf_point_type,gf_sol,gf_src,p).val;
+#endif
                          });
 }
 
-extern "C" void Poisson2_ResidualSync(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualSync;
-  // do nothing
-}
+// extern "C" void Poisson2_ResidualBoundaries(CCTK_ARGUMENTS) {
+//   DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualBoundaries;
+//   DECLARE_CCTK_PARAMETERS;
+//
+//   const std::array<int, dim> indextype = {0, 0, 0};
+//   const Loop::GF3D2layout layout1(cctkGH, indextype);
+//   const Loop::GridDescBase grid(cctkGH);
+//
+//   const Loop::GF3D2<const CCTK_REAL> gf_point_type(layout1, point_type);
+//   const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
+//   const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, src);
+//   const Loop::GF3D2<CCTK_REAL> gf_res(layout1, res);
+//
+//   grid.loop_bnd<0, 0, 0>(grid.nghostzones,
+//                          [=](const Loop::PointDesc &p) ARITH_INLINE {
+//                            assert(gf_point_type(p.I) == 2);
+//                            gf_res(p.I) = gf_sol(p.I) - gf_src(p.I);
+//                          });
+// }
+//
+// extern "C" void Poisson2_ResidualSync(CCTK_ARGUMENTS) {
+//   DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualSync;
+//   // do nothing
+// }
 
 extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson2_Jacobian;
   DECLARE_CCTK_PARAMETERS;
-
-  const int dim = Loop::dim;
 
   const std::array<int, dim> indextype = {0, 0, 0};
   const Loop::GF3D2layout layout1(cctkGH, indextype);
@@ -204,6 +241,7 @@ extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
   const Loop::GF3D2<const CCTK_REAL> gf_point_type(layout1, point_type);
   const Loop::GF3D2<const CCTK_REAL> gf_idx(layout1, idx);
   const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
+  const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, src);
 
   assert(PDESolvers::jacobians.has_value());
   PDESolvers::jacobian_t &J = PDESolvers::jacobians.value().get_local();
@@ -212,12 +250,13 @@ extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
 
   grid.loop_int<0, 0, 0>(
       grid.nghostzones, [=, &J](const Loop::PointDesc &p) ARITH_INLINE {
-        assert(gf_point_type(p.I) == 1);
         const auto getidx = [&](const Arith::vect<int, dim> &I) {
           return int(gf_idx(I));
         };
-        using Arith::pow2;
         const int idx = getidx(p.I);
+#if 0
+        assert(gf_point_type(p.I) == 1);
+        using Arith::pow2;
         switch (fdorder1) {
         case 2:
           for (int d = 0; d < dim; ++d) {
@@ -243,14 +282,13 @@ extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
           assert(0);
           abort();
         }
+#else
+        const auto row =
+            residual(fdorder1, gf_point_type, gf_sol, gf_src, p).eps;
+        for (const auto &elt : row)
+          J.add_value(idx, getidx(elt.first), elt.second);
+#endif
       });
-
-  grid.loop_bnd<0, 0, 0>(grid.nghostzones,
-                         [=, &J](const Loop::PointDesc &p) ARITH_INLINE {
-                           assert(gf_point_type(p.I) == 2);
-                           const int idx = gf_idx(p.I);
-                           J.add_value(idx, idx, 1);
-                         });
 }
 
 } // namespace Poisson2

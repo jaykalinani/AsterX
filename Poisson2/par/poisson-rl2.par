@@ -1,5 +1,6 @@
 ActiveThorns = "
     CarpetX
+    ErrorEstimator
     IOUtil
     PDESolvers
     Poisson2
@@ -34,12 +35,15 @@ CarpetX::periodic = no
 
 CarpetX::ghost_size = 1
 
-CarpetX::max_num_levels = 1
+CarpetX::max_num_levels = 2
 CarpetX::regrid_every = 0
+CarpetX::regrid_error_threshold = 3.0
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::prolongation_order = 1
 CarpetX::interpolation_order = 1
+
+ErrorEstimator::scale_by_resolution = no
 
 PDESolvers::petsc_options = "-snes_linesearch_type basic -ksp_type bcgs -snes_monitor ascii -snes_converged_reason -ksp_monitor -ksp_converged_reason"
 
