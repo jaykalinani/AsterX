@@ -5,13 +5,12 @@
 #include <cctk_Arguments.h>
 
 #include <cassert>
-#include <sstream>
+#include <iostream>
 
 namespace Arith {
 
-extern "C" void TestSpvect(CCTK_ARGUMENTS) {
-  CCTK_INFO("TestSPvect");
-
+namespace {
+void test_spvect() {
   using R = CCTK_REAL;
   using VR = spvect<int, R>;
 
@@ -25,9 +24,9 @@ extern "C" void TestSpvect(CCTK_ARGUMENTS) {
   z.emplace_back(1, 20);
   z.emplace_back(4, 24);
 
-  std::cout << "x=" << x << "\n";
-  std::cout << "y=" << y << "\n";
-  std::cout << "z=" << z << "\n";
+  // std::cout << "x=" << x << "\n";
+  // std::cout << "y=" << y << "\n";
+  // std::cout << "z=" << z << "\n";
 
   const R a = -2;
   const R b = -3;
@@ -35,6 +34,11 @@ extern "C" void TestSpvect(CCTK_ARGUMENTS) {
   assert(n == n);
 
   assert(x == x);
+  if (!(x + n == x)) {
+    std::cout << "n=" << n << "\n"
+              << "x=" << x << "\n"
+              << "x+n=" << (x + n) << "\n";
+  }
   assert(x + n == x);
   assert(n + x == x);
   assert(+x == n + x);
@@ -57,7 +61,38 @@ extern "C" void TestSpvect(CCTK_ARGUMENTS) {
   assert((a + b) * x == a * x + b * x);
   assert((a * b) * x == a * (b * x));
   assert(a * (x + y) == a * x + a * y);
-
-  dual<CCTK_REAL, spvect<int, CCTK_REAL> > dsp;
 }
+
+void test_dual_spvect() {
+  using R = CCTK_REAL;
+  using VR = spvect<int, R>;
+  using DR = dual<R, VR>;
+
+  VR xv, yv;
+  xv.emplace_back(0, 1);
+  yv.emplace_back(1, 1);
+
+  const DR x(3, xv); // x=3
+  const DR y(4, yv); // y=4
+
+  assert((x + y).val == 7);
+  assert((x + y).eps == xv + yv);
+
+  assert(pow2(x).val == 9);
+  assert(pow2(x).eps == 2 * 3 * xv);
+
+  assert(sqrt(pow2(x) + pow2(y)).val == 5);
+  // Multiply by 5 to avoid round-off errors
+  assert(5 * sqrt(pow2(x) + pow2(y)).eps == 3 * xv + 4 * yv);
+}
+
+} // namespace
+
+extern "C" void Test_spvect(CCTK_ARGUMENTS) {
+  CCTK_INFO("Test_spvect");
+
+  test_spvect();
+  test_dual_spvect();
+}
+
 } // namespace Arith
