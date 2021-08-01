@@ -41,10 +41,6 @@ csr_t::csr_t(
         const int j = std::get<1>(ijv);
         const CCTK_REAL v = std::get<2>(ijv);
         assert(i >= 0 && i < m);
-        if (!(j >= 0 && j < n)) {
-          std::cout << "m=" << m << " n=" << n << " i=" << i << " j=" << j
-                    << "\n";
-        }
         assert(j >= 0 && j < n);
         assert(i >= int(rowptrs.size()) - 1);
         while (int(rowptrs.size()) <= i)
