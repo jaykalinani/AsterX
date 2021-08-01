@@ -5,6 +5,7 @@
 #include "../../CarpetX/src/reduction.hxx"
 #include "../../CarpetX/src/schedule.hxx"
 
+#include <div.hxx>
 #include <loop.hxx>
 #include <vect.hxx>
 
@@ -23,9 +24,11 @@
 #include <cassert>
 #include <cmath>
 #include <functional>
+#include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -40,8 +43,8 @@ const Arith::vect<int, 3> indextype{0, 0, 0}; // vertex centred
 // Tuning parameters for matrix preallocation
 // const int dnz = 7;
 // const int onz = 4;
-const int dnz = 13;
-const int onz = 8;
+const int dnz = 13 + 8;
+const int onz = 8 + 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -206,7 +209,6 @@ void define_point_type(const cGH *const cctkGH) {
     grid.loop_all<0, 0, 0>(grid.nghostzones,
                            [&](const Loop::PointDesc &p) ARITH_INLINE {
                              if (gf_ind(p.I) != level) {
-                               assert(false); // TODO: just for testing
                                assert(gf_pt(p.I) != int(point_type_t::bdry));
                                gf_pt(p.I) = int(point_type_t::rest);
                              }
@@ -261,11 +263,6 @@ void define_point_type(const cGH *const cctkGH) {
                                       gf_pt(p.I) == int(point_type_t::bdry));
                                gf_pt(p.I) = int(point_type_t::sync);
                              }
-                             // Because we don't support
-                             // prolongation/restriction yet
-                             if (gf_ind(p.I) == index)
-                               assert(gf_pt(p.I) == int(point_type_t::intr) ||
-                                      gf_pt(p.I) == int(point_type_t::bdry));
                            });
   });
 
@@ -323,8 +320,10 @@ void define_point_type(const cGH *const cctkGH) {
     grid.loop_all<0, 0, 0>(
         grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
           if (gf_ind(p.I) != level && gf_pt(p.I) != int(point_type_t::sync)) {
-            assert(false); // TODO: just for testing
-            assert(gf_pt(p.I) != int(point_type_t::bdry));
+            assert(gf_pt(p.I) == int(point_type_t::undf) ||
+                   gf_pt(p.I) == int(point_type_t::bdry));
+            // Points cannot be both restricted and prolongated
+            assert(gf_pt(p.I) != int(point_type_t::rest));
             gf_pt(p.I) = int(point_type_t::prol);
           }
         });
@@ -373,10 +372,16 @@ void define_point_type(const cGH *const cctkGH) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
-                      int &restrict npoints_global,
-                      std::vector<std::vector<int> > &restrict block_offsets,
-                      std::vector<std::vector<int> > &restrict block_sizes) {
+void enumerate_points(
+    const cGH *const cctkGH, int &restrict npoints_local,
+    int &restrict npoints_global,
+    std::vector<std::vector<int> > &restrict block_offsets,
+    std::vector<std::vector<int> > &restrict block_sizes,
+    int &restrict npoints_prolongated_local,
+    int &restrict npoints_prolongated_global,
+    std::vector<std::vector<int> > &restrict block_prolongated_offsets,
+    std::vector<std::vector<int> > &restrict block_prolongated_sizes,
+    csr_t &Jp) {
   int myproc;
   MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
 
@@ -415,11 +420,16 @@ void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
   // Allocate data structure
   block_offsets.resize(CarpetX::ghext->leveldata.size()); // process local
   block_sizes.resize(CarpetX::ghext->leveldata.size());
+  block_prolongated_offsets.resize(
+      CarpetX::ghext->leveldata.size()); // process local
+  block_prolongated_sizes.resize(CarpetX::ghext->leveldata.size());
   for (std::size_t level = 0; level < CarpetX::ghext->leveldata.size();
        ++level) {
     assert(level_maxblocks.at(level) + 1 == level_sizes.at(level));
     block_offsets.at(level).resize(level_sizes.at(level));
     block_sizes.at(level).resize(level_sizes.at(level));
+    block_prolongated_offsets.at(level).resize(level_sizes.at(level));
+    block_prolongated_sizes.at(level).resize(level_sizes.at(level));
   }
 
   // Enumerate and count points
@@ -432,35 +442,43 @@ void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
         static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_pt)));
     const CarpetX::GridDescBase grid(cctkGH);
     int npoints = 0;
+    int npoints_prolongated = 0;
     grid.loop_all<0, 0, 0>(grid.nghostzones,
                            [&](const Loop::PointDesc &p) ARITH_INLINE {
                              switch (int(gf_pt(p.I))) {
                              case int(point_type_t::intr):
-                             case int(point_type_t::bdry):
-                             case int(point_type_t::rest):
                                ++npoints;
                                break;
+                             case int(point_type_t::bdry):
+                             case int(point_type_t::rest):
                              case int(point_type_t::sync):
-                             case int(point_type_t::prol):
                                // ignore this point
+                               break;
+                             case int(point_type_t::prol):
+                               ++npoints_prolongated;
                                break;
                              default:
                                assert(0);
                              }
                            });
     block_sizes.at(level).at(block) = npoints;
+    block_prolongated_sizes.at(level).at(block) = npoints_prolongated;
   });
 
   // Local exclusive prefix sum
   int npoints = 0;
+  int npoints_prolongated = 0;
   for (std::size_t level = 0; level < block_offsets.size(); ++level) {
     for (std::size_t block = 0; block < block_offsets.at(level).size();
          ++block) {
       block_offsets.at(level).at(block) = npoints;
       npoints += block_sizes.at(level).at(block);
+      block_prolongated_offsets.at(level).at(block) = npoints_prolongated;
+      npoints_prolongated += block_prolongated_sizes.at(level).at(block);
     }
   }
   npoints_local = npoints;
+  npoints_prolongated_local = npoints_prolongated;
 
   // Global exclusive prefix sum
   int npoints_offset = 0;
@@ -468,6 +486,11 @@ void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
              MPI_COMM_WORLD);
   MPI_Allreduce(&npoints_local, &npoints_global, 1, MPI_INT, MPI_SUM,
                 MPI_COMM_WORLD);
+  int npoints_prolongated_offset = 0;
+  MPI_Exscan(&npoints_prolongated_local, &npoints_prolongated_offset, 1,
+             MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&npoints_prolongated_local, &npoints_prolongated_global, 1,
+                MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
   // Set indices
   CarpetX::loop_over_blocks(cctkGH, [&](const int level, const int index,
@@ -482,31 +505,82 @@ void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
         static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_pt)));
     const CarpetX::GridDescBase grid(cctkGH);
     int idx = npoints_offset + block_offsets.at(level).at(block);
-    grid.loop_all<0, 0, 0>(grid.nghostzones,
-                           [&](const Loop::PointDesc &p) ARITH_INLINE {
-                             switch (int(gf_pt(p.I))) {
-                             case int(point_type_t::intr):
-                             case int(point_type_t::bdry):
-                             case int(point_type_t::rest):
-                               // solve for this point
-                               gf_idx(p.I) = idx++;
-                               break;
-                             case int(point_type_t::sync):
-                             case int(point_type_t::prol):
-                               // ignore this point
-                               gf_idx(p.I) = -1;
-                               break;
-                             default:
-                               assert(0);
-                             }
-                           });
+    int idx_prolongated = npoints_prolongated_offset +
+                          block_prolongated_offsets.at(level).at(block);
+    grid.loop_all<0, 0, 0>(
+        grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
+          switch (int(gf_pt(p.I))) {
+          case int(point_type_t::intr):
+            // solve for this point
+            gf_idx(p.I) = idx++;
+            break;
+          case int(point_type_t::bdry):
+            gf_idx(p.I) = -1;
+            break;
+          case int(point_type_t::rest):
+          case int(point_type_t::sync):
+            // undefined (will be set later)
+            gf_idx(p.I) = -2;
+            break;
+          case int(point_type_t::prol):
+            gf_idx(p.I) = prolongation_index_offset + idx_prolongated++;
+            break;
+          default:
+            assert(0);
+          }
+        });
     assert(idx == npoints_offset + block_offsets.at(level).at(block) +
                       block_sizes.at(level).at(block));
+    if (!(idx_prolongated == npoints_prolongated_offset +
+                                 block_prolongated_offsets.at(level).at(block) +
+                                 block_prolongated_sizes.at(level).at(block))) {
+      std::cout << "level=" << level << "\n";
+      std::cout << "block=" << block << "\n";
+      std::cout << "idx_prolongated=" << idx_prolongated << "\n";
+      std::cout << "npoints_prolongated_offset=" << npoints_prolongated_offset
+                << "\n";
+      std::cout << "block_prolongated_offsets="
+                << block_prolongated_offsets.at(level).at(block) << "\n";
+      std::cout << "block_prolongated_sizes="
+                << block_prolongated_sizes.at(level).at(block) << "\n";
+    }
+    assert(idx_prolongated ==
+           npoints_prolongated_offset +
+               block_prolongated_offsets.at(level).at(block) +
+               block_prolongated_sizes.at(level).at(block));
     const auto &leveldata = CarpetX::ghext->leveldata.at(level);
     leveldata.groupdata.at(gi_idx)->valid.at(tl).at(vi_idx).set(
         CarpetX::make_valid_all(),
         []() { return "PDESolver::enumerate_points"; });
   });
+
+  // Restrict index
+  for (int level = int(CarpetX::ghext->leveldata.size()) - 2; level >= 0;
+       --level) {
+    auto &leveldata = CarpetX::ghext->leveldata.at(level);
+    const auto &fineleveldata = CarpetX::ghext->leveldata.at(level + 1);
+    amrex::MultiFab &mfab_idx = *leveldata.groupdata.at(gi_idx)->mfab.at(tl);
+    const amrex::MultiFab &finemfab_idx =
+        *fineleveldata.groupdata.at(gi_idx)->mfab.at(tl);
+    const amrex::IntVect reffact{2, 2, 2};
+    const int rank = sum(indextype);
+    switch (rank) {
+    case 0:
+      average_down_nodal(finemfab_idx, mfab_idx, reffact);
+      break;
+    case 1:
+      average_down_edges(finemfab_idx, mfab_idx, reffact);
+      break;
+    case 2:
+      average_down_faces(finemfab_idx, mfab_idx, reffact);
+      break;
+    case 3:
+      average_down(finemfab_idx, mfab_idx, 0, 1 /*nvars*/, reffact);
+      break;
+    default:
+      assert(0);
+    }
+  }
 
   // Synchronize index
   for (int level = 0; level < int(CarpetX::ghext->leveldata.size()); ++level) {
@@ -518,7 +592,7 @@ void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
                          CarpetX::ghext->amrcore->Geom(level), physbc, 0);
   }
 
-  // Check that synchronization worked
+  // Check that restriction and synchronization worked
   CarpetX::loop_over_blocks(cctkGH, [&](const int level, const int index,
                                         const int block,
                                         const cGH *restrict const cctkGH) {
@@ -530,27 +604,217 @@ void enumerate_points(const cGH *const cctkGH, int &restrict npoints_local,
         layout1,
         static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
     const CarpetX::GridDescBase grid(cctkGH);
-    grid.loop_all<0, 0, 0>(grid.nghostzones,
-                           [&](const Loop::PointDesc &p) ARITH_INLINE {
-                             switch (int(gf_pt(p.I))) {
-                             case int(point_type_t::intr):
-                             case int(point_type_t::bdry):
-                             case int(point_type_t::sync):
-                             case int(point_type_t::rest):
-                               assert(gf_idx(p.I) >= 0);
-                               break;
-                             case int(point_type_t::prol):
-                               assert(false); // not yet supported
-                               break;
-                             default:
-                               assert(0);
-                             }
-                           });
+    grid.loop_all<0, 0, 0>(
+        grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
+          switch (int(gf_pt(p.I))) {
+          case int(point_type_t::intr):
+          case int(point_type_t::sync):
+          case int(point_type_t::rest):
+            assert(gf_idx(p.I) >= 0 && gf_idx(p.I) < prolongation_index_offset);
+            break;
+          case int(point_type_t::bdry):
+            assert(gf_idx(p.I) == -1);
+            break;
+          case int(point_type_t::prol):
+            assert(gf_idx(p.I) >= prolongation_index_offset);
+            break;
+          default:
+            assert(0);
+          }
+        });
     const auto &leveldata = CarpetX::ghext->leveldata.at(level);
     leveldata.groupdata.at(gi_idx)->valid.at(tl).at(vi_idx).set(
         CarpetX::make_valid_all(),
         []() { return "PDESolver::enumerate_points"; });
   });
+
+  // Calculate prolongation Jacobian
+  {
+    // Find all coarse indices which are sources of prolongation
+    std::vector<
+        std::vector<std::vector<std::tuple<int, Arith::vect<int, 3> > > > >
+        locations(CarpetX::ghext->leveldata.size());
+    for (int level = 0; level < int(CarpetX::ghext->leveldata.size()); ++level)
+      locations.at(level).resize(level_sizes.at(level));
+    CarpetX::loop_over_blocks(cctkGH, [&](const int level, const int index,
+                                          const int block,
+                                          const cGH *restrict const cctkGH) {
+      // Level 0 has no prolongated points
+      if (level == 0)
+        assert(block_prolongated_sizes.at(level).at(block) == 0);
+      if (block_prolongated_sizes.at(level).at(block) == 0)
+        return;
+      const auto &mfab =
+          *CarpetX::ghext->leveldata.at(level).groupdata.at(gi_idx)->mfab.at(
+              tl);
+      const auto &fabbox = mfab.fabbox(index);
+      const Arith::vect<int, 3> offset{fabbox.smallEnd(0), fabbox.smallEnd(1),
+                                       fabbox.smallEnd(2)};
+      const Loop::GF3D2layout layout1(cctkGH, indextype);
+      const Loop::GF3D2<const CCTK_REAL> gf_pt(
+          layout1,
+          static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_pt)));
+      const Loop::GF3D2<const CCTK_REAL> gf_idx(
+          layout1,
+          static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
+      const CarpetX::GridDescBase grid(cctkGH);
+      std::vector<std::tuple<int, Arith::vect<int, 3> > > locs;
+      grid.loop_all<0, 0, 0>(
+          grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
+            if (int(gf_pt(p.I)) == int(point_type_t::prol)) {
+              const int cL = level - 1;
+              const Arith::vect<int, 3> cI0 = div_floor(p.I + offset, 2);
+              const Arith::vect<int, 3> cIm = mod_floor(p.I + offset, 2);
+              // linear interpolation
+              for (int k = 0; k < cIm[2] + 1; ++k) {
+                for (int j = 0; j < cIm[1] + 1; ++j) {
+                  for (int i = 0; i < cIm[0] + 1; ++i) {
+                    const Arith::vect<int, 3> cI =
+                        cI0 + Arith::vect<int, 3>{i, j, k};
+                    locs.emplace_back(cL, cI);
+                  }
+                }
+              }
+            }
+          });
+      locations.at(level).at(block) = std::move(locs);
+    });
+
+    // Find the blocks where the prolongation sources live, and determine their
+    // Jacobian indices
+    std::vector<std::vector<std::vector<int> > > indices(
+        CarpetX::ghext->leveldata.size());
+    for (int level = 0; level < int(CarpetX::ghext->leveldata.size());
+         ++level) {
+      indices.at(level).resize(level_sizes.at(level));
+      for (int block = 0; block < level_sizes.at(level); ++block)
+        indices.at(level).at(block).resize(locations.at(level).at(block).size(),
+                                           0x80000000U);
+    }
+    CarpetX::loop_over_blocks(cctkGH, [&](const int level, const int index,
+                                          const int block,
+                                          const cGH *restrict const cctkGH) {
+      // The finest level has no prolongation sources
+      if (level == int(CarpetX::ghext->leveldata.size()) - 1)
+        return;
+      const auto &mfab =
+          *CarpetX::ghext->leveldata.at(level).groupdata.at(gi_idx)->mfab.at(
+              tl);
+      const auto &fabbox = mfab.fabbox(index);
+      const Arith::vect<int, 3> offset{fabbox.smallEnd(0), fabbox.smallEnd(1),
+                                       fabbox.smallEnd(2)};
+      const Loop::GF3D2layout layout1(cctkGH, indextype);
+      const Loop::GF3D2<const CCTK_REAL> gf_pt(
+          layout1,
+          static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_pt)));
+      const Loop::GF3D2<const CCTK_REAL> gf_idx(
+          layout1,
+          static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
+      const CarpetX::GridDescBase grid(cctkGH);
+      Arith::vect<int, 3> imin, imax;
+      grid.box_all<0, 0, 0>(grid.nghostzones, imin, imax);
+
+      for (int level1 = 0; level1 < int(CarpetX::ghext->leveldata.size());
+           ++level1) {
+        for (int block1 = 0; block1 < level_sizes.at(level1); ++block1) {
+          const auto &locs = locations.at(level1).at(block1);
+          auto &idxs = indices.at(level1).at(block1);
+          for (int n = 0; n < int(locs.size()); ++n) {
+            const auto &loc = locs.at(n);
+            const auto &L = std::get<0>(loc);
+            const auto &I = std::get<1>(loc);
+            if (L == level) {
+              if (all(imin <= I - offset && I - offset < imax)) {
+                const int idx = int(gf_idx(I - offset));
+                // We assume that a prolongation source is not prolongated
+                // itself. (We could extend the algorithm to handle this.)
+                assert(idx < prolongation_index_offset);
+                int &idxn = idxs.at(n);
+#pragma omp atomic write
+                idxn = idx;
+              }
+            }
+          }
+        }
+      }
+    });
+    for (int level = 0; level < int(CarpetX::ghext->leveldata.size()); ++level)
+      for (int block = 0; block < level_sizes.at(level); ++block)
+        for (const auto &idx : indices.at(level).at(block))
+          assert(idx != int(0x80000000U));
+
+    // Calculate the Jacobian stencils
+    std::vector<std::vector<std::vector<std::tuple<int, int, CCTK_REAL> > > >
+        Jpvalss(CarpetX::ghext->leveldata.size());
+    for (int level = 0; level < int(CarpetX::ghext->leveldata.size()); ++level)
+      Jpvalss.at(level).resize(level_sizes.at(level));
+    CarpetX::loop_over_blocks(cctkGH, [&](const int level, const int index,
+                                          const int block,
+                                          const cGH *restrict const cctkGH) {
+      // Level 0 has no prolongated points
+      if (level == 0)
+        assert(block_prolongated_sizes.at(level).at(block) == 0);
+      if (block_prolongated_sizes.at(level).at(block) == 0)
+        return;
+      const auto &mfab =
+          *CarpetX::ghext->leveldata.at(level).groupdata.at(gi_idx)->mfab.at(
+              tl);
+      const auto &fabbox = mfab.fabbox(index);
+      const Arith::vect<int, 3> offset{fabbox.smallEnd(0), fabbox.smallEnd(1),
+                                       fabbox.smallEnd(2)};
+      const Loop::GF3D2layout layout1(cctkGH, indextype);
+      const Loop::GF3D2<const CCTK_REAL> gf_pt(
+          layout1,
+          static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_pt)));
+      const Loop::GF3D2<const CCTK_REAL> gf_idx(
+          layout1,
+          static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
+      const CarpetX::GridDescBase grid(cctkGH);
+      const auto &locs = locations.at(level).at(block);
+      const auto &idxs = indices.at(level).at(block);
+      assert(locs.size() == idxs.size());
+      int n = 0;
+      std::vector<std::tuple<int, int, CCTK_REAL> > Jpvals;
+      Jpvals.reserve(locs.size());
+      grid.loop_all<0, 0, 0>(
+          grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
+            if (int(gf_pt(p.I)) == int(point_type_t::prol)) {
+              assert(n < int(idxs.size()));
+              const int idx = int(gf_idx(p.I)) - prolongation_index_offset;
+              const int cL = level - 1;
+              const Arith::vect<int, 3> cIm = mod_floor(p.I + offset, 2);
+              const Arith::vect<int, 3> cI0 = div_floor(p.I + offset, 2);
+              for (int k = 0; k < cIm[2] + 1; ++k) {
+                for (int j = 0; j < cIm[1] + 1; ++j) {
+                  for (int i = 0; i < cIm[0] + 1; ++i) {
+                    const Arith::vect<int, 3> cI =
+                        cI0 + Arith::vect<int, 3>{i, j, k};
+                    assert(std::get<0>(locs.at(n)) == cL);
+                    assert(all(std::get<1>(locs.at(n)) == cI));
+                    const int row = idx;
+                    const int col = idxs.at(n);
+                    // Ignore boundary points
+                    if (col >= 0) {
+                      // We assume that a prolongation source is not prolongated
+                      // itself. (We could extend the algorithm to handle this.)
+                      assert(col < prolongation_index_offset);
+                      const CCTK_REAL val =
+                          1.0 / ((cIm[0] + 1) * (cIm[1] + 1) * (cIm[2] + 1));
+                      Jpvals.emplace_back(row, col, val);
+                    }
+                    ++n;
+                  }
+                }
+              }
+            }
+          });
+      assert(n == int(locs.size()));
+      Jpvalss.at(level).at(block) = std::move(Jpvals);
+    });
+
+    // Convert Jpvals into sparse matrix
+    Jp = csr_t(npoints_prolongated_global, npoints_global, Jpvalss);
+  }
 }
 
 void copy_Cactus_to_PETSc(const cGH *const cctkGH, Vec vec,
@@ -602,7 +866,7 @@ void copy_Cactus_to_PETSc(const cGH *const cctkGH, Vec vec,
     const auto &leveldata = CarpetX::ghext->leveldata.at(level);
     for (int n = 0; n < nvars; ++n)
       CarpetX::error_if_invalid(*leveldata.groupdata.at(gis.at(n)), vis.at(n),
-                                tl, CarpetX::make_valid_all(), []() {
+                                tl, CarpetX::make_valid_int(), []() {
                                   return "PDESolver::copy_Cactus_to_PETSc";
                                 });
     const Loop::GF3D2<const CCTK_REAL> gf_pt(
@@ -619,10 +883,10 @@ void copy_Cactus_to_PETSc(const cGH *const cctkGH, Vec vec,
         grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
           switch (int(gf_pt(p.I))) {
           case int(point_type_t::intr):
-          case int(point_type_t::bdry):
             for (int n = 0; n < nvars; ++n)
               petsc_ptr[nvars * block_offset + nelems++] = gfs.at(n)(p.I);
             break;
+          case int(point_type_t::bdry):
           case int(point_type_t::rest):
           case int(point_type_t::sync):
           case int(point_type_t::prol):
@@ -700,10 +964,10 @@ void copy_PETSc_to_Cactus(const cGH *const cctkGH, Vec vec,
         grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
           switch (int(gf_pt(p.I))) {
           case int(point_type_t::intr):
-          case int(point_type_t::bdry):
             for (int n = 0; n < nvars; ++n)
               gfs.at(n)(p.I) = petsc_ptr[nvars * block_offset + nelems++];
             break;
+          case int(point_type_t::bdry):
           case int(point_type_t::rest):
           case int(point_type_t::sync):
           case int(point_type_t::prol):
@@ -716,7 +980,7 @@ void copy_PETSc_to_Cactus(const cGH *const cctkGH, Vec vec,
     assert(nelems == nvars * block_sizes.at(level).at(block));
     for (int n = 0; n < nvars; ++n)
       leveldata.groupdata.at(gis.at(n))->valid.at(tl).at(vis.at(n)).set(
-          CarpetX::make_valid_int() | CarpetX::make_valid_outer(),
+          CarpetX::make_valid_int(),
           []() { return "PDESolver::copy_PETSc_to_Cactus"; });
   });
 
@@ -776,10 +1040,16 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
   define_point_type(cctkGH);
 
   int npoints_local, npoints_global;
+  int npoints_prolongated_local, npoints_prolongated_global;
   // block_offsets are process local
   std::vector<std::vector<int> > block_offsets, block_sizes;
+  std::vector<std::vector<int> > block_prolongated_offsets,
+      block_prolongated_sizes;
+  csr_t Jp;
   enumerate_points(cctkGH, npoints_local, npoints_global, block_offsets,
-                   block_sizes);
+                   block_sizes, npoints_prolongated_local,
+                   npoints_prolongated_global, block_prolongated_offsets,
+                   block_prolongated_sizes, Jp);
 
   // TODO: fix this
   const std::vector<int> solinds{CCTK_VarIndex("Poisson2::sol")};
@@ -831,7 +1101,7 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
       [&](SNES snes, Vec x, Mat J, Mat B) {
         copy_PETSc_to_Cactus(cctkGH, x, solinds, block_offsets, block_sizes);
         CallScheduleGroup(cctkGH, "PDESolvers_Jacobian");
-        jacobians->define_matrix(J);
+        jacobians->define_matrix(Jp, J);
         jacobians->clear();
         if (false) {
           MatInfo info;
