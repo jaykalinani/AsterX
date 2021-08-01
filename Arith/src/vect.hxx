@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cmath>
+#include <functional>
 #include <initializer_list>
 #include <limits>
 #include <tuple>
@@ -433,7 +434,14 @@ template <typename T, int D> struct equal_to<Arith::vect<T, D> > {
 template <typename T, int D> struct less<Arith::vect<T, D> > {
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   operator()(const Arith::vect<T, D> &lhs, const Arith::vect<T, D> &rhs) const {
-    return less<array<T, D> >(lhs.elts, rhs.elts);
+    // return less()(lhs.elts, rhs.elts);
+    for (int d = 0; d < D; ++d) {
+      if (less<T>()(lhs.elts[d], rhs.elts[d]))
+        return true;
+      if (less<T>()(rhs.elts[d], lhs.elts[d]))
+        return false;
+    }
+    return false;
   }
 };
 
