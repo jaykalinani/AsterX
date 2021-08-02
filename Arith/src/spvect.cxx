@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <limits>
 
 namespace Arith {
 
@@ -34,11 +35,6 @@ void test_spvect() {
   assert(n == n);
 
   assert(x == x);
-  if (!(x + n == x)) {
-    std::cout << "n=" << n << "\n"
-              << "x=" << x << "\n"
-              << "x+n=" << (x + n) << "\n";
-  }
   assert(x + n == x);
   assert(n + x == x);
   assert(+x == n + x);
@@ -83,7 +79,8 @@ void test_dual_spvect() {
 
   assert(sqrt(pow2(x) + pow2(y)).val == 5);
   // Multiply by 5 to avoid round-off errors
-  assert(5 * sqrt(pow2(x) + pow2(y)).eps == 3 * xv + 4 * yv);
+  assert(maximum(abs(sqrt(pow2(x) + pow2(y)).eps - (3 * xv + 4 * yv) / 5)) <=
+         10 * std::numeric_limits<R>::epsilon());
 }
 
 } // namespace

@@ -6,6 +6,7 @@
 #include <cctk_Arguments.h>
 
 #include <cassert>
+#include <limits>
 
 namespace Arith {
 
@@ -134,8 +135,8 @@ void test_dual_spvect() {
   assert(pow2(x).eps == 2 * 3 * xv);
 
   assert(sqrt(pow2(x) + pow2(y)).val == 5);
-  // Multiply by 5 to avoid round-off errors
-  assert(5 * sqrt(pow2(x) + pow2(y)).eps == 3 * xv + 4 * yv);
+  assert(maximum(abs(sqrt(pow2(x) + pow2(y)).eps - (3 * xv + 4 * yv) / 5)) <=
+         10 * std::numeric_limits<R>::epsilon());
 }
 
 } // namespace

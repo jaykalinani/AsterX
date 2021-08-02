@@ -103,7 +103,7 @@ template <typename T, int D> struct vect {
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(initializer_list<T> lst)
       : elts(construct_array<T, D>([&](size_t d) {
 #ifdef CCTK_DEBUG
-          assert(d <= lst.size());
+          assert(d < lst.size());
 #endif
           return lst.begin()[d];
         })) {
@@ -362,7 +362,6 @@ template <typename T, int D> struct vect {
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   maximum(const vect &x) {
-    using std::max;
     return fold(max1, -numeric_limits<T>::infinity(), x);
   }
 
@@ -374,13 +373,11 @@ template <typename T, int D> struct vect {
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   min1(const vect &x, const vect &y) {
-    using std::min;
     return fmap([](const T &x, const T &y) { return min1(x, y); }, x, y);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   minimum(const vect &x) {
-    using std::min;
     return fold(min1, numeric_limits<T>::infinity(), x);
   }
 

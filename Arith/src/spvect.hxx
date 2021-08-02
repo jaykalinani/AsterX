@@ -1,10 +1,14 @@
 #ifndef SPVECT_HXX
 #define SPVECT_HXX
 
+#include "defs.hxx"
+
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -237,9 +241,28 @@ public:
     return *this = *this % a;
   }
 
+  friend spvect abs(const spvect &x) {
+    using std::abs;
+    return fmap([](const auto &a) { return abs(a); }, x);
+  }
+
   friend bool iszero(const spvect &x) {
     return foldmap([](const auto &a) { return a == 0; },
                    [](const bool r, const bool a) { return r && a; }, true, x);
+  }
+  friend T maximum(const spvect &x) {
+    return fold([](const T r, const T a) { return max1(r, a); },
+                -std::numeric_limits<T>::infinity(), x);
+  }
+  friend T minimum(const spvect &x) {
+    return fold([](const T r, const T a) { return min1(r, a); },
+                std::numeric_limits<T>::infinity(), x);
+  }
+  friend T prod(const spvect &x) {
+    return fold([](const T r, const T a) { return r * a; }, T(1), x);
+  }
+  friend T sum(const spvect &x) {
+    return fold([](const T r, const T a) { return r + a; }, T(0), x);
   }
 
   friend bool operator==(const spvect &x, const spvect &y) {
