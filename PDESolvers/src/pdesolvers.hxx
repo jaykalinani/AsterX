@@ -1,6 +1,8 @@
 #ifndef PDESOLVERS_HXX
 #define PDESOLVERS_HXX
 
+#include <spvect.hxx>
+
 #include <fixmath.hxx>
 #include <cctk.h>
 
@@ -28,12 +30,23 @@ struct csr_t {
 
   csr_t() : m(0), n(0) {}
 
+private:
+  void insert_element(int i, int j, CCTK_REAL v);
+  void finish_inserting();
+
+public:
   csr_t(int m, int n,
         const std::vector<
             std::vector<std::vector<std::tuple<int, int, CCTK_REAL> > > >
             &values);
+  csr_t(int m, int n,
+        const Arith::spvect<std::tuple<int, int>, CCTK_REAL> &values);
 
   bool invariant() const;
+
+  // void count_nz(int ilocal_min, int ilocal_max, int &restrict nlocal,
+  //               int &restrict ntotal) const;
+  std::size_t size() const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,9 +63,17 @@ public:
   jacobian_t &operator=(jacobian_t &&) = default;
 
   jacobian_t() = default;
+  std::size_t size() const;
+  // void count_nz(int ilocal_min, int ilocal_max, int &restrict nlocal,
+  //               int &restrict ntotal) const;
   void clear();
   void add_value(int i, int j, CCTK_REAL v) { entries.emplace_back(i, j, v); }
+  void count_matrix_entries(const csr_t &Jp, int ilocal_min, int ilocal_max,
+                            int &restrict nlocal, int &restrict ntotal) const;
   void set_matrix_entries(const csr_t &Jp, Mat J) const;
+  void
+  set_matrix_entries(const csr_t &Jp,
+                     Arith::spvect<std::tuple<int, int>, CCTK_REAL> &J) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +89,9 @@ public:
 
   jacobians_t();
   jacobian_t &get_local();
+  std::size_t size() const;
+  // void count_nz(int ilocal_min, int ilocal_max, int &restrict nlocal,
+  //               int &restrict ntotal) const;
   void clear();
   void define_matrix(const csr_t &Jp, Mat J) const;
 };

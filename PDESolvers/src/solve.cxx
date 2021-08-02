@@ -40,12 +40,6 @@ const int tl = 0;
 // TODO: Generalize this
 const Arith::vect<int, 3> indextype{0, 0, 0}; // vertex centred
 
-// Tuning parameters for matrix preallocation
-// const int dnz = 7;
-// const int onz = 4;
-const int dnz = 13 + 8;
-const int onz = 8 + 8;
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // Erik Schnetter the blocks for vertex centred grids overlap by one
@@ -738,6 +732,7 @@ void enumerate_points(
         }
       }
     });
+    // Note: Prolongation boundaries do not yet work with multiple processes
     for (int level = 0; level < int(CarpetX::ghext->leveldata.size()); ++level)
       for (int block = 0; block < level_sizes.at(level); ++block)
         for (const auto &idx : indices.at(level).at(block))
@@ -1093,6 +1088,11 @@ extern "C" void PDESolvers_Solve(CCTK_ARGUMENTS) {
                       nvars * npoints_local, nvars * npoints_global,
                       nvars * npoints_global, dnz, NULL, onz, NULL, &J);
   assert(!ierr);
+  // ierr = MatCreate(PETSC_COMM_WORLD, &J);
+  // assert(!ierr);
+  // ierr = MatSetSizes(J, nvars * npoints_local, nvars * npoints_local,
+  //                    nvars * npoints_global, nvars * npoints_global);
+  // assert(!ierr);
   ierr = MatSetFromOptions(J);
   assert(!ierr);
   jacobians = std::make_optional<jacobians_t>();
