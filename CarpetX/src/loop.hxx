@@ -210,8 +210,9 @@ public:
     const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
-      imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - ghost_offset);
+      using std::max, std::min;
+      imin[d] = max(tmin[d], ghost_offset);
+      imax[d] = min(tmax[d], lsh[d] - offset[d] - ghost_offset);
     }
   }
 
@@ -223,8 +224,9 @@ public:
     // TODO: call box_int instead
     const array<int, dim> offset{CI, CJ, CK};
     for (int d = 0; d < dim; ++d) {
-      imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
+      using std::max, std::min;
+      imin[d] = max(tmin[d], nghostzones[d]);
+      imax[d] = min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
     }
   }
 
@@ -237,8 +239,9 @@ public:
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
-      imin[d] = std::max(tmin[d], ghost_offset);
-      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - ghost_offset);
+      using std::max, std::min;
+      imin[d] = max(tmin[d], ghost_offset);
+      imax[d] = min(tmax[d], lsh[d] - offset[d] - ghost_offset);
     }
     const array<int, dim> inormal{0, 0, 0};
 
@@ -253,8 +256,9 @@ public:
     const array<int, dim> offset{CI, CJ, CK};
     array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
-      imin[d] = std::max(tmin[d], nghostzones[d]);
-      imax[d] = std::min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
+      using std::max, std::min;
+      imin[d] = max(tmin[d], nghostzones[d]);
+      imax[d] = min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
     }
     const array<int, dim> inormal{0, 0, 0};
 
