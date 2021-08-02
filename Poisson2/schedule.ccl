@@ -99,3 +99,17 @@ SCHEDULE Poisson2_Jacobian IN PDESolvers_Jacobian AFTER (Poisson2_Sync, Poisson2
 SCHEDULE GROUP PDESolvers_Residual AT initial AFTER PDESolvers_Solve
 {
 } "Evaluate residual after solving"
+
+SCHEDULE Poisson2_ResidualSync AT initial AFTER PDESolvers_Residual
+{
+  LANG: C
+  OPTIONS: global
+  SYNC: res
+} "Synchronize residual"
+
+SCHEDULE Poisson2_ResidualBoundaries AT initial AFTER Poisson2_ResidualSync
+{
+  LANG: C
+  READS: PDESolvers::point_type(boundary)
+  WRITES: res(boundary)
+} "Set residual to zero on boundaries"

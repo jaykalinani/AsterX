@@ -205,30 +205,28 @@ extern "C" void Poisson2_Residual(CCTK_ARGUMENTS) {
                          });
 }
 
-// extern "C" void Poisson2_ResidualBoundaries(CCTK_ARGUMENTS) {
-//   DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualBoundaries;
-//   DECLARE_CCTK_PARAMETERS;
-//
-//   const std::array<int, dim> indextype = {0, 0, 0};
-//   const Loop::GF3D2layout layout1(cctkGH, indextype);
-//   const Loop::GridDescBase grid(cctkGH);
-//
-//   const Loop::GF3D2<const CCTK_REAL> gf_point_type(layout1, point_type);
-//   const Loop::GF3D2<const CCTK_REAL> gf_sol(layout1, sol);
-//   const Loop::GF3D2<const CCTK_REAL> gf_src(layout1, src);
-//   const Loop::GF3D2<CCTK_REAL> gf_res(layout1, res);
-//
-//   grid.loop_bnd<0, 0, 0>(grid.nghostzones,
-//                          [=](const Loop::PointDesc &p) ARITH_INLINE {
-//                            assert(gf_point_type(p.I) == 2);
-//                            gf_res(p.I) = gf_sol(p.I) - gf_src(p.I);
-//                          });
-// }
-//
-// extern "C" void Poisson2_ResidualSync(CCTK_ARGUMENTS) {
-//   DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualSync;
-//   // do nothing
-// }
+extern "C" void Poisson2_ResidualSync(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualSync;
+  // do nothing
+}
+
+extern "C" void Poisson2_ResidualBoundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_Poisson2_ResidualBoundaries;
+  DECLARE_CCTK_PARAMETERS;
+
+  const std::array<int, dim> indextype = {0, 0, 0};
+  const Loop::GF3D2layout layout1(cctkGH, indextype);
+  const Loop::GridDescBase grid(cctkGH);
+
+  const Loop::GF3D2<const CCTK_REAL> gf_point_type(layout1, point_type);
+  const Loop::GF3D2<CCTK_REAL> gf_res(layout1, res);
+
+  grid.loop_bnd<0, 0, 0>(grid.nghostzones,
+                         [=](const Loop::PointDesc &p) ARITH_INLINE {
+                           assert(gf_point_type(p.I) == 2);
+                           gf_res(p.I) = 0;
+                         });
+}
 
 extern "C" void Poisson2_Jacobian(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Poisson2_Jacobian;
