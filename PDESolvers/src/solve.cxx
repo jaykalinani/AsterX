@@ -396,6 +396,14 @@ void enumerate_points(
   assert(v0_pt >= 0);
   const int vi_pt = vn_pt - v0_pt;
   assert(vi_pt >= 0);
+  // const int vn_vcx = CCTK_VarIndex("Coordinates::vcoordx");
+  // assert(vn_vcx >= 0);
+  // const int gi_vcx = CCTK_GroupIndexFromVarI(vn_vcx);
+  // assert(gi_vcx >= 0);
+  // const int v0_vcx = CCTK_FirstVarIndexI(gi_vcx);
+  // assert(v0_vcx >= 0);
+  // const int vi_vcx = vn_vcx - v0_vcx;
+  // assert(vi_vcx >= 0);
 
   // Determine number of blocks per level
   std::vector<int> level_sizes(CarpetX::ghext->leveldata.size(), 0);
@@ -642,8 +650,8 @@ void enumerate_points(
           *CarpetX::ghext->leveldata.at(level).groupdata.at(gi_idx)->mfab.at(
               tl);
       const auto &fabbox = mfab.fabbox(index);
-      const Arith::vect<int, 3> offset{fabbox.smallEnd(0), fabbox.smallEnd(1),
-                                       fabbox.smallEnd(2)};
+      const Arith::vect<int, 3> amrex_origin{
+          fabbox.smallEnd(0), fabbox.smallEnd(1), fabbox.smallEnd(2)};
       const Loop::GF3D2layout layout1(cctkGH, indextype);
       const Loop::GF3D2<const CCTK_REAL> gf_pt(
           layout1,
@@ -652,13 +660,19 @@ void enumerate_points(
           layout1,
           static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
       const CarpetX::GridDescBase grid(cctkGH);
+      // Arith::vect<int, 3> imin, imax;
+      // grid.box_all<0, 0, 0>(grid.nghostzones, imin, imax);
+      const auto offset = amrex_origin;
+
       std::vector<std::tuple<int, Arith::vect<int, 3> > > locs;
       grid.loop_all<0, 0, 0>(
           grid.nghostzones, [&](const Loop::PointDesc &p) ARITH_INLINE {
             if (int(gf_pt(p.I)) == int(point_type_t::prol)) {
-              const int cL = level - 1;
-              const Arith::vect<int, 3> cI0 = div_floor(p.I + offset, 2);
-              const Arith::vect<int, 3> cIm = mod_floor(p.I + offset, 2);
+              const int fL = level;
+              const Arith::vect<int, 3> fI = p.I + offset;
+              const int cL = fL - 1;
+              const Arith::vect<int, 3> cI0 = div_floor(fI, 2);
+              const Arith::vect<int, 3> cIm = mod_floor(fI, 2);
               // linear interpolation
               for (int k = 0; k < cIm[2] + 1; ++k) {
                 for (int j = 0; j < cIm[1] + 1; ++j) {
@@ -678,12 +692,18 @@ void enumerate_points(
     // Jacobian indices
     std::vector<std::vector<std::vector<int> > > indices(
         CarpetX::ghext->leveldata.size());
+    // std::vector<std::vector<std::vector<CCTK_REAL> > > vcoordxs(
+    //     CarpetX::ghext->leveldata.size());
     for (int level = 0; level < int(CarpetX::ghext->leveldata.size());
          ++level) {
       indices.at(level).resize(level_sizes.at(level));
-      for (int block = 0; block < level_sizes.at(level); ++block)
+      // vcoordxs.at(level).resize(level_sizes.at(level));
+      for (int block = 0; block < level_sizes.at(level); ++block) {
         indices.at(level).at(block).resize(locations.at(level).at(block).size(),
                                            0x80000000U);
+        // vcoordxs.at(level).at(block).resize(
+        //     locations.at(level).at(block).size(), -1.0 / 0.0);
+      }
     }
     CarpetX::loop_over_blocks(cctkGH, [&](const int level, const int index,
                                           const int block,
@@ -695,8 +715,8 @@ void enumerate_points(
           *CarpetX::ghext->leveldata.at(level).groupdata.at(gi_idx)->mfab.at(
               tl);
       const auto &fabbox = mfab.fabbox(index);
-      const Arith::vect<int, 3> offset{fabbox.smallEnd(0), fabbox.smallEnd(1),
-                                       fabbox.smallEnd(2)};
+      const Arith::vect<int, 3> amrex_origin{
+          fabbox.smallEnd(0), fabbox.smallEnd(1), fabbox.smallEnd(2)};
       const Loop::GF3D2layout layout1(cctkGH, indextype);
       const Loop::GF3D2<const CCTK_REAL> gf_pt(
           layout1,
@@ -704,28 +724,38 @@ void enumerate_points(
       const Loop::GF3D2<const CCTK_REAL> gf_idx(
           layout1,
           static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
+      // const Loop::GF3D2<const CCTK_REAL> gf_vcoordx(
+      //     layout1,
+      //     static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl,
+      //     vn_vcx)));
       const CarpetX::GridDescBase grid(cctkGH);
       Arith::vect<int, 3> imin, imax;
       grid.box_all<0, 0, 0>(grid.nghostzones, imin, imax);
+      const auto offset = amrex_origin;
 
       for (int level1 = 0; level1 < int(CarpetX::ghext->leveldata.size());
            ++level1) {
         for (int block1 = 0; block1 < level_sizes.at(level1); ++block1) {
           const auto &locs = locations.at(level1).at(block1);
           auto &idxs = indices.at(level1).at(block1);
+          // auto &vcxs = vcoordxs.at(level1).at(block1);
           for (int n = 0; n < int(locs.size()); ++n) {
             const auto &loc = locs.at(n);
-            const auto &L = std::get<0>(loc);
-            const auto &I = std::get<1>(loc);
-            if (L == level) {
-              if (all(imin <= I - offset && I - offset < imax)) {
-                const int idx = int(gf_idx(I - offset));
-                // We assume that a prolongation source is not prolongated
+            const auto &cL = std::get<0>(loc);
+            const auto &cI = std::get<1>(loc);
+            if (cL == level) {
+              const Arith::vect<int, 3> I = cI - offset;
+              if (all(imin <= I && I < imax)) {
+                const int idx = int(gf_idx(I));
+                // We require that a prolongation source is not prolongated
                 // itself. (We could extend the algorithm to handle this.)
                 assert(idx < prolongation_index_offset);
                 int &idxn = idxs.at(n);
 #pragma omp atomic write
                 idxn = idx;
+                // CCTK_REAL &vcxn = vcxs.at(n);
+                // #pragma omp atomic write
+                // vcxn = gf_vcoordx(I);
               }
             }
           }
@@ -733,10 +763,15 @@ void enumerate_points(
       }
     });
     // Note: Prolongation boundaries do not yet work with multiple processes
-    for (int level = 0; level < int(CarpetX::ghext->leveldata.size()); ++level)
-      for (int block = 0; block < level_sizes.at(level); ++block)
+    for (int level = 0; level < int(CarpetX::ghext->leveldata.size());
+         ++level) {
+      for (int block = 0; block < level_sizes.at(level); ++block) {
         for (const auto &idx : indices.at(level).at(block))
           assert(idx != int(0x80000000U));
+        // for (const auto &vcx : vcoordxs.at(level).at(block))
+        //   assert(vcx != -1.0 / 0.0);
+      }
+    }
 
     // Calculate the Jacobian stencils
     std::vector<std::vector<std::vector<std::tuple<int, int, CCTK_REAL> > > >
@@ -755,8 +790,8 @@ void enumerate_points(
           *CarpetX::ghext->leveldata.at(level).groupdata.at(gi_idx)->mfab.at(
               tl);
       const auto &fabbox = mfab.fabbox(index);
-      const Arith::vect<int, 3> offset{fabbox.smallEnd(0), fabbox.smallEnd(1),
-                                       fabbox.smallEnd(2)};
+      const Arith::vect<int, 3> amrex_origin{
+          fabbox.smallEnd(0), fabbox.smallEnd(1), fabbox.smallEnd(2)};
       const Loop::GF3D2layout layout1(cctkGH, indextype);
       const Loop::GF3D2<const CCTK_REAL> gf_pt(
           layout1,
@@ -764,10 +799,18 @@ void enumerate_points(
       const Loop::GF3D2<const CCTK_REAL> gf_idx(
           layout1,
           static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl, vn_idx)));
+      // const Loop::GF3D2<const CCTK_REAL> gf_vcoordx(
+      //     layout1,
+      //     static_cast<const CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, tl,
+      //     vn_vcx)));
       const CarpetX::GridDescBase grid(cctkGH);
+      const auto offset = amrex_origin;
+
       const auto &locs = locations.at(level).at(block);
       const auto &idxs = indices.at(level).at(block);
-      assert(locs.size() == idxs.size());
+      // const auto &vcxs = vcoordxs.at(level).at(block);
+      assert(idxs.size() == locs.size());
+      // assert(vcxs.size() == locs.size());
       int n = 0;
       std::vector<std::tuple<int, int, CCTK_REAL> > Jpvals;
       Jpvals.reserve(locs.size());
@@ -801,6 +844,11 @@ void enumerate_points(
                   }
                 }
               }
+
+              // if (all(cIm == Arith::vect<int, 3>::pure(0))) {
+              //   const CCTK_REAL vcx = gf_vcoordx(p.I);
+              //   assert(vcxs.at(n) == vcx);
+              // }
             }
           });
       assert(n == int(locs.size()));
