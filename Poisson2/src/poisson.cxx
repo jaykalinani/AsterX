@@ -50,11 +50,11 @@ extern "C" void Poisson2_Source(CCTK_ARGUMENTS) {
           if (all(i >= Arith::vect<int, dim>::pure(0) &&
                   i < Arith::vect<int, dim>::pure(npoints))) {
             if (all(i / 9 == Arith::vect<int, dim>::pure(1))) {
-              gf_src(p.I) = 3; // red box
+              gf_src(p.I) = 3; // red box (large)
             } else if (all(i / 3 % 3 == Arith::vect<int, dim>::pure(1))) {
-              gf_src(p.I) = 2; // green box
+              gf_src(p.I) = 2; // green box (medium)
             } else if (all(i / 1 % 3 == Arith::vect<int, dim>::pure(1))) {
-              gf_src(p.I) = 1; // blue box
+              gf_src(p.I) = 1; // blue box (small)
             } else {
               gf_src(p.I) = 0;
             }

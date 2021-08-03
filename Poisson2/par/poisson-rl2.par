@@ -7,7 +7,7 @@ ActiveThorns = "
     SystemTopology
 "
 
-CarpetX::verbose = yes
+CarpetX::verbose = no
 
 Cactus::cctk_show_schedule = no
 
@@ -45,8 +45,7 @@ CarpetX::interpolation_order = 1
 
 ErrorEstimator::scale_by_resolution = yes
 
-# -snes_linesearch_type basic 
-PDESolvers::petsc_options = "-ksp_type bcgs -snes_monitor ascii -snes_converged_reason -ksp_monitor -ksp_converged_reason"
+PDESolvers::petsc_options = "-snes_linesearch_type basic -ksp_type bcgs -snes_monitor ascii -snes_converged_reason -ksp_monitor -ksp_converged_reason -ksp_view_eigenvalues -ksp_view_singularvalues -ksp_monitor_singular_value"
 PDESolvers::dnz = 7 + 8
 PDESolvers::onz = 4 + 8
 
@@ -60,4 +59,4 @@ CarpetX::out_openpmd_vars = "all"
 CarpetX::out_plotfile_groups = ""
 CarpetX::out_silo_vars = "all"
 CarpetX::out_tsv = no
-CarpetX::out_tsv_vars = "all"
+CarpetX::out_tsv_vars = ""
