@@ -130,6 +130,7 @@ ExternalLibraries/zlib
 !URL      = https://bitbucket.org/eschnett/cactusamrex.git
 !REPO_PATH= $2
 !CHECKOUT = CarpetX/Kokkos CarpetX/NSIMD CarpetX/SHTOOLS CarpetX/Silo CarpetX/libsharp
+CarpetX/ADIOS2
 CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
@@ -155,7 +156,7 @@ CarpetX/ODESolvers
 CarpetX/Poisson
 CarpetX/Punctures
 #DISABLED CarpetX/SHTOOLS
-#DISABLED CarpetX/Silo
+CarpetX/Silo
 CarpetX/StaticTrumpet
 CarpetX/TestArrayGroup
 CarpetX/TestODESolvers
@@ -167,6 +168,7 @@ CarpetX/Weyl
 CarpetX/Z4c
 CarpetX/googletest
 #DISABLED CarpetX/libsharp
+CarpetX/openPMD
 CarpetX/ssht
 CarpetX/yaml_cpp
 
