@@ -1,5 +1,9 @@
 # Schedule definitions for thorn CarpetX
 
+
+
+# Driver startup and shutdown
+
 SCHEDULE CarpetX_Startup AT startup AS Driver_Startup
 {
   LANG: C
@@ -14,6 +18,10 @@ if (!CCTK_Equals(recover, "no") && *recover_file)
   } "Recover parameters"
 }
 
+
+
+# Error estimation
+
 SCHEDULE CarpetX_InitError AT basegrid
 {
   LANG: C
@@ -25,6 +33,10 @@ SCHEDULE CarpetX_SetLevel AT basegrid
   LANG: C
   WRITES: CarpetX::refinement_level(everywhere)
 } "Set refinemenet level grid function"
+
+
+
+# I/O
 
 SCHEDULE CarpetX_CheckpointInitial AT cpinitial
 {

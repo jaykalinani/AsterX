@@ -1,6 +1,7 @@
 #include "driver.hxx"
 #include "io.hxx"
 #include "io_adios2.hxx"
+#include "io_meta.hxx"
 #include "io_openpmd.hxx"
 #include "io_silo.hxx"
 #include "io_tsv.hxx"
@@ -384,12 +385,15 @@ void OutputNorms(const cGH *restrict cctkGH) {
   const bool is_root = CCTK_MyProc(nullptr) == 0;
   const string sep = "\t";
 
+  output_file_description_t ofd;
+
   ofstream file;
   if (is_root) {
     ostringstream buf;
     buf << out_dir << "/norms.it" << setw(8) << setfill('0') << cctk_iteration
         << ".tsv";
     const string filename = buf.str();
+    ofd.filename = filename;
     file = ofstream(filename);
 
     // get more precision for floats, could also use
@@ -433,6 +437,9 @@ void OutputNorms(const cGH *restrict cctkGH) {
     const int tl = 0;
     for (int vi = 0; vi < groupdata.numvars; ++vi) {
 
+      if (is_root)
+        ofd.variables.push_back(CCTK_FullVarName(groupdata.firstvarindex + vi));
+
       const reduction<CCTK_REAL, dim> red = reduce(gi, vi, tl);
 
       if (is_root) {
@@ -454,6 +461,29 @@ void OutputNorms(const cGH *restrict cctkGH) {
 
   if (is_root)
     file.close();
+
+  if (is_root) {
+    ofd.description = "CarpetX TSV norms output";
+    ofd.writer_thorn = CCTK_THORNSTRING;
+    ofd.iterations = {cctk_iteration};
+    ofd.reductions = {
+        reduction_t::minimum,
+        reduction_t::maximum,
+        reduction_t::sum,
+        reduction_t::average,
+        reduction_t::standard_deviation,
+        reduction_t::volume,
+        reduction_t::norm1,
+        reduction_t::norm2,
+        reduction_t::norm_inf,
+        reduction_t::minimum_location,
+        reduction_t::maximum_location,
+    };
+    ofd.format_name = "CarpetX/norms/TSV";
+    ofd.format_version = {1, 0, 0};
+
+    OutputMeta_RegisterOutputFile(std::move(ofd));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,47 +600,63 @@ void OutputMetadata(const cGH *restrict cctkGH) {
   if (!is_root)
     return;
 
-  YAML::Emitter yaml;
-  yaml << YAML::Comment("CarpetX");
-  yaml << YAML::BeginDoc;
-  yaml << YAML::LocalTag("carpetx-metadata-1.0.0");
-  yaml << YAML::BeginMap;
-  yaml << YAML::Key << "nghostzones";
-  yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
-  for (int d = 0; d < dim; ++d)
-    yaml << cctk_nghostzones[d];
-  yaml << YAML::EndSeq;
-  // Note: origin_space and delta_space are nan at this point
-  // yaml << YAML::Key << "origin_space";
-  // yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
-  // for (int d = 0; d < dim; ++d)
-  //   yaml << cctk_origin_space[d];
-  // yaml << YAML::EndSeq;
-  // yaml << YAML::Key << "delta_space";
-  // yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
-  // for (int d = 0; d < dim; ++d)
-  //   yaml << cctk_delta_space[d];
-  // yaml << YAML::EndSeq;
-  yaml << YAML::Key << "iteration";
-  yaml << YAML::Value << cctk_iteration;
-  yaml << YAML::Key << "time";
-  yaml << YAML::Value << cctk_time;
-  yaml << YAML::Key << "delta_time";
-  yaml << YAML::Value << cctk_delta_time;
-  yaml << YAML::Key << "ghext";
-  yaml << YAML::Value << *ghext;
-  yaml << YAML::Key << "parameters";
-  yaml << YAML::Value << parameters();
-  yaml << YAML::EndMap;
-  yaml << YAML::EndDoc;
+  {
+    YAML::Emitter yaml;
+    yaml << YAML::Comment("CarpetX Metadata");
+    yaml << YAML::BeginDoc;
+    yaml << YAML::LocalTag("carpetx-metadata-1.0.0");
+    yaml << YAML::BeginMap;
+    yaml << YAML::Key << "nghostzones";
+    yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (int d = 0; d < dim; ++d)
+      yaml << cctk_nghostzones[d];
+    yaml << YAML::EndSeq;
+    // Note: origin_space and delta_space are nan at this point
+    // yaml << YAML::Key << "origin_space";
+    // yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    // for (int d = 0; d < dim; ++d)
+    //   yaml << cctk_origin_space[d];
+    // yaml << YAML::EndSeq;
+    // yaml << YAML::Key << "delta_space";
+    // yaml << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    // for (int d = 0; d < dim; ++d)
+    //   yaml << cctk_delta_space[d];
+    // yaml << YAML::EndSeq;
+    yaml << YAML::Key << "iteration";
+    yaml << YAML::Value << cctk_iteration;
+    yaml << YAML::Key << "time";
+    yaml << YAML::Value << cctk_time;
+    yaml << YAML::Key << "delta_time";
+    yaml << YAML::Value << cctk_delta_time;
+    yaml << YAML::Key << "ghext";
+    yaml << YAML::Value << *ghext;
+    // yaml << YAML::Key << "parameters";
+    // yaml << YAML::Value << parameters();
+    yaml << YAML::EndMap;
+    yaml << YAML::EndDoc;
 
-  ostringstream buf;
-  buf << out_dir << "/metadata"
-      << ".it" << setw(8) << setfill('0') << cctk_iteration << ".yaml";
-  const string filename = buf.str();
+    ostringstream buf;
+    buf << out_dir << "/carpetx-metadata"
+        << ".it" << setw(8) << setfill('0') << cctk_iteration << ".yaml";
+    const string filename = buf.str();
+    ofstream file(filename.c_str(), std::ofstream::out);
+    file << yaml.c_str();
+  }
 
-  ofstream file(filename.c_str(), std::ofstream::out);
-  file << yaml.c_str();
+  {
+    YAML::Emitter yaml;
+    yaml << YAML::Comment("Parameters");
+    yaml << YAML::BeginDoc;
+    yaml << parameters();
+    yaml << YAML::EndDoc;
+
+    ostringstream buf;
+    buf << out_dir << "/parameters"
+        << ".it" << setw(8) << setfill('0') << cctk_iteration << ".yaml";
+    const string filename = buf.str();
+    ofstream file(filename.c_str(), std::ofstream::out);
+    file << yaml.c_str();
+  }
 }
 
 int OutputGH(const cGH *restrict cctkGH) {
@@ -688,6 +734,9 @@ int OutputGH(const cGH *restrict cctkGH) {
 
     for (auto &task : tasks)
       task.wait();
+
+    // Describe all output files
+    OutputMeta(cctkGH);
 
     if (is_root)
       CCTK_VINFO("OutputGH done.");

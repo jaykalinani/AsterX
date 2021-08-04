@@ -6,6 +6,7 @@ SRCS =						\
         interpolate.cxx				\
 	io.cxx					\
 	io_adios2.cxx				\
+	io_meta.cxx				\
 	io_openpmd.cxx				\
 	io_silo.cxx				\
 	io_tsv.cxx				\
