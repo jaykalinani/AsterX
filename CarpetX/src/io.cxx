@@ -187,7 +187,7 @@ void RecoverGH(const cGH *restrict cctkGH) {
 
   if (CCTK_EQUALS(recover_method, "openpmd")) {
 
-#ifdef HAVE_CAPABILITY_Silo
+#ifdef HAVE_CAPABILITY_openPMD_api
     InputOpenPMD(cctkGH, group_enabled, recover_dir, recover_file);
 #else
     CCTK_VERROR(
