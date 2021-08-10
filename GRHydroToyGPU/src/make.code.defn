@@ -1,0 +1,14 @@
+# Main make.code.defn file for thorn HydroToyGPU
+
+# Source files in this directory
+SRCS =	boundaries.cxx				\
+	estimate_error.cxx			\
+	flux_boundaries.cxx			\
+	fluxes.cxx				\
+	initialize.cxx				\
+	con2prim.cxx				\
+	rhs.cxx					\
+	sync.cxx
+
+# Subdirectories containing source files
+SUBDIRS = 
