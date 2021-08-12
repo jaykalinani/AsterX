@@ -59,8 +59,8 @@ template <typename T, size_t D, size_t R> struct form {
 
   constexpr static size_t comp2idx(const size_t comp0) {
     size_t comp = 0;
-    size_t idx;
-    for (idx = 0; idx < (1 << D); ++idx) {
+    size_t idx = 0;
+    for (; idx < (1 << D); ++idx) {
       if (count_bits(idx) == R) {
         if (comp == comp0)
           break;
