@@ -9,7 +9,7 @@
 #include <array>
 #include <cmath>
 
-namespace HydroToyGPU {
+namespace GRHydroToyGPU {
 using namespace std;
 using namespace Loop;
 
@@ -37,7 +37,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T minmod(const T &x,
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
 template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_Fluxes;
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
   static_assert(dir >= 0 && dir < 3, "");
@@ -76,7 +76,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   const GF3D2<const CCTK_REAL> gf_velx(gf_layout_cell, velx);
   const GF3D2<const CCTK_REAL> gf_vely(gf_layout_cell, vely);
   const GF3D2<const CCTK_REAL> gf_velz(gf_layout_cell, velz);
+  const GF3D2<const CCTK_REAL> gf_w_lorentz(gf_layout_cell, w_lorentz);
   const GF3D2<const CCTK_REAL> gf_press(gf_layout_cell, press);
+  const GF3D2<const CCTK_REAL> gf_eps(gf_layout_cell, eps);
 
   // Face-centred grid functions (in direction `dir`)
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
@@ -164,10 +166,20 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         array<CCTK_REAL, 2> velx_r = reconstruct(gf_velx, p);
         array<CCTK_REAL, 2> vely_r = reconstruct(gf_vely, p);
         array<CCTK_REAL, 2> velz_r = reconstruct(gf_velz, p);
+	array<CCTK_REAL, 2> w_lorentz_r = reconstruct(gf_w_lorentz, p);
         array<CCTK_REAL, 2> press_r = reconstruct(gf_press, p);
+	array<CCTK_REAL, 2> eps_r = reconstruct(gf_eps, p);
         array<array<CCTK_REAL, 2>, 3> vels_r = {velx_r, vely_r, velz_r};
         array<CCTK_REAL, 2> vel_r = vels_r[dir];
 
+	array<CCTK_REAL, 2> alp_r = reconstruct(gf_alp, p);
+        array<CCTK_REAL, 2> betax_r = reconstruct(gf_betax, p);
+        array<CCTK_REAL, 2> betay_r = reconstruct(gf_betay, p);
+        array<CCTK_REAL, 2> betaz_r = reconstruct(gf_betaz, p);
+        array<array<CCTK_REAL, 2>, 3> betas_r = {betax_r, betay_r, betaz_r};
+        array<CCTK_REAL, 2> beta_r = betas_r[dir];
+
+	/*
         array<CCTK_REAL, 2> tau_r;
         for (int f = 0; f < 2; ++f) {
           CCTK_REAL ekin =
@@ -176,29 +188,126 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
           CCTK_REAL eint = press_r[f] / (gamma - 1);
           tau_r[f] = ekin + eint;
         }
+        */
 
         CCTK_REAL gxx_r = 0;
-        // loop over cube corners except for direction in whihc we reconstruct
+        CCTK_REAL gxy_r = 0;
+        CCTK_REAL gxz_r = 0;
+	CCTK_REAL gyy_r = 0;
+	CCTK_REAL gyz_r = 0;
+	CCTK_REAL gzz_r = 0;
+  	
+        // loop over cube corners except for direction in which we reconstruct
         for(int dk = 0 ; dk < (dir == 2 ? 1 : 2) ; ++dk) {
         for(int dj = 0 ; dj < (dir == 1 ? 1 : 2) ; ++dj) {
         for(int di = 0 ; di < (dir == 0 ? 1 : 2) ; ++di) {
           gxx_r += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+	  gxy_r += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+          gxz_r += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+          gyy_r += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+          gyz_r += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+          gzz_r += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk); 
         }}}
         gxx_r /= 4;
+        gxy_r /= 4;
+        gxz_r /= 4;
+	gyy_r /= 4;
+	gyz_r /= 4;
+	gzz_r /= 4;
         // TODO: do the same for other metric variables
-        CCTK_REAL sqrt_detg_r = sqrt(gxx_r...);
+ 
+ 	CCTK_REAL detg_r = -gxz_r*gxz_r*gyy_r + 2.0*gxy_r*gxz_r*gyz_r - gxx_r*gyz_r*gyz_r 
+                           - gxy_r*gxy_r*gzz_r + gxx_r*gyy_r*gzz_r;
+	CCTK_REAL sqrt_detg_r = sqrt(detg_r);
 
+	//v_j
+        array<CCTK_REAL, 2> vlowx_r = { 
+		gxx_r*vel_r[0] + gxy_r*vel_r[0] + gxz_r*dvelz[0],
+		gxx_r*vel_r[1] + gxy_r*vel_r[1] + gxz_r*dvelz[1]
+	};
+
+	array<CCTK_REAL, 2> vlowy_r = {
+                gxy_r*vel_r[0] + gyy_r*vel_r[0] + gyz_r*dvelz[0],
+                gxy_r*vel_r[1] + gyy_r*vel_r[1] + gyz_r*dvelz[1]
+        };
+
+	array<CCTK_REAL, 2> vlowz_r = {
+                gxz_r*vel_r[0] + gyz_r*vel_r[0] + gzz_r*dvelz[0],
+                gxz_r*vel_r[1] + gyz_r*vel_r[1] + gzz_r*dvelz[1]
+        };
+
+        //array<array<CCTK_REAL, 2>, 3> vlows_r = {vlowx_r, vlowy_r, vlowz_r};
+        //array<CCTK_REAL, 2> vlow_r = vlows_r[dir];	
+ 
+	//computing conservatives from primitives
+	
         array<CCTK_REAL, 2> dens_r = {
                 sqrt_detg_r * rho_r[0] * w_lorentz_r[0],
                 sqrt_detg_r * rho_r[1] * w_lorentz_r[1]
         };
+
+        array<CCTK_REAL, 2> momx_r = {
+                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * (1 + eps_r[0] + press_r[0]/rho_r[0]) * vlowx_r[0],
+                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * (1 + eps_r[1] + press_r[1]/rho_r[1]) * vlowx_r[1]
+        };
+
+	array<CCTK_REAL, 2> momy_r = {
+                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * (1 + eps_r[0] + press_r[0]/rho_r[0]) * vlowy_r[0],
+                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * (1 + eps_r[1] + press_r[1]/rho_r[1]) * vlowy_r[1]
+        };
+
+	array<CCTK_REAL, 2> momz_r = {
+                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * (1 + eps_r[0] + press_r[0]/rho_r[0]) * vlowz_r[0],
+                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * (1 + eps_r[1] + press_r[1]/rho_r[1]) * vlowz_r[1]
+        };
+
+        array<CCTK_REAL, 2> tau_r = {
+                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * ( (1 + eps_r[0] + press_r[0]/rho_r[0]) * w_lorentz_r[0] - 1) - press_r[0],
+                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * ( (1 + eps_r[1] + press_r[1]/rho_r[1]) * w_lorentz_r[1] - 1) - press_r[1]
+        }; 
+
+	//computing fluxes of conserved variabes 
         const CCTK_REAL flux_dens_m = dens_r[0] * (vel_r[0] - beta_r[0] / alp_r[0]);
         const CCTK_REAL flux_dens_p = dens_r[1] * (vel_r[1] - beta_r[1] / alp_r[1]);
 
+        const CCTK_REAL flux_momx_m = momx_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
+		                      + (dir == 0) * sqrt_detg_r * press_r[0];
+        const CCTK_REAL flux_momx_p = momx_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
+		                      + (dir == 0) * sqrt_detg_r * press_r[1];
+
+	const CCTK_REAL flux_momy_m = momy_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
+		                      + (dir == 1) * sqrt_detg_r * press_r[0];
+        const CCTK_REAL flux_momy_p = momy_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
+	                              + (dir == 1) * sqrt_detg_r * press_r[1];
+
+	const CCTK_REAL flux_momz_m = momz_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
+		                      + (dir == 2) * sqrt_detg_r * press_r[0];
+        const CCTK_REAL flux_momz_p = momz_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
+		                      + (dir == 2) * sqrt_detg_r * press_r[1];
+
+        const CCTK_REAL flux_tau_m = tau_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
+                                      + sqrt_detg_r * press_r[0] * vel_r[0];        
+
+	const CCTK_REAL flux_tau_p = tau_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
+                                      + sqrt_detg_r * press_r[1] * vel_r[1]; 
+
         gf_fluxdens(p.I) = calcflux(dens_r[0], dens_r[1],
                                     flux_dens_m, flux_dens_p);
-       
-        gf_fluxmomx(p.I) =
+      
+        gf_fluxmomx(p.I) = calcflux(momx_r[0], momx_r[1],
+                                    flux_momx_m, flux_momx_p);
+
+	gf_fluxmomy(p.I) = calcflux(momy_r[0], momy_r[1],
+                                    flux_momy_m, flux_momy_p);
+
+        gf_fluxmomz(p.I) = calcflux(momz_r[0], momz_r[1],
+                                    flux_momz_m, flux_momz_p);
+
+        gf_fluxtau(p.I) = calcflux(tau_r[0], tau_r[1],
+                                    flux_tau_m, flux_tau_p);
+
+        /*
+      	gf_fluxmomx(p.I) =
             calcflux(rho_r[0] * velx_r[0], rho_r[1] * velx_r[1],
                      rho_r[0] * velx_r[0] * vel_r[0] + (dir == 0) * press_r[0],
                      rho_r[1] * velx_r[1] * vel_r[1] + (dir == 0) * press_r[1]);
@@ -213,11 +322,13 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         gf_fluxtau(p.I) =
             calcflux(tau_r[0], tau_r[1], (tau_r[0] + press_r[0]) * vel_r[0],
                      (tau_r[1] + press_r[1]) * vel_r[1]);
+	*/
+
       });
 }
 
-extern "C" void HydroToyGPU_Fluxes(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_Fluxes;
+extern "C" void GRHydroToyGPU_Fluxes(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
   CalcFlux<0>(cctkGH);
@@ -225,4 +336,4 @@ extern "C" void HydroToyGPU_Fluxes(CCTK_ARGUMENTS) {
   CalcFlux<2>(cctkGH);
 }
 
-} // namespace HydroToyGPU
+} // namespace GRHydroToyGPU
