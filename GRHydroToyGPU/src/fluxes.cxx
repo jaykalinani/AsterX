@@ -167,7 +167,6 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         const array<CCTK_REAL, 2> velx_rc = reconstruct(gf_velx, p);
         const array<CCTK_REAL, 2> vely_rc = reconstruct(gf_vely, p);
         const array<CCTK_REAL, 2> velz_rc = reconstruct(gf_velz, p);
-        const array<CCTK_REAL, 2> w_lorentz_rc = reconstruct(gf_w_lorentz, p);
         const array<CCTK_REAL, 2> press_rc = reconstruct(gf_press, p);
         const array<array<CCTK_REAL, 2>, 3> vels_rc = {velx_rc, vely_rc, velz_rc};
         const array<CCTK_REAL, 2> vel_rc = vels_rc[dir];
