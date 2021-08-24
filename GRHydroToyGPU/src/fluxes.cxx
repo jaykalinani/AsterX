@@ -161,189 +161,177 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
       grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
                             const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        // Reconstruct values from the cells on left and right side of this face
-        array<CCTK_REAL, 2> rho_r = reconstruct(gf_rho, p);
-        array<CCTK_REAL, 2> velx_r = reconstruct(gf_velx, p);
-        array<CCTK_REAL, 2> vely_r = reconstruct(gf_vely, p);
-        array<CCTK_REAL, 2> velz_r = reconstruct(gf_velz, p);
-	array<CCTK_REAL, 2> w_lorentz_r = reconstruct(gf_w_lorentz, p);
-        array<CCTK_REAL, 2> press_r = reconstruct(gf_press, p);
-        array<array<CCTK_REAL, 2>, 3> vels_r = {velx_r, vely_r, velz_r};
-        array<CCTK_REAL, 2> vel_r = vels_r[dir];
-
+        // Reconstruct primitives from the cells on left (indice 0) and right (indice 1) side of this face
+	//rc = reconstructed variables or computed from reconstructed variables 
+        const array<CCTK_REAL, 2> rho_rc = reconstruct(gf_rho, p);
+        const array<CCTK_REAL, 2> velx_rc = reconstruct(gf_velx, p);
+        const array<CCTK_REAL, 2> vely_rc = reconstruct(gf_vely, p);
+        const array<CCTK_REAL, 2> velz_rc = reconstruct(gf_velz, p);
+        const array<CCTK_REAL, 2> w_lorentz_rc = reconstruct(gf_w_lorentz, p);
+        const array<CCTK_REAL, 2> press_rc = reconstruct(gf_press, p);
+        const array<array<CCTK_REAL, 2>, 3> vels_rc = {velx_rc, vely_rc, velz_rc};
+        const array<CCTK_REAL, 2> vel_rc = vels_rc[dir];
+    
         //TODO: to reconstruct w_lorentz*vel or 4-velocity u_i
 
-	array<CCTK_REAL, 2> alp_r = reconstruct(gf_alp, p);
+	//computing metric components
+	CCTK_REAL alp_avg = 0;
 
-	//computing beta components
-	CCTK_REAL betax_r = 0;
-        CCTK_REAL betay_r = 0;
-        CCTK_REAL betaz_r = 0;
+	CCTK_REAL betax_avg = 0;
+        CCTK_REAL betay_avg = 0;
+        CCTK_REAL betaz_avg = 0;
+
+	CCTK_REAL gxx_avg = 0;
+        CCTK_REAL gxy_avg = 0;
+        CCTK_REAL gxz_avg = 0;
+        CCTK_REAL gyy_avg = 0;
+        CCTK_REAL gyz_avg = 0;
+        CCTK_REAL gzz_avg = 0;
 
         for(int dk = 0 ; dk < (dir == 2 ? 1 : 2) ; ++dk) {
-        for(int dj = 0 ; dj < (dir == 1 ? 1 : 2) ; ++dj) {
-        for(int di = 0 ; di < (dir == 0 ? 1 : 2) ; ++di) {
-          betax_r += gf_betax(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-          betay_r += gf_betay(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-          betaz_r += gf_betaz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-        }}}
-        betax_r /= 4;
-        betay_r /= 4;
-        betaz_r /= 4;
+           for(int dj = 0 ; dj < (dir == 1 ? 1 : 2) ; ++dj) {
+              for(int di = 0 ; di < (dir == 0 ? 1 : 2) ; ++di) {
+                 alp_avg += gf_alp(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
 
-	array<CCTK_REAL, 3> betas_r = {betax_r, betay_r, betaz_r};
-        array<CCTK_REAL> beta_r = betas_r[dir];
+                 betax_avg += gf_betax(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 betay_avg += gf_betay(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 betaz_avg += gf_betaz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 
+		 gxx_avg += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 gxy_avg += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 gxz_avg += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 gyy_avg += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 gyz_avg += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                 gzz_avg += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+              }
+	   }
+	}
+	alp_avg   /= 4;
+        betax_avg /= 4;
+        betay_avg /= 4;
+        betaz_avg /= 4;
+        gxx_avg   /= 4;
+        gxy_avg   /= 4;
+        gxz_avg   /= 4;
+        gyy_avg   /= 4;
+        gyz_avg   /= 4;
+        gzz_avg   /= 4;
 
-	/*
-        array<CCTK_REAL, 2> tau_r;
-        for (int f = 0; f < 2; ++f) {
-          CCTK_REAL ekin =
-              0.5 * rho_r[f] *
-              (pow2(velx_r[f]) + pow2(vely_r[f]) + pow2(velz_r[f]));
-          CCTK_REAL eint = press_r[f] / (gamma - 1);
-          tau_r[f] = ekin + eint;
-        }
-        */
+	array<CCTK_REAL, 3> betas_avg = {betax_avg, betay_avg, betaz_avg};
+        CCTK_REAL beta_avg = betas_avg[dir];
 
-        CCTK_REAL gxx_r = 0;
-        CCTK_REAL gxy_r = 0;
-        CCTK_REAL gxz_r = 0;
-	CCTK_REAL gyy_r = 0;
-	CCTK_REAL gyz_r = 0;
-	CCTK_REAL gzz_r = 0;
-  	
-        // loop over cube corners except for direction in which we reconstruct
-        for(int dk = 0 ; dk < (dir == 2 ? 1 : 2) ; ++dk) {
-        for(int dj = 0 ; dj < (dir == 1 ? 1 : 2) ; ++dj) {
-        for(int di = 0 ; di < (dir == 0 ? 1 : 2) ; ++di) {
-          gxx_r += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-	  gxy_r += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-          gxz_r += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-          gyy_r += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-          gyz_r += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-          gzz_r += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk); 
-        }}}
-        gxx_r /= 4;
-        gxy_r /= 4;
-        gxz_r /= 4;
-	gyy_r /= 4;
-	gyz_r /= 4;
-	gzz_r /= 4;
-
-        // TODO:how to compute specific internal energy (EOS dependent)?  
-        //dummy eps below for classical IG
-	array<CCTK_REAL, 2> eps_r = {
-                press_r[0]/(rho_r[0]*(gamma-1)),
-                press_r[1]/(rho_r[0]*(gamma-1))
+        //TODO: compute specific internal energy based on user-specified EOS  
+        //currently, computing eps for classical ideal gas
+	
+	const array<CCTK_REAL, 2> eps_rc = {
+                press_rc[0]/(rho_rc[0]*(gamma-1)),
+                press_rc[1]/(rho_rc[1]*(gamma-1))
         };
 
- 	CCTK_REAL detg_r = -gxz_r*gxz_r*gyy_r + 2.0*gxy_r*gxz_r*gyz_r - gxx_r*gyz_r*gyz_r 
-                           - gxy_r*gxy_r*gzz_r + gxx_r*gyy_r*gzz_r;
-	CCTK_REAL sqrt_detg_r = sqrt(detg_r);
+	//determinant of spatial metric
+ 	const CCTK_REAL detg = -gxz_avg*gxz_avg*gyy_avg + 2.0*gxy_avg*gxz_avg*gyz_avg - gxx_avg*gyz_avg*gyz_avg 
+                           - gxy_avg*gxy_avg*gzz_avg + gxx_avg*gyy_avg*gzz_avg;
+	const CCTK_REAL sqrt_detg = sqrt(detg);
 
 	//v_j
-        array<CCTK_REAL, 2> vlowx_r = { 
-		gxx_r*(dir == 0)*vel_r[0] + gxy_r*(dir == 1)*vel_r[0] + gxz_r*(dir == 2)*vel_r[0],
-		gxx_r*(dir == 0)*vel_r[1] + gxy_r*(dir == 1)*vel_r[1] + gxz_r*(dir == 2)*vel_r[1]
+        const array<CCTK_REAL, 2> vlowx_rc = { 
+		gxx_avg*velx_rc[0] + gxy_avg*vely_rc[0] + gxz_avg*velz_rc[0],
+		gxx_avg*velx_rc[1] + gxy_avg*vely_rc[1] + gxz_avg*velz_rc[1]
 	};
 
-	array<CCTK_REAL, 2> vlowy_r = {
-                gxy_r*(dir == 0)*vel_r[0] + gyy_r*(dir == 1)*vel_r[0] + gyz_r*(dir == 2)*vel_r[0],
-                gxy_r*(dir == 0)*vel_r[1] + gyy_r*(dir == 1)*vel_r[1] + gyz_r*(dir == 2)*vel_r[1]
+	const array<CCTK_REAL, 2> vlowy_rc = {
+                gxy_avg*velx_rc[0] + gyy_avg*vely_rc[0] + gyz_avg*velz_rc[0],
+                gxy_avg*velx_rc[1] + gyy_avg*vely_rc[1] + gyz_avg*velz_rc[1]
         };
 
-	array<CCTK_REAL, 2> vlowz_r = {
-                gxz_r*(dir == 0)*vel_r[0] + gyz_r*(dir == 1)*vel_r[0] + gzz_r*(dir == 2)*vel_r[0],
-                gxz_r*(dir == 0)*vel_r[1] + gyz_r*(dir == 1)*vel_r[1] + gzz_r*(dir == 2)*vel_r[1]
+	const array<CCTK_REAL, 2> vlowz_rc = {
+                gxz_avg*velx_rc[0] + gyz_avg*vely_rc[0] + gzz_avg*velz_rc[0],
+                gxz_avg*velx_rc[1] + gyz_avg*vely_rc[1] + gzz_avg*velz_rc[1]
         };
 
-        //array<array<CCTK_REAL, 2>, 3> vlows_r = {vlowx_r, vlowy_r, vlowz_r};
-        //array<CCTK_REAL, 2> vlow_r = vlows_r[dir];	
- 
+	//w_lorentz
+	const array<CCTK_REAL, 2> w_lorentz_rc = {
+		1.0 / sqrt(1 - (gxx_avg*velx_rc[0]*velx_rc[0] + gyy_avg*vely_rc[0]*vely_rc[0] 
+			      + gzz_avg*velz_rc[0]*velz_rc[0] + 2*gxy_avg*velx_rc[0]*vely_rc[0] 
+			    + 2*gxz_avg*velx_rc[0]*velz_rc[0] + 2*gyz_avg*vely_rc[0]*velz_rc[0])),
+                1.0 / sqrt(1 - (gxx_avg*velx_rc[1]*velx_rc[1] + gyy_avg*vely_rc[1]*vely_rc[1]  
+                              + gzz_avg*velz_rc[1]*velz_rc[1] + 2*gxy_avg*velx_rc[1]*vely_rc[1]
+                            + 2*gxz_avg*velx_rc[1]*velz_rc[1] + 2*gyz_avg*vely_rc[1]*velz_rc[1]))
+        };
+
 	//computing conservatives from primitives
-	
-        array<CCTK_REAL, 2> dens_r = {
-                sqrt_detg_r * rho_r[0] * w_lorentz_r[0],
-                sqrt_detg_r * rho_r[1] * w_lorentz_r[1]
+        const array<CCTK_REAL, 2> dens_rc = {
+                sqrt_detg * rho_rc[0] * w_lorentz_rc[0],
+                sqrt_detg * rho_rc[1] * w_lorentz_rc[1]
         };
 
-        array<CCTK_REAL, 2> momx_r = {
-                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * (1 + eps_r[0] + press_r[0]/rho_r[0]) * vlowx_r[0],
-                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * (1 + eps_r[1] + press_r[1]/rho_r[1]) * vlowx_r[1]
+        const array<CCTK_REAL, 2> momx_rc = {
+                sqrt_detg * rho_rc[0] * w_lorentz_rc[0] * (1 + eps_rc[0] 
+				+ press_rc[0]/rho_rc[0]) * vlowx_rc[0],
+                sqrt_detg * rho_rc[1] * w_lorentz_rc[1] * (1 + eps_rc[1] 
+				+ press_rc[1]/rho_rc[1]) * vlowx_rc[1]
         };
 
-	array<CCTK_REAL, 2> momy_r = {
-                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * (1 + eps_r[0] + press_r[0]/rho_r[0]) * vlowy_r[0],
-                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * (1 + eps_r[1] + press_r[1]/rho_r[1]) * vlowy_r[1]
+	const array<CCTK_REAL, 2> momy_rc = {
+                sqrt_detg * rho_rc[0] * w_lorentz_rc[0] * (1 + eps_rc[0] 
+				+ press_rc[0]/rho_rc[0]) * vlowy_rc[0],
+                sqrt_detg * rho_rc[1] * w_lorentz_rc[1] * (1 + eps_rc[1] 
+				+ press_rc[1]/rho_rc[1]) * vlowy_rc[1]
         };
 
-	array<CCTK_REAL, 2> momz_r = {
-                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * (1 + eps_r[0] + press_r[0]/rho_r[0]) * vlowz_r[0],
-                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * (1 + eps_r[1] + press_r[1]/rho_r[1]) * vlowz_r[1]
+	const array<CCTK_REAL, 2> momz_rc = {
+                sqrt_detg * rho_rc[0] * w_lorentz_rc[0] * (1 + eps_rc[0] 
+				+ press_rc[0]/rho_rc[0]) * vlowz_rc[0],
+		sqrt_detg * rho_rc[1] * w_lorentz_rc[1] * (1 + eps_rc[1] 
+				+ press_rc[1]/rho_rc[1]) * vlowz_rc[1]
         };
 
-        array<CCTK_REAL, 2> tau_r = {
-                sqrt_detg_r * rho_r[0] * w_lorentz_r[0] * ( (1 + eps_r[0] + press_r[0]/rho_r[0]) * w_lorentz_r[0] - 1) - press_r[0],
-                sqrt_detg_r * rho_r[1] * w_lorentz_r[1] * ( (1 + eps_r[1] + press_r[1]/rho_r[1]) * w_lorentz_r[1] - 1) - press_r[1]
+        const array<CCTK_REAL, 2> tau_rc = {
+                sqrt_detg * rho_rc[0] * w_lorentz_rc[0] * ( (1 + eps_rc[0] 
+				+ press_rc[0]/rho_rc[0]) * w_lorentz_rc[0] - 1) - press_rc[0],
+                sqrt_detg * rho_rc[1] * w_lorentz_rc[1] * ( (1 + eps_rc[1] 
+				+ press_rc[1]/rho_rc[1]) * w_lorentz_rc[1] - 1) - press_rc[1]
         }; 
 
-	//computing fluxes of conserved variabes 
-        const CCTK_REAL flux_dens_m = dens_r[0] * (vel_r[0] - beta_r[0] / alp_r[0]);
-        const CCTK_REAL flux_dens_p = dens_r[1] * (vel_r[1] - beta_r[1] / alp_r[1]);
+	//computing fluxes of conserved variabes
+        const CCTK_REAL flux_dens = {
+		dens_rc[0] * (vel_rc[0] - beta_avg / alp_avg),
+                dens_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
+	};
 
-        const CCTK_REAL flux_momx_m = momx_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
-		                      + (dir == 0) * sqrt_detg_r * press_r[0];
-        const CCTK_REAL flux_momx_p = momx_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
-		                      + (dir == 0) * sqrt_detg_r * press_r[1];
+        const CCTK_REAL flux_momx = {
+		momx_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
+		   + (dir == 0) * sqrt_detg * press_rc[0],
+	        momx_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
+		   + (dir == 0) * sqrt_detg * press_rc[1]
+        };
 
-	const CCTK_REAL flux_momy_m = momy_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
-		                      + (dir == 1) * sqrt_detg_r * press_r[0];
-        const CCTK_REAL flux_momy_p = momy_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
-	                              + (dir == 1) * sqrt_detg_r * press_r[1];
+	const CCTK_REAL flux_momy = {
+		momy_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
+		   + (dir == 1) * sqrt_detg * press_rc[0],
+                momy_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
+	           + (dir == 1) * sqrt_detg * press_rc[1]
+        };
 
-	const CCTK_REAL flux_momz_m = momz_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
-		                      + (dir == 2) * sqrt_detg_r * press_r[0];
-        const CCTK_REAL flux_momz_p = momz_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
-		                      + (dir == 2) * sqrt_detg_r * press_r[1];
+	const CCTK_REAL flux_momz = {
+		momz_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
+		   + (dir == 2) * sqrt_detg * press_rc[0],
+                momz_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
+		   + (dir == 2) * sqrt_detg * press_rc[1]
+        };
 
-        const CCTK_REAL flux_tau_m = tau_r[0] * (vel_r[0] - beta_r[0] / alp_r[0])
-                                      + sqrt_detg_r * press_r[0] * vel_r[0];        
+        const CCTK_REAL flux_tau = {
+		tau_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
+                   + sqrt_detg * press_rc[0] * vel_rc[0],        
+                tau_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
+                   + sqrt_detg * press_rc[1] * vel_rc[1]
+        }; 
 
-	const CCTK_REAL flux_tau_p = tau_r[1] * (vel_r[1] - beta_r[1] / alp_r[1])
-                                      + sqrt_detg_r * press_r[1] * vel_r[1]; 
-
-        gf_fluxdens(p.I) = calcflux(dens_r[0], dens_r[1],
-                                    flux_dens_m, flux_dens_p);
-      
-        gf_fluxmomx(p.I) = calcflux(momx_r[0], momx_r[1],
-                                    flux_momx_m, flux_momx_p);
-
-	gf_fluxmomy(p.I) = calcflux(momy_r[0], momy_r[1],
-                                    flux_momy_m, flux_momy_p);
-
-        gf_fluxmomz(p.I) = calcflux(momz_r[0], momz_r[1],
-                                    flux_momz_m, flux_momz_p);
-
-        gf_fluxtau(p.I) = calcflux(tau_r[0], tau_r[1],
-                                    flux_tau_m, flux_tau_p);
-
-        /*
-      	gf_fluxmomx(p.I) =
-            calcflux(rho_r[0] * velx_r[0], rho_r[1] * velx_r[1],
-                     rho_r[0] * velx_r[0] * vel_r[0] + (dir == 0) * press_r[0],
-                     rho_r[1] * velx_r[1] * vel_r[1] + (dir == 0) * press_r[1]);
-        gf_fluxmomy(p.I) =
-            calcflux(rho_r[0] * vely_r[0], rho_r[1] * vely_r[1],
-                     rho_r[0] * vely_r[0] * vel_r[0] + (dir == 1) * press_r[0],
-                     rho_r[1] * vely_r[1] * vel_r[1] + (dir == 1) * press_r[1]);
-        gf_fluxmomz(p.I) =
-            calcflux(rho_r[0] * velz_r[0], rho_r[1] * velz_r[1],
-                     rho_r[0] * velz_r[0] * vel_r[0] + (dir == 2) * press_r[0],
-                     rho_r[1] * velz_r[1] * vel_r[1] + (dir == 2) * press_r[1]);
-        gf_fluxtau(p.I) =
-            calcflux(tau_r[0], tau_r[1], (tau_r[0] + press_r[0]) * vel_r[0],
-                     (tau_r[1] + press_r[1]) * vel_r[1]);
-	*/
+        gf_fluxdens(p.I) = calcflux(dens_rc, flux_dens);
+        gf_fluxmomx(p.I) = calcflux(momx_rc, flux_momx);
+	gf_fluxmomy(p.I) = calcflux(momy_rc, flux_momy);
+        gf_fluxmomz(p.I) = calcflux(momz_rc, flux_momz);
+        gf_fluxtau(p.I) = calcflux(tau_rc, flux_tau);
 
       });
 }
