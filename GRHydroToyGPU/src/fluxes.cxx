@@ -168,16 +168,31 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         array<CCTK_REAL, 2> velz_r = reconstruct(gf_velz, p);
 	array<CCTK_REAL, 2> w_lorentz_r = reconstruct(gf_w_lorentz, p);
         array<CCTK_REAL, 2> press_r = reconstruct(gf_press, p);
-	array<CCTK_REAL, 2> eps_r = reconstruct(gf_eps, p);
         array<array<CCTK_REAL, 2>, 3> vels_r = {velx_r, vely_r, velz_r};
         array<CCTK_REAL, 2> vel_r = vels_r[dir];
 
+        //TODO: to reconstruct w_lorentz*vel or 4-velocity u_i
+
 	array<CCTK_REAL, 2> alp_r = reconstruct(gf_alp, p);
-        array<CCTK_REAL, 2> betax_r = reconstruct(gf_betax, p);
-        array<CCTK_REAL, 2> betay_r = reconstruct(gf_betay, p);
-        array<CCTK_REAL, 2> betaz_r = reconstruct(gf_betaz, p);
-        array<array<CCTK_REAL, 2>, 3> betas_r = {betax_r, betay_r, betaz_r};
-        array<CCTK_REAL, 2> beta_r = betas_r[dir];
+
+	//computing beta components
+	CCTK_REAL betax_r = 0;
+        CCTK_REAL betay_r = 0;
+        CCTK_REAL betaz_r = 0;
+
+        for(int dk = 0 ; dk < (dir == 2 ? 1 : 2) ; ++dk) {
+        for(int dj = 0 ; dj < (dir == 1 ? 1 : 2) ; ++dj) {
+        for(int di = 0 ; di < (dir == 0 ? 1 : 2) ; ++di) {
+          betax_r += gf_betax(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+          betay_r += gf_betay(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+          betaz_r += gf_betaz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+        }}}
+        betax_r /= 4;
+        betay_r /= 4;
+        betaz_r /= 4;
+
+	array<CCTK_REAL, 3> betas_r = {betax_r, betay_r, betaz_r};
+        array<CCTK_REAL> beta_r = betas_r[dir];
 
 	/*
         array<CCTK_REAL, 2> tau_r;
@@ -214,26 +229,32 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 	gyy_r /= 4;
 	gyz_r /= 4;
 	gzz_r /= 4;
-        // TODO: do the same for other metric variables
- 
+
+        // TODO:how to compute specific internal energy (EOS dependent)?  
+        //dummy eps below for classical IG
+	array<CCTK_REAL, 2> eps_r = {
+                press_r[0]/(rho_r[0]*(gamma-1)),
+                press_r[1]/(rho_r[0]*(gamma-1))
+        };
+
  	CCTK_REAL detg_r = -gxz_r*gxz_r*gyy_r + 2.0*gxy_r*gxz_r*gyz_r - gxx_r*gyz_r*gyz_r 
                            - gxy_r*gxy_r*gzz_r + gxx_r*gyy_r*gzz_r;
 	CCTK_REAL sqrt_detg_r = sqrt(detg_r);
 
 	//v_j
         array<CCTK_REAL, 2> vlowx_r = { 
-		gxx_r*vel_r[0] + gxy_r*vel_r[0] + gxz_r*dvelz[0],
-		gxx_r*vel_r[1] + gxy_r*vel_r[1] + gxz_r*dvelz[1]
+		gxx_r*(dir == 0)*vel_r[0] + gxy_r*(dir == 1)*vel_r[0] + gxz_r*(dir == 2)*vel_r[0],
+		gxx_r*(dir == 0)*vel_r[1] + gxy_r*(dir == 1)*vel_r[1] + gxz_r*(dir == 2)*vel_r[1]
 	};
 
 	array<CCTK_REAL, 2> vlowy_r = {
-                gxy_r*vel_r[0] + gyy_r*vel_r[0] + gyz_r*dvelz[0],
-                gxy_r*vel_r[1] + gyy_r*vel_r[1] + gyz_r*dvelz[1]
+                gxy_r*(dir == 0)*vel_r[0] + gyy_r*(dir == 1)*vel_r[0] + gyz_r*(dir == 2)*vel_r[0],
+                gxy_r*(dir == 0)*vel_r[1] + gyy_r*(dir == 1)*vel_r[1] + gyz_r*(dir == 2)*vel_r[1]
         };
 
 	array<CCTK_REAL, 2> vlowz_r = {
-                gxz_r*vel_r[0] + gyz_r*vel_r[0] + gzz_r*dvelz[0],
-                gxz_r*vel_r[1] + gyz_r*vel_r[1] + gzz_r*dvelz[1]
+                gxz_r*(dir == 0)*vel_r[0] + gyz_r*(dir == 1)*vel_r[0] + gzz_r*(dir == 2)*vel_r[0],
+                gxz_r*(dir == 0)*vel_r[1] + gyz_r*(dir == 1)*vel_r[1] + gzz_r*(dir == 2)*vel_r[1]
         };
 
         //array<array<CCTK_REAL, 2>, 3> vlows_r = {vlowx_r, vlowy_r, vlowz_r};
