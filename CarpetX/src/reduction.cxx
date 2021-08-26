@@ -69,7 +69,7 @@ void mpi_reduce(void *restrict x, void *restrict y, int *restrict length,
     return mpi_reduce_typed<reduction<double, dim> >(x, y, length);
   if (inner_datatype == MPI_LONG_DOUBLE)
     return mpi_reduce_typed<reduction<long double, dim> >(x, y, length);
-  abort();
+  CCTK_ERROR("Unsupported MPI datatype");
 }
 } // namespace
 
