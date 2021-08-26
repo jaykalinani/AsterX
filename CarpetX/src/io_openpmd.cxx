@@ -46,6 +46,7 @@ static inline int omp_in_parallel() { return 0; }
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace CarpetX {
@@ -824,7 +825,11 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
           const int np = box.size();
           assert(int(count.at(0) * count.at(1) * count.at(2)) == np);
           for (int d = 0; d < 3; ++d)
-            assert(start.at(d) >= 0);
+            // assert(start.at(d) >= 0);
+            assert(start.at(d) <
+                   numeric_limits<
+                       remove_reference_t<decltype(start.at(d))> >::max() /
+                       2);
           for (int d = 0; d < 3; ++d)
             assert(start.at(d) + count.at(d) <= extent.at(d));
 
@@ -1229,7 +1234,11 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
           const int np = box.size();
           assert(int(count.at(0) * count.at(1) * count.at(2)) == np);
           for (int d = 0; d < 3; ++d)
-            assert(start.at(d) >= 0);
+            // assert(start.at(d) >= 0);
+            assert(start.at(d) <
+                   numeric_limits<
+                       remove_reference_t<decltype(start.at(d))> >::max() /
+                       2);
           for (int d = 0; d < 3; ++d)
             assert(start.at(d) + count.at(d) <= extent.at(d));
 
