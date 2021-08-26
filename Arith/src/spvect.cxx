@@ -10,6 +10,8 @@
 
 namespace Arith {
 
+#ifndef __CUDACC__
+
 namespace {
 void test_spvect() {
   using R = CCTK_REAL;
@@ -85,11 +87,15 @@ void test_dual_spvect() {
 
 } // namespace
 
+#endif
+
 extern "C" void Test_spvect(CCTK_ARGUMENTS) {
+#ifndef __CUDACC__
   CCTK_INFO("Test_spvect");
 
   test_spvect();
   test_dual_spvect();
+#endif
 }
 
 } // namespace Arith

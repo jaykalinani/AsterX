@@ -43,15 +43,23 @@ template <> struct zero<long long> : integral_constant<long long, 0> {};
 template <> struct zero<float> {
   typedef float value_type;
   static constexpr value_type value = 0;
-  constexpr ARITH_INLINE operator value_type() const { return value; }
-  constexpr ARITH_INLINE value_type operator()() const { return value; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return value;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return value;
+  }
 };
 
 template <> struct zero<double> {
   typedef double value_type;
   static constexpr value_type value = 0;
-  constexpr ARITH_INLINE operator value_type() const { return value; }
-  constexpr ARITH_INLINE value_type operator()() const { return value; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return value;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return value;
+  }
 };
 
 // Return the value one for a given type
@@ -66,15 +74,23 @@ template <> struct one<long> : integral_constant<long, 1> {};
 template <> struct one<float> {
   typedef float value_type;
   static constexpr value_type value = 1;
-  constexpr ARITH_INLINE operator value_type() const { return value; }
-  constexpr ARITH_INLINE value_type operator()() const { return value; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return value;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return value;
+  }
 };
 
 template <> struct one<double> {
   typedef double value_type;
   static constexpr value_type value = 1;
-  constexpr ARITH_INLINE operator value_type() const { return value; }
-  constexpr ARITH_INLINE value_type operator()() const { return value; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return value;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return value;
+  }
 };
 
 // Return the value nan for a given type
@@ -93,15 +109,23 @@ struct nan<long> : integral_constant<long, numeric_limits<long>::min()> {};
 template <> struct nan<float> {
   typedef float value_type;
   static constexpr value_type value = numeric_limits<value_type>::quiet_NaN();
-  constexpr ARITH_INLINE operator value_type() const { return value; }
-  constexpr ARITH_INLINE value_type operator()() const { return value; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return value;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return value;
+  }
 };
 
 template <> struct nan<double> {
   typedef double value_type;
   static constexpr value_type value = numeric_limits<value_type>::quiet_NaN();
-  constexpr ARITH_INLINE operator value_type() const { return value; }
-  constexpr ARITH_INLINE value_type operator()() const { return value; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return value;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return value;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,13 +134,13 @@ template <> struct nan<double> {
 
 template <int imin, int imax, int istep = 1, typename F,
           enable_if_t<(istep > 0 ? imin >= imax : imin <= imax)> * = nullptr>
-constexpr ARITH_INLINE void unroll_for(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST void unroll_for(const F &f) {
   // done: do nothing
 }
 
 template <int imin, int imax, int istep = 1, typename F,
           enable_if_t<!(istep > 0 ? imin >= imax : imin <= imax)> * = nullptr>
-constexpr ARITH_INLINE void unroll_for(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST void unroll_for(const F &f) {
   f(imin);
   unroll_for<imin + istep, imax, istep>(f);
 }
@@ -124,34 +148,39 @@ constexpr ARITH_INLINE void unroll_for(const F &f) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Return true if all elements of a container are true
-constexpr ARITH_INLINE bool all(bool x) { return x; }
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool all(bool x) { return x; }
 
 // Return true if any elements of a container are true
-constexpr ARITH_INLINE bool any(bool x) { return x; }
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool any(bool x) { return x; }
 
 // Return true if there is a nan anywhere in x. This always returns a bool, even
 // when x is a vector or SIMD type that would otherwise perform operations
 // pointwise. Use this for debugging.
-constexpr ARITH_INLINE bool anyisnan(const float &x) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool anyisnan(const float &x) {
   using std::isnan;
   return isnan(x);
 }
-constexpr ARITH_INLINE bool anyisnan(const double &x) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool anyisnan(const double &x) {
   using std::isnan;
   return isnan(x);
 }
 
 // if-then-else function that can be used with SIMD types
 template <typename T, typename U>
-constexpr ARITH_INLINE auto if_else(bool c, const T &x, const U &y) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto if_else(bool c, const T &x,
+                                                            const U &y) {
   return c ? x : y;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // bitsign(i) = (-1)^i, the converse to signbit
-constexpr int bitsign(bool c) { return if_else(c, -1, 1); }
-constexpr int bitsign(int i) { return bitsign(i % 2 != 0); }
+constexpr ARITH_DEVICE ARITH_HOST int bitsign(bool c) {
+  return if_else(c, -1, 1);
+}
+constexpr ARITH_DEVICE ARITH_HOST int bitsign(int i) {
+  return bitsign(i % 2 != 0);
+}
 
 // Return x if y>0, -x if y<0
 template <typename T>

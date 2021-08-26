@@ -197,10 +197,10 @@ template <typename T> struct zero<cplx<T> > {
   typedef cplx<T> value_type;
   // static constexpr value_type value = cplx<T>(zero<T>::value,
   // zero<T>::value);
-  constexpr ARITH_INLINE operator value_type() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
     return cplx<T>(zero<T>(), zero<T>());
   }
-  constexpr ARITH_INLINE value_type operator()() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
     return cplx<T>(zero<T>(), zero<T>());
   }
 };
@@ -208,10 +208,10 @@ template <typename T> struct zero<cplx<T> > {
 template <typename T> struct one<cplx<T> > {
   typedef cplx<T> value_type;
   // static constexpr value_type value = cplx<T>(one<T>::value, zero<T>::value);
-  constexpr ARITH_INLINE operator value_type() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
     return cplx<T>(one<T>(), zero<T>());
   }
-  constexpr ARITH_INLINE value_type operator()() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
     return cplx<T>(one<T>(), zero<T>());
   }
 };
@@ -219,10 +219,10 @@ template <typename T> struct one<cplx<T> > {
 template <typename T> struct nan<cplx<T> > {
   typedef cplx<T> value_type;
   // static constexpr value_type value = cplx<T>(nan<T>::value, nan<T>::value);
-  constexpr ARITH_INLINE operator value_type() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
     return cplx<T>(nan<T>(), nan<T>());
   }
-  constexpr ARITH_INLINE value_type operator()() const {
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
     return cplx<T>(nan<T>(), nan<T>());
   }
 };

@@ -39,112 +39,117 @@ public:
   // using const_reverse_iterator =
   //     typename std::array<T, N>::const_reverse_iterator;
 
-  smallvector(const smallvector &) = default;
-  smallvector(smallvector &&) = default;
-  smallvector &operator=(const smallvector &) = default;
-  smallvector &operator=(smallvector &&) = default;
+  constexpr smallvector(const smallvector &) = default;
+  constexpr smallvector(smallvector &&) = default;
+  constexpr smallvector &operator=(const smallvector &) = default;
+  constexpr smallvector &operator=(smallvector &&) = default;
 
-  constexpr smallvector() : elts{}, sz(0) {}
+  constexpr ARITH_DEVICE ARITH_HOST smallvector() : elts{}, sz(0) {}
 
   // constexpr smallvector(const std::initializer_list<T> &lst)
   //     : elts(std::array<T, N>(vect<T, N>(lst))), sz(lst.size()) {}
-  constexpr smallvector(const std::initializer_list<T> &lst)
+  constexpr ARITH_DEVICE ARITH_HOST
+  smallvector(const std::initializer_list<T> &lst)
       : elts(construct_array<T, N>([&lst](const size_type i) {
           return i < lst.size() ? lst.begin()[i] : T{};
         })),
         sz(lst.size()) {}
   template <size_type N1>
-  constexpr smallvector(const std::array<T, N1> &elts_)
+  constexpr ARITH_DEVICE ARITH_HOST smallvector(const std::array<T, N1> &elts_)
       : elts(construct_array<T, N>(
             [&elts_](const size_type i) { return i < N1 ? elts_[i] : T{}; })),
         sz(N1) {}
 
-  constexpr bool empty() const { return sz == 0; }
-  constexpr size_type size() const { return sz; }
-  constexpr size_type max_size() const { return N; }
+  constexpr ARITH_DEVICE ARITH_HOST bool empty() const { return sz == 0; }
+  constexpr ARITH_DEVICE ARITH_HOST size_type size() const { return sz; }
+  constexpr ARITH_DEVICE ARITH_HOST size_type max_size() const { return N; }
 
-  void resize(const size_type newsz) {
+  ARITH_DEVICE ARITH_HOST void resize(const size_type newsz) {
     debug_assert(newsz <= N);
     sz = newsz;
   }
 
-  const_reference at(const size_type i) const {
+  ARITH_DEVICE ARITH_HOST const_reference at(const size_type i) const {
     if (i >= sz)
       throw std::out_of_range();
     return elts[i];
   }
-  reference at(const size_type i) {
+  ARITH_DEVICE ARITH_HOST reference at(const size_type i) {
     if (i >= sz)
       throw std::out_of_range();
     return elts[i];
   }
-  constexpr const_reference operator[](const size_type i) const {
+  constexpr ARITH_DEVICE ARITH_HOST const_reference
+  operator[](const size_type i) const {
     debug_assert(i < sz);
     return elts[i];
   }
-  constexpr reference operator[](const size_type i) {
+  constexpr ARITH_DEVICE ARITH_HOST reference operator[](const size_type i) {
     debug_assert(i < sz);
     return elts[i];
   }
 
-  constexpr const_reference front() const {
+  constexpr ARITH_DEVICE ARITH_HOST const_reference front() const {
     debug_assert(sz > 0);
     return elts[0];
   }
-  constexpr reference front() {
+  constexpr ARITH_DEVICE ARITH_HOST reference front() {
     debug_assert(sz > 0);
     return elts[0];
   }
-  constexpr const_reference back() const {
+  constexpr ARITH_DEVICE ARITH_HOST const_reference back() const {
     debug_assert(sz > 0);
     return elts[sz - 1];
   }
-  constexpr reference back() {
+  constexpr ARITH_DEVICE ARITH_HOST reference back() {
     debug_assert(sz > 0);
     return elts[sz - 1];
   }
 
-  const T *data() const { return elts.data(); }
-  T *data() { return elts.data(); }
+  ARITH_DEVICE ARITH_HOST const T *data() const { return elts.data(); }
+  ARITH_DEVICE ARITH_HOST T *data() { return elts.data(); }
 
-  const_iterator begin() const { return &elts[0]; }
-  iterator begin() { return &elts[0]; }
-  const_iterator end() const { return &elts[sz]; }
-  iterator end() { return &elts[sz]; }
+  ARITH_DEVICE ARITH_HOST const_iterator begin() const { return &elts[0]; }
+  ARITH_DEVICE ARITH_HOST iterator begin() { return &elts[0]; }
+  ARITH_DEVICE ARITH_HOST const_iterator end() const { return &elts[sz]; }
+  ARITH_DEVICE ARITH_HOST iterator end() { return &elts[sz]; }
 
   // constexpr const T *rbegin() const { return &elts[0]; }
   // constexpr T *rbegin() { return &elts[0]; }
   // constexpr const T *rend() const { return &elts[sz]; }
   // constexpr T *rend() { return &elts[sz]; }
 
-  void clear() { sz = 0; }
+  ARITH_DEVICE ARITH_HOST void clear() { sz = 0; }
 
-  void push_back(const T &x) {
+  ARITH_DEVICE ARITH_HOST void push_back(const T &x) {
     debug_assert(sz < N);
     elts[sz++] = x;
   }
-  void push_back(T &&x) {
+  ARITH_DEVICE ARITH_HOST void push_back(T &&x) {
     debug_assert(sz < N);
     elts[sz++] = x;
   }
-  void pop_back() {
+  ARITH_DEVICE ARITH_HOST void pop_back() {
     debug_assert(sz > 0);
     --sz;
   }
 
-  template <typename... Args> reference emplace_back(Args &&...args) {
+  template <typename... Args>
+  ARITH_DEVICE ARITH_HOST reference emplace_back(Args &&...args) {
     debug_assert(sz < N);
     return elts[sz++] = T(std::forward<Args>(args)...);
   }
 
-  friend constexpr smallvector operator+(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator+(const smallvector &x) {
     smallvector r;
     r.sz = x.sz;
     for (size_type i = 0; i < r.sz; ++i)
       r.elts[i] = +x.elts[i];
     return r;
   }
-  friend constexpr smallvector operator-(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator-(const smallvector &x) {
     smallvector r;
     r.sz = x.sz;
     for (size_type i = 0; i < r.sz; ++i)
@@ -152,8 +157,8 @@ public:
     return r;
   }
 
-  friend constexpr smallvector operator+(const smallvector &x,
-                                         const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator+(const smallvector &x, const smallvector &y) {
     smallvector r;
     debug_assert(x.sz == y.sz);
     using std::min;
@@ -162,8 +167,8 @@ public:
       r.elts[i] = x.elts[i] + y.elts[i];
     return r;
   }
-  friend constexpr smallvector operator-(const smallvector &x,
-                                         const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator-(const smallvector &x, const smallvector &y) {
     smallvector r;
     debug_assert(x.sz == y.sz);
     using std::min;
@@ -173,21 +178,24 @@ public:
     return r;
   }
 
-  friend constexpr smallvector operator*(const T &a, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator*(const T &a, const smallvector &y) {
     smallvector r;
     r.sz = y.sz;
     for (size_type i = 0; i < r.sz; ++i)
       r.elts[i] = a * y.elts[i];
     return r;
   }
-  friend constexpr smallvector operator*(const smallvector &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator*(const smallvector &x, const T &b) {
     smallvector r;
     r.sz = x.sz;
     for (size_type i = 0; i < r.sz; ++i)
       r.elts[i] = x.elts[i] * b;
     return r;
   }
-  friend constexpr smallvector operator/(const smallvector &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator/(const smallvector &x, const T &b) {
     smallvector r;
     r.sz = x.sz;
     for (size_type i = 0; i < r.sz; ++i)
@@ -196,7 +204,8 @@ public:
   }
   template <typename T1 = T,
             typename = std::enable_if_t<std::is_integral_v<T1> > >
-  friend constexpr smallvector operator%(const smallvector &x, const T &b) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  operator%(const smallvector &x, const T &b) {
     smallvector r;
     r.sz = x.sz;
     for (size_type i = 0; i < r.sz; ++i)
@@ -204,7 +213,8 @@ public:
     return r;
   }
 
-  friend constexpr smallvector abs(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST smallvector
+  abs(const smallvector &x) {
     smallvector r;
     r.sz = x.sz;
     using std::abs;
@@ -213,32 +223,33 @@ public:
     return r;
   }
 
-  friend constexpr T maximum(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST T maximum(const smallvector &x) {
     T r = -std::numeric_limits<T>::infinity();
     for (size_type i = 0; i < x.sz; ++i)
       r = max1(r, x.elts[i]);
     return r;
   }
-  friend constexpr T minimum(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST T minimum(const smallvector &x) {
     T r = std::numeric_limits<T>::infinity();
     for (size_type i = 0; i < x.sz; ++i)
       r = min1(r, x.elts[i]);
     return r;
   }
-  friend constexpr T prod(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST T prod(const smallvector &x) {
     T r = 1;
     for (size_type i = 0; i < x.sz; ++i)
       r *= x.elts[i];
     return r;
   }
-  friend constexpr T sum(const smallvector &x) {
+  friend constexpr ARITH_DEVICE ARITH_HOST T sum(const smallvector &x) {
     T r = 0;
     for (size_type i = 0; i < x.sz; ++i)
       r += x.elts[i];
     return r;
   }
 
-  friend constexpr bool operator==(const smallvector &x, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool
+  operator==(const smallvector &x, const smallvector &y) {
     if (x.sz != y.sz)
       return false;
     for (size_type i = 0; i < x.sz; ++i)
@@ -246,10 +257,12 @@ public:
         return false;
     return true;
   }
-  friend constexpr bool operator!=(const smallvector &x, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool
+  operator!=(const smallvector &x, const smallvector &y) {
     return !(x == y);
   }
-  friend constexpr bool operator<(const smallvector &x, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool
+  operator<(const smallvector &x, const smallvector &y) {
     using std::min;
     for (size_type i = 0; i < min(x.sz, y.sz); ++i) {
       if (x.elts[i] < y.elts[i])
@@ -259,13 +272,16 @@ public:
     }
     return x.sz < y.sz;
   }
-  friend constexpr bool operator>(const smallvector &x, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool
+  operator>(const smallvector &x, const smallvector &y) {
     return y < x;
   }
-  friend constexpr bool operator<=(const smallvector &x, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool
+  operator<=(const smallvector &x, const smallvector &y) {
     return !(y < x);
   }
-  friend constexpr bool operator>=(const smallvector &x, const smallvector &y) {
+  friend constexpr ARITH_DEVICE ARITH_HOST bool
+  operator>=(const smallvector &x, const smallvector &y) {
     return !(x < y);
   }
 
