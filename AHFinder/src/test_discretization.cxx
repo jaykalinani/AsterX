@@ -41,7 +41,7 @@ extern "C" void AHFinder_test_discretization(CCTK_ARGUMENTS) {
         if (mm == 0) {
           alm(ll, mm) = 1;
         } else {
-          alm(ll, mm) = cc == 0 ? 1 : 1i;
+          alm(ll, mm) = cc == 0 ? 1.0 : 1.0i;
           alm(ll, -mm) = T(bitsign(mm)) * conj(alm(ll, mm));
         }
 
@@ -60,7 +60,7 @@ extern "C" void AHFinder_test_discretization(CCTK_ARGUMENTS) {
               if (mm == 0) {
                 sc = sYlm(0, ll, mm, theta, phi);
               } else {
-                const complex<T> c = cc == 0 ? 1 : 1i;
+                const complex<T> c = cc == 0 ? 1.0 : 1.0i;
                 sc = c * sYlm(0, ll, mm, theta, phi) +
                      T(bitsign(mm)) * conj(c) * sYlm(0, ll, -mm, theta, phi);
               }
@@ -104,7 +104,7 @@ extern "C" void AHFinder_test_discretization(CCTK_ARGUMENTS) {
               if (mm == 0) {
                 dsc = dsYlm(0, ll, mm, theta, phi);
               } else {
-                const complex<T> c = cc == 0 ? 1 : 1i;
+                const complex<T> c = cc == 0 ? 1.0 : 1.0i;
                 const array<complex<T>, 2> dsc_p = dsYlm(0, ll, mm, theta, phi);
                 const array<complex<T>, 2> dsc_m =
                     dsYlm(0, ll, -mm, theta, phi);
