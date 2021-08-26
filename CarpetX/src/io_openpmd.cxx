@@ -422,8 +422,18 @@ int carpetx_openpmd_t::InputOpenPMDParameters(const std::string &input_dir,
       abort();
     }
     filename = std::make_optional<std::string>(buf.str());
-    series = std::make_optional<openPMD::Series>(
-        *filename, openPMD::Access::READ_ONLY, MPI_COMM_WORLD, options);
+    try {
+      series = std::make_optional<openPMD::Series>(
+          *filename, openPMD::Access::READ_ONLY, MPI_COMM_WORLD, options);
+    } catch (const openPMD::no_such_file_error &) {
+      // Did not find a checkpoint file
+      if (io_verbose) {
+        CCTK_VINFO("Not recovering parameters:");
+        CCTK_VINFO("  Could not find an openPMD checkpoint file \"%s\"",
+                   filename->c_str());
+      }
+      return -1; // no iteration found
+    }
     read_iters =
         std::make_optional<openPMD::ReadIterations>(series->readIterations());
   }
