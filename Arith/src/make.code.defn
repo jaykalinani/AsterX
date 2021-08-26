@@ -2,6 +2,7 @@
 
 # Source files in this directory
 SRCS =						\
+	cons.cxx				\
 	cplx.cxx				\
 	div.cxx					\
 	dual.cxx				\
