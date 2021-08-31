@@ -9,7 +9,7 @@
 #include <array>
 #include <cmath>
 
-namespace HydroToyGPU {
+namespace GRHydroToyGPU {
 using namespace std;
 using namespace Loop;
 
@@ -37,7 +37,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T minmod(const T &x,
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
 template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_Fluxes;
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
   static_assert(dir >= 0 && dir < 3, "");
@@ -551,8 +551,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
       });
 }
 
-extern "C" void HydroToyGPU_Fluxes(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_Fluxes;
+extern "C" void GRHydroToyGPU_Fluxes(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
   CalcFlux<0>(cctkGH);
@@ -560,4 +560,4 @@ extern "C" void HydroToyGPU_Fluxes(CCTK_ARGUMENTS) {
   CalcFlux<2>(cctkGH);
 }
 
-} // namespace HydroToyGPU
+} // namespace GRHydroToyGPU

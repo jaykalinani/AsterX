@@ -6,14 +6,14 @@
 
 #include <cassert>
 
-namespace HydroToyGPU {
+namespace GRHydroToyGPU {
 using namespace std;
 using namespace Loop;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void HydroToyGPU_FluxBoundaries(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_FluxBoundaries;
+extern "C" void GRHydroToyGPU_FluxBoundaries(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_FluxBoundaries;
 
   // Flux boundary conditions are not implemented yet. We require a
   // grid structure that has no boundaries, i.e. which has symmetries
@@ -40,4 +40,4 @@ extern "C" void HydroToyGPU_FluxBoundaries(CCTK_ARGUMENTS) {
                             });
 }
 
-} // namespace HydroToyGPU
+} // namespace GRHydroToyGPU

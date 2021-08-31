@@ -6,27 +6,28 @@
 
 #include <cmath>
 
-namespace HydroToyGPU {
+namespace GRHydroToyGPU {
 using namespace std;
 using namespace Loop;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T fmax5(T x0, T x1,
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T fmax6(T x0, T x1,
                                                                   T x2, T x3,
-                                                                  T x4) {
+                                                                  T x4, T x5) {
   T r01 = fmax(x0, x1);
   T r23 = fmax(x2, x3);
   T r014 = fmax(r01, x4);
   T r01234 = fmax(r014, r23);
-  return r01234;
+  T r012345 = fmax(r01234, x5);
+  return r012345;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void HydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_EstimateError;
+extern "C" void GRHydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
   const GridDescBaseDevice grid(cctkGH);
@@ -34,10 +35,12 @@ extern "C" void HydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
   const GF3D2layout gf_layout(cctkGH, cell_centred);
 
   const GF3D2<const CCTK_REAL> gf_rho(gf_layout, rho);
-  const GF3D2<const CCTK_REAL> gf_momx(gf_layout, momx);
-  const GF3D2<const CCTK_REAL> gf_momy(gf_layout, momy);
-  const GF3D2<const CCTK_REAL> gf_momz(gf_layout, momz);
-  const GF3D2<const CCTK_REAL> gf_etot(gf_layout, etot);
+  const GF3D2<const CCTK_REAL> gf_velx(gf_layout, velx);
+  const GF3D2<const CCTK_REAL> gf_vely(gf_layout, vely);
+  const GF3D2<const CCTK_REAL> gf_velz(gf_layout, velz);
+  const GF3D2<const CCTK_REAL> gf_eps(gf_layout, eps);
+  const GF3D2<const CCTK_REAL> gf_press(gf_layout, press);
+
 
   const GF3D2<CCTK_REAL> gf_regrid_error(gf_layout, regrid_error);
 
@@ -59,9 +62,9 @@ extern "C" void HydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
             };
 
             gf_regrid_error(p.I) =
-                fmax5(calcerr(gf_rho), calcerr(gf_momx), calcerr(gf_momy),
-                      calcerr(gf_momz), calcerr(gf_etot));
+                fmax6(calcerr(gf_rho), calcerr(gf_velx), calcerr(gf_vely),
+                      calcerr(gf_velz), calcerr(gf_eps), calcerr(gf_press));
           });
 }
 
-} // namespace HydroToyGPU
+} // namespace GRHydroToyGPU

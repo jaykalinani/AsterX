@@ -4,16 +4,16 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
-namespace HydroToyGPU {
+namespace GRHydroToyGPU {
 using namespace std;
 using namespace Loop;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void HydroToyGPU_Sync(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroToyGPU_Sync;
+extern "C" void GRHydroToyGPU_Sync(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Sync;
 
   // do nothing
 }
 
-} // namespace HydroToyGPU
+} // namespace GRHydroToyGPU

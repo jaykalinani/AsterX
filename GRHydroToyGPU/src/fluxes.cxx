@@ -76,7 +76,6 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   const GF3D2<const CCTK_REAL> gf_velx(gf_layout_cell, velx);
   const GF3D2<const CCTK_REAL> gf_vely(gf_layout_cell, vely);
   const GF3D2<const CCTK_REAL> gf_velz(gf_layout_cell, velz);
-  const GF3D2<const CCTK_REAL> gf_w_lorentz(gf_layout_cell, w_lorentz);
   const GF3D2<const CCTK_REAL> gf_press(gf_layout_cell, press);
   const GF3D2<const CCTK_REAL> gf_eps(gf_layout_cell, eps);
 
@@ -147,13 +146,11 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
       };
 
   const auto calcflux = [=] CCTK_DEVICE CCTK_HOST(
-                            CCTK_REAL var_m, CCTK_REAL var_p, CCTK_REAL flux_m,
-                            CCTK_REAL flux_p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    CCTK_REAL lambda_m = +1.0;
-    CCTK_REAL lambda_p = -1.0;
+                           array<CCTK_REAL, 2> var, array<CCTK_REAL, 2> flux) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    array<CCTK_REAL, 2> lambda = {+1.0, -1.0};
     CCTK_REAL llf =
-        0.5 * ((flux_m + flux_p) -
-               fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
+        0.5 * ((flux[0] + flux[1]) -
+               fmax(fabs(lambda[0]), fabs(lambda[1])) * (var[1] - var[0]));
     // return dA * llf;
     return llf;
   };
@@ -293,33 +290,33 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         }; 
 
 	//computing fluxes of conserved variabes
-        const CCTK_REAL flux_dens = {
+        const array<CCTK_REAL, 2> flux_dens = {
 		dens_rc[0] * (vel_rc[0] - beta_avg / alp_avg),
                 dens_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
 	};
 
-        const CCTK_REAL flux_momx = {
+        const array<CCTK_REAL, 2> flux_momx = {
 		momx_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
 		   + (dir == 0) * sqrt_detg * press_rc[0],
 	        momx_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
 		   + (dir == 0) * sqrt_detg * press_rc[1]
         };
 
-	const CCTK_REAL flux_momy = {
+	const array<CCTK_REAL, 2> flux_momy = {
 		momy_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
 		   + (dir == 1) * sqrt_detg * press_rc[0],
                 momy_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
 	           + (dir == 1) * sqrt_detg * press_rc[1]
         };
 
-	const CCTK_REAL flux_momz = {
+	const array<CCTK_REAL, 2> flux_momz = {
 		momz_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
 		   + (dir == 2) * sqrt_detg * press_rc[0],
                 momz_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
 		   + (dir == 2) * sqrt_detg * press_rc[1]
         };
 
-        const CCTK_REAL flux_tau = {
+        const array<CCTK_REAL, 2> flux_tau = {
 		tau_rc[0] * (vel_rc[0] - beta_avg / alp_avg)
                    + sqrt_detg * press_rc[0] * vel_rc[0],        
                 tau_rc[1] * (vel_rc[1] - beta_avg / alp_avg)
