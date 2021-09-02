@@ -39,6 +39,6 @@ steps:
     cat /home/vsts_azpcontainer/simulations/sim-test-1/output-0000/TEST/sim/AdvectHRSC/square.log
     ./simfactory/bin/sim submit sim-test-2 --test --procs=2 --num-threads=1
     cat /home/vsts_azpcontainer/simulations/sim-test-2/output-0000/sim-test-2.log
-    grep -q 'Number failed            -> 0' /home/vsts_azpcontainer/simulations/sim-test-1/output-0000/sim-test-1.log
-    grep -q 'Number failed            -> 0' /home/vsts_azpcontainer/simulations/sim-test-2/output-0000/sim-test-2.log
+    grep -q 'Number failed *-> 0' /home/vsts_azpcontainer/simulations/sim-test-1/output-0000/sim-test-1.log
+    grep -q 'Number failed *-> 0' /home/vsts_azpcontainer/simulations/sim-test-2/output-0000/sim-test-2.log
   displayName: Run tests
