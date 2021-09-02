@@ -1,10 +1,8 @@
 # How to build this Docker image:
-#     docker build . --tag einsteintoolkit/cactus-amrex
+#     docker build --tag einsteintoolkit/cactus-amrex .
 #     docker push einsteintoolkit/cactus-amrex
 
-# Use Debian
-# - We need a rather recent Debian to get a recent cmake for AMReX
-FROM debian:testing-20210621-slim
+FROM ubuntu:20.04
 
 RUN mkdir /cactus
 WORKDIR /cactus
@@ -17,7 +15,6 @@ RUN apt-get update && \
     apt-get --yes --no-install-recommends install \
         build-essential \
         ca-certificates \
-        cmake \
         g++ \
         gfortran \
         git \
@@ -42,6 +39,16 @@ RUN apt-get update && \
         zlib1g-dev \
         && \
     rm -rf /var/lib/apt/lists/*
+
+# Install cmake
+# We need a modern cmake to build AMReX
+RUN mkdir dist && \
+    (cd dist && \
+    wget https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-linux-x86_64.tar.gz && \
+    tar xzf cmake-3.21.2-linux-x86_64.tar.gz && \
+    rsync -r cmake-3.21.2-linux-x86_64/ /usr/local && \
+    true) && \
+    rm -rf dist
 
 # Install ADIOS2
 # ADIOS2 is a parallel I/O library, comparable to HDF5
@@ -68,7 +75,13 @@ RUN mkdir src && \
     cd nsimd-2.2 && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -Dsimd=AVX2 -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_COMPILER=gcc \
+        -DCMAKE_CXX_COMPILER=g++ \
+        -Dsimd=AVX2 \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true) && \
@@ -79,9 +92,9 @@ RUN mkdir src && \
 # - Depends on ADIOS2
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/openPMD/openPMD-api/archive/refs/tags/0.14.0.tar.gz && \
-    tar xzf 0.14.0.tar.gz && \
-    cd openPMD-api-0.14.0 && \
+    wget https://github.com/openPMD/openPMD-api/archive/refs/tags/0.14.2.tar.gz && \
+    tar xzf 0.14.2.tar.gz && \
+    cd openPMD-api-0.14.2 && \
     mkdir build && \
     cd build && \
     cmake .. && \
@@ -99,7 +112,11 @@ RUN mkdir src && \
     cd silo-4.10.2-bsd && \
     mkdir build && \
     cd build && \
-    ../configure --disable-fortran --enable-optimization --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/serial/include,/usr/lib/x86_64-linux-gnu/hdf5/serial/lib --prefix=/usr/local && \
+    ../configure \
+        --disable-fortran \
+        --enable-optimization \
+        --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/serial/include,/usr/lib/x86_64-linux-gnu/hdf5/serial/lib \
+        --prefix=/usr/local && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true) && \
@@ -155,7 +172,12 @@ RUN mkdir src && \
     cd amrex-21.08 && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Debug -DAMReX_OMP=ON -DAMReX_PARTICLES=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DAMReX_OMP=ON \
+        -DAMReX_PARTICLES=ON \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        .. && \
     make -j$(nproc) && \
     make -j$(nproc) install && \
     true)
