@@ -15,7 +15,6 @@
 
 #ifdef HAVE_CAPABILITY_openPMD_api
 
-#include <nlohmann/json.hpp>
 #include <openPMD/openPMD.hpp>
 
 #ifdef _OPENMP
@@ -64,35 +63,25 @@ constexpr openPMD::IterationEncoding iterationEncoding =
     openPMD::IterationEncoding::fileBased;
 
 //  constexpr const char options[]
-const nlohmann::json json_options{
-    {"adios2",
-     {
-         {"engine",
-          {
-              {"type", "BP4"},
-              {"parameters",
-               {
-                   {"BufferGrowthFactor", "2.0"},
-                   // {"MaxBufferSize", "500 MB"},
-               }},
-          }},
-         {"dataset",
-          {
-              {"operators",
-               {
-                   {
-                       {"type", "blosc"},
-                       {"parameters",
-                        {
-                            {"clevel", "9"},
-                            {"doshuffle", "BLOSC_BITSHUFFLE"},
-                        }},
-                   },
-               }},
-          }},
-     }},
-};
-const std::string options = json_options.dump();
+const std::string options = "{"
+                            "  \"adios2\": {"
+                            "    \"engine\": {"
+                            "      \"type\": \"BP4\","
+                            "      \"parameters\": {"
+                            "        \"BufferGrowthFactor\": \"2.0\""
+                            "      }"
+                            "    },"
+                            "    \"dataset\": {"
+                            "      \"operators\": {"
+                            "        \"type\": \"blosc\","
+                            "        \"parameters\": {"
+                            "          \"clevel\": \"9\","
+                            "          \"doshuffle\": \"BLOSC_BITSHUFFLE\""
+                            "        }"
+                            "      }"
+                            "    }"
+                            "  }"
+                            "}";
 
 constexpr bool input_ghosts = false;
 constexpr bool output_ghosts = false;
