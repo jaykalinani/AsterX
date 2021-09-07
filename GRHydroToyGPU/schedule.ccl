@@ -61,12 +61,14 @@ SCHEDULE GRHydroToyGPU_EstimateError AT poststep
 
 # Time stepping
 
-SCHEDULE GRHydroToyGPU_Pressure IN ODESolvers_RHS
+SCHEDULE GRHydroToyGPU_Con2Prim_RePrimAnd IN ODESolvers_RHS
 {
   LANG: C
+  READS: ADMBase::metric(everywhere)
   READS: dens(everywhere) tau(everywhere) mom(everywhere)
   WRITES: HydroBase::rho(everywhere) 
   WRITES: HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+  WRITES: dens(everywhere) tau(everywhere) mom(everywhere)
 #TODO: same order as in interface
 } "Calculate pressure"
 
