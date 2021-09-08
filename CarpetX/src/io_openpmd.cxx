@@ -48,6 +48,11 @@ static inline int omp_in_parallel() { return 0; }
 #include <type_traits>
 #include <vector>
 
+#if (!openPMD_HAVE_MPI)
+#error                                                                         \
+    "CarpetX requires openPMD_api with MPI support. Please add -DopenPMD_USE_MPI=ON when building openPMD."
+#endif
+
 namespace CarpetX {
 
 constexpr bool io_verbose = true;
