@@ -38,7 +38,7 @@ ADMBase::initial_data = "Cartesian Minkowski"
 ADMBase::initial_lapse = "one"
 ADMBase::initial_shift = "zero"
 
-ADMBase::cowling = yes
+ADMBase::set_adm_variables_during_evolution = yes
 
 IO::out_dir = $parfile
 IO::out_every = 10

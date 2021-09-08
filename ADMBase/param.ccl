@@ -33,7 +33,7 @@ KEYWORD initial_dtshift "Initial dtshift value"
   "zero" :: "Dtshift is zero"
 } "zero"
 
-BOOLEAN cowling "Set ADM variables during evolution"
+BOOLEAN set_adm_variables_during_evolution "Set ADM variables during evolution"
 {
 } no
 
