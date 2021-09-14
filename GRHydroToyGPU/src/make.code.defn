@@ -6,7 +6,6 @@ SRCS =	boundaries.cxx				\
 	flux_boundaries.cxx			\
 	fluxes.cxx				\
 	initialize.cxx				\
-        prim2con.cxx                            \
 	con2prim.cxx				\
 	rhs.cxx					\
 	sync.cxx

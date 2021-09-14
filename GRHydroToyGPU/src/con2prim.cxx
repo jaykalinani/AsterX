@@ -23,8 +23,8 @@ namespace GRHydroToyGPU {
     ****************************************************************************/
 
     // RePrimAnd C2P
-    extern "C" void GRHydroToyGPU_Con2Prim_RePrimAnd(CCTK_ARGUMENTS) {
-        DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Con2Prim_RePrimAnd;
+    extern "C" void GRHydroToyGPU_Con2Prim(CCTK_ARGUMENTS) {
+        DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Con2Prim;
         DECLARE_CCTK_PARAMETERS;
 
         const GridDescBaseDevice grid(cctkGH);
@@ -63,7 +63,7 @@ namespace GRHydroToyGPU {
                            max_b, atmo, c2p_acc, max_iter);
 
         // Loop over the entire grid (0 to n-1 points in each direction)
-        grid.loop_int_device<1, 1, 1>(
+        grid.loop_all_device<1, 1, 1>(
             grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(const PointDesc &p)
                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
