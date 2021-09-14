@@ -3,7 +3,7 @@
 STORAGE: dens mom tau
 STORAGE: flux_x flux_y flux_z
 STORAGE: densrhs momrhs taurhs
-
+STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 
 # Initial conditions
 
