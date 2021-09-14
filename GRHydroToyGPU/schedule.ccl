@@ -13,6 +13,18 @@ SCHEDULE GRHydroToyGPU_Initialize AT initial
   WRITES: dens(interior) tau(interior) mom(interior)
 } "Set up hydro initial conditions"
 
+SCHEDULE GRHydroToyGPU_Prim2Con AT initial AFTER GRHydroToyGPU_Initialize BEFORE GRHydroToyGPU_Sync
+{
+  LANG: C
+  READS: ADMBase::metric(interior) 
+  READS: HydroBase::rho(interior) 
+  READS: HydroBase::vel(interior) 
+  READS: HydroBase::eps(interior) 
+  READS: HydroBase::press(interior)
+  WRITES: HydroBase::eps(interior)
+  WRITES: dens(interior) tau(interior) mom(interior)
+} "Calculate conservative variables from primitive variables"
+
 SCHEDULE GRHydroToyGPU_Sync AT initial AFTER GRHydroToyGPU_Initialize
 {
   LANG: C
@@ -64,13 +76,14 @@ SCHEDULE GRHydroToyGPU_EstimateError AT poststep
 SCHEDULE GRHydroToyGPU_Con2Prim_RePrimAnd IN ODESolvers_RHS
 {
   LANG: C
-  READS: ADMBase::metric(everywhere)
-  READS: dens(everywhere) tau(everywhere) mom(everywhere)
-  WRITES: HydroBase::rho(everywhere) 
-  WRITES: HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
-  WRITES: dens(everywhere) tau(everywhere) mom(everywhere)
-#TODO: same order as in interface
-} "Calculate pressure"
+  READS: ADMBase::metric(interior)
+  READS: dens(interior) tau(interior) mom(interior)
+  WRITES: HydroBase::rho(interior) 
+  WRITES: HydroBase::vel(interior) 
+  WRITES: HydroBase::eps(interior) 
+  WRITES: HydroBase::press(everywhere)
+  WRITES: dens(interior) tau(interior) mom(interior)
+} "Calculate primitive variables from conservative variables"
 
 SCHEDULE GRHydroToyGPU_Fluxes IN ODESolvers_RHS AFTER GRHydroToyGPU_Pressure
 {
