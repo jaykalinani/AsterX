@@ -53,14 +53,18 @@ static_assert(is_same<amrex::Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
 class CactusAmrCore final : public amrex::AmrCore {
+  int patch;
+
 public:
+  vector<bool> level_modified;
+
   CactusAmrCore();
-  CactusAmrCore(const amrex::RealBox *rb, int max_level_in,
+  CactusAmrCore(int patch, const amrex::RealBox *rb, int max_level_in,
                 const amrex::Vector<int> &n_cell_in, int coord = -1,
                 amrex::Vector<amrex::IntVect> ref_ratios =
                     amrex::Vector<amrex::IntVect>(),
                 const int *is_per = nullptr);
-  CactusAmrCore(const amrex::RealBox &rb, int max_level_in,
+  CactusAmrCore(int patch, const amrex::RealBox &rb, int max_level_in,
                 const amrex::Vector<int> &n_cell_in, int coord,
                 amrex::Vector<amrex::IntVect> const &ref_ratios,
                 amrex::Array<int, AMREX_SPACEDIM> const &is_per);
@@ -71,6 +75,9 @@ public:
 
   virtual void ErrorEst(int level, amrex::TagBoxArray &tags, amrex::Real time,
                         int ngrow) override;
+  void SetupLevel(int level, const amrex::BoxArray &ba,
+                  const amrex::DistributionMapping &dm,
+                  const function<string()> &why);
   virtual void
   MakeNewLevelFromScratch(int level, amrex::Real time,
                           const amrex::BoxArray &ba,
@@ -86,10 +93,6 @@ public:
 
 // Cactus grid hierarchy extension
 struct GHExt {
-
-  // AMReX grid structure
-  // TODO: convert this from unique_ptr to optional
-  unique_ptr<CactusAmrCore> amrcore;
 
   struct CommonGroupData {
     int groupindex;
@@ -152,48 +155,74 @@ struct GHExt {
   };
   GlobalData globaldata;
 
-  struct LevelData {
-    int level;
+  struct PatchData {
+    int patch;
 
-    // This level uses subcycling with respect to the next coarser
-    // level. (Ignored for the coarsest level.)
-    bool is_subcycling_level;
+    // AMReX grid structure
+    // TODO: convert this from unique_ptr to optional
+    unique_ptr<CactusAmrCore> amrcore;
 
-    // Iteration and time at which this cycle level is valid
-    rat64 iteration, delta_iteration;
+    struct LevelData {
+      int patch, level;
+      const PatchData &patchdata() const;
+      PatchData &patchdata();
 
-    // Fabamrex::ArrayBase object holding a cell-centred BoxArray for
-    // iterating over grid functions. This stores the grid structure
-    // and its distribution over all processes, but holds no data.
-    unique_ptr<amrex::FabArrayBase> fab;
+      // This level uses subcycling with respect to the next coarser
+      // level. (Ignored for the coarsest level.)
+      bool is_subcycling_level;
 
-    struct GroupData : public CommonGroupData {
-      int level;
-      const LevelData &leveldata() const;
-      LevelData &leveldata();
+      // Iteration and time at which this cycle level is valid
+      rat64 iteration, delta_iteration;
 
-      array<int, dim> indextype;
-      array<int, dim> nghostzones;
-      vector<array<int, dim> > parities;
+      // Fabamrex::ArrayBase object holding a cell-centred BoxArray for
+      // iterating over grid functions. This stores the grid structure
+      // and its distribution over all processes, but holds no data.
+      unique_ptr<amrex::FabArrayBase> fab;
 
-      // each amrex::MultiFab has numvars components
-      vector<unique_ptr<amrex::MultiFab> > mfab; // [time level]
+      struct GroupData : public CommonGroupData {
+        GroupData(int patch, int level, int gi);
 
-      // flux register between this and the next coarser level
-      unique_ptr<amrex::FluxRegister> freg;
-      // associated flux group indices
-      array<int, dim> fluxes; // [dir]
+        int patch, level;
+
+        const LevelData &leveldata() const;
+        LevelData &leveldata();
+
+        array<int, dim> indextype;
+        array<int, dim> nghostzones;
+        vector<array<int, dim> > parities;
+
+        // each amrex::MultiFab has numvars components
+        vector<unique_ptr<amrex::MultiFab> > mfab; // [time level]
+
+        // flux register between this and the next coarser level
+        unique_ptr<amrex::FluxRegister> freg;
+        // associated flux group indices
+        array<int, dim> fluxes; // [dir]
+
+        friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
+                                         const GroupData &groupdata);
+      };
+      // TODO: right now this is sized for the total number of groups
+      vector<unique_ptr<GroupData> > groupdata; // [group index]
 
       friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
-                                       const GroupData &groupdata);
+                                       const LevelData &leveldata);
     };
-    // TODO: right now this is sized for the total number of groups
-    vector<unique_ptr<GroupData> > groupdata; // [group index]
+    vector<LevelData> leveldata; // [reflevel]
 
     friend YAML::Emitter &operator<<(YAML::Emitter &yaml,
-                                     const LevelData &leveldata);
+                                     const PatchData &patchdata);
   };
-  vector<LevelData> leveldata; // [reflevel]
+  vector<PatchData> patchdata; // [patch]
+
+  int num_patches() const { return patchdata.size(); }
+  int num_levels() const {
+    int nlevels = 0;
+    using std::max;
+    for (const auto &pd : patchdata)
+      nlevels = max(nlevels, int(pd.leveldata.size()));
+    return nlevels;
+  }
 
   friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const GHExt &ghext);
   friend ostream &operator<<(ostream &os, const GHExt &ghext);
@@ -201,11 +230,20 @@ struct GHExt {
 
 extern unique_ptr<GHExt> ghext;
 
-inline const GHExt::LevelData &GHExt::LevelData::GroupData::leveldata() const {
-  return ghext->leveldata.at(level);
+inline const GHExt::PatchData &GHExt::PatchData::LevelData::patchdata() const {
+  return ghext->patchdata.at(patch);
 }
-inline GHExt::LevelData &GHExt::LevelData::GroupData::leveldata() {
-  return ghext->leveldata.at(level);
+inline GHExt::PatchData &GHExt::PatchData::LevelData::patchdata() {
+  return ghext->patchdata.at(patch);
+}
+
+inline const GHExt::PatchData::LevelData &
+GHExt::PatchData::LevelData::GroupData::leveldata() const {
+  return ghext->patchdata.at(patch).leveldata.at(level);
+}
+inline GHExt::PatchData::LevelData &
+GHExt::PatchData::LevelData::GroupData::leveldata() {
+  return ghext->patchdata.at(patch).leveldata.at(level);
 }
 
 amrex::Interpolater *get_interpolator(const array<int, dim> indextype);
@@ -215,11 +253,7 @@ typedef void apply_physbcs_t(const amrex::Box &, const amrex::FArrayBox &, int,
                              const amrex::Vector<amrex::BCRec> &, int, int);
 typedef amrex::PhysBCFunct<apply_physbcs_t *> CarpetXPhysBCFunct;
 tuple<CarpetXPhysBCFunct, amrex::Vector<amrex::BCRec> >
-get_boundaries(const GHExt::LevelData::GroupData &groupdata);
-
-void SetupLevel(int level, const amrex::BoxArray &ba,
-                const amrex::DistributionMapping &dm,
-                const function<string()> &why);
+get_boundaries(const GHExt::PatchData::LevelData::GroupData &groupdata);
 
 } // namespace CarpetX
 

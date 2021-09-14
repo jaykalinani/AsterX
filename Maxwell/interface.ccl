@@ -8,14 +8,6 @@ USES INCLUDE HEADER: loop.hxx
 
 
 
-void FUNCTION GetTileExtent(
-  CCTK_POINTER_TO_CONST IN cctkGH,
-  CCTK_INT ARRAY OUT tile_min,
-  CCTK_INT ARRAY OUT tile_max)
-REQUIRES FUNCTION GetTileExtent
-
-
-
 # State vector
 
 CCTK_REAL dyz TYPE=gf TAGS='index={0 1 1} rhs="dtdyz"' "Electric flux"

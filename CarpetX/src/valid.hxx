@@ -228,22 +228,23 @@ struct checksum_t {
 };
 
 struct tiletag_t {
-  int level;
+  int patch, level;
   amrex::Box tilebox;
   int gi, vi, tl;
   tiletag_t() = delete;
 
   friend bool operator==(const tiletag_t &x, const tiletag_t &y) {
-    return make_tuple(x.level, x.tilebox, x.gi, x.vi, x.tl) ==
-           make_tuple(y.level, y.tilebox, y.gi, y.vi, y.tl);
+    return make_tuple(x.patch, x.level, x.tilebox, x.gi, x.vi, x.tl) ==
+           make_tuple(y.patch, y.level, y.tilebox, y.gi, y.vi, y.tl);
   }
   friend bool operator<(const tiletag_t &x, const tiletag_t &y) {
-    return make_tuple(x.level, x.tilebox, x.gi, x.vi, x.tl) <
-           make_tuple(y.level, y.tilebox, y.gi, y.vi, y.tl);
+    return make_tuple(x.patch, x.level, x.tilebox, x.gi, x.vi, x.tl) <
+           make_tuple(y.patch, y.level, y.tilebox, y.gi, y.vi, y.tl);
   }
 
   friend ostream &operator<<(ostream &os, const tiletag_t &x) {
     return os << "tiletag_t{"
+              << "patch:" << x.patch << ","
               << "level:" << x.level << ","
               << "tilebox:" << x.tilebox << ","
               << "gi:" << x.gi << ","

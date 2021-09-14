@@ -123,59 +123,62 @@ reduction<CCTK_REAL, dim> reduce(int gi, int vi, int tl) {
   assert(group.grouptype == CCTK_GF);
 
   reduction<CCTK_REAL, dim> red;
-  for (auto &restrict leveldata : ghext->leveldata) {
-    const auto &restrict groupdata = *leveldata.groupdata.at(gi);
-    const amrex::MultiFab &mfab = *groupdata.mfab.at(tl);
+  for (auto &restrict patchdata : ghext->patchdata) {
+    for (auto &restrict leveldata : patchdata.leveldata) {
+      const auto &restrict groupdata = *leveldata.groupdata.at(gi);
+      const amrex::MultiFab &mfab = *groupdata.mfab.at(tl);
 #warning                                                                       \
     "TODO: Don't overcount vertex-centred grid boundaries; introduce a weight function"
-    unique_ptr<amrex::iMultiFab> finemask_imfab;
+      unique_ptr<amrex::iMultiFab> finemask_imfab;
 
-    warn_if_invalid(groupdata, vi, tl, make_valid_int(),
-                    []() { return "Before reduction"; });
+      warn_if_invalid(groupdata, vi, tl, make_valid_int(),
+                      []() { return "Before reduction"; });
 
-    const auto &restrict geom = ghext->amrcore->Geom(leveldata.level);
-    const CCTK_REAL *restrict const x01 = geom.ProbLo();
-    const CCTK_REAL *restrict const dx1 = geom.CellSize();
-    const vect<CCTK_REAL, dim> dx = {dx1[0], dx1[1], dx1[2]};
-    const vect<CCTK_REAL, dim> x0 = {
-        x01[0] +
-            (mfab.ixType()[0] == amrex::IndexType::CELL ? dx[0] / 2.0 : 0.0),
-        x01[1] +
-            (mfab.ixType()[1] == amrex::IndexType::CELL ? dx[1] / 2.0 : 0.0),
-        x01[2] +
-            (mfab.ixType()[2] == amrex::IndexType::CELL ? dx[2] / 2.0 : 0.0)};
+      const auto &restrict geom = patchdata.amrcore->Geom(leveldata.level);
+      const CCTK_REAL *restrict const x01 = geom.ProbLo();
+      const CCTK_REAL *restrict const dx1 = geom.CellSize();
+      const vect<CCTK_REAL, dim> dx = {dx1[0], dx1[1], dx1[2]};
+      const vect<CCTK_REAL, dim> x0 = {
+          x01[0] +
+              (mfab.ixType()[0] == amrex::IndexType::CELL ? dx[0] / 2.0 : 0.0),
+          x01[1] +
+              (mfab.ixType()[1] == amrex::IndexType::CELL ? dx[1] / 2.0 : 0.0),
+          x01[2] +
+              (mfab.ixType()[2] == amrex::IndexType::CELL ? dx[2] / 2.0 : 0.0)};
 
-    const int fine_level = leveldata.level + 1;
-    if (fine_level < int(ghext->leveldata.size())) {
-      const auto &restrict fine_leveldata = ghext->leveldata.at(fine_level);
-      const auto &restrict fine_groupdata = *fine_leveldata.groupdata.at(gi);
-      const amrex::MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
+      const int fine_level = leveldata.level + 1;
+      if (fine_level < int(patchdata.leveldata.size())) {
+        const auto &restrict fine_leveldata =
+            patchdata.leveldata.at(fine_level);
+        const auto &restrict fine_groupdata = *fine_leveldata.groupdata.at(gi);
+        const amrex::MultiFab &fine_mfab = *fine_groupdata.mfab.at(tl);
 
-      const amrex::IntVect reffact{2, 2, 2};
-      finemask_imfab = make_unique<amrex::iMultiFab>(
-          makeFineMask(mfab, fine_mfab.boxArray(), reffact));
-    }
+        const amrex::IntVect reffact{2, 2, 2};
+        finemask_imfab = make_unique<amrex::iMultiFab>(
+            makeFineMask(mfab, fine_mfab.boxArray(), reffact));
+      }
 
-    auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
-    // TODO: check that multi-threading actually helps and we are not dominated
-    // my memory latency anyway
-    // TODO: document required version of OpenMP to use custom reductions
+      auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
+      // TODO: check that multi-threading actually helps and we are not
+      // dominated my memory latency anyway
+      // TODO: document required version of OpenMP to use custom reductions
 #pragma omp parallel reduction(reduction : red)
-    for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
-      const amrex::Box &bx = mfi.tilebox(); // current region (without ghosts)
-      const array<int, dim> imin{bx.smallEnd(0), bx.smallEnd(1),
-                                 bx.smallEnd(2)};
-      const array<int, dim> imax{bx.bigEnd(0) + 1, bx.bigEnd(1) + 1,
-                                 bx.bigEnd(2) + 1};
+      for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi) {
+        const amrex::Box &bx = mfi.tilebox(); // current region (without ghosts)
+        const array<int, dim> imin{bx.smallEnd(0), bx.smallEnd(1),
+                                   bx.smallEnd(2)};
+        const array<int, dim> imax{bx.bigEnd(0) + 1, bx.bigEnd(1) + 1,
+                                   bx.bigEnd(2) + 1};
 
-      const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
+        const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
 
-      unique_ptr<amrex::Array4<const int> > finemask;
-      if (finemask_imfab)
-        finemask =
-            make_unique<amrex::Array4<const int> >(finemask_imfab->array(mfi));
+        unique_ptr<amrex::Array4<const int> > finemask;
+        if (finemask_imfab)
+          finemask = make_unique<amrex::Array4<const int> >(
+              finemask_imfab->array(mfi));
 
-      red += reduce_array(vars, vi, imin, imax, finemask.get(), x0, dx);
+        red += reduce_array(vars, vi, imin, imax, finemask.get(), x0, dx);
+      }
     }
   }
 

@@ -11,14 +11,6 @@ USES INCLUDE HEADER: simd.hxx
 
 
 
-void FUNCTION GetTileExtent(
-  CCTK_POINTER_TO_CONST IN cctkGH,
-  CCTK_INT ARRAY OUT tile_min,
-  CCTK_INT ARRAY OUT tile_max)
-REQUIRES FUNCTION GetTileExtent
-
-
-
 CCTK_REAL primitive TYPE=gf TAGS='index={1 1 1} checkpoint="no" restrict="no"'
 {
   rho

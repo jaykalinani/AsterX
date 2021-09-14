@@ -13,14 +13,6 @@ USES INCLUDE HEADER: vectors.h
 
 
 
-void FUNCTION GetTileExtent(
-  CCTK_POINTER_TO_CONST IN cctkGH,
-  CCTK_INT ARRAY OUT tile_min,
-  CCTK_INT ARRAY OUT tile_max)
-REQUIRES FUNCTION GetTileExtent
-
-
-
 CCTK_REAL conserved TYPE=gf TIMELEVELS=2 TAGS='index={1 1 1} fluxes="HydroToyCarpetX::flux_x HydroToyCarpetX::flux_y HydroToyCarpetX::flux_z"'
 {
   rho

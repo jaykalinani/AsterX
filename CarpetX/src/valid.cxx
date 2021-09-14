@@ -16,33 +16,33 @@ namespace CarpetX {
 using namespace std;
 
 // Ensure grid functions are valid
-void error_if_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
-                      int tl, const valid_t &required,
+void error_if_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                      int vi, int tl, const valid_t &required,
                       const function<string()> &msg) {
   const valid_t &have = groupdata.valid.at(tl).at(vi).get();
   if (CCTK_BUILTIN_EXPECT((required & ~have).valid_any(), false))
-    CCTK_VERROR("%s: Grid function \"%s\" is invalid on refinement level %d, "
-                "time level %d; required %s, found %s",
+    CCTK_VERROR("%s: Grid function \"%s\" is invalid on patch %d, refinement "
+                "level %d, time level %d; required %s, found %s",
                 msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-                groupdata.level, tl, string(required).c_str(),
+                groupdata.patch, groupdata.level, tl, string(required).c_str(),
                 string(groupdata.valid.at(tl).at(vi)).c_str());
 }
-void warn_if_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
-                     int tl, const valid_t &required,
+void warn_if_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                     int vi, int tl, const valid_t &required,
                      const function<string()> &msg) {
   const valid_t &have = groupdata.valid.at(tl).at(vi).get();
   if (CCTK_BUILTIN_EXPECT((required & ~have).valid_any(), false))
     CCTK_VWARN(CCTK_WARN_ALERT,
-               "%s: Grid function \"%s\" is invalid on refinement level %d, "
-               "time level %d; required %s, found %s",
+               "%s: Grid function \"%s\" is invalid on patch %d, refinement "
+               "level %d, time level %d; required %s, found %s",
                msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-               groupdata.level, tl, string(required).c_str(),
+               groupdata.patch, groupdata.level, tl, string(required).c_str(),
                string(groupdata.valid.at(tl).at(vi)).c_str());
 }
 
 // Set grid functions to nan
-void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
-                    int tl) {
+void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                    int vi, int tl) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
@@ -83,8 +83,8 @@ void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
 // Ensure grid functions are not nan
 // TODO: Parallelize this loop (and poison_invalid) further out, at
 // the loop over time levels and grid variables
-void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
-                 const function<string()> &msg) {
+void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                 int vi, int tl, const function<string()> &msg) {
   DECLARE_CCTK_PARAMETERS;
   if (!poison_undefined_values)
     return;
@@ -162,12 +162,12 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
 #pragma omp critical
     {
       CCTK_VINFO(
-          "%s: Grid function \"%s\" has %td nans or infinities on refinement "
-          "level %d, time level %d, in box [%d,%d,%d]:[%d,%d,%d] "
+          "%s: Grid function \"%s\" has %td nans or infinities on patch %d, "
+          "refinement level %d, time level %d, in box [%d,%d,%d]:[%d,%d,%d] "
           "(%g,%g,%g):(%g,%g,%g); expected valid %s",
           msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-          size_t(nan_count), leveldata.level, tl, nan_imin[0], nan_imin[1],
-          nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2],
+          size_t(nan_count), leveldata.patch, leveldata.level, tl, nan_imin[0],
+          nan_imin[1], nan_imin[2], nan_imax[0], nan_imax[1], nan_imax[2],
           double(nan_xmin[0]), double(nan_xmin[1]), double(nan_xmin[2]),
           double(nan_xmax[0]), double(nan_xmax[1]), double(nan_xmax[2]),
           string(groupdata.valid.at(tl).at(vi)).c_str());
@@ -207,10 +207,10 @@ void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
               });
       }
 
-      CCTK_VERROR("%s: Grid function \"%s\" has nans or infinities on "
-                  "refinement level %d, time level %d; expected valid %s",
+      CCTK_VERROR("%s: Grid function \"%s\" has nans or infinities on patch "
+                  "%d, refinement level %d, time level %d; expected valid %s",
                   msg().c_str(), CCTK_FullVarName(groupdata.firstvarindex + vi),
-                  leveldata.level, tl,
+                  leveldata.patch, leveldata.level, tl,
                   string(groupdata.valid.at(tl).at(vi)).c_str());
     }
   }
@@ -327,8 +327,12 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
 
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           for (int tl = 0; tl < int(groupdata.valid.size()); ++tl) {
-            const tiletag_t tiletag{leveldata.level, mfi.tilebox(),
-                                    groupdata.groupindex, vi, tl};
+            const tiletag_t tiletag{leveldata.patch,
+                                    leveldata.level,
+                                    mfi.tilebox(),
+                                    groupdata.groupindex,
+                                    vi,
+                                    tl};
 
             const auto &valid = groupdata.valid.at(tl).at(vi).get();
             // No information given for this timelevel; assume not written
@@ -396,8 +400,12 @@ void check_checksums(const checksums_t &checksums) {
 
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           for (int tl = 0; tl < int(groupdata.valid.size()); ++tl) {
-            const tiletag_t tiletag{leveldata.level, mfi.tilebox(),
-                                    groupdata.groupindex, vi, tl};
+            const tiletag_t tiletag{leveldata.patch,
+                                    leveldata.level,
+                                    mfi.tilebox(),
+                                    groupdata.groupindex,
+                                    vi,
+                                    tl};
 
             if (!checksums.count(tiletag))
               continue;

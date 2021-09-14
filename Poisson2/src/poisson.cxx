@@ -72,7 +72,7 @@ extern "C" void Poisson2_ChooseInitialGuess(CCTK_ARGUMENTS) {
 
   // Set up an initial guess only when initializing the coarsest
   // level. Otherwise, keep the data from the previous solve.
-  *need_initial_guess = CarpetX::ghext->leveldata.size() == 1;
+  *need_initial_guess = CarpetX::ghext->num_levels() == 1;
 }
 
 extern "C" void Poisson2_Init(CCTK_ARGUMENTS) {

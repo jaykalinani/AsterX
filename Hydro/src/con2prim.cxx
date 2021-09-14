@@ -18,10 +18,8 @@ extern "C" void Hydro_Con2prim(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_Hydro_Con2prim;
   DECLARE_CCTK_PARAMETERS;
 
-  array<CCTK_INT, dim> tmin_, tmax_;
-  GetTileExtent(cctkGH, tmin_.data(), tmax_.data());
-  const Loop::vect<int, dim> tmin(tmin_);
-  const Loop::vect<int, dim> tmax(tmax_);
+  const Loop::vect<int, dim> tmin{cctk_tile_min[0], cctk_tile_min[1], cctk_tile_min[2]};
+  const Loop::vect<int, dim> tmax{cctk_tile_max[0], cctk_tile_max[1], cctk_tile_max[2]};
 
   const Loop::vect<int, dim> imin = tmin;
   const Loop::vect<int, dim> imax = tmax;

@@ -177,8 +177,10 @@ void RecoverGH(const cGH *restrict cctkGH) {
         enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
       } else {
         // grid function
+        const int patch = 0;
         const int level = 0;
-        const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+        const GHExt::PatchData::LevelData &leveldata =
+            ghext->patchdata.at(patch).leveldata.at(level);
         assert(leveldata.groupdata.at(gi));
         enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
       }
@@ -291,7 +293,8 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
 
-    auto &restrict groupdata0 = *ghext->leveldata.at(0).groupdata.at(gi);
+    auto &restrict groupdata0 =
+        *ghext->patchdata.at(0).leveldata.at(0).groupdata.at(gi);
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
@@ -299,51 +302,57 @@ void OutputPlotfile(const cGH *restrict cctkGH) {
       groupname = regex_replace(groupname, regex("::"), "-");
       for (auto &c : groupname)
         c = tolower(c);
-      const string filename = [&]() {
-        ostringstream buf;
-        buf << out_dir << "/" << groupname << ".it" << setw(8) << setfill('0')
-            << cctk_iteration;
-        return buf.str();
-      }();
 
-      amrex::Vector<string> varnames(groupdata0.numvars);
-      for (int vi = 0; vi < groupdata0.numvars; ++vi) {
-        ostringstream buf;
-        buf << CCTK_VarName(groupdata0.firstvarindex + vi);
-        for (int i = 0; i < tl; ++i)
-          buf << "_p";
-        varnames.at(vi) = buf.str();
-      }
+      for (const auto &restrict patchdata : ghext->patchdata) {
 
-      amrex::Vector<const amrex::MultiFab *> mfabs(ghext->leveldata.size());
-      amrex::Vector<amrex::Geometry> geoms(ghext->leveldata.size());
-      amrex::Vector<int> iters(ghext->leveldata.size());
-      amrex::Vector<amrex::IntVect> reffacts(ghext->leveldata.size());
-      for (const auto &restrict leveldata : ghext->leveldata) {
-        mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi)->mfab.at(tl);
-        geoms.at(leveldata.level) = ghext->amrcore->Geom(leveldata.level);
-        iters.at(leveldata.level) = cctk_iteration;
-        reffacts.at(leveldata.level) = amrex::IntVect{2, 2, 2};
-      }
-
-      // TODO: Output all groups into a single file
-      WriteMultiLevelPlotfile(filename, mfabs.size(), mfabs, varnames, geoms,
-                              cctk_time, iters, reffacts);
-
-      const bool is_root = CCTK_MyProc(nullptr) == 0;
-      if (is_root) {
-        const string visitname = [&]() {
+        const string basename = [&]() {
           ostringstream buf;
-          buf << out_dir << "/" << groupname << ".visit";
+          buf << groupname << ".it" << setw(8) << setfill('0')
+              << cctk_iteration;
+          if (ghext->num_patches() > 1)
+            buf << ".m" << setw(2) << setfill('0') << patchdata.patch;
           return buf.str();
         }();
-        ofstream visit(visitname, ios::app);
-        assert(visit.good());
-        // visit << filename << "/Header\n";
-        visit << groupname << ".it" << setw(8) << setfill('0') << cctk_iteration
-              << "/Header\n";
-        visit.close();
-      }
+        const string filename = string(out_dir) + "/" + basename;
+
+        amrex::Vector<string> varnames(groupdata0.numvars);
+        for (int vi = 0; vi < groupdata0.numvars; ++vi) {
+          ostringstream buf;
+          buf << CCTK_VarName(groupdata0.firstvarindex + vi);
+          for (int i = 0; i < tl; ++i)
+            buf << "_p";
+          varnames.at(vi) = buf.str();
+        }
+
+        amrex::Vector<const amrex::MultiFab *> mfabs(
+            patchdata.leveldata.size());
+        amrex::Vector<amrex::Geometry> geoms(patchdata.leveldata.size());
+        amrex::Vector<int> iters(patchdata.leveldata.size());
+        amrex::Vector<amrex::IntVect> reffacts(patchdata.leveldata.size());
+        for (const auto &restrict leveldata : patchdata.leveldata) {
+          mfabs.at(leveldata.level) = &*leveldata.groupdata.at(gi)->mfab.at(tl);
+          geoms.at(leveldata.level) = patchdata.amrcore->Geom(leveldata.level);
+          iters.at(leveldata.level) = cctk_iteration;
+          reffacts.at(leveldata.level) = amrex::IntVect{2, 2, 2};
+        }
+
+        // TODO: Output all groups into a single file
+        WriteMultiLevelPlotfile(filename, mfabs.size(), mfabs, varnames, geoms,
+                                cctk_time, iters, reffacts);
+
+        const bool is_root = CCTK_MyProc(nullptr) == 0;
+        if (is_root) {
+          const string visitname = [&]() {
+            ostringstream buf;
+            buf << out_dir << "/" << groupname << ".visit";
+            return buf.str();
+          }();
+          ofstream visit(visitname, ios::app);
+          assert(visit.good());
+          visit << basename << "/Header\n";
+          visit.close();
+        } // if is_root
+      }   // for patchdata
     }
   }
 }
@@ -429,9 +438,12 @@ void OutputNorms(const cGH *restrict cctkGH) {
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
 
+    const int patch = 0;
+    const GHExt::PatchData &restrict patchdata = ghext->patchdata.at(patch);
     const int level = 0;
-    const GHExt::LevelData &restrict leveldata = ghext->leveldata.at(level);
-    const GHExt::LevelData::GroupData &restrict groupdata =
+    const GHExt::PatchData::LevelData &restrict leveldata =
+        patchdata.leveldata.at(level);
+    const GHExt::PatchData::LevelData::GroupData &restrict groupdata =
         *leveldata.groupdata.at(gi);
 
     const int tl = 0;
@@ -783,8 +795,11 @@ void Checkpoint(const cGH *const restrict cctkGH) {
           enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
         } else {
           // grid function
+          const int patch = 0;
+          const GHExt::PatchData &patchdata = ghext->patchdata.at(patch);
           const int level = 0;
-          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+          const GHExt::PatchData::LevelData &leveldata =
+              patchdata.leveldata.at(level);
           assert(leveldata.groupdata.at(gi));
           enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
         }
@@ -811,8 +826,11 @@ void Checkpoint(const cGH *const restrict cctkGH) {
           enabled.at(gi) = globaldata.arraygroupdata.at(gi)->do_checkpoint;
         } else {
           // grid function
+          const int patch = 0;
+          const GHExt::PatchData &patchdata = ghext->patchdata.at(patch);
           const int level = 0;
-          const GHExt::LevelData &leveldata = ghext->leveldata.at(level);
+          const GHExt::PatchData::LevelData &leveldata =
+              patchdata.leveldata.at(level);
           assert(leveldata.groupdata.at(gi));
           enabled.at(gi) = leveldata.groupdata.at(gi)->do_checkpoint;
         }

@@ -315,6 +315,11 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
   // Read internal driver state
   const string dirname = DB::legalize_name(driver_name);
 
+  // TODOPATCH: Handle multiple patches
+  assert(ghext->num_patches() == 1);
+  const int patch = 0;
+  auto &patchdata = ghext->patchdata.at(patch);
+
   int nlevels;
   if (read_metafile) {
 
@@ -329,7 +334,7 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
   }
   CCTK_VINFO("Found %d levels", nlevels);
   MPI_Bcast(&nlevels, 1, MPI_INT, metafile_ioproc, mpi_comm);
-  ghext->amrcore->SetFinestLevel(nlevels - 1);
+  patchdata.amrcore->SetFinestLevel(nlevels - 1);
 
   // Read FabArrayBase (component positions and shapes)
   for (int level = 0; level < nlevels; ++level) {
@@ -368,19 +373,20 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
 
     // Don't set coarse level domain; this is already set by the driver
     if (level > 0) {
-      amrex::Geometry geom = ghext->amrcore->Geom(level - 1);
+      amrex::Geometry geom = patchdata.amrcore->Geom(level - 1);
       geom.refine({2, 2, 2});
-      ghext->amrcore->SetGeometry(level, geom);
+      patchdata.amrcore->SetGeometry(level, geom);
     }
 
     amrex::BoxList boxlist(move(levboxes));
     amrex::BoxArray boxarray(move(boxlist));
-    ghext->amrcore->SetBoxArray(level, boxarray);
+    patchdata.amrcore->SetBoxArray(level, boxarray);
 
     amrex::DistributionMapping dm(boxarray);
-    ghext->amrcore->SetDistributionMap(level, dm);
+    patchdata.amrcore->SetDistributionMap(level, dm);
 
-    SetupLevel(level, boxarray, dm, []() { return "Recovering"; });
+    patchdata.amrcore->SetupLevel(level, boxarray, dm,
+                                  []() { return "Recovering"; });
   }
 
   interval_meta = nullptr;
@@ -457,10 +463,16 @@ void InputSilo(const cGH *restrict const cctkGH,
       assert(file);
     }
 
+    // TODOPATCH: Handle multiple patches
+    assert(ghext->num_patches() == 1);
+    const int patch = 0;
+    auto &patchdata = ghext->patchdata.at(patch);
+
     // Loop over levels
-    for (const auto &leveldata : ghext->leveldata) {
+    for (const auto &leveldata : patchdata.leveldata) {
       if (io_verbose)
-        CCTK_VINFO("Reading level %d", leveldata.level);
+        CCTK_VINFO("Reading patch %d level %d", patchdata.patch,
+                   leveldata.level);
 
       // Loop over groups
       // set<mesh_props_t> have_meshes;
@@ -727,8 +739,13 @@ void OutputSilo(const cGH *restrict const cctkGH,
       }
     }
 
+    // TODOPATCH: Handle multiple patches
+    assert(ghext->num_patches() == 1);
+    const int patch = 0;
+    auto &patchdata = ghext->patchdata.at(patch);
+
     // Loop over levels
-    for (const auto &leveldata : ghext->leveldata) {
+    for (const auto &leveldata : patchdata.leveldata) {
 
       // Loop over groups
       set<mesh_props_t> have_meshes;
@@ -781,7 +798,8 @@ void OutputSilo(const cGH *restrict const cctkGH,
             for (int d = 0; d < ndims; ++d)
               dims_vc[d] = dims[d] + int(indextype.cellCentered(d));
 
-            const amrex::Geometry &geom = ghext->amrcore->Geom(leveldata.level);
+            const amrex::Geometry &geom =
+                patchdata.amrcore->Geom(leveldata.level);
             const double *const x0 = geom.ProbLo();
             const double *const dx = geom.CellSize();
             array<vector<double>, ndims> coords;
@@ -984,7 +1002,8 @@ void OutputSilo(const cGH *restrict const cctkGH,
       if (CCTK_GroupTypeI(gi) != CCTK_GF)
         continue;
 
-      const auto &leveldata0 = ghext->leveldata.at(0);
+      const auto &patchdata0 = ghext->patchdata.at(0);
+      const auto &leveldata0 = patchdata0.leveldata.at(0);
       const auto &groupdata0 = *leveldata0.groupdata.at(gi);
       const int numvars = groupdata0.numvars;
       const int tl = 0;
@@ -999,10 +1018,15 @@ void OutputSilo(const cGH *restrict const cctkGH,
 
         const string multimeshname = make_meshname();
 
+        // TODOPATCH: Handle multiple patches
+        assert(ghext->num_patches() == 1);
+        const int patch = 0;
+        auto &patchdata = ghext->patchdata.at(patch);
+
         // Count components per level
-        const int nlevels = ghext->leveldata.size();
+        const int nlevels = patchdata.leveldata.size();
         vector<int> ncomps_level;
-        for (const auto &leveldata : ghext->leveldata) {
+        for (const auto &leveldata : patchdata.leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
           const amrex::MultiFab &mfab = *groupdata.mfab[tl];
           const amrex::DistributionMapping &dm = mfab.DistributionMap();
@@ -1059,13 +1083,13 @@ void OutputSilo(const cGH *restrict const cctkGH,
           vector<vector<int> > segment_data;
           segment_types.reserve(ncomps_total);
           segment_data.reserve(ncomps_total);
-          for (const auto &leveldata : ghext->leveldata) {
+          for (const auto &leveldata : patchdata.leveldata) {
             const int level = leveldata.level;
             const int fine_level = level + 1;
             if (fine_level < nlevels) {
               const auto &groupdata = *leveldata.groupdata.at(gi);
               const amrex::MultiFab &mfab = *groupdata.mfab[tl];
-              const auto &fine_leveldata = ghext->leveldata.at(fine_level);
+              const auto &fine_leveldata = patchdata.leveldata.at(fine_level);
               const auto &fine_groupdata = *fine_leveldata.groupdata.at(gi);
               const amrex::MultiFab &fine_mfab = *fine_groupdata.mfab[tl];
 
@@ -1261,11 +1285,12 @@ void OutputSilo(const cGH *restrict const cctkGH,
         vector<extent_t> extents;
         iextents.reserve(ncomps_total);
         extents.reserve(ncomps_total);
-        for (const auto &leveldata : ghext->leveldata) {
+        for (const auto &leveldata : patchdata.leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
           const int tl = 0;
           const amrex::MultiFab &mfab = *groupdata.mfab[tl];
-          const amrex::Geometry &geom = ghext->amrcore->Geom(leveldata.level);
+          const amrex::Geometry &geom =
+              patchdata.amrcore->Geom(leveldata.level);
           const double *const x0 = geom.ProbLo();
           const double *const dx = geom.CellSize();
           const int nfabs = mfab.size();
@@ -1357,7 +1382,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
         // Write multimesh
 
         vector<string> meshnames;
-        for (const auto &leveldata : ghext->leveldata) {
+        for (const auto &leveldata : patchdata.leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
           const amrex::MultiFab &mfab = *groupdata.mfab[tl];
           const amrex::DistributionMapping &dm = mfab.DistributionMap();
@@ -1424,7 +1449,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
 
         vector<int> zonecounts;
         zonecounts.reserve(meshnames.size());
-        for (const auto &leveldata : ghext->leveldata) {
+        for (const auto &leveldata : patchdata.leveldata) {
           const auto &groupdata = *leveldata.groupdata.at(gi);
           const int tl = 0;
           const amrex::MultiFab &mfab = *groupdata.mfab[tl];
@@ -1491,7 +1516,9 @@ void OutputSilo(const cGH *restrict const cctkGH,
           const string multivarname = make_varname(gi, vi);
 
           vector<string> varnames;
-          for (const auto &leveldata : ghext->leveldata) {
+          const int patch = 0;
+          const auto &patchdata = ghext->patchdata.at(patch);
+          for (const auto &leveldata : patchdata.leveldata) {
             const auto &groupdata = *leveldata.groupdata.at(gi);
             const int tl = 0;
             const amrex::MultiFab &mfab = *groupdata.mfab[tl];
@@ -1528,10 +1555,13 @@ void OutputSilo(const cGH *restrict const cctkGH,
       ierr = DBMkDir(metafile.get(), dirname.c_str());
       assert(!ierr);
 
+      const int patch = 0;
+      const auto &patchdata = ghext->patchdata.at(patch);
+
       // Write number of levels
       {
         const int dims = 1;
-        const int value = ghext->leveldata.size();
+        const int value = patchdata.leveldata.size();
         const string varname = dirname + "/" + DB::legalize_name("nlevels");
         ierr =
             DBWrite(metafile.get(), varname.c_str(), &value, &dims, 1, DB_INT);
@@ -1539,7 +1569,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
       }
 
       // Write FabArrayBase (component positions and shapes)
-      for (const auto &leveldata : ghext->leveldata) {
+      for (const auto &leveldata : patchdata.leveldata) {
         const amrex::FabArrayBase &fab = *leveldata.fab;
         const int nfabs = fab.size();
         vector<int> boxes(2 * ndims * nfabs);

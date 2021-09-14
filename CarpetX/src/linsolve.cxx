@@ -31,13 +31,16 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 
   // Create operator
 
-  amrex::Vector<amrex::Geometry> geoms(ghext->leveldata.size());
-  amrex::Vector<amrex::BoxArray> grids(ghext->leveldata.size());
-  amrex::Vector<amrex::DistributionMapping> dmaps(ghext->leveldata.size());
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
-    geoms.at(level) = ghext->amrcore->Geom(level);
-    grids.at(level) = ghext->amrcore->boxArray(level);
-    dmaps.at(level) = ghext->amrcore->DistributionMap(level);
+  assert(ghext->patchdata.size() == 1);
+  const int patch = 0;
+  const auto &patchdata = ghext->patchdata.at(patch);
+  amrex::Vector<amrex::Geometry> geoms(patchdata.leveldata.size());
+  amrex::Vector<amrex::BoxArray> grids(patchdata.leveldata.size());
+  amrex::Vector<amrex::DistributionMapping> dmaps(patchdata.leveldata.size());
+  for (int level = 0; level < int(patchdata.leveldata.size()); ++level) {
+    geoms.at(level) = patchdata.amrcore->Geom(level);
+    grids.at(level) = patchdata.amrcore->boxArray(level);
+    dmaps.at(level) = patchdata.amrcore->DistributionMap(level);
   }
 
   amrex::MLNodeLaplacian mlnodelaplacian(geoms, grids, dmaps);
@@ -49,11 +52,11 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
       {amrex::LinOpBCType::Dirichlet, amrex::LinOpBCType::Dirichlet,
        amrex::LinOpBCType::Dirichlet});
 
-  vector<amrex::MultiFab> sigmas(ghext->leveldata.size());
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
+  vector<amrex::MultiFab> sigmas(patchdata.leveldata.size());
+  for (int level = 0; level < int(patchdata.leveldata.size()); ++level) {
     auto &sigma = sigmas.at(level);
-    sigma.define(ghext->amrcore->boxArray(level),
-                 ghext->amrcore->DistributionMap(level), 1, 0);
+    sigma.define(patchdata.amrcore->boxArray(level),
+                 patchdata.amrcore->DistributionMap(level), 1, 0);
     sigma.setVal(1.0);
     mlnodelaplacian.setSigma(level, sigma);
   }
@@ -64,11 +67,11 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 
   amrex::MLMG mlmg(mlnodelaplacian);
 
-  amrex::Vector<amrex::MultiFab *> ress(ghext->leveldata.size());
-  amrex::Vector<amrex::MultiFab *> sols(ghext->leveldata.size());
-  amrex::Vector<const amrex::MultiFab *> rhss(ghext->leveldata.size());
-  for (int level = 0; level < int(ghext->leveldata.size()); ++level) {
-    const auto &restrict leveldata = ghext->leveldata.at(level);
+  amrex::Vector<amrex::MultiFab *> ress(patchdata.leveldata.size());
+  amrex::Vector<amrex::MultiFab *> sols(patchdata.leveldata.size());
+  amrex::Vector<const amrex::MultiFab *> rhss(patchdata.leveldata.size());
+  for (int level = 0; level < int(patchdata.leveldata.size()); ++level) {
+    const auto &restrict leveldata = patchdata.leveldata.at(level);
     const auto &restrict groupdata_rhs = *leveldata.groupdata.at(gi_rhs);
     rhss.at(level) = groupdata_rhs.mfab.at(tl).get();
     const auto &restrict groupdata_sol = *leveldata.groupdata.at(gi_sol);
@@ -87,7 +90,7 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
   if (have_res) {
     mlmg.compResidual(ress, sols, rhss);
     *res_initial = 0;
-    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+    for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
       *res_initial =
           fmax(*res_initial, ress.at(level)->norminf(vi, 0, false, true));
   } else {
@@ -97,14 +100,14 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 #pragma omp critical
   {
     CCTK_VINFO("Before solving:");
-    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+    for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
       CCTK_VINFO("norm_inf rhs[%d]: %g", level,
                  double(rhss.at(level)->norminf(vi, 0, false, true)));
-    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+    for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
       CCTK_VINFO("norm_inf sol[%d]: %g", level,
                  double(sols.at(level)->norminf(vi, 0, false, true)));
     if (have_res)
-      for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
         CCTK_VINFO("norm_inf res[%d]: %g", level,
                    double(ress.at(level)->norminf(vi, 0, false, true)));
   }
@@ -118,7 +121,7 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
   if (have_res) {
     mlmg.compResidual(ress, sols, rhss);
     *res_final = 0;
-    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+    for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
       *res_final =
           fmax(*res_final, ress.at(level)->norminf(vi, 0, false, true));
   } else {
@@ -128,14 +131,14 @@ extern "C" void CarpetX_SolvePoisson(const CCTK_INT gi_sol,
 #pragma omp critical
   {
     CCTK_VINFO("After solving:");
-    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+    for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
       CCTK_VINFO("norm_inf rhs[%d]: %g", level,
                  double(rhss.at(level)->norminf(vi, 0, false, true)));
-    for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+    for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
       CCTK_VINFO("norm_inf sol[%d]: %g", level,
                  double(sols.at(level)->norminf(vi, 0, false, true)));
     if (have_res)
-      for (int level = 0; level < int(ghext->leveldata.size()); ++level)
+      for (int level = 0; level < int(patchdata.leveldata.size()); ++level)
         CCTK_VINFO("norm_inf res[%d]: %g", level,
                    double(ress.at(level)->norminf(vi, 0, false, true)));
   }
