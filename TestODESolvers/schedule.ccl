@@ -21,6 +21,7 @@ SCHEDULE TestODESolvers_RHS IN ODESolvers_RHS
 SCHEDULE TestODESolvers_Boundary AT poststep
 {
   LANG: C
+  OPTIONS: global
   SYNC: state, state2
 } "Apply boundary conditions to state vector"
 

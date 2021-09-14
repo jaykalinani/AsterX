@@ -1,6 +1,7 @@
 #include "io_silo.hxx"
 
 #include "driver.hxx"
+#include "io_meta.hxx"
 #include "timer.hxx"
 
 #include <fixmath.hxx>
@@ -1567,6 +1568,33 @@ void OutputSilo(const cGH *restrict const cctkGH,
       ofstream visit(visitname, ios::app);
       assert(visit.good());
       visit << make_filename(output_file, cctk_iteration) << "\n";
+    }
+
+    {
+      output_file_description_t ofd;
+      ofd.filename = metafilename;
+      ofd.description = "3D CarpetX HDF5 Silo output";
+      ofd.writer_thorn = CCTK_THORNSTRING;
+      for (int gi = 0; gi < CCTK_NumGroups(); ++gi) {
+        if (!output_group.at(gi))
+          continue;
+        if (CCTK_GroupTypeI(gi) != CCTK_GF)
+          continue;
+        const int numvars = CCTK_NumVarsInGroupI(gi);
+        assert(numvars >= 0);
+        const int firstvar = CCTK_FirstVarIndexI(gi);
+        assert(numvars == 0 || firstvar >= 0);
+        for (int vi = 0; vi < numvars; ++vi) {
+          ofd.variables.push_back(CCTK_FullVarName(firstvar + vi));
+        }
+      }
+      ofd.iterations = {cctk_iteration};
+      for (int d = 0; d < dim; ++d)
+        ofd.output_directions.push_back(d);
+      ofd.format_name = "CarpetX/Silo/HDF5";
+      ofd.format_version = {1, 0, 0};
+
+      OutputMeta_RegisterOutputFile(std::move(ofd));
     }
 
   } // if write metadata

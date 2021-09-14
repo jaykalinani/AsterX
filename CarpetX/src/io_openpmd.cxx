@@ -15,7 +15,6 @@
 
 #ifdef HAVE_CAPABILITY_openPMD_api
 
-#include <nlohmann/json.hpp>
 #include <openPMD/openPMD.hpp>
 
 #ifdef _OPENMP
@@ -46,7 +45,13 @@ static inline int omp_in_parallel() { return 0; }
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+#if (!openPMD_HAVE_MPI)
+#error                                                                         \
+    "CarpetX requires openPMD_api with MPI support. Please add -DopenPMD_USE_MPI=ON when building openPMD."
+#endif
 
 namespace CarpetX {
 
@@ -63,35 +68,25 @@ constexpr openPMD::IterationEncoding iterationEncoding =
     openPMD::IterationEncoding::fileBased;
 
 //  constexpr const char options[]
-const nlohmann::json json_options{
-    {"adios2",
-     {
-         {"engine",
-          {
-              {"type", "BP4"},
-              {"parameters",
-               {
-                   {"BufferGrowthFactor", "2.0"},
-                   // {"MaxBufferSize", "500 MB"},
-               }},
-          }},
-         {"dataset",
-          {
-              {"operators",
-               {
-                   {
-                       {"type", "blosc"},
-                       {"parameters",
-                        {
-                            {"clevel", "9"},
-                            {"doshuffle", "BLOSC_BITSHUFFLE"},
-                        }},
-                   },
-               }},
-          }},
-     }},
-};
-const std::string options = json_options.dump();
+const std::string options = "{"
+                            "  \"adios2\": {"
+                            "    \"engine\": {"
+                            "      \"type\": \"BP4\","
+                            "      \"parameters\": {"
+                            "        \"BufferGrowthFactor\": \"2.0\""
+                            "      }"
+                            "    },"
+                            "    \"dataset\": {"
+                            "      \"operators\": {"
+                            "        \"type\": \"blosc\","
+                            "        \"parameters\": {"
+                            "          \"clevel\": \"9\","
+                            "          \"doshuffle\": \"BLOSC_BITSHUFFLE\""
+                            "        }"
+                            "      }"
+                            "    }"
+                            "  }"
+                            "}";
 
 constexpr bool input_ghosts = false;
 constexpr bool output_ghosts = false;
@@ -297,6 +292,7 @@ struct carpetx_openpmd_t {
       ch = std::tolower(ch);
     std::ostringstream buf;
     buf << groupname;
+    // TODO: The openPMD standard says to use `"_lev" << level` as mesh name
     buf << "_rl" << setw(2) << setfill('0') << level;
     return buf.str();
   }
@@ -421,8 +417,18 @@ int carpetx_openpmd_t::InputOpenPMDParameters(const std::string &input_dir,
       abort();
     }
     filename = std::make_optional<std::string>(buf.str());
-    series = std::make_optional<openPMD::Series>(
-        *filename, openPMD::Access::READ_ONLY, MPI_COMM_WORLD, options);
+    try {
+      series = std::make_optional<openPMD::Series>(
+          *filename, openPMD::Access::READ_ONLY, MPI_COMM_WORLD, options);
+    } catch (const openPMD::no_such_file_error &) {
+      // Did not find a checkpoint file
+      if (io_verbose) {
+        CCTK_VINFO("Not recovering parameters:");
+        CCTK_VINFO("  Could not find an openPMD checkpoint file \"%s\"",
+                   filename->c_str());
+      }
+      return -1; // no iteration found
+    }
     read_iters =
         std::make_optional<openPMD::ReadIterations>(series->readIterations());
   }
@@ -757,6 +763,8 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
           CCTK_VINFO("Reading mesh %s...", meshname.c_str());
         assert(iter.meshes.count(meshname));
         const openPMD::Mesh &mesh = iter.meshes.at(meshname);
+        // TODO: The openPMD standard says to add an attribute
+        // `refinementRatio`, which is a vector of integers
 
         // Define tensor components
 
@@ -811,7 +819,11 @@ void carpetx_openpmd_t::InputOpenPMD(const cGH *const cctkGH,
           const int np = box.size();
           assert(int(count.at(0) * count.at(1) * count.at(2)) == np);
           for (int d = 0; d < 3; ++d)
-            assert(start.at(d) >= 0);
+            // assert(start.at(d) >= 0);
+            assert(start.at(d) <
+                   numeric_limits<
+                       remove_reference_t<decltype(start.at(d))> >::max() /
+                       2);
           for (int d = 0; d < 3; ++d)
             assert(start.at(d) + count.at(d) <= extent.at(d));
 
@@ -1087,6 +1099,8 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
         cGroup cgroup;
         const int ierr = CCTK_GroupData(gi, &cgroup);
         assert(!ierr);
+        if (cgroup.grouptype != CCTK_GF)
+          continue;
         assert(cgroup.grouptype == CCTK_GF);
         assert(cgroup.vartype == CCTK_VARIABLE_REAL);
         assert(cgroup.dim == 3);
@@ -1214,7 +1228,11 @@ void carpetx_openpmd_t::OutputOpenPMD(const cGH *const cctkGH,
           const int np = box.size();
           assert(int(count.at(0) * count.at(1) * count.at(2)) == np);
           for (int d = 0; d < 3; ++d)
-            assert(start.at(d) >= 0);
+            // assert(start.at(d) >= 0);
+            assert(start.at(d) <
+                   numeric_limits<
+                       remove_reference_t<decltype(start.at(d))> >::max() /
+                       2);
           for (int d = 0; d < 3; ++d)
             assert(start.at(d) + count.at(d) <= extent.at(d));
 

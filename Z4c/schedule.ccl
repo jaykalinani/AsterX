@@ -112,6 +112,7 @@ SCHEDULE Z4c_Initial1 IN Z4c_InitialGroup
 SCHEDULE Z4c_Sync1 IN Z4c_InitialGroup AFTER Z4c_Initial1
 {
   LANG: C
+  OPTIONS: global
   SYNC: chi
   SYNC: gamma_tilde
   SYNC: K_hat
@@ -143,6 +144,7 @@ SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Boundaries1
 SCHEDULE Z4c_Sync2 IN Z4c_InitialGroup AFTER Z4c_Initial2
 {
   LANG: C
+  OPTIONS: global
   SYNC: Gam_tilde
 } "Synchronize Z4c variables, part 2"
 
@@ -157,6 +159,7 @@ SCHEDULE Z4c_Boundaries2 IN Z4c_InitialGroup AFTER Z4c_Sync2
 SCHEDULE Z4c_Sync IN Z4c_PostStepGroup
 {
   LANG: C
+  OPTIONS: global
   SYNC: chi
   SYNC: gamma_tilde
   SYNC: K_hat

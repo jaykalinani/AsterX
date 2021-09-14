@@ -15,6 +15,7 @@ SCHEDULE WaveToyCarpetX_InitializeParticle AT initial AFTER WaveToyCarpetX_Initi
 SCHEDULE WaveToyCarpetX_Sync AT initial AFTER WaveToyCarpetX_Initialize
 {
   LANG: C
+  OPTIONS: global
   SYNC: state
 } "Boundary conditions for the wave equation"
 
@@ -43,6 +44,7 @@ SCHEDULE WaveToyCarpetX_EstimateError AT postinitial
 # SCHEDULE WaveToyCarpetX_Sync AT postrestrict
 # {
 #   LANG: C
+#   OPTIONS: global
 #   SYNC: state
 # } "Boundary conditions for the wave equation"
 # 
@@ -64,6 +66,7 @@ SCHEDULE WaveToyCarpetX_EstimateError AT postinitial
 SCHEDULE WaveToyCarpetX_Sync AT postregrid
 {
   LANG: C
+  OPTIONS: global
   SYNC: state
 } "Boundary conditions for the wave equation"
 
@@ -98,6 +101,7 @@ SCHEDULE WaveToyCarpetX_EvolveParticle AT evol AFTER WaveToyCarpetX_Evolve
 SCHEDULE WaveToyCarpetX_Sync AT evol AFTER WaveToyCarpetX_Evolve
 {
   LANG: C
+  OPTIONS: global
   SYNC: state
 } "Boundary conditions for the wave equation"
 

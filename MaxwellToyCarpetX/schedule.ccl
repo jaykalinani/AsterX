@@ -61,6 +61,7 @@ SCHEDULE MaxwellToyCarpetX_EstimateError AT poststep
 SCHEDULE MaxwellToyCarpetX_Boundaries AT postregrid
 {
   LANG: C
+  OPTIONS: global
 
   SYNC: potential_phi
   SYNC: potential_ax potential_ay potential_az
@@ -150,6 +151,7 @@ SCHEDULE MaxwellToyCarpetX_Evolve2 AT evol AFTER (MaxwellToyCarpetX_Evolve1, Max
 SCHEDULE MaxwellToyCarpetX_Boundaries AT postrestrict
 {
   LANG: C
+  OPTIONS: global
 
   SYNC: potential_phi
   SYNC: potential_ax potential_ay potential_az

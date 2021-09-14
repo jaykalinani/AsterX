@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 
 namespace HydroToyGPU {
@@ -98,8 +99,12 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   switch (reconstruction) {
   case reconstruction_t::Godunov:
     assert(cctk_nghostzones[dir] >= 1);
+    break;
   case reconstruction_t::minmod:
     assert(cctk_nghostzones[dir] >= 2);
+    break;
+  default:
+    assert(0);
   }
 
   constexpr auto DI = PointDesc::DI;

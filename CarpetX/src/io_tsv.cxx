@@ -359,7 +359,7 @@ void OutputTSV(const cGH *restrict cctkGH) {
       buf << out_dir << "/" << groupname << ".it" << setw(6) << setfill('0')
           << cctk_iteration;
       const string basename = buf.str();
-      switch (CCTK_GroupTypeFromVarI(gi)) {
+      switch (CCTK_GroupTypeI(gi)) {
       case CCTK_SCALAR:
         WriteTSVScalars(cctkGH, basename + ".tsv", gi);
         break;

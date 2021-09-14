@@ -23,7 +23,7 @@ SCHEDULE WaveToyMoL_Initialize AT initial
 SCHEDULE WaveToyMoL_Sync IN MoL_PostStep
 {
   LANG: C
-  OPTIONS: level
+  OPTIONS: global
   SYNC: state
 } "Boundary conditions for the wave equation"
 

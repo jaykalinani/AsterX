@@ -2,6 +2,7 @@
 
 # Source files in this directory
 SRCS =						\
+	cons.cxx				\
 	cplx.cxx				\
 	div.cxx					\
 	dual.cxx				\
@@ -9,6 +10,8 @@ SRCS =						\
 	rational.cxx				\
 	rten.cxx				\
 	simd.cxx				\
+        smallvector.cxx				\
+        spvect.cxx				\
 	sum.cxx					\
 	ten3.cxx				\
 	vec.cxx					\

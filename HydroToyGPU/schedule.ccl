@@ -18,7 +18,7 @@ SCHEDULE HydroToyGPU_Initialize AT initial
 SCHEDULE HydroToyGPU_Sync AT initial AFTER HydroToyGPU_Initialize
 {
   LANG: C
-  OPTIONS: level
+  OPTIONS: global
   SYNC: conserved
 } "Synchronize"
 
@@ -42,7 +42,7 @@ SCHEDULE HydroToyGPU_EstimateError AT postinitial
 SCHEDULE HydroToyGPU_Sync AT postregrid
 {
   LANG: C
-  OPTIONS: level
+  OPTIONS: global
   SYNC: conserved
 } "Synchronize"
 
@@ -95,7 +95,7 @@ SCHEDULE HydroToyGPU_RHS IN ODESolvers_RHS AFTER HydroToyGPU_FluxBoundaries
 SCHEDULE HydroToyGPU_Sync IN ODESolvers_PostStep
 {
   LANG: C
-  OPTIONS: level
+  OPTIONS: global
   SYNC: conserved
 } "Synchronize"
 
@@ -112,7 +112,7 @@ SCHEDULE HydroToyGPU_Boundaries IN ODESolvers_PostStep AFTER HydroToyGPU_Sync
 SCHEDULE HydroToyGPU_Sync AT postrestrict
 {
   LANG: C
-  OPTIONS: level
+  OPTIONS: global
   SYNC: conserved
 } "Synchronize"
 

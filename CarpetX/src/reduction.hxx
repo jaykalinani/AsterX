@@ -100,11 +100,23 @@ constexpr reduction<T, D>::reduction(const reduction &x, const reduction &y)
 
 template <typename T, int D>
 ostream &operator<<(ostream &os, const reduction<T, D> &red) {
-  return os << "reduction{min:" << red.min << ",max:" << red.max
-            << ",sum:" << red.sum << ",sum2:" << red.sum2 << ",vol:" << red.vol
-            << ",maxabs:" << red.maxabs << ",sumabs:" << red.sumabs
-            << ",sum2abs:" << red.sum2abs << ",minloc:" << red.minloc
-            << ",maxloc:" << red.maxloc << "}";
+  return os << "reduction{\n"
+            << "  min:      " << red.min << "\n"
+            << "  max:      " << red.max << "\n"
+            << "  sum:      " << red.sum << "\n"
+            << "  sum2:     " << red.sum2 << "\n"
+            << "  vol:      " << red.vol << "\n"
+            << "  maxabs:   " << red.maxabs << "\n"
+            << "  sumabs:   " << red.sumabs << "\n"
+            << "  sum2abs:  " << red.sum2abs << "\n"
+            << "  minloc:   " << red.minloc << "\n"
+            << "  maxloc:   " << red.maxloc << "\n"
+            << "  avg:      " << red.avg() << "\n"
+            << "  sdv:      " << red.sdv() << "\n"
+            << "  norm1:    " << red.norm1() << "\n"
+            << "  norm2:    " << red.norm2() << "\n"
+            << "  norm_inf: " << red.norm_inf() << "\n"
+            << "}\n";
 }
 
 typedef reduction<CCTK_REAL, dim> reduction_CCTK_REAL;

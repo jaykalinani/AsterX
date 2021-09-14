@@ -2,10 +2,12 @@
 #define VECT_HXX
 
 #include "defs.hxx"
+#include "div.hxx"
 #include "simd.hxx"
 
 #include <array>
 #include <cmath>
+#include <functional>
 #include <initializer_list>
 #include <limits>
 #include <tuple>
@@ -101,7 +103,7 @@ template <typename T, int D> struct vect {
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(initializer_list<T> lst)
       : elts(construct_array<T, D>([&](size_t d) {
 #ifdef CCTK_DEBUG
-          assert(d <= lst.size());
+          assert(d < lst.size());
 #endif
           return lst.begin()[d];
         })) {
@@ -124,6 +126,8 @@ template <typename T, int D> struct vect {
 #endif
         })) {
   }
+
+  operator std::array<T, D>() const { return elts; }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST const T &
   operator[](int d) const {
@@ -214,6 +218,18 @@ template <typename T, int D> struct vect {
   operator/(const vect &x, const T &a) {
     return fmap([&](const T &b) { return b / a; }, x);
   }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator%(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return b % a; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  div_floor(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return div_floor(b, a); }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  mod_floor(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return mod_floor(b, a); }, x);
+  }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator+=(const vect &x) {
@@ -231,6 +247,10 @@ template <typename T, int D> struct vect {
   operator/=(const vect &x) {
     return *this = *this / x;
   }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator%=(const vect &x) {
+    return *this = *this % x;
+  }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect operator+=(const T &a) {
     return *this = *this + a;
@@ -243,6 +263,9 @@ template <typename T, int D> struct vect {
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect operator/=(const T &a) {
     return *this = *this / a;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect operator%=(const T &a) {
+    return *this = *this % a;
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
@@ -339,7 +362,6 @@ template <typename T, int D> struct vect {
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   maximum(const vect &x) {
-    using std::max;
     return fold(max1, -numeric_limits<T>::infinity(), x);
   }
 
@@ -351,13 +373,11 @@ template <typename T, int D> struct vect {
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   min1(const vect &x, const vect &y) {
-    using std::min;
     return fmap([](const T &x, const T &y) { return min1(x, y); }, x, y);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
   minimum(const vect &x) {
-    using std::min;
     return fold(min1, numeric_limits<T>::infinity(), x);
   }
 
@@ -420,7 +440,14 @@ template <typename T, int D> struct equal_to<Arith::vect<T, D> > {
 template <typename T, int D> struct less<Arith::vect<T, D> > {
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   operator()(const Arith::vect<T, D> &lhs, const Arith::vect<T, D> &rhs) const {
-    return less<array<T, D> >(lhs.elts, rhs.elts);
+    // return less()(lhs.elts, rhs.elts);
+    for (int d = 0; d < D; ++d) {
+      if (less<T>()(lhs.elts[d], rhs.elts[d]))
+        return true;
+      if (less<T>()(rhs.elts[d], lhs.elts[d]))
+        return false;
+    }
+    return false;
   }
 };
 

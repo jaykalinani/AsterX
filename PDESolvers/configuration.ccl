@@ -1,0 +1,8 @@
+# Configuration definitions for thorn PDESolvers
+
+PROVIDES PDESolvers
+{
+}  
+
+REQUIRES AMReX MPI PETSc
+REQUIRES Arith CarpetX
