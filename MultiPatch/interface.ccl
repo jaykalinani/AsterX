@@ -1,0 +1,8 @@
+# Interface definition for thorn MultiPatch
+
+IMPLEMENTS: MultiPatch
+
+USES INCLUDE HEADER: fixmath.hxx
+USES INCLUDE HEADER: mat.hxx
+USES INCLUDE HEADER: vec.hxx
+USES INCLUDE HEADER: vect.hxx
