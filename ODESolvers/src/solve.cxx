@@ -46,12 +46,8 @@ using return_type = std::array<typename return_type_helper<D, Types...>::type,
 } // namespace details
 
 template <class D = void, class... Types>
-constexpr details::return_type<D, Types...> make_array(Types &&...t) {
-  // Don't warn when converting int to double
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnarrowing"
+constexpr details::return_type<D, Types...> make_array(Types &&... t) {
   return {std::forward<Types>(t)...};
-#pragma GCC diagnostic pop
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +420,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     // Calculate new state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt), make_array(&old, &rhs));
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt), make_array(&old, &rhs));
 
   } else if (CCTK_EQUALS(method, "RK3")) {
 
@@ -458,7 +454,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Step 3
 
     // Add scaled RHS to state vector
-    statecomp_t::lincomb(var, 0, make_array(1, -dt, 2 * dt),
+    statecomp_t::lincomb(var, 0, make_array(1.0, -dt, 2 * dt),
                          make_array(&old, &k1, &k2));
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
@@ -470,7 +466,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     const auto &k3 = rhs;
 
     // Calculate new state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt / 6, 2 * dt / 3, dt / 6),
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt / 6, 2 * dt / 3, dt / 6),
                          make_array(&old, &k1, &k2, &k3));
 
   } else if (CCTK_EQUALS(method, "SSPRK3")) {
@@ -505,7 +501,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Step 3
 
     // Add scaled RHS to state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt / 4, dt / 4),
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt / 4, dt / 4),
                          make_array(&old, &k1, &k2));
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
@@ -517,7 +513,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     const auto &k3 = rhs;
 
     // Calculate new state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt / 6, dt / 6, 2 * dt / 3),
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt / 6, dt / 6, 2 * dt / 3),
                          make_array(&old, &k1, &k2, &k3));
 
   } else if (CCTK_EQUALS(method, "RK4")) {
@@ -553,7 +549,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Step 3
 
     // Add scaled RHS to state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt / 2), make_array(&old, &rhs));
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt / 2),
+                         make_array(&old, &rhs));
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -566,7 +563,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Step 4
 
     // Add scaled RHS to state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt), make_array(&old, &rhs));
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt), make_array(&old, &rhs));
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -577,7 +574,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     const auto &k4 = rhs;
 
     // Calculate new state vector
-    statecomp_t::lincomb(var, 0, make_array(1, dt / 6, dt / 3, dt / 3, dt / 6),
+    statecomp_t::lincomb(var, 0,
+                         make_array(1.0, dt / 6, dt / 3, dt / 3, dt / 6),
                          make_array(&old, &k1, &k2, &k3, &k4));
 
   } else if (CCTK_EQUALS(method, "RKF78")) {
