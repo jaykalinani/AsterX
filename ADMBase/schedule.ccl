@@ -12,8 +12,21 @@ SCHEDULE GROUP ADMBase_PostInitial AT initial AFTER (ADMBase_InitialData ADMBase
 {
 } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
 
+
 if (set_adm_variables_during_evolution) {
-  SCHEDULE GROUP ADMBase_InitialData IN ODESolvers_PostStep
+  SCHEDULE GROUP ADMBase_InitialData IN ODESolvers_RHS
+  {
+  } "Schedule group for calculating ADM initial data"
+  
+  SCHEDULE GROUP ADMBase_InitialGauge IN ODESolvers_RHS AFTER ADMBase_InitialData
+  {
+  } "Schedule group for the ADM initial gauge condition"
+  
+  SCHEDULE GROUP ADMBase_PostInitial IN ODESolvers_RHS AFTER (ADMBase_InitialData ADMBase_InitialGauge)
+  {
+  } "Schedule group for modifying the ADM initial data, such as e.g. adding noise"
+
+   SCHEDULE GROUP ADMBase_InitialData IN ODESolvers_PostStep
   {
   } "Schedule group for calculating ADM initial data"
   
