@@ -52,7 +52,7 @@ CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.25
 
 #GRHydroToyGPU  
-GRHydroToyGPU::setup = "equilibrium"
+GRHydroToyGPU::setup = "shock tube"
 GRHydroToyGPU::gamma = 1.6666666666666667
 GRHydroToyGPU::reconstruction_method = "minmod"
 GRHydroToyGPU::max_rho = 100.0

@@ -38,25 +38,19 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 restricted:
 
 ################################################################################
-# Parameters for the gamma-law EOS
+# Parameters for the RePrimAnd EOS Framework
 ################################################################################
 
-CCTK_REAL gl_max_rho "Maximum rest-mass density for the gamma-law EOS" STEERABLE=never
+CCTK_REAL max_rho "Maximum rest-mass density for the EOS" STEERABLE=never
 {
   (0.:* :: "Must be positive"
 } 1.e+6
 
 
-CCTK_REAL gl_max_eps "Maximum specific internal energy for the gamma-law EOS" STEERABLE=never
+CCTK_REAL max_eps "Maximum specific internal energy for the EOS" STEERABLE=never
 {
   (0.:* :: "Must be positive"
 } 11.
-
-
-CCTK_REAL gl_gamma "Adiabatic index for the gamma-law EOS" STEERABLE=never
-{
-  (0.:* :: "Must be positive"
-} 1.
 
 
 ################################################################################
