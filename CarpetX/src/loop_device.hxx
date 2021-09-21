@@ -60,7 +60,7 @@ public:
     //   all_forward &= bforward[d];
 
     // Run on GPU
-    static_assert(VS == 1, "Only vertex centered code is supported on GPUs");
+    static_assert(VS == 1, "Only vector size of 1 is supported on GPUs");
 
     // For some reason, the arguments imin, imax, and inormal cannot
     // be captured correctly in CUDA, but copies of them can
