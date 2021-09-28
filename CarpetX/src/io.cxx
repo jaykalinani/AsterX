@@ -481,7 +481,8 @@ void OutputNorms(const cGH *restrict cctkGH) {
     };
     ofd.format_name = "CarpetX/norms/TSV";
     ofd.format_version = {1, 0, 0};
-
+    
+    //TODO: Fix output and uncomment line below
     //OutputMeta_RegisterOutputFile(std::move(ofd));
   }
 }
@@ -736,6 +737,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       task.wait();
 
     // Describe all output files
+    //TODO: Fix output and uncomment line below
     //OutputMeta(cctkGH);
 
     if (is_root)
