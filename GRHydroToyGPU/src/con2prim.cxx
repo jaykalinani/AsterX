@@ -54,7 +54,8 @@ namespace GRHydroToyGPU {
         GF3D2<CCTK_REAL> gf_eps(gf_layout_cell,   eps);
 
         // TODO: add magnetic fields and tabulated EOS
-        const auto eos = make_eos_idealgas(gamma, max_eps, max_rho);
+	const CCTK_REAL adiab_ind = 1.0/(gamma-1);
+        const auto eos = make_eos_idealgas(adiab_ind, max_eps, max_rho);
         const CCTK_REAL atmo_p = eos.at_rho_eps_ye(atmo_rho, atmo_eps, atmo_ye).press();
         atmosphere atmo{atmo_rho, atmo_eps, atmo_ye, atmo_p, atmo_cut};
 
