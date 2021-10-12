@@ -9,12 +9,14 @@
 #include <array>
 #include <cmath>
 
+#include "prim2con.h"
+
 namespace GRHydroToyGPU {
 using namespace std;
 using namespace Loop;
 
-extern "C" void GRHydroToyGPU_Prim2Con(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Prim2Con;
+extern "C" void GRHydroToyGPU_Prim2Con_Initial(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Prim2Con_Initial;
   DECLARE_CCTK_PARAMETERS;
 
   const GridDescBaseDevice grid(cctkGH);
@@ -41,7 +43,7 @@ extern "C" void GRHydroToyGPU_Prim2Con(CCTK_ARGUMENTS) {
   const GF3D2<const CCTK_REAL> gf_vely(gf_layout_cell, vely);
   const GF3D2<const CCTK_REAL> gf_velz(gf_layout_cell, velz);
   const GF3D2<const CCTK_REAL> gf_press(gf_layout_cell, press);
-  GF3D2<CCTK_REAL> gf_eps(gf_layout_cell, eps); 
+  const GF3D2<const CCTK_REAL> gf_eps(gf_layout_cell, eps); 
 
   // Loop over the entire grid (0 to n-1 points in each direction)
   grid.loop_int_device<1, 1, 1>(
@@ -49,67 +51,49 @@ extern "C" void GRHydroToyGPU_Prim2Con(CCTK_ARGUMENTS) {
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
   
           // Interpolate metric terms from vertices to center
-          CCTK_REAL gxx_avg = 0.0;
-          CCTK_REAL gxy_avg = 0.0;
-          CCTK_REAL gxz_avg = 0.0;
-          CCTK_REAL gyy_avg = 0.0;
-          CCTK_REAL gyz_avg = 0.0;
-          CCTK_REAL gzz_avg = 0.0;
+	  metric g;
+          g.gxx = 0.0;
+          g.gxy = 0.0;
+          g.gxz = 0.0;
+          g.gyy = 0.0;
+          g.gyz = 0.0;
+          g.gzz = 0.0;
 
           for(int dk = 0 ; dk < 2 ; ++dk)
               for(int dj = 0 ; dj < 2 ; ++dj)
                   for(int di = 0 ; di < 2 ; ++di) {
-                      gxx_avg += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      gxy_avg += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      gxz_avg += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      gyy_avg += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      gyz_avg += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      gzz_avg += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gxx += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gxy += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gxz += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gyy += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gyz += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gzz += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
                   }
 
-          gxx_avg *= 0.125;
-          gxy_avg *= 0.125;
-          gxz_avg *= 0.125;
-          gyy_avg *= 0.125;
-          gyz_avg *= 0.125;
-          gzz_avg *= 0.125;
-  
-          //determinant of spatial metric
-          const CCTK_REAL detg = -gxz_avg*gxz_avg*gyy_avg + 2.0*gxy_avg*gxz_avg*gyz_avg - gxx_avg*gyz_avg*gyz_avg
-                                 - gxy_avg*gxy_avg*gzz_avg + gxx_avg*gyy_avg*gzz_avg;
-          const CCTK_REAL sqrt_detg = sqrt(detg);
+          g.gxx *= 0.125;
+          g.gxy *= 0.125;
+          g.gxz *= 0.125;
+          g.gyy *= 0.125;
+          g.gyz *= 0.125;
+          g.gzz *= 0.125;
+	  
+ 
+	  prim pv;
+	  pv.rho   = gf_rho(p.I);
+	  pv.velx  = gf_velx(p.I);
+	  pv.vely  = gf_vely(p.I);
+	  pv.velz  = gf_velz(p.I);
+	  pv.eps   = gf_eps(p.I);
+	  pv.press = gf_press(p.I);
           
-	  //TODO: compute specific internal energy based on user-specified EOS  
-          //currently, computing eps for classical ideal gas
-	
-          gf_eps(p.I) = gf_press(p.I)/(gf_rho(p.I)*(gamma-1));
+	  cons cv;
+	  prim2con(g,pv,cv);
 
-	  //v_j
-          const CCTK_REAL vlowx = gxx_avg*gf_velx(p.I) + gxy_avg*gf_vely(p.I) + gxz_avg*gf_velz(p.I);
-	  const CCTK_REAL vlowy = gxy_avg*gf_velx(p.I) + gyy_avg*gf_vely(p.I) + gyz_avg*gf_velz(p.I);
-	  const CCTK_REAL vlowz = gxz_avg*gf_velx(p.I) + gyz_avg*gf_vely(p.I) + gzz_avg*gf_velz(p.I);
-
-	  //w_lorentz
-	  const CCTK_REAL w_lorentz = 1.0 / sqrt(1 - (gxx_avg*gf_velx(p.I)*gf_velx(p.I) 
-				     + gyy_avg*gf_vely(p.I)*gf_vely(p.I)
-			             + gzz_avg*gf_velz(p.I)*gf_velz(p.I) + 2*gxy_avg*gf_velx(p.I)*gf_vely(p.I)
-			             + 2*gxz_avg*gf_velx(p.I)*gf_velz(p.I) + 2*gyz_avg*gf_vely(p.I)*gf_velz(p.I) ));
-
-
-	  //computing conservatives from primitives
-          gf_dens(p.I) = sqrt_detg * gf_rho(p.I)* w_lorentz;
-
-          gf_momx(p.I) = sqrt_detg * gf_rho(p.I) * w_lorentz * (1 + gf_eps(p.I) 
-				+ gf_press(p.I)/gf_rho(p.I)) * vlowx;
-      
-	  gf_momy(p.I) = sqrt_detg * gf_rho(p.I) * w_lorentz * (1 + gf_eps(p.I)    
-                                + gf_press(p.I)/gf_rho(p.I)) * vlowy;
-
-	  gf_momz(p.I) = sqrt_detg * gf_rho(p.I) * w_lorentz * (1 + gf_eps(p.I)
-                                + gf_press(p.I)/gf_rho(p.I)) * vlowz;
-  
-	  gf_tau(p.I) = sqrt_detg * gf_rho(p.I) * w_lorentz * ( (1 + gf_eps(p.I)
-                                + gf_press(p.I)/gf_rho(p.I)) * w_lorentz - 1) - gf_press(p.I);
+	  gf_dens(p.I) = cv.dens;
+	  gf_momx(p.I) = cv.momx;
+	  gf_momy(p.I) = cv.momy;
+	  gf_momz(p.I) = cv.momz;
+	  gf_tau(p.I)  = cv.tau;
 
         });
     }

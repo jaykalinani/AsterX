@@ -6,6 +6,7 @@ KEYWORD setup "Initial setup" STEERABLE=never
   "sound wave" :: ""
   "shock tube" :: ""
   "spherical shock" :: ""
+  "balsara1" :: ""
 } "equilibrium"
 
 CCTK_REAL amplitude "Wave amplitude" STEERABLE=never

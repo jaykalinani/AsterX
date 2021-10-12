@@ -10,10 +10,18 @@ STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 SCHEDULE GRHydroToyGPU_Initialize AT initial
 {
   LANG: C
-  WRITES: dens(interior) tau(interior) mom(interior)
+  WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior)
 } "Set up hydro initial conditions"
 
-SCHEDULE GRHydroToyGPU_Sync AT initial AFTER GRHydroToyGPU_Initialize
+SCHEDULE GRHydroToyGPU_Prim2Con_Initial AT initial AFTER GRHydroToyGPU_Initialize
+{
+  LANG: C
+  READS: ADMBase::metric(interior)
+  READS: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior)
+  WRITES: dens(interior) tau(interior) mom(interior)
+} "Compute conserved variables from primitive variables at initial"
+
+SCHEDULE GRHydroToyGPU_Sync AT initial AFTER GRHydroToyGPU_Prim2Con_Initial
 {
   LANG: C
   OPTIONS: level

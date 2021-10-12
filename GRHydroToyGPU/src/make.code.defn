@@ -8,7 +8,8 @@ SRCS =	boundaries.cxx				\
 	initialize.cxx				\
 	con2prim.cxx				\
 	rhs.cxx					\
-	sync.cxx
+	sync.cxx                                \
+        prim2con.cxx 
 
 # Subdirectories containing source files
 SUBDIRS = 
