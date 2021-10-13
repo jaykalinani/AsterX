@@ -7,13 +7,7 @@ STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 
 # Initial conditions
 
-SCHEDULE GRHydroToyGPU_Initialize AT initial
-{
-  LANG: C
-  WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior)
-} "Set up hydro initial conditions"
-
-SCHEDULE GRHydroToyGPU_Prim2Con_Initial AT initial AFTER GRHydroToyGPU_Initialize
+SCHEDULE GRHydroToyGPU_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
 {
   LANG: C
   READS: ADMBase::metric(interior)
