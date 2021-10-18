@@ -1,0 +1,169 @@
+#include "multipatch.hxx"
+
+#include <sum.hxx>
+
+#include <cctk_Parameters.h>
+
+#include <cmath>
+
+namespace MultiPatch {
+
+const vec<CCTK_REAL, dim, DN> zero3 = zero<vec<CCTK_REAL, dim, DN> >()();
+const smat<CCTK_REAL, dim, DN, DN> zero33 =
+    zero<smat<CCTK_REAL, dim, DN, DN> >()();
+const smat<CCTK_REAL, dim, DN, DN> delta33 =
+    one<smat<CCTK_REAL, dim, DN, DN> >()();
+
+template <typename T> static T pow4(const T &x) { return pow2(pow2(x)); }
+
+class SwirlPatchSystem final : public PatchSystem {
+
+  static Patch makeSwirlPatch() {
+    DECLARE_CCTK_PARAMETERS;
+    const PatchFace outer_boundary{true, -1};
+    Patch patch0;
+    patch0.ncells = {swirl_ncells_i, swirl_ncells_j, swirl_ncells_k};
+    patch0.xmin = {-1, -1, -1};
+    patch0.xmax = {+1, +1, +1};
+    patch0.is_cartesian = false;
+    patch0.connections = {{outer_boundary, outer_boundary, outer_boundary},
+                          {outer_boundary, outer_boundary, outer_boundary}};
+    return patch0;
+  }
+
+public:
+  SwirlPatchSystem() : PatchSystem({makeSwirlPatch()}) {}
+
+  std::tuple<int, vec<CCTK_REAL, dim, UP> >
+  global2local(const vec<CCTK_REAL, dim, UP> &x) const override {
+    using std::cbrt, std::cos, std::sin, std::sqrt;
+    // alpha=0 at origin, alpha=1 at boundary
+    const CCTK_REAL alpha =
+        1 - sqrt((pow2(x(0)) + pow2(x(1)) + pow2(x(2))) / 3);
+    const CCTK_REAL cos_alpha = cbrt(pow2(cos(M_PI / 2 * alpha)));
+    const CCTK_REAL sin_alpha = cbrt(pow2(sin(M_PI / 2 * alpha)));
+
+    const vec<vec<CCTK_REAL, dim, DN>, dim, UP> Rinvelts = {
+        {cos_alpha * cos_alpha, -cos_alpha * sin_alpha, sin_alpha * sin_alpha},
+        {sin_alpha * sin_alpha, cos_alpha * cos_alpha, -cos_alpha * sin_alpha},
+        {-cos_alpha * sin_alpha, sin_alpha * sin_alpha, cos_alpha * cos_alpha},
+    };
+    const mat<CCTK_REAL, dim, UP, DN> Rinv(
+        [&](int i, int j) { return Rinvelts(i)(j); });
+    // Note: det Rinv = 1, i.e. |x| = |a|
+
+    const vec<CCTK_REAL, dim, UP> a([&](int i) {
+      return sum<dim>([&](int j) { return Rinv(i, j) * x(j); });
+    });
+
+    return std::make_tuple(0, a);
+  }
+
+  std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+             vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
+  d2local_dglobal2(int patch, const vec<CCTK_REAL, dim, UP> &a) const override {
+    switch (patch) {
+
+    case 0: {
+      using std::cbrt, std::cos, std::sin, std::sqrt;
+      // alpha=1 at origin, alpha=0 at boundary
+      const CCTK_REAL alpha =
+          1 - sqrt((pow2(a(0)) + pow2(a(1)) + pow2(a(2))) / 3);
+      const CCTK_REAL cos_alpha = cbrt(pow2(cos(M_PI / 2 * alpha)));
+      const CCTK_REAL sin_alpha = cbrt(pow2(sin(M_PI / 2 * alpha)));
+      // x=(rotated a) for alpha=1 (origin), x=a for alpha=0 (boundary)
+
+      const vec<vec<CCTK_REAL, dim, DN>, dim, UP> Relts = {
+          {cos_alpha, sin_alpha, 0},
+          {0, cos_alpha, sin_alpha},
+          {sin_alpha, 0, cos_alpha},
+      };
+      const mat<CCTK_REAL, dim, UP, DN> R(
+          [&](int i, int j) { return Relts(i)(j); });
+      // Note: det R = 1, i.e. |x| = |a|
+
+      const vec<CCTK_REAL, dim, UP> x([&](int i) {
+        return sum<dim>([&](int j) { return R(i, j) * a(j); });
+      });
+
+      const vec<CCTK_REAL, dim, DN> dalpha_da = a / (3 * (alpha - 1));
+      const vec<CCTK_REAL, dim, DN> dcos_alpha_da =
+          -(M_PI / 3) * sin(M_PI / 2 * alpha) / cbrt(cos(M_PI / 2 * alpha)) *
+          dalpha_da;
+      const vec<CCTK_REAL, dim, DN> dsin_alpha_da =
+          (M_PI / 3) * cos(M_PI / 2 * alpha) / cbrt(sin(M_PI / 2 * alpha)) *
+          dalpha_da;
+
+      const vec<vec<vec<CCTK_REAL, dim, DN>, dim, DN>, dim, UP> dRelts_da = {
+          {dcos_alpha_da, dsin_alpha_da, zero3},
+          {zero3, dcos_alpha_da, dsin_alpha_da},
+          {dsin_alpha_da, zero3, dcos_alpha_da},
+      };
+      const mat<vec<CCTK_REAL, dim, DN>, dim, UP, DN> dR_da([&](int i, int j) {
+        return vec<CCTK_REAL, dim, DN>(
+            [&](int k) { return dRelts_da(i)(j)(k); });
+      });
+
+      const vec<vec<CCTK_REAL, dim, DN>, dim, UP> dxda([&](int i) {
+        return vec<CCTK_REAL, dim, DN>([&](int j) {
+          return sum<dim>([&](int k) { return dR_da(i, k)(j) * a(k); }) +
+                 R(i, j);
+        });
+      });
+
+      const smat<CCTK_REAL, dim, DN, DN> ddalpha_dada([&](int i, int j) {
+        return (delta33(i, j) * (alpha - 1) - a(i) * dalpha_da(j)) /
+               (3 * pow2(alpha - 1));
+      });
+      const smat<CCTK_REAL, dim, DN, DN> ddcos_alpha_dada([&](int i, int j) {
+        return -(pow2(M_PI) / 18) *
+                   (3 * pow2(cos(M_PI / 2 * alpha)) +
+                    pow2(sin(M_PI / 2 * alpha))) /
+                   cbrt(pow4(cos(M_PI / 2 * alpha))) * dalpha_da(i) *
+                   dalpha_da(j) -
+               (M_PI / 3) * sin(M_PI / 2 * alpha) /
+                   cbrt(cos(M_PI / 2 * alpha)) * ddalpha_dada(i, j);
+      });
+      const smat<CCTK_REAL, dim, DN, DN> ddsin_alpha_dada([&](int i, int j) {
+        return -(pow2(M_PI) / 18) *
+                   (pow2(cos(M_PI / 2 * alpha)) +
+                    3 * pow2(sin(M_PI / 2 * alpha))) /
+                   cbrt(pow4(sin(M_PI / 2 * alpha))) * dalpha_da(i) *
+                   dalpha_da(j) +
+               (M_PI / 3) * cos(M_PI / 2 * alpha) /
+                   cbrt(sin(M_PI / 2 * alpha)) * ddalpha_dada(i, j);
+      });
+
+      const vec<vec<smat<CCTK_REAL, dim, DN, DN>, dim, DN>, dim, UP>
+          ddRelts_dada = {
+              {ddcos_alpha_dada, ddsin_alpha_dada, zero33},
+              {zero33, ddcos_alpha_dada, ddsin_alpha_dada},
+              {ddsin_alpha_dada, zero33, ddcos_alpha_dada},
+          };
+      const mat<smat<CCTK_REAL, dim, DN, DN>, dim, UP, DN> ddR_dada(
+          [&](int i, int j) {
+            return smat<CCTK_REAL, dim, DN, DN>(
+                [&](int k, int l) { return ddRelts_dada(i)(j)(k, l); });
+          });
+
+      const vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> ddxdada([&](int i) {
+        return smat<CCTK_REAL, dim, DN, DN>([&](int j, int k) {
+          return sum<dim>([&](int l) { return ddR_dada(i, l)(j, k) * a(l); }) +
+                 dR_da(i, k)(j) + dR_da(i, j)(k);
+        });
+      });
+
+      return std::make_tuple(x, dxda, ddxdada);
+    }
+
+    default:
+      assert(0);
+    }
+  }
+};
+
+std::unique_ptr<PatchSystem> SetupSwirl() {
+  return std::make_unique<SwirlPatchSystem>();
+}
+
+} // namespace MultiPatch

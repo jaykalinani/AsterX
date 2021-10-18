@@ -8,6 +8,7 @@
 #include <vec.hxx>
 #include <vect.hxx>
 
+#include <memory>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -17,7 +18,7 @@ using namespace Arith;
 
 constexpr int dim = 3;
 
-struct PatchConnection {
+struct PatchFace {
   bool is_outer_boundary;
   int other_patch; // -1 if outer boundary
 };
@@ -26,7 +27,7 @@ struct Patch {
   vect<int, dim> ncells;
   vect<CCTK_REAL, dim> xmin, xmax; // cell boundaries
   bool is_cartesian;               // Jacobian is trivial
-  vect<vect<PatchConnection, dim>, 2> connections;
+  vect<vect<PatchFace, dim>, 2> connections;
 };
 
 class PatchSystem {
@@ -66,6 +67,14 @@ public:
                      vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
   d2local_dglobal2(int patch, const vec<CCTK_REAL, dim, UP> &a) const = 0;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr<PatchSystem> SetupCartesian();
+std::unique_ptr<PatchSystem> SetupCubedSphere();
+std::unique_ptr<PatchSystem> SetupSwirl();
+
+extern std::unique_ptr<PatchSystem> the_patch_system;
 
 } // namespace MultiPatch
 
