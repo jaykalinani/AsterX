@@ -79,7 +79,7 @@ inline ostream &operator<<(ostream &os, const symm_t symm) {
 //
 // It might be possible to unify these two types. In practice, there
 // is little confusion, so this is not urgent.
-  
+
 template <typename T, int D, dnup_t dnup> struct vec {
 
   constexpr static int N = D;
