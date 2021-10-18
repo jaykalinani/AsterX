@@ -267,18 +267,17 @@ template <int ORDER> struct interp1d<VC, CONS, ORDER> {
     assert(off == 0 || off == 1);
 #endif
     T y = 0;
+    // TODO: use symmetry
     if (off == 0) {
       constexpr int i0 = ORDER / 2;
       constexpr array<T, ORDER / 2 * 2 + 1> cs =
           coeffs1d<VC, CONS, ORDER, T>::coeffs0;
-#warning "TODO: use symmetry"
       for (int i = 0; i < ORDER / 2 * 2 + 1; ++i)
         y += cs[i] * crseptr[(i - i0) * di];
     } else {
       constexpr int i0 = (ORDER + 1) / 2;
       constexpr array<T, (ORDER + 1) / 2 * 2> cs =
           coeffs1d<VC, CONS, ORDER, T>::coeffs1;
-#warning "TODO: use symmetry"
       for (int i = 0; i < (ORDER + 1) / 2 * 2; ++i)
         y += cs[i] * crseptr[(i - i0) * di];
     }
@@ -331,12 +330,33 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
     static_assert(abs0(imax - i0) <= required_ghosts, "");
 #endif
     T y = 0;
-    if (off == 0)
-      for (int i = 0; i < ORDER + 1; ++i)
-        y += cs[i] * crseptr[(i - i0) * di];
-    else
-      for (int i = 0; i < ORDER + 1; ++i)
-        y += cs[i] * crseptr[-(i - i0) * di];
+    // if (off == 0)
+    //   for (int i = 0; i < ORDER + 1; ++i)
+    //     y += cs[i] * crseptr[(i - i0) * di];
+    // else
+    //   for (int i = 0; i < ORDER + 1; ++i)
+    //     y += cs[i] * crseptr[-(i - i0) * di];
+    if (off == 0) {
+      // Make use of symmetry in coefficients
+      for (int i = 0; i < ORDER / 2; ++i) {
+        const int i1 = ORDER - i;
+#ifdef CCTK_DEBUG
+        assert(cs[i1] == -cs[i]);
+#endif
+        y += cs[i] * (crseptr[(i - i0) * di] - crseptr[(i1 - i0) * di]);
+      }
+      y += cs[ORDER / 2] * crseptr[(ORDER / 2 - i0) * di];
+    } else {
+      for (int i = 0; i < ORDER / 2; ++i) {
+        const int i1 = ORDER - i;
+#ifdef CCTK_DEBUG
+        assert(cs[i1] == -cs[i]);
+#endif
+        y +=
+            cs[i] * (crseptr[-(i - i0) * di] - crseptr[-(ORDER / 2 - i0) * di]);
+      }
+      y += cs[ORDER / 2] * crseptr[-(ORDER / 2 - i0) * di];
+    }
     return y;
   }
 };
