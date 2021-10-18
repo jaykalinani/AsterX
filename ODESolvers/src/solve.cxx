@@ -1,3 +1,4 @@
+// TODO: Don't include files from other thorns; create a proper interface
 #include "../../CarpetX/src/driver.hxx"
 #include "../../CarpetX/src/schedule.hxx"
 
@@ -19,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace ODESolver {
+namespace ODESolvers {
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +196,7 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
 
       for (size_t c = 0; c < ncomp; ++c) {
         CCTK_REAL *restrict const dstptr = dstvar.dataPtr() + c * nstride;
-        array<const CCTK_REAL * restrict, N> srcptrs;
+        array<const CCTK_REAL *restrict, N> srcptrs;
         for (size_t n = 0; n < N; ++n)
           srcptrs[n] = srcvars[n].dataPtr() + c * nstride;
 
@@ -816,4 +817,4 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   // TODO: Update time here, and not during time level cycling in the driver
 }
 
-} // namespace ODESolver
+} // namespace ODESolvers
