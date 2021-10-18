@@ -1315,6 +1315,14 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
             poison_invalid(groupdata, vi, 0);
           }
         }
+        // All time levels (except the current) must be valid everywhere for
+        // checkpointed groups
+        if (groupdata.do_checkpoint)
+          for (int tl = (ntls == 1 ? 0 : 1); tl < ntls; ++tl)
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              error_if_invalid(groupdata, vi, tl, make_valid_all(), []() {
+                return "CycleTimelevels for the state vector";
+              });
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             check_valid(groupdata, vi, tl, []() { return "CycleTimelevels"; });
