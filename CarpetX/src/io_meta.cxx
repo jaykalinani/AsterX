@@ -123,7 +123,8 @@ real_output_file_description_t::real_output_file_description_t(
 
   variables = ofd.variables;
   if (variables.empty())
-    CCTK_ERROR("No variables");
+    // There are no variables
+    return;
   for (auto &var : variables) {
     const int varindex = CCTK_VarIndex(var.c_str());
     if (varindex < 0)
