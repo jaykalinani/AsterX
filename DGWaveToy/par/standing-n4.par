@@ -33,7 +33,6 @@ CarpetX::ncells_z = $ncells
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
 CarpetX::periodic_z = no
-CarpetX::periodic = yes
 
 CarpetX::ghost_size = 1
 

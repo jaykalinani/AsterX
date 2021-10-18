@@ -493,28 +493,12 @@ get_boundaries(const GHExt::PatchData::LevelData::GroupData &groupdata) {
   // TODO: It seems that AMReX now also has `RB90`, `RB180`, and
   // `PolarB` boundary conditions. Make these available as well.
   const array<array<bool, 3>, 2> is_periodic{{
-      {{
-          periodic || periodic_x,
-          periodic || periodic_y,
-          periodic || periodic_z,
-      }},
-      {{
-          periodic || periodic_x,
-          periodic || periodic_y,
-          periodic || periodic_z,
-      }},
+      {{periodic_x, periodic_y, periodic_z}},
+      {{periodic_x, periodic_y, periodic_z}},
   }};
   const array<array<bool, 3>, 2> is_reflect{{
-      {{
-          !!reflection_x,
-          !!reflection_y,
-          !!reflection_z,
-      }},
-      {{
-          !!reflection_upper_x,
-          !!reflection_upper_y,
-          !!reflection_upper_z,
-      }},
+      {{reflection_x, reflection_y, reflection_z}},
+      {{reflection_upper_x, reflection_upper_y, reflection_upper_z}},
   }};
   const auto makebc = [&](const int vi, const int dir, const int face) {
     assert(dir >= 0 && dir < dim);
@@ -1465,8 +1449,7 @@ int InitGH(cGH *restrict cctkGH) {
   const amrex::Vector<amrex::IntVect> reffacts{}; // empty
 
   // Periodicity
-  const amrex::Array<int, dim> is_periodic{
-      periodic || periodic_x, periodic || periodic_y, periodic || periodic_z};
+  const amrex::Array<int, dim> is_periodic{periodic_x, periodic_y, periodic_z};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no
@@ -1643,28 +1626,12 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
   assert(size == 2 * dim);
 
   const array<array<bool, 3>, 2> is_periodic{{
-      {{
-          periodic || periodic_x,
-          periodic || periodic_y,
-          periodic || periodic_z,
-      }},
-      {{
-          periodic || periodic_x,
-          periodic || periodic_y,
-          periodic || periodic_z,
-      }},
+      {{periodic_x, periodic_y, periodic_z}},
+      {{periodic_x, periodic_y, periodic_z}},
   }};
   const array<array<bool, 3>, 2> is_reflect{{
-      {{
-          !!reflection_x,
-          !!reflection_y,
-          !!reflection_z,
-      }},
-      {{
-          !!reflection_upper_x,
-          !!reflection_upper_y,
-          !!reflection_upper_z,
-      }},
+      {{reflection_x, reflection_y, reflection_z}},
+      {{reflection_upper_x, reflection_upper_y, reflection_upper_z}},
   }};
 
   for (int d = 0; d < dim; ++d) {

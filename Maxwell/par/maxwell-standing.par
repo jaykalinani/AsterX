@@ -43,7 +43,6 @@ CarpetX::restrict_during_sync = yes
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
 CarpetX::periodic_z = no
-CarpetX::periodic = no
 
 CarpetX::dtfac = 0.5
 

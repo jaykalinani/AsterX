@@ -174,16 +174,10 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
 
   // Boundaries
   const array<array<bool, 3>, 2> is_symmetry{{
-      {{
-          periodic || periodic_x || reflection_x,
-          periodic || periodic_y || reflection_y,
-          periodic || periodic_z || reflection_z,
-      }},
-      {{
-          periodic || periodic_x || reflection_upper_x,
-          periodic || periodic_y || reflection_upper_y,
-          periodic || periodic_z || reflection_upper_z,
-      }},
+      {{periodic_x || reflection_x, periodic_y || reflection_y,
+        periodic_z || reflection_z}},
+      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
+        periodic_z || reflection_upper_z}},
   }};
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
@@ -288,16 +282,10 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
 
   // Boundaries
   const array<array<bool, 3>, 2> is_symmetry{{
-      {{
-          periodic || periodic_x || reflection_x,
-          periodic || periodic_y || reflection_y,
-          periodic || periodic_z || reflection_z,
-      }},
-      {{
-          periodic || periodic_x || reflection_upper_x,
-          periodic || periodic_y || reflection_upper_y,
-          periodic || periodic_z || reflection_upper_z,
-      }},
+      {{periodic_x || reflection_x, periodic_y || reflection_y,
+        periodic_z || reflection_z}},
+      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
+        periodic_z || reflection_upper_z}},
   }};
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)

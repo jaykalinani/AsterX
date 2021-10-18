@@ -31,7 +31,6 @@ CarpetX::ncells_z = 16
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
 CarpetX::periodic_z = no
-CarpetX::periodic = no
 
 CarpetX::ghost_size = 1
 
