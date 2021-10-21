@@ -44,7 +44,7 @@ struct free_deleter {
 };
 template <typename T> using unique_C_ptr = std::unique_ptr<T, free_deleter>;
 static_assert(sizeof(char *) == sizeof(unique_C_ptr<char>),
-              ""); // ensure no overhead
+              "No overhead in unique_C_ptr"); // ensure no overhead
 
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
