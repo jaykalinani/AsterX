@@ -3,6 +3,7 @@ ActiveThorns = "
     Formaline
     IOUtil
     GRHydroToyGPU
+    HydroInitial
     ODESolvers
     SystemTopology
     TimerReport
@@ -11,24 +12,22 @@ ActiveThorns = "
     RePrimAnd
     TmunuBase
 "
- 
+
+
 $nlevels = 3
 $ncells = 48
 
+
+# -------------------- Cactus --------------------------------------------------
 Cactus::cctk_show_schedule = yes
+Cactus::presync_mode       = "mixed-error"
 
-Cactus::presync_mode = "mixed-error"
-
-Cactus::terminate = "time"
+Cactus::terminate       = "time"
 Cactus::cctk_final_time = 1.0
 
-ADMBase::set_adm_variables_during_evolution = "yes"
-ADMBase::initial_data            = "Cartesian Minkowski"
-ADMBase::initial_lapse           = "one"
-ADMBase::initial_shift           = "zero"
-ADMBase::initial_dtlapse         = "none"
-ADMBase::initial_dtshift         = "none"
 
+
+# -------------------- CarpetX -------------------------------------------------
 CarpetX::verbose = no
 
 CarpetX::xmin = -0.4
@@ -43,49 +42,85 @@ CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
-CarpetX::max_num_levels = $nlevels
-CarpetX::regrid_every = 16
+CarpetX::max_num_levels         = $nlevels
+CarpetX::regrid_every           = 16
 CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::ghost_size = 2
-CarpetX::dtfac = 0.25
+CarpetX::ghost_size        = 2
+CarpetX::dtfac             = 0.25
 
-#GRHydroToyGPU  
-GRHydroToyGPU::setup = "spherical shock"
-GRHydroToyGPU::shock_radius = 0.1
-GRHydroToyGPU::gamma = 1.6666666666666667
+
+
+# -------------------- ADMBase -------------------------------------------------
+ADMBase::set_adm_variables_during_evolution = "yes"
+ADMBase::initial_data                       = "Cartesian Minkowski"
+ADMBase::initial_lapse                      = "one"
+ADMBase::initial_shift                      = "zero"
+ADMBase::initial_dtlapse                    = "none"
+ADMBase::initial_dtshift                    = "none"
+
+
+
+
+# -------------------- HydroBase -----------------------------------------------
+HydroBase::initial_hydro = "spherical shock"
+
+
+
+# -------------------- HydroInitial --------------------------------------------
+HydroInitial::amplitude     = 1.0e-3
+HydroInitial::shock_radius  = 0.1
+HydroInitial::gamma         = 1.6666666666666667
+
+
+
+# -------------------- GRHydroToyGPU -------------------------------------------
 GRHydroToyGPU::reconstruction_method = "minmod"
+
 GRHydroToyGPU::max_rho = 100.0
 GRHydroToyGPU::max_eps = 100.0
+
 GRHydroToyGPU::atmo_rho = 1.0e-13
 GRHydroToyGPU::atmo_eps = 1.0e-10
 GRHydroToyGPU::atmo_ye  = 0.5
 GRHydroToyGPU::atmo_cut = 1.01e-13
+
 GRHydroToyGPU::rho_strict = 100.0
 GRHydroToyGPU::ye_lenient = "yes"
-GRHydroToyGPU::max_iter = 100
-GRHydroToyGPU::max_b = 100.0
-GRHydroToyGPU::max_z = 10.0
 
+GRHydroToyGPU::max_iter = 100
+GRHydroToyGPU::max_b    = 100.0
+GRHydroToyGPU::max_z    = 10.0
+
+
+
+# -------------------- ODESolvers ----------------------------------------------
 ODESolvers::method = "RK3"
 
+
+
+# -------------------- IO ------------------------------------------------------
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
 CarpetX::out_silo_vars = "
-#    GRHydroToyGPU::dens
-#    GRHydroToyGPU::mom
-#    GRHydroToyGPU::tau
+##    GRHydroToyGPU::dens
+##    GRHydroToyGPU::mom
+##    GRHydroToyGPU::tau
     HydroBase::rho
-    HydroBase::vel
     HydroBase::eps
     HydroBase::press
+    HydroBase::vel
     CarpetX::regrid_error
 "
 
-TimerReport::out_every = $ncells * 2 ** ($nlevels - 1) / 32
-TimerReport::out_filename = "TimerReport"
+
+# -------------------- TimerReport ---------------------------------------------
+TimerReport::out_every                  = $ncells * 2 ** ($nlevels - 1) / 32
+TimerReport::out_filename               = "TimerReport"
 TimerReport::output_all_timers_together = yes
 TimerReport::output_all_timers_readable = yes
-TimerReport::n_top_timers = 50
+TimerReport::n_top_timers               = 50
+
+
 
