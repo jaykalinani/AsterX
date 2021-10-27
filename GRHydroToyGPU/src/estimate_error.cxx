@@ -41,30 +41,28 @@ extern "C" void GRHydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
   const GF3D2<const CCTK_REAL> gf_eps(gf_layout, eps);
   const GF3D2<const CCTK_REAL> gf_press(gf_layout, press);
 
-
   const GF3D2<CCTK_REAL> gf_regrid_error(gf_layout, regrid_error);
 
   constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
-      grid.nghostzones,
-      [=]CCTK_DEVICE CCTK_HOST (const PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            const auto calcerr = [&](auto &gf_var) {
-              CCTK_REAL err{0};
-              for (int d = 0; d < dim; ++d) {
-                auto varm = gf_var(p.I - DI[d]);
-                auto var0 = gf_var(p.I);
-                auto varp = gf_var(p.I + DI[d]);
-                // Calculate derivative
-                err = fmax(err, fmax(fabs(var0 - varm), fabs(varp - var0)));
-              }
-              return err;
-            };
+      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        const auto calcerr = [&](auto &gf_var) {
+          CCTK_REAL err{0};
+          for (int d = 0; d < dim; ++d) {
+            auto varm = gf_var(p.I - DI[d]);
+            auto var0 = gf_var(p.I);
+            auto varp = gf_var(p.I + DI[d]);
+            // Calculate derivative
+            err = fmax(err, fmax(fabs(var0 - varm), fabs(varp - var0)));
+          }
+          return err;
+        };
 
-            gf_regrid_error(p.I) =
-                fmax6(calcerr(gf_rho), calcerr(gf_velx), calcerr(gf_vely),
-                      calcerr(gf_velz), calcerr(gf_eps), calcerr(gf_press));
-          });
+        gf_regrid_error(p.I) =
+            fmax6(calcerr(gf_rho), calcerr(gf_velx), calcerr(gf_vely),
+                  calcerr(gf_velz), calcerr(gf_eps), calcerr(gf_press));
+      });
 }
 
 } // namespace GRHydroToyGPU
