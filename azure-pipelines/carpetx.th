@@ -122,6 +122,12 @@ ExternalLibraries/PETSc
 ExternalLibraries/hwloc
 ExternalLibraries/zlib
 
+# RePrimAnd
+!TARGET   = $ARR
+!TYPE     = svn
+!URL      = https://github.com/rhaas80/RePrimAnd.git/trunk/ET_interface/thorns/$2
+!CHECKOUT = ExternalLibraries/RePrimAnd
+#DISABLED ExternalLibraries/RePrimAnd
 
 
 # CarpetX thorns
