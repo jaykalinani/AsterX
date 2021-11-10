@@ -132,9 +132,8 @@ ExternalLibraries/RePrimAnd
 # CarpetX thorns
 !TARGET      = $ARR
 !TYPE        = git
-##!URL         = https://bitbucket.org/eschnett/cactusamrex.git
-!URL         = https://bitbucket.org/jaykalinani/cactusamrex
-!REPO_BRANCH = rhaas/GRHydroToyGPU
+!URL         = https://bitbucket.org/eschnett/cactusamrex.git
+!REPO_BRANCH = GRHydroToyGPU
 !REPO_PATH   = $2
 !CHECKOUT    = CarpetX/Kokkos CarpetX/SHTOOLS CarpetX/libsharp
 CarpetX/ADIOS2
