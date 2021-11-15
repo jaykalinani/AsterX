@@ -1020,7 +1020,7 @@ int Initialise(tFleshConfig *config) {
       assert(!active_levels);
       active_levels = make_optional<active_levels_t>(0, 1);
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
-      CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
+      // CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
       active_levels = optional<active_levels_t>();
     }
 
