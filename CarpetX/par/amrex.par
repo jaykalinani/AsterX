@@ -36,7 +36,6 @@ CarpetX::out_silo_vars = "
     WaveToyCarpetX::err
 "
 
-CarpetX::out_openpmd_author = "Erik Schnetter <schnetter@gmail.com>"
 CarpetX::out_openpmd_vars = "
     WaveToyCarpetX::state
     WaveToyCarpetX::energy
