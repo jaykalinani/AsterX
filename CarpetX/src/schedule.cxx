@@ -407,16 +407,22 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
 enum class mode_t { unknown, local, patch, level, global, meta };
 
 mode_t current_mode(const cGH *restrict cctkGH) {
-  if (cctkGH->cctk_lsh[0] != undefined)
+  const bool have_local = cctkGH->cctk_lsh[0] != undefined;
+  const bool have_patch = cctkGH->cctk_patch != undefined;
+  const bool have_level = cctkGH->cctk_levfac[0] != undefined;
+  const bool have_global = cctkGH->cctk_nghostzones[0] != undefined;
+  if (have_local && have_patch && have_level && have_global)
     return mode_t::local;
-  else if (cctkGH->cctk_patch != undefined)
+  else if (!have_local && have_patch && have_level && have_global)
     return mode_t::patch;
-  else if (cctkGH->cctk_gsh[0] != undefined)
+  else if (!have_local && !have_patch && have_level && have_global)
     return mode_t::level;
-  else if (cctkGH->cctk_nghostzones[0] != undefined)
+  else if (!have_local && !have_patch && !have_level && have_global)
     return mode_t::global;
-  else
+  else if (!have_local && !have_patch && !have_level && !have_global)
     return mode_t::meta;
+  else
+    assert(0);
 }
 
 bool in_local_mode(const cGH *restrict cctkGH) {
@@ -473,9 +479,10 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   cctkGH->cctk_delta_time = dtfac * mindx;
 
   // init into meta mode
-  cctkGH->cctk_nghostzones[0] = undefined;
   cctkGH->cctk_lsh[0] = undefined;
-  cctkGH->cctk_gsh[0] = undefined;
+  cctkGH->cctk_levfac[0] = undefined;
+  cctkGH->cctk_patch = undefined;
+  cctkGH->cctk_nghostzones[0] = undefined;
   assert(in_meta_mode(cctkGH));
 }
 
@@ -958,8 +965,8 @@ int Initialise(tFleshConfig *config) {
   swap(saved_thread_local_info, thread_local_info);
   assert(thread_local_info.empty());
 
-  assert(ghext->patchdata.empty());
-  // TODOPATCH assert(ghext->leveldata.empty());
+  for (const auto &patchdata : ghext->patchdata)
+    assert(patchdata.leveldata.empty());
   assert(!active_levels);
   active_levels = make_optional<active_levels_t>(0, 0);
 
