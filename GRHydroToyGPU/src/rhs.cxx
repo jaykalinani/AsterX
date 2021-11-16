@@ -76,55 +76,8 @@ extern "C" void GRHydroToyGPU_RHS(CCTK_ARGUMENTS) {
 
   constexpr auto DI = PointDesc::DI;
 
-#if 0
-  // This kernel fails on GPUs for unknown reasons. Maybe it is too
-  // complex? The alternative implementation below works fine.
-
-#ifdef AMREX_USE_GPU
-  AMREX_GPU_ERROR_CHECK();
-  amrex::Gpu::synchronize();
-  AMREX_GPU_ERROR_CHECK();
-#endif
-
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE  {
-        // Neighbouring "plus" and "minus" face indices in the x, y, and z
-        // directions
-        const auto Imx = p.I;
-        const auto Imy = p.I;
-        const auto Imz = p.I;
-        const auto Ipx = p.I + DI[0];
-        const auto Ipy = p.I + DI[1];
-        const auto Ipz = p.I + DI[2];
-
-        gf_rhsdens(p.I) =
-            calcupdate(gf_fxdens(Imx), gf_fxrho(Ipx), gf_fyrho(Imy),
-                       gf_fydens(Ipy), gf_fzrho(Imz), gf_fzrho(Ipz));
-        gf_rhsmomx(p.I) =
-            calcupdate(gf_fxmomx(Imx), gf_fxmomx(Ipx), gf_fymomx(Imy),
-                       gf_fymomx(Ipy), gf_fzmomx(Imz), gf_fzmomx(Ipz));
-        gf_rhsmomy(p.I) =
-            calcupdate(gf_fxmomy(Imx), gf_fxmomy(Ipx), gf_fymomy(Imy),
-                       gf_fymomy(Ipy), gf_fzmomy(Imz), gf_fzmomy(Ipz));
-        gf_rhsmomz(p.I) =
-            calcupdate(gf_fxmomz(Imx), gf_fxmomz(Ipx), gf_fymomz(Imy),
-                       gf_fymomz(Ipy), gf_fzmomz(Imz), gf_fzmomz(Ipz));
-        gf_rhstau(p.I) =
-            calcupdate(gf_fxtau(Imx), gf_fxtau(Ipx), gf_fytau(Imy),
-                       gf_fytau(Ipy), gf_fztau(Imz), gf_fztau(Ipz));
-      });
-
-#ifdef AMREX_USE_GPU
-  AMREX_GPU_ERROR_CHECK();
-  amrex::Gpu::synchronize();
-  AMREX_GPU_ERROR_CHECK();
-#endif
-
-#else
-
-  grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+      grid.nghostzones, [=] CCTK_DEVICE(
                             const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" face indices in
         // the x, y, and z directions
@@ -207,8 +160,6 @@ extern "C" void GRHydroToyGPU_RHS(CCTK_ARGUMENTS) {
             calcupdate(gf_fxtau(Imx), gf_fxtau(Ipx), gf_fytau(Imy),
                        gf_fytau(Ipy), gf_fztau(Imz), gf_fztau(Ipz));
       });
-
-#endif
 }
 
 } // namespace GRHydroToyGPU
