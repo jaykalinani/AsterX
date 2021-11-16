@@ -47,7 +47,7 @@ extern "C" void GRHydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
   constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
-      [=]CCTK_DEVICE CCTK_HOST (const PointDesc &p)
+      [=]CCTK_DEVICE(const PointDesc &p)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
             const auto calcerr = [&](auto &gf_var) {
               CCTK_REAL err{0};

@@ -66,8 +66,8 @@ namespace GRHydroToyGPU {
                            max_b, atmo, c2p_acc, max_iter);
 
         // Loop over the entire grid (0 to n-1 points in each direction)
-        grid.loop_all_device<1, 1, 1>(
-            grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(const PointDesc &p)
+        grid.loop_all<1, 1, 1>(
+            grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
             // Build the objects needed (primitive variables and error report)

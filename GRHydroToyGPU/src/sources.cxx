@@ -116,7 +116,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
   constexpr auto DI = PointDesc::DI;
   const auto reconstruct =
-      [=] CCTK_DEVICE CCTK_HOST(
+      [=] CCTK_DEVICE(
           const GF3D2<const CCTK_REAL> &gf_var,
           const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" cell indices
@@ -144,7 +144,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         }
       };
 
-  const auto calcflux = [=] CCTK_DEVICE CCTK_HOST(
+  const auto calcflux = [=] CCTK_DEVICE(
                             CCTK_REAL var_m, CCTK_REAL var_p, CCTK_REAL flux_m,
                             CCTK_REAL flux_p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
     CCTK_REAL lambda_m = +1.0;
@@ -191,7 +191,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   const CCTK_REAL ih[3] = { 1.0/dx, 1.0/dy, 1.0/dz };
 
   grid.loop_int_device<1,1,1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+      grid.nghostzones, [=] CCTK_DEVICE(
                             const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // TODO: these are not needed.
         const CCTK_REAL localgxx = g11[ijk];

@@ -123,7 +123,7 @@ namespace GRHydroToyGPU {
 
 
         const auto reconstruct =
-            [=] CCTK_DEVICE CCTK_HOST(
+            [=] CCTK_DEVICE(
                 const GF3D2<const CCTK_REAL> &gf_var,
                 const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
             // Neighbouring "plus" and "minus" cell indices
@@ -168,7 +168,7 @@ namespace GRHydroToyGPU {
 
 
         grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
-            grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+            grid.nghostzones, [=] CCTK_DEVICE(
             const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
             // Reconstruct primitives from the cells on left (indice 0) and right (indice 1) side of this face
