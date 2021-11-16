@@ -1,0 +1,3 @@
+SRC = 						\
+	eos_thermal.cc				\
+	eos_thermal_file.cc
