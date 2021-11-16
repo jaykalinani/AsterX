@@ -19,6 +19,8 @@ extern "C" void GRHydroToyGPU_Prim2Con_Initial(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Prim2Con_Initial;
   DECLARE_CCTK_PARAMETERS;
 
+  constexpr auto DI = PointDesc::DI;
+
   const GridDescBaseDevice grid(cctkGH);
   constexpr array<int, dim> cell_centred = {1, 1, 1};
   constexpr array<int, dim> vertex_centred = {0, 0, 0};
@@ -62,12 +64,12 @@ extern "C" void GRHydroToyGPU_Prim2Con_Initial(CCTK_ARGUMENTS) {
           for(int dk = 0 ; dk < 2 ; ++dk)
               for(int dj = 0 ; dj < 2 ; ++dj)
                   for(int di = 0 ; di < 2 ; ++di) {
-                      g.gxx += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      g.gxy += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      g.gxz += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      g.gyy += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      g.gyz += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                      g.gzz += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                      g.gxx += gf_gxx(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                      g.gxy += gf_gxy(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                      g.gxz += gf_gxz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                      g.gyy += gf_gyy(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                      g.gyz += gf_gyz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                      g.gzz += gf_gzz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
                   }
 
           g.gxx *= 0.125;

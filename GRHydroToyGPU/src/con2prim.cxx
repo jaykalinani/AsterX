@@ -27,6 +27,8 @@ namespace GRHydroToyGPU {
         DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Con2Prim;
         DECLARE_CCTK_PARAMETERS;
 
+        constexpr auto DI = PointDesc::DI;
+
         const GridDescBaseDevice grid(cctkGH);
         constexpr array<int, dim> cell_centred   = {1, 1, 1};
         constexpr array<int, dim> vertex_centred = {0, 0, 0};
@@ -97,12 +99,12 @@ namespace GRHydroToyGPU {
             for(int dk = 0 ; dk < 2 ; ++dk)
                 for(int dj = 0 ; dj < 2 ; ++dj)
                     for(int di = 0 ; di < 2 ; ++di) {
-                        gxx_avg += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gxy_avg += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gxz_avg += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gyy_avg += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gyz_avg += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gzz_avg += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                        gxx_avg += gf_gxx(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gxy_avg += gf_gxy(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gxz_avg += gf_gxz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gyy_avg += gf_gyy(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gyz_avg += gf_gyz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gzz_avg += gf_gzz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
                     }
 
             gxx_avg *= 0.125;

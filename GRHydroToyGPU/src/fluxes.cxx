@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 
 
@@ -148,13 +149,13 @@ namespace GRHydroToyGPU {
                 }
 
                 default:
-                    CCTK_BUILTIN_UNREACHABLE();
+                    assert(0);
             }
         };
 
 
         const auto calcflux =
-            [=] CCTK_DEVICE CCTK_HOST(
+            [=] CCTK_DEVICE(
                 array<CCTK_REAL, 2> var, array<CCTK_REAL, 2> flux)
             CCTK_ATTRIBUTE_ALWAYS_INLINE {
                 array<CCTK_REAL, 2> lambda = {+1.0, -1.0};
@@ -200,18 +201,18 @@ namespace GRHydroToyGPU {
             for(int dk = 0 ; dk < (dir == 2 ? 1 : 2) ; ++dk) {
                 for(int dj = 0 ; dj < (dir == 1 ? 1 : 2) ; ++dj) {
                     for(int di = 0 ; di < (dir == 0 ? 1 : 2) ; ++di) {
-                        alp_avg += gf_alp(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                        alp_avg += gf_alp(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
 
-                        betax_avg += gf_betax(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        betay_avg += gf_betay(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        betaz_avg += gf_betaz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                        betax_avg += gf_betax(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        betay_avg += gf_betay(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        betaz_avg += gf_betaz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
                      
-                        gxx_avg += gf_gxx(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gxy_avg += gf_gxy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gxz_avg += gf_gxz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gyy_avg += gf_gyy(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gyz_avg += gf_gyz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
-                        gzz_avg += gf_gzz(p.I + p.DI[0]*di + p.DI[1]*dj + p.DI[2]*dk);
+                        gxx_avg += gf_gxx(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gxy_avg += gf_gxy(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gxz_avg += gf_gxz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gyy_avg += gf_gyy(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gyz_avg += gf_gyz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
+                        gzz_avg += gf_gzz(p.I + DI[0]*di + DI[1]*dj + DI[2]*dk);
                     }
                 }
             }
