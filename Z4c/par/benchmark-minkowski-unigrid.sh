@@ -3,15 +3,16 @@
 ################################################################################
 
 {
-    iter=64
+    machine=symmetry-llvm
+    configuration=sim-llvm
+    iter=0001
     # 256 320 400 512
     for size in 256; do
         for nodes in 1; do          # total
             cores=40                # per node
             procs=$((nodes*cores))  # total
             # 1 2 4 5 10 20 40
-            # for threads in 5 10 20; do # per process
-            for threads in 5; do # per process
+            for threads in 5 10 20; do # per process
     
                 for blocking_factor in 8; do
                     # 32 64
@@ -24,11 +25,13 @@
                             for max_tile_size_y in 4; do
                                 # for max_tile_size_z in 2 4 8; do
                                 for max_tile_size_z in 2; do
-    
+
                                     name="benchmark-minkowski-unigrid-i$iter-s$size-n$nodes-c$cores-p$procs-t$threads-bf$blocking_factor-gs$max_grid_size-tx$max_tile_size_x-ty$max_tile_size_y-tz$max_tile_size_z"
                                     ./simfactory/bin/sim purge "$name"
                                     ./simfactory/bin/sim \
+                                        --machine=$machine \
                                         submit "$name" \
+                                        --configuration=$configuration \
                                         --parfile arrangements/CarpetX/Z4c/par/benchmark-minkowski-unigrid.par \
                                         --replace='$ncells='$size \
                                         --replace='$blocking_factor='$blocking_factor \
@@ -57,23 +60,21 @@
 
 # Analyse output
 {
-    echo 'system,iter,time,size,nodes,cores_node,threads,threads_process,blocking_factor,max_grid_size,max_tile_size_x,max_tile_size_y,max_tile_size_z'
+    echo 'system,time,iter,size,nodes,cores_node,threads,threads_process,blocking_factor,max_grid_size,max_tile_size_x,max_tile_size_y,max_tile_size_z'
     system=$(./simfactory/bin/sim whoami | awk '{ print $3; }')
     (
         cd /home/eschnetter/simulations;
-        for file in benchmark-minkowski-unigrid-i*/output-0000/benchmark-minkowski-unigrid-*.out; do
-            echo \
-                "$system" \
-                $(grep Evolve "$file" |
+        for dir in benchmark-minkowski-unigrid-i*; do
+            time=$(grep Evolve "$dir/output-0000/stdout.txt" |
                       tail -n 1 |
-                      awk '{ print $2; }') \
-                          $(basename "$file" |
-                                sed -e 's/benchmark-minkowski-unigrid//' |
-                                sed -e 's/\.out//')
+                      awk '{ print $2; }')
+            settings=$(echo "$dir" |
+                           sed -e 's/benchmark-minkowski-unigrid//')
+            echo "$system,$time$settings"
         done
     ) |
         sort -k 2 -n |
-        sed -e 's/ -i/,/;s/-s/,/;s/-n/,/;s/-c/,/;s/-p/,/;s/-t/,/;s/-bf/,/;s/-gs/,/;s/-tx/,/;s/-ty/,/;s/-tz/,/'
+        sed -e 's/-i/,/;s/-s/,/;s/-n/,/;s/-c/,/;s/-p/,/;s/-t/,/;s/-bf/,/;s/-gs/,/;s/-tx/,/;s/-ty/,/;s/-tz/,/'
 } |
     tee benchmark-minkowski-unigrid.csv
 
