@@ -1,6 +1,3 @@
 # Configuration definitions for thorn GRHydroToyGPU
 
-# REQUIRES Kokkos
-# REQUIRES NSIMD
-# REQUIRES Vectors
-REQUIRES CarpetX RePrimAnd
+REQUIRES CarpetX RePrimAndGPU
