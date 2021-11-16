@@ -50,6 +50,16 @@ REAL cartesian_zmax "zmax"
 
 # Cubed sphere patch system
 
+REAL cubed_sphere_rmin "rmin"
+{
+  0:* :: ""
+} +1.0
+
+REAL cubed_sphere_rmax "rmax"
+{
+  0:* :: ""
+} +3.0
+
 # Swirl patch system
 
 INT swirl_ncells_i "Number of cells in i direction"
