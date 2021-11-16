@@ -4,8 +4,9 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::implementations;
+namespace EOS_Toolkit_GPU {
+
+using namespace EOS_Toolkit_GPU::implementations;
 using namespace std;
 
 eos_idealgas::eos_idealgas(real_t n_, real_t max_eps_, real_t max_rho_) 
@@ -78,9 +79,10 @@ auto eos_idealgas::range_temp(real_t rho, real_t ye) const -> range
   throw logic_error("eos_idealgas: temperature not implemented");
 }
 
-eos_thermal EOS_Toolkit::make_eos_idealgas(real_t n,  
+eos_thermal make_eos_idealgas(real_t n,  
     real_t max_eps, real_t max_rho)
 {
   return eos_thermal{make_shared<eos_idealgas>(n, max_eps, max_rho)};
 }
 
+}

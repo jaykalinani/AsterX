@@ -7,7 +7,7 @@
 
 #include "smtensor.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /// Structure to represent the primitive hydrodynamic variables.
 struct prim_vars {

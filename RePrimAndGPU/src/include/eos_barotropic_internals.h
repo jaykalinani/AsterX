@@ -6,7 +6,7 @@
 #include "eos_barotropic_impl.h"
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 namespace detail {
 
@@ -64,6 +64,6 @@ class eos_barotr_base {
 } // namespace detail
 
 
-} // namespace EOS_Toolkit 
+} // namespace EOS_Toolkit_GPU 
 
 #endif

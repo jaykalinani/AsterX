@@ -8,7 +8,7 @@
 #include "hydro_prim.h"
 #include "hydro_cons.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 /// Class representing an artificial atmosphere.

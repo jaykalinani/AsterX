@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 /**\brief Load thermal EOS from hdf5 file. 

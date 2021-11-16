@@ -4,7 +4,7 @@
 #include "config.h"
 #include "intervals.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 
@@ -117,7 +117,7 @@ class eos_barotr_impl {
 };
 
 }// namespace implementations
-}// namespace EOS_Toolkit
+}// namespace EOS_Toolkit_GPU
 
 
 #endif

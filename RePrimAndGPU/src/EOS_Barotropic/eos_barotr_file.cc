@@ -2,7 +2,7 @@
 #include "eos_barotr_file.h"
 #include "eos_barotr_file_impl.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 eos_barotr detail::load_eos_barotr(const h5grp& g, const units& u)
@@ -23,4 +23,4 @@ eos_barotr load_eos_barotr(std::string fname, const units& u)
 }
 
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU

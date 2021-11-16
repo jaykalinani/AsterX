@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**\brief Load barotropic EOS from hdf5 file. 
 

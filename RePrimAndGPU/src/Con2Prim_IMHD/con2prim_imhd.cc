@@ -8,8 +8,9 @@
 #include <limits>
 #include "find_roots.h"
 
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::detail;
+namespace EOS_Toolkit_GPU {
+
+using namespace EOS_Toolkit_GPU::detail;
 using namespace std;
 
 
@@ -539,4 +540,6 @@ rarecase::rarecase(const interval<real_t> ibracket,
   }
 
   bracket = interval<real_t>{muc0, muc1};
+}
+
 }

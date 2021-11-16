@@ -2,7 +2,7 @@
 #include "eos_thermal_file_impl.h"
 #include "eos_idealgas.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 
@@ -29,4 +29,4 @@ eos_thermal reader_eos_thermal_idealgas::load(const h5grp& g,
   
   
 } //namespace implementations
-} //namespace EOS_Toolkit
+} //namespace EOS_Toolkit_GPU

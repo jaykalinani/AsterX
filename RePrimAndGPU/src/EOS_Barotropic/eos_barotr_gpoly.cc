@@ -3,9 +3,10 @@
 #include <cmath>
 #include <stdexcept>
 
+namespace EOS_Toolkit_GPU {
+
 using namespace std;
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::implementations;
+using namespace EOS_Toolkit_GPU::implementations;
 
 
 
@@ -101,9 +102,11 @@ eos_barotr_gpoly::from_boundary(real_t rho0, real_t eps0,
           eps0_from_p_rho_eps_n(p0, rho0, eps0, n), rho_max};
 }
 
-eos_barotr EOS_Toolkit::make_eos_barotr_gpoly(real_t n, real_t rmd_p, 
+eos_barotr make_eos_barotr_gpoly(real_t n, real_t rmd_p, 
                                    real_t sed0, real_t rho_max)
 {
   return eos_barotr{std::make_shared<eos_barotr_gpoly>(n, rmd_p,
                                                   sed0, rho_max)};
+}
+
 }

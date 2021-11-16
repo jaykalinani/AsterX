@@ -7,7 +7,7 @@
 
 #include "con2prim_imhd.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace detail {
 
 class rarecase;

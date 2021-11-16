@@ -9,7 +9,7 @@ all EOS implementations are derived.
 #include "eos_thermal.h"
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 /// Virtual abstract base class defining Thermal EOS implementation API.
@@ -176,7 +176,7 @@ class eos_thermal_impl {
 
 
 
-} // namespace EOS_Toolkit 
+} // namespace EOS_Toolkit_GPU 
 
 
 #endif

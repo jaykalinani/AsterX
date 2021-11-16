@@ -4,9 +4,9 @@
 #include <limits>
 
 using namespace std;
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::detail;
-using namespace EOS_Toolkit::implementations;
+using namespace EOS_Toolkit_GPU;
+using namespace EOS_Toolkit_GPU::detail;
+using namespace EOS_Toolkit_GPU::implementations;
 
 
 namespace {

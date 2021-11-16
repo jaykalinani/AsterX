@@ -3,7 +3,7 @@
 
 #include "eos_barotropic_impl.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 ///Polytropic EOS
@@ -126,7 +126,7 @@ class eos_barotr_poly : public eos_barotr_impl {
 };
 
 }// namespace implementations
-}//namespace EOS_Toolkit
+}//namespace EOS_Toolkit_GPU
 
 
 #endif

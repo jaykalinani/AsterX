@@ -8,7 +8,7 @@
 #include <array>
 #include <stdexcept>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 namespace detail {
@@ -315,6 +315,6 @@ T get_attribute(h5grp g, std::string name)
 
  
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 #endif

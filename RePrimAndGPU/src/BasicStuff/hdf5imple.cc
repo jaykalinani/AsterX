@@ -1,7 +1,6 @@
 #include "hdf5imple.h"
 
-namespace EOS_Toolkit {
-
+namespace EOS_Toolkit_GPU {
 
 void read(const h5attr& a, bool& b)
 {
@@ -31,6 +30,5 @@ void read(const h5attr& a, std::string& d)
   
   H5free_memory(buf);
 }
-
 
 }

@@ -7,7 +7,7 @@
 
 #include "hydro_prim.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /// Structure to represent conserved variables for pure hydrodynamics.
 struct cons_vars {

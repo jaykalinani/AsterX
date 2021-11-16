@@ -5,7 +5,7 @@
 #include "hydro_cons.h"
 #include <limits>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 /**

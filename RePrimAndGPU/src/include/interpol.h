@@ -6,7 +6,7 @@
 #include "config.h"
 #include "intervals.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 namespace detail {

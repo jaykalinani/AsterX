@@ -6,7 +6,7 @@
 #include <limits>
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 
@@ -59,4 +59,4 @@ void prim_vars_mhd::set_to_nan()
   = std::numeric_limits<real_t>::quiet_NaN();
 }
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU

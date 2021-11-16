@@ -1,7 +1,7 @@
 #include "interpol.h"
 #include <gsl/gsl_spline.h>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace detail {
 
 struct wrap_interp_accel {
@@ -47,4 +47,3 @@ class cspline_mono_impl {
 
 }
 }
-

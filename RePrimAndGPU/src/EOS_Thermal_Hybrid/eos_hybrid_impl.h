@@ -3,7 +3,7 @@
 #include "eos_barotropic.h"
 #include "eos_thermal_impl.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 class eos_hybrid : public eos_thermal_impl {
@@ -116,7 +116,7 @@ class eos_hybrid : public eos_thermal_impl {
 
 } // namespace implementations
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 #endif
 

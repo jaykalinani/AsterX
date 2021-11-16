@@ -6,7 +6,7 @@
 #include "eos_barotropic_internals.h"
 #include "intervals.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 /// Interface for generic barotropic EOS
@@ -406,7 +406,7 @@ class eos_barotr : detail::eos_barotr_base {
 
 
 
-}// namespace EOS_Toolkit
+}// namespace EOS_Toolkit_GPU
 
 
 #endif

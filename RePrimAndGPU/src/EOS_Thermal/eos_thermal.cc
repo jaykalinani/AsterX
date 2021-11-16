@@ -7,10 +7,11 @@
 #include <stdexcept>
 #include <cassert>
 
+namespace EOS_Toolkit_GPU {
+
 using namespace std;
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::detail;
-using namespace EOS_Toolkit::implementations;
+using namespace EOS_Toolkit_GPU::detail;
+using namespace EOS_Toolkit_GPU::implementations;
 
 
 namespace {
@@ -320,3 +321,4 @@ auto eos_thermal::dpress_deps_at_rho_temp_ye(real_t rho, real_t temp,
 
 eos_thermal_impl::~eos_thermal_impl() = default;
 
+}

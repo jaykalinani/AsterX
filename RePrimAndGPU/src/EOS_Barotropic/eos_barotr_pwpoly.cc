@@ -5,8 +5,8 @@
 #include <limits>
 
 using namespace std;
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::implementations;
+using namespace EOS_Toolkit_GPU;
+using namespace EOS_Toolkit_GPU::implementations;
 
 eos_poly_piece::eos_poly_piece(real_t rmd0_, real_t sed0_, 
                  real_t gamma_, real_t rmd_p_)
@@ -258,8 +258,8 @@ real_t eos_barotr_pwpoly::ye(real_t gm1) const
 }
   
   
-EOS_Toolkit::eos_barotr 
-EOS_Toolkit::make_eos_barotr_pwpoly(real_t rmdp0,  
+EOS_Toolkit_GPU::eos_barotr 
+EOS_Toolkit_GPU::make_eos_barotr_pwpoly(real_t rmdp0,  
   const std::vector<real_t>& segm_bound,  
   const std::vector<real_t>& segm_gamma,  real_t rho_max)
 {

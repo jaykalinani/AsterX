@@ -8,7 +8,7 @@
 #include "unitconv.h"
  
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 namespace implementations {
@@ -23,7 +23,7 @@ using registry_reader_eos_thermal = global_registry<reader_eos_thermal>;
 } // namespace implementations
 
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 #endif
 

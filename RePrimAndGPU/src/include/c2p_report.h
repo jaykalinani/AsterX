@@ -8,7 +8,7 @@
 #include <string>
 #include "config.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 class con2prim_mhd;
 namespace detail {class froot;}

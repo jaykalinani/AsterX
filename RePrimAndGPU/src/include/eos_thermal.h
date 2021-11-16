@@ -11,7 +11,7 @@
 
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 /// Interface for generic thermal EOS
@@ -428,7 +428,7 @@ class eos_thermal : detail::eos_thermal_base {
 };
 
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 
 

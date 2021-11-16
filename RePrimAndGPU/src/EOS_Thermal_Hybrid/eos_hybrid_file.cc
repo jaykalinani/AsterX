@@ -3,7 +3,7 @@
 #include "eos_thermal_file_impl.h"
 #include "eos_hybrid.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 
@@ -25,7 +25,7 @@ eos_thermal reader_eos_thermal_hybrid::load(const h5grp& g,
 
   h5grp g2(g, "eos_cold");
   
-  auto eos_cold = ::EOS_Toolkit::detail::load_eos_barotr(g2, u);
+  auto eos_cold = ::EOS_Toolkit_GPU::detail::load_eos_barotr(g2, u);
 
   real_t rho_max = eos_cold.range_rho().max();
                                 

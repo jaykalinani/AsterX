@@ -3,7 +3,7 @@
 
 #include "eos_thermal_impl.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 namespace implementations {
 
@@ -124,8 +124,6 @@ class eos_idealgas : public eos_thermal_impl {
 
 
 } // namespace implementations
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 #endif
-
-

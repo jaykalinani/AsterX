@@ -9,7 +9,7 @@
 
 using namespace std;
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 void c2p_mhd_report::raise() const

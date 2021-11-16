@@ -2,13 +2,13 @@
 #include <cmath>
 #include <boost/format.hpp>
 
+namespace EOS_Toolkit_GPU {
+
 using namespace std;
-using namespace EOS_Toolkit;
 
 const double units::c_SI      = 299792458.0;
 const double units::G_SI      = 6.673e-11;
 const double units::M_sun_SI  = 1.98892e30;
-
 
 units units::geom_ulength(double ulength)
 {
@@ -37,10 +37,10 @@ string units::to_str() const
   return fmt.str();
 }
 
-ostream& EOS_Toolkit::operator<<(ostream& o, const units& u) 
+ostream& operator<<(ostream& o, const units& u) 
 {
   o << u.to_str();
   return o;
 }
 
-
+}

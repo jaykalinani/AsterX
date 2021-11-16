@@ -3,7 +3,7 @@
 #include "eos_barotropic.h"
 #include "eos_thermal.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**\brief Create Hybrid EOS
 @return eos_thermal object representing the hybrid EOS
@@ -24,7 +24,7 @@ eos_thermal make_eos_hybrid(eos_barotr eos_c,
              real_t gamma_th, real_t eps_max, real_t rho_max);
 
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 #endif
 

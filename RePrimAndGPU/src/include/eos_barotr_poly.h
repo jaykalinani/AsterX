@@ -3,7 +3,7 @@
 
 #include "eos_barotropic.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**\brief Create a polytropic EOS
 
@@ -20,7 +20,7 @@ eos_barotr make_eos_barotr_poly(real_t n, real_t rmd_p,
                                 real_t rho_max);
 
 
-}//namespace EOS_Toolkit
+}//namespace EOS_Toolkit_GPU
 
 
 #endif

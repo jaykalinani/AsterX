@@ -6,7 +6,7 @@
 #include "intervals.h"
 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 enum class ROOTSTAT {

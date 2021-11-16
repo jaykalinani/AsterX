@@ -9,7 +9,7 @@
 #include <cmath>
 #include "config.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 enum zero_literal {ZERO=0}; 
 enum one_literal {ONE=1};
@@ -1162,7 +1162,7 @@ template<class T, int N> class sm_metric  {
   -> sm_tensor1<T, 3, false>
   {
     static_assert(N==3,"Cross product only defined in 3 dimensions");
-    return ::EOS_Toolkit::cross_product(a,b,vol_elem);
+    return ::EOS_Toolkit_GPU::cross_product(a,b,vol_elem);
   }
 
   ///Set to spatial part of Minkowski metric

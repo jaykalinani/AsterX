@@ -2,7 +2,7 @@
 #include "eos_thermal_file.h"
 #include "eos_thermal_file_impl.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 eos_thermal detail::load_eos_thermal(const h5grp& g, const units& u)
@@ -23,4 +23,4 @@ eos_thermal load_eos_thermal(std::string fname, const units& u)
 }
 
 
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU

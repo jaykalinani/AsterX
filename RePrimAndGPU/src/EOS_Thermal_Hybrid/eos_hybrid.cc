@@ -5,8 +5,9 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::implementations;
+namespace EOS_Toolkit_GPU {
+
+using namespace EOS_Toolkit_GPU::implementations;
 using namespace std;
 
 
@@ -112,12 +113,11 @@ eos_hybrid::range_temp(real_t rho, real_t ye) const
   throw runtime_error("eos_hybrid: temperature not implemented");
 }
 
-eos_thermal EOS_Toolkit::make_eos_hybrid(EOS_Toolkit::eos_barotr eos_c,  
+eos_thermal make_eos_hybrid(EOS_Toolkit_GPU::eos_barotr eos_c,  
              real_t gamma_th, real_t eps_max, real_t rho_max)
 {
   return eos_thermal{std::make_shared<eos_hybrid>(eos_c, gamma_th, 
                                                   eps_max, rho_max)};
 }
 
-
-
+}

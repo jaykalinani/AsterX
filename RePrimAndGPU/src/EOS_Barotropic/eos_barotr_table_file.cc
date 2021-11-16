@@ -2,7 +2,7 @@
 #include "eos_barotr_file_impl.h"
 #include "eos_barotr_table.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 

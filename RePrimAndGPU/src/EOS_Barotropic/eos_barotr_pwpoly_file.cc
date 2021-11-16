@@ -2,7 +2,7 @@
 #include "eos_barotr_file_impl.h"
 #include "eos_barotr_pwpoly.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 
@@ -34,4 +34,4 @@ eos_barotr reader_eos_barotr_pwpoly::load(const h5grp& g,
 
 
 } //namespace implementations 
-} // namespace EOS_Toolkit 
+} // namespace EOS_Toolkit_GPU 

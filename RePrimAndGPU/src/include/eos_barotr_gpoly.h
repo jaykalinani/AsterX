@@ -4,7 +4,7 @@
 #include "eos_barotropic.h"
 #include <vector>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 eos_barotr make_eos_barotr_gpoly(
   real_t n_,                          ///<Adiabatic index \f$ n \f$
@@ -14,7 +14,7 @@ eos_barotr make_eos_barotr_gpoly(
 );
 
 
-}//namespace EOS_Toolkit
+}//namespace EOS_Toolkit_GPU
 
 
 #endif

@@ -3,7 +3,7 @@
 
 #include "eos_thermal.h"
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**\brief Create a classical ideal gas EOS
 
@@ -21,7 +21,7 @@ with allowed range :math:`[0,1]`.
 **/
 eos_thermal make_eos_idealgas(real_t n, real_t max_eps, real_t max_rho);
     
-} // namespace EOS_Toolkit
+} // namespace EOS_Toolkit_GPU
 
 #endif
 

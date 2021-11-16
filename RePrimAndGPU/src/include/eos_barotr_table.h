@@ -4,7 +4,7 @@
 #include "eos_barotropic.h"
 #include <vector>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**\brief Create tabulated barotropic EOS
 
@@ -56,7 +56,7 @@ eos_barotr make_eos_barotr_table(
 );
 
 
-}//namespace EOS_Toolkit
+}//namespace EOS_Toolkit_GPU
 
 
 #endif

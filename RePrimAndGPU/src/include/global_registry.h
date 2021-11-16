@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <cassert> 
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**\brief Global static registry of named polymorphic objects
 
@@ -68,7 +68,7 @@ class global_registry {
 };
 
 
-} // namespace EOS_Toolkit 
+} // namespace EOS_Toolkit_GPU 
 
 
 #endif

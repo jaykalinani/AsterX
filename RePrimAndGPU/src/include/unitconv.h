@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 ///Class to represent physical unit systems
 /**

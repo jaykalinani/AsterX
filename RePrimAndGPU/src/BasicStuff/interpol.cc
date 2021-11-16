@@ -4,8 +4,9 @@
 #include <algorithm>
 #include <stdexcept>
 
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::detail;
+namespace EOS_Toolkit_GPU {
+
+using namespace EOS_Toolkit_GPU::detail;
 
 namespace {
 
@@ -209,11 +210,4 @@ real_t cspline_mono_impl::operator()(real_t t) const
   return gsl_interp_eval(interp.p, &(x[0]), &(y[0]), t, acc.p);
 }
 
-
-
-
-
-
-
-
-
+}

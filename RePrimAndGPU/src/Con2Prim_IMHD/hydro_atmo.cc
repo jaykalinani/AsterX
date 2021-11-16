@@ -3,7 +3,7 @@
 */
 
 #include "hydro_atmo.h"
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 
 atmosphere::atmosphere(real_t rho_, real_t eps_, real_t ye_, real_t press_, real_t rho_cut_)

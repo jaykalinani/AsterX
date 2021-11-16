@@ -4,7 +4,7 @@
 #include "eos_barotropic_impl.h"
 #include <vector>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 namespace implementations {
 
 ///Class representing a segment of the piecewise polytropic EOS
@@ -140,7 +140,7 @@ class eos_barotr_pwpoly : public eos_barotr_impl {
 };
 
 }//namespace implementations
-}//namespace EOS_Toolkit
+}//namespace EOS_Toolkit_GPU
 
 
 #endif

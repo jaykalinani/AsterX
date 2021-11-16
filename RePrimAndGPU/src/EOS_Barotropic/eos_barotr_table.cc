@@ -6,9 +6,9 @@
 #include <stdexcept>
 
 using namespace std;
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::implementations;
-//~ using namespace EOS_Toolkit::detail;
+using namespace EOS_Toolkit_GPU;
+using namespace EOS_Toolkit_GPU::implementations;
+//~ using namespace EOS_Toolkit_GPU::detail;
 
 
 /**
@@ -128,7 +128,7 @@ real_t eos_barotr_table::ye(real_t gm1) const
 
 
 
-eos_barotr EOS_Toolkit::make_eos_barotr_table(
+eos_barotr EOS_Toolkit_GPU::make_eos_barotr_table(
   const std::vector<real_t>& gm1, const std::vector<real_t>& rho,
   const std::vector<real_t>& eps, const std::vector<real_t>& pbr, 
   const std::vector<real_t>& cs2, const std::vector<real_t>& temp, 

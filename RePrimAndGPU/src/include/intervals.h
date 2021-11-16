@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cassert>
 
-namespace EOS_Toolkit {
+namespace EOS_Toolkit_GPU {
 
 /**Class representing a closed interval
 
@@ -88,6 +88,6 @@ bool operator<(T x, const interval<T>& i)
 
 
 
-}// namespace EOS_Toolkit 
+}// namespace EOS_Toolkit_GPU 
 
 #endif

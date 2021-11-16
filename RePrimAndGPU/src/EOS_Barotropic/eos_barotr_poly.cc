@@ -5,8 +5,8 @@
 #include <stdexcept>
 
 using namespace std;
-using namespace EOS_Toolkit;
-using namespace EOS_Toolkit::implementations;
+using namespace EOS_Toolkit_GPU;
+using namespace EOS_Toolkit_GPU::implementations;
 
 void eos_barotr_poly::init(real_t n_, real_t rmd_p_, real_t rho_max_) 
 {
@@ -119,7 +119,7 @@ real_t eos_barotr_poly::ye(real_t gm1) const
 
 
   
-eos_barotr EOS_Toolkit::make_eos_barotr_poly(real_t n, real_t rmd_p, 
+eos_barotr EOS_Toolkit_GPU::make_eos_barotr_poly(real_t n, real_t rmd_p, 
                                              real_t rho_max)
 {
   return eos_barotr{std::make_shared<eos_barotr_poly>(n, 
