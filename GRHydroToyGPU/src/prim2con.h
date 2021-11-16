@@ -29,6 +29,7 @@ struct cons{
 	CCTK_REAL tau;
 };
 
+CCTK_DEVICE CCTK_HOST
 void prim2con(const metric& g, const prim& pv, cons& cv) {
 
 	//determinant of spatial metric

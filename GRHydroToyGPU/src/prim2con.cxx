@@ -48,8 +48,8 @@ extern "C" void GRHydroToyGPU_Prim2Con_Initial(CCTK_ARGUMENTS) {
   const GF3D2<const CCTK_REAL> gf_eps(gf_layout_cell, eps); 
 
   // Loop over the entire grid (0 to n-1 points in each direction)
-  grid.loop_int<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
+  grid.loop_int_device<1, 1, 1>(
+      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
   
           // Interpolate metric terms from vertices to center
