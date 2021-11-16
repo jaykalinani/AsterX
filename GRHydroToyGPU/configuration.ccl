@@ -1,4 +1,4 @@
-# Configuration definitions for thorn HydroToyGPU
+# Configuration definitions for thorn GRHydroToyGPU
 
 # REQUIRES Kokkos
 # REQUIRES NSIMD
