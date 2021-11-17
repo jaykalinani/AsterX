@@ -39,18 +39,22 @@ struct cons_vars {
   cons_vars& operator=(const cons_vars&) = default;
   
   /// Construct from single variables.
+  __device__ __host__
   cons_vars(real_t dens_, real_t tau_, real_t tracer_ye_, 
                       sm_vec3l scon_)
   : dens{dens_}, tau{tau_}, tracer_ye{tracer_ye_}, scon{scon_} {}
 
   /// Compute conserved variables from primitives and 3-metric
+  __device__ __host__
   void from_prim(const prim_vars& pv, const sm_metric3& g);
 
   ///Convenience method to copy all members into single variables
+  __device__ __host__
   void scatter(real_t& dens_, real_t& tau_, real_t& tracer_ye_, 
                real_t& sconx_, real_t& scony_, real_t& sconz_) const;
  
   ///Set all data to NAN
+  __device__ __host__
   void set_to_nan();
 };
 

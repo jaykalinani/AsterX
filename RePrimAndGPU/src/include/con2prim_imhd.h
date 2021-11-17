@@ -43,6 +43,7 @@ class con2prim_mhd {
   @param acc_          Required accuracy \f$ \Delta \f$ (see article).
   @param max_iter_     Maximum allowed iterations for root finding.
   **/
+  __device__ __host__
   con2prim_mhd(eos_thermal eos_, real_t rho_strict_, bool ye_lenient_,         
     real_t z_lim_, real_t b_lim_, const atmosphere& atmo_,  
     real_t acc_, int max_iter_);
@@ -66,22 +67,28 @@ class con2prim_mhd {
   `rep.set_atmo == true` in addition.  
   \endrst
   **/
+  __device__ __host__
   void operator()(prim_vars_mhd& pv, cons_vars_mhd& cv, 
                   const sm_metric3& g, report& errs) const;
 
   /// Get prescribed accuracy
+  __device__ __host__
   real_t get_acc() const {return acc;}
 
   /// Get prescribed limit on z
+  __device__ __host__
   real_t get_z_lim() const {return z_lim;}
 
   /// Get prescribed limit on v
+  __device__ __host__
   real_t get_v_lim() const {return v_lim;}
 
   /// Get prescribed limit on b
+  __device__ __host__
   real_t get_b_lim() const {return std::sqrt(bsqr_lim);}
   
   /// Get prescribed atmosphere 
+  __device__ __host__
   const atmosphere& get_atmo() const {return atmo;}
   
   private:
@@ -99,6 +106,7 @@ class con2prim_mhd {
 
 
   /// Set primitives and conserved to NaN
+  __device__ __host__
   static void set_to_nan(prim_vars_mhd& pv, cons_vars_mhd& cv);
 
 };

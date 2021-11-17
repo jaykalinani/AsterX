@@ -49,6 +49,7 @@ struct c2p_mhd_report  {
   
   
   /// Throw an exception with the debug message
+  __host__
   void raise() const;
   
   /**
@@ -58,11 +59,13 @@ struct c2p_mhd_report  {
   and numerical values stored internally (for performance reasons, no
   string is ever created before explicitly requested via this function).
   **/
+  __host__
   std::string debug_message() const;
   
   /** 
   @return If the input was invalid according to the error policy.
   **/
+  __device__ __host__
   bool failed() const {return status != SUCCESS;}        
   
   
@@ -81,40 +84,52 @@ struct c2p_mhd_report  {
   protected:
 
   /// Set state artificial atmosphere enforced.
+  __device__ __host__
   void set_atmo_set();
   
   /// Set error invalid metric determinant. 
+  __device__ __host__
   void set_invalid_detg(real_t detg_);
   
   /// Set error NANs in conserved variables. 
+  __device__ __host__
   void set_nans_in_cons(real_t dens_, real_t qtot_, real_t rsqr_,
     real_t rbsqr_, real_t bsqr_, real_t ye_);
     
   /// Set error density out of range. 
+  __device__ __host__
   void set_range_rho(real_t dens_, real_t rho_);
     
   /// Set error energy out of range. 
+  __device__ __host__
   void set_range_eps(real_t eps_);
   
   /// Set error speed limit exceeded. 
+  __device__ __host__
   void set_speed_limit(real_t vel_);
 
   /// Set error limit for b exceeded. 
+  __device__ __host__
   void set_b_limit(real_t bsqr_);
   
   /// Set error energy out of range. 
+  __device__ __host__
   void set_range_ye(real_t ye_);
   
   /// Set error root finding did not converge. 
+  __device__ __host__
   void set_root_conv();
 
   /// Set error root bracketing faulty. 
+  __device__ __host__
   void set_root_bracket();
   
   /// Set error preperatory root finding not converged. 
+  __device__ __host__
   void set_prep_root_conv();
 
   /// Set error preperatory root bracketing faulty. 
+  __device__ __host__
   void set_prep_root_bracket();
 
   private:

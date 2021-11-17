@@ -83,13 +83,15 @@ const eos_thermal_base::spimpl_t eos_thermal_base::pbad {
 
 auto eos_thermal_base::state_base::rho() const -> real_t 
 {
-  if (!valid()) throw eos_thermal_invalid::invalid();
+  // if (!valid()) throw eos_thermal_invalid::invalid();
+  assert(valid());
   return rho_;
 }
 
 auto eos_thermal_base::state_base::ye() const -> real_t 
 {
-  if (!valid()) throw eos_thermal_invalid::invalid();
+  // if (!valid()) throw eos_thermal_invalid::invalid();
+  assert(valid());
   return ye_;
 }
 
@@ -169,12 +171,14 @@ auto eos_thermal::range_ye() const -> const range&
 
 auto eos_thermal::range_eps(real_t rho, real_t ye) const -> range 
 {
-  if (!is_rho_valid(rho))
-    throw range_error("eos_thermal: specific energy range for "
-                      "invalid density requested");
-  if (!is_ye_valid(ye))
-    throw range_error("eos_thermal: specific energy range for "
-                      "invalid electron fraction requested");
+  // if (!is_rho_valid(rho))
+  //   throw range_error("eos_thermal: specific energy range for "
+  //                     "invalid density requested");
+  assert(is_rho_valid(rho));
+  // if (!is_ye_valid(ye))
+  //   throw range_error("eos_thermal: specific energy range for "
+  //                     "invalid electron fraction requested");
+  assert(is_ye_valid(ye));
 
   return impl().range_eps(rho, ye);
 }
@@ -182,12 +186,14 @@ auto eos_thermal::range_eps(real_t rho, real_t ye) const -> range
  
 auto eos_thermal::range_temp(real_t rho, real_t ye) const -> range
 {
-  if (!is_rho_valid(rho))
-    throw range_error("eos_thermal: temperature range for "
-                      "invalid density requested");
-  if (!is_ye_valid(ye))
-    throw range_error("eos_thermal: temperature range for "
-                      "invalid electron fraction requested");
+  // if (!is_rho_valid(rho))
+  //   throw range_error("eos_thermal: temperature range for "
+  //                     "invalid density requested");
+  assert(is_rho_valid(rho));
+  // if (!is_ye_valid(ye))
+  //   throw range_error("eos_thermal: temperature range for "
+  //                     "invalid electron fraction requested");
+  assert(is_ye_valid(ye));
   return impl().range_temp(rho, ye);
 }
 

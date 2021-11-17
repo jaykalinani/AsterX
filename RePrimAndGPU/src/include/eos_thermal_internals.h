@@ -41,11 +41,14 @@ class eos_thermal_base {
 
     /// Obtain thermal variable
     /** This variable is intended only for internal use **/
+    __device__ __host__
     auto therm() const -> real_t {return therm_;}
       
+    __device__ __host__
     auto eos()   const -> const impl_t& {return p;}
 
     state_base() = default;
+    __device__ __host__
     state_base(const impl_t& i, real_t rho, 
                       real_t therm, real_t ye)
     : p(i), ok{true}, rho_(rho), therm_(therm), ye_(ye) {}
@@ -61,12 +64,15 @@ class eos_thermal_base {
     ~state_base() = default;
     
     /// Whether state is valid
+    __device__ __host__
     auto valid() const -> bool {return ok;}
       
     /// Obtain mass density
+    __device__ __host__
     auto rho() const -> real_t;
 
     /// Obtain electron fraction
+    __device__ __host__
     auto ye() const -> real_t;
     
   };
@@ -74,6 +80,7 @@ class eos_thermal_base {
     
   eos_thermal_base() = default;
 
+  __device__ __host__
   explicit eos_thermal_base(
     spimpl_t eosp   ///< Shared pointer to implementation
   ) : pimpl(std::move(eosp)) {}
@@ -92,7 +99,9 @@ class eos_thermal_base {
   
   protected:
   
+  __device__ __host__
   auto impl() const -> const impl_t& {return *pimpl;}          
+  __device__ __host__
   static auto ibad() -> const impl_t& {return *pbad;}          
 
 };

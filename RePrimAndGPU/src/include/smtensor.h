@@ -18,11 +18,11 @@ template<class T, int N> class sm_matrix_sym;
 template<class T, int N> class sm_matrix_sqr;
 template<class T, int N, bool UP1, bool UP2> class sm_tensor2_sym;
 
-namespace detail {
-template<int N, class... A> 
-using fix_num_args = typename std::enable_if<(sizeof...(A) == N) && 
-                                             (sizeof...(A)>1)>::type;
-}
+// namespace detail {
+// template<int N, class... A> 
+// using fix_num_args = typename std::enable_if<(sizeof...(A) == N) && 
+//                                              (sizeof...(A)>1)>::type;
+// }
 
 //-------------------------------------------------------------------
 //  Raw vector class
@@ -39,7 +39,8 @@ class sm_vector {
   
   using me_t = sm_vector<T,N>;
   
-  std::array<T,N> v;
+  // std::array<T,N> v;
+  T v[N];
   
   public:
   
@@ -55,6 +56,7 @@ class sm_vector {
   
 
   template<class T2>
+  __device__ __host__
   explicit sm_vector(const sm_vector<T2,N>& that) noexcept 
   {
     for (int i=0; i<N; ++i) {
@@ -62,23 +64,59 @@ class sm_vector {
     }  
   }
   template<class T2>
+  __device__ __host__
   sm_vector& operator=(const sm_vector<T2,N>& that) noexcept 
   {
     *this = sm_vector<T,N>(that);
     return *this;
   }
   
-  template<class... An, 
-           class Na=detail::fix_num_args<N,An...> > 
-  explicit sm_vector(An&&... an) 
-  : v{{std::forward<An>(an)...}} {}
+  // template<class... An, 
+  //          class Na=detail::fix_num_args<N,An...> > 
+  // __device__ __host__
+  // explicit sm_vector(An&&... an) 
+  // : v{{std::forward<An>(an)...}} {}
+
+  template<typename U>
+  __device__ __host__
+  explicit sm_vector(const U& a0,
+                     const U& a1,
+                     const U& a2) {
+    static_assert(N == 3, "");
+    v[0] = a0;
+    v[1] = a1;
+    v[2] = a2;
+  }
+
+  template<typename U>
+  __device__ __host__
+  explicit sm_vector(const U& a0,
+                     const U& a1,
+                     const U& a2,
+                     const U& a3,
+                     const U& a4,
+                     const U& a5) {
+    static_assert(N == 6, "");
+    v[0] = a0;
+    v[1] = a1;
+    v[2] = a2;
+    v[3] = a3;
+    v[4] = a4;
+    v[5] = a5;
+  }
     
+  __device__ __host__
   sm_vector(zero_literal) {zero();}
 
-  T& operator()(int j) {return v.at(j);}
-  const T& operator()(int j) const {return v.at(j);}
+  __device__ __host__
+  // T& operator()(int j) {return v.at(j);}
+  T& operator()(int j) {return v[j];}
+  __device__ __host__
+  // const T& operator()(int j) const {return v.at(j);}
+  const T& operator()(int j) const {return v[j];}
 
   template<class T2>
+  __device__ __host__
   void operator*=(T2 z) {
     for(int i=0; i<N; ++i) {
       v[i] *= z;
@@ -86,6 +124,7 @@ class sm_vector {
   }
   
   template<class T2>
+  __device__ __host__
   void operator/=(T2 z) {
     for(int i=0; i<N; ++i) {
       v[i] /= z;
@@ -93,6 +132,7 @@ class sm_vector {
   }
   
   template<class T2>
+  __device__ __host__
   void operator+=(const sm_vector<T2, N>& a) {
     for(int i=0; i<N; ++i) {
       v[i] += a(i);
@@ -100,18 +140,21 @@ class sm_vector {
   }
   
   template<class T2>
+  __device__ __host__
   void operator-=(const sm_vector<T2,N>& a) {
     for(int i=0; i<N; ++i) {
       v[i] -= a(i);
     }
   }
 
+  __device__ __host__
   void negate() {
     for(int i=0; i<N; ++i) {
       v[i] = -v[i];
     }
   }
 
+  __device__ __host__
   T dot(const me_t& a) const {
     T erg=v[0]*a(0); 
     for (int i=1; i<N; ++i) {
@@ -120,46 +163,57 @@ class sm_vector {
     return erg;
   }
 
+  __device__ __host__
   void assign_prod(const sm_matrix_sym<T, N>& m, const me_t& w);
+  __device__ __host__
   void assign_prod(const me_t& v, const sm_matrix_sym<T, N>& m) {
     assign_prod(m,v);
   }
+  __device__ __host__
   void assign_prod(const sm_matrix_sqr<T, N>& m, const me_t& w);
+  __device__ __host__
   void assign_prod(const me_t& w, const sm_matrix_sqr<T, N>& m);
 
 
+  __device__ __host__
   me_t operator+(const me_t& a) const {
     me_t e{*this};
     e += a; 
     return e;
   }
+  __device__ __host__
   me_t operator-(const me_t& a) const {
     me_t e{*this};
     e -= a; 
     return e;
   }
+  __device__ __host__
   me_t operator*(T z) const {
     me_t e{*this}; 
     e *= z;
     return e;
   }
+  __device__ __host__
   me_t operator/(T z) const {
     me_t e{*this};
     e /= z; 
     return e;
   }
+  __device__ __host__
   me_t operator-() const {
     me_t e{*this};
     e.negate();
     return e;
   }
 
+  __device__ __host__
   void zero() {
-    v.fill(0);
+    for (auto& a: v) a = 0;
   }
 };
 
 template<class T, int N>
+__device__ __host__
 auto operator*(const T& a, const sm_vector<T, N> &v)
 -> sm_vector<T, N>
 {
@@ -183,11 +237,13 @@ class sm_matrix_sym {
   using me_t = sm_matrix_sym<T, N>;
   enum {FLAT_SIZE=(N*(N+1)/2)};
 
+  __device__ __host__
   static int chkidx(int i) 
   {
-    assert((i>=0) && (i<N));
+    // assert((i>=0) && (i<N));
     return i;
   }
+  __device__ __host__
   static constexpr int index(int i,int j) 
   {
     return  (j <= i) ? (j + (i*(i+1))/2) : (i + (j*(j+1))/2);
@@ -207,49 +263,74 @@ class sm_matrix_sym {
   sm_matrix_sym& operator=(me_t&& that)      noexcept = default;
   
   template<class T2>
+  __device__ __host__
   explicit sm_matrix_sym(const sm_matrix_sym<T2,N>& that) 
-  : c{that.c} {}
+  : c(that.c) {}
   
-  template<class... An, 
-           class Na=detail::fix_num_args<FLAT_SIZE,An...> > 
-  explicit sm_matrix_sym(An&&... an) 
-  : c{std::forward<An>(an)...} {}
+  // template<class... An, 
+  //          class Na=detail::fix_num_args<FLAT_SIZE,An...> > 
+  // __device__ __host__
+  // explicit sm_matrix_sym(An&&... an) 
+  // : c{std::forward<An>(an)...} {}
+
+  template<typename U>
+  __device__ __host__
+  explicit sm_matrix_sym(const U& a0,
+                         const U& a1,
+                         const U& a2,
+                         const U& a3,
+                         const U& a4,
+                         const U& a5)
+  : c(a0, a1, a2, a3, a4, a5) {
+    static_assert(FLAT_SIZE == 6, "");
+  }
 
   
+  __device__ __host__
   sm_matrix_sym(zero_literal) {c.zero();}
+  __device__ __host__
   sm_matrix_sym(one_literal) {diag(1.0);}
 
+  __device__ __host__
   T& operator()(int i,int j) 
   {
     return c(index(chkidx(i),chkidx(j)));
   }
+  __device__ __host__
   const T& operator()(int i,int j) const 
   {
     return c(index(chkidx(i),chkidx(j)));
   }
 
   
+  __device__ __host__
   void negate() {
     c.negate();
   }
 
   template<class T2>
+  __device__ __host__
   void operator+=(const sm_matrix_sym<T2,N>& a) {c += a.c;}
   
   template<class T2>
+  __device__ __host__
   void operator-=(const sm_matrix_sym<T2,N>& a) {c -= a.c;}
   
   template<class T2>
+  __device__ __host__
   void operator*=(T2 z) {c *= z;}
   
   template<class T2>
+  __device__ __host__
   void operator/=(T2 z) {c /= z;}
 
+  __device__ __host__
   me_t operator+(const me_t& a) const {
     me_t e{*this};
     e += a; 
     return e;
   }
+  __device__ __host__
   me_t operator-(const me_t& a) const {
     me_t e{*this};
     e -= a; 
@@ -257,6 +338,7 @@ class sm_matrix_sym {
   }
   
   template<class T2>
+  __device__ __host__
   me_t operator*(T z) const {
     me_t e{*this}; 
     e *= z;
@@ -264,25 +346,31 @@ class sm_matrix_sym {
   }
   
   template<class T2>
+  __device__ __host__
   me_t operator/(T z) const {
     me_t e{*this};
     e /= z; 
     return e;
   }
   
+  __device__ __host__
   me_t operator-() const {
     me_t e{*this};
     e.negate();
     return e;
   }
   
+  __device__ __host__
   void diag(T d);
 
+  __device__ __host__
   T bilinear(const sm_vector<T, N>& v, const sm_vector<T, N>& w) const;
+  __device__ __host__
   T bilinear(const sm_vector<T, N>& v) const;
 };
 
 template<class T, int N>
+__device__ __host__
 void sm_matrix_sym<T, N>::diag(T d) {
   for (int i=0;i<N;i++) {
     (*this)(i,i)=d;
@@ -294,6 +382,7 @@ void sm_matrix_sym<T, N>::diag(T d) {
 
 
 template<class T, int N>
+__device__ __host__
 auto operator*(T a, const sm_matrix_sym<T, N>& m)
 -> sm_matrix_sym<T, N>
 {
@@ -316,11 +405,13 @@ class sm_matrix_sqr {
   using me_t = sm_matrix_sqr<T, N>;
   enum {FLAT_SIZE = N*N};
 
+  __device__ __host__
   static int chkidx(int i) 
   {
-    assert((i>=0) && (i<N));
+    // assert((i>=0) && (i<N));
     return i;
   }
+  __device__ __host__
   static constexpr int index(int i,int j) 
   {
     return  N*i+j;
@@ -342,23 +433,41 @@ class sm_matrix_sqr {
   
   
   template<class T2>
+  __device__ __host__
   explicit   sm_matrix_sqr(const sm_matrix_sqr<T2,N>& that) 
-  : c{that.c} {}
+  : c(that.c) {}
   
   
-  template<class... An, 
-           class Na=detail::fix_num_args<FLAT_SIZE,An...> > 
-  explicit sm_matrix_sqr(An&&... an) 
-  : c{std::forward<An>(an)...} {}
+  // template<class... An, 
+  //          class Na=detail::fix_num_args<FLAT_SIZE,An...> > 
+  // __device__ __host__
+  // explicit sm_matrix_sqr(An&&... an) 
+  // : c{std::forward<An>(an)...} {}
+
+  template<typename U>
+  __device__ __host__
+  explicit sm_matrix_sqr(const U& a0,
+                         const U& a1,
+                         const U& a2,
+                         const U& a3,
+                         const U& a4,
+                         const U& a5)
+  : c(a0, a1, a2, a3, a4, a5) {
+    static_assert(FLAT_SIZE == 6, "");
+  }
 
 
+  __device__ __host__
   sm_matrix_sqr(zero_literal) {c.zero();}
+  __device__ __host__
   sm_matrix_sqr(one_literal) {diag(1.0);}
 
+  __device__ __host__
   T& operator()(int i,int j) 
   {
     return c(index(chkidx(i),chkidx(j)));
   }
+  __device__ __host__
   const T& operator()(int i,int j) const 
   {
     return c(index(chkidx(i),chkidx(j)));
@@ -366,28 +475,35 @@ class sm_matrix_sqr {
 
 
   ///Replace matrix by its negative
+  __device__ __host__
   void negate() {
     c.negate();
   }
 
   template<class T2>
+  __device__ __host__
   void operator+=(const sm_matrix_sqr<T2,N>& a) {c += a.c;}
   
   template<class T2>
+  __device__ __host__
   void operator-=(const sm_matrix_sqr<T2,N>& a) {c -= a.c;}
   
   template<class T2>
+  __device__ __host__
   void operator*=(T2 z) {c *= z;}
   
   template<class T2>
+  __device__ __host__
   void operator/=(T2 z) {c /= z;}
 
 
+  __device__ __host__
   me_t operator+(const me_t& a) const {
     me_t e{*this};
     e += a; 
     return e;
   }
+  __device__ __host__
   me_t operator-(const me_t& a) const {
     me_t e{*this};
     e -= a; 
@@ -395,6 +511,7 @@ class sm_matrix_sqr {
   }
   
   template<class T2>
+  __device__ __host__
   me_t operator*(T2 z) const {
     me_t e{*this}; 
     e *= z;
@@ -402,25 +519,31 @@ class sm_matrix_sqr {
   }
   
   template<class T2>
+  __device__ __host__
   me_t operator/(T2 z) const {
     me_t e{*this};
     e /= z; 
     return e;
   }
   
+  __device__ __host__
   me_t operator-() const {
     me_t e{*this};
     e.negate();
     return e;
   }
 
+  __device__ __host__
   void diag(T d);
 
+  __device__ __host__
   T bilinear(const sm_vector<T, N>& v, const sm_vector<T, N>& w) const;
+  __device__ __host__
   T bilinear(const sm_vector<T, N>& v) const;
 };
 
 template<class T, int N>
+__device__ __host__
 void sm_matrix_sqr<T, N>::diag(T d) {
   for (int i=0;i<N;i++) {
     (*this)(i,i)=d;
@@ -432,6 +555,7 @@ void sm_matrix_sqr<T, N>::diag(T d) {
 }
 
 template<class T, int N>
+__device__ __host__
 auto operator*(T a, const sm_matrix_sqr<T, N>& m) 
 -> sm_matrix_sqr<T, N>
 {
@@ -443,6 +567,7 @@ auto operator*(T a, const sm_matrix_sqr<T, N>& m)
 //-------------------------------------------------------------------
 
 template<class T, int N>
+__device__ __host__
 void sm_vector<T, N>::assign_prod(const sm_matrix_sym<T, N>& m, 
                                   const me_t& w)
 {
@@ -455,6 +580,7 @@ void sm_vector<T, N>::assign_prod(const sm_matrix_sym<T, N>& m,
 }
 
 template<class T, int N>
+__device__ __host__
 sm_vector<T, N> operator*(const sm_matrix_sym<T, N>& m, 
                           const sm_vector<T, N>& w)
 {
@@ -464,6 +590,7 @@ sm_vector<T, N> operator*(const sm_matrix_sym<T, N>& m,
 }
 
 template<class T, int N>
+__device__ __host__
 sm_vector<T, N> operator*(const sm_vector<T, N>& w, 
                           const sm_matrix_sym<T, N>& m)
 {
@@ -477,6 +604,7 @@ sm_vector<T, N> operator*(const sm_vector<T, N>& w,
 //-----------------------------------------------------------------
 
 template<class T, int N>
+__device__ __host__
 void sm_vector<T, N>::assign_prod(const sm_matrix_sqr<T, N>& m, 
                                   const me_t& w)
 {
@@ -489,6 +617,7 @@ void sm_vector<T, N>::assign_prod(const sm_matrix_sqr<T, N>& m,
 }
 
 template<class T, int N>
+__device__ __host__
 void sm_vector<T, N>::assign_prod(const me_t& w, 
                                   const sm_matrix_sqr<T, N>& m)
 {
@@ -501,6 +630,7 @@ void sm_vector<T, N>::assign_prod(const me_t& w,
 }
 
 template<class T, int N>
+__device__ __host__
 sm_vector<T, N> operator*(const sm_matrix_sqr<T, N>& m, 
                           const sm_vector<T, N>& w)
 {
@@ -510,6 +640,7 @@ sm_vector<T, N> operator*(const sm_matrix_sqr<T, N>& m,
 }
 
 template<class T, int N>
+__device__ __host__
 sm_vector<T, N> operator*(const sm_vector<T, N>& w,  
                           const sm_matrix_sqr<T, N>& m)
 {
@@ -523,6 +654,7 @@ sm_vector<T, N> operator*(const sm_vector<T, N>& w,
 //-----------------------------------------------------------------
 
 template<class T, int N>
+__device__ __host__
 T sm_matrix_sym<T, N>::bilinear(const sm_vector<T, N>& v, 
                                 const sm_vector<T, N>& w) const
 {
@@ -532,6 +664,7 @@ T sm_matrix_sym<T, N>::bilinear(const sm_vector<T, N>& v,
 }
 
 template<class T, int N>
+__device__ __host__
 T sm_matrix_sym<T, N>::bilinear(const sm_vector<T, N>& v) const
 {
   const me_t& m=*this;
@@ -551,6 +684,7 @@ T sm_matrix_sym<T, N>::bilinear(const sm_vector<T, N>& v) const
 //-----------------------------------------------------------------
 
 template<class T, int N>
+__device__ __host__
 T sm_matrix_sqr<T, N>::bilinear(const sm_vector<T, N>& v, 
                                 const sm_vector<T, N>& w) const
 {
@@ -560,6 +694,7 @@ T sm_matrix_sqr<T, N>::bilinear(const sm_vector<T, N>& v,
 }
 
 template<class T, int N>
+__device__ __host__
 T sm_matrix_sqr<T, N>::bilinear(const sm_vector<T, N>& v) const
 {
   return bilinear(v,v);
@@ -569,6 +704,7 @@ T sm_matrix_sqr<T, N>::bilinear(const sm_vector<T, N>& v) const
 // Determinant of symmetric 3-matrix
 //-----------------------------------------------------------------
 template<class T>
+__device__ __host__
 T determinant(const sm_matrix_sym<T, 3> &m)
 {
   T d = m(0,0) * m(1,1) * m(2,2) 
@@ -580,6 +716,7 @@ T determinant(const sm_matrix_sym<T, 3> &m)
 }
 
 template<class T>
+__device__ __host__
 void invert_matrix(const sm_matrix_sym<T, 3>&m, 
                    sm_matrix_sym<T, 3>& erg, T& det)
 {
@@ -599,6 +736,7 @@ void invert_matrix(const sm_matrix_sym<T, 3>&m,
 // Determinant of square 2-matrix
 //------------------------------------------------------------------
 template<class T>
+__device__ __host__
 T determinant(const sm_matrix_sqr<T, 2> &m)
 {
   T d = m(0,0) * m(1,1) - m(1,0) * m(0,1);
@@ -606,6 +744,7 @@ T determinant(const sm_matrix_sqr<T, 2> &m)
 }
 
 template<class T>
+__device__ __host__
 void invert_matrix(const sm_matrix_sqr<T, 2>&m, 
                    sm_matrix_sqr<T, 2>& erg, T& det)
 {
@@ -656,35 +795,52 @@ template<class T, int N, bool UP> class sm_tensor1 {
   
   ///Copy from tensor with compatible data type
   template<class T2>
+  __device__ __host__
   explicit   
   sm_tensor1(const sim_t<T2>& that) noexcept
-  : c{that.c} {}
+  : c(that.c) {}
   
   ///Create from single components.
-  template<class... An, 
-           class Na=detail::fix_num_args<N,An...> > 
-  sm_tensor1(An&&... an) 
-  : c(std::forward<An>(an)...) {}
+  // template<class... An, 
+  //          class Na=detail::fix_num_args<N,An...> > 
+  // __device__ __host__
+  // sm_tensor1(An&&... an) 
+  // : c(std::forward<An>(an)...) {}
+
+  template<typename U>
+  __device__ __host__
+  sm_tensor1(const U& a0,
+             const U& a1,
+             const U& a2)
+  : c(a0, a1, a2) {
+    static_assert(SIZE == 3, "");
+  }
 
   ///Create zero tensor
+  __device__ __host__
   sm_tensor1(zero_literal) {
     c.zero();
   }
 
   ///Access i-th component (counting starts at 0).
+  __device__ __host__
   T& operator()(int j) {return c(j);}
   
   ///Get i-th component (counting starts at 0)
+  __device__ __host__
   const T& operator()(int j) const {return c(j);}
   
   ///Access underlying raw vector
+  __device__ __host__
   vec_t& as_vector() {return c;}
   
   ///Get underlying raw vector
+  __device__ __host__
   const vec_t& as_vector() const {return c;}
 
     
   template<bool UP1>
+  __device__ __host__
   void assign_prod(const sm_tensor1<T, N, !UP1>& v, 
                    const sm_tensor2_sym<T, N, UP1, UP>& m) 
   {
@@ -692,6 +848,7 @@ template<class T, int N, bool UP> class sm_tensor1 {
   }
   
   template<bool UP1>
+  __device__ __host__
   void assign_prod(const sm_tensor2_sym<T, N, UP, UP1>& m, 
                    const sm_tensor1<T, N, !UP1>& v) 
   {
@@ -699,27 +856,33 @@ template<class T, int N, bool UP> class sm_tensor1 {
   }
 
   ///Replace tensor by its negative
+  __device__ __host__
   void negate() {
     c.negate();
   }
 
   ///Add other compatible tensor
   template<class T2>
+  __device__ __host__
   void operator+=(const sim_t<T2>& a) {c += a.c;}
   
   ///Subtract other compatible tensor
   template<class T2>
+  __device__ __host__
   void operator-=(const sim_t<T2>& a) {c -= a.c;}
   
   ///Multiply with scalar 
   template<class T2>
+  __device__ __host__
   void operator*=(T2 z) {c *= z;}
   
   ///Divide by scalar 
   template<class T2>
+  __device__ __host__
   void operator/=(T2 z) {c /= z;}
 
   ///Compute sum of two tensors
+  __device__ __host__
   me_t operator+(const me_t &a) const {
     me_t e{*this};
     e += a; 
@@ -727,6 +890,7 @@ template<class T, int N, bool UP> class sm_tensor1 {
   }
   
   ///Compute difference of two tensors
+  __device__ __host__
   me_t operator-(const me_t &a) const {
     me_t e{*this};
     e -= a; 
@@ -734,6 +898,7 @@ template<class T, int N, bool UP> class sm_tensor1 {
   }
 
   ///Compute negative of tensor
+  __device__ __host__
   me_t operator-() const {
     me_t e{*this};
     e.negate(); 
@@ -741,6 +906,7 @@ template<class T, int N, bool UP> class sm_tensor1 {
   }
   
   ///Compute product of tensor with scalar
+  __device__ __host__
   me_t operator*(T z) const {
     me_t e{*this};
     e *= z; 
@@ -748,6 +914,7 @@ template<class T, int N, bool UP> class sm_tensor1 {
   }
   
   ///Compute tensor divided by scalar
+  __device__ __host__
   me_t operator/(T z) const {
     me_t e{*this};
     e /= z; 
@@ -761,6 +928,7 @@ template<class T, int N, bool UP> class sm_tensor1 {
 //------------------------------------------------------------------
 
 template<class T, int N, bool UP>
+  __device__ __host__
 auto inline operator*(T z, const sm_tensor1<T, N, UP>& a) 
 ->sm_tensor1<T, N, UP>
 {
@@ -771,6 +939,7 @@ auto inline operator*(T z, const sm_tensor1<T, N, UP>& a)
 // Vector-Vector contraction v^i w_i  resp. v_i w^i
 //------------------------------------------------------------------
 template<class T, int N, bool UP>
+__device__ __host__
 T contract(const sm_tensor1<T, N, UP>& v, 
            const sm_tensor1<T, N, !UP>& w)
 {
@@ -778,6 +947,7 @@ T contract(const sm_tensor1<T, N, UP>& v,
 } 
 
 template<class T, int N, bool UP>
+__device__ __host__
 T operator*(const sm_tensor1<T, N, UP> &v, 
             const sm_tensor1<T, N, !UP> &w)
 {
@@ -789,6 +959,7 @@ T operator*(const sm_tensor1<T, N, UP> &v,
 //-----------------------------------------------------------------
 
 template<class T>
+__device__ __host__
 auto cross_product(const sm_tensor1<T,3,true>& a, 
         const sm_tensor1<T,3,true>& b, T vol_elem) 
 -> sm_tensor1<T, 3, false>
@@ -839,61 +1010,86 @@ class sm_tensor2_sym {
 
   ///Copy from rank-2 tensor of same dimension and compatible data type
   template<class T2> 
+  __device__ __host__
   explicit   
   sm_tensor2_sym(const sim_t<T2>& that) 
-  : m{that.m} {}
+  : m(that.m) {}
 
   /** \brief Construct from single components
   
-  The order is \f$00, 10,11, \ldots , m0, \dots , mm \f$, where 
-  \f$ m=N-1 \f$.
-  **/
-  template<class... An, 
-           class Na=detail::fix_num_args<FLAT_SIZE,An...> > 
-  explicit sm_tensor2_sym(An&&... an) 
-  : m{std::forward<An>(an)...} {}
+  // The order is \f$00, 10,11, \ldots , m0, \dots , mm \f$, where 
+  // \f$ m=N-1 \f$.
+  // **/
+  // template<class... An, 
+  //          class Na=detail::fix_num_args<FLAT_SIZE,An...> > 
+  // __device__ __host__
+  // explicit sm_tensor2_sym(An&&... an) 
+  // : m{std::forward<An>(an)...} {}
   
+  template<typename U>
+  __device__ __host__
+  explicit sm_tensor2_sym(const U&a0,
+                          const U&a1,
+                          const U&a2, 
+                          const U&a3, 
+                          const U&a4, 
+                          const U&a5)
+  : m(a0, a1, a2, a3, a4, a5) {
+    static_assert(FLAT_SIZE == 6, "");
+  }
   
   ///Set to zero
+  __device__ __host__
   sm_tensor2_sym(zero_literal) {m.zero();}
   
   ///Set to Kronecker delta
+  __device__ __host__
   sm_tensor2_sym(one_literal) {m.diag(1.0);}
 
   ///Access component \f$ (i,j) \f$ (counting starts at 0)
+  __device__ __host__
   T& operator()(int i, int j) {return m(i,j);}
   
   ///Get component \f$ (i,j) \f$ (counting starts at 0)
+  __device__ __host__
   const T& operator()(int i, int j) const {return m(i,j);}
   
   ///Access underlying raw matrix of components
+  __device__ __host__
   mat_t& as_matrix() {return m;}
   
   ///Get underlying raw matrix of components
+  __device__ __host__
   const mat_t& as_matrix() const {return m;}
 
   ///Replace tensor by its negative
+  __device__ __host__
   void negate() {
     m.negate();
   }
 
   ///Add other compatible tensor
   template<class T2>
+  __device__ __host__
   void operator+=(const sim_t<T2>& a) {m += a.m;}
   
   ///Subtract other compatible tensor
   template<class T2>
+  __device__ __host__
   void operator-=(const sim_t<T2>& a) {m -= a.m;}
   
   ///Multiply with scalar 
   template<class T2>
+  __device__ __host__
   void operator*=(T2 z) {m *= z;}
   
   ///Divide by scalar 
   template<class T2>
+  __device__ __host__
   void operator/=(T2 z) {m /= z;}
 
   ///Compute sum of two tensors
+  __device__ __host__
   me_t operator+(const me_t &a) const {
     me_t e{*this};
     e += a; 
@@ -901,6 +1097,7 @@ class sm_tensor2_sym {
   }
   
   ///Compute difference of two tensors
+  __device__ __host__
   me_t operator-(const me_t &a) const {
     me_t e{*this};
     e -= a; 
@@ -908,6 +1105,7 @@ class sm_tensor2_sym {
   }
 
   ///Compute negative of tensor
+  __device__ __host__
   me_t operator-() const {
     me_t e{*this};
     e.negate(); 
@@ -915,6 +1113,7 @@ class sm_tensor2_sym {
   }
   
   ///Compute product of tensor with scalar
+  __device__ __host__
   me_t operator*(T z) const {
     me_t e{*this};
     e *= z; 
@@ -922,6 +1121,7 @@ class sm_tensor2_sym {
   }
   
   ///Compute tensor divided by scalar
+  __device__ __host__
   me_t operator/(T z) const {
     me_t e{*this};
     e /= z; 
@@ -929,6 +1129,7 @@ class sm_tensor2_sym {
   }
 
   ///Set component matrix to diagonal matrix
+  __device__ __host__
   void diag(const T& d) {
     m.diag(d);
   }
@@ -938,6 +1139,7 @@ class sm_tensor2_sym {
   @param v Rank-1 tensor to contract first index with
   @param w Rank-1 tensor to contract second index with
   **/
+  __device__ __host__
   T contract(const sm_tensor1<T, N, !UP1>& v, 
              const sm_tensor1<T, N, !UP2>& w) const 
   {
@@ -946,6 +1148,7 @@ class sm_tensor2_sym {
   
   
   /// Contract twice with same rank-1 tensor.
+  __device__ __host__
   T quadratic(const sm_tensor1<T, N, !UP1>& v) const 
   {
     return contract_quadratic(*this, v);
@@ -959,6 +1162,7 @@ class sm_tensor2_sym {
 //-----------------------------------------------------------------
 
 template<class T, int N, bool UP1, bool UP2>
+__device__ __host__
 auto operator*(T a, const sm_tensor2_sym<T, N, UP1, UP2> &m) 
 -> sm_tensor2_sym<T, N, UP1, UP2> 
 {
@@ -972,6 +1176,7 @@ auto operator*(T a, const sm_tensor2_sym<T, N, UP1, UP2> &m)
 
 
 template<class T, int N, bool UP1, bool UP2>
+__device__ __host__
 sm_tensor1<T, N, UP1> 
 operator*(const sm_tensor2_sym<T, N, UP1, UP2>& m, 
           const sm_tensor1<T, N, !UP2>& w)
@@ -982,6 +1187,7 @@ operator*(const sm_tensor2_sym<T, N, UP1, UP2>& m,
 }
 
 template<class T, int N, bool UP1, bool UP2>
+__device__ __host__
 sm_tensor1<T, N, UP2> 
 operator*(const sm_tensor1<T, N, !UP1>& w, 
           const sm_tensor2_sym<T, N, UP1, UP2>& m)
@@ -998,6 +1204,7 @@ operator*(const sm_tensor1<T, N, !UP1>& w,
 
 
 template<class T, int N, bool UP>
+__device__ __host__
 T contract_quadratic(const sm_tensor2_sym<T, N, UP, UP>&m, 
                      const sm_tensor1<T, N, !UP> &v) 
 {
@@ -1009,6 +1216,7 @@ T contract_quadratic(const sm_tensor2_sym<T, N, UP, UP>&m,
 //------------------------------------------------------------------
 
 template<class T, int N, bool UP1, bool UP2>
+__device__ __host__
 T determinant(const sm_tensor2_sym<T, N, UP1, UP2> &m)
 {
   return determinant(m.as_matrix());
@@ -1046,16 +1254,18 @@ template<class T, int N> class sm_metric  {
   
   ///Copy from metric with compatible component data type
   template<class T2>
+  __device__ __host__
   explicit   sm_metric(const sm_metric<T2,N>& that) 
-  : lo{that.lo}, up{that.up}, vol_elem{that.vol_elem}, det{that.det} {}
+  : lo(that.lo), up(that.up), vol_elem(that.vol_elem), det(that.det) {}
 
   /**\brief Construct metric
   @param lo_ Lower-index metric tensor      
   @param up_ Upper-index metric tensor      
   @param det_ Determinent of lower-index metric tensor      
   **/
-    sm_metric(lo_t lo_, up_t up_, T det_)
-  : lo{lo_}, up{up_}, vol_elem{std::sqrt(det_)}, det{det_} {} 
+  __device__ __host__
+  sm_metric(lo_t lo_, up_t up_, T det_)
+  : lo(lo_), up(up_), vol_elem(std::sqrt(det_)), det(det_) {} 
 
   /**\brief Construct metric
   
@@ -1066,7 +1276,8 @@ template<class T, int N> class sm_metric  {
 
   @param lo_ Lower-index metric tensor      
   **/
-  explicit sm_metric(lo_t lo_) : lo{lo_} 
+  __device__ __host__
+  explicit sm_metric(lo_t lo_) : lo(lo_)
   {
     invert_matrix(lo.as_matrix(), up.as_matrix(), det);
     vol_elem = std::sqrt(det);  
@@ -1077,6 +1288,7 @@ template<class T, int N> class sm_metric  {
   @param erg Reference to upper-index vector for storing result
   @param v   Lower-index vector to be raised.
   **/
+  __device__ __host__
   void raise(sm_tensor1<T, N, true>& erg, 
              const sm_tensor1<T, N, false>& v) const 
   {
@@ -1088,6 +1300,7 @@ template<class T, int N> class sm_metric  {
   @return   Upper-index vector
   @param v  Lower-index vector to be raised.
   **/  
+  __device__ __host__
   sm_tensor1<T, N, true> 
   raise(const sm_tensor1<T, N, false>& v) const 
   {
@@ -1102,6 +1315,7 @@ template<class T, int N> class sm_metric  {
   @param erg Reference to lower-index vector for storing result
   @param v   Upper-index vector to be lowered.
   **/
+  __device__ __host__
   void lower(sm_tensor1<T, N, false>& erg, 
              const sm_tensor1<T, N, true>& v) const 
   {
@@ -1113,6 +1327,7 @@ template<class T, int N> class sm_metric  {
   @return   Lower-index vector
   @param v  Upper-index vector to be lowered.
   **/  
+  __device__ __host__
   sm_tensor1<T, N, false> lower(const sm_tensor1<T, N, true>& v) const 
   {
     sm_tensor1<T, N, false> erg{};
@@ -1121,6 +1336,7 @@ template<class T, int N> class sm_metric  {
   }
 
   ///Contract two upper-index vectors with metric
+  __device__ __host__
   T contract(const sm_tensor1<T, N, true>& v, 
              const sm_tensor1<T, N, true>& w) const 
   {
@@ -1128,6 +1344,7 @@ template<class T, int N> class sm_metric  {
   }
   
   ///Contract two lower-index vectors with metric
+  __device__ __host__
   T contract(const sm_tensor1<T, N, false>& v, 
              const sm_tensor1<T, N, false>& w) const 
   {
@@ -1135,17 +1352,21 @@ template<class T, int N> class sm_metric  {
   }
   
   ///Contract upper-index vector with itself using metric 
+  __device__ __host__
   T norm2(const sm_tensor1<T, N, true>& v) const {
     return lo.quadratic(v);
   } 
   
   ///Contract lower-index vector with itself using metric
+  __device__ __host__
   T norm2(const sm_tensor1<T, N, false>& v) const {
     return up.quadratic(v);
   } 
   
   ///Compute vector norm defined by metric  
-  template<bool UP> T norm(const sm_tensor1<T, N, UP>& v) const 
+  template<bool UP>
+  __device__ __host__
+  T norm(const sm_tensor1<T, N, UP>& v) const 
   {
     return std::sqrt(norm2(v));
   }
@@ -1157,6 +1378,7 @@ template<class T, int N> class sm_metric  {
   @return \f$ \epsilon_{ijk} a^j b^k \f$ where \f$ \epsilon \f$
           is the Levi-Civita tensor
   **/
+  __device__ __host__
   auto cross_product(const sm_tensor1<T, 3, true>& a, 
                      const sm_tensor1<T, 3, true>& b) const 
   -> sm_tensor1<T, 3, false>
@@ -1166,6 +1388,7 @@ template<class T, int N> class sm_metric  {
   }
 
   ///Set to spatial part of Minkowski metric
+  __device__ __host__
   void minkowski() 
   {
     lo = ONE;
@@ -1195,4 +1418,3 @@ using sm_metric3 = sm_metric<real_t, 3>;
 }
 
 #endif
-

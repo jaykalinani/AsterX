@@ -33,6 +33,7 @@ class eos_thermal : detail::eos_thermal_base {
     /**\brief Conversion operator to bool
     @return If state is valid.
     **/
+    __device__ __host__
     explicit operator bool() const {return valid();}
     
     /**
@@ -41,6 +42,7 @@ class eos_thermal : detail::eos_thermal_base {
     \post Guarantees \f$ P\ge 0 \f$ 
     \throws std::runtime_error if state is invalid
     **/
+    __device__ __host__
     auto press() const -> real_t;
     
     /**
@@ -49,6 +51,7 @@ class eos_thermal : detail::eos_thermal_base {
     \post Guarantees \f$ 0\le c_s < 1 \f$ 
     \throws std::runtime_error if state is invalid
     **/
+    __device__ __host__
     auto csnd() const -> real_t;
 
     /**
@@ -58,6 +61,7 @@ class eos_thermal : detail::eos_thermal_base {
     \throws std::runtime_error if state is invalid
     \throws std::runtime_error if temperature not available for EOS
     **/
+    __device__ __host__
     auto temp() const -> real_t;
     
     /**
@@ -66,6 +70,7 @@ class eos_thermal : detail::eos_thermal_base {
     \throws std::runtime_error if state is invalid
     \throws std::runtime_error if entropy not available for EOS
     **/
+    __device__ __host__
     auto sentr() const -> real_t;
     
     /**
@@ -74,6 +79,7 @@ class eos_thermal : detail::eos_thermal_base {
     \post Guarantees \f$ \epsilon \ge -1 \f$ 
     \throws std::runtime_error if state is invalid 
     **/
+    __device__ __host__
     auto eps() const -> real_t;
     
     /**
@@ -83,6 +89,7 @@ class eos_thermal : detail::eos_thermal_base {
     
     \throws std::runtime_error if state is invalid 
     **/
+    __device__ __host__
     auto dpress_drho() const -> real_t;
     
     /**
@@ -92,6 +99,7 @@ class eos_thermal : detail::eos_thermal_base {
         
     \throws std::runtime_error if state is invalid 
     **/
+    __device__ __host__
     auto dpress_deps() const -> real_t;
     
     friend class eos_thermal;
@@ -113,6 +121,7 @@ class eos_thermal : detail::eos_thermal_base {
   functions provided by a given implementation to obtain the EOS. 
   @param eosp Shared pointer to implementation
   **/
+  __device__ __host__
   explicit eos_thermal(spimpl_t eosp) 
   : eos_thermal_base(std::move(eosp)) {}
 
@@ -145,6 +154,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto at_rho_eps_ye(real_t rho, real_t eps, real_t ye) const 
   -> state;
 
@@ -159,6 +169,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if EOS does not support temperature
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto at_rho_temp_ye(real_t rho, real_t temp, real_t ye) const 
   -> state;
                           
@@ -167,6 +178,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto range_rho() const -> const range&;
 
   /**
@@ -174,6 +186,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto range_ye() const -> const range&;
 
   /**
@@ -183,6 +196,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto range_eps(real_t rho, real_t ye) const -> range;
 
   /**
@@ -192,6 +206,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto range_temp(real_t rho, real_t ye) const -> range; 
   
   /**
@@ -199,6 +214,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto minimal_h() const -> real_t;
 
   /**
@@ -207,6 +223,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto is_rho_valid(real_t rho) const -> bool;
   
   /**
@@ -215,6 +232,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto is_ye_valid(real_t ye) const -> bool;
 
   /**
@@ -224,6 +242,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto is_rho_ye_valid(real_t rho, real_t ye) const -> bool;
 
   /**
@@ -234,6 +253,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto is_rho_eps_ye_valid(real_t rho, 
                            real_t eps, real_t ye) const -> bool;
 
@@ -245,6 +265,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto is_rho_temp_ye_valid(real_t rho, 
                             real_t temp, real_t ye) const -> bool;
 
@@ -259,6 +280,7 @@ class eos_thermal : detail::eos_thermal_base {
   \post Guarantees \f$ P\ge 0 \f$ 
     \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto press_at_rho_eps_ye(real_t rho, real_t eps, real_t ye) const 
   -> real_t;
 
@@ -273,6 +295,7 @@ class eos_thermal : detail::eos_thermal_base {
   \post Guarantees \f$ 0\le c_s < 1 \f$ 
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto csnd_at_rho_eps_ye(real_t rho, real_t eps, real_t ye) const 
   -> real_t;
 
@@ -288,6 +311,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if temperature not available for EOS
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto temp_at_rho_eps_ye(real_t rho, real_t eps, real_t ye) const 
   -> real_t;
 
@@ -302,6 +326,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if entropy not available for EOS
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto sentr_at_rho_eps_ye(real_t rho, real_t eps, real_t ye) const 
   -> real_t;
 
@@ -316,6 +341,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto dpress_drho_at_rho_eps_ye(real_t rho, real_t eps, 
                                  real_t ye) const -> real_t;
 
@@ -330,6 +356,7 @@ class eos_thermal : detail::eos_thermal_base {
   
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto dpress_deps_at_rho_eps_ye(real_t rho, real_t eps, 
                                  real_t ye) const -> real_t;
 
@@ -346,6 +373,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if temperature not available for EOS
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto press_at_rho_temp_ye(real_t rho, real_t temp, real_t ye) const 
   -> real_t;
 
@@ -361,6 +389,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if temperature not available for EOS
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto csnd_at_rho_temp_ye(real_t rho, real_t temp, real_t ye) const 
   -> real_t;
 
@@ -376,6 +405,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if temperature not available for EOS
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto eps_at_rho_temp_ye(real_t rho, real_t temp, real_t ye) const 
   -> real_t;
 
@@ -391,6 +421,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if entropy not available for EOS
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto sentr_at_rho_temp_ye(real_t rho, real_t temp, real_t ye) const 
   -> real_t;
 
@@ -406,6 +437,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if temperature not available for EOS      
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto dpress_drho_at_rho_temp_ye(real_t rho, real_t temp, 
                                   real_t ye) const -> real_t;
 
@@ -421,6 +453,7 @@ class eos_thermal : detail::eos_thermal_base {
   \throws std::runtime_error if temperature not available for EOS      
   \throws std::runtime_error if called for unitialized object
   **/
+  __device__ __host__
   auto dpress_deps_at_rho_temp_ye(real_t rho, real_t temp, 
                                   real_t ye) const -> real_t;
 
