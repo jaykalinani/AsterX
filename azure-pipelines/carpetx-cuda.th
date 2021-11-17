@@ -122,7 +122,12 @@ ExternalLibraries/PETSc
 ExternalLibraries/hwloc
 ExternalLibraries/zlib
 
-
+# RePrimAnd
+!TARGET   = $ARR
+!TYPE     = svn
+!URL      = https://github.com/wokast/RePrimAnd.git/trunk/ET_interface/thorns/$2
+!CHECKOUT =
+ExternalLibraries/RePrimAnd
 
 # CarpetX thorns
 !TARGET   = $ARR
@@ -168,10 +173,19 @@ CarpetX/Weyl
 CarpetX/Z4c
 CarpetX/googletest
 #DISABLED CarpetX/libsharp
-CarpetX/openPMD
 CarpetX/ssht
 CarpetX/yaml_cpp
 
+
+
+# the openPMD thorn is in a directory openPMD-api and GetComponents' REPO_PATH
+# rules require some creativie path settings to get the correct link
+!TARGET   = $ARR
+!TYPE     = git
+!URL      = https://bitbucket.org/eschnett/cactusamrex.git
+!REPO_PATH= ../../arrangements/$1/../../repos/cactusamrex/openPMD_api
+!CHECKOUT =
+CarpetX/openPMD
 
 
 # THCBase thorns

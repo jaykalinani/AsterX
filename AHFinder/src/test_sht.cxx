@@ -152,7 +152,7 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
         for (int l = abs(spin); l <= lmax; ++l) {
           for (int m = -l; m <= l; ++m) {
             // f*_lm = (-1)^m f_l,-m
-            const complex<double> c = mm < 0 ? 1i : 1;
+            const complex<double> c = mm < 0 ? 1.0i : 1.0;
             complex<double> a{0};
             if (l == ll && m == mm)
               a += c;
@@ -170,7 +170,7 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
           for (int j = 0; j < nphi; ++j) {
             const double theta = coord_theta(i, j);
             const double phi = coord_phi(i, j);
-            const complex<double> c = mm < 0 ? 1i : 1;
+            const complex<double> c = mm < 0 ? 1.0i : 1.0;
             const complex<double> scp = sYlm(spin, ll, mm, theta, phi);
             const complex<double> scm = sYlm(spin, ll, -mm, theta, phi);
             const complex<double> sc =
@@ -192,7 +192,7 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
 
         for (int l = abs(spin); l <= lmax; ++l) {
           for (int m = -l; m <= l; ++m) {
-            const complex<double> c = mm < 0 ? 1i : 1;
+            const complex<double> c = mm < 0 ? 1.0i : 1.0;
             complex<double> a{0};
             if (l == ll && m == mm)
               a += c;
@@ -219,7 +219,7 @@ extern "C" void AHFinder_test_sht(CCTK_ARGUMENTS) {
             const array<complex<double>, 2> ds = dsYlm(0, ll, mm, theta, phi);
             const complex<double> sc = -double(spin) /
                                        sqrt(double(ll * (ll + 1))) *
-                                       (ds[0] + double(spin) * 1i * ds[1]);
+                                       (ds[0] + double(spin) * 1.0i * ds[1]);
             // const complex<double> ac = aij.at(gind(i, j));
             const complex<double> ac = sYlm(spin, ll, mm, theta, phi);
             if (!(abs(ac - sc) <= 1.0e-12))

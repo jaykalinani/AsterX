@@ -208,7 +208,7 @@ template <int s, int l, int m, typename T>
 constexpr enable_if_t<(s == 0 && l == 1 && m == -1), array<complex<T>, 2> >
 dsYlm(const T theta, const T phi) {
   return {1 / T(2) * polar(T(1), -phi) * sqrt(3 / (2 * M_PI)) * cos(theta),
-          -1i / T(2) * polar(T(1), -phi) * sqrt(3 / (2 * M_PI))};
+          -1.0i / T(2) * polar(T(1), -phi) * sqrt(3 / (2 * M_PI))};
 }
 
 template <int s, int l, int m, typename T>
@@ -221,7 +221,7 @@ template <int s, int l, int m, typename T>
 constexpr enable_if_t<(s == 0 && l == 1 && m == 1), array<complex<T>, 2> >
 dsYlm(const T theta, const T phi) {
   return {-1 / T(2) * polar(T(1), phi) * sqrt(3 / (2 * M_PI)) * cos(theta),
-          -1i / T(2) * polar(T(1), phi) * sqrt(3 / (2 * M_PI))};
+          -1.0i / T(2) * polar(T(1), phi) * sqrt(3 / (2 * M_PI))};
 }
 
 template <int s, int l, int m, typename T>
@@ -229,7 +229,7 @@ constexpr enable_if_t<(s == 0 && l == 2 && m == -2), array<complex<T>, 2> >
 dsYlm(const T theta, const T phi) {
   return {1 / T(2) * polar(T(1), -2 * phi) * sqrt(15 / (2 * M_PI)) *
               cos(theta) * sin(theta),
-          -1i / T(2) * polar(T(1), -2 * phi) * sqrt(15 / (2 * M_PI)) *
+          -1.0i / T(2) * polar(T(1), -2 * phi) * sqrt(15 / (2 * M_PI)) *
               sin(theta)};
 }
 
@@ -237,7 +237,8 @@ template <int s, int l, int m, typename T>
 constexpr enable_if_t<(s == 0 && l == 2 && m == -1), array<complex<T>, 2> >
 dsYlm(const T theta, const T phi) {
   return {1 / T(2) * polar(T(1), -phi) * sqrt(15 / (2 * M_PI)) * cos(2 * theta),
-          -1i / T(2) * polar(T(1), -phi) * sqrt(15 / (2 * M_PI)) * cos(theta)};
+          -1.0i / T(2) * polar(T(1), -phi) * sqrt(15 / (2 * M_PI)) *
+              cos(theta)};
 }
 
 template <int s, int l, int m, typename T>
@@ -250,7 +251,7 @@ template <int s, int l, int m, typename T>
 constexpr enable_if_t<(s == 0 && l == 2 && m == 1), array<complex<T>, 2> >
 dsYlm(const T theta, const T phi) {
   return {-1 / T(2) * polar(T(1), phi) * sqrt(15 / (2 * M_PI)) * cos(2 * theta),
-          -1i / T(2) * polar(T(1), phi) * sqrt(15 / (2 * M_PI)) * cos(theta)};
+          -1.0i / T(2) * polar(T(1), phi) * sqrt(15 / (2 * M_PI)) * cos(theta)};
 }
 
 template <int s, int l, int m, typename T>
@@ -258,7 +259,7 @@ constexpr enable_if_t<(s == 0 && l == 2 && m == 2), array<complex<T>, 2> >
 dsYlm(const T theta, const T phi) {
   return {1 / T(2) * polar(T(1), 2 * phi) * sqrt(15 / (2 * M_PI)) * cos(theta) *
               sin(theta),
-          1i / T(2) * polar(T(1), 2 * phi) * sqrt(15 / (2 * M_PI)) *
+          1.0i / T(2) * polar(T(1), 2 * phi) * sqrt(15 / (2 * M_PI)) *
               sin(theta)};
 }
 
