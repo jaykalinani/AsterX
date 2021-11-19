@@ -330,8 +330,7 @@ calc_derivs(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones,
-      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const GF3D5index index0(layout0, p.I);
         const auto val = gf1(mask, p.I);
@@ -357,8 +356,7 @@ calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones,
-      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const int vavail = p.imax - p.i;
         const GF3D5index index0(layout0, p.I);
@@ -435,8 +433,7 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
     const Loop::GridDescBaseDevice grid(cctkGH);
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones,
-        [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+        grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
           const vec<vreal, dim, UP> betaG = gf_betaG_(mask, p.I);
           const vreal rhs_old = gf_rhs_(mask, p.I);
@@ -449,8 +446,7 @@ apply_upwind_diss(const cGH *restrict const cctkGH, const GF3D2<const T> &gf_,
 
     const Loop::GridDescBaseDevice grid(cctkGH);
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones,
-        [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+        grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
           const vec<vreal, dim, UP> betaG = gf_betaG_(mask, p.I);
           const vreal rhs_old = gf_rhs_(mask, p.I);

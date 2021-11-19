@@ -28,31 +28,31 @@ extern "C" void Z4c_ConstraintBoundaries(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice grid(cctkGH);
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_ZtCx1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_ZtCy1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_ZtCz1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_HC1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_MtCx1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_MtCy1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_MtCz1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_allC1(p.I) = 0; });
 }
 

@@ -45,8 +45,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_all_device<0, 0, 0, vsize>(
-      grid.nghostzones,
-      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const GF3D2index index1(layout1, p.I);
 
@@ -75,12 +74,14 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         const vreal detgammat = calc_det(gammat);
         const vreal gammat_norm = maxabs(gammat);
         const vreal gammat_scale = gammat_norm;
+#ifndef __CUDACC__
         if (!(all(fabs(detgammat - 1) <= 1.0e-12 * gammat_scale))) {
           ostringstream buf;
           buf << "det gammat is not one: gammat=" << gammat
               << " det(gammat)=" << detgammat;
           CCTK_VERROR("%s", buf.str().c_str());
         }
+#endif
         assert(all(fabs(detgammat - 1) <= 1.0e-12 * gammat_scale));
 #endif
 
@@ -99,11 +100,13 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         const vreal gammatu_norm = maxabs(gammatu);
         const vreal At_norm = maxabs(At);
         const vreal At_scale = fmax(fmax(gammat_norm, gammatu_norm), At_norm);
+#ifndef __CUDACC__
         if (!(all(fabs(traceAt) <= 1.0e-12 * At_scale))) {
           ostringstream buf;
           buf << "tr At: At=" << At << " tr(At)=" << traceAt;
           CCTK_VERROR("%s", buf.str().c_str());
         }
+#endif
         assert(all(fabs(traceAt) <= 1.0e-12 * At_scale));
 #endif
 

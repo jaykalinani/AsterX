@@ -20,13 +20,13 @@ extern "C" void Z4c_Boundaries2(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice grid(cctkGH);
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Gamtx1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Gamty1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Gamtz1(p.I) = 0; });
 }
 
