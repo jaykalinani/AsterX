@@ -1,15 +1,15 @@
 ActiveThorns = "
+    ADMBase
     CarpetX
     Formaline
-    IOUtil
     GRHydroToyGPU
+    HydroBase
     HydroInitial
+    IOUtil
     ODESolvers
+    RePrimAnd
     SystemTopology
     TimerReport
-    ADMBase
-    HydroBase
-    RePrimAnd
     TmunuBase
 "
 
@@ -29,6 +29,10 @@ Cactus::cctk_final_time = 0.4 #1.0
 
 # -------------------- CarpetX -------------------------------------------------
 CarpetX::verbose = no
+
+CarpetX::periodic_x = yes
+CarpetX::periodic_y = yes
+CarpetX::periodic_z = yes
 
 CarpetX::xmin = -0.4
 CarpetX::ymin = -0.4
