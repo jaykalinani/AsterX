@@ -1,14 +1,15 @@
 # Main make.code.defn file for thorn GRHydroToyGPU
 
 # Source files in this directory
-SRCS =	boundaries.cxx				\
-	estimate_error.cxx			\
-	flux_boundaries.cxx			\
-	fluxes.cxx				\
-	con2prim.cxx				\
-	rhs.cxx					\
-	sync.cxx                                \
-        prim2con.cxx 
+SRCS =						\
+	GRHydroToyGPU_boundaries.cxx		\
+	GRHydroToyGPU_con2prim.cxx		\
+	GRHydroToyGPU_estimate_error.cxx	\
+	GRHydroToyGPU_flux_boundaries.cxx	\
+	GRHydroToyGPU_fluxes.cxx		\
+	GRHydroToyGPU_prim2con.cxx		\
+	GRHydroToyGPU_rhs.cxx			\
+	GRHydroToyGPU_sync.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 
