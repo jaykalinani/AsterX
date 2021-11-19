@@ -1733,7 +1733,11 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         leave_level_mode(cctkGH, leveldata.level);
       });
 
-    } else if (CCTK_EQUALS(kernel_launch_method, "openmp")) {
+    } else if (CCTK_EQUALS(kernel_launch_method, "openmp")
+#ifndef AMREX_USE_GPU
+               || CCTK_EQUALS(kernel_launch_method, "default")
+#endif
+    ) {
 
       // TODO: Call the Cactus routines only once per block, i.e.
       // without tiling. Tile only the loops, but execute the loops
@@ -1781,7 +1785,12 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           tasks[i]();
       }
 
-    } else if (CCTK_EQUALS(kernel_launch_method, "cuda")) {
+    } else if (CCTK_EQUALS(kernel_launch_method, "cuda")
+#ifdef AMREX_USE_GPU
+               || CCTK_EQUALS(kernel_launch_method, "default")
+#endif
+
+    ) {
 
       assert(CallFunction_count == -1);
       CallFunction_count = 0;
