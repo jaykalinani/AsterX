@@ -40,7 +40,9 @@ constexpr int dim = 3;
 
 enum class where_t { everywhere, interior, boundary, ghosts_inclusive, ghosts };
 
+// TODO: Add this `template <int CI, int CJ, int CK>` here, and to `GF3D2` etc.
 struct PointDesc {
+  // static constexpr vect<int, dim> centering{CI, CJ, CK};
   int imin, imax;
   int i, j, k;
   CCTK_REAL x, y, z;
