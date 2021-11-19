@@ -1490,7 +1490,10 @@ int Evolve(tFleshConfig *config) {
         leveldata.iteration += leveldata.delta_iteration;
       });
 
-      InvalidateTimelevels(cctkGH);
+      // We cannot invalidate all non-evolved variables. ODESolvers
+      // calculates things in ODESolvers_Poststep, and we want to use
+      // them in the next iteration.
+      // InvalidateTimelevels(cctkGH);
 
       CycleTimelevels(cctkGH);
 
