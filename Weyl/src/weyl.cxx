@@ -1,3 +1,14 @@
+#include <fixmath.hxx>
+#include <cctk.h>
+
+#ifdef __CUDACC__
+// Disable CCTK_DEBUG since the debug information takes too much
+// parameter space to launch the kernels
+#ifdef CCTK_DEBUG
+#undef CCTK_DEBUG
+#endif
+#endif
+
 #include "derivs.hxx"
 #include "physics.hxx"
 #include "weyl_vars.hxx"
@@ -39,6 +50,7 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   // Suffix 1: with ghost zones, suffix 0: without ghost zones
   const GF3D2layout layout1(cctkGH, indextype);
   const GF3D5layout layout0(imin, imax);
+  const GF3D5layout layout5(cctkGH, indextype);
 
   const smat<GF3D2<const CCTK_REAL>, 3, DN, DN> gf_gamma1{
       GF3D2<const CCTK_REAL>(layout1, gxx),
@@ -134,6 +146,15 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   const vec<GF3D5<CCTK_REAL>, 3, UP> gf_dtbeta0(make_vec_gf());
   const vec<vec<GF3D5<CCTK_REAL>, 3, DN>, 3, UP> gf_ddtbeta0(make_vec_vec_gf());
   calc_derivs(cctkGH, gf_dtbeta1, gf_dtbeta0, gf_ddtbeta0, layout0);
+
+  const smat<GF3D5<CCTK_REAL>, 3, DN, DN> gf_dtk0(make_mat_gf());
+  calc_copy(cctkGH, gf_dtk1, gf_dtk0, layout0);
+
+  const GF3D5<CCTK_REAL> gf_dt2alpha0(make_gf());
+  calc_copy(cctkGH, gf_dt2alpha1, gf_dt2alpha0, layout0);
+
+  const vec<GF3D5<CCTK_REAL>, 3, UP> gf_dt2beta0(make_vec_gf());
+  calc_copy(cctkGH, gf_dt2beta1, gf_dt2beta0, layout0);
 
   //
 
@@ -328,6 +349,27 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
+  const smat<GF3D5<CCTK_REAL>, 4, DN, DN> gf_g45(
+      std::array<GF3D5<CCTK_REAL>, 10>{
+          GF3D5<CCTK_REAL>(layout5, g4tt), GF3D5<CCTK_REAL>(layout5, g4tx),
+          GF3D5<CCTK_REAL>(layout5, g4ty), GF3D5<CCTK_REAL>(layout5, g4tz),
+          GF3D5<CCTK_REAL>(layout5, g4xx), GF3D5<CCTK_REAL>(layout5, g4xy),
+          GF3D5<CCTK_REAL>(layout5, g4xz), GF3D5<CCTK_REAL>(layout5, g4yy),
+          GF3D5<CCTK_REAL>(layout5, g4yz), GF3D5<CCTK_REAL>(layout5, g4zz)});
+
+  const GF3D5<CCTK_REAL> gf_Psi0re5(layout5, Psi0re);
+  const GF3D5<CCTK_REAL> gf_Psi0im5(layout5, Psi0im);
+  const GF3D5<CCTK_REAL> gf_Psi1re5(layout5, Psi1re);
+  const GF3D5<CCTK_REAL> gf_Psi1im5(layout5, Psi1im);
+  const GF3D5<CCTK_REAL> gf_Psi2re5(layout5, Psi2re);
+  const GF3D5<CCTK_REAL> gf_Psi2im5(layout5, Psi2im);
+  const GF3D5<CCTK_REAL> gf_Psi3re5(layout5, Psi3re);
+  const GF3D5<CCTK_REAL> gf_Psi3im5(layout5, Psi3im);
+  const GF3D5<CCTK_REAL> gf_Psi4re5(layout5, Psi4re);
+  const GF3D5<CCTK_REAL> gf_Psi4im5(layout5, Psi4im);
+
+  //
+
   typedef simd<CCTK_REAL> vreal;
   typedef simdl<CCTK_REAL> vbool;
   constexpr size_t vsize = tuple_size_v<vreal>;
@@ -338,11 +380,11 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   noinline([&]() __attribute__((__flatten__, __hot__)) {
     grid.loop_int_device<0, 0, 0, vsize>(
-        grid.nghostzones,
-        [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+        grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
           const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
           const GF3D2index index1(layout1, p.I);
           const GF3D5index index0(layout0, p.I);
+          const GF3D5index index5(layout5, p.I);
 
           // Load and calculate
 
@@ -359,13 +401,15 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
               gf_dbeta0(mask, index0), //
               gf_dtk1(mask, index1), gf_dt2alpha1(mask, index1),
               gf_dt2beta1(mask, index1), //
+              // gf_dtk0(mask, index0), gf_dt2alpha0(mask, index0),
+              // gf_dt2beta0(mask, index0), //
               gf_dk0(mask, index0), gf_ddtalpha0(mask, index0),
               gf_ddtbeta0(mask, index0), //
               gf_ddgamma0(mask, index0), gf_ddalpha0(mask, index0),
               gf_ddbeta0(mask, index0));
 
           // Store
-          gf_g41.store(mask, index1, vars.g);
+          gf_g45.store(mask, index5, vars.g);
 
           // gf_Gamma4ttt1(p.I) = vars.Gamma(0)(0, 0);
           // gf_Gamma4ttx1(p.I) = vars.Gamma(0)(0, 1);
@@ -489,16 +533,16 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
           // gf_Phi21re1(p.I) = real(vars.Phi21);
           // gf_Phi21im1(p.I) = imag(vars.Phi21);
 
-          gf_Psi0re1.store(mask, index1, real(vars.Psi0));
-          gf_Psi0im1.store(mask, index1, imag(vars.Psi0));
-          gf_Psi1re1.store(mask, index1, real(vars.Psi1));
-          gf_Psi1im1.store(mask, index1, imag(vars.Psi1));
-          gf_Psi2re1.store(mask, index1, real(vars.Psi2));
-          gf_Psi2im1.store(mask, index1, imag(vars.Psi2));
-          gf_Psi3re1.store(mask, index1, real(vars.Psi3));
-          gf_Psi3im1.store(mask, index1, imag(vars.Psi3));
-          gf_Psi4re1.store(mask, index1, real(vars.Psi4));
-          gf_Psi4im1.store(mask, index1, imag(vars.Psi4));
+          gf_Psi0re5.store(mask, index5, real(vars.Psi0));
+          gf_Psi0im5.store(mask, index5, imag(vars.Psi0));
+          gf_Psi1re5.store(mask, index5, real(vars.Psi1));
+          gf_Psi1im5.store(mask, index5, imag(vars.Psi1));
+          gf_Psi2re5.store(mask, index5, real(vars.Psi2));
+          gf_Psi2im5.store(mask, index5, imag(vars.Psi2));
+          gf_Psi3re5.store(mask, index5, real(vars.Psi3));
+          gf_Psi3im5.store(mask, index5, imag(vars.Psi3));
+          gf_Psi4re5.store(mask, index5, real(vars.Psi4));
+          gf_Psi4im5.store(mask, index5, imag(vars.Psi4));
 
           // gf_npkappare1(p.I) = real(vars.npkappa);
           // gf_npkappaim1(p.I) = imag(vars.npkappa);
@@ -530,8 +574,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 #elif 0
 
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Load and calculate
 
         const vec3<CCTK_REAL, UP> coord3{p.x, p.y, p.z};
@@ -727,8 +771,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         const GF3D5index layout0, p.I(layout0, p.I);
 
         // Load and calculate
@@ -766,8 +810,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
       });
 
   grid.loop_int_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         const GF3D5index layout0, p.I(layout0, p.I);
 
         // Load and calculate
