@@ -592,7 +592,7 @@ void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
   auto &restrict patchdata = ghext->patchdata.at(patch);
 
   // Don't regrid before Cactus is ready to
-  if (level >= int(patchdata.leveldata.size()))
+  if (level >= int(patchdata.leveldata.size() - 1))
     return;
 
   if (verbose)
