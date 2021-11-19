@@ -46,77 +46,77 @@ extern "C" void Z4c_RHSBoundaries(CCTK_ARGUMENTS) {
   const Loop::GridDescBaseDevice grid(cctkGH);
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_chi_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones, [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p)
                             ARITH_INLINE { gf_gammatxx_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones, [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p)
                             ARITH_INLINE { gf_gammatxy_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones, [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p)
                             ARITH_INLINE { gf_gammatxz_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones, [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p)
                             ARITH_INLINE { gf_gammatyy_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones, [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p)
                             ARITH_INLINE { gf_gammatyz_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(
-      grid.nghostzones, [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p)
                             ARITH_INLINE { gf_gammatzz_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Kh_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Atxx_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Atxy_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Atxz_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Atyy_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Atyz_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Atzz_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Gamtx_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Gamty_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Gamtz_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_Theta_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_alphaG_rhs1(p.I) = 0; });
 
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_betaGx_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_betaGy_rhs1(p.I) = 0; });
   grid.loop_bnd_device<0, 0, 0>(grid.nghostzones,
-                                [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p)
+                                [=] ARITH_DEVICE(const PointDesc &p)
                                     ARITH_INLINE { gf_betaGz_rhs1(p.I) = 0; });
 }
 

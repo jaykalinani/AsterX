@@ -1,3 +1,14 @@
+#include <fixmath.hxx>
+#include <cctk.h>
+
+#ifdef __CUDACC__
+// Disable CCTK_DEBUG since the debug information takes too much
+// parameter space to launch the kernels
+#ifdef CCTK_DEBUG
+#undef CCTK_DEBUG
+#endif
+#endif
+
 #include "derivs.hxx"
 #include "physics.hxx"
 #include "z4c_vars.hxx"
@@ -153,8 +164,7 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
   const Loop::GridDescBaseDevice grid(cctkGH);
   grid.loop_int_device<0, 0, 0, vsize>(
-      grid.nghostzones,
-      [=] ARITH_DEVICE ARITH_HOST(const PointDesc &p) ARITH_INLINE {
+      grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const GF3D2index index1(layout1, p.I);
         const GF3D5index index0(layout0, p.I);
