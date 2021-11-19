@@ -629,6 +629,10 @@ void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
     // Do not set the boundary; AMReX's error grid function might have a
     // different number of ghost zones, and these ghost zones are unused anyway.
   }
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("ErrorEst patch %d level %d done.", patch, level);
 }
 
 void SetupGlobals() {
@@ -837,6 +841,10 @@ void CactusAmrCore::SetupLevel(const int level, const amrex::BoxArray &ba,
   if (level >= int(level_modified.size()))
     level_modified.resize(level + 1, true);
   level_modified.at(level) = true;
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("SetupLevel patch %d level %d done.", patch, level);
 }
 
 void CactusAmrCore::MakeNewLevelFromScratch(
@@ -849,6 +857,9 @@ void CactusAmrCore::MakeNewLevelFromScratch(
     CCTK_VINFO("MakeNewLevelFromScratch patch %d level %d", patch, level);
 
   SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromScratch"; });
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("MakeNewLevelFromScratch patch %d level %d done.", patch, level);
 }
 
 void CactusAmrCore::MakeNewLevelFromCoarse(
@@ -937,6 +948,10 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
     } // for tl
 
   } // for gi
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("MakeNewLevelFromCoarse patch %d level %d done.", patch, level);
 }
 
 void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
@@ -1061,6 +1076,10 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
   } // for gi
 
   level_modified.at(level) = true;
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("RemakeLevel patch %d level %d done.", patch, level);
 }
 
 void CactusAmrCore::ClearLevel(const int level) {
@@ -1074,6 +1093,10 @@ void CactusAmrCore::ClearLevel(const int level) {
   ghext->patchdata.at(patch).leveldata.resize(level);
 
   level_modified.resize(level);
+
+  if (verbose)
+#pragma omp critical
+    CCTK_VINFO("ClearLevel patch %d level %d done.", patch, level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
