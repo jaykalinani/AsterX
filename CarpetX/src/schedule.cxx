@@ -1811,9 +1811,6 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         leave_patch_mode(cctkGH, leveldata);
         leave_level_mode(cctkGH, leveldata.level);
       });
-#ifdef AMREX_USE_GPU
-      amrex::Gpu::synchronize();
-#endif
 
       assert(CallFunction_count >= 0);
       CallFunction_count = -1;
@@ -1839,6 +1836,12 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   default:
     assert(0);
   }
+
+#ifdef AMREX_USE_GPU
+  // TODO: Synchronize only if GPU kernels were actually launched
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
 
   // Check checksums
   if (poison_undefined_values)
