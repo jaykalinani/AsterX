@@ -35,17 +35,6 @@ using Loop::dim;
 
 using rat64 = rational<int64_t>;
 
-// Taken from
-// <https://stackoverflow.com/questions/27440953/stdunique-ptr-for-c-functions-that-need-free>
-struct free_deleter {
-  template <typename T> void operator()(T *p) const {
-    std::free(const_cast<std::remove_const_t<T> *>(p));
-  }
-};
-template <typename T> using unique_C_ptr = std::unique_ptr<T, free_deleter>;
-static_assert(sizeof(char *) == sizeof(unique_C_ptr<char>),
-              "No overhead in unique_C_ptr"); // ensure no overhead
-
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
 
