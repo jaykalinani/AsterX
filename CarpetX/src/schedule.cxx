@@ -44,7 +44,7 @@ using namespace std;
 
 // Value for undefined cctkGH entries
 // Note: Don't use a negative value, which tends to leave bugs undetected. Large
-// positive values often lead to segfault, exposing bugs.
+// positive values often lead to segfaults, exposing bugs.
 constexpr int undefined = (INT_MAX / 2 + 1) + 666;
 
 vector<unique_ptr<thread_local_info_t> > thread_local_info;
