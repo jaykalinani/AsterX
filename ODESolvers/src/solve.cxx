@@ -319,7 +319,7 @@ int get_group_rhs(const int gi) {
     str1 = string(impl) + "::" + str1;
   }
   const int gi1 = CCTK_GroupIndex(str1.c_str());
-  assert(gi1 >= 0); // Checkfluxes are valid groups
+  assert(gi1 >= 0); // Check RHSs are valid groups
   const int flux = gi1;
 
   assert(flux != gi);
