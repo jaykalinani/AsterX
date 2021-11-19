@@ -20,7 +20,9 @@ CCTK_DEVICE CCTK_HOST smat<CCTK_REAL, dim, DN, DN> delta33() {
   return one<smat<CCTK_REAL, dim, DN, DN> >()();
 }
 
-template <typename T> static T pow4(const T &x) { return pow2(pow2(x)); }
+template <typename T> static CCTK_DEVICE CCTK_HOST T pow4(const T &x) {
+  return pow2(pow2(x));
+}
 
 Patch makePatch(const PatchTransformations &pt) {
   const int ncells_i = pt.swirl_ncells_i;
