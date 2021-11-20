@@ -119,7 +119,7 @@ then
         ./bootstrap.sh --prefix=${BOOST_DIR}
 
         echo "Boost: Building..."
-        makeflags=$(echo ${MAKE} | grep -e '-j' | perl -p -e 's/^.* -j *([0-9]+).*$/-j\1/')
+        makeflags=$(echo ${MAKEFLAGS} | grep -e '-j' | perl -p -e 's/^.* -j *([0-9]+).*$/-j\1/')
         ./b2 ${makeflags} link=static || true
         #./b2 ${makeflags} || true
 
