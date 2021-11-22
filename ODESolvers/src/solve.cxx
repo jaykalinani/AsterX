@@ -801,6 +801,57 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     }
     statecomp_t::lincomb(var, 0, factors, srcs);
 
+  } else if (CCTK_EQUALS(method, "Implicit Euler")) {
+
+    // Implicit definition:
+    //   y1 = y0 + h/2 f(y0) + h/2 g(y1)
+    //   y2 = y0 + h f(y1) + h g(y1)
+
+    // Implicit RHS:
+    //   G(alpha, r) = u   where   alpha g(u) = u + r
+    //   G(u0, h) = u1   where   u1 = u0 + h g(u1)
+
+    // Explicit definition:
+    //   k1 = f(y0)
+    //   y1 = G(y0 + h/2 k1, h/2)
+    //   k'2 = (y1 - y0 - h/2 k1) / (h/2)
+    //   k2 = f(y1)
+    //   y2 = y0 + h k2 + h k'2
+
+    const auto y0 = var.copy();
+
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time;
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+    const auto k1 = rhs.copy();
+
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
+    statecomp_t::lincomb(var, 1, make_array(dt/2), make_array(&rhs));
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt/2;
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_delta_time) = dt / 2;
+    if (verbose)
+      CCTK_VINFO("Taking implicit step #1 at t=%g with dt=%g", double(cctkGH->cctk_time), double(cctkGH->cctk_delta_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_ImplicitStep");
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_delta_time) = dt;
+
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
+    CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
+    const auto y1 = var.copy();
+
+    statecomp_t kprime2;
+    statecomp_t::lincomb(kprime2, 0, make_array(-1.0, +1.0, -dt/2), make_array(&y0, &y1, &k1));
+
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
+    if (verbose)
+      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    CallScheduleGroup(cctkGH, "ODESolvers_RHS");
+    const auto k2 = rhs.copy();
+
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt, dt), make_array(&y0, &k2, &kprime2));
+
   } else {
     assert(0);
   }
