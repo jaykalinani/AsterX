@@ -29,6 +29,7 @@ extern "C" void TmunuBase_ZeroTmunu(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> eTzz_(layout, eTzz);
 
   const GridDescBaseDevice grid(cctkGH);
+#if 0
   grid.loop_all_device<0, 0, 0>(
       grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
                             CCTK_ATTRIBUTE_ALWAYS_INLINE { eTtt_(p.I) = 0; });
@@ -59,6 +60,22 @@ extern "C" void TmunuBase_ZeroTmunu(CCTK_ARGUMENTS) {
   grid.loop_all_device<0, 0, 0>(
       grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
                             CCTK_ATTRIBUTE_ALWAYS_INLINE { eTzz_(p.I) = 0; });
+#endif
+
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones,
+                                [=] CCTK_DEVICE(const PointDesc &p)
+                                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                      eTtt_(p.I) = 0;
+                                      eTtx_(p.I) = 0;
+                                      eTty_(p.I) = 0;
+                                      eTtz_(p.I) = 0;
+                                      eTxx_(p.I) = 0;
+                                      eTxy_(p.I) = 0;
+                                      eTxz_(p.I) = 0;
+                                      eTyy_(p.I) = 0;
+                                      eTyz_(p.I) = 0;
+                                      eTzz_(p.I) = 0;
+                                    });
 }
 
 } // namespace TmunuBase
