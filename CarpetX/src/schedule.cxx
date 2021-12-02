@@ -14,6 +14,10 @@
 
 #include <AMReX_MultiFabUtil.H>
 
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#endif
+
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -1470,6 +1474,10 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     CCTK_VINFO("CallFunction iteration %d %s: %s::%s", cctkGH->cctk_iteration,
                attribute->where, attribute->thorn, attribute->routine);
 
+#ifdef __CUDACC__
+  nvtxRangePushA(attribute->routine);
+#endif
+
   assert(active_levels);
 
   // Check whether input variables have valid data
@@ -1834,6 +1842,10 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       }
     }
   }
+
+#ifdef __CUDACC__
+  nvtxRangePop();
+#endif
 
   constexpr int didsync = 0;
   return didsync;
