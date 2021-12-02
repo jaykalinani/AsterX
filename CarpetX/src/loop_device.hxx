@@ -13,6 +13,8 @@
 #include <AMReX_Gpu.H>
 #endif
 
+#include <cassert>
+
 #ifndef HAVE_CAPABILITY_AMReX
 #error                                                                         \
     "Using #include <loop_device.hxx> requires the capability 'AMReX' in the calling thorn. Add this to the thorn's 'configuration.ccl' file."
@@ -85,6 +87,24 @@ public:
       const int k = box.smallEnd()[2];
       f(point_desc<CI, CJ, CK>(inormal1, imin1[0], imax1[0], i, j, k));
     });
+#endif
+
+#ifdef AMREX_USE_GPU
+    static bool have_gpu_sync_after_every_kernel = false;
+    static bool gpu_sync_after_every_kernel;
+    if (!have_gpu_sync_after_every_kernel) {
+      int type;
+      const void *const gpu_sync_after_every_kernel_ptr =
+          CCTK_ParameterGet("gpu_sync_after_every_kernel", "CarpetX", &type);
+      assert(gpu_sync_after_every_kernel_ptr);
+      assert(type == PARAMETER_BOOLEAN);
+      gpu_sync_after_every_kernel =
+          *static_cast<const CCTK_INT *>(gpu_sync_after_every_kernel_ptr);
+    }
+    if (gpu_sync_after_every_kernel) {
+      amrex::Gpu::synchronize();
+      AMREX_GPU_ERROR_CHECK();
+    }
 #endif
   }
 

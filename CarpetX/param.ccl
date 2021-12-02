@@ -260,6 +260,10 @@ KEYWORD kernel_launch_method "Kernel launch method" STEERABLE=always
   "default" :: "Use OpenMP for CPU builds and CUDA for GPU builds"
 } "default"
 
+BOOLEAN gpu_sync_after_every_kernel "Call amrex::Gpu::synchronize after every kernel (EXPENSIVE)" STEERABLE=recover
+{
+} no
+
 
 
 KEYWORD filereader_method "I/O method for file reader" STEERABLE=recover
