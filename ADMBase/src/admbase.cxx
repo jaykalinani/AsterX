@@ -33,43 +33,23 @@ extern "C" void ADMBase_initial_data(CCTK_ARGUMENTS) {
 
   const GridDescBaseDevice grid(cctkGH);
 
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { gxx_(p.I) = 1; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { gxy_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { gxz_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { gyy_(p.I) = 1; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { gyz_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { gzz_(p.I) = 1; });
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones,
+                                [=] CCTK_DEVICE(const PointDesc &p)
+                                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                      gxx_(p.I) = 1;
+                                      gxy_(p.I) = 0;
+                                      gxz_(p.I) = 0;
+                                      gyy_(p.I) = 1;
+                                      gyz_(p.I) = 0;
+                                      gzz_(p.I) = 1;
 
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { kxx_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { kxy_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { kxz_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { kyy_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { kyz_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { kzz_(p.I) = 0; });
+                                      kxx_(p.I) = 1;
+                                      kxy_(p.I) = 0;
+                                      kxz_(p.I) = 0;
+                                      kyy_(p.I) = 1;
+                                      kyz_(p.I) = 0;
+                                      kzz_(p.I) = 1;
+                                    });
 }
 
 extern "C" void ADMBase_initial_lapse(CCTK_ARGUMENTS) {
@@ -114,15 +94,13 @@ extern "C" void ADMBase_initial_shift(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> betaz_(layout, betaz);
 
   const GridDescBaseDevice grid(cctkGH);
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { betax_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { betay_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { betaz_(p.I) = 0; });
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones,
+                                [=] CCTK_DEVICE(const PointDesc &p)
+                                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                      betax_(p.I) = 0;
+                                      betay_(p.I) = 0;
+                                      betaz_(p.I) = 0;
+                                    });
 }
 
 extern "C" void ADMBase_initial_dtshift(CCTK_ARGUMENTS) {
@@ -137,18 +115,13 @@ extern "C" void ADMBase_initial_dtshift(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> dtbetaz_(layout, dtbetaz);
 
   const GridDescBaseDevice grid(cctkGH);
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE { dtbetax_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE { dtbetay_(p.I) = 0; });
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE { dtbetaz_(p.I) = 0; });
+  grid.loop_all_device<0, 0, 0>(grid.nghostzones,
+                                [=] CCTK_DEVICE(const PointDesc &p)
+                                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                      dtbetax_(p.I) = 0;
+                                      dtbetay_(p.I) = 0;
+                                      dtbetaz_(p.I) = 0;
+                                    });
 }
 
 } // namespace ADMBase
