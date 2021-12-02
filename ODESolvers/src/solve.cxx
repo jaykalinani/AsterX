@@ -46,7 +46,7 @@ using return_type = std::array<typename return_type_helper<D, Types...>::type,
 } // namespace details
 
 template <class D = void, class... Types>
-constexpr details::return_type<D, Types...> make_array(Types &&... t) {
+constexpr details::return_type<D, Types...> make_array(Types &&...t) {
   return {std::forward<Types>(t)...};
 }
 
@@ -173,7 +173,9 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
       return buf.str();
     });
 
+#ifndef AMREX_USE_GPU
   vector<function<void()> > tasks;
+#endif
 
   for (size_t m = 0; m < size; ++m) {
     const size_t ncomp = dst.mfabs.at(m)->nComp();
@@ -191,9 +193,12 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
 
       for (size_t c = 0; c < ncomp; ++c) {
         CCTK_REAL *restrict const dstptr = dstvar.dataPtr() + c * nstride;
-        array<const CCTK_REAL * restrict, N> srcptrs;
+        array<const CCTK_REAL *restrict, N> srcptrs;
         for (size_t n = 0; n < N; ++n)
           srcptrs[n] = srcvars[n].dataPtr() + c * nstride;
+
+#ifndef AMREX_USE_GPU
+        // CPU
 
         if (!read_dst) {
 
@@ -221,14 +226,58 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
           };
           tasks.emplace_back(move(task));
         }
+
+#else
+        // GPU
+
+        const CCTK_REAL scale1 = scale;
+        const amrex::Box box(
+            amrex::IntVect(0, 0, 0), amrex::IntVect(nstride - 1, 0, 0),
+            amrex::IntVect(amrex::IndexType::CELL, amrex::IndexType::CELL,
+                           amrex::IndexType::CELL));
+
+        if (!read_dst) {
+
+          amrex::launch(box, [=] CCTK_DEVICE(const amrex::Box &box)
+                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                   const int i = box.smallEnd()[0];
+                                   // const int j = box.smallEnd()[1];
+                                   // const int k = box.smallEnd()[2];
+                                   CCTK_REAL accum = 0;
+                                   for (size_t n = 0; n < N; ++n)
+                                     accum += factors[n] * srcptrs[n][i];
+                                   dstptr[i] = accum;
+                                 });
+
+        } else {
+
+          amrex::launch(box, [=] CCTK_DEVICE(const amrex::Box &box)
+                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                   const int i = box.smallEnd()[0];
+                                   // const int j = box.smallEnd()[1];
+                                   // const int k = box.smallEnd()[2];
+                                   CCTK_REAL accum = scale1 * dstptr[i];
+                                   for (size_t n = 0; n < N; ++n)
+                                     accum += factors[n] * srcptrs[n][i];
+                                   dstptr[i] = accum;
+                                 });
+        }
+
+#endif
       }
     }
   }
 
+#ifndef AMREX_USE_GPU
   // run all tasks
 #pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < tasks.size(); ++i)
     tasks[i]();
+#else
+  // wait for all tasks
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
 
   dst.check_valid("after lincomb, destination");
 }
