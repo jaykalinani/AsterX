@@ -535,17 +535,6 @@ void interp3d(const T *restrict const crseptr,
       assert(targetbox.hiVect()[d] <= finebox.hiVect()[d]);
   }
 
-  const array<int, 3> imin{
-      targetbox.loVect()[0],
-      targetbox.loVect()[1],
-      targetbox.loVect()[2],
-  };
-  const array<int, 3> imax{
-      targetbox.hiVect()[0] + 1,
-      targetbox.hiVect()[1] + 1,
-      targetbox.hiVect()[2] + 1,
-  };
-
   const ptrdiff_t fined0 = finebox.index(amrex::IntVect(0, 0, 0));
   constexpr ptrdiff_t finedi = 1;
   assert(finebox.index(amrex::IntVect(1, 0, 0)) - fined0 == finedi);
@@ -558,16 +547,8 @@ void interp3d(const T *restrict const crseptr,
   const ptrdiff_t crsedj = crsebox.index(amrex::IntVect(0, 1, 0)) - crsed0;
   const ptrdiff_t crsedk = crsebox.index(amrex::IntVect(0, 0, 1)) - crsed0;
 
-  // Convert to AMReX box
-  const amrex::Box loopbox(
-      amrex::IntVect(imin[0], imin[1], imin[2]),
-      amrex::IntVect(imax[0] - 1, imax[1] - 1, imax[2] - 1),
-      amrex::IntVect(
-          CENTERING ? amrex::IndexType::CELL : amrex::IndexType::NODE,
-          CENTERING ? amrex::IndexType::CELL : amrex::IndexType::NODE,
-          CENTERING ? amrex::IndexType::CELL : amrex::IndexType::NODE));
   amrex::launch(
-      loopbox,
+      targetbox,
       [=] CCTK_DEVICE(const amrex::Box &box) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 #ifdef CCTK_DEBUG
         assert(box.bigEnd()[0] == box.smallEnd()[0] &&
@@ -613,11 +594,6 @@ void interp3d(const T *restrict const crseptr,
             fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
 #endif
       });
-#warning "TODO: Don't call amrex::Gpu::synchronize"
-#ifdef __CUDACC__
-  amrex::Gpu::synchronize();
-  AMREX_GPU_ERROR_CHECK();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,19 +692,19 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     targets[d].setRange(d, target_region.loVect()[d], target_region.length(d));
   }
   assert(targets[dim - 1] == target_region);
-  // array<vector<CCTK_REAL>, dim - 1> tmps;
-  // for (int d = 0; d < dim - 1; ++d)
-  //   tmps[d].resize(targets[d].numPts());
-  array<CCTK_REAL *, dim - 1> tmps;
-  for (int d = 0; d < dim - 1; ++d)
-    tmps[d] = static_cast<CCTK_REAL *>(
-        amrex::The_Arena()->alloc(targets[d].numPts() * sizeof *tmps[d]));
 
+  // Allocate temporary memory
+  // `AsyncArray` frees its memory automatically after the kernels are
+  // done using it. However, that mechanism is apparently more
+  // expensive than a manual `synchronize`.
+  static_assert(dim == 3, "");
+  amrex::Gpu::DeviceVector<CCTK_REAL> tmp0(ncomp * targets[0].numPts());
+  // amrex::Gpu::AsyncArray<CCTK_REAL> tmp0(ncomp * targets[0].numPts());
+
+  // Check that the input values are finite
+#ifdef CCTK_DEBUG
   for (int comp = 0; comp < ncomp; ++comp) {
     const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
-    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
-
-#ifdef CCTK_DEBUG
     for (int k = source_region.loVect()[2]; k <= source_region.hiVect()[2];
          ++k) {
       for (int j = source_region.loVect()[1]; j <= source_region.hiVect()[1];
@@ -742,40 +718,58 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
         }
       }
     }
+  }
 #endif
+
+  // Initialize the result of the x-prolongation with nan
 #ifdef CCTK_DEBUG
-    // for (auto &x : tmps[0])
-    //   x = 0.0 / 0.0;
-    for (int i = 0; i < targets[0].numPts(); ++i)
-      tmps[0][i] = 0.0 / 0.0;
+  for (int i = 0; i < ncomp * targets[0].numPts(); ++i)
+    tmp0.data()[i] = 0.0 / 0.0;
 #endif
-    interp3d<CENTI, CONSI, ORDERI, /*D*/ 0>(crseptr, crse.box(), tmps[0],
+
+  // Interpolate in the x-direction
+  for (int comp = 0; comp < ncomp; ++comp) {
+    const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
+    CCTK_REAL *restrict fineptr = &tmp0.data()[comp * targets[0].numPts()];
+    interp3d<CENTI, CONSI, ORDERI, /*D*/ 0>(crseptr, crse.box(), fineptr,
                                             targets[0], targets[0]);
+  }
+
+  // Check that the result is finite
 #ifdef CCTK_DEBUG
-    // for (auto x : tmps[0])
-    //   assert(CCTK_isfinite(x));
-    for (int i = 0; i < targets[0].numPts(); ++i)
-      assert(CCTK_isfinite(tmps[0][i]));
+  for (int i = 0; i < ncomp * targets[0].numPts(); ++i)
+    assert(CCTK_isfinite(tmp0.data()[i]));
 #endif
 
+  // Allocate temporary memory
+  amrex::Gpu::DeviceVector<CCTK_REAL> tmp1(ncomp * targets[1].numPts());
+  // amrex::Gpu::AsyncArray<CCTK_REAL> tmp1(ncomp * targets[1].numPts());
+
+  // Initialize the result of the y-prolongation with nan
 #ifdef CCTK_DEBUG
-    // for (auto &x : tmps[1])
-    //   x = 0.0 / 0.0;
-    for (int i = 0; i < targets[1].numPts(); ++i)
-      tmps[1][i] = 0.0 / 0.0;
+  for (int i = 0; i < ncomp * targets[1].numPts(); ++i)
+    tmp1.data()[i] = 0.0 / 0.0;
 #endif
-    interp3d<CENTJ, CONSJ, ORDERJ, /*D*/ 1>(tmps[0], targets[0], tmps[1],
+
+  // Interpolate in the y-direction
+  for (int comp = 0; comp < ncomp; ++comp) {
+    const CCTK_REAL *restrict crseptr =
+        &tmp0.data()[comp * targets[0].numPts()];
+    CCTK_REAL *restrict fineptr = &tmp1.data()[comp * targets[1].numPts()];
+    interp3d<CENTJ, CONSJ, ORDERJ, /*D*/ 1>(crseptr, targets[0], fineptr,
                                             targets[1], targets[1]);
+  }
+
+  // Check that the result is finite
 #ifdef CCTK_DEBUG
-    // for (auto x : tmps[1])
-    //   assert(CCTK_isfinite(x));
-    // for (size_t i = 0; i < tmps[1].size(); ++i)
-    //   assert(CCTK_isfinite(tmps[1][i]));
-    for (int i = 0; i < targets[1].numPts(); ++i)
-      assert(CCTK_isfinite(tmps[1][i]));
+  for (int i = 0; i < ncomp * targets[1].numPts(); ++i)
+    assert(CCTK_isfinite(tmp1.data()[i]));
 #endif
 
+    // Initialize the result of the z-prolongation with nan
 #ifdef CCTK_DEBUG
+  for (int comp = 0; comp < ncomp; ++comp) {
+    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
     for (int k = target_region.loVect()[2]; k <= target_region.hiVect()[2];
          ++k) {
       for (int j = target_region.loVect()[1]; j <= target_region.hiVect()[1];
@@ -789,10 +783,22 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
         }
       }
     }
+  }
 #endif
-    interp3d<CENTK, CONSK, ORDERK, /*D*/ 2>(tmps[1], targets[1], fineptr,
+
+  // Interpolate in the y-direction
+  for (int comp = 0; comp < ncomp; ++comp) {
+    const CCTK_REAL *restrict crseptr =
+        &tmp1.data()[comp * targets[1].numPts()];
+    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
+    interp3d<CENTK, CONSK, ORDERK, /*D*/ 2>(crseptr, targets[1], fineptr,
                                             fine.box(), target_region);
+  }
+
+  // Check that the result is finite
 #ifdef CCTK_DEBUG
+  for (int comp = 0; comp < ncomp; ++comp) {
+    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
     for (int k = target_region.loVect()[2]; k <= target_region.hiVect()[2];
          ++k) {
       for (int j = target_region.loVect()[1]; j <= target_region.hiVect()[1];
@@ -806,11 +812,13 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
         }
       }
     }
-#endif
   }
+#endif
 
-  for (int d = 0; d < dim - 1; ++d)
-    amrex::The_Arena()->free(tmps[d]);
+#ifdef __CUDACC__
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
 
 #ifdef __CUDACC__
   nvtxRangePop();
