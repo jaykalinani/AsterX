@@ -20,6 +20,7 @@ public:
   Timer() = delete;
   Timer(const string &name);
 
+  string get_name() const { return name; }
   void print() const;
 };
 
