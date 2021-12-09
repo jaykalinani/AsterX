@@ -547,17 +547,9 @@ void interp3d(const T *restrict const crseptr,
   const ptrdiff_t crsedj = crsebox.index(amrex::IntVect(0, 1, 0)) - crsed0;
   const ptrdiff_t crsedk = crsebox.index(amrex::IntVect(0, 0, 1)) - crsed0;
 
-  amrex::launch(
-      targetbox,
-      [=] CCTK_DEVICE(const amrex::Box &box) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-#ifdef CCTK_DEBUG
-        assert(box.bigEnd()[0] == box.smallEnd()[0] &&
-               box.bigEnd()[1] == box.smallEnd()[1] &&
-               box.bigEnd()[2] == box.smallEnd()[2]);
-#endif
-        const int i = box.smallEnd()[0];
-        const int j = box.smallEnd()[1];
-        const int k = box.smallEnd()[2];
+  const auto kernel = [=] CCTK_DEVICE(
+                          const int i, const int j,
+                          const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 #if 0
         const amrex::IntVect fineind(i, j, k);
         amrex::IntVect crseind = fineind;
@@ -570,30 +562,56 @@ void interp3d(const T *restrict const crseptr,
         assert(CCTK_isfinite(fineptr[finebox.index(fineind)]));
 #endif
 #endif
-        // Note: fineind = 2 * coarseind + off
-        const int ci = D == 0 ? i >> 1 : i;
-        const int cj = D == 1 ? j >> 1 : j;
-        const int ck = D == 2 ? k >> 1 : k;
-        const int off = (D == 0 ? i : D == 1 ? j : k) & 0x1;
-        if (D == 0) {
-          // allow vectorization
-          const T *restrict const ptr =
-              &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi];
-          const T res0 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 0);
-          const T res1 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 1);
-          const T res = off == 0 ? res0 : res1;
-          fineptr[fined0 + k * finedk + j * finedj + i * finedi] = res;
-        } else {
-          fineptr[fined0 + k * finedk + j * finedj + i * finedi] =
-              interp1d<CENTERING, CONSERVATIVE, ORDER>()(
-                  &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi],
-                  di, off);
-        }
+    // Note: fineind = 2 * coarseind + off
+    const int ci = D == 0 ? i >> 1 : i;
+    const int cj = D == 1 ? j >> 1 : j;
+    const int ck = D == 2 ? k >> 1 : k;
+    const int off = (D == 0 ? i : D == 1 ? j : k) & 0x1;
+    if (D == 0) {
+      // allow vectorization
+      const T *restrict const ptr =
+          &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi];
+      const T res0 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 0);
+      const T res1 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 1);
+      const T res = off == 0 ? res0 : res1;
+      fineptr[fined0 + k * finedk + j * finedj + i * finedi] = res;
+    } else {
+      fineptr[fined0 + k * finedk + j * finedj + i * finedi] =
+          interp1d<CENTERING, CONSERVATIVE, ORDER>()(
+              &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi], di,
+              off);
+    }
 #ifdef CCTK_DEBUG
-        assert(CCTK_isfinite(
-            fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
+    assert(
+        CCTK_isfinite(fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
 #endif
-      });
+  };
+
+#ifndef __CUDACC__
+  // CPU
+
+  for (int k = targetbox.smallEnd()[2]; k <= targetbox.bigEnd()[2]; ++k)
+    for (int j = targetbox.smallEnd()[1]; j <= targetbox.bigEnd()[1]; ++j)
+      for (int i = targetbox.smallEnd()[0]; i <= targetbox.bigEnd()[0]; ++i)
+        kernel(i, j, k);
+
+#else // GPU
+
+  amrex::launch(targetbox, [=] CCTK_DEVICE(const amrex::Box &box)
+                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
+#ifdef CCTK_DEBUG
+                                 assert(box.bigEnd()[0] == box.smallEnd()[0] &&
+                                        box.bigEnd()[1] == box.smallEnd()[1] &&
+                                        box.bigEnd()[2] == box.smallEnd()[2]);
+#endif
+                                 const int i = box.smallEnd()[0];
+                                 const int j = box.smallEnd()[1];
+                                 const int k = box.smallEnd()[2];
+
+                                 kernel(i, j, k);
+                               });
+
+#endif // GPU
 }
 
 ////////////////////////////////////////////////////////////////////////////////
