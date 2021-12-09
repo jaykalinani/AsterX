@@ -1868,6 +1868,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   static Timer timer("Sync");
   Interval interval(timer);
 
+#ifdef __CUDACC__
+  nvtxRangePushA("Sync");
+#endif
+
   assert(cctkGH);
   assert(numgroups >= 0);
   assert(groups0);
@@ -1950,10 +1954,16 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           {
             static Timer timer("Sync::FillPatchSingleLevel");
             Interval interval(timer);
+#ifdef __CUDACC__
+            nvtxRangePushA("Sync::FillPatchSingleLevel");
+#endif
             FillPatchSingleLevel(
                 *groupdata.mfab.at(tl), 0.0, {&*groupdata.mfab.at(tl)}, {0.0},
                 0, 0, groupdata.numvars, ghext->amrcore->Geom(leveldata.level),
                 physbc, 0);
+#ifdef __CUDACC__
+            nvtxRangePop();
+#endif
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
@@ -2000,12 +2010,18 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           {
             static Timer timer("Sync::FillPatchTwoLevels");
             Interval interval(timer);
+#ifdef __CUDACC__
+            nvtxRangePushA("Sync::FillPatchTwoLevels");
+#endif
             FillPatchTwoLevels(
                 *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
                 {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
                 groupdata.numvars, ghext->amrcore->Geom(level - 1),
                 ghext->amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
                 interpolator, bcs, 0);
+#ifdef __CUDACC__
+            nvtxRangePop();
+#endif
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(
@@ -2023,6 +2039,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       }
     }
   });
+
+#ifdef __CUDACC__
+  nvtxRangePop();
+#endif
 
   assert(sync_active);
   sync_active = false;
@@ -2115,6 +2135,10 @@ void Restrict(int level, const vector<int> &groups) {
   static Timer timer("Restrict");
   Interval interval(timer);
 
+#ifdef __CUDACC__
+  nvtxRangePushA("Restrict");
+#endif
+
   const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
   assert(gi_regrid_error >= 0);
   const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
@@ -2205,6 +2229,10 @@ void Restrict(int level, const vector<int> &groups) {
 
     } // for tl
   }   // for gi
+
+#ifdef __CUDACC__
+  nvtxRangePop();
+#endif
 }
 
 void Restrict(int level) {
