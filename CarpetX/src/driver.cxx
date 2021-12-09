@@ -849,11 +849,13 @@ void CactusAmrCore::MakeNewLevelFromScratch(
 
   SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromScratch"; });
 
-  if (saved_cctkGH) {
+  cGH *const cctkGH = get_global_cctkGH();
+  if (cctkGH) {
+    setup_cctkGHs(cctkGH);
     assert(!active_levels);
     active_levels = make_optional<active_levels_t>(level, level + 1);
-    CCTK_Traverse(saved_cctkGH, "CCTK_BASEGRID");
-    // CCTK_Traverse(saved_cctkGH, "CCTK_POSTREGRID");
+    CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+    // CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
     active_levels = optional<active_levels_t>();
   }
 }
@@ -944,11 +946,13 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
 
   } // for gi
 
-  if (saved_cctkGH) {
+  cGH *const cctkGH = get_global_cctkGH();
+  if (cctkGH) {
+    setup_cctkGHs(cctkGH);
     assert(!active_levels);
     active_levels = make_optional<active_levels_t>(level, level + 1);
-    CCTK_Traverse(saved_cctkGH, "CCTK_BASEGRID");
-    CCTK_Traverse(saved_cctkGH, "CCTK_POSTREGRID");
+    CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+    CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
     active_levels = optional<active_levels_t>();
   }
 }
@@ -1073,11 +1077,13 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 
   } // for gi
 
-  if (saved_cctkGH) {
+  cGH *const cctkGH = get_global_cctkGH();
+  if (cctkGH) {
+    setup_cctkGHs(cctkGH);
     assert(!active_levels);
     active_levels = make_optional<active_levels_t>(level, level + 1);
-    CCTK_Traverse(saved_cctkGH, "CCTK_BASEGRID");
-    CCTK_Traverse(saved_cctkGH, "CCTK_POSTREGRID");
+    CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+    CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
     active_levels = optional<active_levels_t>();
   }
 }

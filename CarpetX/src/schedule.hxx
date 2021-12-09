@@ -37,19 +37,6 @@ int DisableGroupStorage(const cGH *cctkGH, const char *groupname);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct thread_local_info_t {
-  // TODO: store only amrex::MFIter here; recalculate other things from it
-  cGH cctkGH;
-  unsigned char padding[128]; // Prevent false sharing
-};
-
-extern vector<unique_ptr<thread_local_info_t> > thread_local_info;
-
-// This global variable passes the current cctkGH to CactusAmrCore.
-// (When it is null, then CactusAmrCore does not call any scheduled
-// functions. This is used early during startup.)
-extern cGH *saved_cctkGH;
-
 struct active_levels_t {
   int min_level, max_level;
 
@@ -198,6 +185,12 @@ void loop_over_blocks(
     const cGH *restrict const cctkGH,
     const std::function<void(int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel);
+
+cGH *get_global_cctkGH();
+cGH *get_level_cctkGH(int level);
+cGH *get_local_cctkGH(int level, int block);
+
+void setup_cctkGHs(cGH *cctkGH);
 
 void error_if_invalid(const GHExt::LevelData ::GroupData &grouppdata, int vi,
                       int tl, const valid_t &required,

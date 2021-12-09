@@ -29,8 +29,10 @@ static inline int omp_in_parallel() { return 0; }
 
 #include <sys/time.h>
 
+#include <algorithm>
 #include <memory>
 #include <optional>
+#include <type_traits>
 #include <vector>
 
 namespace CarpetX {
@@ -45,12 +47,6 @@ using namespace std;
 // Note: Don't use a negative value, which tends to leave bugs undetected. Large
 // positive values often lead to segfaults, exposing bugs.
 constexpr int undefined = (INT_MAX / 2 + 1) + 666;
-
-vector<unique_ptr<thread_local_info_t> > thread_local_info;
-vector<unique_ptr<thread_local_info_t> > saved_thread_local_info;
-
-// Used to pass cctkGH into the callbacks for AMReX's regridding functions
-cGH *saved_cctkGH = nullptr;
 
 // Used to pass active levels from AMReX's regridding functions
 optional<active_levels_t> active_levels;
@@ -114,15 +110,6 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
   for (int d = 0; d < dim; ++d) {
     assert(cctkGH->cctk_nghostzones[d] != undefined);
     nghostzones[d] = cctkGH->cctk_nghostzones[d];
-  }
-
-  // Check whether we are in local mode
-  if (omp_in_parallel()) {
-    int thread_num = omp_get_thread_num();
-    const cGH *restrict threadGH =
-        &CarpetX::thread_local_info.at(thread_num)->cctkGH;
-    // Check whether this is the correct cGH structure
-    assert(cctkGH == threadGH);
   }
 
   for (int d = 0; d < dim; ++d) {
@@ -386,7 +373,8 @@ GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
 
 // Create a new cGH, copying those data that are set by the flesh, and
 // allocating space for these data that are set per thread by the driver
-void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
+void clone_cctkGH(cGH *restrict const cctkGH,
+                  const cGH *restrict const sourceGH) {
   // Copy all fields by default
   *cctkGH = *sourceGH;
   // Allocate most fields anew
@@ -410,6 +398,70 @@ void clone_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
   cctkGH->data = new void **[numvars];
   for (int vi = 0; vi < numvars; ++vi)
     cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
+}
+
+cGH *copy_cctkGH(const cGH *restrict const sourceGH) {
+  cGH *restrict const cctkGH = new cGH;
+
+  // Copy all fields by default
+  *cctkGH = *sourceGH;
+
+  // Allocate most pointers anew
+  const auto copy_array = [](const auto *restrict const srcptr, const int sz) {
+    using T = decay_t<decltype(*srcptr)>;
+    T *restrict const ptr = new T[sz];
+    copy(srcptr, srcptr + sz, ptr);
+    return ptr;
+  };
+  cctkGH->cctk_gsh = copy_array(sourceGH->cctk_gsh, dim);
+  cctkGH->cctk_lsh = copy_array(sourceGH->cctk_lsh, dim);
+  cctkGH->cctk_lbnd = copy_array(sourceGH->cctk_lbnd, dim);
+  cctkGH->cctk_ubnd = copy_array(sourceGH->cctk_ubnd, dim);
+  cctkGH->cctk_tile_min = copy_array(sourceGH->cctk_tile_min, dim);
+  cctkGH->cctk_tile_max = copy_array(sourceGH->cctk_tile_max, dim);
+  cctkGH->cctk_ash = copy_array(sourceGH->cctk_ash, dim);
+  cctkGH->cctk_to = copy_array(sourceGH->cctk_to, dim);
+  cctkGH->cctk_from = copy_array(sourceGH->cctk_from, dim);
+  cctkGH->cctk_delta_space = copy_array(sourceGH->cctk_delta_space, dim);
+  cctkGH->cctk_origin_space = copy_array(sourceGH->cctk_origin_space, dim);
+  cctkGH->cctk_bbox = copy_array(sourceGH->cctk_bbox, 2 * dim);
+  cctkGH->cctk_levfac = copy_array(sourceGH->cctk_levfac, dim);
+  cctkGH->cctk_levoff = copy_array(sourceGH->cctk_levoff, dim);
+  cctkGH->cctk_levoffdenom = copy_array(sourceGH->cctk_levoffdenom, dim);
+  cctkGH->cctk_nghostzones = copy_array(sourceGH->cctk_nghostzones, dim);
+
+  const int numvars = CCTK_NumVars();
+  cctkGH->data = new void **[numvars];
+  for (int vi = 0; vi < numvars; ++vi)
+    // cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
+    cctkGH->data[vi] =
+        copy_array(sourceGH->data[vi], CCTK_DeclaredTimeLevelsVI(vi));
+
+  return cctkGH;
+}
+
+void delete_cctkGH(cGH *cctkGH) {
+  delete[] cctkGH->cctk_gsh;
+  delete[] cctkGH->cctk_lsh;
+  delete[] cctkGH->cctk_lbnd;
+  delete[] cctkGH->cctk_ubnd;
+  delete[] cctkGH->cctk_tile_min;
+  delete[] cctkGH->cctk_tile_max;
+  delete[] cctkGH->cctk_ash;
+  delete[] cctkGH->cctk_to;
+  delete[] cctkGH->cctk_from;
+  delete[] cctkGH->cctk_delta_space;
+  delete[] cctkGH->cctk_origin_space;
+  delete[] cctkGH->cctk_bbox;
+  delete[] cctkGH->cctk_levfac;
+  delete[] cctkGH->cctk_levoff;
+  delete[] cctkGH->cctk_levoffdenom;
+  delete[] cctkGH->cctk_nghostzones;
+  const int numvars = CCTK_NumVars();
+  for (int vi = 0; vi < numvars; ++vi)
+    delete[] cctkGH->data[vi];
+  delete[] cctkGH->data;
+  delete cctkGH;
 }
 
 enum class mode_t { unknown, local, level, global, meta };
@@ -724,50 +776,65 @@ void loop_over_blocks(
     const cGH *restrict const cctkGH,
     const std::function<void(int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel) {
-  assert(thread_local_info.empty());
-  swap(thread_local_info, saved_thread_local_info);
-
   std::vector<std::function<void()> > tasks;
 
   active_levels->loop([&](const auto &restrict leveldata) {
     // Note: The amrex::MFIter uses global variables and OpenMP barriers
     const auto mfitinfo = amrex::MFItInfo().EnableTiling();
     int block = 0;
-    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+         ++mfi, ++block) {
       const MFPointer mfp(mfi);
       auto task = [&block_kernel, &leveldata, mfp, block]() {
-        const int thread_num = omp_get_thread_num();
-        thread_local_info_t &restrict thread_info =
-            *thread_local_info.at(thread_num);
-        cGH *restrict const threadGH = &thread_info.cctkGH;
-        enter_level_mode(threadGH, leveldata);
-        enter_local_mode(threadGH, leveldata, mfp);
-        block_kernel(leveldata.level, mfp.index(), block, threadGH);
-        leave_local_mode(threadGH, leveldata, mfp);
-        leave_level_mode(threadGH, leveldata);
+        cGH *restrict const localGH = get_local_cctkGH(leveldata.level, block);
+        block_kernel(leveldata.level, mfp.index(), block, localGH);
       };
       tasks.emplace_back(move(task));
-      ++block;
     }
   });
 
-#pragma omp parallel
-  {
-    // Initialize thread-local state variables
-    const int thread_num = omp_get_thread_num();
-    thread_local_info_t &restrict thread_info =
-        *thread_local_info.at(thread_num);
-    cGH *const threadGH = &thread_info.cctkGH;
-    update_cctkGH(threadGH, cctkGH);
+  // run all tasks
+#pragma omp parallel for schedule(dynamic)
+  for (size_t i = 0; i < tasks.size(); ++i)
+    tasks[i]();
+}
 
-    // run all tasks
-#pragma omp for schedule(dynamic)
-    for (size_t i = 0; i < tasks.size(); ++i)
-      tasks[i]();
+// cGH for all blocks
+using GHptr = unique_ptr<cGH, void (*)(cGH *)>;
+GHptr global_cctkGH(nullptr, delete_cctkGH);
+vector<GHptr> level_cctkGHs;          // [level]
+vector<vector<GHptr> > local_cctkGHs; // [level][block]
+
+cGH *get_global_cctkGH() { return global_cctkGH.get(); }
+cGH *get_level_cctkGH(const int level) { return level_cctkGHs.at(level).get(); }
+cGH *get_local_cctkGH(const int level, const int block) {
+  return local_cctkGHs.at(level).at(block).get();
+}
+
+void setup_cctkGHs(cGH *restrict const cctkGH) {
+  // global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
+
+  level_cctkGHs.clear();
+  local_cctkGHs.resize(ghext->leveldata.size());
+  for (const auto &restrict leveldata : ghext->leveldata) {
+    const int level = leveldata.level;
+    enter_level_mode(cctkGH, leveldata);
+
+    level_cctkGHs.emplace_back(copy_cctkGH(cctkGH), delete_cctkGH);
+
+    local_cctkGHs.at(level).clear();
+    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
+      const MFPointer mfp(mfi);
+      enter_local_mode(cctkGH, leveldata, mfp);
+
+      local_cctkGHs.at(level).emplace_back(copy_cctkGH(cctkGH), delete_cctkGH);
+
+      leave_local_mode(cctkGH, leveldata, mfp);
+    }
+
+    leave_level_mode(cctkGH, leveldata);
   }
-
-  swap(saved_thread_local_info, thread_local_info);
-  assert(thread_local_info.empty());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -778,12 +845,6 @@ extern "C" void CarpetX_GetTileExtent(const void *restrict const cctkGH_,
   const cGH *restrict cctkGH = static_cast<const cGH *>(cctkGH_);
   // Check whether we are in local mode
   assert(cctkGH->cctk_bbox[0] != undefined);
-  int thread_num = omp_get_thread_num();
-  if (omp_in_parallel()) {
-    const cGH *restrict threadGH = &thread_local_info.at(thread_num)->cctkGH;
-    // Check whether this is the correct cGH structure
-    assert(cctkGH == threadGH);
-  }
 
   for (int d = 0; d < dim; ++d) {
     tile_min[d] = cctkGH->cctk_tile_min[d];
@@ -940,18 +1001,8 @@ int Initialise(tFleshConfig *config) {
   // Set up cctkGH
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
-
-  const int max_threads = omp_get_max_threads();
-  thread_local_info.resize(max_threads);
-  for (int n = 0; n < max_threads; ++n) {
-    thread_local_info.at(n) = make_unique<thread_local_info_t>();
-    cGH *restrict threadGH = &thread_local_info.at(n)->cctkGH;
-    clone_cctkGH(threadGH, cctkGH);
-    setup_cctkGH(threadGH);
-    enter_global_mode(threadGH);
-  }
-  swap(saved_thread_local_info, thread_local_info);
-  assert(thread_local_info.empty());
+  global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
+  setup_cctkGHs(cctkGH);
 
   assert(ghext->leveldata.empty());
   assert(!active_levels);
@@ -969,6 +1020,7 @@ int Initialise(tFleshConfig *config) {
     CCTK_VINFO("Recovering from checkpoint...");
 
     RecoverGridStructure(cctkGH);
+    setup_cctkGHs(cctkGH);
 
     assert(!active_levels);
     active_levels = make_optional<active_levels_t>(0, ghext->leveldata.size());
@@ -1001,22 +1053,19 @@ int Initialise(tFleshConfig *config) {
       static Timer timer("InitialiseRegrid");
       Interval interval(timer);
       const CCTK_REAL time = 0.0; // dummy time
-      assert(saved_cctkGH == nullptr);
-      saved_cctkGH = cctkGH;
       ghext->amrcore->MakeNewGrids(time);
-      saved_cctkGH = nullptr;
     }
 
     // Output domain information
     if (CCTK_MyProc(nullptr) == 0) {
-      enter_level_mode(cctkGH, ghext->leveldata.at(0));
-      const int *restrict const gsh = cctkGH->cctk_gsh;
-      const int *restrict const nghostzones = cctkGH->cctk_nghostzones;
+      const cGH *const level_cctkGH = get_level_cctkGH(0);
+      const int *restrict const gsh = level_cctkGH->cctk_gsh;
+      const int *restrict const nghostzones = level_cctkGH->cctk_nghostzones;
       CCTK_REAL x0[dim], x1[dim], dx[dim];
       for (int d = 0; d < dim; ++d) {
-        dx[d] = cctkGH->cctk_delta_space[d];
-        x0[d] =
-            cctkGH->cctk_origin_space[d] - (1 - 2 * nghostzones[d]) * dx[d] / 2;
+        dx[d] = level_cctkGH->cctk_delta_space[d];
+        x0[d] = level_cctkGH->cctk_origin_space[d] -
+                (1 - 2 * nghostzones[d]) * dx[d] / 2;
         x1[d] = x0[d] + (gsh[d] - 1 - 2 * nghostzones[d]) * dx[d];
       }
 #pragma omp critical
@@ -1038,10 +1087,9 @@ int Initialise(tFleshConfig *config) {
         CCTK_VINFO("  base dx=[%.17g,%.17g,%.17g]", double(dx[0]),
                    double(dx[1]), double(dx[2]));
         CCTK_VINFO("Time stepping:");
-        CCTK_VINFO("  t0=%.17g", double(cctkGH->cctk_time));
-        CCTK_VINFO("  dt=%.17g", double(cctkGH->cctk_delta_time));
+        CCTK_VINFO("  t0=%.17g", double(level_cctkGH->cctk_time));
+        CCTK_VINFO("  dt=%.17g", double(level_cctkGH->cctk_delta_time));
       }
-      leave_level_mode(cctkGH, ghext->leveldata.at(0));
     }
 
     for (;;) {
@@ -1068,17 +1116,16 @@ int Initialise(tFleshConfig *config) {
       {
         static Timer timer("InitialiseRegrid");
         Interval interval(timer);
-        assert(saved_cctkGH == nullptr);
-        saved_cctkGH = cctkGH;
         const CCTK_REAL time = 0.0; // dummy time
         ghext->amrcore->regrid(0, time);
-        saved_cctkGH = nullptr;
       }
+
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       const int max_numlevels = ghext->amrcore->maxLevel() + 1;
       assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
       assert(new_numlevels == old_numlevels ||
              new_numlevels == old_numlevels + 1);
+
 #pragma omp critical
       {
         const double pts0 = ghext->leveldata.at(0).fab->boxArray().d_numPts();
@@ -1321,15 +1368,14 @@ int Evolve(tFleshConfig *config) {
       {
         static Timer timer("EvolveRegrid");
         Interval interval(timer);
-        assert(saved_cctkGH == nullptr);
-        saved_cctkGH = cctkGH;
         CCTK_REAL time = 0.0; // dummy time
         ghext->amrcore->regrid(0, time);
-        saved_cctkGH = nullptr;
       }
+
       const int new_numlevels = ghext->amrcore->finestLevel() + 1;
       const int max_numlevels = ghext->amrcore->maxLevel() + 1;
       assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
+
 #pragma omp critical
       {
         CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
@@ -1610,22 +1656,17 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     // Call function once per tile
     // TODO: provide looping function
 
-    assert(thread_local_info.empty());
-    swap(thread_local_info, saved_thread_local_info);
-
     if (CCTK_EQUALS(kernel_launch_method, "serial")) {
 
       active_levels->loop([&](const auto &restrict leveldata) {
-        enter_level_mode(cctkGH, leveldata);
+        int block = 0;
         const auto mfitinfo = amrex::MFItInfo().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi) {
+             ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          enter_local_mode(cctkGH, leveldata, mfp);
-          CCTK_CallFunction(function, attribute, cctkGH);
-          leave_local_mode(cctkGH, leveldata, mfp);
+          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          CCTK_CallFunction(function, attribute, localGH);
         }
-        leave_level_mode(cctkGH, leveldata);
       });
 
     } else if (CCTK_EQUALS(kernel_launch_method, "openmp")
@@ -1642,41 +1683,24 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       vector<std::function<void()> > tasks;
       active_levels->loop([&](const auto &restrict leveldata) {
         // Note: The amrex::MFIter uses global variables and OpenMP barriers
+        int block = 0;
         const auto mfitinfo =
-            amrex::MFItInfo().EnableTiling().SetDynamic(false);
+            amrex::MFItInfo().DisableDeviceSync().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi) {
+             ++mfi, ++block) {
           const MFPointer mfp(mfi);
-
-          auto task = [&leveldata, mfp, function, attribute]() {
-            const int thread_num = omp_get_thread_num();
-            thread_local_info_t &restrict thread_info =
-                *thread_local_info.at(thread_num);
-            cGH *restrict const threadGH = &thread_info.cctkGH;
-            enter_level_mode(threadGH, leveldata);
-            enter_local_mode(threadGH, leveldata, mfp);
-            CCTK_CallFunction(function, attribute, threadGH);
-            leave_local_mode(threadGH, leveldata, mfp);
-            leave_level_mode(threadGH, leveldata);
+          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          auto task = [function, attribute, localGH]() {
+            CCTK_CallFunction(function, attribute, localGH);
           };
           tasks.emplace_back(move(task));
         }
       });
 
-#pragma omp parallel
-      {
-        // Initialize thread-local state variables
-        const int thread_num = omp_get_thread_num();
-        thread_local_info_t &restrict thread_info =
-            *thread_local_info.at(thread_num);
-        cGH *restrict const threadGH = &thread_info.cctkGH;
-        update_cctkGH(threadGH, cctkGH);
-
-        // run all tasks
-#pragma omp for schedule(dynamic)
-        for (size_t i = 0; i < tasks.size(); ++i)
-          tasks[i]();
-      }
+      // run all tasks
+#pragma omp parallel for schedule(dynamic)
+      for (size_t i = 0; i < tasks.size(); ++i)
+        tasks[i]();
 
     } else if (CCTK_EQUALS(kernel_launch_method, "cuda")
 #ifdef AMREX_USE_GPU
@@ -1689,18 +1713,17 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       CallFunction_count = 0;
 
       active_levels->loop([&](const auto &restrict leveldata) {
-        enter_level_mode(cctkGH, leveldata);
         // No tiling nor OpenMP parallelization when using GPUs
-        const auto mfitinfo = amrex::MFItInfo().DisableDeviceSync();
+        int block = 0;
+        const auto mfitinfo =
+            amrex::MFItInfo().DisableDeviceSync().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi) {
+             ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          enter_local_mode(cctkGH, leveldata, mfp);
-          CCTK_CallFunction(function, attribute, cctkGH);
-          leave_local_mode(cctkGH, leveldata, mfp);
+          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          CCTK_CallFunction(function, attribute, localGH);
           ++CallFunction_count;
         }
-        leave_level_mode(cctkGH, leveldata);
       });
 
       assert(CallFunction_count >= 0);
@@ -1710,8 +1733,6 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       assert(0);
     }
 
-    swap(saved_thread_local_info, thread_local_info);
-    assert(thread_local_info.empty());
     break;
   }
   case mode_t::meta:
