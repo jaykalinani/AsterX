@@ -179,7 +179,8 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
 
   for (size_t m = 0; m < size; ++m) {
     const size_t ncomp = dst.mfabs.at(m)->nComp();
-    for (amrex::MFIter mfi(*dst.mfabs.at(m)); mfi.isValid(); ++mfi) {
+    const auto mfitinfo = amrex::MFItInfo().DisableDeviceSync();
+    for (amrex::MFIter mfi(*dst.mfabs.at(m), mfitinfo); mfi.isValid(); ++mfi) {
       const amrex::Array4<CCTK_REAL> dstvar = dst.mfabs.at(m)->array(mfi);
       array<amrex::Array4<const CCTK_REAL>, N> srcvars;
       for (size_t n = 0; n < N; ++n)
