@@ -1,6 +1,13 @@
 #include "prolongate_3d_rf2.hxx"
 #include "timer.hxx"
 
+#include <AMReX_Arena.H>
+#include <AMReX_Gpu.H>
+
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#endif
+
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -171,8 +178,9 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
   static_assert(ORDER % 2 == 1);
   static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -227,8 +235,9 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
 template <int ORDER> struct interp1d<CC, POLY, ORDER> {
   static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -261,8 +270,9 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
 template <int ORDER> struct interp1d<VC, CONS, ORDER> {
   static constexpr int required_ghosts = 0; // TODO: fix this
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -315,8 +325,9 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
   static_assert(ORDER % 2 == 0, "");
   static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -547,10 +558,25 @@ void interp3d(const T *restrict const crseptr,
   const ptrdiff_t crsedj = crsebox.index(amrex::IntVect(0, 1, 0)) - crsed0;
   const ptrdiff_t crsedk = crsebox.index(amrex::IntVect(0, 0, 1)) - crsed0;
 
-  for (int k = imin[2]; k < imax[2]; ++k) {
-    for (int j = imin[1]; j < imax[1]; ++j) {
-#pragma omp simd
-      for (int i = imin[0]; i < imax[0]; ++i) {
+  // Convert to AMReX box
+  const amrex::Box loopbox(
+      amrex::IntVect(imin[0], imin[1], imin[2]),
+      amrex::IntVect(imax[0] - 1, imax[1] - 1, imax[2] - 1),
+      amrex::IntVect(
+          CENTERING ? amrex::IndexType::CELL : amrex::IndexType::NODE,
+          CENTERING ? amrex::IndexType::CELL : amrex::IndexType::NODE,
+          CENTERING ? amrex::IndexType::CELL : amrex::IndexType::NODE));
+  amrex::launch(
+      loopbox,
+      [=] CCTK_DEVICE(const amrex::Box &box) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+#ifdef CCTK_DEBUG
+        assert(box.bigEnd()[0] == box.smallEnd()[0] &&
+               box.bigEnd()[1] == box.smallEnd()[1] &&
+               box.bigEnd()[2] == box.smallEnd()[2]);
+#endif
+        const int i = box.smallEnd()[0];
+        const int j = box.smallEnd()[1];
+        const int k = box.smallEnd()[2];
 #if 0
         const amrex::IntVect fineind(i, j, k);
         amrex::IntVect crseind = fineind;
@@ -586,9 +612,12 @@ void interp3d(const T *restrict const crseptr,
         assert(CCTK_isfinite(
             fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
 #endif
-      }
-    }
-  }
+      });
+#warning "TODO: Don't call amrex::Gpu::synchronize"
+#ifdef __CUDACC__
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,6 +685,10 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   const Timer &timer = timers.at(thread_num);
   Interval interval(timer);
 
+#ifdef __CUDACC__
+  nvtxRangePushA(timers.at(thread_num).get_name().c_str());
+#endif
+
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
@@ -683,9 +716,13 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     targets[d].setRange(d, target_region.loVect()[d], target_region.length(d));
   }
   assert(targets[dim - 1] == target_region);
-  array<vector<CCTK_REAL>, dim - 1> tmps;
+  // array<vector<CCTK_REAL>, dim - 1> tmps;
+  // for (int d = 0; d < dim - 1; ++d)
+  //   tmps[d].resize(targets[d].numPts());
+  array<CCTK_REAL *, dim - 1> tmps;
   for (int d = 0; d < dim - 1; ++d)
-    tmps[d].resize(targets[d].numPts());
+    tmps[d] = static_cast<CCTK_REAL *>(
+        amrex::The_Arena()->alloc(targets[d].numPts() * sizeof *tmps[d]));
 
   for (int comp = 0; comp < ncomp; ++comp) {
     const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
@@ -707,26 +744,34 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     }
 #endif
 #ifdef CCTK_DEBUG
-    for (auto &x : tmps[0])
-      x = 0.0 / 0.0;
+    // for (auto &x : tmps[0])
+    //   x = 0.0 / 0.0;
+    for (int i = 0; i < targets[0].numPts(); ++i)
+      tmps[0][i] = 0.0 / 0.0;
 #endif
-    interp3d<CENTI, CONSI, ORDERI, /*D*/ 0>(crseptr, crse.box(), tmps[0].data(),
+    interp3d<CENTI, CONSI, ORDERI, /*D*/ 0>(crseptr, crse.box(), tmps[0],
                                             targets[0], targets[0]);
 #ifdef CCTK_DEBUG
-    for (auto x : tmps[0])
-      assert(CCTK_isfinite(x));
+    // for (auto x : tmps[0])
+    //   assert(CCTK_isfinite(x));
+    for (int i = 0; i < targets[0].numPts(); ++i)
+      assert(CCTK_isfinite(tmps[0][i]));
 #endif
 
 #ifdef CCTK_DEBUG
-    for (auto &x : tmps[1])
-      x = 0.0 / 0.0;
+    // for (auto &x : tmps[1])
+    //   x = 0.0 / 0.0;
+    for (int i = 0; i < targets[1].numPts(); ++i)
+      tmps[1][i] = 0.0 / 0.0;
 #endif
-    interp3d<CENTJ, CONSJ, ORDERJ, /*D*/ 1>(
-        tmps[0].data(), targets[0], tmps[1].data(), targets[1], targets[1]);
+    interp3d<CENTJ, CONSJ, ORDERJ, /*D*/ 1>(tmps[0], targets[0], tmps[1],
+                                            targets[1], targets[1]);
 #ifdef CCTK_DEBUG
     // for (auto x : tmps[1])
     //   assert(CCTK_isfinite(x));
-    for (size_t i = 0; i < tmps[1].size(); ++i)
+    // for (size_t i = 0; i < tmps[1].size(); ++i)
+    //   assert(CCTK_isfinite(tmps[1][i]));
+    for (int i = 0; i < targets[1].numPts(); ++i)
       assert(CCTK_isfinite(tmps[1][i]));
 #endif
 
@@ -745,7 +790,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
       }
     }
 #endif
-    interp3d<CENTK, CONSK, ORDERK, /*D*/ 2>(tmps[1].data(), targets[1], fineptr,
+    interp3d<CENTK, CONSK, ORDERK, /*D*/ 2>(tmps[1], targets[1], fineptr,
                                             fine.box(), target_region);
 #ifdef CCTK_DEBUG
     for (int k = target_region.loVect()[2]; k <= target_region.hiVect()[2];
@@ -763,6 +808,13 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     }
 #endif
   }
+
+  for (int d = 0; d < dim - 1; ++d)
+    amrex::The_Arena()->free(tmps[d]);
+
+#ifdef __CUDACC__
+  nvtxRangePop();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
