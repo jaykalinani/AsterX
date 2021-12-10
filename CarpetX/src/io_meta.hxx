@@ -12,6 +12,7 @@
 namespace CarpetX {
 
 enum class group_type_t {
+  none,
   gf,
   array,
 };

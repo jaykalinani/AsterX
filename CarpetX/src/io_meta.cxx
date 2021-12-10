@@ -15,6 +15,9 @@ const std::array<int, 3> cactus_metadata_version{1, 0, 0};
 YAML::Emitter &operator<<(YAML::Emitter &yaml, const group_type_t &group_type) {
   yaml << YAML::LocalTag("group_type-1.0.0");
   switch (group_type) {
+  case group_type_t::none:
+    yaml << "none";
+    break;
   case group_type_t::gf:
     yaml << "gf";
     break;
@@ -122,8 +125,6 @@ real_output_file_description_t::real_output_file_description_t(
     ch = std::tolower(ch);
 
   variables = ofd.variables;
-  if (variables.empty())
-    CCTK_ERROR("No variables");
   for (auto &var : variables) {
     const int varindex = CCTK_VarIndex(var.c_str());
     if (varindex < 0)
@@ -139,7 +140,10 @@ real_output_file_description_t::real_output_file_description_t(
     if (iter < 0)
       CCTK_VERROR("Bad iteration number %d", iter);
 
-  {
+  if (variables.empty()) {
+    group_type = group_type_t::none;
+    variable_dimensions = -1;
+  } else {
     const int groupindex0 = CCTK_GroupIndexFromVar(variables.front().c_str());
     assert(groupindex0 >= 0);
     const int grouptype0 = CCTK_GroupTypeI(groupindex0);

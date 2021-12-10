@@ -633,6 +633,9 @@ void OutputSilo(const cGH *restrict const cctkGH,
   static Timer timer("OutputSilo");
   Interval interval(timer);
 
+  if (std::count(output_group.begin(), output_group.end(), true) == 0)
+    return;
+
   if (io_verbose)
     CCTK_VINFO("OutputSilo...");
 
