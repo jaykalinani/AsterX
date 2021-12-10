@@ -1,6 +1,9 @@
 #include "prolongate_3d_rf2.hxx"
 #include "timer.hxx"
 
+#include <fixmath.hxx>
+#include <cctk.h>
+
 #include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
 
@@ -215,20 +218,16 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
 #endif
       y += cs[i] * (crseptr[(i - i0) * di] + crseptr[(i1 - i0) * di]);
     }
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
-    assert(CCTK_isfinite(y));
+    assert(isfinite(y));
 #endif
-#endif
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
     T y1 = 0;
     for (int i = 0; i < ORDER + 1; ++i)
       y1 += cs[i] * crseptr[(i - i0) * di];
-    assert(CCTK_isfinite(y1));
+    assert(isfinite(y1));
     // Don't check for equality; there can be round-off errors
     // assert(y1 == y);
-#endif
 #endif
     return y;
   }
@@ -262,10 +261,8 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
     else
       for (int i = 0; i < ORDER + 1; ++i)
         y += cs[i] * crseptr[-(i - i0) * di];
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
-    assert(CCTK_isfinite(y));
-#endif
+    assert(isfinite(y));
 #endif
     return y;
   }
@@ -387,9 +384,7 @@ struct test_interp1d<CENTERING, POLY, ORDER, T> {
         T y1 = interp1d<CENTERING, POLY, ORDER>()(&ys[i0 + 1], 1, off);
         // We carefully choose the test problem so that round-off
         // cannot be a problem here
-#ifndef __CUDACC__
-        assert(CCTK_isfinite(y1));
-#endif
+        assert(isfinite(y1));
         assert(y1 == y);
       }
     }
@@ -427,9 +422,7 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
         for (int off = 0; off < 2; ++off) {
           x1[off] = CENTERING / T(4) + off / T(2);
           y1[off] = interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off);
-#ifndef __CUDACC__
-          assert(CCTK_isfinite(y1[off]));
-#endif
+          assert(isfinite(y1[off]));
         }
         assert(y1[0] / 2 + y1[1] / 2 == ys[i0 + 1]);
         const T dx = x1[1] - x1[0];
@@ -472,9 +465,7 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
             else
               y1[off + 1] =
                   interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 2], 1, off);
-#ifndef __CUDACC__
-            assert(CCTK_isfinite(y1[off + 1]));
-#endif
+            assert(isfinite(y1[off + 1]));
           }
           const T dx = x1[1] - x1[0];
           const T xlo = x1[0];
@@ -570,10 +561,8 @@ void interp3d(const T *restrict const crseptr,
         fineptr[finebox.index(fineind)] =
             interp1d<CENTERING, CONSERVATIVE, ORDER>()(
                 &crseptr[crsebox.index(crseind)], di, off);
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
-        assert(CCTK_isfinite(fineptr[finebox.index(fineind)]));
-#endif
+        assert(isfinite(fineptr[finebox.index(fineind)]));
 #endif
 #endif
     // Note: fineind = 2 * coarseind + off
@@ -595,11 +584,8 @@ void interp3d(const T *restrict const crseptr,
               &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi], di,
               off);
     }
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
-    assert(
-        CCTK_isfinite(fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
-#endif
+    assert(isfinite(fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
 #endif
   };
 
@@ -748,9 +734,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
              ++i) {
           const amrex::IntVect ind(i, j, k);
           assert(crse.box().contains(ind));
-#ifndef __CUDACC__
-          assert(CCTK_isfinite(crseptr[crse.box().index(ind)]));
-#endif
+          assert(isfinite(crseptr[crse.box().index(ind)]));
         }
       }
     }
@@ -772,11 +756,9 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   }
 
   // Check that the result is finite
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
   for (int i = 0; i < ncomp * targets[0].numPts(); ++i)
-    assert(CCTK_isfinite(tmp0.data()[i]));
-#endif
+    assert(isfinite(tmp0.data()[i]));
 #endif
 
   // Allocate temporary memory
@@ -799,11 +781,9 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   }
 
   // Check that the result is finite
-#ifndef __CUDACC__
 #ifdef CCTK_DEBUG
   for (int i = 0; i < ncomp * targets[1].numPts(); ++i)
-    assert(CCTK_isfinite(tmp1.data()[i]));
-#endif
+    assert(isfinite(tmp1.data()[i]));
 #endif
 
     // Initialize the result of the z-prolongation with nan
@@ -848,9 +828,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
              ++i) {
           const amrex::IntVect ind(i, j, k);
           assert(fine.box().contains(ind));
-#ifndef __CUDACC__
-          assert(CCTK_isfinite(fineptr[fine.box().index(ind)]));
-#endif
+          assert(isfinite(fineptr[fine.box().index(ind)]));
         }
       }
     }
