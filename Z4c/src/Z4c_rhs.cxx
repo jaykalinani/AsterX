@@ -24,6 +24,10 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#endif
+
 #include <cmath>
 
 namespace Z4c {
@@ -212,6 +216,9 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
 #if 1
 
+#ifdef __CUDACC__
+  const nvtxRangeId_t range = nvtxRangeStartA("Z4c_RHS::rhs");
+#endif
   noinline([&]() __attribute__((__flatten__, __hot__)) {
     grid.loop_int_device<0, 0, 0, vsize>(
         grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
@@ -247,6 +254,9 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
           gf_betaG_rhs1.store(mask, index1, vars.betaG_rhs);
         });
   });
+#ifdef __CUDACC__
+  nvtxRangeEnd(range);
+#endif
 
 #else
 

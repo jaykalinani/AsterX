@@ -1,6 +1,16 @@
 #include "prolongate_3d_rf2.hxx"
 #include "timer.hxx"
 
+#include <fixmath.hxx>
+#include <cctk.h>
+
+#include <AMReX_Arena.H>
+#include <AMReX_Gpu.H>
+
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#endif
+
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -171,8 +181,9 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
   static_assert(ORDER % 2 == 1);
   static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -208,13 +219,13 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
       y += cs[i] * (crseptr[(i - i0) * di] + crseptr[(i1 - i0) * di]);
     }
 #ifdef CCTK_DEBUG
-    assert(CCTK_isfinite(y));
+    assert(isfinite(y));
 #endif
 #ifdef CCTK_DEBUG
     T y1 = 0;
     for (int i = 0; i < ORDER + 1; ++i)
       y1 += cs[i] * crseptr[(i - i0) * di];
-    assert(CCTK_isfinite(y1));
+    assert(isfinite(y1));
     // Don't check for equality; there can be round-off errors
     // assert(y1 == y);
 #endif
@@ -227,8 +238,9 @@ template <int ORDER> struct interp1d<VC, POLY, ORDER> {
 template <int ORDER> struct interp1d<CC, POLY, ORDER> {
   static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -250,7 +262,7 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
       for (int i = 0; i < ORDER + 1; ++i)
         y += cs[i] * crseptr[-(i - i0) * di];
 #ifdef CCTK_DEBUG
-    assert(CCTK_isfinite(y));
+    assert(isfinite(y));
 #endif
     return y;
   }
@@ -261,8 +273,9 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
 template <int ORDER> struct interp1d<VC, CONS, ORDER> {
   static constexpr int required_ghosts = 0; // TODO: fix this
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -314,8 +327,9 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
   static_assert(ORDER % 2 == 0, "");
   static constexpr int required_ghosts = (ORDER + 1) / 2;
   template <typename T>
-  inline T operator()(const T *restrict const crseptr, const ptrdiff_t di,
-                      const int off) const {
+  CCTK_DEVICE CCTK_HOST inline T operator()(const T *restrict const crseptr,
+                                            const ptrdiff_t di,
+                                            const int off) const {
 #ifdef CCTK_DEBUG
     assert(off == 0 || off == 1);
 #endif
@@ -390,7 +404,7 @@ struct test_interp1d<CENTERING, POLY, ORDER, T> {
         T y1 = interp1d<CENTERING, POLY, ORDER>()(&ys[i0 + 1], 1, off);
         // We carefully choose the test problem so that round-off
         // cannot be a problem here
-        assert(CCTK_isfinite(y1));
+        assert(isfinite(y1));
         assert(y1 == y);
       }
     }
@@ -428,7 +442,7 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
         for (int off = 0; off < 2; ++off) {
           x1[off] = CENTERING / T(4) + off / T(2);
           y1[off] = interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 1], 1, off);
-          assert(CCTK_isfinite(y1[off]));
+          assert(isfinite(y1[off]));
         }
         assert(y1[0] / 2 + y1[1] / 2 == ys[i0 + 1]);
         const T dx = x1[1] - x1[0];
@@ -471,7 +485,7 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
             else
               y1[off + 1] =
                   interp1d<CENTERING, CONS, ORDER>()(&ys[i0 + 2], 1, off);
-            assert(CCTK_isfinite(y1[off + 1]));
+            assert(isfinite(y1[off + 1]));
           }
           const T dx = x1[1] - x1[0];
           const T xlo = x1[0];
@@ -544,17 +558,6 @@ void interp3d(const T *restrict const crseptr,
       assert(targetbox.hiVect()[d] <= finebox.hiVect()[d]);
   }
 
-  const array<int, 3> imin{
-      targetbox.loVect()[0],
-      targetbox.loVect()[1],
-      targetbox.loVect()[2],
-  };
-  const array<int, 3> imax{
-      targetbox.hiVect()[0] + 1,
-      targetbox.hiVect()[1] + 1,
-      targetbox.hiVect()[2] + 1,
-  };
-
   const ptrdiff_t fined0 = finebox.index(amrex::IntVect(0, 0, 0));
   constexpr ptrdiff_t finedi = 1;
   assert(finebox.index(amrex::IntVect(1, 0, 0)) - fined0 == finedi);
@@ -567,10 +570,9 @@ void interp3d(const T *restrict const crseptr,
   const ptrdiff_t crsedj = crsebox.index(amrex::IntVect(0, 1, 0)) - crsed0;
   const ptrdiff_t crsedk = crsebox.index(amrex::IntVect(0, 0, 1)) - crsed0;
 
-  for (int k = imin[2]; k < imax[2]; ++k) {
-    for (int j = imin[1]; j < imax[1]; ++j) {
-#pragma omp simd
-      for (int i = imin[0]; i < imax[0]; ++i) {
+  const auto kernel = [=] CCTK_DEVICE(
+                          const int i, const int j,
+                          const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 #if 0
         const amrex::IntVect fineind(i, j, k);
         amrex::IntVect crseind = fineind;
@@ -580,35 +582,58 @@ void interp3d(const T *restrict const crseptr,
             interp1d<CENTERING, CONSERVATIVE, ORDER>()(
                 &crseptr[crsebox.index(crseind)], di, off);
 #ifdef CCTK_DEBUG
-        assert(CCTK_isfinite(fineptr[finebox.index(fineind)]));
+        assert(isfinite(fineptr[finebox.index(fineind)]));
 #endif
 #endif
-        // Note: fineind = 2 * coarseind + off
-        const int ci = D == 0 ? i >> 1 : i;
-        const int cj = D == 1 ? j >> 1 : j;
-        const int ck = D == 2 ? k >> 1 : k;
-        const int off = (D == 0 ? i : D == 1 ? j : k) & 0x1;
-        if (D == 0) {
-          // allow vectorization
-          const T *restrict const ptr =
-              &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi];
-          const T res0 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 0);
-          const T res1 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 1);
-          const T res = off == 0 ? res0 : res1;
-          fineptr[fined0 + k * finedk + j * finedj + i * finedi] = res;
-        } else {
-          fineptr[fined0 + k * finedk + j * finedj + i * finedi] =
-              interp1d<CENTERING, CONSERVATIVE, ORDER>()(
-                  &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi],
-                  di, off);
-        }
-#ifdef CCTK_DEBUG
-        assert(CCTK_isfinite(
-            fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
-#endif
-      }
+    // Note: fineind = 2 * coarseind + off
+    const int ci = D == 0 ? i >> 1 : i;
+    const int cj = D == 1 ? j >> 1 : j;
+    const int ck = D == 2 ? k >> 1 : k;
+    const int off = (D == 0 ? i : D == 1 ? j : k) & 0x1;
+    if (D == 0) {
+      // allow vectorization
+      const T *restrict const ptr =
+          &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi];
+      const T res0 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 0);
+      const T res1 = interp1d<CENTERING, CONSERVATIVE, ORDER>()(ptr, di, 1);
+      const T res = off == 0 ? res0 : res1;
+      fineptr[fined0 + k * finedk + j * finedj + i * finedi] = res;
+    } else {
+      fineptr[fined0 + k * finedk + j * finedj + i * finedi] =
+          interp1d<CENTERING, CONSERVATIVE, ORDER>()(
+              &crseptr[crsed0 + ck * crsedk + cj * crsedj + ci * crsedi], di,
+              off);
     }
-  }
+#ifdef CCTK_DEBUG
+    assert(isfinite(fineptr[fined0 + i * finedi + j * finedj + k * finedk]));
+#endif
+  };
+
+#ifndef __CUDACC__
+  // CPU
+
+  for (int k = targetbox.smallEnd()[2]; k <= targetbox.bigEnd()[2]; ++k)
+    for (int j = targetbox.smallEnd()[1]; j <= targetbox.bigEnd()[1]; ++j)
+      for (int i = targetbox.smallEnd()[0]; i <= targetbox.bigEnd()[0]; ++i)
+        kernel(i, j, k);
+
+#else // GPU
+
+  amrex::launch(targetbox, [=] CCTK_DEVICE(const amrex::Box &box)
+                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
+#ifdef CCTK_DEBUG
+                                 assert(box.bigEnd()[0] == box.smallEnd()[0] &&
+                                        box.bigEnd()[1] == box.smallEnd()[1] &&
+                                        box.bigEnd()[2] == box.smallEnd()[2]);
+#endif
+                                 const int i = box.smallEnd()[0];
+                                 const int j = box.smallEnd()[1];
+                                 const int k = box.smallEnd()[2];
+
+                                 kernel(i, j, k);
+                               });
+
+#endif // GPU
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,6 +701,10 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   const Timer &timer = timers.at(thread_num);
   Interval interval(timer);
 
+#ifdef __CUDACC__
+  nvtxRangePushA(timers.at(thread_num).get_name().c_str());
+#endif
+
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
@@ -703,15 +732,19 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     targets[d].setRange(d, target_region.loVect()[d], target_region.length(d));
   }
   assert(targets[dim - 1] == target_region);
-  array<vector<CCTK_REAL>, dim - 1> tmps;
-  for (int d = 0; d < dim - 1; ++d)
-    tmps[d].resize(targets[d].numPts());
 
+  // Allocate temporary memory
+  // `AsyncArray` frees its memory automatically after the kernels are
+  // done using it. However, that mechanism is apparently more
+  // expensive than a manual `synchronize`.
+  static_assert(dim == 3, "");
+  amrex::Gpu::DeviceVector<CCTK_REAL> tmp0(ncomp * targets[0].numPts());
+  // amrex::Gpu::AsyncArray<CCTK_REAL> tmp0(ncomp * targets[0].numPts());
+
+  // Check that the input values are finite
+#ifdef CCTK_DEBUG
   for (int comp = 0; comp < ncomp; ++comp) {
     const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
-    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
-
-#ifdef CCTK_DEBUG
     for (int k = source_region.loVect()[2]; k <= source_region.hiVect()[2];
          ++k) {
       for (int j = source_region.loVect()[1]; j <= source_region.hiVect()[1];
@@ -721,36 +754,62 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
              ++i) {
           const amrex::IntVect ind(i, j, k);
           assert(crse.box().contains(ind));
-          assert(CCTK_isfinite(crseptr[crse.box().index(ind)]));
+          assert(isfinite(crseptr[crse.box().index(ind)]));
         }
       }
     }
+  }
 #endif
+
+  // Initialize the result of the x-prolongation with nan
 #ifdef CCTK_DEBUG
-    for (auto &x : tmps[0])
-      x = 0.0 / 0.0;
+  for (int i = 0; i < ncomp * targets[0].numPts(); ++i)
+    tmp0.data()[i] = 0.0 / 0.0;
 #endif
-    interp3d<CENTI, CONSI, ORDERI, /*D*/ 0>(crseptr, crse.box(), tmps[0].data(),
+
+  // Interpolate in the x-direction
+  for (int comp = 0; comp < ncomp; ++comp) {
+    const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
+    CCTK_REAL *restrict fineptr = &tmp0.data()[comp * targets[0].numPts()];
+    interp3d<CENTI, CONSI, ORDERI, /*D*/ 0>(crseptr, crse.box(), fineptr,
                                             targets[0], targets[0]);
+  }
+
+  // Check that the result is finite
 #ifdef CCTK_DEBUG
-    for (auto x : tmps[0])
-      assert(CCTK_isfinite(x));
+  for (int i = 0; i < ncomp * targets[0].numPts(); ++i)
+    assert(isfinite(tmp0.data()[i]));
 #endif
 
+  // Allocate temporary memory
+  amrex::Gpu::DeviceVector<CCTK_REAL> tmp1(ncomp * targets[1].numPts());
+  // amrex::Gpu::AsyncArray<CCTK_REAL> tmp1(ncomp * targets[1].numPts());
+
+  // Initialize the result of the y-prolongation with nan
 #ifdef CCTK_DEBUG
-    for (auto &x : tmps[1])
-      x = 0.0 / 0.0;
-#endif
-    interp3d<CENTJ, CONSJ, ORDERJ, /*D*/ 1>(
-        tmps[0].data(), targets[0], tmps[1].data(), targets[1], targets[1]);
-#ifdef CCTK_DEBUG
-    // for (auto x : tmps[1])
-    //   assert(CCTK_isfinite(x));
-    for (size_t i = 0; i < tmps[1].size(); ++i)
-      assert(CCTK_isfinite(tmps[1][i]));
+  for (int i = 0; i < ncomp * targets[1].numPts(); ++i)
+    tmp1.data()[i] = 0.0 / 0.0;
 #endif
 
+  // Interpolate in the y-direction
+  for (int comp = 0; comp < ncomp; ++comp) {
+    const CCTK_REAL *restrict crseptr =
+        &tmp0.data()[comp * targets[0].numPts()];
+    CCTK_REAL *restrict fineptr = &tmp1.data()[comp * targets[1].numPts()];
+    interp3d<CENTJ, CONSJ, ORDERJ, /*D*/ 1>(crseptr, targets[0], fineptr,
+                                            targets[1], targets[1]);
+  }
+
+  // Check that the result is finite
 #ifdef CCTK_DEBUG
+  for (int i = 0; i < ncomp * targets[1].numPts(); ++i)
+    assert(isfinite(tmp1.data()[i]));
+#endif
+
+    // Initialize the result of the z-prolongation with nan
+#ifdef CCTK_DEBUG
+  for (int comp = 0; comp < ncomp; ++comp) {
+    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
     for (int k = target_region.loVect()[2]; k <= target_region.hiVect()[2];
          ++k) {
       for (int j = target_region.loVect()[1]; j <= target_region.hiVect()[1];
@@ -764,10 +823,22 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
         }
       }
     }
+  }
 #endif
-    interp3d<CENTK, CONSK, ORDERK, /*D*/ 2>(tmps[1].data(), targets[1], fineptr,
+
+  // Interpolate in the y-direction
+  for (int comp = 0; comp < ncomp; ++comp) {
+    const CCTK_REAL *restrict crseptr =
+        &tmp1.data()[comp * targets[1].numPts()];
+    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
+    interp3d<CENTK, CONSK, ORDERK, /*D*/ 2>(crseptr, targets[1], fineptr,
                                             fine.box(), target_region);
+  }
+
+  // Check that the result is finite
 #ifdef CCTK_DEBUG
+  for (int comp = 0; comp < ncomp; ++comp) {
+    CCTK_REAL *restrict fineptr = fine.dataPtr(fine_comp + comp);
     for (int k = target_region.loVect()[2]; k <= target_region.hiVect()[2];
          ++k) {
       for (int j = target_region.loVect()[1]; j <= target_region.hiVect()[1];
@@ -777,12 +848,21 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
              ++i) {
           const amrex::IntVect ind(i, j, k);
           assert(fine.box().contains(ind));
-          assert(CCTK_isfinite(fineptr[fine.box().index(ind)]));
+          assert(isfinite(fineptr[fine.box().index(ind)]));
         }
       }
     }
-#endif
   }
+#endif
+
+#ifdef __CUDACC__
+  amrex::Gpu::synchronize();
+  AMREX_GPU_ERROR_CHECK();
+#endif
+
+#ifdef __CUDACC__
+  nvtxRangePop();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

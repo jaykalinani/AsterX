@@ -48,7 +48,7 @@ static inline int omp_in_parallel() { return 0; }
 #include <type_traits>
 #include <vector>
 
-#if (!openPMD_HAVE_MPI)
+#if !openPMD_HAVE_MPI
 #error                                                                         \
     "CarpetX requires openPMD_api with MPI support. Please add -DopenPMD_USE_MPI=ON when building openPMD."
 #endif
@@ -68,25 +68,26 @@ constexpr openPMD::IterationEncoding iterationEncoding =
     openPMD::IterationEncoding::fileBased;
 
 //  constexpr const char options[]
-const std::string options = "{"
-                            "  \"adios2\": {"
-                            "    \"engine\": {"
-                            "      \"type\": \"BP4\","
-                            "      \"parameters\": {"
-                            "        \"BufferGrowthFactor\": \"2.0\""
-                            "      }"
-                            "    },"
-                            "    \"dataset\": {"
-                            "      \"operators\": {"
-                            "        \"type\": \"blosc\","
-                            "        \"parameters\": {"
-                            "          \"clevel\": \"9\","
-                            "          \"doshuffle\": \"BLOSC_BITSHUFFLE\""
-                            "        }"
-                            "      }"
-                            "    }"
-                            "  }"
-                            "}";
+// const std::string options = "{"
+//                             "  \"adios2\": {"
+//                             "    \"engine\": {"
+//                             "      \"type\": \"BP4\","
+//                             "      \"parameters\": {"
+//                             "        \"BufferGrowthFactor\": \"2.0\""
+//                             "      }"
+//                             "    },"
+//                             "    \"dataset\": {"
+//                             "      \"operators\": {"
+//                             "        \"type\": \"blosc\","
+//                             "        \"parameters\": {"
+//                             "          \"clevel\": \"9\","
+//                             "          \"doshuffle\": \"BLOSC_BITSHUFFLE\""
+//                             "        }"
+//                             "      }"
+//                             "    }"
+//                             "  }"
+//                             "}";
+const std::string options = "{}";
 
 constexpr bool input_ghosts = false;
 constexpr bool output_ghosts = false;

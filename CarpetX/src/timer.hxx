@@ -3,6 +3,10 @@
 
 #include <cctk.h>
 
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#endif
+
 #include <string>
 
 namespace CarpetX {
@@ -20,11 +24,15 @@ public:
   Timer() = delete;
   Timer(const string &name);
 
+  string get_name() const { return name; }
   void print() const;
 };
 
 class Interval {
   const Timer &timer;
+#ifdef __CUDACC__
+  nvtxRangeId_t range;
+#endif
 
 public:
   Interval() = delete;

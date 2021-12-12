@@ -10,6 +10,10 @@
 #include <cctk_Arguments_Checked.h>
 #include <cctk_Parameters.h>
 
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#endif
+
 #include <cmath>
 #include <sstream>
 
@@ -44,6 +48,9 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
   constexpr size_t vsize = tuple_size_v<vreal>;
 
   const Loop::GridDescBaseDevice grid(cctkGH);
+#ifdef __CUDACC__
+  const nvtxRangeId_t range = nvtxRangeStartA("Z4c_Enforce::enforce");
+#endif
   grid.loop_all_device<0, 0, 0, vsize>(
       grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
@@ -116,6 +123,9 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         gf_At1.store(mask, index1, At);
         gf_alphaG1.store(mask, index1, alphaG);
       });
+#ifdef __CUDACC__
+  nvtxRangeEnd(range);
+#endif
 }
 
 } // namespace Z4c
