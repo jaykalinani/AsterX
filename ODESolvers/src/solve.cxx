@@ -846,7 +846,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     if (verbose)
-      CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+      CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
     const auto k2 = rhs.copy();
 
