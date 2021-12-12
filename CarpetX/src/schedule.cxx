@@ -824,8 +824,8 @@ void loop_over_blocks(
       const MFPointer mfp(mfi);
       auto task = [&block_kernel, &leveldata, mfp, block]() {
         cGH *restrict const localGH =
-            get_local_cctkGH(leveldata.patch, leveldata.level, block);
-        block_kernel(leveldata.patch leveldata.level, mfp.index(), block,
+            get_local_cctkGH(leveldata.level, leveldata.patch, block);
+        block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                      localGH);
       };
       tasks.emplace_back(move(task));
@@ -868,6 +868,7 @@ void setup_cctkGHs(cGH *restrict const cctkGH) {
     level_cctkGHs.emplace_back(copy_cctkGH(cctkGH), delete_cctkGH);
 
     for (auto &patchdata : ghext->patchdata) {
+      const int patch = patchdata.patch;
       if (level < int(patchdata.leveldata.size())) {
         const auto &leveldata = patchdata.leveldata.at(level);
         enter_patch_mode(cctkGH, leveldata);
@@ -1197,82 +1198,84 @@ int Initialise(tFleshConfig *config) {
           assert(new_numlevels == old_numlevels ||
                  new_numlevels == old_numlevels + 1);
 
-#pragma omp critical {
-          const double pts0 =
-              patchdata.leveldata.at(0).fab->boxArray().d_numPts();
-          for (const auto &leveldata : patchdata.leveldata) {
-            const int sz = leveldata.fab->size();
-            const double pts = leveldata.fab->boxArray().d_numPts();
-            if (leveldata.level == 0) {
-              CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
-                         leveldata.level, sz, pts,
-                         100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
-            } else {
-              const double ptsc = patchdata.leveldata.at(leveldata.level - 1)
-                                      .fab->boxArray()
-                                      .d_numPts();
-              CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
-                         leveldata.level, sz, pts,
-                         100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
-                         100 * pts / (pow(2.0, dim) * ptsc));
+#pragma omp critical
+          {
+            const double pts0 =
+                patchdata.leveldata.at(0).fab->boxArray().d_numPts();
+            for (const auto &leveldata : patchdata.leveldata) {
+              const int sz = leveldata.fab->size();
+              const double pts = leveldata.fab->boxArray().d_numPts();
+              if (leveldata.level == 0) {
+                CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                           leveldata.level, sz, pts,
+                           100 * pts /
+                               (pow(2.0, dim * leveldata.level) * pts0));
+              } else {
+                const double ptsc = patchdata.leveldata.at(leveldata.level - 1)
+                                        .fab->boxArray()
+                                        .d_numPts();
+                CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                           leveldata.level, sz, pts,
+                           100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                           100 * pts / (pow(2.0, dim) * ptsc));
+              }
+            }
+          } // omp critical
+        }   // for patchdata
+
+        int first_modified_level = INT_MAX;
+        int last_modified_level = -1;
+        for (const auto &patchdata : ghext->patchdata) {
+          for (int lev = 0; lev < int(patchdata.amrcore->level_modified.size());
+               ++lev) {
+            if (patchdata.amrcore->level_modified.at(lev)) {
+              first_modified_level = min(first_modified_level, lev);
+              last_modified_level = max(last_modified_level, lev);
             }
           }
-        } // omp critical
-      }   // for patchdata
-
-      int first_modified_level = INT_MAX;
-      int last_modified_level = -1;
-      for (const auto &patchdata : ghext->patchdata) {
-        for (int lev = 0; lev < int(patchdata.amrcore->level_modified.size());
-             ++lev) {
-          if (patchdata.amrcore->level_modified.at(lev)) {
-            first_modified_level = min(first_modified_level, lev);
-            last_modified_level = max(last_modified_level, lev);
-          }
         }
-      }
-      did_modify_any_level = last_modified_level >= first_modified_level;
+        did_modify_any_level = last_modified_level >= first_modified_level;
 
-      if (did_modify_any_level) {
-        setup_cctkGHs(cctkGH);
-        assert(!active_levels);
-        active_levels = make_optional<active_levels_t>(first_modified_level,
-                                                       last_modified_level + 1);
-        CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
-        CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
-        active_levels = optional<active_levels_t>();
-      }
-    } // Regrid
+        if (did_modify_any_level) {
+          setup_cctkGHs(cctkGH);
+          assert(!active_levels);
+          active_levels = make_optional<active_levels_t>(
+              first_modified_level, last_modified_level + 1);
+          CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+          CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
+          active_levels = optional<active_levels_t>();
+        }
+      } // Regrid
 
-    if (!did_modify_any_level)
-      break;
-  } // for level
-}
+      if (!did_modify_any_level)
+        break;
+    } // for level
+  }
 #pragma omp critical
-CCTK_VINFO("Initialized %d levels", ghext->num_levels());
+  CCTK_VINFO("Initialized %d levels", ghext->num_levels());
 
-assert(!active_levels);
-active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
+  assert(!active_levels);
+  active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
 
-if (!restrict_during_sync) {
-  // Restrict
-  assert(active_levels);
-  active_levels->loop_reverse([&](const auto &leveldata) {
-    if (leveldata.level != ghext->num_levels() - 1)
-      Restrict(leveldata.level);
-  });
-  CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
-}
+  if (!restrict_during_sync) {
+    // Restrict
+    assert(active_levels);
+    active_levels->loop_reverse([&](const auto &leveldata) {
+      if (leveldata.level != ghext->num_levels() - 1)
+        Restrict(leveldata.level);
+    });
+    CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+  }
 
-// Checkpoint, analysis, output
-CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
-CCTK_Traverse(cctkGH, "CCTK_CPINITIAL");
-CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
-CCTK_OutputGH(cctkGH);
+  // Checkpoint, analysis, output
+  CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
+  CCTK_Traverse(cctkGH, "CCTK_CPINITIAL");
+  CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
+  CCTK_OutputGH(cctkGH);
 
-active_levels = optional<active_levels_t>();
+  active_levels = optional<active_levels_t>();
 
-return 0;
+  return 0;
 } // namespace CarpetX
 
 bool EvolutionIsDone(cGH *restrict const cctkGH) {
@@ -1479,134 +1482,135 @@ int Evolve(tFleshConfig *config) {
         const int max_numlevels = patchdata.amrcore->maxLevel() + 1;
         assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
 
-#pragma omp critical {
-        CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
-                   new_numlevels);
-        double pts0 = patchdata.leveldata.at(0).fab->boxArray().d_numPts();
-        assert(!active_levels);
-        for (const auto &leveldata : patchdata.leveldata) {
-          const int sz = leveldata.fab->size();
-          const double pts = leveldata.fab->boxArray().d_numPts();
-          if (leveldata.level == 0) {
-            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
-                       leveldata.level, sz, pts,
-                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
-          } else {
-            const double ptsc = patchdata.leveldata.at(leveldata.level - 1)
-                                    .fab->boxArray()
-                                    .d_numPts();
-            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
-                       leveldata.level, sz, pts,
-                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
-                       100 * pts / (pow(2.0, dim) * ptsc));
+#pragma omp critical
+        {
+          CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
+                     new_numlevels);
+          double pts0 = patchdata.leveldata.at(0).fab->boxArray().d_numPts();
+          assert(!active_levels);
+          for (const auto &leveldata : patchdata.leveldata) {
+            const int sz = leveldata.fab->size();
+            const double pts = leveldata.fab->boxArray().d_numPts();
+            if (leveldata.level == 0) {
+              CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                         leveldata.level, sz, pts,
+                         100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+            } else {
+              const double ptsc = patchdata.leveldata.at(leveldata.level - 1)
+                                      .fab->boxArray()
+                                      .d_numPts();
+              CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                         leveldata.level, sz, pts,
+                         100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                         100 * pts / (pow(2.0, dim) * ptsc));
+            }
+          }
+        } // omp critical
+      }   // for patchdata
+
+      int first_modified_level = INT_MAX;
+      int last_modified_level = -1;
+      for (const auto &patchdata : ghext->patchdata) {
+        for (int lev = 0; lev < int(patchdata.amrcore->level_modified.size());
+             ++lev) {
+          if (patchdata.amrcore->level_modified.at(lev)) {
+            first_modified_level = min(first_modified_level, lev);
+            last_modified_level = max(last_modified_level, lev);
           }
         }
-      } // omp critical
-    }   // for patchdata
-
-    int first_modified_level = INT_MAX;
-    int last_modified_level = -1;
-    for (const auto &patchdata : ghext->patchdata) {
-      for (int lev = 0; lev < int(patchdata.amrcore->level_modified.size());
-           ++lev) {
-        if (patchdata.amrcore->level_modified.at(lev)) {
-          first_modified_level = min(first_modified_level, lev);
-          last_modified_level = max(last_modified_level, lev);
-        }
       }
-    }
-    const bool did_modify_any_level =
-        last_modified_level >= first_modified_level;
+      const bool did_modify_any_level =
+          last_modified_level >= first_modified_level;
 
-    if (did_modify_any_level) {
-      setup_cctkGHs(cctkGH);
-      assert(!active_levels);
-      active_levels = make_optional<active_levels_t>(first_modified_level,
-                                                     last_modified_level + 1);
-      CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
-      CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
-      active_levels = optional<active_levels_t>();
-    }
-  } // Regrid
+      if (did_modify_any_level) {
+        setup_cctkGHs(cctkGH);
+        assert(!active_levels);
+        active_levels = make_optional<active_levels_t>(first_modified_level,
+                                                       last_modified_level + 1);
+        CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+        CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
+        active_levels = optional<active_levels_t>();
+      }
+    } // Regrid
 
-  // Find smallest iteration number. Levels at this iteration will
-  // be evolved.
-  rat64 iteration = ghext->patchdata.at(0).leveldata.at(0).iteration;
-  for (const auto &patchdata : ghext->patchdata)
-    for (const auto &leveldata : patchdata.leveldata)
-      iteration = min(iteration, leveldata.iteration);
-
-  // Loop over all levels, in batches that combine levels that don't
-  // subcycle. The level range is [min_level, max_level).
-  int min_level = 0;
-  while (min_level < ghext->num_levels()) {
-    // Find end of batch
-    int max_level = min_level + 1;
-
-    while (max_level < ghext->num_levels()) {
-      bool level_is_subcycling_level = false;
-      for (const auto &patchdata : ghext->patchdata)
-        if (max_level < int(patchdata.leveldata.size()))
-          level_is_subcycling_level |=
-              patchdata.leveldata.at(max_level).is_subcycling_level;
-      if (!level_is_subcycling_level)
-        break;
-      ++max_level;
-    }
-
-    // Skip this batch of levels if it is not active at the current
-    // iteration
-    rat64 level_iteration = -1;
+    // Find smallest iteration number. Levels at this iteration will
+    // be evolved.
+    rat64 iteration = ghext->patchdata.at(0).leveldata.at(0).iteration;
     for (const auto &patchdata : ghext->patchdata)
-      if (min_level < int(patchdata.leveldata.size()))
-        level_iteration = patchdata.leveldata.at(min_level).iteration;
-    assert(level_iteration != -1);
-    if (level_iteration > iteration)
-      break;
+      for (const auto &leveldata : patchdata.leveldata)
+        iteration = min(iteration, leveldata.iteration);
 
-    active_levels = make_optional<active_levels_t>(min_level, max_level);
+    // Loop over all levels, in batches that combine levels that don't
+    // subcycle. The level range is [min_level, max_level).
+    int min_level = 0;
+    while (min_level < ghext->num_levels()) {
+      // Find end of batch
+      int max_level = min_level + 1;
 
-    // Advance iteration number on this batch of levels
-    active_levels->loop([&](auto &restrict leveldata) {
-      leveldata.iteration += leveldata.delta_iteration;
-    });
+      while (max_level < ghext->num_levels()) {
+        bool level_is_subcycling_level = false;
+        for (const auto &patchdata : ghext->patchdata)
+          if (max_level < int(patchdata.leveldata.size()))
+            level_is_subcycling_level |=
+                patchdata.leveldata.at(max_level).is_subcycling_level;
+        if (!level_is_subcycling_level)
+          break;
+        ++max_level;
+      }
 
-    // We cannot invalidate all non-evolved variables. ODESolvers
-    // calculates things in ODESolvers_Poststep, and we want to use
-    // them in the next iteration.
-    // InvalidateTimelevels(cctkGH);
+      // Skip this batch of levels if it is not active at the current
+      // iteration
+      rat64 level_iteration = -1;
+      for (const auto &patchdata : ghext->patchdata)
+        if (min_level < int(patchdata.leveldata.size()))
+          level_iteration = patchdata.leveldata.at(min_level).iteration;
+      assert(level_iteration != -1);
+      if (level_iteration > iteration)
+        break;
 
-    CycleTimelevels(cctkGH);
+      active_levels = make_optional<active_levels_t>(min_level, max_level);
 
-    CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
-    CCTK_Traverse(cctkGH, "CCTK_EVOL");
+      // Advance iteration number on this batch of levels
+      active_levels->loop([&](auto &restrict leveldata) {
+        leveldata.iteration += leveldata.delta_iteration;
+      });
 
-    // Reflux
-    // TODO: These loop bounds are wrong for subcycling
-    assert(active_levels);
-    for (int level = ghext->num_levels() - 2; level >= 0; --level)
-      Reflux(level);
+      // We cannot invalidate all non-evolved variables. ODESolvers
+      // calculates things in ODESolvers_Poststep, and we want to use
+      // them in the next iteration.
+      // InvalidateTimelevels(cctkGH);
 
-    if (!restrict_during_sync) {
-      // Restrict
+      CycleTimelevels(cctkGH);
+
+      CCTK_Traverse(cctkGH, "CCTK_PRESTEP");
+      CCTK_Traverse(cctkGH, "CCTK_EVOL");
+
+      // Reflux
       // TODO: These loop bounds are wrong for subcycling
+      assert(active_levels);
       for (int level = ghext->num_levels() - 2; level >= 0; --level)
-        Restrict(level);
-      CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
-    }
+        Reflux(level);
 
-    CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
-    CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
-    CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
-    CCTK_OutputGH(cctkGH);
+      if (!restrict_during_sync) {
+        // Restrict
+        // TODO: These loop bounds are wrong for subcycling
+        for (int level = ghext->num_levels() - 2; level >= 0; --level)
+          Restrict(level);
+        CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
+      }
 
-    active_levels = optional<active_levels_t>();
-  } // for min_level
+      CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
+      CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
+      CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
+      CCTK_OutputGH(cctkGH);
 
-} // main loop
+      active_levels = optional<active_levels_t>();
+    } // for min_level
 
-return 0;
-}
+  } // main loop
+
+  return 0;
+} // namespace CarpetX
 
 // Schedule shutdown
 int Shutdown(tFleshConfig *config) {
@@ -1855,14 +1859,15 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       CallFunction_count = 0;
 
       active_levels->loop([&](const auto &restrict leveldata) {
-        // No tiling nor OpenMP parallelization when using GPUs
+        // No OpenMP parallelization when using GPUs
         int block = 0;
         const auto mfitinfo =
             amrex::MFItInfo().DisableDeviceSync().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          cGH *const localGH =
+              get_local_cctkGH(leveldata.level, leveldata.patch, block);
           CCTK_CallFunction(function, attribute, localGH);
           ++CallFunction_count;
         }
