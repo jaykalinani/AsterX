@@ -1479,11 +1479,12 @@ int InitGH(cGH *restrict cctkGH) {
   // know them when its constructor is running, but there are no
   // constructor arguments for them
   amrex::ParmParse pp;
-  pp.addarr(
-      "amr.blocking_factor",
-      vector<int>{blocking_factor_x, blocking_factor_y, blocking_factor_z});
-  pp.addarr("amr.max_grid_size",
-            vector<int>{max_grid_size_x, max_grid_size_y, max_grid_size_z});
+  pp.add("amr.blocking_factor_x", blocking_factor_x);
+  pp.add("amr.blocking_factor_y", blocking_factor_y);
+  pp.add("amr.blocking_factor_z", blocking_factor_z);
+  pp.add("amr.max_grid_size_x", max_grid_size_x);
+  pp.add("amr.max_grid_size_y", max_grid_size_y);
+  pp.add("amr.max_grid_size_z", max_grid_size_z);
   pp.add("amr.grid_eff", grid_efficiency);
 
   patchdata.amrcore = make_unique<CactusAmrCore>(

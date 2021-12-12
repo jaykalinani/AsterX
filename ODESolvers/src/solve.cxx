@@ -831,13 +831,14 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     const auto k1 = rhs.copy();
 
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
-    statecomp_t::lincomb(var, 1, make_array(dt/2), make_array(&rhs));
+    statecomp_t::lincomb(var, 1, make_array(dt / 2), make_array(&rhs));
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
-    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt/2;
+    *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_delta_time) = dt / 2;
     if (verbose)
-      CCTK_VINFO("Taking implicit step #1 at t=%g with dt=%g", double(cctkGH->cctk_time), double(cctkGH->cctk_delta_time));
+      CCTK_VINFO("Taking implicit step #1 at t=%g with dt=%g",
+                 double(cctkGH->cctk_time), double(cctkGH->cctk_delta_time));
     CallScheduleGroup(cctkGH, "ODESolvers_ImplicitStep");
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_delta_time) = dt;
 
@@ -846,7 +847,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     const auto y1 = var.copy();
 
     statecomp_t kprime2;
-    statecomp_t::lincomb(kprime2, 0, make_array(-1.0, +1.0, -dt/2), make_array(&y0, &y1, &k1));
+    statecomp_t::lincomb(kprime2, 0, make_array(-1.0, +1.0, -dt / 2),
+                         make_array(&y0, &y1, &k1));
 
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     if (verbose)
@@ -854,7 +856,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
     const auto k2 = rhs.copy();
 
-    statecomp_t::lincomb(var, 0, make_array(1.0, dt, dt), make_array(&y0, &k2, &kprime2));
+    statecomp_t::lincomb(var, 0, make_array(1.0, dt, dt),
+                         make_array(&y0, &k2, &kprime2));
 
   } else {
     assert(0);
