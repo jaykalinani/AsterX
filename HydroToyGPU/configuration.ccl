@@ -4,3 +4,5 @@
 # REQUIRES NSIMD
 # REQUIRES Vectors
 REQUIRES CarpetX
+
+REQUIRES RePrimAnd

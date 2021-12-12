@@ -1,7 +1,8 @@
 # Main make.code.defn file for thorn HydroToyGPU
 
 # Source files in this directory
-SRCS =	boundaries.cxx				\
+SRCS =						\
+	boundaries.cxx				\
 	estimate_error.cxx			\
 	flux_boundaries.cxx			\
 	fluxes.cxx				\

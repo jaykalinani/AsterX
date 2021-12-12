@@ -66,8 +66,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
   // dt etot + d_i (etot vel^i) = 0
 
   const auto calcupdate =
-      [=] CCTK_DEVICE CCTK_HOST(CCTK_REAL fx_m, CCTK_REAL fx_p, CCTK_REAL fy_m,
-                                CCTK_REAL fy_p, CCTK_REAL fz_m, CCTK_REAL fz_p)
+      [=] CCTK_DEVICE(CCTK_REAL fx_m, CCTK_REAL fx_p, CCTK_REAL fy_m,
+                      CCTK_REAL fy_p, CCTK_REAL fz_m, CCTK_REAL fz_p)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
             // return -dV1 * (fx_p - fx_m + fy_p - fy_m + fz_p - fz_m);
             return -dx1[0] * (fx_p - fx_m) - dx1[1] * (fy_p - fy_m) -
@@ -87,7 +87,7 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
 #endif
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
+      grid.nghostzones, [=] CCTK_DEVICE (
                             const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE  {
         // Neighbouring "plus" and "minus" face indices in the x, y, and z
         // directions
@@ -124,8 +124,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
 #else
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" face indices in
         // the x, y, and z directions
         const auto Imx = p.I;
@@ -141,8 +141,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
       });
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" face indices in
         // the x, y, and z directions
         const auto Imx = p.I;
@@ -158,8 +158,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
       });
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" face indices in
         // the x, y, and z directions
         const auto Imx = p.I;
@@ -175,8 +175,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
       });
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" face indices in
         // the x, y, and z directions
         const auto Imx = p.I;
@@ -192,8 +192,8 @@ extern "C" void HydroToyGPU_RHS(CCTK_ARGUMENTS) {
       });
 
   grid.loop_all_device<1, 1, 1>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" face indices in
         // the x, y, and z directions
         const auto Imx = p.I;

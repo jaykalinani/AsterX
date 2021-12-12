@@ -20,6 +20,12 @@ CCTK_REAL shock_radius "Shock radius" STEERABLE=never
 
 
 
+KEYWORD con2prim_method "con2prim implementation" STEERABLE=recover
+{
+  "direct" :: ""
+  "reprimand" :: "Use RePrimAnd library"
+} "direct"
+
 CCTK_REAL gamma "EOS parameter" STEERABLE=always
 {
   0.0:* :: ""

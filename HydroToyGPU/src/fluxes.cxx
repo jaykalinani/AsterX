@@ -109,9 +109,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
   constexpr auto DI = PointDesc::DI;
   const auto reconstruct =
-      [=] CCTK_DEVICE CCTK_HOST(
-          const GF3D2<const CCTK_REAL> &gf_var,
-          const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &gf_var,
+                      const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" cell indices
         const auto Imm = p.I - 2 * DI[dir];
         const auto Im = p.I - DI[dir];
@@ -137,21 +136,21 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         }
       };
 
-  const auto calcflux = [=] CCTK_DEVICE CCTK_HOST(
-                            CCTK_REAL var_m, CCTK_REAL var_p, CCTK_REAL flux_m,
-                            CCTK_REAL flux_p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-    CCTK_REAL lambda_m = 1.0;
-    CCTK_REAL lambda_p = -1.0;
-    CCTK_REAL llf =
-        0.5 * ((flux_m + flux_p) -
-               fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
-    // return dA * llf;
-    return llf;
-  };
+  const auto calcflux =
+      [=] CCTK_DEVICE(CCTK_REAL var_m, CCTK_REAL var_p, CCTK_REAL flux_m,
+                      CCTK_REAL flux_p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL lambda_m = 1.0;
+        CCTK_REAL lambda_p = -1.0;
+        CCTK_REAL llf =
+            0.5 * ((flux_m + flux_p) -
+                   fmax(fabs(lambda_m), fabs(lambda_p)) * (var_p - var_m));
+        // return dA * llf;
+        return llf;
+      };
 
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
-      grid.nghostzones, [=] CCTK_DEVICE CCTK_HOST(
-                            const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Reconstruct values from the cells on left and right side of this face
         array<CCTK_REAL, 2> rho_r = reconstruct(gf_rho, p);
         array<CCTK_REAL, 2> velx_r = reconstruct(gf_velx, p);
