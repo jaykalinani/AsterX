@@ -1,4 +1,4 @@
-# Parameter definitions for thorn GRxHydroToyGPU
+# Parameter definitions for thorn GRHydroToyGPU
 
 CCTK_REAL gamma "EOS parameter" STEERABLE=always
 {
