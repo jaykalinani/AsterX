@@ -408,16 +408,21 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Step 1
     if (verbose)
       CCTK_VINFO("Calculating RHS #1 at t=%g", double(cctkGH->cctk_time));
+    // rhs = RHS(var)
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     // Add scaled RHS to state vector
+    // lincomb(dest, alpha, beta^i, src^i)
+    // dest = alpha * dest + beta^i * src^i
     statecomp_t::lincomb(var, 1, make_array(dt / 2), make_array(&rhs));
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
+    // var = poststep(var)
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
     // Step 2
     if (verbose)
       CCTK_VINFO("Calculating RHS #2 at t=%g", double(cctkGH->cctk_time));
+    // rhs = RHS(var)
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
 
     // Calculate new state vector
@@ -808,8 +813,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     //   y2 = y0 + h f(y1) + h g(y1)
 
     // Implicit RHS:
-    //   G(alpha, r) = u   where   alpha g(u) = u + r
-    //   G(u0, h) = u1   where   u1 = u0 + h g(u1)
+    //   u1 = G(u0, h)   where   u1 = u0 + h g(u1)
 
     // Explicit definition:
     //   k1 = f(y0)
