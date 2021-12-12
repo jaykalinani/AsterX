@@ -2,13 +2,13 @@
 
 # Source files in this directory
 SRCS =						\
-	Hydro_boundaries.cxx			\
-	Hydro_con2prim.cxx			\
-	Hydro_estimateerror.cxx			\
-	Hydro_fluxes.cxx			\
-	Hydro_initialize.cxx			\
-	Hydro_prim2con.cxx			\
-	Hydro_rhs.cxx
+	boundaries.cxx				\
+	con2prim.cxx				\
+	estimateerror.cxx			\
+	fluxes.cxx				\
+	initialize.cxx				\
+	prim2con.cxx				\
+	rhs.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 
