@@ -2,14 +2,14 @@
 
 # Source files in this directory
 SRCS =						\
-	GRHydroToyGPU_boundaries.cxx		\
-	GRHydroToyGPU_con2prim.cxx		\
-	GRHydroToyGPU_estimate_error.cxx	\
-	GRHydroToyGPU_flux_boundaries.cxx	\
-	GRHydroToyGPU_fluxes.cxx		\
-	GRHydroToyGPU_prim2con.cxx		\
-	GRHydroToyGPU_rhs.cxx			\
-	GRHydroToyGPU_sync.cxx
+	boundaries.cxx				\
+	con2prim.cxx				\
+	estimate_error.cxx			\
+	flux_boundaries.cxx			\
+	fluxes.cxx				\
+	prim2con.cxx				\
+	rhs.cxx					\
+	sync.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 
