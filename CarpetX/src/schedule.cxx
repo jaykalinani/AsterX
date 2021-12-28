@@ -849,6 +849,25 @@ void loop_over_blocks(
 #endif
 }
 
+void update_cctkGHs(cGH *restrict const cctkGH) {
+  update_cctkGH(ghext->global_cctkGH.get(), cctkGH);
+  for (auto &restrict level_cctkGH : ghext->level_cctkGHs) {
+    update_cctkGH(level_cctkGH.get(), cctkGH);
+  }
+  for (auto &patch : ghext->patchdata) {
+    for (auto &restrict level : patch.leveldata) {
+      update_cctkGH(level.patch_cctkGH.get(), cctkGH);
+    }
+  }
+  for (auto &patch : ghext->patchdata) {
+    for (auto &restrict level : patch.leveldata) {
+      for (auto &restrict local_cctkGH : level.local_cctkGHs) {
+        update_cctkGH(local_cctkGH.get(), cctkGH);
+      }
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void CarpetX_GetLoopBoxAll(const void *restrict const cctkGH_,
@@ -1332,6 +1351,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
 
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
+  update_cctkGHs(cctkGH);
 
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
