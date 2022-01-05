@@ -63,29 +63,62 @@ SCHEDULE GRHydroToyGPU_EstimateError AT poststep
 
 # Time stepping
 
-SCHEDULE GRHydroToyGPU_Con2Prim IN ODESolvers_RHS
-{
-  LANG: C
-  READS: ADMBase::metric(everywhere)
-  READS: dens(everywhere) tau(everywhere) mom(everywhere)
-  WRITES: HydroBase::rho(everywhere) 
-  WRITES: HydroBase::vel(everywhere) 
-  WRITES: HydroBase::eps(everywhere) 
-  WRITES: HydroBase::press(everywhere)
-  WRITES: dens(everywhere) tau(everywhere) mom(everywhere)
-} "Calculate primitive variables from conservative variables"
-
-SCHEDULE GRHydroToyGPU_Fluxes IN ODESolvers_RHS AFTER GRHydroToyGPU_Con2Prim
-{
-  LANG: C
-  READS: ADMBase::metric(everywhere) 
-  READS: ADMBase::lapse(everywhere) 
-  READS: ADMBase::shift(everywhere) 
-  READS: dens(everywhere) tau(everywhere) mom(everywhere)
-  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
-  WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
-  SYNC: flux_x flux_y flux_z
-} "Calculate the hydro fluxes"
+if(use_RePrimAnd){
+    SCHEDULE GRHydroToyGPU_Con2Prim IN ODESolvers_RHS
+    {
+      LANG: C
+      READS: ADMBase::metric(everywhere)
+      READS: dens(everywhere) tau(everywhere) mom(everywhere)
+      WRITES: HydroBase::rho(everywhere)
+      WRITES: HydroBase::vel(everywhere)
+      WRITES: HydroBase::eps(everywhere)
+      WRITES: HydroBase::press(everywhere)
+      WRITES: dens(everywhere) tau(everywhere) mom(everywhere)
+    } "Calculate primitive variables from conservative variables"
+}
+else{
+    SCHEDULE GRHydroToyGPU_Con2Prim_2DNRNoble IN ODESolvers_RHS
+    {
+      LANG: C
+      READS: ADMBase::metric(everywhere)
+      READS: dens(everywhere) tau(everywhere) mom(everywhere)
+      READS: HydroBase::rho(everywhere)
+      READS: HydroBase::vel(everywhere)
+      READS: HydroBase::eps(everywhere)
+      READS: HydroBase::press(everywhere)
+      WRITES: HydroBase::rho(everywhere)
+      WRITES: HydroBase::vel(everywhere)
+      WRITES: HydroBase::eps(everywhere)
+      WRITES: HydroBase::press(everywhere)
+      WRITES: dens(everywhere) tau(everywhere) mom(everywhere)
+    } "Calculate primitive variables from conservative variables"
+}
+if(use_RePrimAnd){
+    SCHEDULE GRHydroToyGPU_Fluxes IN ODESolvers_RHS AFTER GRHydroToyGPU_Con2Prim
+    {
+      LANG: C
+      READS: ADMBase::metric(everywhere)
+      READS: ADMBase::lapse(everywhere)
+      READS: ADMBase::shift(everywhere)
+      READS: dens(everywhere) tau(everywhere) mom(everywhere)
+      READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+      WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+      SYNC: flux_x flux_y flux_z
+    } "Calculate the hydro fluxes"
+}
+else{
+    SCHEDULE GRHydroToyGPU_Fluxes IN ODESolvers_RHS AFTER GRHydroToyGPU_Con2Prim_2DNRNoble
+    {
+      LANG: C
+      READS: ADMBase::metric(everywhere)
+      READS: ADMBase::lapse(everywhere)
+      READS: ADMBase::shift(everywhere)
+      READS: dens(everywhere) tau(everywhere) mom(everywhere)
+      READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+      WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+      SYNC: flux_x flux_y flux_z
+    } "Calculate the hydro fluxes"
+}
 
 SCHEDULE GRHydroToyGPU_FluxBoundaries IN ODESolvers_RHS AFTER GRHydroToyGPU_Fluxes
 {

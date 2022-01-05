@@ -15,6 +15,10 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 
 # Parameter definitions for thorn RePrimAnd
 
+BOOLEAN use_RePrimAnd "Use RePrimAnd instead of other schemes"
+{
+} no
+
 restricted:
 
 ################################################################################
