@@ -53,13 +53,13 @@ void prim2con(const metric& g, const prim& pv, cons& cv) {
           //computing conserved from primitives
           cv.dens = sqrt_detg * pv.rho* w_lorentz;
 
-          cv.momx = sqrt_detg * pv.rho * w_lorentz * (1 + pv.eps
+          cv.momx = sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps
                                 + pv.press/pv.rho) * vlowx;
 
-          cv.momy = sqrt_detg * pv.rho * w_lorentz * (1 + pv.eps
+          cv.momy = sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps
                                 + pv.press/pv.rho) * vlowy;
 
-          cv.momz = sqrt_detg * pv.rho * w_lorentz * (1 + pv.eps
+          cv.momz = sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps
                                 + pv.press/pv.rho) * vlowz;
 
           cv.tau = sqrt_detg * pv.rho * w_lorentz * ( (1 + pv.eps
