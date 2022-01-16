@@ -128,10 +128,15 @@ bool get_group_restrict_flag(const int gi) {
 
 array<int, dim> get_group_indextype(const int gi) {
   assert(gi >= 0);
-  const int tags = CCTK_GroupTagsTableI(gi);
+  int tags = CCTK_GroupCenteringTableI(gi);
+  const char *tag_name = "centering";
+  if(tags < 0) {
+      tags = CCTK_GroupTagsTableI(gi);
+      tag_name = "index";
+  }
   assert(tags >= 0);
   array<CCTK_INT, dim> index;
-  int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
+  int iret = Util_TableGetIntArray(tags, dim, index.data(), tag_name);
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
     index = {0, 0, 0}; // default: vertex-centred
   } else if (iret >= 0) {
