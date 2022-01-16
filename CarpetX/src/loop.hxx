@@ -1300,12 +1300,11 @@ template <typename T> inline constexpr bool is_GF3D5_v = is_GF3D5<T>::value;
 
 // Macros for declaring variables using
 // DECLARE_CCTK_ARGUMENTSX_func_name
-#define CCTK_CENTERING_GRID \
-    const GridDescBaseDevice grid(cctkGH)
-#define CCTK_CENTERING_LAYOUT(L,V) \
-    constexpr array<int, dim> L ## _centered V; \
-    const GF3D2layout L ## gf_layout(cctkGH, L ## _centered)
-#define CCTK_CENTERING_GF(C,L,N) \
-    const GF3D2<C CCTK_REAL> N(L ## gf_layout, ptr__ ## N )
+#define CCTK_CENTERING_GRID const Loop::GridDescBase grid(cctkGH)
+#define CCTK_CENTERING_LAYOUT(L, V)                                            \
+  constexpr std::array<int, Loop::dim> L##_centered V;                         \
+  const Loop::GF3D2layout L##gf_layout(cctkGH, L##_centered)
+#define CCTK_CENTERING_GF(C, L, N)                                             \
+  const Loop::GF3D2<C CCTK_REAL> N(L##gf_layout, ptr__##N)
 
 #endif // #ifndef LOOP_HXX

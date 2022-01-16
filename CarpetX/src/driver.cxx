@@ -130,9 +130,9 @@ array<int, dim> get_group_indextype(const int gi) {
   assert(gi >= 0);
   int tags = CCTK_GroupCenteringTableI(gi);
   const char *tag_name = "centering";
-  if(tags < 0) {
-      tags = CCTK_GroupTagsTableI(gi);
-      tag_name = "index";
+  if (tags < 0) {
+    tags = CCTK_GroupTagsTableI(gi);
+    tag_name = "index";
   }
   assert(tags >= 0);
   array<CCTK_INT, dim> index;
