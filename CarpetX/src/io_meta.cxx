@@ -160,6 +160,38 @@ real_output_file_description_t::real_output_file_description_t(
     }
     variable_dimensions = CCTK_GroupDimI(groupindex0);
     for (auto &var : variables) {
+      const int varindex = CCTK_VarIndex(var.c_str());
+      if (varindex < 0)
+        CCTK_VERROR("Variable \"%s\" does not exist", var.c_str());
+      for (auto &ch : var)
+        ch = std::tolower(ch);
+    }
+  }
+
+  iterations = ofd.iterations;
+  if (iterations.empty())
+    CCTK_ERROR("Empty iterations");
+  for (const auto &iter : iterations)
+    if (iter < 0)
+      CCTK_VERROR("Bad iteration number %d", iter);
+
+  {
+    const int groupindex0 = CCTK_GroupIndexFromVar(variables.front().c_str());
+    assert(groupindex0 >= 0);
+    const int grouptype0 = CCTK_GroupTypeI(groupindex0);
+    switch (grouptype0) {
+    case CCTK_GF:
+      group_type = group_type_t::gf;
+      break;
+    case CCTK_SCALAR:
+    case CCTK_ARRAY:
+      group_type = group_type_t::array;
+      break;
+    default:
+      assert(0);
+    }
+    variable_dimensions = CCTK_GroupDimI(groupindex0);
+    for (auto &var : variables) {
       const int groupindex = CCTK_GroupIndexFromVar(var.c_str());
       assert(groupindex >= 0);
       const int grouptype = CCTK_GroupTypeI(groupindex);
@@ -215,15 +247,17 @@ YAML::Emitter &operator<<(YAML::Emitter &yaml,
   yaml << YAML::Key << "description" << YAML::Value << rofd.description;
   yaml << YAML::Key << "writer_thorn" << YAML::Value << rofd.writer_thorn;
   yaml << YAML::Key << "variables" << YAML::Value << rofd.variables;
-  yaml << YAML::Key << "iterations" << YAML::Value << YAML::Flow
-       << rofd.iterations;
-  yaml << YAML::Key << "group_type" << YAML::Value << rofd.group_type;
-  yaml << YAML::Key << "variable_dimensions" << YAML::Value
-       << rofd.variable_dimensions;
-  yaml << YAML::Key << "real_output_directions" << YAML::Value << YAML::Flow
-       << rofd.output_directions;
-  yaml << YAML::Key << "reductions" << YAML::Value << YAML::Flow
-       << rofd.reductions;
+  if (!rofd.variables.empty()) {
+    yaml << YAML::Key << "iterations" << YAML::Value << YAML::Flow
+         << rofd.iterations;
+    yaml << YAML::Key << "group_type" << YAML::Value << rofd.group_type;
+    yaml << YAML::Key << "variable_dimensions" << YAML::Value
+         << rofd.variable_dimensions;
+    yaml << YAML::Key << "real_output_directions" << YAML::Value << YAML::Flow
+         << rofd.output_directions;
+    yaml << YAML::Key << "reductions" << YAML::Value << YAML::Flow
+         << rofd.reductions;
+  } // if !rofd.variables.empty
   yaml << YAML::Key << "format_name" << YAML::Value << rofd.format_name;
   yaml << YAML::Key << "format_version" << YAML::Value << YAML::Flow
        << YAML::BeginSeq;

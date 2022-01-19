@@ -35,7 +35,6 @@ CarpetX::ncells_z = $ncells
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
 CarpetX::periodic_z = no
-CarpetX::periodic = no
 # CarpetX::reflection_x = yes
 # CarpetX::reflection_y = yes
 # CarpetX::reflection_z = yes

@@ -261,4 +261,7 @@ public:
 
 } // namespace Loop
 
+#undef CCTK_CENTERING_GRID
+#define CCTK_CENTERING_GRID const Loop::GridDescBaseDevice grid(cctkGH)
+
 #endif // #ifndef LOOP_DEVICE_HXX

@@ -2,23 +2,23 @@
 
 # Source files in this directory
 SRCS =						\
-	Z4c_adm.cxx				\
-	Z4c_adm2.cxx				\
-	Z4c_adm2boundaries.cxx			\
-	Z4c_boundaries.cxx			\
-	Z4c_boundaries1.cxx			\
-	Z4c_boundaries2.cxx			\
-	Z4c_constraints.cxx			\
-	Z4c_constraintboundaries.cxx		\
-	Z4c_enforce.cxx				\
-	Z4c_initial1.cxx			\
-	Z4c_initial2.cxx			\
-	Z4c_rhs.cxx				\
-	Z4c_rhsboundaries.cxx			\
-        Z4c_sync.cxx				\
-        Z4c_sync1.cxx				\
-        Z4c_sync2.cxx				\
-	Z4c_test.cxx
+	adm.cxx					\
+	adm2.cxx				\
+	adm2boundaries.cxx			\
+	boundaries.cxx				\
+	boundaries1.cxx				\
+	boundaries2.cxx				\
+	constraints.cxx				\
+	constraintboundaries.cxx		\
+	enforce.cxx				\
+	initial1.cxx				\
+	initial2.cxx				\
+	rhs.cxx					\
+	rhsboundaries.cxx			\
+        sync.cxx				\
+        sync1.cxx				\
+        sync2.cxx				\
+	test.cxx
 
 # Subdirectories containing source files
 SUBDIRS =

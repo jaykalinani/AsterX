@@ -3,7 +3,7 @@
 #include <loop.hxx>
 
 #include <cctk.h>
-#include <cctk_Arguments_Checked.h>
+#include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
 #include <array>
@@ -20,10 +20,8 @@ extern "C" void Hydro_Prim2Con(CCTK_ARGUMENTS) {
 
   const Loop::vect<int, dim> lsh{{cctk_lsh[0], cctk_lsh[1], cctk_lsh[2]}};
 
-  array<CCTK_INT, dim> tmin_, tmax_;
-  GetTileExtent(cctkGH, tmin_.data(), tmax_.data());
-  const Loop::vect<int, dim> tmin(tmin_);
-  const Loop::vect<int, dim> tmax(tmax_);
+  const Loop::vect<int, dim> tmin{cctk_tile_min[0], cctk_tile_min[1], cctk_tile_min[2]};
+  const Loop::vect<int, dim> tmax{cctk_tile_max[0], cctk_tile_max[1], cctk_tile_max[2]};
 
   const Loop::vect<int, dim> imin = tmin;
   const Loop::vect<int, dim> imax = tmax;

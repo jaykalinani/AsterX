@@ -289,12 +289,16 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
 
   // Create particle container
   typedef amrex::AmrParticleContainer<0, 2> Container;
-  Container container(ghext->amrcore.get());
+  // TODOPATCH: Convert global to patch-local coordinates
+  assert(ghext->patchdata.size() == 1);
+  const int patch = 0;
+  const auto &restrict patchdata = ghext->patchdata.at(patch);
+  Container container(patchdata.amrcore.get());
 
   // Set particle positions
   {
     const int level = 0;
-    const auto &restrict leveldata = ghext->leveldata.at(level);
+    const auto &restrict leveldata = patchdata.leveldata.at(level);
     const amrex::MFIter mfi(*leveldata.fab);
     assert(mfi.isValid());
     auto &particles = container.GetParticles(
@@ -336,12 +340,12 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   }
 
   // CCTK_VINFO("interpolating");
-  for (const auto &leveldata : ghext->leveldata) {
+  for (const auto &leveldata : patchdata.leveldata) {
     const int level = leveldata.level;
     // CCTK_VINFO("interpolating level %d", level);
     // TODO: use OpenMP
     for (amrex::ParIter<0, 2> pti(container, level); pti.isValid(); ++pti) {
-      const amrex::Geometry &geom = ghext->amrcore->Geom(level);
+      const amrex::Geometry &geom = patchdata.amrcore->Geom(level);
       const CCTK_REAL *restrict const x0 = geom.ProbLo();
       const CCTK_REAL *restrict const dx = geom.CellSize();
 

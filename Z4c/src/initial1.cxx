@@ -7,7 +7,7 @@
 
 #include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
-#include <cctk_Arguments_Checked.h>
+#include <cctk_Arguments.h>
 
 #ifdef __CUDACC__
 #include <nvToolsExt.h>

@@ -91,7 +91,6 @@ CarpetX::max_tile_size_z = 4
 CarpetX::periodic_x = no
 CarpetX::periodic_y = no
 CarpetX::periodic_z = no
-CarpetX::periodic = no
 # CarpetX::reflection_x = yes
 # CarpetX::reflection_y = yes
 # CarpetX::reflection_z = yes

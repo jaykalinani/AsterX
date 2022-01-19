@@ -240,6 +240,15 @@ template <typename T> constexpr T pown(const T &x, const int n) {
 
 template <typename T> constexpr T pow2(const T &x) { return x * x; }
 
+////////////////////////////////////////////////////////////////////////////////
+
+// Linear combination
+template <typename T, typename I>
+constexpr T lincom(const I &i0, const T &x0, const I &i1, const T &x1,
+                   const I &i) {
+  return T(i - i1) / T(i0 - i1) * x0 + T(i - i0) / T(i1 - i0) * x1;
+}
+
 } // namespace Arith
 
 #endif // #ifndef DEFS_HXX

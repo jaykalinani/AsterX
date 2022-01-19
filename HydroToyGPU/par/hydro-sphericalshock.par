@@ -46,6 +46,7 @@ ODESolvers::method = "RK3"
 
 IO::out_dir = $parfile
 IO::out_every = $ncells * 2 ** ($nlevels - 1) / 32
+CarpetX::out_metadata = yes
 CarpetX::out_silo_vars = "
     HydroToyGPU::conserved
     HydroToyGPU::primitive

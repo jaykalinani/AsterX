@@ -45,27 +45,45 @@ struct active_levels_t {
   active_levels_t(const int min_level, const int max_level)
       : min_level(min_level), max_level(max_level) {
     assert(min_level >= 0);
-    assert(max_level <= int(ghext->leveldata.size()));
+    assert(max_level <= ghext->num_levels());
   }
 
-  template <typename F> void loop(F f) {
-    for (int level = min_level; level < max_level; ++level)
-      assert(ghext->leveldata.at(level).iteration ==
-             ghext->leveldata.at(min_level).iteration);
-    for (int level = min_level; level < max_level; ++level)
-      f(ghext->leveldata.at(level));
+private:
+  void assert_consistent_iterations() const {
+    rat64 good_iteration = -1;
+    for (int level = min_level; level < max_level; ++level) {
+      for (const auto &patchdata : ghext->patchdata) {
+        if (level < int(patchdata.leveldata.size())) {
+          if (good_iteration == -1)
+            good_iteration = patchdata.leveldata.at(level).iteration;
+          assert(patchdata.leveldata.at(level).iteration == good_iteration);
+        }
+      }
+    }
   }
 
-  template <typename F> void loop_reverse(F f) {
+public:
+  // Loop over all patches of all active levels
+  template <typename F> void loop(F f) const {
+    assert_consistent_iterations();
     for (int level = min_level; level < max_level; ++level)
-      assert(ghext->leveldata.at(level).iteration ==
-             ghext->leveldata.at(min_level).iteration);
+      for (auto &patchdata : ghext->patchdata)
+        if (level < int(patchdata.leveldata.size()))
+          f(patchdata.leveldata.at(level));
+  }
+
+  // Loop over all patches of all active levels
+  template <typename F> void loop_reverse(F f) const {
+    assert_consistent_iterations();
     for (int level = max_level - 1; level >= min_level; --level)
-      f(ghext->leveldata.at(level));
+      for (auto &patchdata : ghext->patchdata)
+        if (level < int(patchdata.leveldata.size()))
+          f(patchdata.leveldata.at(level));
   }
 };
 
 // The levels CallFunction should traverse
+// TODO: Move this into ghext
 extern optional<active_levels_t> active_levels;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,8 +116,9 @@ struct MFPointer {
 struct GridDesc : GridDescBase {
 
   GridDesc() = delete;
-  GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp);
-  GridDesc(const GHExt::LevelData &leveldata, const int global_block);
+  GridDesc(const GHExt::PatchData::LevelData &leveldata, const MFPointer &mfp);
+  GridDesc(const GHExt::PatchData::LevelData &leveldata,
+           const int global_block);
   GridDesc(const cGH *cctkGH) : GridDescBase(cctkGH) {}
 };
 
@@ -108,7 +127,8 @@ struct GridPtrDesc : GridDesc {
   amrex::Dim3 cactus_offset;
 
   GridPtrDesc() = delete;
-  GridPtrDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp);
+  GridPtrDesc(const GHExt::PatchData::LevelData &leveldata,
+              const MFPointer &mfp);
 
   template <typename T> T *ptr(const amrex::Array4<T> &vars, int vi) const {
     return vars.ptr(cactus_offset.x, cactus_offset.y, cactus_offset.z, vi);
@@ -129,7 +149,7 @@ struct GridPtrDesc1 : GridDesc {
   GridPtrDesc1(const GridPtrDesc1 &) = delete;
   GridPtrDesc1 &operator=(const GridPtrDesc1 &) = delete;
 
-  GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
+  GridPtrDesc1(const GHExt::PatchData::LevelData::GroupData &groupdata,
                const MFPointer &mfp);
 
   template <typename T> T *ptr(const amrex::Array4<T> &vars, int vi) const {
@@ -163,6 +183,7 @@ struct GridPtrDesc1 : GridDesc {
 };
 
 bool in_local_mode(const cGH *restrict cctkGH);
+bool in_patch_mode(const cGH *restrict cctkGH);
 bool in_level_mode(const cGH *restrict cctkGH);
 bool in_global_mode(const cGH *restrict cctkGH);
 bool in_meta_mode(const cGH *restrict cctkGH);
@@ -170,38 +191,35 @@ bool in_meta_mode(const cGH *restrict cctkGH);
 void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH);
 void enter_global_mode(cGH *restrict cctkGH);
 void leave_global_mode(cGH *restrict cctkGH);
-void enter_level_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata);
-void leave_level_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata);
-void enter_local_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata,
-                      const MFPointer &mfp);
-void leave_local_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata,
-                      const MFPointer &mfp);
+void enter_level_mode(cGH *restrict cctkGH, int level);
+void leave_level_mode(cGH *restrict cctkGH, int level);
+void enter_patch_mode(cGH *restrict cctkGH, int patch);
+void leave_patch_mode(cGH *restrict cctkGH, int patch);
+void enter_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
+void leave_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
 
 void loop_over_blocks(
     const cGH *restrict const cctkGH,
-    const std::function<void(int level, int index, int block,
+    const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel);
 
 cGH *get_global_cctkGH();
 cGH *get_level_cctkGH(int level);
-cGH *get_local_cctkGH(int level, int block);
+cGH *get_patch_cctkGH(int level, int patch);
+cGH *get_local_cctkGH(int level, int patch, int block);
 
 void setup_cctkGHs(cGH *cctkGH);
 
-void error_if_invalid(const GHExt::LevelData ::GroupData &grouppdata, int vi,
-                      int tl, const valid_t &required,
+void error_if_invalid(const GHExt::PatchData::LevelData::GroupData &grouppdata,
+                      int vi, int tl, const valid_t &required,
                       const function<string()> &msg);
-void warn_if_invalid(const GHExt::LevelData ::GroupData &grouppdata, int vi,
-                     int tl, const valid_t &required,
+void warn_if_invalid(const GHExt::PatchData::LevelData ::GroupData &grouppdata,
+                     int vi, int tl, const valid_t &required,
                      const function<string()> &msg);
-void poison_invalid(const GHExt::LevelData::GroupData &groupdata, int vi,
-                    int tl);
-void check_valid(const GHExt::LevelData::GroupData &groupdata, int vi, int tl,
-                 const function<string()> &msg);
+void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                    int vi, int tl);
+void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                 int vi, int tl, const function<string()> &msg);
 
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,

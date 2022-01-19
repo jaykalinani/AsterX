@@ -70,13 +70,13 @@ public:
   }
 
   ARITH_DEVICE ARITH_HOST const_reference at(const size_type i) const {
-    if (i >= sz)
-      throw std::out_of_range();
+    if (CCTK_BUILTIN_EXPECT(i >= sz, false))
+      throw std::out_of_range("smallvector::at");
     return elts[i];
   }
   ARITH_DEVICE ARITH_HOST reference at(const size_type i) {
-    if (i >= sz)
-      throw std::out_of_range();
+    if (CCTK_BUILTIN_EXPECT(i >= sz, false))
+      throw std::out_of_range("smallvector::at");
     return elts[i];
   }
   constexpr ARITH_DEVICE ARITH_HOST const_reference

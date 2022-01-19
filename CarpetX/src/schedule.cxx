@@ -16,6 +16,9 @@
 
 #ifdef __CUDACC__
 #include <nvToolsExt.h>
+#else
+static inline void nvtxRangePushA(const char *region) {}
+static inline void nvtxRangePop() {}
 #endif
 
 #ifdef _OPENMP
@@ -41,6 +44,10 @@ using namespace std;
 #ifndef CCTK_HAVE_CGH_TILE
 #error                                                                         \
     "The Cactus flesh does not support cctk_tile_min etc. in the cGH structure. Update the flesh."
+#endif
+#ifndef CCTK_HAVE_CGH_PATCH
+#error                                                                         \
+    "The Cactus flesh does not support cctk_patch in the cGH structure. Update the flesh."
 #endif
 
 // Value for undefined cctkGH entries
@@ -125,13 +132,15 @@ GridDescBase::GridDescBase(const cGH *restrict cctkGH) {
 } // namespace Loop
 namespace CarpetX {
 
-GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
+GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
+                   const MFPointer &mfp) {
   DECLARE_CCTK_PARAMETERS;
 
+  const auto &patchdata = leveldata.patchdata();
   const amrex::Box &fbx = mfp.fabbox();   // allocated array
   const amrex::Box &vbx = mfp.validbox(); // interior region (without ghosts)
   const amrex::Box &gbx = mfp.growntilebox(); // current region (with ghosts)
-  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+  const amrex::Box &domain = patchdata.amrcore->Geom(leveldata.level).Domain();
 
   for (int d = 0; d < dim; ++d)
     assert(domain.type(d) == amrex::IndexType::CELL);
@@ -161,16 +170,10 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
 
   // Boundaries
   const array<array<bool, 3>, 2> is_symmetry{{
-      {{
-          periodic || periodic_x || reflection_x,
-          periodic || periodic_y || reflection_y,
-          periodic || periodic_z || reflection_z,
-      }},
-      {{
-          periodic || periodic_x || reflection_upper_x,
-          periodic || periodic_y || reflection_upper_y,
-          periodic || periodic_z || reflection_upper_z,
-      }},
+      {{periodic_x || reflection_x, periodic_y || reflection_y,
+        periodic_z || reflection_z}},
+      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
+        periodic_z || reflection_upper_z}},
   }};
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
@@ -188,7 +191,7 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
               (gbx[orient(d, 1)] == fbx[orient(d, 1)]);
   }
 
-  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
+  const amrex::Geometry &geom = patchdata.amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
@@ -232,17 +235,20 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const MFPointer &mfp) {
   }
 }
 
-GridDesc::GridDesc(const GHExt::LevelData &leveldata, const int block) {
+GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
+                   const int block) {
   // `global_block` is the global block index.
   // There is no tiling.
   DECLARE_CCTK_PARAMETERS;
+
+  const auto &patchdata = leveldata.patchdata();
 
   const amrex::FabArrayBase &fab = *leveldata.fab;
 
   const amrex::Box &fbx = fab.fabbox(block); // allocated array
   const amrex::Box &vbx = fab.box(block);    // interior region (without ghosts)
   const amrex::Box &gbx = fbx;               // current region (with ghosts)
-  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
+  const amrex::Box &domain = patchdata.amrcore->Geom(leveldata.level).Domain();
 
   for (int d = 0; d < dim; ++d)
     assert(domain.type(d) == amrex::IndexType::CELL);
@@ -272,16 +278,10 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const int block) {
 
   // Boundaries
   const array<array<bool, 3>, 2> is_symmetry{{
-      {{
-          periodic || periodic_x || reflection_x,
-          periodic || periodic_y || reflection_y,
-          periodic || periodic_z || reflection_z,
-      }},
-      {{
-          periodic || periodic_x || reflection_upper_x,
-          periodic || periodic_y || reflection_upper_y,
-          periodic || periodic_z || reflection_upper_z,
-      }},
+      {{periodic_x || reflection_x, periodic_y || reflection_y,
+        periodic_z || reflection_z}},
+      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
+        periodic_z || reflection_upper_z}},
   }};
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
@@ -299,7 +299,7 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const int block) {
               (gbx[orient(d, 1)] == fbx[orient(d, 1)]);
   }
 
-  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
+  const amrex::Geometry &geom = patchdata.amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
@@ -343,15 +343,16 @@ GridDesc::GridDesc(const GHExt::LevelData &leveldata, const int block) {
   }
 }
 
-GridPtrDesc::GridPtrDesc(const GHExt::LevelData &leveldata,
+GridPtrDesc::GridPtrDesc(const GHExt::PatchData::LevelData &leveldata,
                          const MFPointer &mfp)
     : GridDesc(leveldata, mfp) {
   const amrex::Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
 }
 
-GridPtrDesc1::GridPtrDesc1(const GHExt::LevelData::GroupData &groupdata,
-                           const MFPointer &mfp)
+GridPtrDesc1::GridPtrDesc1(
+    const GHExt::PatchData::LevelData::GroupData &groupdata,
+    const MFPointer &mfp)
     : GridDesc(groupdata.leveldata(), mfp) {
   const amrex::Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
@@ -464,21 +465,33 @@ void delete_cctkGH(cGH *cctkGH) {
   delete cctkGH;
 }
 
-enum class mode_t { unknown, local, level, global, meta };
+enum class mode_t { unknown, local, patch, level, global, meta };
 
 mode_t current_mode(const cGH *restrict cctkGH) {
-  if (cctkGH->cctk_lsh[0] != undefined)
+  const bool have_local = cctkGH->cctk_lsh[0] != undefined;
+  const bool have_patch = cctkGH->cctk_patch != undefined;
+  const bool have_level = cctkGH->cctk_levfac[0] != undefined;
+  const bool have_global = cctkGH->cctk_nghostzones[0] != undefined;
+  if (have_local && have_patch && have_level && have_global)
     return mode_t::local;
-  else if (cctkGH->cctk_gsh[0] != undefined)
+  else if (!have_local && have_patch && have_level && have_global)
+    return mode_t::patch;
+  else if (!have_local && !have_patch && have_level && have_global)
     return mode_t::level;
-  else if (cctkGH->cctk_nghostzones[0] != undefined)
+  else if (!have_local && !have_patch && !have_level && have_global)
     return mode_t::global;
-  else
+  else if (!have_local && !have_patch && !have_level && !have_global)
     return mode_t::meta;
+  else
+    assert(0);
 }
 
 bool in_local_mode(const cGH *restrict cctkGH) {
   return current_mode(cctkGH) == mode_t::local;
+}
+
+bool in_patch_mode(const cGH *restrict cctkGH) {
+  return current_mode(cctkGH) == mode_t::patch;
 }
 
 bool in_level_mode(const cGH *restrict cctkGH) {
@@ -505,38 +518,35 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   // The refinement factor in time over the top level (coarsest) grid
   cctkGH->cctk_timefac = 1; // no subcycling
 
+  // The total number of patches
+  cctkGH->cctk_npatches = ghext->num_patches();
+
   // The convergence level (numbered from zero upwards)
   cctkGH->cctk_convlevel = 0; // no convergence tests
 
   // Initialize grid spacing
-  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
-  // const CCTK_REAL *restrict const x0 = geom.ProbLo();
-  const CCTK_REAL *restrict const dx = geom.CellSize();
-
   for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_origin_space[d] = NAN;
     cctkGH->cctk_delta_space[d] = NAN;
   }
 
   // Initialize time stepping
-  // CCTK_REAL mindx = 1.0 / 0.0;
-  // const int numlevels = ghext->amrcore->finestLevel() + 1;
-  // for (int level = 0; level < numlevels; ++level) {
-  //   const amrex::Geometry &geom = ghext->amrcore->Geom(level);
-  //   const CCTK_REAL *restrict dx = geom.CellSize();
-  //   for (int d = 0; d < dim; ++d)
-  //     mindx = fmin(mindx, dx[d]);
-  // }
   CCTK_REAL mindx = 1.0 / 0.0;
-  for (int d = 0; d < dim; ++d)
-    mindx = fmin(mindx, dx[d]);
+  for (const auto &patchdata : ghext->patchdata) {
+    const amrex::Geometry &geom = patchdata.amrcore->Geom(0);
+    const CCTK_REAL *restrict const dx = geom.CellSize();
+    for (int d = 0; d < dim; ++d)
+      mindx = fmin(mindx, dx[d]);
+  }
   mindx /= 1 << (max_num_levels - 1);
   cctkGH->cctk_time = 0.0;
   cctkGH->cctk_delta_time = dtfac * mindx;
+
   // init into meta mode
-  cctkGH->cctk_nghostzones[0] = undefined;
   cctkGH->cctk_lsh[0] = undefined;
-  cctkGH->cctk_gsh[0] = undefined;
+  cctkGH->cctk_levfac[0] = undefined;
+  cctkGH->cctk_patch = undefined;
+  cctkGH->cctk_nghostzones[0] = undefined;
   assert(in_meta_mode(cctkGH));
 }
 
@@ -586,6 +596,8 @@ void enter_global_mode(cGH *restrict cctkGH) {
       }
     }
   }
+
+  assert(in_global_mode(cctkGH));
 }
 void leave_global_mode(cGH *restrict cctkGH) {
   assert(in_global_mode(cctkGH));
@@ -614,16 +626,51 @@ void leave_global_mode(cGH *restrict cctkGH) {
 
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_nghostzones[d] = undefined;
+
+  assert(in_meta_mode(cctkGH));
 }
 
 // Set cctkGH entries for level mode
-void enter_level_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata) {
+void enter_level_mode(cGH *restrict cctkGH, const int level) {
   DECLARE_CCTK_PARAMETERS;
   assert(in_global_mode(cctkGH));
 
-  const amrex::Box &domain = ghext->amrcore->Geom(leveldata.level).Domain();
-  const amrex::Geometry &geom = ghext->amrcore->Geom(0);
+  for (int d = 0; d < dim; ++d) {
+    // The refinement factor over the top level (coarsest) grid
+    const int levfac = 1 << level;
+    cctkGH->cctk_levfac[d] = levfac;
+    // Offset between this level's and the coarsest level's origin as multiple
+    // of the grid spacing
+    const int levoff = (1 - levfac) * (1 - 2 * cctkGH->cctk_nghostzones[d]);
+    const int levoffdenom = 2;
+    cctkGH->cctk_levoff[d] = levoff;
+    cctkGH->cctk_levoffdenom[d] = levoffdenom;
+  }
+
+  assert(in_level_mode(cctkGH));
+}
+void leave_level_mode(cGH *restrict cctkGH, const int level) {
+  assert(in_level_mode(cctkGH));
+  for (int d = 0; d < dim; ++d)
+    cctkGH->cctk_levfac[d] = undefined;
+  for (int d = 0; d < dim; ++d) {
+    cctkGH->cctk_levoff[d] = undefined;
+    cctkGH->cctk_levoffdenom[d] = 0;
+  }
+  assert(in_global_mode(cctkGH));
+}
+
+// Set cctkGH entries for patch mode
+void enter_patch_mode(cGH *restrict cctkGH,
+                      const GHExt::PatchData::LevelData &restrict leveldata) {
+  DECLARE_CCTK_PARAMETERS;
+  assert(in_level_mode(cctkGH));
+
+  const auto &patchdata = leveldata.patchdata();
+
+  cctkGH->cctk_patch = leveldata.patch;
+  const amrex::Box &domain = patchdata.amrcore->Geom(leveldata.level).Domain();
+  const amrex::Geometry &geom = patchdata.amrcore->Geom(0);
   const CCTK_REAL *restrict const global_x0 = geom.ProbLo();
   const CCTK_REAL *restrict const global_dx = geom.CellSize();
   for (int d = 0; d < dim; ++d) {
@@ -632,46 +679,36 @@ void enter_level_mode(cGH *restrict cctkGH,
     assert(domain.type(d) == amrex::IndexType::CELL);
     cctkGH->cctk_gsh[d] = domain[orient(d, 1)] + 1 - domain[orient(d, 0)] + 1 +
                           2 * cctkGH->cctk_nghostzones[d];
-    // The refinement factor over the top level (coarsest) grid
-    const int levfac = 1 << leveldata.level;
-    cctkGH->cctk_levfac[d] = levfac;
-    // Offset between this level's and the coarsest level's origin as multiple
-    // of the grid spacing
-    const int levoff = (1 - levfac) * (1 - 2 * cctkGH->cctk_nghostzones[d]);
-    const int levoffdenom = 2;
-    cctkGH->cctk_levoff[d] = levoff;
-    cctkGH->cctk_levoffdenom[d] = levoffdenom;
     // Cell-centred coarse level coordinates
+    // TODOPATCH: Shouldn't these be vertex centred?
     const CCTK_REAL origin_space =
         global_x0[d] + (1 - 2 * cctkGH->cctk_nghostzones[d]) * global_dx[d] / 2;
     const CCTK_REAL delta_space = global_dx[d];
     cctkGH->cctk_delta_space[d] = delta_space;
     cctkGH->cctk_origin_space[d] = origin_space;
   }
+
+  assert(in_patch_mode(cctkGH));
 }
-void leave_level_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata) {
-  assert(in_level_mode(cctkGH));
+void leave_patch_mode(cGH *restrict cctkGH,
+                      const GHExt::PatchData::LevelData &restrict leveldata) {
+  assert(in_patch_mode(cctkGH));
+  cctkGH->cctk_patch = undefined;
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_gsh[d] = undefined;
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_levfac[d] = undefined;
-  for (int d = 0; d < dim; ++d) {
-    cctkGH->cctk_levoff[d] = undefined;
-    cctkGH->cctk_levoffdenom[d] = 0;
-  }
   for (int d = 0; d < dim; ++d) {
     cctkGH->cctk_origin_space[d] = NAN;
     cctkGH->cctk_delta_space[d] = NAN;
   }
+  assert(in_level_mode(cctkGH));
 }
 
 // Set cctkGH entries for local mode
-// TODO: Have separate cctkGH for each level, each local box, and each tile
+// TODO: Have separate cctkGH for each patch, level, and local box
 void enter_local_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata,
+                      const GHExt::PatchData::LevelData &restrict leveldata,
                       const MFPointer &mfp) {
-  assert(in_level_mode(cctkGH));
+  assert(in_patch_mode(cctkGH));
   const GridPtrDesc grid(leveldata, mfp);
 
   for (int d = 0; d < dim; ++d)
@@ -735,9 +772,11 @@ void enter_local_mode(cGH *restrict cctkGH,
     assert(cctkGH->cctk_nghostzones[d] >= 0);
     assert(2 * cctkGH->cctk_nghostzones[d] <= cctkGH->cctk_lsh[d]);
   }
+
+  assert(in_local_mode(cctkGH));
 }
 void leave_local_mode(cGH *restrict cctkGH,
-                      const GHExt::LevelData &restrict leveldata,
+                      const GHExt::PatchData::LevelData &restrict leveldata,
                       const MFPointer &mfp) {
   assert(in_local_mode(cctkGH));
   for (int d = 0; d < dim; ++d)
@@ -770,24 +809,27 @@ void leave_local_mode(cGH *restrict cctkGH,
         cctkGH->data[groupdata.firstvarindex + vi][tl] = nullptr;
     }
   }
+  assert(in_patch_mode(cctkGH));
 }
 
 void loop_over_blocks(
     const cGH *restrict const cctkGH,
-    const std::function<void(int level, int index, int block,
+    const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel) {
   std::vector<std::function<void()> > tasks;
 
   active_levels->loop([&](const auto &restrict leveldata) {
     // Note: The amrex::MFIter uses global variables and OpenMP barriers
-    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
     int block = 0;
+    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
     for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
          ++mfi, ++block) {
       const MFPointer mfp(mfi);
       auto task = [&block_kernel, &leveldata, mfp, block]() {
-        cGH *restrict const localGH = get_local_cctkGH(leveldata.level, block);
-        block_kernel(leveldata.level, mfp.index(), block, localGH);
+        cGH *restrict const localGH =
+            get_local_cctkGH(leveldata.level, leveldata.patch, block);
+        block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
+                     localGH);
       };
       tasks.emplace_back(move(task));
     }
@@ -802,55 +844,63 @@ void loop_over_blocks(
 // cGH for all blocks
 using GHptr = unique_ptr<cGH, void (*)(cGH *)>;
 GHptr global_cctkGH(nullptr, delete_cctkGH);
-vector<GHptr> level_cctkGHs;          // [level]
-vector<vector<GHptr> > local_cctkGHs; // [level][block]
+vector<GHptr> level_cctkGHs;                   // [level]
+vector<vector<GHptr> > patch_cctkGHs;          // [patch][level]
+vector<vector<vector<GHptr> > > local_cctkGHs; // [patch][level][block]
 
 cGH *get_global_cctkGH() { return global_cctkGH.get(); }
 cGH *get_level_cctkGH(const int level) { return level_cctkGHs.at(level).get(); }
-cGH *get_local_cctkGH(const int level, const int block) {
-  return local_cctkGHs.at(level).at(block).get();
+cGH *get_patch_cctkGH(const int level, const int patch) {
+  return patch_cctkGHs.at(patch).at(level).get();
+}
+cGH *get_local_cctkGH(const int level, const int patch, const int block) {
+  return local_cctkGHs.at(patch).at(level).at(block).get();
 }
 
 void setup_cctkGHs(cGH *restrict const cctkGH) {
   // global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
 
   level_cctkGHs.clear();
-  local_cctkGHs.resize(ghext->leveldata.size());
-  for (const auto &restrict leveldata : ghext->leveldata) {
-    const int level = leveldata.level;
-    enter_level_mode(cctkGH, leveldata);
-
+  patch_cctkGHs.resize(ghext->num_patches());
+  local_cctkGHs.resize(ghext->num_patches());
+  for (auto &patchdata : ghext->patchdata)
+    local_cctkGHs.at(patchdata.patch).resize(patchdata.leveldata.size());
+  for (int level = 0; level < ghext->num_levels(); ++level) {
+    enter_level_mode(cctkGH, level);
+    assert(int(level_cctkGHs.size()) == level);
     level_cctkGHs.emplace_back(copy_cctkGH(cctkGH), delete_cctkGH);
 
-    local_cctkGHs.at(level).clear();
-    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
-      const MFPointer mfp(mfi);
-      enter_local_mode(cctkGH, leveldata, mfp);
+    for (auto &patchdata : ghext->patchdata) {
+      const int patch = patchdata.patch;
+      if (level < int(patchdata.leveldata.size())) {
+        const auto &leveldata = patchdata.leveldata.at(level);
+        enter_patch_mode(cctkGH, leveldata);
+        assert(int(patch_cctkGHs.at(patch).size()) == level);
+        patch_cctkGHs.at(patch).emplace_back(copy_cctkGH(cctkGH),
+                                             delete_cctkGH);
 
-      local_cctkGHs.at(level).emplace_back(copy_cctkGH(cctkGH), delete_cctkGH);
+        int block = 0;
+        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+             ++mfi, ++block) {
+          const MFPointer mfp(mfi);
+          enter_local_mode(cctkGH, leveldata, mfp);
+          assert(int(local_cctkGHs.at(patch).at(level).size()) == block);
+          local_cctkGHs.at(patch).at(level).emplace_back(copy_cctkGH(cctkGH),
+                                                         delete_cctkGH);
 
-      leave_local_mode(cctkGH, leveldata, mfp);
+          leave_local_mode(cctkGH, leveldata, mfp);
+        }
+
+        leave_patch_mode(cctkGH, leveldata);
+      }
     }
 
-    leave_level_mode(cctkGH, leveldata);
+    leave_level_mode(cctkGH, level);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-extern "C" void CarpetX_GetTileExtent(const void *restrict const cctkGH_,
-                                      CCTK_INT *restrict const tile_min,
-                                      CCTK_INT *restrict const tile_max) {
-  const cGH *restrict cctkGH = static_cast<const cGH *>(cctkGH_);
-  // Check whether we are in local mode
-  assert(cctkGH->cctk_bbox[0] != undefined);
-
-  for (int d = 0; d < dim; ++d) {
-    tile_min[d] = cctkGH->cctk_tile_min[d];
-    tile_max[d] = cctkGH->cctk_tile_max[d];
-  }
-}
 
 extern "C" void CarpetX_GetLoopBoxAll(const void *restrict const cctkGH_,
                                       const CCTK_INT size,
@@ -1004,7 +1054,8 @@ int Initialise(tFleshConfig *config) {
   global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
   setup_cctkGHs(cctkGH);
 
-  assert(ghext->leveldata.empty());
+  for (const auto &patchdata : ghext->patchdata)
+    assert(patchdata.leveldata.empty());
   assert(!active_levels);
   active_levels = make_optional<active_levels_t>(0, 0);
 
@@ -1023,7 +1074,7 @@ int Initialise(tFleshConfig *config) {
     setup_cctkGHs(cctkGH);
 
     assert(!active_levels);
-    active_levels = make_optional<active_levels_t>(0, ghext->leveldata.size());
+    active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
 
     CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
 
@@ -1053,49 +1104,65 @@ int Initialise(tFleshConfig *config) {
       static Timer timer("InitialiseRegrid");
       Interval interval(timer);
       const CCTK_REAL time = 0.0; // dummy time
-      ghext->amrcore->MakeNewGrids(time);
+      for (const auto &patchdata : ghext->patchdata)
+        patchdata.amrcore->MakeNewGrids(time);
+
+      setup_cctkGHs(cctkGH);
+      assert(!active_levels);
+      active_levels = make_optional<active_levels_t>(0, 1);
+      CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+      // CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
+      active_levels = optional<active_levels_t>();
     }
 
     // Output domain information
     if (CCTK_MyProc(nullptr) == 0) {
-      const cGH *const level_cctkGH = get_level_cctkGH(0);
-      const int *restrict const gsh = level_cctkGH->cctk_gsh;
-      const int *restrict const nghostzones = level_cctkGH->cctk_nghostzones;
-      CCTK_REAL x0[dim], x1[dim], dx[dim];
-      for (int d = 0; d < dim; ++d) {
-        dx[d] = level_cctkGH->cctk_delta_space[d];
-        x0[d] = level_cctkGH->cctk_origin_space[d] -
-                (1 - 2 * nghostzones[d]) * dx[d] / 2;
-        x1[d] = x0[d] + (gsh[d] - 1 - 2 * nghostzones[d]) * dx[d];
-      }
+      for (const auto &patchdata : ghext->patchdata) {
+        const int level = 0;
+        const cGH *const patchGH = get_patch_cctkGH(patchdata.patch, level);
+        const int *restrict const gsh = patchGH->cctk_gsh;
+        const int *restrict const nghostzones = patchGH->cctk_nghostzones;
+        CCTK_REAL x0[dim], x1[dim], dx[dim];
+        for (int d = 0; d < dim; ++d) {
+          dx[d] = patchGH->cctk_delta_space[d];
+          x0[d] = patchGH->cctk_origin_space[d] -
+                  (1 - 2 * nghostzones[d]) * dx[d] / 2;
+          x1[d] = x0[d] + (gsh[d] - 1 - 2 * nghostzones[d]) * dx[d];
+        }
 #pragma omp critical
-      {
-        CCTK_VINFO("Grid extent:");
-        CCTK_VINFO("  gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
-        const auto &bf = ghext->amrcore->blockingFactor(0);
-        CCTK_VINFO("  blocking_factor=[%d,%d,%d]", bf[0], bf[1], bf[2]);
-        const auto &mgs = ghext->amrcore->maxGridSize(0);
-        CCTK_VINFO("  max_grid_size=[%d,%d,%d]", mgs[0], mgs[1], mgs[2]);
-        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-        const auto &ts = mfitinfo.tilesize;
-        CCTK_VINFO("  max_tile_size=[%d,%d,%d]", ts[0], ts[1], ts[2]);
-        CCTK_VINFO("Domain extent:");
-        CCTK_VINFO("  xmin=[%.17g,%.17g,%.17g]", double(x0[0]), double(x0[1]),
-                   double(x0[2]));
-        CCTK_VINFO("  xmax=[%.17g,%.17g,%.17g]", double(x1[0]), double(x1[1]),
-                   double(x1[2]));
-        CCTK_VINFO("  base dx=[%.17g,%.17g,%.17g]", double(dx[0]),
-                   double(dx[1]), double(dx[2]));
-        CCTK_VINFO("Time stepping:");
-        CCTK_VINFO("  t0=%.17g", double(level_cctkGH->cctk_time));
-        CCTK_VINFO("  dt=%.17g", double(level_cctkGH->cctk_delta_time));
+        {
+          CCTK_VINFO("Patch %d:", patchdata.patch);
+          CCTK_VINFO("  Grid extent:");
+          CCTK_VINFO("    gsh=[%d,%d,%d]", gsh[0], gsh[1], gsh[2]);
+          const auto &bf = patchdata.amrcore->blockingFactor(0);
+          CCTK_VINFO("    blocking_factor=[%d,%d,%d]", bf[0], bf[1], bf[2]);
+          const auto &mgs = patchdata.amrcore->maxGridSize(0);
+          CCTK_VINFO("    max_grid_size=[%d,%d,%d]", mgs[0], mgs[1], mgs[2]);
+          const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+          const auto &ts = mfitinfo.tilesize;
+          CCTK_VINFO("    max_tile_size=[%d,%d,%d]", ts[0], ts[1], ts[2]);
+          CCTK_VINFO("  Domain extent:");
+          CCTK_VINFO("    xmin=[%.17g,%.17g,%.17g]", double(x0[0]),
+                     double(x0[1]), double(x0[2]));
+          CCTK_VINFO("    xmax=[%.17g,%.17g,%.17g]", double(x1[0]),
+                     double(x1[1]), double(x1[2]));
+          CCTK_VINFO("    base dx=[%.17g,%.17g,%.17g]", double(dx[0]),
+                     double(dx[1]), double(dx[2]));
+          CCTK_VINFO("  Time stepping:");
+          CCTK_VINFO("    t0=%.17g", double(patchGH->cctk_time));
+          CCTK_VINFO("    dt=%.17g", double(patchGH->cctk_delta_time));
+        }
       }
     }
 
     for (;;) {
-      const int level = ghext->amrcore->finestLevel();
+      const int level = ghext->num_levels() - 1;
 #pragma omp critical
       CCTK_VINFO("Initializing level %d...", level);
+
+      // Check whether a patch has too many levels
+      for (const auto &patchdata : ghext->patchdata)
+        assert(patchdata.amrcore->finestLevel() <= level);
 
       assert(!active_levels);
       active_levels = make_optional<active_levels_t>(0, level + 1);
@@ -1107,64 +1174,97 @@ int Initialise(tFleshConfig *config) {
 
       active_levels = optional<active_levels_t>();
 
-      if (level >= ghext->amrcore->maxLevel())
-        break;
+      // int maxmaxlevel = 0;
+      // for (const auto &patchdata : ghext->patchdata)
+      //   maxmaxlevel = max(maxmaxlevel, patchdata.amrcore->maxLevel());
+      // if (level >= maxmaxlevel)
+      //   break;
 
-#pragma omp critical
-      CCTK_VINFO("Regridding...");
-      const int old_numlevels = ghext->amrcore->finestLevel() + 1;
+      // Regrid
+      bool did_modify_any_level;
       {
+#pragma omp critical
+        CCTK_VINFO("Regridding...");
         static Timer timer("InitialiseRegrid");
         Interval interval(timer);
-        const CCTK_REAL time = 0.0; // dummy time
-        ghext->amrcore->regrid(0, time);
-      }
 
-      const int new_numlevels = ghext->amrcore->finestLevel() + 1;
-      const int max_numlevels = ghext->amrcore->maxLevel() + 1;
-      assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
-      assert(new_numlevels == old_numlevels ||
-             new_numlevels == old_numlevels + 1);
+        for (const auto &patchdata : ghext->patchdata) {
+          const int old_numlevels = patchdata.amrcore->finestLevel() + 1;
+          patchdata.amrcore->level_modified.clear();
+          patchdata.amrcore->level_modified.resize(old_numlevels, false);
+          const CCTK_REAL time = 0.0; // dummy time
+          patchdata.amrcore->regrid(0, time);
+
+          const int new_numlevels = patchdata.amrcore->finestLevel() + 1;
+          const int max_numlevels = patchdata.amrcore->maxLevel() + 1;
+          assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
+          assert(new_numlevels == old_numlevels ||
+                 new_numlevels == old_numlevels + 1);
 
 #pragma omp critical
-      {
-        const double pts0 = ghext->leveldata.at(0).fab->boxArray().d_numPts();
-        for (const auto &leveldata : ghext->leveldata) {
-          const int sz = leveldata.fab->size();
-          const double pts = leveldata.fab->boxArray().d_numPts();
-          if (leveldata.level == 0) {
-            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
-                       leveldata.level, sz, pts,
-                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
-          } else {
-            const double ptsc = ghext->leveldata.at(leveldata.level - 1)
-                                    .fab->boxArray()
-                                    .d_numPts();
-            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
-                       leveldata.level, sz, pts,
-                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
-                       100 * pts / (pow(2.0, dim) * ptsc));
+          {
+            const double pts0 =
+                patchdata.leveldata.at(0).fab->boxArray().d_numPts();
+            for (const auto &leveldata : patchdata.leveldata) {
+              const int sz = leveldata.fab->size();
+              const double pts = leveldata.fab->boxArray().d_numPts();
+              if (leveldata.level == 0) {
+                CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                           leveldata.level, sz, pts,
+                           100 * pts /
+                               (pow(2.0, dim * leveldata.level) * pts0));
+              } else {
+                const double ptsc = patchdata.leveldata.at(leveldata.level - 1)
+                                        .fab->boxArray()
+                                        .d_numPts();
+                CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                           leveldata.level, sz, pts,
+                           100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                           100 * pts / (pow(2.0, dim) * ptsc));
+              }
+            }
+          } // omp critical
+        }   // for patchdata
+
+        int first_modified_level = INT_MAX;
+        int last_modified_level = -1;
+        for (const auto &patchdata : ghext->patchdata) {
+          for (int lev = 0; lev < int(patchdata.amrcore->level_modified.size());
+               ++lev) {
+            if (patchdata.amrcore->level_modified.at(lev)) {
+              first_modified_level = min(first_modified_level, lev);
+              last_modified_level = max(last_modified_level, lev);
+            }
           }
         }
-      }
+        did_modify_any_level = last_modified_level >= first_modified_level;
 
-      // Did we create a new level?
-      const bool did_create_new_level = new_numlevels > old_numlevels;
-      if (!did_create_new_level)
+        if (did_modify_any_level) {
+          setup_cctkGHs(cctkGH);
+          assert(!active_levels);
+          active_levels = make_optional<active_levels_t>(
+              first_modified_level, last_modified_level + 1);
+          CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+          CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
+          active_levels = optional<active_levels_t>();
+        }
+      } // Regrid
+
+      if (!did_modify_any_level)
         break;
-    }
+    } // for level
   }
 #pragma omp critical
-  CCTK_VINFO("Initialized %d levels", int(ghext->leveldata.size()));
+  CCTK_VINFO("Initialized %d levels", ghext->num_levels());
 
   assert(!active_levels);
-  active_levels = make_optional<active_levels_t>(0, ghext->leveldata.size());
+  active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
 
   if (!restrict_during_sync) {
     // Restrict
     assert(active_levels);
     active_levels->loop_reverse([&](const auto &leveldata) {
-      if (leveldata.level != int(ghext->leveldata.size()) - 1)
+      if (leveldata.level != ghext->num_levels() - 1)
         Restrict(leveldata.level);
     });
     CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
@@ -1179,7 +1279,7 @@ int Initialise(tFleshConfig *config) {
   active_levels = optional<active_levels_t>();
 
   return 0;
-}
+} // namespace CarpetX
 
 bool EvolutionIsDone(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
@@ -1310,6 +1410,14 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
             poison_invalid(groupdata, vi, 0);
           }
         }
+        // All time levels (except the current) must be valid everywhere for
+        // checkpointed groups
+        if (groupdata.do_checkpoint)
+          for (int tl = (ntls == 1 ? 0 : 1); tl < ntls; ++tl)
+            for (int vi = 0; vi < groupdata.numvars; ++vi)
+              error_if_invalid(groupdata, vi, tl, make_valid_all(), []() {
+                return "CycleTimelevels for the state vector";
+              });
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             check_valid(groupdata, vi, tl, []() { return "CycleTimelevels"; });
@@ -1360,67 +1468,107 @@ int Evolve(tFleshConfig *config) {
     assert(!active_levels);
 
     // TODO: Move regridding into a function
-    if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0 &&
-        ghext->amrcore->maxLevel() > 0) {
+    if (regrid_every > 0 && cctkGH->cctk_iteration % regrid_every == 0) {
 #pragma omp critical
       CCTK_VINFO("Regridding...");
-      const int old_numlevels = ghext->amrcore->finestLevel() + 1;
-      {
-        static Timer timer("EvolveRegrid");
-        Interval interval(timer);
-        CCTK_REAL time = 0.0; // dummy time
-        ghext->amrcore->regrid(0, time);
-      }
+      static Timer timer("EvolveRegrid");
+      Interval interval(timer);
 
-      const int new_numlevels = ghext->amrcore->finestLevel() + 1;
-      const int max_numlevels = ghext->amrcore->maxLevel() + 1;
-      assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
+      for (const auto &patchdata : ghext->patchdata) {
+        const int old_numlevels = patchdata.amrcore->finestLevel() + 1;
+        patchdata.amrcore->level_modified.clear();
+        patchdata.amrcore->level_modified.resize(old_numlevels, false);
+        CCTK_REAL time = 0.0; // dummy time
+        patchdata.amrcore->regrid(0, time);
+
+        const int new_numlevels = patchdata.amrcore->finestLevel() + 1;
+        const int max_numlevels = patchdata.amrcore->maxLevel() + 1;
+        assert(new_numlevels >= 0 && new_numlevels <= max_numlevels);
 
 #pragma omp critical
-      {
-        CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
-                   new_numlevels);
-        double pts0 = ghext->leveldata.at(0).fab->boxArray().d_numPts();
-        assert(!active_levels);
-        for (const auto &leveldata : ghext->leveldata) {
-          const int sz = leveldata.fab->size();
-          const double pts = leveldata.fab->boxArray().d_numPts();
-          if (leveldata.level == 0) {
-            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
-                       leveldata.level, sz, pts,
-                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
-          } else {
-            const double ptsc = ghext->leveldata.at(leveldata.level - 1)
-                                    .fab->boxArray()
-                                    .d_numPts();
-            CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
-                       leveldata.level, sz, pts,
-                       100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
-                       100 * pts / (pow(2.0, dim) * ptsc));
+        {
+          CCTK_VINFO("  old levels %d, new levels %d", old_numlevels,
+                     new_numlevels);
+          double pts0 = patchdata.leveldata.at(0).fab->boxArray().d_numPts();
+          assert(!active_levels);
+          for (const auto &leveldata : patchdata.leveldata) {
+            const int sz = leveldata.fab->size();
+            const double pts = leveldata.fab->boxArray().d_numPts();
+            if (leveldata.level == 0) {
+              CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%)",
+                         leveldata.level, sz, pts,
+                         100 * pts / (pow(2.0, dim * leveldata.level) * pts0));
+            } else {
+              const double ptsc = patchdata.leveldata.at(leveldata.level - 1)
+                                      .fab->boxArray()
+                                      .d_numPts();
+              CCTK_VINFO("  level %d: %d boxes, %.0f cells (%.4g%%, %.0f%%)",
+                         leveldata.level, sz, pts,
+                         100 * pts / (pow(2.0, dim * leveldata.level) * pts0),
+                         100 * pts / (pow(2.0, dim) * ptsc));
+            }
+          }
+        } // omp critical
+      }   // for patchdata
+
+      int first_modified_level = INT_MAX;
+      int last_modified_level = -1;
+      for (const auto &patchdata : ghext->patchdata) {
+        for (int lev = 0; lev < int(patchdata.amrcore->level_modified.size());
+             ++lev) {
+          if (patchdata.amrcore->level_modified.at(lev)) {
+            first_modified_level = min(first_modified_level, lev);
+            last_modified_level = max(last_modified_level, lev);
           }
         }
       }
-    }
+      const bool did_modify_any_level =
+          last_modified_level >= first_modified_level;
+
+      if (did_modify_any_level) {
+        setup_cctkGHs(cctkGH);
+        assert(!active_levels);
+        active_levels = make_optional<active_levels_t>(first_modified_level,
+                                                       last_modified_level + 1);
+        CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
+        CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
+        active_levels = optional<active_levels_t>();
+      }
+    } // Regrid
 
     // Find smallest iteration number. Levels at this iteration will
     // be evolved.
-    rat64 iteration = ghext->leveldata.at(0).iteration;
-    for (const auto &leveldata : ghext->leveldata)
-      iteration = min(iteration, leveldata.iteration);
+    rat64 iteration = ghext->patchdata.at(0).leveldata.at(0).iteration;
+    for (const auto &patchdata : ghext->patchdata)
+      for (const auto &leveldata : patchdata.leveldata)
+        iteration = min(iteration, leveldata.iteration);
 
     // Loop over all levels, in batches that combine levels that don't
     // subcycle. The level range is [min_level, max_level).
     int min_level = 0;
-    while (min_level < int(ghext->leveldata.size())) {
+    while (min_level < ghext->num_levels()) {
       // Find end of batch
       int max_level = min_level + 1;
-      while (max_level < int(ghext->leveldata.size()) &&
-             !ghext->leveldata.at(max_level).is_subcycling_level)
+
+      while (max_level < ghext->num_levels()) {
+        bool level_is_subcycling_level = false;
+        for (const auto &patchdata : ghext->patchdata)
+          if (max_level < int(patchdata.leveldata.size()))
+            level_is_subcycling_level |=
+                patchdata.leveldata.at(max_level).is_subcycling_level;
+        if (!level_is_subcycling_level)
+          break;
         ++max_level;
+      }
 
       // Skip this batch of levels if it is not active at the current
       // iteration
-      if (ghext->leveldata.at(min_level).iteration > iteration)
+      rat64 level_iteration = -1;
+      for (const auto &patchdata : ghext->patchdata)
+        if (min_level < int(patchdata.leveldata.size()))
+          level_iteration = patchdata.leveldata.at(min_level).iteration;
+      assert(level_iteration != -1);
+      if (level_iteration > iteration)
         break;
 
       active_levels = make_optional<active_levels_t>(min_level, max_level);
@@ -1441,13 +1589,15 @@ int Evolve(tFleshConfig *config) {
       CCTK_Traverse(cctkGH, "CCTK_EVOL");
 
       // Reflux
+      // TODO: These loop bounds are wrong for subcycling
       assert(active_levels);
-      for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
+      for (int level = ghext->num_levels() - 2; level >= 0; --level)
         Reflux(level);
 
       if (!restrict_during_sync) {
         // Restrict
-        for (int level = int(ghext->leveldata.size()) - 2; level >= 0; --level)
+        // TODO: These loop bounds are wrong for subcycling
+        for (int level = ghext->num_levels() - 2; level >= 0; --level)
           Restrict(level);
         CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
       }
@@ -1458,12 +1608,12 @@ int Evolve(tFleshConfig *config) {
       CCTK_OutputGH(cctkGH);
 
       active_levels = optional<active_levels_t>();
-    }
+    } // for min_level
 
   } // main loop
 
   return 0;
-}
+} // namespace CarpetX
 
 // Schedule shutdown
 int Shutdown(tFleshConfig *config) {
@@ -1478,8 +1628,7 @@ int Shutdown(tFleshConfig *config) {
   CCTK_VINFO("Shutting down...");
 
   assert(!active_levels);
-  active_levels =
-      make_optional<active_levels_t>(0, int(ghext->leveldata.size()));
+  active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
 
   CCTK_Traverse(cctkGH, "CCTK_TERMINATE");
 
@@ -1520,9 +1669,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     CCTK_VINFO("CallFunction iteration %d %s: %s::%s", cctkGH->cctk_iteration,
                attribute->where, attribute->thorn, attribute->routine);
 
-#ifdef __CUDACC__
   nvtxRangePushA(attribute->routine);
-#endif
 
   assert(active_levels);
 
@@ -1664,7 +1811,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          cGH *const localGH =
+              get_local_cctkGH(leveldata.level, leveldata.patch, block);
           CCTK_CallFunction(function, attribute, localGH);
         }
       });
@@ -1689,7 +1837,8 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          cGH *const localGH =
+              get_local_cctkGH(leveldata.level, leveldata.patch, block);
           auto task = [function, attribute, localGH]() {
             CCTK_CallFunction(function, attribute, localGH);
           };
@@ -1713,14 +1862,15 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       CallFunction_count = 0;
 
       active_levels->loop([&](const auto &restrict leveldata) {
-        // No tiling nor OpenMP parallelization when using GPUs
+        // No OpenMP parallelization when using GPUs
         int block = 0;
         const auto mfitinfo =
             amrex::MFItInfo().DisableDeviceSync().EnableTiling();
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH = get_local_cctkGH(leveldata.level, block);
+          cGH *const localGH =
+              get_local_cctkGH(leveldata.level, leveldata.patch, block);
           CCTK_CallFunction(function, attribute, localGH);
           ++CallFunction_count;
         }
@@ -1864,9 +2014,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     }
   }
 
-#ifdef __CUDACC__
   nvtxRangePop();
-#endif
 
   constexpr int didsync = 0;
   return didsync;
@@ -1889,9 +2037,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   static Timer timer("Sync");
   Interval interval(timer);
 
-#ifdef __CUDACC__
   nvtxRangePushA("Sync");
-#endif
 
   assert(cctkGH);
   assert(numgroups >= 0);
@@ -1926,7 +2072,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   if (restrict_during_sync) {
     active_levels->loop_reverse([&](const auto &leveldata) {
-      if (leveldata.level < int(ghext->leveldata.size()) - 1)
+      if (leveldata.level < ghext->num_levels() - 1)
         Restrict(leveldata.level, groups);
     });
     // FIXME: cannot call POSTRESTRICT since this could contain a SYNC leading
@@ -1975,16 +2121,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           {
             static Timer timer("Sync::FillPatchSingleLevel");
             Interval interval(timer);
-#ifdef __CUDACC__
             nvtxRangePushA("Sync::FillPatchSingleLevel");
-#endif
             FillPatchSingleLevel(
                 *groupdata.mfab.at(tl), 0.0, {&*groupdata.mfab.at(tl)}, {0.0},
-                0, 0, groupdata.numvars, ghext->amrcore->Geom(leveldata.level),
-                physbc, 0);
-#ifdef __CUDACC__
+                0, 0, groupdata.numvars,
+                leveldata.patchdata().amrcore->Geom(leveldata.level), physbc,
+                0);
             nvtxRangePop();
-#endif
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
@@ -1998,7 +2141,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         // copy from adjacent boxes on same level
 
         const int level = leveldata.level;
-        const auto &restrict coarseleveldata = ghext->leveldata.at(level - 1);
+        const auto &restrict coarseleveldata =
+            leveldata.patchdata().leveldata.at(level - 1);
         auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
         assert(coarsegroupdata.numvars == groupdata.numvars);
 
@@ -2031,18 +2175,15 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           {
             static Timer timer("Sync::FillPatchTwoLevels");
             Interval interval(timer);
-#ifdef __CUDACC__
             nvtxRangePushA("Sync::FillPatchTwoLevels");
-#endif
             FillPatchTwoLevels(
                 *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
                 {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                groupdata.numvars, ghext->amrcore->Geom(level - 1),
-                ghext->amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
-                interpolator, bcs, 0);
-#ifdef __CUDACC__
+                groupdata.numvars,
+                leveldata.patchdata().amrcore->Geom(level - 1),
+                leveldata.patchdata().amrcore->Geom(level), physbc, 0, physbc,
+                0, reffact, interpolator, bcs, 0);
             nvtxRangePop();
-#endif
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(
@@ -2061,9 +2202,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
     }
   });
 
-#ifdef __CUDACC__
   nvtxRangePop();
-#endif
 
   assert(sync_active);
   sync_active = false;
@@ -2080,69 +2219,77 @@ void Reflux(int level) {
   static Timer timer("Reflux");
   Interval interval(timer);
 
-  auto &leveldata = ghext->leveldata.at(level);
-  const auto &fineleveldata = ghext->leveldata.at(level + 1);
-  for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
-    const int tl = 0;
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
+  for (const auto &patchdata : ghext->patchdata) {
+    if (level + 1 < int(patchdata.leveldata.size())) {
+      auto &leveldata = patchdata.leveldata.at(level);
+      const auto &fineleveldata = patchdata.leveldata.at(level + 1);
+      for (int gi = 0; gi < int(leveldata.groupdata.size()); ++gi) {
+        const int tl = 0;
+        cGroup group;
+        int ierr = CCTK_GroupData(gi, &group);
+        assert(!ierr);
 
-    if (group.grouptype != CCTK_GF)
-      continue;
+        if (group.grouptype != CCTK_GF)
+          continue;
 
-    auto &groupdata = *leveldata.groupdata.at(gi);
-    const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
+        auto &groupdata = *leveldata.groupdata.at(gi);
+        const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
 
-    // If the group has associated fluxes
-    if (finegroupdata.freg) {
+        // If the group has associated fluxes
+        if (finegroupdata.freg) {
 
-      // Check coarse and fine data and fluxes are valid
-      for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
-          return "Reflux before refluxing: Fine level data";
-        });
-        error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
-          return "Reflux before refluxing: Coarse level data";
-        });
-      }
-      for (int d = 0; d < dim; ++d) {
-        const int flux_gi = finegroupdata.fluxes[d];
-        const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
-        const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
-        for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-          error_if_invalid(flux_finegroupdata, vi, tl, make_valid_int(), [&]() {
-            ostringstream buf;
-            buf << "Reflux: Fine level flux in direction " << d;
-            return buf.str();
-          });
-          error_if_invalid(flux_groupdata, vi, tl, make_valid_int(), [&]() {
-            ostringstream buf;
-            buf << "Reflux: Coarse level flux in direction " << d;
-            return buf.str();
-          });
+          // Check coarse and fine data and fluxes are valid
+          for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
+            error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
+              return "Reflux before refluxing: Fine level data";
+            });
+            error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
+              return "Reflux before refluxing: Coarse level data";
+            });
+          }
+          for (int d = 0; d < dim; ++d) {
+            const int flux_gi = finegroupdata.fluxes[d];
+            const auto &flux_finegroupdata =
+                *fineleveldata.groupdata.at(flux_gi);
+            const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
+            for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
+              error_if_invalid(
+                  flux_finegroupdata, vi, tl, make_valid_int(), [&]() {
+                    ostringstream buf;
+                    buf << "Reflux: Fine level flux in direction " << d;
+                    return buf.str();
+                  });
+              error_if_invalid(flux_groupdata, vi, tl, make_valid_int(), [&]() {
+                ostringstream buf;
+                buf << "Reflux: Coarse level flux in direction " << d;
+                return buf.str();
+              });
+            }
+          }
+
+          for (int d = 0; d < dim; ++d) {
+            const int flux_gi = finegroupdata.fluxes[d];
+            const auto &flux_finegroupdata =
+                *fineleveldata.groupdata.at(flux_gi);
+            const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
+            finegroupdata.freg->CrseInit(*flux_groupdata.mfab.at(tl), d, 0, 0,
+                                         flux_groupdata.numvars, -1);
+            finegroupdata.freg->FineAdd(*flux_finegroupdata.mfab.at(tl), d, 0,
+                                        0, flux_finegroupdata.numvars, 1);
+          }
+          const amrex::Geometry &geom = patchdata.amrcore->Geom(level);
+          finegroupdata.freg->Reflux(*groupdata.mfab.at(tl), 1.0, 0, 0,
+                                     groupdata.numvars, geom);
+
+          for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
+            check_valid(finegroupdata, vi, tl, []() {
+              return "Reflux after refluxing: Fine level data";
+            });
+          }
         }
-      }
-
-      for (int d = 0; d < dim; ++d) {
-        const int flux_gi = finegroupdata.fluxes[d];
-        const auto &flux_finegroupdata = *fineleveldata.groupdata.at(flux_gi);
-        const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
-        finegroupdata.freg->CrseInit(*flux_groupdata.mfab.at(tl), d, 0, 0,
-                                     flux_groupdata.numvars, -1);
-        finegroupdata.freg->FineAdd(*flux_finegroupdata.mfab.at(tl), d, 0, 0,
-                                    flux_finegroupdata.numvars, 1);
-      }
-      const amrex::Geometry &geom = ghext->amrcore->Geom(level);
-      finegroupdata.freg->Reflux(*groupdata.mfab.at(tl), 1.0, 0, 0,
-                                 groupdata.numvars, geom);
-
-      for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-        check_valid(finegroupdata, vi, tl,
-                    []() { return "Reflux after refluxing: Fine level data"; });
-      }
-    }
-  } // for gi
+      } // for gi
+    }   // if level exists
+  }     // for patchdata
 }
 
 void Restrict(int level, const vector<int> &groups) {
@@ -2156,112 +2303,113 @@ void Restrict(int level, const vector<int> &groups) {
   static Timer timer("Restrict");
   Interval interval(timer);
 
-#ifdef __CUDACC__
   nvtxRangePushA("Restrict");
-#endif
 
   const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
   assert(gi_regrid_error >= 0);
   const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
   assert(gi_refinement_level >= 0);
 
-  auto &leveldata = ghext->leveldata.at(level);
-  const auto &fineleveldata = ghext->leveldata.at(level + 1);
-  for (const int gi : groups) {
-    cGroup group;
-    int ierr = CCTK_GroupData(gi, &group);
-    assert(!ierr);
+  for (const auto &patchdata : ghext->patchdata) {
+    if (level + 1 < int(patchdata.leveldata.size())) {
+      auto &leveldata = patchdata.leveldata.at(level);
+      const auto &fineleveldata = patchdata.leveldata.at(level + 1);
+      for (const int gi : groups) {
+        cGroup group;
+        int ierr = CCTK_GroupData(gi, &group);
+        assert(!ierr);
 
-    assert(group.grouptype == CCTK_GF);
+        assert(group.grouptype == CCTK_GF);
 
-    auto &groupdata = *leveldata.groupdata.at(gi);
-    const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
-    const amrex::IntVect reffact{2, 2, 2};
+        auto &groupdata = *leveldata.groupdata.at(gi);
+        const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
+        const amrex::IntVect reffact{2, 2, 2};
 
-    // Don't restrict the regridding error nor the refinement level
-    if (gi == gi_regrid_error || gi == gi_refinement_level)
-      continue;
-    // Don't restrict groups that have restriction disabled
-    if (!groupdata.do_restrict)
-      continue;
+        // Don't restrict the regridding error nor the refinement level
+        if (gi == gi_regrid_error || gi == gi_refinement_level)
+          continue;
+        // Don't restrict groups that have restriction disabled
+        if (!groupdata.do_restrict)
+          continue;
 
-    // If there is more than one time level, then we don't restrict the
-    // oldest.
-    // TODO: during evolution, restrict only one time level
-    int ntls = groupdata.mfab.size();
-    int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
-    for (int tl = 0; tl < restrict_tl; ++tl) {
+        // If there is more than one time level, then we don't restrict the
+        // oldest.
+        // TODO: during evolution, restrict only one time level
+        int ntls = groupdata.mfab.size();
+        int restrict_tl = ntls > 1 ? ntls - 1 : ntls;
+        for (int tl = 0; tl < restrict_tl; ++tl) {
 
-      for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
 
-        // Restriction only uses the interior
-        error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
-          return "Restrict on fine level before restricting";
-        });
-        poison_invalid(finegroupdata, vi, tl);
-        check_valid(finegroupdata, vi, tl, []() {
-          return "Restrict on fine level before restricting";
-        });
-        error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
-          return "Restrict on coarse level before restricting";
-        });
-        poison_invalid(groupdata, vi, tl);
-        check_valid(groupdata, vi, tl, []() {
-          return "Restrict on coarse level before restricting";
-        });
-      }
+            // Restriction only uses the interior
+            error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
+              return "Restrict on fine level before restricting";
+            });
+            poison_invalid(finegroupdata, vi, tl);
+            check_valid(finegroupdata, vi, tl, []() {
+              return "Restrict on fine level before restricting";
+            });
+            error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
+              return "Restrict on coarse level before restricting";
+            });
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl, []() {
+              return "Restrict on coarse level before restricting";
+            });
+          }
 
 #warning                                                                       \
     "TODO: Allow different restriction operators, and ensure this is conservative"
-      // rank: 0: vertex, 1: edge, 2: face, 3: volume
-      int rank = 0;
-      for (int d = 0; d < dim; ++d)
-        rank += groupdata.indextype[d];
-      switch (rank) {
-      case 0:
-        average_down_nodal(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                           reffact);
-        break;
-      case 1:
-        average_down_edges(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                           reffact);
-        break;
-      case 2:
-        average_down_faces(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
-                           reffact);
-        break;
-      case 3:
-        average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
-                     groupdata.numvars, reffact);
-        break;
-      default:
-        assert(0);
-      }
+          // rank: 0: vertex, 1: edge, 2: face, 3: volume
+          int rank = 0;
+          for (int d = 0; d < dim; ++d)
+            rank += groupdata.indextype[d];
+          switch (rank) {
+          case 0:
+            average_down_nodal(*finegroupdata.mfab.at(tl),
+                               *groupdata.mfab.at(tl), reffact);
+            break;
+          case 1:
+            average_down_edges(*finegroupdata.mfab.at(tl),
+                               *groupdata.mfab.at(tl), reffact);
+            break;
+          case 2:
+            average_down_faces(*finegroupdata.mfab.at(tl),
+                               *groupdata.mfab.at(tl), reffact);
+            break;
+          case 3:
+            average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
+                         groupdata.numvars, reffact);
+            break;
+          default:
+            assert(0);
+          }
 
-      // TODO: Also remember old why_valid for interior?
-      for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        groupdata.valid.at(tl).at(vi).set(make_valid_int(),
-                                          []() { return "Restrict"; });
-        poison_invalid(groupdata, vi, tl);
-        check_valid(groupdata, vi, tl, []() {
-          return "Restrict on coarse level after restricting";
-        });
-      }
+          // TODO: Also remember old why_valid for interior?
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
+            groupdata.valid.at(tl).at(vi).set(make_valid_int(),
+                                              []() { return "Restrict"; });
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl, []() {
+              return "Restrict on coarse level after restricting";
+            });
+          }
 
-    } // for tl
-  }   // for gi
+        } // for tl
+      }   // for gi
+    }     // if level exists
+  }       // for patchdata
 
-#ifdef __CUDACC__
   nvtxRangePop();
-#endif
 }
 
 void Restrict(int level) {
   const int numgroups = CCTK_NumGroups();
   vector<int> groups;
   groups.reserve(numgroups);
-  const auto &leveldata = ghext->leveldata.at(level);
-  for (const auto &groupdataptr : leveldata.groupdata) {
+  const auto &patchdata0 = ghext->patchdata.at(0);
+  const auto &leveldata0 = patchdata0.leveldata.at(0);
+  for (const auto &groupdataptr : leveldata0.groupdata) {
     // Restrict only grid functions
     if (groupdataptr) {
       auto &restrict groupdata = *groupdataptr;

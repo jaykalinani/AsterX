@@ -65,17 +65,13 @@ RESTRICTED:
 
 BOOLEAN periodic_x "Periodic"
 {
-} yes
+} no
 
 BOOLEAN periodic_y "Periodic"
 {
-} yes
+} no
 
 BOOLEAN periodic_z "Periodic"
-{
-} yes
-
-BOOLEAN periodic "Periodic"
 {
 } no
 

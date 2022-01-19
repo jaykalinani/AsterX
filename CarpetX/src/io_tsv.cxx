@@ -33,38 +33,40 @@ void WriteTSVold(const cGH *restrict cctkGH, const string &filename, int gi,
   file << setprecision(numeric_limits<CCTK_REAL>::digits10 + 1) << scientific;
 
   // Output header
-  file << "# 1:iteration" << sep << "2:time" << sep << "3:level" << sep
-       << "4:component" << sep << "5:i" << sep << "6:j" << sep << "7:k" << sep
-       << "8:x" << sep << "9:y" << sep << "10:z";
-  int col = 11;
+  file << "# 1:iteration" << sep << "2:time" << sep << "3:patch" << sep
+       << "4:level" << sep << "5:component" << sep << "6:i" << sep << "7:j"
+       << sep << "8:k" << sep << "9:x" << sep << "10:y" << sep << "11:z";
+  int col = 12;
   for (const auto &varname : varnames)
     file << sep << col++ << ":" << varname;
   file << "\n";
 
-  for (const auto &leveldata : ghext->leveldata) {
-    const auto &groupdata = *leveldata.groupdata.at(gi);
-    const int tl = 0;
-    const auto &geom = ghext->amrcore->Geom(leveldata.level);
-    const auto &mfab = *groupdata.mfab.at(tl);
-    for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
-      const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
-      const auto &imin = vars.begin;
-      const auto &imax = vars.end;
-      for (int k = imin.z; k < imax.z; ++k) {
-        for (int j = imin.y; j < imax.y; ++j) {
-          for (int i = imin.x; i < imax.x; ++i) {
-            const array<int, dim> I{i, j, k};
-            array<CCTK_REAL, dim> x;
-            for (int d = 0; d < dim; ++d)
-              x[d] = geom.ProbLo(d) +
-                     (I[d] + 0.5 * groupdata.indextype[d]) * geom.CellSize(d);
-            file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time << sep
-                 << leveldata.level << sep << mfi.index() << sep << I[0] << sep
-                 << I[1] << sep << I[2] << sep << x[0] << sep << x[1] << sep
-                 << x[2];
-            for (int n = 0; n < groupdata.numvars; ++n)
-              file << sep << vars(i, j, k, n);
-            file << "\n";
+  for (const auto &patchdata : ghext->patchdata) {
+    for (const auto &leveldata : patchdata.leveldata) {
+      const auto &groupdata = *leveldata.groupdata.at(gi);
+      const int tl = 0;
+      const auto &geom = patchdata.amrcore->Geom(leveldata.level);
+      const auto &mfab = *groupdata.mfab.at(tl);
+      for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
+        const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
+        const auto &imin = vars.begin;
+        const auto &imax = vars.end;
+        for (int k = imin.z; k < imax.z; ++k) {
+          for (int j = imin.y; j < imax.y; ++j) {
+            for (int i = imin.x; i < imax.x; ++i) {
+              const array<int, dim> I{i, j, k};
+              array<CCTK_REAL, dim> x;
+              for (int d = 0; d < dim; ++d)
+                x[d] = geom.ProbLo(d) +
+                       (I[d] + 0.5 * groupdata.indextype[d]) * geom.CellSize(d);
+              file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time << sep
+                   << patchdata.patch << sep << leveldata.level << sep
+                   << mfi.index() << sep << I[0] << sep << I[1] << sep << I[2]
+                   << sep << x[0] << sep << x[1] << sep << x[2];
+              for (int n = 0; n < groupdata.numvars; ++n)
+                file << sep << vars(i, j, k, n);
+              file << "\n";
+            }
           }
         }
       }
@@ -93,7 +95,8 @@ void OutputTSVold(const cGH *restrict cctkGH) {
     if (group.grouptype != CCTK_GF)
       continue;
 
-    auto &restrict groupdata0 = *ghext->leveldata.at(0).groupdata.at(gi);
+    auto &restrict groupdata0 =
+        *ghext->patchdata.at(0).leveldata.at(0).groupdata.at(gi);
     if (groupdata0.mfab.size() > 0) {
       const int tl = 0;
 
@@ -159,10 +162,12 @@ void WriteTSVScalars(const cGH *restrict cctkGH, const string &filename,
 void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
                  const vect<bool, dim> outdirs,
                  const vect<CCTK_REAL, dim> &outcoords) {
-  const auto &groupdata0 = *ghext->leveldata.at(0).groupdata.at(gi);
+  const auto &groupdata0 =
+      *ghext->patchdata.at(0).leveldata.at(0).groupdata.at(gi);
 
   // Number of values transmitted per grid point
-  const int nvalues = 1                     // level
+  const int nvalues = 1                     // patch
+                      + 1                   // level
                       + dim                 // grid point index
                       + dim                 // coordinates
                       + groupdata0.numvars; // grid function values
@@ -170,66 +175,69 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
   // Data transmitted from this process
   vector<CCTK_REAL> data;
   data.reserve(10000);
-  for (const auto &leveldata : ghext->leveldata) {
-    const auto &groupdata = *leveldata.groupdata.at(gi);
-    const int tl = 0;
-    const auto &geom = ghext->amrcore->Geom(leveldata.level);
-    vect<CCTK_REAL, dim> x0, dx;
-    for (int d = 0; d < dim; ++d) {
-      dx[d] = geom.CellSize(d);
-      x0[d] = geom.ProbLo(d) + 0.5 * groupdata.indextype[d] * dx[d];
-    }
-    vect<int, dim> icoord;
-    for (int d = 0; d < dim; ++d) {
-      if (outdirs[d])
-        icoord[d] = INT_MIN;
-      else
-        icoord[d] = lrint((outcoords[d] - x0[d]) / dx[d]);
-    }
-
-    const auto &mfab = *groupdata.mfab.at(tl);
-    for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
-      const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
-      const vect<int, dim> vmin = {vars.begin.x, vars.begin.y, vars.begin.z};
-      const vect<int, dim> vmax = {vars.end.x, vars.end.y, vars.end.z};
-
-      bool output_something = true;
-      vect<int, dim> imin, imax;
+  for (const auto &patchdata : ghext->patchdata) {
+    for (const auto &leveldata : patchdata.leveldata) {
+      const auto &groupdata = *leveldata.groupdata.at(gi);
+      const int tl = 0;
+      const auto &geom = patchdata.amrcore->Geom(leveldata.level);
+      vect<CCTK_REAL, dim> x0, dx;
       for (int d = 0; d < dim; ++d) {
-        if (outdirs[d]) {
-          // output everything
-          imin[d] = vmin[d];
-          imax[d] = vmax[d];
-        } else if (icoord[d] >= vmin[d] && icoord[d] < vmax[d]) {
-          // output one point
-          imin[d] = icoord[d];
-          imax[d] = icoord[d] + 1;
-        } else {
-          // output nothing
-          output_something = false;
-        }
+        dx[d] = geom.CellSize(d);
+        x0[d] = geom.ProbLo(d) + 0.5 * groupdata.indextype[d] * dx[d];
+      }
+      vect<int, dim> icoord;
+      for (int d = 0; d < dim; ++d) {
+        if (outdirs[d])
+          icoord[d] = INT_MIN;
+        else
+          icoord[d] = lrint((outcoords[d] - x0[d]) / dx[d]);
       }
 
-      if (output_something) {
-        for (int k = imin[2]; k < imax[2]; ++k) {
-          for (int j = imin[1]; j < imax[1]; ++j) {
-            for (int i = imin[0]; i < imax[0]; ++i) {
-              const array<int, dim> I{i, j, k};
-              const auto old_size = data.size();
-              data.push_back(leveldata.level);
-              for (int d = 0; d < dim; ++d)
-                data.push_back(I[d]);
-              for (int d = 0; d < dim; ++d)
-                data.push_back(x0[d] + I[d] * dx[d]);
-              for (int vi = 0; vi < groupdata.numvars; ++vi)
-                data.push_back(vars(i, j, k, vi));
-              assert(data.size() == old_size + nvalues);
-            }
+      const auto &mfab = *groupdata.mfab.at(tl);
+      for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
+        const amrex::Array4<const CCTK_REAL> &vars = mfab.array(mfi);
+        const vect<int, dim> vmin = {vars.begin.x, vars.begin.y, vars.begin.z};
+        const vect<int, dim> vmax = {vars.end.x, vars.end.y, vars.end.z};
+
+        bool output_something = true;
+        vect<int, dim> imin, imax;
+        for (int d = 0; d < dim; ++d) {
+          if (outdirs[d]) {
+            // output everything
+            imin[d] = vmin[d];
+            imax[d] = vmax[d];
+          } else if (icoord[d] >= vmin[d] && icoord[d] < vmax[d]) {
+            // output one point
+            imin[d] = icoord[d];
+            imax[d] = icoord[d] + 1;
+          } else {
+            // output nothing
+            output_something = false;
           }
         }
-      } // if output_something
-    }   // for mfi
-  }     // for leveldata
+
+        if (output_something) {
+          for (int k = imin[2]; k < imax[2]; ++k) {
+            for (int j = imin[1]; j < imax[1]; ++j) {
+              for (int i = imin[0]; i < imax[0]; ++i) {
+                const array<int, dim> I{i, j, k};
+                const auto old_size = data.size();
+                data.push_back(patchdata.patch);
+                data.push_back(leveldata.level);
+                for (int d = 0; d < dim; ++d)
+                  data.push_back(I[d]);
+                for (int d = 0; d < dim; ++d)
+                  data.push_back(x0[d] + I[d] * dx[d]);
+                for (int vi = 0; vi < groupdata.numvars; ++vi)
+                  data.push_back(vars(i, j, k, vi));
+                assert(data.size() == old_size + nvalues);
+              }
+            }
+          }
+        } // if output_something
+      }   // for mfi
+    }     // for leveldata
+  }       // for patchdata
   assert(data.size() % nvalues == 0);
 
   const MPI_Comm comm = amrex::ParallelDescriptor::Communicator();
@@ -291,6 +299,7 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     int col = 0;
     file << "# " << ++col << ":iteration";
     file << sep << ++col << ":time";
+    file << sep << ++col << ":patch";
     file << sep << ++col << ":level";
     for (int d = 0; d < dim; ++d)
       file << sep << ++col << ":"
@@ -306,7 +315,7 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     for (const auto i : iptr) {
       int pos = nvalues * i;
       file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
-      for (int v = 0; v < 4; ++v)
+      for (int v = 0; v < 5; ++v)
         file << sep << int(all_data.at(pos++));
       for (int v = 4; v < nvalues; ++v)
         file << sep << all_data.at(pos++);

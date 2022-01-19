@@ -9,8 +9,9 @@ uses include header: CoordBase.h
 uses include header: loopcontrol.h
 
 # The overall size of the domain
-CCTK_INT FUNCTION GetDomainSpecification \
-  (CCTK_INT IN size, \
+CCTK_INT FUNCTION MultiPatch_GetDomainSpecification \
+  (CCTK_INT IN patch, \
+   CCTK_INT IN size, \
    CCTK_REAL OUT ARRAY physical_min, \
    CCTK_REAL OUT ARRAY physical_max, \
    CCTK_REAL OUT ARRAY interior_min, \
@@ -40,7 +41,7 @@ USES FUNCTION MultiPatch_GetMap
 
 CCTK_INT FUNCTION                          \
     MultiPatch_GetDomainSpecification      \
-        (CCTK_INT IN map,                  \
+        (CCTK_INT IN patch,                \
          CCTK_INT IN size,                 \
          CCTK_REAL OUT ARRAY physical_min, \
          CCTK_REAL OUT ARRAY physical_max, \
@@ -53,7 +54,7 @@ USES FUNCTION MultiPatch_GetDomainSpecification
 
 CCTK_INT FUNCTION                          \
     MultiPatch_ConvertFromPhysicalBoundary \
-        (CCTK_INT IN map,                  \
+        (CCTK_INT IN patch,                \
          CCTK_INT IN size,                 \
          CCTK_REAL IN  ARRAY physical_min, \
          CCTK_REAL IN  ARRAY physical_max, \

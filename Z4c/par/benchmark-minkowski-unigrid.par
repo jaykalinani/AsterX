@@ -22,6 +22,8 @@ $max_tile_size_x = 16
 $max_tile_size_y = 16
 $max_tile_size_z = 16
 
+CarpetX::verbose = no
+
 Cactus::cctk_show_schedule = yes
 
 Cactus::presync_mode = "mixed-error"
