@@ -1305,6 +1305,6 @@ template <typename T> inline constexpr bool is_GF3D5_v = is_GF3D5<T>::value;
   constexpr std::array<int, Loop::dim> L##_centered V;                         \
   const Loop::GF3D2layout L##gf_layout(cctkGH, L##_centered)
 #define CCTK_CENTERING_GF(C, L, N)                                             \
-  const Loop::GF3D2<C CCTK_REAL> N(L##gf_layout, ptr__##N)
+  const Loop::GF3D2<C CCTK_REAL> N(L##gf_layout, cctk_ptr_##N)
 
 #endif // #ifndef LOOP_HXX
