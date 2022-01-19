@@ -518,6 +518,9 @@ void setup_cctkGH(cGH *restrict cctkGH) {
   // The refinement factor in time over the top level (coarsest) grid
   cctkGH->cctk_timefac = 1; // no subcycling
 
+  // The total number of patches
+  cctkGH->cctk_npatches = ghext->num_patches();
+
   // The convergence level (numbered from zero upwards)
   cctkGH->cctk_convlevel = 0; // no convergence tests
 
