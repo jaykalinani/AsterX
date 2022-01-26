@@ -139,8 +139,6 @@ array<int, dim> get_group_indextype(const int gi) {
     const int centering = CCTK_GroupCenteringTableI(gi);
     assert(centering >= 0);
     iret = Util_TableGetIntArray(centering, dim, index.data(), "centering");
-    // The centering table should always be there
-    assert(iret >= 0);
   }
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
     // Default: vertex-centred
