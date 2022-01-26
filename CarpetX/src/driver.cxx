@@ -127,19 +127,23 @@ bool get_group_restrict_flag(const int gi) {
 }
 
 array<int, dim> get_group_indextype(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+
   assert(gi >= 0);
   const int tags = CCTK_GroupTagsTableI(gi);
   assert(tags >= 0);
   array<CCTK_INT, dim> index;
   int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    // fallback: use centering table
+    // Fallback: use centering table
     const int centering = CCTK_GroupCenteringTableI(gi);
     assert(centering >= 0);
     iret = Util_TableGetIntArray(centering, dim, index.data(), "centering");
+    // The centering table should always be there
+    assert(iret >= 0);
   }
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    // default: vertex-centred
+    // Default: vertex-centred
     index = {0, 0, 0};
   } else if (iret >= 0) {
     assert(iret == dim);
@@ -151,6 +155,11 @@ array<int, dim> get_group_indextype(const int gi) {
   array<int, dim> indextype;
   for (int d = 0; d < dim; ++d)
     indextype[d] = index[d];
+
+  if (verbose)
+    CCTK_VINFO("Grid function %s: centering %d %d %d", CCTK_FullGroupName(gi),
+               indextype[0], indextype[1], indextype[2]);
+
   return indextype;
 }
 
