@@ -128,22 +128,26 @@ bool get_group_restrict_flag(const int gi) {
 
 array<int, dim> get_group_indextype(const int gi) {
   assert(gi >= 0);
-  int tags = CCTK_GroupCenteringTableI(gi);
-  const char *tag_name = "centering";
-  if (tags < 0) {
-    tags = CCTK_GroupTagsTableI(gi);
-    tag_name = "index";
-  }
+  const int tags = CCTK_GroupTagsTableI(gi);
   assert(tags >= 0);
   array<CCTK_INT, dim> index;
-  int iret = Util_TableGetIntArray(tags, dim, index.data(), tag_name);
+  int iret = Util_TableGetIntArray(tags, dim, index.data(), "index");
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    index = {0, 0, 0}; // default: vertex-centred
+    // fallback: use centering table
+    const int centering = CCTK_GroupCenteringTableI(gi);
+    assert(centering >= 0);
+    iret = Util_TableGetIntArray(centering, dim, index.data(), "centering");
+  }
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    // default: vertex-centred
+    index = {0, 0, 0};
   } else if (iret >= 0) {
     assert(iret == dim);
   } else {
     assert(0);
   }
+
+  // Convert to index type
   array<int, dim> indextype;
   for (int d = 0; d < dim; ++d)
     indextype[d] = index[d];
