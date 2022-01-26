@@ -44,7 +44,7 @@ USES FUNCTION Rescale_Sources
 
 
 
-CCTK_REAL puncture_u TYPE=gf tags='index={0 0 0}'
+CCTK_REAL puncture_u TYPE=gf
 
 
 

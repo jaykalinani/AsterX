@@ -26,11 +26,11 @@ REQUIRES FUNCTION CallScheduleGroup
 # 3: defined via synchronization (copied from another box on same level)
 # 4: defined via prolongation (interpolated from next coarser level)
 # 5: defined via restriction (injected from next finer level)
-CCTK_REAL communication_indicator TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Temporary for studying communication effects"
+CCTK_REAL communication_indicator TYPE=gf TAGS='checkpoint="no"' "Temporary for studying communication effects"
 
 
 
 PUBLIC:
 
-CCTK_REAL point_type TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Point type"
-CCTK_REAL idx TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Global index"
+CCTK_REAL point_type TYPE=gf TAGS='checkpoint="no"' "Point type"
+CCTK_REAL idx TYPE=gf TAGS='checkpoint="no"' "Global index"

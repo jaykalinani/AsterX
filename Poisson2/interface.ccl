@@ -18,7 +18,7 @@ USES INCLUDE HEADER: vect.hxx
 
 CCTK_REAL need_initial_guess TYPE=scalar TAGS='checkpoint="no"' "Do we need to set up an initial guess?"
 
-CCTK_REAL sol TYPE=gf TAGS='index={0 0 0} res="res"' "Solution"
-CCTK_REAL res TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Residual"
+CCTK_REAL sol TYPE=gf TAGS='res="res"' "Solution"
+CCTK_REAL res TYPE=gf TAGS='checkpoint="no"' "Residual"
 
-CCTK_REAL src TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Source"
+CCTK_REAL src TYPE=gf TAGS='checkpoint="no"' "Source"

@@ -31,6 +31,6 @@ REQUIRES FUNCTION SolvePoisson
 
 
 
-CCTK_REAL urhs TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Right hand side"
-CCTK_REAL usol TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Conformal factor u"
-CCTK_REAL ures TYPE=gf TAGS='index={0 0 0} checkpoint="no"' "Residual"
+CCTK_REAL urhs TYPE=gf TAGS='checkpoint="no"' "Right hand side"
+CCTK_REAL usol TYPE=gf TAGS='checkpoint="no"' "Conformal factor u"
+CCTK_REAL ures TYPE=gf TAGS='checkpoint="no"' "Residual"

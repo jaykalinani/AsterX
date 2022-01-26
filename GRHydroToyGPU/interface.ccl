@@ -12,42 +12,42 @@ USES INCLUDE HEADER: loop_device.hxx
 
 
 # The "fluxes=..." declaration would be required for refluxing. We're not using refluxing, though.
-# CCTK_REAL conserved TYPE=gf TAGS='index={1 1 1} fluxes="HydroToyGPU::flux_x HydroToyGPU::flux_y HydroToyGPU::flux_z" rhs="rhs"'
-CCTK_REAL dens TYPE=gf TAGS='index={1 1 1} rhs="densrhs"' "Conserved rest mass density"
+# CCTK_REAL conserved TYPE=gf CENTERING={ccc} TAGS='fluxes="HydroToyGPU::flux_x HydroToyGPU::flux_y HydroToyGPU::flux_z" rhs="rhs"'
+CCTK_REAL dens TYPE=gf CENTERING={ccc} TAGS='rhs="densrhs"' "Conserved rest mass density"
 
-CCTK_REAL mom TYPE=gf TAGS='index={1 1 1} rhs="momrhs"'
+CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs"'
 {
   momx, momy, momz
 } "Conserved momentum density"
 
-CCTK_REAL tau TYPE=gf TAGS='index={1 1 1} rhs="taurhs"' "Conserved internal energy density"
+CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs"' "Conserved internal energy density"
 
-CCTK_REAL flux_x TYPE=gf TAGS='index={0 1 1} checkpoint="no"'
+CCTK_REAL flux_x TYPE=gf CENTERING={vcc} TAGS='checkpoint="no"'
 {
   fxdens
   fxmomx fxmomy fxmomz
   fxtau
 } "Fluxes in x direction"
 
-CCTK_REAL flux_y TYPE=gf TAGS='index={1 0 1} checkpoint="no"'
+CCTK_REAL flux_y TYPE=gf CENTERING={cvc} TAGS='checkpoint="no"'
 {
   fydens
   fymomx fymomy fymomz
   fytau
 } "Fluxes in y direction"
 
-CCTK_REAL flux_z TYPE=gf TAGS='index={1 1 0} checkpoint="no"'
+CCTK_REAL flux_z TYPE=gf CENTERING={ccv} TAGS='checkpoint="no"'
 {
   fzdens
   fzmomx fzmomy fzmomz
   fztau
 } "Fluxes in z direction"
 
-CCTK_REAL densrhs TYPE=gf TAGS='index={1 1 1} checkpoint="no"' "Conserved rest mass density RHS"
+CCTK_REAL densrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved rest mass density RHS"
 
-CCTK_REAL momrhs TYPE=gf TAGS='index={1 1 1} checkpoint="no"'
+CCTK_REAL momrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {
   momxrhs, momyrhs, momzrhs
 } "Conserved momentum density RHS"
 
-CCTK_REAL taurhs TYPE=gf TAGS='index={1 1 1} checkpoint="no"' "Conserved internal energy density RHS" 
+CCTK_REAL taurhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved internal energy density RHS" 

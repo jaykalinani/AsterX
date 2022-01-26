@@ -19,12 +19,12 @@ REQUIRES FUNCTION SolvePoisson
 
 
 
-CCTK_REAL rhs TYPE=gf TAGS='index={0 0 0}' "Right hand side"
+CCTK_REAL rhs TYPE=gf "Right hand side"
 
-CCTK_REAL phi TYPE=gf TAGS='index={0 0 0}' "Potential"
-CCTK_REAL res TYPE=gf TAGS='index={0 0 0}' "Residual (as reported by AMReX)"
+CCTK_REAL phi TYPE=gf "Potential"
+CCTK_REAL res TYPE=gf "Residual (as reported by AMReX)"
 
-CCTK_REAL ires TYPE=gf TAGS='index={0 0 0}' "Independently evaluated residual"
+CCTK_REAL ires TYPE=gf "Independently evaluated residual"
 
-CCTK_REAL asol TYPE=gf TAGS='index={0 0 0}' "Analytic solution"
-CCTK_REAL aerr TYPE=gf TAGS='index={0 0 0}' "Error wrt. analytic solution"
+CCTK_REAL asol TYPE=gf "Analytic solution"
+CCTK_REAL aerr TYPE=gf "Error wrt. analytic solution"

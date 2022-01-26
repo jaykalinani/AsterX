@@ -101,7 +101,7 @@ REAL gridspacings type=SCALAR tags='Checkpoint="no"'
   coarse_dx, coarse_dy, coarse_dz
 } "3D Cartesian grid spacings"
 
-REAL coordinates type=GF tags='Prolongation="None" Checkpoint="no" index={0 0 0}'
+REAL coordinates type=GF tags='Prolongation="None" Checkpoint="no"'
 {
   x, y, z, r
 # will become:

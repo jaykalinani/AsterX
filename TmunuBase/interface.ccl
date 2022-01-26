@@ -8,8 +8,8 @@ USES INCLUDE HEADER: loop_device.hxx
 
 PUBLIC:
 
-CCTK_REAL eTtt TYPE=gf TAGS='index={0 0 0}' "T_00"
+CCTK_REAL eTtt TYPE=gf "T_00"
 
-CCTK_REAL eTti TYPE=gf TAGS='index={0 0 0}' { eTtx eTty eTtz } "T_0i"
+CCTK_REAL eTti TYPE=gf { eTtx eTty eTtz } "T_0i"
 
-CCTK_REAL eTij TYPE=gf TAGS='index={0 0 0}' { eTxx eTxy eTxz eTyy eTyz eTzz } "T_ij"
+CCTK_REAL eTij TYPE=gf { eTxx eTxy eTxz eTyy eTyz eTzz } "T_ij"
