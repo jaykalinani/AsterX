@@ -1,31 +1,26 @@
+#include <fixmath.hxx>
+#include <loop.hxx>
+
 #include "schedule.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
-#include <loop.hxx>
-
 namespace CarpetX {
 using namespace std;
 
 extern "C" void CarpetX_InitError(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTSX_CarpetX_InitError;
   DECLARE_CCTK_PARAMETERS;
 
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> regrid_error_(cctkGH, regrid_error);
-
-  Loop::loop<1, 1, 1>(
-      cctkGH, where_t::everywhere,
-      [&](const Loop::PointDesc &p) { regrid_error_(p.I) = 0; });
+  Loop::loop<1, 1, 1>(cctkGH, where_t::everywhere,
+                      [&](const Loop::PointDesc &p) { regrid_error(p.I) = 0; });
 }
 
 extern "C" void CarpetX_SetLevel(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+  DECLARE_CCTK_ARGUMENTSX_CarpetX_SetLevel;
   DECLARE_CCTK_PARAMETERS;
-
-  const Loop::GF3D<CCTK_REAL, 1, 1, 1> refinement_level_(cctkGH,
-                                                         refinement_level);
 
   int levfac = cctk_levfac[0];
   int lev = 0;
@@ -36,7 +31,7 @@ extern "C" void CarpetX_SetLevel(CCTK_ARGUMENTS) {
 
   Loop::loop<1, 1, 1>(
       cctkGH, where_t::everywhere,
-      [&](const Loop::PointDesc &p) { refinement_level_(p.I) = lev; });
+      [&](const Loop::PointDesc &p) { refinement_level(p.I) = lev; });
 }
 
 } // namespace CarpetX

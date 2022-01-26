@@ -126,12 +126,12 @@ PROVIDES FUNCTION DriverInterpolate WITH CarpetX_DriverInterpolate LANGUAGE C
 
 PUBLIC:
 
-CCTK_REAL regrid_error TYPE=gf TAGS='index={1 1 1}'
+CCTK_REAL regrid_error TYPE=gf CENTERING={ccc} #TODO TAGS='index={1 1 1}'
 {
   regrid_error
 } "Regridding condition"
 
-CCTK_REAL refinement_level TYPE=gf TAGS='index={1 1 1}'
+CCTK_REAL refinement_level TYPE=gf CENTERING={ccc} #TODO TAGS='index={1 1 1}'
 {
   refinement_level
 } "Refinement level"
