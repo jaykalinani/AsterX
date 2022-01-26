@@ -14,7 +14,6 @@ extern "C" void GRHydroToyGPU_Prim2Con_Initial(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_GRHydroToyGPU_Prim2Con_Initial;
   DECLARE_CCTK_PARAMETERS;
 
-
   // Loop over the entire grid (0 to n-1 cells in each direction)
   constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
@@ -65,7 +64,7 @@ extern "C" void GRHydroToyGPU_Prim2Con_Initial(CCTK_ARGUMENTS) {
         momy(p.I) = cv.momy;
         momz(p.I) = cv.momz;
         tau(p.I) = cv.tau;
-
-
+      });
+}
 
 } // namespace GRHydroToyGPU
