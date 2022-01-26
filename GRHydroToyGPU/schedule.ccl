@@ -1,0 +1,133 @@
+# Schedule definitions for thorn GRHydroToyGPU
+
+STORAGE: dens mom tau
+STORAGE: flux_x flux_y flux_z
+STORAGE: densrhs momrhs taurhs
+STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
+
+
+
+# Initial conditions
+
+SCHEDULE GRHydroToyGPU_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
+{
+  LANG: C
+  READS: ADMBase::metric(interior)
+  READS: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior)
+  WRITES: dens(interior) tau(interior) mom(interior)
+} "Compute conserved variables from primitive variables at initial"
+
+SCHEDULE GRHydroToyGPU_Sync AT initial AFTER GRHydroToyGPU_Prim2Con_Initial
+{
+  LANG: C
+  OPTIONS: level
+  SYNC: dens tau mom
+} "Synchronize"
+
+SCHEDULE GRHydroToyGPU_Boundaries AT initial AFTER GRHydroToyGPU_Sync
+{
+  LANG: C
+  WRITES: dens(boundary) tau(boundary) mom(boundary)
+} "Apply boundary conditions"
+
+SCHEDULE GRHydroToyGPU_EstimateError AT postinitial
+{
+  LANG: C
+  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+  WRITES: CarpetX::regrid_error(interior)
+} "Estimate local error for regridding initial conditions"
+
+
+
+# Regridding
+
+SCHEDULE GRHydroToyGPU_Sync AT postregrid
+{
+  LANG: C
+  OPTIONS: global
+  SYNC: dens tau mom
+} "Synchronize"
+
+SCHEDULE GRHydroToyGPU_Boundaries AT postregrid AFTER GRHydroToyGPU_Sync
+{
+  LANG: C
+  WRITES: dens(boundary) tau(boundary) mom(boundary)
+} "Apply boundary conditions"
+
+SCHEDULE GRHydroToyGPU_EstimateError AT poststep
+{
+  LANG: C
+  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+  WRITES: CarpetX::regrid_error(interior)
+} "Estimate local error for regridding during evolution"
+
+
+
+# Time stepping
+
+SCHEDULE GRHydroToyGPU_Con2Prim IN ODESolvers_RHS
+{
+  LANG: C
+  READS: ADMBase::metric(everywhere)
+  READS: dens(everywhere) tau(everywhere) mom(everywhere)
+  WRITES: HydroBase::rho(everywhere) 
+  WRITES: HydroBase::vel(everywhere) 
+  WRITES: HydroBase::eps(everywhere) 
+  WRITES: HydroBase::press(everywhere)
+  WRITES: dens(everywhere) tau(everywhere) mom(everywhere)
+} "Calculate primitive variables from conservative variables"
+
+SCHEDULE GRHydroToyGPU_Fluxes IN ODESolvers_RHS AFTER GRHydroToyGPU_Con2Prim
+{
+  LANG: C
+  READS: ADMBase::metric(everywhere) 
+  READS: ADMBase::lapse(everywhere) 
+  READS: ADMBase::shift(everywhere) 
+  READS: dens(everywhere) tau(everywhere) mom(everywhere)
+  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+  WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+  SYNC: flux_x flux_y flux_z
+} "Calculate the hydro fluxes"
+
+SCHEDULE GRHydroToyGPU_FluxBoundaries IN ODESolvers_RHS AFTER GRHydroToyGPU_Fluxes
+{
+  LANG: C
+  WRITES: flux_x(boundary) flux_y(boundary) flux_z(boundary)
+} "Apply boundary conditions to hydro fluxes"
+
+SCHEDULE GRHydroToyGPU_RHS IN ODESolvers_RHS AFTER GRHydroToyGPU_FluxBoundaries
+{
+  LANG: C
+  READS: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
+  WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
+} "Calculate the RHS of the hydro equations"
+
+SCHEDULE GRHydroToyGPU_Sync IN ODESolvers_PostStep
+{
+  LANG: C
+  OPTIONS: global
+  SYNC: dens tau mom
+} "Synchronize"
+
+SCHEDULE GRHydroToyGPU_Boundaries IN ODESolvers_PostStep AFTER GRHydroToyGPU_Sync
+{
+  LANG: C
+  WRITES: dens(boundary) tau(boundary) mom(boundary)
+} "Apply boundary conditions"
+
+
+
+# Restriction
+
+SCHEDULE GRHydroToyGPU_Sync AT postrestrict
+{
+  LANG: C
+  OPTIONS: global
+  SYNC: dens tau mom
+} "Synchronize"
+
+SCHEDULE GRHydroToyGPU_Boundaries AT postrestrict AFTER GRHydroToyGPU_Sync
+{
+  LANG: C
+  WRITES: dens(boundary) tau(boundary) mom(boundary)
+} "Apply boundary conditions"
