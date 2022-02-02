@@ -166,7 +166,10 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
       *ghext->patchdata.at(0).leveldata.at(0).groupdata.at(gi);
 
   // Number of values transmitted per grid point
-  const int nvalues = 1                     // patch
+  const int nintvalues = 1                  // patch
+                         + 1                // level
+                         + dim;             // grid point index
+  const int nvalues = nintvalues            // integer values
                       + 1                   // level
                       + dim                 // grid point index
                       + dim                 // coordinates
@@ -276,10 +279,10 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     vector<int> iptr(total_npoints / nvalues);
     iota(iptr.begin(), iptr.end(), 0);
     const auto compare = [&](const int i, const int j) {
-      array<int, 4> pi, pj;
-      for (int d = 0; d < 4; ++d)
+      array<int, nintvalues> pi, pj;
+      for (int d = 0; d < nintvalues; ++d)
         pi[d] = int(all_data.at(i * nvalues + d));
-      for (int d = 0; d < 4; ++d)
+      for (int d = 0; d < nintvalues; ++d)
         pj[d] = int(all_data.at(j * nvalues + d));
       return pi < pj;
     };
@@ -315,9 +318,9 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     for (const auto i : iptr) {
       int pos = nvalues * i;
       file << cctkGH->cctk_iteration << sep << cctkGH->cctk_time;
-      for (int v = 0; v < 5; ++v)
+      for (int v = 0; v < nintvalues; ++v)
         file << sep << int(all_data.at(pos++));
-      for (int v = 4; v < nvalues; ++v)
+      for (int v = nintvalues; v < nvalues; ++v)
         file << sep << all_data.at(pos++);
       file << "\n";
       assert(pos % nvalues == 0);
