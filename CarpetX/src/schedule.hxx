@@ -39,20 +39,29 @@ int DisableGroupStorage(const cGH *cctkGH, const char *groupname);
 
 struct active_levels_t {
   int min_level, max_level;
+  int min_patch, max_patch;
 
-  active_levels_t() = delete;
+  // active_levels_t() = delete;
 
-  active_levels_t(const int min_level, const int max_level)
-      : min_level(min_level), max_level(max_level) {
+  active_levels_t(const int min_level, const int max_level, const int min_patch,
+                  const int max_patch)
+      : min_level(min_level), max_level(max_level), min_patch(min_patch),
+        max_patch(max_patch) {
     assert(min_level >= 0);
     assert(max_level <= ghext->num_levels());
+    assert(min_patch >= 0);
+    assert(max_patch <= ghext->num_patches());
   }
+  active_levels_t(const int min_level, const int max_level)
+      : active_levels_t(min_level, max_level, 0, ghext->num_patches()) {}
+  active_levels_t() : active_levels_t(0, ghext->num_levels()) {}
 
 private:
   void assert_consistent_iterations() const {
     rat64 good_iteration = -1;
     for (int level = min_level; level < max_level; ++level) {
-      for (const auto &patchdata : ghext->patchdata) {
+      for (int patch = min_patch; patch < max_patch; ++patch) {
+        const auto &patchdata = ghext->patchdata.at(patch);
         if (level < int(patchdata.leveldata.size())) {
           if (good_iteration == -1)
             good_iteration = patchdata.leveldata.at(level).iteration;
@@ -63,22 +72,28 @@ private:
   }
 
 public:
-  // Loop over all patches of all active levels
+  // Loop over all active patches of all active levels
   template <typename F> void loop(F f) const {
     assert_consistent_iterations();
-    for (int level = min_level; level < max_level; ++level)
-      for (auto &patchdata : ghext->patchdata)
+    for (int level = min_level; level < max_level; ++level) {
+      for (int patch = min_patch; patch < max_patch; ++patch) {
+        auto &patchdata = ghext->patchdata.at(patch);
         if (level < int(patchdata.leveldata.size()))
           f(patchdata.leveldata.at(level));
+      }
+    }
   }
 
-  // Loop over all patches of all active levels
+  // Loop over all active patches of all active levels
   template <typename F> void loop_reverse(F f) const {
     assert_consistent_iterations();
-    for (int level = max_level - 1; level >= min_level; --level)
-      for (auto &patchdata : ghext->patchdata)
+    for (int level = max_level - 1; level >= min_level; --level) {
+      for (int patch = min_patch; patch < max_patch; ++patch) {
+        auto &patchdata = ghext->patchdata.at(patch);
         if (level < int(patchdata.leveldata.size()))
           f(patchdata.leveldata.at(level));
+      }
+    }
   }
 };
 
@@ -199,7 +214,7 @@ void enter_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
 void leave_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
 
 void loop_over_blocks(
-    const cGH *restrict const cctkGH,
+    const cGH *restrict const cctkGH, const active_levels_t &active_levels,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel);
 

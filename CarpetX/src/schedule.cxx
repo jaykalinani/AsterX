@@ -824,7 +824,7 @@ extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
 }
 
 void loop_over_blocks(
-    const cGH *restrict const cctkGH,
+    const cGH *restrict const cctkGH, const active_levels_t &active_levels,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel) {
   DECLARE_CCTK_PARAMETERS;
@@ -853,7 +853,7 @@ void loop_over_blocks(
   case launch_method_t::serial: {
     // No parallelism
 
-    active_levels->loop([&](const auto &restrict leveldata) {
+    active_levels.loop([&](const auto &restrict leveldata) {
       // Note: The amrex::MFIter uses global variables and OpenMP barriers
       int block = 0;
       const auto mfitinfo = amrex::MFItInfo().EnableTiling();
@@ -874,7 +874,7 @@ void loop_over_blocks(
 
     std::vector<std::function<void()> > tasks;
 
-    active_levels->loop([&](const auto &restrict leveldata) {
+    active_levels.loop([&](const auto &restrict leveldata) {
       // Note: The amrex::MFIter uses global variables and OpenMP barriers
       int block = 0;
       const auto mfitinfo = amrex::MFItInfo().EnableTiling();
@@ -907,7 +907,7 @@ void loop_over_blocks(
     assert(CallFunction_count == -1);
     CallFunction_count = 0;
 
-    active_levels->loop([&](const auto &restrict leveldata) {
+    active_levels.loop([&](const auto &restrict leveldata) {
       // No OpenMP parallelization when using GPUs
       int block = 0;
       const auto mfitinfo =
@@ -1169,7 +1169,7 @@ int Initialise(tFleshConfig *config) {
     setup_cctkGHs(cctkGH);
 
     assert(!active_levels);
-    active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
+    active_levels = make_optional<active_levels_t>();
 
     CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
 
