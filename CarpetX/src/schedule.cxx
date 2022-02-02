@@ -58,9 +58,9 @@ constexpr int undefined = (INT_MAX / 2 + 1) + 666;
 // Used to pass active levels from AMReX's regridding functions
 optional<active_levels_t> active_levels;
 
-void Reflux(int level);
-void Restrict(int level, const vector<int> &groups);
-void Restrict(int level);
+void Reflux(const cGH *cctkGH, int level);
+void Restrict(const cGH *cctkGH, int level, const vector<int> &groups);
+void Restrict(const cGH *cctkGH, int level);
 
 namespace {
 // Convert a (direction, face) pair to an AMReX Orientation
@@ -1353,14 +1353,14 @@ int Initialise(tFleshConfig *config) {
   CCTK_VINFO("Initialized %d levels", ghext->num_levels());
 
   assert(!active_levels);
-  active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
+  active_levels = make_optional<active_levels_t>();
 
   if (!restrict_during_sync) {
     // Restrict
     assert(active_levels);
     active_levels->loop_reverse([&](const auto &leveldata) {
       if (leveldata.level != ghext->num_levels() - 1)
-        Restrict(leveldata.level);
+        Restrict(cctkGH, leveldata.level);
     });
     CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
   }
@@ -1448,7 +1448,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
                 return "InvalidateTimelevels (invalidate all "
                        "non-checkpointed variables)";
               });
-              poison_invalid(groupdata, vi, tl);
+              poison_invalid(cctkGH, groupdata, vi, tl);
             }
           }
         }
@@ -1508,7 +1508,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
             groupdata.valid.at(0).at(vi).set(valid_t(), []() {
               return "CycletimeLevels (invalidate current time level)";
             });
-            poison_invalid(groupdata, vi, 0);
+            poison_invalid(cctkGH, groupdata, vi, 0);
           }
         }
         // All time levels (except the current) must be valid everywhere for
@@ -1521,7 +1521,8 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
               });
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            check_valid(groupdata, vi, tl, []() { return "CycleTimelevels"; });
+            check_valid(cctkGH, groupdata, vi, tl,
+                        []() { return "CycleTimelevels"; });
       });
     } else { // CCTK_ARRAY or CCTK_SCALAR
 
@@ -1695,13 +1696,13 @@ int Evolve(tFleshConfig *config) {
       // TODO: These loop bounds are wrong for subcycling
       assert(active_levels);
       for (int level = ghext->num_levels() - 2; level >= 0; --level)
-        Reflux(level);
+        Reflux(cctkGH, level);
 
       if (!restrict_during_sync) {
         // Restrict
         // TODO: These loop bounds are wrong for subcycling
         for (int level = ghext->num_levels() - 2; level >= 0; --level)
-          Restrict(level);
+          Restrict(cctkGH, level);
         CCTK_Traverse(cctkGH, "CCTK_POSTRESTRICT");
       }
 
@@ -1731,7 +1732,7 @@ int Shutdown(tFleshConfig *config) {
   CCTK_VINFO("Shutting down...");
 
   assert(!active_levels);
-  active_levels = make_optional<active_levels_t>(0, ghext->num_levels());
+  active_levels = make_optional<active_levels_t>();
 
   CCTK_Traverse(cctkGH, "CCTK_TERMINATE");
 
@@ -1782,7 +1783,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                 << "::" << attribute->routine << " checking input";
             return buf.str();
           });
-          check_valid(groupdata, rd.vi, rd.tl, [&]() {
+          check_valid(cctkGH, groupdata, rd.vi, rd.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -1846,7 +1847,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Poison output variables that are not input variables";
                 return buf.str();
               });
-          poison_invalid(groupdata, wr.vi, wr.tl);
+          poison_invalid(cctkGH, groupdata, wr.vi, wr.tl);
         });
       } else { // CCTK_ARRAY or CCTK_SCALAR
         auto &restrict arraygroupdata =
@@ -2021,7 +2022,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark output variables as valid";
                 return buf.str();
               });
-          check_valid(groupdata, wr.vi, wr.tl, [&]() {
+          check_valid(cctkGH, groupdata, wr.vi, wr.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2074,7 +2075,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark invalid variables as invalid";
                 return buf.str();
               });
-          check_valid(groupdata, inv.vi, inv.tl, [&]() {
+          check_valid(cctkGH, groupdata, inv.vi, inv.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2166,7 +2167,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   if (restrict_during_sync) {
     active_levels->loop_reverse([&](const auto &leveldata) {
       if (leveldata.level < ghext->num_levels() - 1)
-        Restrict(leveldata.level, groups);
+        Restrict(cctkGH, leveldata.level, groups);
     });
     // FIXME: cannot call POSTRESTRICT since this could contain a SYNC leading
     // to an infinite loop. This means that outer boundaries will be left
@@ -2207,8 +2208,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               return "SyncGroupsByDirI before syncing: Mark ghost zones as "
                      "invalid";
             });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl,
+            poison_invalid(cctkGH, groupdata, vi, tl);
+            check_valid(cctkGH, groupdata, vi, tl,
                         []() { return "SyncGroupsByDirI before syncing"; });
           }
           {
@@ -2253,11 +2254,11 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(coarsegroupdata, vi, tl, []() {
+            poison_invalid(cctkGH, groupdata, vi, tl);
+            check_valid(cctkGH, coarsegroupdata, vi, tl, []() {
               return "SyncGroupsByDirI on coarse level before prolongation";
             });
-            check_valid(groupdata, vi, tl, []() {
+            check_valid(cctkGH, groupdata, vi, tl, []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             groupdata.valid.at(tl).at(vi).set_ghosts(false, []() {
@@ -2287,8 +2288,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
       for (int tl = 0; tl < sync_tl; ++tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          poison_invalid(groupdata, vi, tl);
-          check_valid(groupdata, vi, tl,
+          poison_invalid(cctkGH, groupdata, vi, tl);
+          check_valid(cctkGH, groupdata, vi, tl,
                       []() { return "SyncGroupsByDirI after syncing"; });
         }
       }
@@ -2303,7 +2304,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   return numgroups; // number of groups synchronized
 }
 
-void Reflux(int level) {
+void Reflux(const cGH *cctkGH, int level) {
   DECLARE_CCTK_PARAMETERS;
 
   if (!do_reflux)
@@ -2375,7 +2376,7 @@ void Reflux(int level) {
                                      groupdata.numvars, geom);
 
           for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-            check_valid(finegroupdata, vi, tl, []() {
+            check_valid(cctkGH, finegroupdata, vi, tl, []() {
               return "Reflux after refluxing: Fine level data";
             });
           }
@@ -2385,7 +2386,7 @@ void Reflux(int level) {
   }     // for patchdata
 }
 
-void Restrict(int level, const vector<int> &groups) {
+void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
   DECLARE_CCTK_PARAMETERS;
 
 #warning "TODO"
@@ -2438,15 +2439,15 @@ void Restrict(int level, const vector<int> &groups) {
             error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on fine level before restricting";
             });
-            poison_invalid(finegroupdata, vi, tl);
-            check_valid(finegroupdata, vi, tl, []() {
+            poison_invalid(cctkGH, finegroupdata, vi, tl);
+            check_valid(cctkGH, finegroupdata, vi, tl, []() {
               return "Restrict on fine level before restricting";
             });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on coarse level before restricting";
             });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, []() {
+            poison_invalid(cctkGH, groupdata, vi, tl);
+            check_valid(cctkGH, groupdata, vi, tl, []() {
               return "Restrict on coarse level before restricting";
             });
           }
@@ -2482,8 +2483,8 @@ void Restrict(int level, const vector<int> &groups) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set(make_valid_int(),
                                               []() { return "Restrict"; });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, []() {
+            poison_invalid(cctkGH, groupdata, vi, tl);
+            check_valid(cctkGH, groupdata, vi, tl, []() {
               return "Restrict on coarse level after restricting";
             });
           }
@@ -2496,7 +2497,7 @@ void Restrict(int level, const vector<int> &groups) {
   nvtxRangePop();
 }
 
-void Restrict(int level) {
+void Restrict(const cGH *cctkGH, int level) {
   const int numgroups = CCTK_NumGroups();
   vector<int> groups;
   groups.reserve(numgroups);
@@ -2511,7 +2512,7 @@ void Restrict(int level) {
         groups.push_back(groupdata.groupindex);
     }
   }
-  Restrict(level, groups);
+  Restrict(cctkGH, level, groups);
 }
 
 // storage handling

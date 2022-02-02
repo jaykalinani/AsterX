@@ -813,7 +813,7 @@ void CactusAmrCore::SetupLevel(const int level, const amrex::BoxArray &ba,
           gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
       groupdata.valid.at(tl).resize(groupdata.numvars, why_valid_t(why));
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        poison_invalid(groupdata, vi, tl);
+        poison_invalid_OLD(groupdata, vi, tl);
     }
 
     if (level > 0) {
@@ -940,7 +940,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
           error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
-          check_valid(coarsegroupdata, vi, tl, []() {
+          check_valid_OLD(coarsegroupdata, vi, tl, []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
         }
@@ -957,7 +957,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         // Already poisoned by SetupLevel
-        check_valid(groupdata, vi, tl, []() {
+        check_valid_OLD(groupdata, vi, tl, []() {
           return "MakeNewLevelFromCoarse after prolongation";
         });
       }
@@ -1053,8 +1053,8 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                            []() { return "RemakeLevel before prolongation"; });
           error_if_invalid(groupdata, vi, tl, make_valid_all(),
                            []() { return "RemakeLevel before prolongation"; });
-          check_valid(coarsegroupdata, vi, tl,
-                      []() { return "RemakeLevel before prolongation"; });
+          check_valid_OLD(coarsegroupdata, vi, tl,
+                          []() { return "RemakeLevel before prolongation"; });
           // We cannot call this function since it would try to
           // traverse the old grid function with the new grid
           // structure.
@@ -1084,8 +1084,8 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         // Already poisoned above
-        check_valid(groupdata, vi, tl,
-                    []() { return "RemakeLevel after prolongation"; });
+        check_valid_OLD(groupdata, vi, tl,
+                        []() { return "RemakeLevel after prolongation"; });
       }
     } // for tl
 
