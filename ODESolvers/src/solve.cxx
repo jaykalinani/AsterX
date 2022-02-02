@@ -56,14 +56,17 @@ constexpr details::return_type<D, Types...> make_array(Types &&...t) {
 // A state vector component, with mfabs for each level, group, and variable
 struct statecomp_t {
 
-  statecomp_t() = default;
+  statecomp_t() = delete;
   statecomp_t(statecomp_t &&) = default;
   statecomp_t &operator=(statecomp_t &&) = default;
+
+  statecomp_t(const cGH *cctkGH) : cctkGH(cctkGH) {}
 
   // Don't allow copies because we might own stuff
   statecomp_t(const statecomp_t &) = delete;
   statecomp_t &operator=(const statecomp_t &) = delete;
 
+  const cGH *cctkGH;
   vector<string> groupnames;
   vector<int> groupids;
   vector<amrex::MultiFab *> mfabs;
@@ -110,7 +113,7 @@ void statecomp_t::check_valid(const function<string()> &why) const {
         const auto &groupdata = *leveldata.groupdata.at(groupid);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           const int tl = 0;
-          CarpetX::check_valid(groupdata, vi, tl, why);
+          CarpetX::check_valid(cctkGH, groupdata, vi, tl, why);
         }
       });
     }
@@ -121,7 +124,7 @@ void statecomp_t::check_valid(const function<string()> &why) const {
 statecomp_t statecomp_t::copy() const {
   check_valid("before copy");
   const size_t size = mfabs.size();
-  statecomp_t result;
+  statecomp_t result(cctkGH);
   result.groupnames = groupnames;
   result.groupids.resize(size, -1);
   result.mfabs.reserve(size);
@@ -392,7 +395,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   const CCTK_REAL dt = cctk_delta_time;
   const int tl = 0;
 
-  statecomp_t var, rhs;
+  statecomp_t var(cctkGH), rhs(cctkGH);
   int nvars = 0;
   assert(CarpetX::active_levels);
   CarpetX::active_levels->loop([&](const auto &leveldata) {
@@ -896,7 +899,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
     const auto y1 = var.copy();
 
-    statecomp_t kprime2;
+    statecomp_t kprime2(cctkGH);
     statecomp_t::lincomb(kprime2, 0, make_array(-1.0, +1.0, -dt / 2),
                          make_array(&y0, &y1, &k1));
 
