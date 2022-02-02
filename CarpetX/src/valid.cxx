@@ -1,10 +1,17 @@
 #include "driver.hxx"
-#include "loop.hxx"
+#include "loop_device.hxx"
 #include "schedule.hxx"
 #include "valid.hxx"
 
 #include <cctk.h>
 #include <cctk_Parameters.h>
+
+#ifdef __CUDACC__
+#include <nvToolsExt.h>
+#else
+static inline void nvtxRangePushA(const char *region) {}
+static inline void nvtxRangePop() {}
+#endif
 
 #include <algorithm>
 #include <functional>
@@ -51,6 +58,8 @@ void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
   if (valid.valid_all())
     return;
 
+  nvtxRangePushA("poison_invalid<GF>");
+
   const auto &leveldata = groupdata.leveldata();
   const auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
@@ -78,6 +87,57 @@ void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
                       [&](const Loop::PointDesc &p) { ptr_(p.I) = 0.0 / 0.0; });
     }
   }
+
+  nvtxRangePop();
+}
+
+// Set grid functions to nan
+void poison_invalid(const cGH *const cctkGH,
+                    const GHExt::PatchData::LevelData::GroupData &groupdata,
+                    int vi, int tl) {
+  DECLARE_CCTK_PARAMETERS;
+  if (!poison_undefined_values)
+    return;
+
+  const valid_t &valid = groupdata.valid.at(tl).at(vi).get();
+  if (valid.valid_all())
+    return;
+
+  nvtxRangePushA("poison_invalid<GF>");
+
+  loop_over_blocks(cctkGH, [&](int patch, int level, int index, int block,
+                               const cGH *cctkGH) {
+    const Loop::GridDescBaseDevice grid(cctkGH);
+    const Loop::GF3D2layout layout(cctkGH, groupdata.indextype);
+    const Loop::GF3D2<CCTK_REAL> gf(
+        layout, static_cast<CCTK_REAL *>(CCTK_VarDataPtrI(
+                    cctkGH, tl, groupdata.firstvarindex + vi)));
+
+    if (!valid.valid_any()) {
+      grid.loop_device_idx<where_t::everywhere>(
+          groupdata.indextype, groupdata.nghostzones,
+          [=] CCTK_DEVICE(const Loop::PointDesc &p)
+              CCTK_ATTRIBUTE_ALWAYS_INLINE { gf(p.I) = 0.0 / 0.0; });
+    } else {
+      if (!valid.valid_int)
+        grid.loop_device_idx<where_t::interior>(
+            groupdata.indextype, groupdata.nghostzones,
+            [=] CCTK_DEVICE(const Loop::PointDesc &p)
+                CCTK_ATTRIBUTE_ALWAYS_INLINE { gf(p.I) = 0.0 / 0.0; });
+      if (!valid.valid_outer)
+        grid.loop_device_idx<where_t::boundary>(
+            groupdata.indextype, groupdata.nghostzones,
+            [=] CCTK_DEVICE(const Loop::PointDesc &p)
+                CCTK_ATTRIBUTE_ALWAYS_INLINE { gf(p.I) = 0.0 / 0.0; });
+      if (!valid.valid_ghosts)
+        grid.loop_device_idx<where_t::ghosts>(
+            groupdata.indextype, groupdata.nghostzones,
+            [=] CCTK_DEVICE(const Loop::PointDesc &p)
+                CCTK_ATTRIBUTE_ALWAYS_INLINE { gf(p.I) = 0.0 / 0.0; });
+    }
+  });
+
+  nvtxRangePop();
 }
 
 // Ensure grid functions are not nan
@@ -92,6 +152,8 @@ void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
   const valid_t &valid = groupdata.valid.at(tl).at(vi).get();
   if (!valid.valid_any())
     return;
+
+  nvtxRangePushA("check_valid<GF>");
 
   size_t nan_count{0};
   array<int, 3> nan_imin, nan_imax;
@@ -214,6 +276,8 @@ void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
                   string(groupdata.valid.at(tl).at(vi)).c_str());
     }
   }
+
+  nvtxRangePop();
 }
 
 // Ensure arrays are valid
@@ -252,6 +316,8 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
   if (valid.valid_all())
     return;
 
+  nvtxRangePushA("poison_invalid<GA>");
+
   if (!valid.valid_int) {
     int dimension = arraygroupdata.dimension;
     CCTK_REAL *restrict const ptr =
@@ -263,6 +329,8 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
     for (int i = 0; i < n_elems; i++)
       ptr[i] = 0.0 / 0.0;
   }
+
+  nvtxRangePop();
 }
 
 // Ensure arrays are not nan
@@ -275,6 +343,8 @@ void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
   const valid_t &valid = arraygroupdata.valid.at(tl).at(vi).get();
   if (!valid.valid_any())
     return;
+
+  nvtxRangePushA("check_valid<GA>");
 
   // arrays have no boundary so we expect them to alway be valid
   assert(valid.valid_outer && valid.valid_ghosts);
@@ -301,6 +371,8 @@ void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
                 CCTK_FullVarName(arraygroupdata.firstvarindex + vi),
                 size_t(nan_count), tl,
                 string(arraygroupdata.valid.at(tl).at(vi)).c_str());
+
+  nvtxRangePop();
 }
 
 checksums_t
@@ -311,6 +383,8 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
 
   if (!poison_undefined_values)
     return checksums;
+
+  nvtxRangePushA("calculate_checksums");
 
   assert(active_levels);
   active_levels->loop([&](auto &restrict leveldata) {
@@ -374,6 +448,9 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
       }
     }
   });
+
+  nvtxRangePop();
+
   return checksums;
 }
 
@@ -384,6 +461,8 @@ void check_checksums(const checksums_t &checksums) {
     return;
   if (checksums.empty())
     return;
+
+  nvtxRangePushA("check_checksums");
 
   assert(active_levels);
   active_levels->loop([&](auto &restrict leveldata) {
@@ -448,6 +527,8 @@ void check_checksums(const checksums_t &checksums) {
       }
     }
   });
+
+  nvtxRangePop();
 }
 
 } // namespace CarpetX
