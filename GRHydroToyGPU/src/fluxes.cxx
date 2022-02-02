@@ -135,10 +135,13 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         }
 
         case reconstruction_t::minmod: {
+	  //reconstructs values of Im and Ip at the common face between these two cells
           CCTK_REAL var_slope_p = gf_var(Ipp) - gf_var(Ip);
           CCTK_REAL var_slope_c = gf_var(Ip) - gf_var(Im);
           CCTK_REAL var_slope_m = gf_var(Im) - gf_var(Imm);
+	  //reconstructed Im on its "plus/right" side
           CCTK_REAL var_m = gf_var(Im) + minmod(var_slope_c, var_slope_m) / 2;
+          //reconstructed Ip on its "minus/left" side 
           CCTK_REAL var_p = gf_var(Ip) - minmod(var_slope_p, var_slope_c) / 2;
           return array<CCTK_REAL, 2>{var_m, var_p};
         }
