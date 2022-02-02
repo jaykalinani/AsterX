@@ -257,7 +257,144 @@ public:
       }
     } // for rank
   }
+
+  // Loop over all outer ghost points. This includes ghost edges/corners on
+  // non-ghost faces. Loop over faces first, then edges, then corners.
+  template <int CI, int CJ, int CK, int VS = 1, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_ghosts_inclusive_device(const array<int, dim> &group_nghostzones,
+                               const F &f) const {
+    const array<int, dim> offset{CI, CJ, CK};
+
+    for (int rank = dim - 1; rank >= 0; --rank) {
+
+      for (int nk = -1; nk <= +1; ++nk) {
+        for (int nj = -1; nj <= +1; ++nj) {
+          for (int ni = -1; ni <= +1; ++ni) {
+            if ((ni == 0) + (nj == 0) + (nk == 0) == rank) {
+
+              if ((ni != 0 && !bbox[0 + (ni == -1 ? 0 : 1)]) ||
+                  (nj != 0 && !bbox[2 + (nj == -1 ? 0 : 1)]) ||
+                  (nk != 0 && !bbox[4 + (nk == -1 ? 0 : 1)])) {
+
+                const array<int, dim> inormal{ni, nj, nk};
+
+                array<int, dim> imin, imax;
+                for (int d = 0; d < dim; ++d) {
+                  const int ghost_offset =
+                      nghostzones[d] - group_nghostzones[d];
+                  const int begin_bnd = ghost_offset;
+                  const int begin_int = nghostzones[d];
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
+                  switch (inormal[d]) {
+                  case -1: // lower boundary
+                    imin[d] = begin_bnd;
+                    imax[d] = begin_int;
+                    break;
+                  case 0: // interior
+                    imin[d] = begin_int;
+                    imax[d] = end_int;
+                    break;
+                  case +1: // upper boundary
+                    imin[d] = end_int;
+                    imax[d] = end_bnd;
+                    break;
+                  default:
+                    assert(0);
+                  }
+
+                  imin[d] = std::max(tmin[d], imin[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
+                }
+
+                loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
+              }
+            } // if rank
+          }
+        }
+      }
+    } // for rank
+  }
+
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      std::enable_if_t<(where == where_t::everywhere), void>
+      loop_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    loop_all_device<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      std::enable_if_t<(where == where_t::interior), void>
+      loop_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    loop_int_device<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      std::enable_if_t<(where == where_t::boundary), void>
+      loop_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    loop_bnd_device<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      std::enable_if_t<(where == where_t::ghosts_inclusive), void>
+      loop_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    loop_ghosts_inclusive_device<CI, CJ, CK>(group_nghostzones, f);
+  }
+  template <int CI, int CJ, int CK, where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      std::enable_if_t<(where == where_t::ghosts), void>
+      loop_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    loop_ghosts_device<CI, CJ, CK>(group_nghostzones, f);
+  }
+
+  template <where_t where, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_device_idx(const std::array<int, dim> &indextype,
+                  const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
+    case 0b000:
+      return noinline(
+          [&] { return loop_device<0, 0, 0, where>(group_nghostzones, f); });
+    case 0b001:
+      return noinline(
+          [&] { return loop_device<1, 0, 0, where>(group_nghostzones, f); });
+    case 0b010:
+      return noinline(
+          [&] { return loop_device<0, 1, 0, where>(group_nghostzones, f); });
+    case 0b011:
+      return noinline(
+          [&] { return loop_device<1, 1, 0, where>(group_nghostzones, f); });
+    case 0b100:
+      return noinline(
+          [&] { return loop_device<0, 0, 1, where>(group_nghostzones, f); });
+    case 0b101:
+      return noinline(
+          [&] { return loop_device<1, 0, 1, where>(group_nghostzones, f); });
+    case 0b110:
+      return noinline(
+          [&] { return loop_device<0, 1, 1, where>(group_nghostzones, f); });
+    case 0b111:
+      return noinline(
+          [&] { return loop_device<1, 1, 1, where>(group_nghostzones, f); });
+    default:
+      assert(0);
+    }
+  }
 };
+
+template <where_t where, typename F>
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+loop_device_idx(const cGH *cctkGH, const std::array<int, dim> &indextype,
+                const std::array<int, dim> &nghostzones, const F &f) {
+  GridDescBaseDevice(cctkGH).loop_device_idx<where>(indextype, nghostzones, f);
+}
 
 } // namespace Loop
 
