@@ -812,33 +812,128 @@ void leave_local_mode(cGH *restrict cctkGH,
   assert(in_patch_mode(cctkGH));
 }
 
+// Should this be passed in `cGH`?
+int CallFunction_count = -1;
+extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
+#ifndef AMREX_USE_GPU
+  return omp_get_thread_num();
+#else
+  assert(CallFunction_count >= 0);
+  return CallFunction_count;
+#endif
+}
+
 void loop_over_blocks(
     const cGH *restrict const cctkGH,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel) {
-  std::vector<std::function<void()> > tasks;
+  DECLARE_CCTK_PARAMETERS;
 
-  active_levels->loop([&](const auto &restrict leveldata) {
-    // Note: The amrex::MFIter uses global variables and OpenMP barriers
-    int block = 0;
-    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-         ++mfi, ++block) {
-      const MFPointer mfp(mfi);
-      auto task = [&block_kernel, &leveldata, mfp, block]() {
+  // Choose kernel launch method
+  enum class launch_method_t { serial, openmp, cuda };
+  launch_method_t launch_method;
+  if (CCTK_EQUALS(kernel_launch_method, "serial")) {
+    launch_method = launch_method_t::serial;
+  } else if (CCTK_EQUALS(kernel_launch_method, "openmp")) {
+    launch_method = launch_method_t::openmp;
+  } else if (CCTK_EQUALS(kernel_launch_method, "cuda")) {
+    launch_method = launch_method_t::cuda;
+  } else if (CCTK_EQUALS(kernel_launch_method, "default")) {
+#ifdef AMREX_USE_GPU
+    launch_method = launch_method_t::cuda;
+#else
+    launch_method = launch_method_t::openmp;
+#endif
+  } else {
+    CCTK_ERROR("internal error");
+  }
+
+  switch (launch_method) {
+
+  case launch_method_t::serial: {
+    // No parallelism
+
+    active_levels->loop([&](const auto &restrict leveldata) {
+      // Note: The amrex::MFIter uses global variables and OpenMP barriers
+      int block = 0;
+      const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+      for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+           ++mfi, ++block) {
+        const MFPointer mfp(mfi);
         cGH *restrict const localGH =
             get_local_cctkGH(leveldata.level, leveldata.patch, block);
         block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                      localGH);
-      };
-      tasks.emplace_back(move(task));
-    }
-  });
+      }
+    });
+    break;
+  }
 
-  // run all tasks
+  case launch_method_t::openmp: {
+    // OpenMP
+
+    std::vector<std::function<void()> > tasks;
+
+    active_levels->loop([&](const auto &restrict leveldata) {
+      // Note: The amrex::MFIter uses global variables and OpenMP barriers
+      int block = 0;
+      const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+      for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+           ++mfi, ++block) {
+        const MFPointer mfp(mfi);
+        auto task = [&block_kernel, &leveldata, mfp, block]() {
+          cGH *restrict const localGH =
+              get_local_cctkGH(leveldata.level, leveldata.patch, block);
+          block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
+                       localGH);
+        };
+        tasks.emplace_back(move(task));
+      }
+    });
+
+    // run all tasks
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < tasks.size(); ++i)
-    tasks[i]();
+    for (size_t i = 0; i < tasks.size(); ++i)
+      tasks[i]();
+
+    // There is an implicit OpenMP barrier here.
+
+    break;
+  }
+
+  case launch_method_t::cuda: {
+    // CUDA
+
+    assert(CallFunction_count == -1);
+    CallFunction_count = 0;
+
+    active_levels->loop([&](const auto &restrict leveldata) {
+      // No OpenMP parallelization when using GPUs
+      int block = 0;
+      const auto mfitinfo =
+          amrex::MFItInfo().DisableDeviceSync().EnableTiling();
+      for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+           ++mfi, ++block) {
+        const MFPointer mfp(mfi);
+        cGH *const localGH =
+            get_local_cctkGH(leveldata.level, leveldata.patch, block);
+        block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
+                     localGH);
+        ++CallFunction_count;
+      }
+    });
+
+    // There is NO CUDA kernel barrier here!
+
+    assert(CallFunction_count >= 0);
+    CallFunction_count = -1;
+
+    break;
+  }
+
+  default:
+    CCTK_ERROR("internal error");
+  }
 }
 
 // cGH for all blocks
@@ -1332,6 +1427,8 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
 void InvalidateTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
+  nvtxRangePushA("InvalidateTimelevels");
+
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
     cGroup group;
@@ -1377,10 +1474,14 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
     }
 
   } // for gi
+
+  nvtxRangePop();
 }
 
 void CycleTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
+
+  nvtxRangePushA("CycleTimelevels");
 
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
@@ -1447,6 +1548,8 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
     }
 
   } // for gi
+
+  nvtxRangePop();
 }
 
 // Schedule evolution
@@ -1641,16 +1744,6 @@ int Shutdown(tFleshConfig *config) {
   assert(!ghext);
 
   return 0;
-}
-
-int CallFunction_count = -1;
-extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
-#ifndef AMREX_USE_GPU
-  return omp_get_thread_num();
-#else
-  assert(CallFunction_count >= 0);
-  return CallFunction_count;
-#endif
 }
 
 // Call a scheduled function
