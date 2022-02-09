@@ -180,6 +180,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     const array<array<CCTK_REAL, 2>, 3> vels_rc = {velx_rc, vely_rc, velz_rc};
     const array<CCTK_REAL, 2> vel_rc = vels_rc[dir];
 
+    constexpr auto DI = PointDesc::DI;
+
     // TODO: to reconstruct w_lorentz*vel or 4-velocity u_i
 
     // Computing metric components
