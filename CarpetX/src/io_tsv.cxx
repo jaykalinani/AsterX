@@ -170,8 +170,6 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
                          + 1                // level
                          + dim;             // grid point index
   const int nvalues = nintvalues            // integer values
-                      + 1                   // level
-                      + dim                 // grid point index
                       + dim                 // coordinates
                       + groupdata0.numvars; // grid function values
 
