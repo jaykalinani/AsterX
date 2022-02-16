@@ -164,8 +164,9 @@ CarpetX/MultiPatch
 CarpetX/NSIMD
 #[const error] CarpetX/NewRad
 CarpetX/ODESolvers
+#DISABLED CarpetX/PDESolvers
 CarpetX/Poisson
-CarpetX/Poisson2
+#DISABLED CarpetX/Poisson2
 CarpetX/Punctures
 #DISABLED CarpetX/SHTOOLS
 CarpetX/Silo
