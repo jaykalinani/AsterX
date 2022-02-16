@@ -130,6 +130,7 @@ ExternalLibraries/zlib
 ExternalLibraries/RePrimAnd
 
 
+
 # CarpetX thorns
 !TARGET   = $ARR
 !TYPE     = git
@@ -140,6 +141,7 @@ CarpetX/ADIOS2
 CarpetX/ADMBase
 CarpetX/AHFinder
 CarpetX/AMReX
+CarpetX/Algo
 CarpetX/Arith
 #[const error] CarpetX/BaikalX
 CarpetX/Boost
@@ -150,26 +152,34 @@ CarpetX/DGCoordinates
 CarpetX/DGWaveToy
 CarpetX/ErrorEstimator
 CarpetX/Forms
+CarpetX/GRHydroToyGPU
 CarpetX/Hydro
 CarpetX/HydroBase
+CarpetX/HydroInitial
 CarpetX/HydroToyCarpetX
 #DISABLED CarpetX/Kokkos
 CarpetX/Maxwell
 CarpetX/MaxwellToyCarpetX
+CarpetX/MultiPatch
 CarpetX/NSIMD
 #[const error] CarpetX/NewRad
 CarpetX/ODESolvers
 CarpetX/Poisson
+CarpetX/Poisson2
 CarpetX/Punctures
 #DISABLED CarpetX/SHTOOLS
 CarpetX/Silo
 CarpetX/StaticTrumpet
 CarpetX/TestArrayGroup
 CarpetX/TestODESolvers
+CarpetX/TestODESolvers2
 CarpetX/TestProlongate
 CarpetX/TmunuBase
 CarpetX/TwoPunctures
 CarpetX/WaveToyCarpetX
+CarpetX/WaveToyCPU
+CarpetX/WaveToyGPU
+CarpetX/WaveToyMoL
 CarpetX/Weyl
 CarpetX/Z4c
 CarpetX/googletest
@@ -187,18 +197,19 @@ CarpetX/yaml_cpp
 CarpetX/openPMD
 
 
-# THCBase thorns
-!TARGET   = $ARR
-!TYPE     = git
-# !URL      = https://bitbucket.org/FreeTHC/thcbase.git
-!URL      = https://bitbucket.org/eschnett/thcbase.git
-!REPO_BRANCH = eschnett/carpetx
-!REPO_PATH= $2
-!CHECKOUT =
-THCBase/AdvectHRSC
-THCBase/CPPUtils
-THCBase/FDCore
-THCBase/HRSCCore
+
+# # THCBase thorns
+# !TARGET   = $ARR
+# !TYPE     = git
+# # !URL      = https://bitbucket.org/FreeTHC/thcbase.git
+# !URL      = https://bitbucket.org/eschnett/thcbase.git
+# !REPO_BRANCH = eschnett/carpetx
+# !REPO_PATH= $2
+# !CHECKOUT =
+# THCBase/AdvectHRSC
+# THCBase/CPPUtils
+# THCBase/FDCore
+# THCBase/HRSCCore
 
 # # THCCore thorns
 # !TARGET   = $ARR
