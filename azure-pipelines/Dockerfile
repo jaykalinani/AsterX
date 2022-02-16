@@ -32,6 +32,7 @@ RUN apt-get update && \
         pkg-config \
         python2 \
         python3 \
+        python3-requests \
         rsync \
         subversion \
         vim \
@@ -70,9 +71,9 @@ RUN mkdir src && \
 # Note: This assumes that the system has x86_64 CPUs with AVX2
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/agenium-scale/nsimd/archive/refs/tags/v2.2.tar.gz && \
-    tar xzf v2.2.tar.gz && \
-    cd nsimd-2.2 && \
+    wget https://github.com/agenium-scale/nsimd/archive/refs/tags/v3.0.1.tar.gz && \
+    tar xzf v3.0.1.tar.gz && \
+    cd nsimd-3.0.1 && \
     mkdir build && \
     cd build && \
     cmake \
@@ -92,9 +93,9 @@ RUN mkdir src && \
 # - Depends on ADIOS2
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/openPMD/openPMD-api/archive/refs/tags/0.14.2.tar.gz && \
-    tar xzf 0.14.2.tar.gz && \
-    cd openPMD-api-0.14.2 && \
+    wget https://github.com/openPMD/openPMD-api/archive/refs/tags/0.14.4.tar.gz && \
+    tar xzf 0.14.4.tar.gz && \
+    cd openPMD-api-0.14.4 && \
     mkdir build && \
     cd build && \
     cmake .. && \
@@ -107,9 +108,9 @@ RUN mkdir src && \
 # openPMD-api defines a standard for laying out AMR data in a file
 RUN mkdir src && \
     (cd src && \
-    wget https://wci.llnl.gov/sites/wci/files/2021-01/silo-4.10.2-bsd.tgz && \
-    tar xzf silo-4.10.2-bsd.tgz && \
-    cd silo-4.10.2-bsd && \
+    wget https://github.com/LLNL/Silo/releases/download/v4.11/silo-4.11.tar.gz && \
+    tar xzf silo-4.11.tar.gz && \
+    cd silo-4.11 && \
     mkdir build && \
     cd build && \
     ../configure \
@@ -134,9 +135,9 @@ RUN mkdir src && \
 #     rm -fr src
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/astro-informatics/ssht/archive/v1.5.0.tar.gz && \
-    tar xzf v1.5.0.tar.gz && \
-    cd ssht-1.5.0 && \
+    wget https://github.com/astro-informatics/ssht/archive/v1.5.1.tar.gz && \
+    tar xzf v1.5.1.tar.gz && \
+    cd ssht-1.5.1 && \
     mkdir build && \
     cd build && \
     cmake .. && \
@@ -167,9 +168,9 @@ RUN mkdir src && \
 # - Install this last because it changes most often
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/21.11.tar.gz && \
-    tar xzf 21.11.tar.gz && \
-    cd amrex-21.11 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/22.02.tar.gz && \
+    tar xzf 22.02.tar.gz && \
+    cd amrex-22.02 && \
     mkdir build && \
     cd build && \
     cmake \
