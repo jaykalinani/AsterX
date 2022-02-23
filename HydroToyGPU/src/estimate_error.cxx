@@ -4,24 +4,12 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace HydroToyGPU {
 using namespace std;
 using namespace Loop;
-
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T fmax5(T x0, T x1,
-                                                                  T x2, T x3,
-                                                                  T x4) {
-  T r01 = fmax(x0, x1);
-  T r23 = fmax(x2, x3);
-  T r014 = fmax(r01, x4);
-  T r01234 = fmax(r014, r23);
-  return r01234;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,14 +40,14 @@ extern "C" void HydroToyGPU_EstimateError(CCTK_ARGUMENTS) {
             auto var0 = gf_var(p.I);
             auto varp = gf_var(p.I + DI[d]);
             // Calculate derivative
-            err = fmax(err, fmax(fabs(var0 - varm), fabs(varp - var0)));
+            err = max({err, fabs(var0 - varm), fabs(varp - var0)});
           }
           return err;
         };
 
         gf_regrid_error(p.I) =
-            fmax5(calcerr(gf_rho), calcerr(gf_momx), calcerr(gf_momy),
-                  calcerr(gf_momz), calcerr(gf_etot));
+            max({calcerr(gf_rho), calcerr(gf_momx), calcerr(gf_momy),
+                 calcerr(gf_momz), calcerr(gf_etot)});
       });
 }
 
