@@ -6,6 +6,7 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <algorithm>
 #include <array>
 
 namespace Hydro {
@@ -21,8 +22,10 @@ extern "C" void Hydro_EstimateError(CCTK_ARGUMENTS) {
   const Loop::vect<int, dim> nghostzones{
       {cctk_nghostzones[0], cctk_nghostzones[1], cctk_nghostzones[2]}};
 
-  const Loop::vect<int, dim> tmin{cctk_tile_min[0], cctk_tile_min[1], cctk_tile_min[2]};
-  const Loop::vect<int, dim> tmax{cctk_tile_max[0], cctk_tile_max[1], cctk_tile_max[2]};
+  const Loop::vect<int, dim> tmin{cctk_tile_min[0], cctk_tile_min[1],
+                                  cctk_tile_min[2]};
+  const Loop::vect<int, dim> tmax{cctk_tile_max[0], cctk_tile_max[1],
+                                  cctk_tile_max[2]};
 
   const Loop::vect<int, dim> imin = max(tmin, nghostzones);
   const Loop::vect<int, dim> imax = min(tmax, lsh - nghostzones);
@@ -48,12 +51,17 @@ extern "C" void Hydro_EstimateError(CCTK_ARGUMENTS) {
           CCTK_REALVEC varzz = maskz_loadu(mask, &var[ind - dk]) -
                                CCTK_REAL(2.0) * maskz_loadu(mask, &var[ind]) +
                                maskz_loadu(mask, &var[ind + dk]);
-          return fmax3(varxx, varyy, varzz);
+          // return max({varxx, varyy, varzz});
+          return max(varxx, max(varyy, varzz));
         };
 
-        CCTK_REALVEC regrid_error1 =
-            fmax5(calcerr(dens), calcerr(momx), calcerr(momy), calcerr(momz),
-                  calcerr(etot));
+        using std::max;
+        // CCTK_REALVEC regrid_error1 =
+        //     max({calcerr(dens), calcerr(momx), calcerr(momy), calcerr(momz),
+        //          calcerr(etot)});
+        CCTK_REALVEC regrid_error1 = max(max(max(calcerr(dens), calcerr(momx)),
+                                             max(calcerr(momy), calcerr(momz))),
+                                         calcerr(etot));
         mask_storeu(mask, &regrid_error[ind], regrid_error1);
       }
     }
