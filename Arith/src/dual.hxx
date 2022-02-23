@@ -8,6 +8,7 @@
 #include <cassert>
 #include <cmath>
 #include <functional>
+#include <initializer_list>
 #include <ostream>
 
 namespace Arith {
@@ -169,8 +170,24 @@ template <typename T, typename U> struct dual {
     return if_else(x >= y, x, y);
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
+  max(std::initializer_list<dual> xs) {
+    using std::max;
+    dual r = dual(-std::numeric_limits<T>::infinity());
+    for (const auto x : xs)
+      r = max(r, x);
+    return r;
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
   min(const dual &x, const dual &y) {
     return if_else(x >= y, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
+  min(std::initializer_list<dual> xs) {
+    using std::min;
+    dual r = dual(std::numeric_limits<T>::infinity());
+    for (const auto x : xs)
+      r = min(r, x);
+    return r;
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual pow(const dual &x,
                                                                  const int n) {

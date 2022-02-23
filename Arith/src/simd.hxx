@@ -9,7 +9,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <initializer_list>
 #include <iostream>
+#include <limits>
 #include <utility>
 #include <type_traits>
 
@@ -431,6 +433,14 @@ template <typename T> struct simd {
     using std::max;
     return max(a, y.elts);
   }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd
+  max(std::initializer_list<simd> xs) {
+    using std::max;
+    simd r = simd(-std::numeric_limits<T>::infinity());
+    for (const auto x : xs)
+      r = max(r, x);
+    return r;
+  }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simd min(const simd &x,
                                                     const simd &y) {
@@ -444,6 +454,14 @@ template <typename T> struct simd {
   friend constexpr ARITH_DEVICE ARITH_HOST simd min(const simd &x, const T &b) {
     using std::min;
     return min(x.elts, b);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd
+  min(std::initializer_list<simd> xs) {
+    using std::min;
+    simd r = simd(std::numeric_limits<T>::infinity());
+    for (const auto x : xs)
+      r = min(r, x);
+    return r;
   }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> signbit(const simd &x) {
@@ -716,7 +734,7 @@ ARITH_DEVICE ARITH_HOST inline simd<T> sin(const simd<T> &x) {
 //
 // This is described in the NSIMD documentation
 // <https://github.com/agenium-scale/nsimd>.
-  
+
 template <typename T> struct simdl {
   typedef T value_type;
 #ifndef SIMD_CPU
@@ -972,7 +990,7 @@ template <typename T> struct simdl {
     storeu(xarr, to_mask(x.elts));
 #else
     *xarr = x.elts;
-#endif 
+#endif
     for (size_t n = 0; n < vsize; ++n) {
       if (n != 0)
         os << ",";
