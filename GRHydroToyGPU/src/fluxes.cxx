@@ -151,13 +151,74 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         }
       };
 
-  const auto calcflux =
-      [=] CCTK_DEVICE(array<CCTK_REAL, 2> var, array<CCTK_REAL, 2> flux)
+
+  const auto eigenvalues =
+      [=] CCTK_DEVICE(CCTK_REAL alp_avg, CCTK_REAL beta_avg, CCTK_REAL u_avg, 
+		      array<CCTK_REAL, 2> vel, array<CCTK_REAL, 2> rho, 
+		      array<CCTK_REAL, 2> cs2, array<CCTK_REAL, 2> w_lor, 
+		      array<CCTK_REAL, 2> h)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            array<CCTK_REAL, 2> lambda = {+1.0, -1.0};
+
+	  //computing characteristics for the minus side
+	  array<CCTK_REAL, 3> a_m = {
+		 (cs2[0]*h[0]*rho[0])*(pow2(beta_avg) - pow2(alp_avg)*u_avg) -
+                 (-1 + cs2[0])*h[0]*rho[0]*pow2(beta_avg - alp_avg*vel[0])*pow2(w_lor[0]),
+		
+		 2*beta_avg*(cs2[0]*h[0]*rho[0]) -
+                 2*(-1 + cs2[0])*h[0]*rho[0]*(beta_avg - alp_avg*vel[0])*pow2(w_lor[0]),
+		
+		 h[0]*rho[0]*(cs2[0] + pow2(w_lor[0]) - cs2[0]*pow2(w_lor[0]))
+	  };
+          
+	  CCTK_REAL det_m = pow2(a_m[1]) - 4.0*a_m[2]*a_m[0];
+	  if(det_m<0.0)
+	     det_m=0.0;
+			  
+	  array<CCTK_REAL, 4> lambda_m = {
+	         ( (-a_m[1]+sqrt(det_m))/(2.0*a_m[2]) )/alp_avg,
+		 ( (-a_m[1]+sqrt(det_m))/(2.0*a_m[2]) )/alp_avg,
+		 ( (-a_m[1]-sqrt(det_m))/(2.0*a_m[2]) )/alp_avg,
+		 ( (-a_m[1]-sqrt(det_m))/(2.0*a_m[2]) )/alp_avg
+	  }; 
+
+	  // computing characteristics for the plus side
+	  
+	  array<CCTK_REAL, 3> a_p = {
+                 (cs2[1]*h[1]*rho[1])*(pow2(beta_avg) - pow2(alp_avg)*u_avg) -
+                 (-1 + cs2[1])*h[1]*rho[1]*pow2(beta_avg - alp_avg*vel[1])*pow2(w_lor[1]),
+
+                 2*beta_avg*(cs2[1]*h[1]*rho[1]) -
+                 2*(-1 + cs2[1])*h[1]*rho[1]*(beta_avg - alp_avg*vel[1])*pow2(w_lor[1]),
+
+                 h[1]*rho[1]*(cs2[1] + pow2(w_lor[1]) - cs2[1]*pow2(w_lor[1]))
+          };
+
+          CCTK_REAL det_p = pow2(a_p[1]) - 4.0*a_p[2]*a_p[0];
+          if(det_p<0.0)
+             det_p=0.0;
+
+          array<CCTK_REAL, 4> lambda_p = {
+                 ( (-a_p[1]+sqrt(det_p))/(2.0*a_p[2]) )/alp_avg,
+                 ( (-a_p[1]+sqrt(det_p))/(2.0*a_p[2]) )/alp_avg,
+                 ( (-a_p[1]-sqrt(det_p))/(2.0*a_p[2]) )/alp_avg,
+                 ( (-a_p[1]-sqrt(det_p))/(2.0*a_p[2]) )/alp_avg
+          };
+
+
+	  //2D array containing characteristics for left (minus) and right (plus) sides
+	  array<array<CCTK_REAL, 4>, 2> lambda = {lambda_m, lambda_p};
+          return lambda;
+	  };	 
+
+  const auto calcflux =
+      [=] CCTK_DEVICE(array<array<CCTK_REAL, 4>, 2> lam, array<CCTK_REAL, 2> var, array<CCTK_REAL, 2> flux)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE {
+	    const CCTK_REAL charmax = max({0.0, fabs(lam[0][0]), fabs(lam[0][1]), 
+			              fabs(lam[0][2]), fabs(lam[0][3]), fabs(lam[1][0]), 
+				      fabs(lam[1][1]), fabs(lam[1][2]), fabs(lam[1][3])});
+
             CCTK_REAL llf = 0.5 * ((flux[0] + flux[1]) -
-                                   fmax(fabs(lambda[0]), fabs(lambda[1])) *
-                                       (var[1] - var[0]));
+                                   charmax*(var[1] - var[0]));
             // return dA * llf;
             return llf;
           };
@@ -245,6 +306,21 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         gxx_avg * gyy_avg * gzz_avg;
     const CCTK_REAL sqrt_detg = sqrt(detg);
 
+    // Upper metric
+    const array<CCTK_REAL, 6> ug_avg = {
+	(-gyz_avg*gyz_avg + gyy_avg*gzz_avg)/detg,  //uxx
+        (gxz_avg*gyz_avg - gxy_avg*gzz_avg)/detg,   //uxy
+        (-gxz_avg*gxz_avg + gxx_avg*gzz_avg)/detg,  //uyy
+        (-gxz_avg*gyy_avg + gxy_avg*gyz_avg)/detg,  //uxz
+        (gxy_avg*gxz_avg - gxx_avg*gyz_avg)/detg,   //uyz
+        (-gxy_avg*gxy_avg + gxx_avg*gyy_avg)/detg   //uzz
+    };
+
+    // Array containing uxx, uyy, uzz components of the upper metric
+    const array<CCTK_REAL, 3> ugs_avg = {ug_avg[0], ug_avg[2], ug_avg[5]};
+    // variable for either uxx, uyy or uzz depending on the direction
+    const CCTK_REAL u_avg = ugs_avg[dir];
+
     // v_j
     const array<CCTK_REAL, 2> vlowx_rc = {
         gxx_avg * velx_rc[0] + gxy_avg * vely_rc[0] + gxz_avg * velz_rc[0],
@@ -264,6 +340,16 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                         vlowz_rc[0] * velz_rc[0])),
         1.0 / sqrt(1 - (vlowx_rc[1] * velx_rc[1] + vlowy_rc[1] * vely_rc[1] +
                         vlowz_rc[1] * velz_rc[1]))};
+
+    // cs2 for ideal gas EOS
+    const array<CCTK_REAL, 2> cs2_rc = {
+        (gamma - 1.0)*eps_rc[0] / (eps_rc[0] + 1.0/gamma),
+        (gamma - 1.0)*eps_rc[1] / (eps_rc[1] + 1.0/gamma) };
+
+    //h for ideal gas EOS
+    const array<CCTK_REAL, 2> h_rc = {
+	 1.0 + eps_rc[0] + press_rc[0]/rho_rc[0],
+	 1.0 + eps_rc[1] + press_rc[1]/rho_rc[1] };
 
     // Auxiliary variables to compute conservatives
     const CCTK_REAL aux_mom_0 = 1 + eps_rc[0] + press_rc[0] / rho_rc[0];
@@ -313,11 +399,16 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         tau_rc[0] * aux_flux_0a + aux_flux_0b * vel_rc[0],
         tau_rc[1] * aux_flux_1a + aux_flux_1b * vel_rc[1]};
 
-    gf_fluxdens(p.I) = calcflux(dens_rc, flux_dens);
-    gf_fluxmomx(p.I) = calcflux(momx_rc, flux_momx);
-    gf_fluxmomy(p.I) = calcflux(momy_rc, flux_momy);
-    gf_fluxmomz(p.I) = calcflux(momz_rc, flux_momz);
-    gf_fluxtau(p.I) = calcflux(tau_rc, flux_tau);
+
+    array<array<CCTK_REAL, 4>, 2> lambda = eigenvalues(alp_avg, beta_avg, u_avg, vel_rc, 
+		                      rho_rc, cs2_rc, w_lorentz_rc, h_rc);
+
+    gf_fluxdens(p.I) = calcflux(lambda, dens_rc, flux_dens);
+    gf_fluxmomx(p.I) = calcflux(lambda, momx_rc, flux_momx);
+    gf_fluxmomy(p.I) = calcflux(lambda, momy_rc, flux_momy);
+    gf_fluxmomz(p.I) = calcflux(lambda, momz_rc, flux_momz);
+    gf_fluxtau(p.I)  = calcflux(lambda, tau_rc, flux_tau);
+
   });
 }
 
