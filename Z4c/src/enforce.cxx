@@ -23,31 +23,28 @@ using namespace Loop;
 using namespace std;
 
 extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_Z4c_Enforce;
+  DECLARE_CCTK_ARGUMENTSX_Z4c_Enforce;
   DECLARE_CCTK_PARAMETERS;
 
   const array<int, dim> indextype = {0, 0, 0};
   const GF3D2layout layout1(cctkGH, indextype);
 
-  const GF3D2<CCTK_REAL> gf_chi1(layout1, chi);
+  const GF3D2<CCTK_REAL> &gf_chi = chi;
 
-  const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_gammat1{
-      GF3D2<CCTK_REAL>(layout1, gammatxx), GF3D2<CCTK_REAL>(layout1, gammatxy),
-      GF3D2<CCTK_REAL>(layout1, gammatxz), GF3D2<CCTK_REAL>(layout1, gammatyy),
-      GF3D2<CCTK_REAL>(layout1, gammatyz), GF3D2<CCTK_REAL>(layout1, gammatzz)};
+  const GF3D2<CCTK_REAL> &gf_alphaG = alphaG;
 
-  const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_At1{
-      GF3D2<CCTK_REAL>(layout1, Atxx), GF3D2<CCTK_REAL>(layout1, Atxy),
-      GF3D2<CCTK_REAL>(layout1, Atxz), GF3D2<CCTK_REAL>(layout1, Atyy),
-      GF3D2<CCTK_REAL>(layout1, Atyz), GF3D2<CCTK_REAL>(layout1, Atzz)};
+  const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_gammat{
+      gammatxx, gammatxy, gammatxz, gammatyy, gammatyz, gammatzz,
+  };
 
-  const GF3D2<CCTK_REAL> gf_alphaG1(layout1, alphaG);
+  const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_At{
+      Atxx, Atxy, Atxz, Atyy, Atyz, Atzz,
+  };
 
   typedef simd<CCTK_REAL> vreal;
   typedef simdl<CCTK_REAL> vbool;
   constexpr size_t vsize = tuple_size_v<vreal>;
 
-  const Loop::GridDescBaseDevice grid(cctkGH);
 #ifdef __CUDACC__
   const nvtxRangeId_t range = nvtxRangeStartA("Z4c_Enforce::enforce");
 #endif
@@ -57,12 +54,12 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         const GF3D2index index1(layout1, p.I);
 
         // Load
-        const vreal chi_old = gf_chi1(mask, index1, 1);
-        const vreal alphaG_old = gf_alphaG1(mask, index1, 1);
+        const vreal chi_old = gf_chi(mask, index1, 1);
+        const vreal alphaG_old = gf_alphaG(mask, index1, 1);
 
         const smat<vreal, 3, DN, DN> gammat_old =
-            gf_gammat1(mask, index1, one<smat<int, 3, DN, DN> >()());
-        const smat<vreal, 3, DN, DN> At_old = gf_At1(mask, index1);
+            gf_gammat(mask, index1, one<smat<int, 3, DN, DN> >()());
+        const smat<vreal, 3, DN, DN> At_old = gf_At(mask, index1);
 
         // Enforce floors
 
@@ -118,10 +115,10 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 #endif
 
         // Store
-        gf_chi1.store(mask, index1, chi);
-        gf_gammat1.store(mask, index1, gammat);
-        gf_At1.store(mask, index1, At);
-        gf_alphaG1.store(mask, index1, alphaG);
+        gf_chi.store(mask, index1, chi);
+        gf_gammat.store(mask, index1, gammat);
+        gf_At.store(mask, index1, At);
+        gf_alphaG.store(mask, index1, alphaG);
       });
 #ifdef __CUDACC__
   nvtxRangeEnd(range);
