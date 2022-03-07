@@ -54,6 +54,7 @@ struct PointDesc {
   int np; // number of grid points
   vect<int, dim> I;
   vect<int, dim> NI; // outward boundary normal, or zero
+  vect<int, dim> I0; // nearest interior point
   static constexpr vect<vect<int, dim>, dim> DI = {vect<int, dim>::unit(0),
                                                    vect<int, dim>::unit(1),
                                                    vect<int, dim>::unit(2)};
@@ -75,6 +76,8 @@ struct PointDesc {
        << "np:" << p.np << ","
        << "nijk:"
        << "{" << p.NI[0] << "," << p.NI[1] << "," << p.NI[2] << "}"
+       << "i0ijk:"
+       << "{" << p.I0[0] << "," << p.I0[1] << "," << p.I0[2] << "}"
        << "}";
     return os;
   }
@@ -125,7 +128,8 @@ public:
 
   template <int CI, int CJ, int CK>
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST PointDesc
-  point_desc(const vect<int, dim> &restrict NI, const int imin, const int imax,
+  point_desc(const vect<int, dim> &restrict NI,
+             const vect<int, dim> &restrict I0, const int imin, const int imax,
              const int i, const int j, const int k) const {
     constexpr int di = 1;
     const int dj = di * (ash[0] - CI);
@@ -143,6 +147,7 @@ public:
                      dj,        dk,    np,    //
                      {i, j, k},               //
                      NI,                      //
+                     I0,                      //
                      {x, y, z},               //
                      dx};
   }
@@ -150,7 +155,7 @@ public:
   template <int CI, int CJ, int CK>
   constexpr CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST PointDesc
   point_desc(const PointDesc &p) const {
-    return point_desc<CI, CJ, CK>(p.NI, p.imin, p.imax, p.i, p.j, p.k);
+    return point_desc<CI, CJ, CK>(p.NI, p.I0, p.imin, p.imax, p.i, p.j, p.k);
   }
 
   // Loop over a given box
@@ -169,35 +174,45 @@ public:
       if (imin[d] >= imax[d])
         return;
 
-    array<bool, dim> bforward;
+    bool has_normal = false;
     for (int d = 0; d < dim; ++d)
-      bforward[d] = inormal[d] >= 0;
-    bool all_forward = true;
-    for (int d = 0; d < dim; ++d)
-      all_forward &= bforward[d];
+      has_normal |= inormal[d] != 0;
 
-    if (all_forward) {
+    if (!has_normal) {
+      // Loop over an interior box
 
+      constexpr array<int, dim> izero = {0, 0, 0};
       for (int k = imin[2]; k < imax[2]; ++k) {
         for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
           for (int i = imin[0]; i < imax[0]; i += VS) {
-            f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
+            f(point_desc<CI, CJ, CK>(izero, izero, imin[0], imax[0], i, j, k));
           }
         }
       }
 
     } else {
-      // At least one direction is reversed; loop from the inside out
+      // Loop over a box at a boundary
 
-      for (int k0 = imin[2]; k0 < imax[2]; ++k0) {
-        for (int j0 = imin[1]; j0 < imax[1]; ++j0) {
+      for (int k = imin[2]; k < imax[2]; ++k) {
+        for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
-          for (int i0 = imin[0]; i0 < imax[0]; i0 += VS) {
-            const int i = bforward[0] ? i0 : imax[0] - 1 - (i0 - imin[0]);
-            const int j = bforward[1] ? j0 : imax[1] - 1 - (j0 - imin[1]);
-            const int k = bforward[2] ? k0 : imax[2] - 1 - (k0 - imin[2]);
-            f(point_desc<CI, CJ, CK>(inormal, imin[0], imax[0], i, j, k));
+          for (int i = imin[0]; i < imax[0]; i += VS) {
+
+            const array<int, dim> I = {i, j, k};
+            array<int, dim> I0;
+            for (int d = 0; d < dim; ++d) {
+              if (inormal[d] == 0)
+                // interior
+                I0[d] = I[d];
+              else if (inormal[d] < 0)
+                // left boundary
+                I0[d] = imax[d];
+              else
+                // right boundary
+                I0[d] = imin[d] - 1;
+            }
+            f(point_desc<CI, CJ, CK>(inormal, I0, imin[0], imax[0], i, j, k));
           }
         }
       }
