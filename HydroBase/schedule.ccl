@@ -34,6 +34,6 @@ if (CCTK_EQUALS(initial_hydro, "vacuum")) {
   SCHEDULE HydroBase_initial_data IN HydroBase_InitialData
   {
     LANG: C
-    WRITES: rho(everywhere) vel(everywhere) eps(everywhere) press(everywhere)
+    WRITES: rho(everywhere) vel(everywhere) eps(everywhere) press(everywhere) Bvec(everywhere)
   } "Set up vacuum initial data"
 }
