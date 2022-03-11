@@ -43,12 +43,12 @@ extern "C" void ADMBase_initial_data(CCTK_ARGUMENTS) {
                                       gyz_(p.I) = 0;
                                       gzz_(p.I) = 1;
 
-                                      kxx_(p.I) = 1;
+                                      kxx_(p.I) = 0;
                                       kxy_(p.I) = 0;
                                       kxz_(p.I) = 0;
-                                      kyy_(p.I) = 1;
+                                      kyy_(p.I) = 0;
                                       kyz_(p.I) = 0;
-                                      kzz_(p.I) = 1;
+                                      kzz_(p.I) = 0;
                                     });
 }
 
