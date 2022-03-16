@@ -208,10 +208,63 @@ template <typename T, int D> struct vect {
   operator-(const vect &x, const vect &y) {
     return fmap([](const T &a, const T &b) { return a - b; }, x, y);
   }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator*(const vect &x, const vect &y) {
+    return fmap([](const T &a, const T &b) { return a * b; }, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator/(const vect &x, const vect &y) {
+    return fmap([](const T &a, const T &b) { return a / b; }, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator%(const vect &x, const vect &y) {
+    return fmap([](const T &a, const T &b) { return a % b; }, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  div_floor(const vect &x, const vect &y) {
+    return fmap([](const T &a, const T &b) { return div_floor(a, b); }, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  mod_floor(const vect &x, const vect &y) {
+    return fmap([](const T &a, const T &b) { return mod_floor(a, b); }, x, y);
+  }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator+(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return a + b; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator-(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return a - b; }, x);
+  }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator*(const T &a, const vect &x) {
     return fmap([&](const T &b) { return a * b; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator/(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return a / b; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator%(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return a % b; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  div_floor(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return div_floor(a, b); }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  mod_floor(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return mod_floor(a, b); }, x);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator+(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return b + a; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator-(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return b - a; }, x);
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator*(const vect &x, const T &a) {
@@ -307,6 +360,56 @@ template <typename T, int D> struct vect {
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
   operator>=(const vect &x, const vect &y) {
     return !(x < y);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator==(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return a == b; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator!=(const T &a, const vect &x) {
+    return !(x == a);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator<(const T &a, const vect &x) {
+    return fmap([&](const T &b) { return a < b; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator>(const T &a, const vect &x) {
+    return a < x;
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator<=(const T &a, const vect &x) {
+    return !(x > a);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator>=(const T &a, const vect &x) {
+    return !(x < a);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator==(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return b == a; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator!=(const vect &x, const T &a) {
+    return !(x == a);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator<(const vect &x, const T &a) {
+    return fmap([&](const T &b) { return b < a; }, x);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator>(const vect &x, const T &a) {
+    return a < x;
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator<=(const vect &x, const T &a) {
+    return !(x > a);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect<bool, D>
+  operator>=(const vect &x, const T &a) {
+    return !(x < a);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
