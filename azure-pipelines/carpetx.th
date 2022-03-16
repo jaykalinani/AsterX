@@ -175,6 +175,7 @@ CarpetX/TestArrayGroup
 CarpetX/TestODESolvers
 CarpetX/TestODESolvers2
 CarpetX/TestProlongate
+CarpetX/TestSymmetries
 CarpetX/TmunuBase
 CarpetX/TwoPunctures
 CarpetX/WaveToyCarpetX
