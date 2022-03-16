@@ -262,7 +262,8 @@ typedef map<tiletag_t, checksum_t> checksums_t;
 
 checksums_t
 calculate_checksums(const vector<vector<vector<valid_t> > > &will_write);
-void check_checksums(const checksums_t &checksums);
+void check_checksums(const checksums_t &checksums,
+                     const std::function<string()> &where);
 
 } // namespace CarpetX
 

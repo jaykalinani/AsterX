@@ -605,7 +605,8 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
   return checksums;
 }
 
-void check_checksums(const checksums_t &checksums) {
+void check_checksums(const checksums_t &checksums,
+                     const std::function<string()> &where) {
   DECLARE_CCTK_PARAMETERS;
 
   if (!poison_undefined_values)
@@ -667,8 +668,9 @@ void check_checksums(const checksums_t &checksums) {
 
             if (checksum != old_checksum)
               CCTK_VERROR(
-                  "Checksum mismatch: variable %s, tile %s, "
+                  "%s: Checksum mismatch: variable %s, tile %s, "
                   "int:%d,outer:%d,ghosts:%d, old checksum %s, new checksum %s",
+                  where().c_str(),
                   CCTK_FullVarName(groupdata.firstvarindex + tiletag.vi),
                   string(tiletag).c_str(), int(did_check.valid_int),
                   int(did_check.valid_outer), int(did_check.valid_ghosts),

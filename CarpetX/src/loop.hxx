@@ -282,6 +282,86 @@ public:
     loop_box<CI, CJ, CK>(f, imin, imax, inormal);
   }
 
+  // Loop over a part of the domain. Loop over the interior first,
+  // then faces, then edges, then corners.
+  template <int CI, int CJ, int CK, typename F>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  loop_there(const array<int, dim> &group_nghostzones,
+             const array<array<array<bool, dim>, dim>, dim> &there,
+             const F &f) const {
+    const array<int, dim> offset{CI, CJ, CK};
+
+    for (int rank = dim - 1; rank >= 0; --rank) {
+
+      for (int nk = -1; nk <= +1; ++nk) {
+        for (int nj = -1; nj <= +1; ++nj) {
+          for (int ni = -1; ni <= +1; ++ni) {
+            if ((ni == 0) + (nj == 0) + (nk == 0) == rank) {
+
+              if (there[ni + 1][nj + 1][nk + 1]) {
+
+                const array<int, dim> inormal{ni, nj, nk};
+
+                array<int, dim> imin, imax;
+                for (int d = 0; d < dim; ++d) {
+                  const int ghost_offset =
+                      nghostzones[d] - group_nghostzones[d];
+                  const int begin_bnd = ghost_offset;
+                  const int begin_int = nghostzones[d];
+                  const int end_int = lsh[d] - offset[d] - nghostzones[d];
+                  const int end_bnd = lsh[d] - offset[d] - ghost_offset;
+                  switch (inormal[d]) {
+                  case -1: // lower boundary
+                    imin[d] = begin_bnd;
+                    imax[d] = begin_int;
+                    break;
+                  case 0: // interior
+                    imin[d] = begin_int;
+                    imax[d] = end_int;
+                    break;
+                  case +1: // upper boundary
+                    imin[d] = end_int;
+                    imax[d] = end_bnd;
+                    break;
+                  default:
+                    assert(0);
+                  }
+
+                  imin[d] = std::max(tmin[d], imin[d]);
+                  imax[d] = std::min(tmax[d], imax[d]);
+                }
+
+#ifdef CCTK_DEBUG
+                bool isempty = false;
+                for (int d = 0; d < dim; ++d)
+                  isempty |= imin[d] >= imax[d];
+                if (!isempty) {
+                  vect<int, dim> all_imin, all_imax;
+                  box_all<CI, CJ, CK>(group_nghostzones, all_imin, all_imax);
+                  vect<int, dim> int_imin, int_imax;
+                  box_int<CI, CJ, CK>(group_nghostzones, int_imin, int_imax);
+                  for (int d = 0; d < dim; ++d) {
+                    assert(all_imin[d] <= imin[d]);
+                    assert(imax[d] <= all_imax[d]);
+                  }
+                  bool overlaps = true;
+                  for (int d = 0; d < dim; ++d)
+                    overlaps &=
+                        !(imax[d] <= int_imin[d] || imin[d] >= int_imax[d]);
+                  assert(!overlaps);
+                }
+#endif
+
+                loop_box<CI, CJ, CK>(f, imin, imax, inormal);
+              }
+            } // if rank
+          }
+        }
+      }
+
+    } // for rank
+  }
+
   // Loop over all outer boundary points. This excludes ghost faces, but
   // includes ghost edges/corners on non-ghost faces. Loop over faces first,
   // then edges, then corners.

@@ -2,6 +2,7 @@
 #include "io.hxx"
 #include "loop.hxx"
 #include "schedule.hxx"
+#include "symmetries.hxx"
 #include "timer.hxx"
 #include "valid.hxx"
 
@@ -1339,6 +1340,25 @@ int Initialise(tFleshConfig *config) {
           assert(!active_levels);
           active_levels = make_optional<active_levels_t>(
               first_modified_level, last_modified_level + 1);
+          // The logic where to apply symmetries mimics (is copied
+          // from the call to FillPatchTwoLevels in RemakeLevel
+          active_levels->loop([&](const auto &leveldata) {
+            const int num_groups = CCTK_NumGroups();
+            for (int gi = 0; gi < num_groups; ++gi) {
+              if (CCTK_GroupTypeI(gi) == CCTK_GF) {
+                const auto &restrict groupdata = *leveldata.groupdata.at(gi);
+                const int ntls = groupdata.mfab.size();
+                // We only prolongate the state vector. And if there
+                // is more than one time level, then we don't
+                // prolongate the oldest.
+                const int prolongate_tl =
+                    groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+                for (int tl = 0; tl < ntls; ++tl)
+                  if (tl < prolongate_tl)
+                    ApplySymmetries(cctkGH, groupdata, tl);
+              }
+            }
+          });
           CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
           CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
           active_levels = optional<active_levels_t>();
@@ -2001,7 +2021,13 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
   // Check checksums
   if (poison_undefined_values)
-    check_checksums(checksums);
+    check_checksums(checksums, [&]() {
+      ostringstream buf;
+      buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
+          << attribute->where << ": " << attribute->thorn
+          << "::" << attribute->routine << " checking output";
+      return buf.str();
+    });
 
   // Mark output variables as having valid data
   {
@@ -2223,6 +2249,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                 0);
             nvtxRangePop();
           }
+          {
+            static Timer timer("Sync::ApplySymmetries");
+            Interval interval(timer);
+            nvtxRangePushA("Sync::ApplySymmetries");
+            ApplySymmetries(cctkGH, groupdata, tl);
+            nvtxRangePop();
+          }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
@@ -2277,6 +2310,13 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                 leveldata.patchdata().amrcore->Geom(level - 1),
                 leveldata.patchdata().amrcore->Geom(level), physbc, 0, physbc,
                 0, reffact, interpolator, bcs, 0);
+            nvtxRangePop();
+          }
+          {
+            static Timer timer("Sync::ApplySymmetries");
+            Interval interval(timer);
+            nvtxRangePushA("Sync::ApplySymmetries");
+            ApplySymmetries(cctkGH, groupdata, tl);
             nvtxRangePop();
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {

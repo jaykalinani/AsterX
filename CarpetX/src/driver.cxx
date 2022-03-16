@@ -512,19 +512,19 @@ get_boundaries(const GHExt::PatchData::LevelData::GroupData &groupdata) {
       {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
       {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
   }};
-  const array<array<bool, 3>, 2> is_reflect{{
-      {{bool(reflection_x), bool(reflection_y), bool(reflection_z)}},
-      {{bool(reflection_upper_x), bool(reflection_upper_y),
-        bool(reflection_upper_z)}},
-  }};
+  // const array<array<bool, 3>, 2> is_reflect{{
+  //     {{bool(reflection_x), bool(reflection_y), bool(reflection_z)}},
+  //     {{bool(reflection_upper_x), bool(reflection_upper_y),
+  //       bool(reflection_upper_z)}},
+  // }};
   const auto makebc = [&](const int vi, const int dir, const int face) {
     assert(dir >= 0 && dir < dim);
     assert(face >= 0 && face < 2);
     if (is_periodic[face][dir])
       return amrex::BCType::int_dir;
-    if (is_reflect[face][dir])
-      return groupdata.parities.at(vi)[dir] > 0 ? amrex::BCType::reflect_even
-                                                : amrex::BCType::reflect_odd;
+    // if (is_reflect[face][dir])
+    //   return groupdata.parities.at(vi)[dir] > 0 ? amrex::BCType::reflect_even
+    //                                             : amrex::BCType::reflect_odd;
     return amrex::BCType::ext_dir;
   };
 
