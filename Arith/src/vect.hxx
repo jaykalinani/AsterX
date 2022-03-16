@@ -127,7 +127,10 @@ template <typename T, int D> struct vect {
         })) {
   }
 
-  operator std::array<T, D>() const { return elts; }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
+  operator std::array<T, D>() const {
+    return elts;
+  }
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST const T &
   operator[](int d) const {
