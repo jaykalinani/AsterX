@@ -11,10 +11,10 @@ PUBLIC:
 
 CCTK_REAL rho TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "rest mass density rho"
 
-CCTK_REAL vel TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' { velx vely velz } "velocity v^i"
+CCTK_REAL vel TYPE=gf CENTERING={ccc} TAGS='parities={-1 +1 +1   +1 -1 +1   +1 +1 -1} checkpoint="no"' { velx vely velz } "velocity v^i"
 
 CCTK_REAL eps TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "specific internal energy epsilon"
 
 CCTK_REAL press TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "pressure p"
 
-CCTK_REAL Bvec TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' { Bvecx Bvecy Bvecz } "Magnetic field B^i"
+CCTK_REAL Bvec TYPE=gf CENTERING={ccc} TAGS='parities={+1 -1 -1   -1 +1 -1   -1 -1 +1} checkpoint="no"' { Bvecx Bvecy Bvecz } "Magnetic field B^i"
