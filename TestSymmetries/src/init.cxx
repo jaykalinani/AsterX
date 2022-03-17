@@ -188,12 +188,12 @@ void map_centering_parity(const cGH *restrict const cctkGH,
       layout, gfptrs[parity[0] > 0][(CI << 2) + (CJ << 1) + (CK << 0)]);
 
   const Loop::GridDescBaseDevice grid(cctkGH);
-  grid.loop_device<CI, CJ, CK, where>(grid.nghostzones,
-                                      [=] CCTK_DEVICE(const Loop::PointDesc &p)
-                                          CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                            const auto value = makevalue(p.X);
-                                            f(var(p.I), value);
-                                          });
+  grid.loop_device<CI, CJ, CK, where>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        const auto value = makevalue(p.X);
+        f(p, centering, parity, var(p.I), value);
+      });
 }
 
 template <int CI, int CJ, int CK, Loop::where_t where, typename F>
@@ -231,7 +231,8 @@ extern "C" void TestSymmetries_Init(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   map_all_centerings_all_parities<Loop::where_t::interior>(
-      cctkGH, [] CCTK_DEVICE(auto &var, const auto &value)
+      cctkGH, [] CCTK_DEVICE(const auto &p, const auto &centering,
+                             const auto &parity, auto &var, const auto &value)
                   CCTK_ATTRIBUTE_ALWAYS_INLINE { var = value; });
 }
 
@@ -240,7 +241,8 @@ extern "C" void TestSymmetries_Boundaries(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   map_all_centerings_all_parities<Loop::where_t::boundary>(
-      cctkGH, [] CCTK_DEVICE(auto &var, const auto &value)
+      cctkGH, [] CCTK_DEVICE(const auto &p, const auto &centering,
+                             const auto &parity, auto &var, const auto &value)
                   CCTK_ATTRIBUTE_ALWAYS_INLINE { var = value; });
 }
 
@@ -251,13 +253,47 @@ extern "C" void TestSymmetries_Sync(CCTK_ARGUMENTS) {
   // Do nothing
 }
 
+CCTK_REAL check;
+
+extern "C" void TestSymmetries_CheckInit(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_TestSymmetries_CheckInit;
+  DECLARE_CCTK_PARAMETERS;
+
+  check = 0;
+}
+
 extern "C" void TestSymmetries_Check(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_TestSymmetries_Check;
   DECLARE_CCTK_PARAMETERS;
 
+  CCTK_REAL local_check = 0;
+
   map_all_centerings_all_parities<Loop::where_t::everywhere>(
-      cctkGH, [] CCTK_DEVICE(auto &var, const auto &value)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE { var -= value; });
+      cctkGH, [&] CCTK_DEVICE(const auto &p, const auto &centering,
+                              const auto &parity, auto &var,
+                              const auto &value) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        using std::abs;
+        if (abs(var - value) > 10 * std::numeric_limits<CCTK_REAL>::epsilon()) {
+          CCTK_VERROR(
+              "Grid function symmetry check failed: I=[%d,%d,%d] X=[%g,%g,%g] "
+              "centering=[%d,%d,%d] parity=[%d,%d,%d] var=%.17g value=%.17g",
+              p.I[0], p.I[1], p.I[2], p.X[0], p.X[1], p.X[2], centering[0],
+              centering[1], centering[2], parity[0], parity[1], parity[2], var,
+              value);
+          local_check = 1;
+        }
+      });
+
+#pragma omp atomic update
+  check += local_check;
+}
+
+extern "C" void TestSymmetries_CheckFinalize(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_TestSymmetries_CheckFinalize;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (check != 0)
+    CCTK_VERROR("Grid function symmetry check failed");
 }
 
 } // namespace TestSymmetries

@@ -64,7 +64,14 @@ SCHEDULE TestSymmetries_Sync AT initial AFTER TestSymmetries_Boundaries
   SYNC: var_ccc_mmm
 } "Synchronize"
 
-SCHEDULE TestSymmetries_Check AT initial AFTER TestSymmetries_Sync
+SCHEDULE TestSymmetries_CheckInit AT initial AFTER TestSymmetries_Sync
+{
+  LANG: C
+  OPTIONS: global
+  # WRITES: check
+} "Check variables (init)"
+
+SCHEDULE TestSymmetries_Check AT initial AFTER TestSymmetries_CheckInit
 {
   LANG: C
   READS: var_vvv_ppp(everywhere)
@@ -83,20 +90,13 @@ SCHEDULE TestSymmetries_Check AT initial AFTER TestSymmetries_Sync
   READS: var_cvc_mmm(everywhere)
   READS: var_ccv_mmm(everywhere)
   READS: var_ccc_mmm(everywhere)
-  WRITES: var_vvv_ppp(everywhere)
-  WRITES: var_vvc_ppp(everywhere)
-  WRITES: var_vcv_ppp(everywhere)
-  WRITES: var_vcc_ppp(everywhere)
-  WRITES: var_cvv_ppp(everywhere)
-  WRITES: var_cvc_ppp(everywhere)
-  WRITES: var_ccv_ppp(everywhere)
-  WRITES: var_ccc_ppp(everywhere)
-  WRITES: var_vvv_mmm(everywhere)
-  WRITES: var_vvc_mmm(everywhere)
-  WRITES: var_vcv_mmm(everywhere)
-  WRITES: var_vcc_mmm(everywhere)
-  WRITES: var_cvv_mmm(everywhere)
-  WRITES: var_cvc_mmm(everywhere)
-  WRITES: var_ccv_mmm(everywhere)
-  WRITES: var_ccc_mmm(everywhere)
+  # READS: check
+  # WRITES: check
 } "Check variables"
+
+SCHEDULE TestSymmetries_CheckFinalize AT initial AFTER TestSymmetries_Check
+{
+  LANG: C
+  OPTIONS: global
+  # READS: check
+} "Check variables (finalize)"
