@@ -26,7 +26,7 @@ REQUIRES FUNCTION GetCallFunctionCount
 
 # TODO: Declare these variables without ghost zones?
 
-CCTK_REAL metric4 TYPE=gf TAGS='checkpoint="no"'
+CCTK_REAL metric4 TYPE=gf TAGS='parities={+1 +1 +1   -1 +1 +1   +1 -1 +1   +1 +1 -1   +1 +1 +1   -1 -1 +1   -1 +1 -1   +1 +1 +1   +1 -1 -1   +1 +1 +1} checkpoint="no"'
 {
   g4tt g4tx g4ty g4tz g4xx g4xy g4xz g4yy g4yz g4zz
 } "4-metric g_ab"
