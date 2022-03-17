@@ -57,32 +57,38 @@ void ApplySymmetries(
   }
 
   // Loop over all blocks on the current level of the current patch
-  loop_over_blocks(cctkGH,
-                   active_levels_t(groupdata.level, groupdata.level + 1,
-                                   groupdata.patch, groupdata.patch + 1),
-                   [&](const int patch, const int level, const int index,
-                       const int block, const cGH *restrict const cctkGH) {
-                     // Get memory layout for this grid function group
-                     const Loop::GF3D2layout layout(cctkGH, groupdata.indextype,
-                                                    groupdata.nghostzones);
-                     const Loop::GridDescBaseDevice grid(cctkGH);
+  loop_over_blocks(
+      cctkGH,
+      active_levels_t(groupdata.level, groupdata.level + 1, groupdata.patch,
+                      groupdata.patch + 1),
+      [&](const int patch, const int level, const int index, const int block,
+          const cGH *restrict const cctkGH) {
+        // Get memory layout for this grid function group
+        const Loop::GF3D2layout layout(cctkGH, groupdata.indextype,
+                                       groupdata.nghostzones);
+        const Loop::GridDescBaseDevice grid(cctkGH);
+        const Arith::vect<int, dim> CI = groupdata.indextype;
 
-                     for (int vi = 0; vi < groupdata.numvars; ++vi) {
-                       CCTK_REAL *const ptr =
-                           static_cast<CCTK_REAL *>(CCTK_VarDataPtrI(
-                               cctkGH, tl, groupdata.firstvarindex + vi));
-                       const Loop::GF3D2<CCTK_REAL> var(layout, ptr);
-                       const Arith::vect<int, dim> CI = groupdata.indextype;
-                       grid.loop_there_device_idx(
-                           groupdata.indextype, there, groupdata.nghostzones,
-                           [=] CCTK_DEVICE(const Loop::PointDesc &p)
-                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                 const auto DI = p.I - p.I0;
-                                 const auto J = p.I0 - DI - (1 - CI) * p.NI;
-                                 var(p.I) = var(J);
-                               });
-                     } // for vi
-                   });
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          CCTK_REAL *const ptr = static_cast<CCTK_REAL *>(
+              CCTK_VarDataPtrI(cctkGH, tl, groupdata.firstvarindex + vi));
+          const Loop::GF3D2<CCTK_REAL> var(layout, ptr);
+          const Arith::vect<int, dim> P = groupdata.parities.at(vi);
+
+          grid.loop_there_device_idx(groupdata.indextype, there,
+                                     groupdata.nghostzones,
+                                     [=] CCTK_DEVICE(const Loop::PointDesc &p)
+                                         CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                           int parity = 1;
+                                           for (int d = 0; d < dim; ++d)
+                                             if (p.NI[d] != 0)
+                                               parity *= P[d];
+                                           const auto DI = p.I0 - p.I;
+                                           const auto J = p.I0 + DI + CI * p.NI;
+                                           var(p.I) = parity * var(J);
+                                         });
+        } // for vi
+      });
 }
 
 } // namespace CarpetX
