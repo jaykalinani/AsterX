@@ -32,6 +32,27 @@ bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
   return abs(x - y) <= max(atol, rtol * max(abs(x), abs(y)));
 }
 
+enum class string_color { none, green, red };
+
+template <string_color color>
+constexpr const std::string colored(const std ::string &string) {
+  if constexpr (color == string_color::red) {
+    std::string msg{"\033[31;1m"};
+    msg += string;
+    msg += "\033[0m";
+    return msg;
+
+  } else if constexpr (color == string_color::green) {
+    std::string msg{"\033[32;1m"};
+    msg += string;
+    msg += "\033[0m";
+
+    return msg;
+  }
+
+  return string;
+}
+
 } // namespace MultiPatchTests
 
 /**

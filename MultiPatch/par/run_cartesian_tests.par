@@ -29,7 +29,7 @@ CarpetX::max_num_levels = 1
 CarpetX::dtfac = 0.5
 
 MultiPatch::run_tests    = yes
-MultiPatch::repeat_tests = 1
+MultiPatch::repeat_tests = 10
 
 MultiPatch::patch_system = "Cartesian"
 

@@ -10,7 +10,9 @@ namespace CartesianTests {
 std::string local2global(const PatchTransformations &pt,
                          const vec<CCTK_REAL, dim, UP> &x) {
 
+  using MultiPatchTests::colored;
   using MultiPatchTests::isapprox;
+  using MultiPatchTests::string_color;
 
   std::string msg{"has "};
 
@@ -20,9 +22,9 @@ std::string local2global(const PatchTransformations &pt,
   const bool eq_z = isapprox(l2g(2), x(2));
 
   if (eq_x && eq_y && eq_z) {
-    msg += "\033[32;1mPASSED\033[0m.";
+    msg += colored<string_color::green>("PASSED");
   } else {
-    msg += "\033[31;1mFAILED\033[0m. Reason(s):";
+    msg += colored<string_color::green>("FAILED");
 
     if (!eq_x) {
       msg += " The result in the x direction is ";
