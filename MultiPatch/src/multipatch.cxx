@@ -125,7 +125,7 @@ extern "C" int MultiPatch_Setup() {
   } else if (CCTK_EQUALS(patch_system, "Swirl")) {
     the_patch_system = std::make_unique<PatchSystem>(SetupSwirl());
   } else if (CCTK_EQUALS(patch_system, "Cake")) {
-    // TODO: the_patch_system = std::make_unique<PatchSystem>(SetupCake());
+    the_patch_system = std::make_unique<PatchSystem>(SetupCake());
   } else {
     CCTK_VERROR("Unknown patch system \"%s\"", patch_system);
   }

@@ -141,6 +141,7 @@ struct PatchSystem {
 PatchSystem SetupCartesian();
 PatchSystem SetupCubedSphere();
 PatchSystem SetupSwirl();
+PatchSystem SetupCake();
 
 extern std::unique_ptr<PatchSystem> the_patch_system;
 

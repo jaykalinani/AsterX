@@ -67,6 +67,6 @@ extern "C" void run_cartesian_tests();
  *
  * This function needs to be scheduled scheduled at the wragh bin
  */
-// TODO: extern "C" void run_cake_tests();
+extern "C" void run_cake_tests();
 
 #endif // MULTIPATCH_TESTS_HXX

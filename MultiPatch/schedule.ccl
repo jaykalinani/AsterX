@@ -21,10 +21,9 @@ if(run_tests)
     OPTIONS: meta
   } "Perform Cartesian patch system tests"
 
-  # TODO:
-  #SCHEDULE run_cake_tests AT wragh
-  #{
-  #  LANG: C
-  #  OPTIONS: meta
-  #} "Perform Cake patch system tests"
+  SCHEDULE run_cake_tests AT wragh
+  {
+    LANG: C
+    OPTIONS: meta
+  } "Perform Cake patch system tests"
 }
