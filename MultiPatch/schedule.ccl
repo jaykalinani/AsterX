@@ -12,3 +12,19 @@ SCHEDULE MultiPatch_Coordinates_Setup AT basegrid AFTER Coordinates_Setup
   WRITES: Coordinates::cell_coords(everywhere)
   WRITES: Coordinates::cell_volume(everywhere)
 } "Set coordinate grid functions"
+
+if(run_tests)
+{
+  SCHEDULE run_cartesian_tests AT wragh
+  {
+    LANG: C
+    OPTIONS: meta
+  } "Perform Cartesian patch system tests"
+
+  # TODO:
+  #SCHEDULE run_cake_tests AT wragh
+  #{
+  #  LANG: C
+  #  OPTIONS: meta
+  #} "Perform Cake patch system tests"
+}

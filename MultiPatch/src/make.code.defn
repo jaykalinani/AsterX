@@ -1,7 +1,7 @@
 # Main make.code.defn file for thorn MultiPatch
 
 # Source files in this directory
-SRCS = cartesian.cxx cubed_sphere.cxx multipatch.cxx swirl.cxx
+SRCS = multipatch.cxx
 
 # Subdirectories containing source files
-SUBDIRS =
+SUBDIRS = cartesian cubed_sphere swirl

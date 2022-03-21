@@ -5,6 +5,7 @@ KEYWORD patch_system "Patch system"
   "Cartesian" :: ""
   "Cubed sphere" :: ""
   "Swirl" :: ""
+  "Cake" :: ""
 } "Cartesian"
 
 # Cartesian patch system
@@ -73,4 +74,52 @@ INT swirl_ncells_j "Number of cells in j direction"
 INT swirl_ncells_k "Number of cells in k direction"
 {
   0:* :: ""
+} 10
+
+# Cake patch system
+
+REAL cake_outer_boundary_radius "Radius where the outer boundaries of the cake will be placed."
+{
+  0:* :: "Positive"
+} 10.0
+
+REAL cake_cube_half_length  "Length of the side of the central cartesian cube"
+{
+  0:* :: "Positive"
+} 2.0
+
+INT cake_cartesian_ncells_i "Number of cells in the cartesian x direction"
+{
+  0:* :: "Positive"
+} 10
+
+INT cake_cartesian_ncells_j "Number of cells in the cartesian y direction"
+{
+  0:* :: "Positive"
+} 10
+
+INT cake_cartesian_ncells_k "Number of cells in the cartesian z direction"
+{
+  0:* :: "Positive"
+} 10
+
+INT cake_angular_cells "Number of cells in the angular direction"
+{
+  0:* :: "Positive"
+} 10
+
+INT cake_radial_cells "Number of cells in the radial direction" 
+{
+  0:* :: "Positive"
+} 10
+
+# Internal unit tests
+
+CCTK_BOOLEAN run_tests "Wether or not to perform tests on the coordinate transformation routines"
+{
+} no
+
+INT repeat_tests "How many times to repeat each test"
+{
+  1:* :: "Positive and greater or equal 1"
 } 10

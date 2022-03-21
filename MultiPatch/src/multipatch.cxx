@@ -49,6 +49,7 @@ PatchTransformations::PatchTransformations()
         DECLARE_CCTK_PARAMETERS;
         return cartesian_ncells_k;
       }()),
+
       // Cubed sphere
       cubed_sphere_rmin([] {
         DECLARE_CCTK_PARAMETERS;
@@ -58,6 +59,7 @@ PatchTransformations::PatchTransformations()
         DECLARE_CCTK_PARAMETERS;
         return cubed_sphere_rmax;
       }()),
+
       // Swirl
       swirl_ncells_i([] {
         DECLARE_CCTK_PARAMETERS;
@@ -70,6 +72,36 @@ PatchTransformations::PatchTransformations()
       swirl_ncells_k([] {
         DECLARE_CCTK_PARAMETERS;
         return swirl_ncells_k;
+      }()),
+
+      // Cake
+      cake_outer_boundary_radius([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_outer_boundary_radius;
+      }()),
+      cake_cube_half_length([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cube_half_length;
+      }()),
+      cake_cartesian_ncells_i([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cartesian_ncells_i;
+      }()),
+      cake_cartesian_ncells_j([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cartesian_ncells_j;
+      }()),
+      cake_cartesian_ncells_k([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cartesian_ncells_k;
+      }()),
+      cake_angular_cells([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_angular_cells;
+      }()),
+      cake_radial_cells([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_radial_cells;
       }()) {}
 
 std::unique_ptr<PatchSystem> the_patch_system;
@@ -92,6 +124,8 @@ extern "C" int MultiPatch_Setup() {
     the_patch_system = std::make_unique<PatchSystem>(SetupCubedSphere());
   } else if (CCTK_EQUALS(patch_system, "Swirl")) {
     the_patch_system = std::make_unique<PatchSystem>(SetupSwirl());
+  } else if (CCTK_EQUALS(patch_system, "Cake")) {
+    // TODO: the_patch_system = std::make_unique<PatchSystem>(SetupCake());
   } else {
     CCTK_VERROR("Unknown patch system \"%s\"", patch_system);
   }
