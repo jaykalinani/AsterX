@@ -10,7 +10,7 @@ MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
   const auto y = global_vars(1);
   const auto z = global_vars(2);
 
-  const auto f = pt.cake_cube_half_length / 2;
+  const auto f = pt.cake_inner_boundary_radius / 2;
   const auto Rf = pt.cake_outer_boundary_radius;
   const auto r = std::sqrt(Power(x, 2) + Power(y, 2) + Power(z, 2));
 

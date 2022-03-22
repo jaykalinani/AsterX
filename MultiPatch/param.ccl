@@ -83,10 +83,10 @@ REAL cake_outer_boundary_radius "Radius where the outer boundaries of the cake w
   0:* :: "Positive"
 } 10.0
 
-REAL cake_cube_half_length  "Length of the side of the central cartesian cube"
+REAL cake_inner_boundary_radius  "Half of the length of the side of the central cartesian cube"
 {
   0:* :: "Positive"
-} 2.0
+} 1.0
 
 INT cake_cartesian_ncells_i "Number of cells in the cartesian x direction"
 {

@@ -79,9 +79,9 @@ PatchTransformations::PatchTransformations()
         DECLARE_CCTK_PARAMETERS;
         return cake_outer_boundary_radius;
       }()),
-      cake_cube_half_length([] {
+      cake_inner_boundary_radius([] {
         DECLARE_CCTK_PARAMETERS;
-        return cake_cube_half_length;
+        return cake_inner_boundary_radius;
       }()),
       cake_cartesian_ncells_i([] {
         DECLARE_CCTK_PARAMETERS;

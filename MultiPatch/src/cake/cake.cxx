@@ -27,7 +27,7 @@ inline CCTK_REAL local_to_global_cake_core(const PatchTransformations &pt,
   expects(within(c, 1.0) || at_boundary(c, 1.0),
           "The variable c is out of the (-1,1) range.");
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto numerator = Chl * (1 - c) + Rf * (1 + c);
@@ -52,7 +52,7 @@ inline CCTK_REAL local_to_global_cake_core_da(const PatchTransformations &pt,
                                               CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
@@ -77,7 +77,7 @@ inline CCTK_REAL local_to_global_cake_core_db(const PatchTransformations &pt,
                                               CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
@@ -102,7 +102,7 @@ inline CCTK_REAL local_to_global_cake_core_dc(const PatchTransformations &pt,
                                               CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
@@ -129,7 +129,7 @@ inline CCTK_REAL local_to_global_cake_core_da_da(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto numerator =
@@ -156,7 +156,7 @@ inline CCTK_REAL local_to_global_cake_core_da_db(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto numerator =
@@ -182,7 +182,7 @@ inline CCTK_REAL local_to_global_cake_core_da_dc(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto numerator =
@@ -212,7 +212,7 @@ inline CCTK_REAL local_to_global_cake_core_db_db(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto numerator =
@@ -239,7 +239,7 @@ inline CCTK_REAL local_to_global_cake_core_db_dc(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_cube_half_length;
+  const auto Chl = pt.cake_inner_boundary_radius;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   const auto numerator =
@@ -265,7 +265,7 @@ inline CCTK_REAL local_to_global_cake_core_db_dc(const PatchTransformations &pt,
 inline CCTK_REAL local_to_global_cake_core_dc_dc(const PatchTransformations &pt,
                                                  CCTK_REAL a, CCTK_REAL b,
                                                  CCTK_REAL c) {
-  const auto f = pt.cake_cube_half_length / 2;
+  const auto f = pt.cake_inner_boundary_radius / 2;
   return ((-1 + a) * (1 + a) *
               (2 + (1 + a) * Power(b, 2) - 2 * (1 + a) * Power(c, 2)) * f +
           (-1 - a) * (1 + a) *
@@ -341,7 +341,7 @@ std::tuple<int, svec_u> global2local(const PatchTransformations &pt,
   const auto piece = get_owner_patch(pt, global_vars);
   svec_u local_vars = {0, 0, 0};
 
-  const auto f = pt.cake_cube_half_length / 2;
+  const auto f = pt.cake_inner_boundary_radius / 2;
   const auto Rf = pt.cake_outer_boundary_radius;
 
   if (piece == patch_piece::cartesian) {
@@ -638,7 +638,7 @@ template <patch_piece p> Patch make_patch(const PatchTransformations &pt) {
   PatchFace p_k = {true, -1};
 
   if constexpr (p == patch_piece::cartesian) {
-    const auto f = pt.cake_cube_half_length / 2;
+    const auto f = pt.cake_inner_boundary_radius / 2;
 
     patch.ncells = {cartesian_ncells_i, cartesian_ncells_j, cartesian_ncells_k};
     patch.xmin = {-f, -f, -f};

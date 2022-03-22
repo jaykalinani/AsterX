@@ -56,9 +56,10 @@ struct PatchTransformations {
   const CCTK_REAL
       cake_outer_boundary_radius; // The radius of the outer boundary
 
-  const CCTK_REAL cake_cube_half_length; /* Half the coordinate length of the
-                                          * central cartesian cube's face
-                                          */
+  const CCTK_REAL
+      cake_inner_boundary_radius; /* Half the coordinate length of the
+                                   * central cartesian cube's face
+                                   */
 
   const int cake_cartesian_ncells_i; /* The number of cells in the x direction
                                       * of the central cartesian cube.
