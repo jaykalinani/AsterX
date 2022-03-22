@@ -93,7 +93,6 @@ std::string glg_test(const PatchTransformations &pt,
 }
 
 } // namespace CakeTests
-
 } // namespace MultiPatch
 
 extern "C" void run_cake_tests() {
@@ -116,12 +115,15 @@ extern "C" void run_cake_tests() {
 
   mt19937_64 engine(random_seed);
 
-  const auto max = pt.cake_outer_boundary_radius;
-  const auto min = 0.0;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  uniform_real_distribution<CCTK_REAL> x_distrib(min, max);
-  uniform_real_distribution<CCTK_REAL> y_distrib(min, max);
-  uniform_real_distribution<CCTK_REAL> z_distrib(min, max);
+  const auto cube_midpoint = r0 / 2.0;
+  const auto patch_midpoint = r1 / 2.0;
+
+  uniform_real_distribution<CCTK_REAL> x_distrib(-r1, r1);
+  uniform_real_distribution<CCTK_REAL> y_distrib(-r1, r1);
+  uniform_real_distribution<CCTK_REAL> z_distrib(-r1, r1);
 
   uniform_real_distribution<CCTK_REAL> local_distrib(-1.0, 1.0);
 
@@ -130,11 +132,57 @@ extern "C" void run_cake_tests() {
 
   CCTK_INFO("Running cake patch tests:");
 
-  // The patch_owner tests does not take random numbers as input because we
-  // need to compare results with known values
-  const std::array<std::pair<svec_u, patch_piece>, 2> owner_test_data = {
-      std::make_pair(svec_u{5.0, 0.0, 0.0}, patch_piece::plus_x),
-      std::make_pair(svec_u{6.0, 0.0, 0.0}, patch_piece::plus_x)};
+  // The patch_owner tests do not take random numbers as input because we
+  // need to compare results with known values.
+  const std::array<std::pair<svec_u, patch_piece>, 27> owner_test_data = {
+      // Cartesian cube interior
+      std::make_pair(svec_u{cube_midpoint, cube_midpoint, cube_midpoint},
+                     patch_piece::cartesian),
+      std::make_pair(svec_u{-cube_midpoint, cube_midpoint, cube_midpoint},
+                     patch_piece::cartesian),
+      std::make_pair(svec_u{cube_midpoint, -cube_midpoint, cube_midpoint},
+                     patch_piece::cartesian),
+      std::make_pair(svec_u{cube_midpoint, cube_midpoint, -cube_midpoint},
+                     patch_piece::cartesian),
+
+      // Cartesian cube corners
+      std::make_pair(svec_u{r0, r0, r0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{-r0, r0, r0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{r0, -r0, r0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{r0, r0, -r0}, patch_piece::inner_boundary),
+
+      // Middle of the +x patch
+      std::make_pair(svec_u{r0, 0.0, 0.0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{patch_midpoint, 0.0, 0.0}, patch_piece::plus_x),
+      std::make_pair(svec_u{r1, 0.0, 0.0}, patch_piece::outer_boundary),
+
+      // Middle of the -x patch
+      std::make_pair(svec_u{-r0, 0.0, 0.0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{-patch_midpoint, 0.0, 0.0}, patch_piece::minus_x),
+      std::make_pair(svec_u{-r1, 0.0, 0.0}, patch_piece::outer_boundary),
+
+      // Middle of the +y patch
+      std::make_pair(svec_u{0.0, r0, 0.0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{0.0, patch_midpoint, 0.0}, patch_piece::plus_y),
+      std::make_pair(svec_u{0.0, r1, 0.0}, patch_piece::outer_boundary),
+
+      // Middle of the -y patch
+      std::make_pair(svec_u{0.0, -r0, 0.0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{0.0, -patch_midpoint, 0.0}, patch_piece::minus_y),
+      std::make_pair(svec_u{0.0, -r1, 0.0}, patch_piece::outer_boundary),
+
+      // Middle of the +z patch
+      std::make_pair(svec_u{0.0, 0.0, r0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{0.0, 0.0, patch_midpoint}, patch_piece::plus_z),
+      std::make_pair(svec_u{0.0, 0.0, r1}, patch_piece::outer_boundary),
+
+      // Middle of the -z patch
+      std::make_pair(svec_u{0.0, 0.0, -r0}, patch_piece::inner_boundary),
+      std::make_pair(svec_u{0.0, 0.0, -patch_midpoint}, patch_piece::minus_z),
+      std::make_pair(svec_u{0.0, 0.0, -r1}, patch_piece::outer_boundary),
+
+      std::make_pair(svec_u{r1 + 1.0, r1 + 1.0, r1 + 1.0},
+                     patch_piece::exterior)};
 
   for (const auto &data : owner_test_data) {
     CCTK_VINFO("  Patch owner test at point (%f, %f, %f) %s", data.first(0),
@@ -142,18 +190,11 @@ extern "C" void run_cake_tests() {
                patch_owner(pt, data.first, data.second).c_str());
   }
 
+  // These tests take random numbers as input
   for (int i = 0; i < repeat_tests; i++) {
     global_point = {x_distrib(engine), y_distrib(engine), z_distrib(engine)};
     local_point = {local_distrib(engine), local_distrib(engine),
                    local_distrib(engine)};
-
-    CCTK_VINFO("  Global to local transformation test at point (%f, %f, %f) %s",
-               global_point(0), global_point(1), global_point(2),
-               global2local_test(pt, global_point).c_str());
-
-    CCTK_VINFO("  Local to global transformation test at point (%f, %f, %f) %s",
-               local_point(0), local_point(1), local_point(2),
-               local2global_test(pt, local_point).c_str());
 
     CCTK_VINFO("  Global -> local -> global transformation test at point (%f, "
                "%f, %f) %s",

@@ -90,31 +90,6 @@ template <typename T> static inline T Sqrt(T x) {
 }
 
 /**
- * Test if -boundary < variable < boundary. Fails if variable ~= +/- boundary.
- *
- * @param variable The variable to test.
- * @param boundary The absolute value of the region boundary
- * @return A boolean indicating if the variable is within the region.
- */
-template <typename T> static inline bool within(T variable, T boundary) {
-  using MultiPatchTests::isapprox;
-  return (variable > -boundary && !isapprox(variable, -boundary)) &&
-         (variable < boundary && !isapprox(variable, boundary));
-}
-
-/**
- * Test if -boundary ~= variable or variable ~= boundary.
- *
- * @param variable The variable to test.
- * @param boundary The absolute value of the region boundary
- * @return A boolean indicating if the variable is within the region.
- */
-template <typename T> static inline bool at_boundary(T variable, T boundary) {
-  using MultiPatchTests::isapprox;
-  return (isapprox(variable, boundary) || isapprox(variable, -boundary));
-}
-
-/**
  * Tags for each patch piece in the cake
  */
 enum class patch_piece : int {

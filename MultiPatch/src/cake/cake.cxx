@@ -18,6 +18,8 @@ namespace Cake {
 inline CCTK_REAL local_to_global_cake_core(const PatchTransformations &pt,
                                            CCTK_REAL a, CCTK_REAL b,
                                            CCTK_REAL c) {
+  using MultiPatchTests::at_boundary;
+  using MultiPatchTests::within;
   using std::sqrt;
 
   expects(within(a, 1.0) || at_boundary(a, 1.0),

@@ -22,7 +22,7 @@ constexpr const int random_seed = 100;
  * @return True if x ~ y, false otherwise.
  */
 template <typename fp_type>
-bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
+inline bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
   using std::abs;
   using std::max;
   using std::sqrt;
@@ -32,8 +32,41 @@ bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
   return abs(x - y) <= max(atol, rtol * max(abs(x), abs(y)));
 }
 
+/**
+ * Test if -boundary < variable < boundary. Fails if variable ~= +/- boundary.
+ *
+ * @param variable The variable to test.
+ * @param boundary The absolute value of the region boundary
+ * @return A boolean indicating if the variable is within the region.
+ */
+template <typename T> inline bool within(T variable, T boundary) {
+  return (variable > -boundary && !isapprox(variable, -boundary)) &&
+         (variable < boundary && !isapprox(variable, boundary));
+}
+
+/**
+ * Test if -boundary ~= variable or variable ~= boundary.
+ *
+ * @param variable The variable to test.
+ * @param boundary The absolute value of the region boundary
+ * @return A boolean indicating if the variable is within the region.
+ */
+template <typename T> inline bool at_boundary(T variable, T boundary) {
+  return (isapprox(variable, boundary) || isapprox(variable, -boundary));
+}
+
+/**
+ * Tag representing possible colors to apply to strings.
+ */
 enum class string_color { none, green, red };
 
+/**
+ * Formats a string to be colored in ANSI compatible terminals.
+ *
+ * @tparam color The color to use.
+ * @param string The string to color.
+ * @return The colored string.
+ */
 template <string_color color>
 constexpr const std::string colored(const std ::string &string) {
   if constexpr (color == string_color::red) {
