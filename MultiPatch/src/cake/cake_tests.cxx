@@ -7,14 +7,28 @@ namespace MultiPatch {
 namespace CakeTests {
 
 std::string patch_owner(const PatchTransformations &pt,
-                        const MultiPatch::Cake::svec_u &x) {
-  using namespace MultiPatch::Cake;
+                        const MultiPatch::Cake::svec_u &x,
+                        MultiPatch::Cake::patch_piece expected) {
 
-  std::string msg{"has returnd "};
+  using namespace MultiPatch::Cake;
+  using namespace MultiPatchTests;
+
+  std::string msg{"has "};
 
   const auto owner_patch = get_owner_patch(pt, x);
 
-  return piece_name(owner_patch);
+  if (owner_patch == expected) {
+    msg += colored<string_color::green>("PASSED");
+  } else {
+    msg += colored<string_color::red>("FAILED");
+    msg += ". Reason: Expected to get patch ";
+    msg += piece_name(expected);
+    msg += " and got ";
+    msg += piece_name(owner_patch);
+  }
+
+  msg += ".";
+  return msg;
 }
 
 std::string global2local_test(const PatchTransformations &pt,
@@ -83,6 +97,7 @@ std::string glg_test(const PatchTransformations &pt,
 extern "C" void run_cake_tests() {
   DECLARE_CCTK_PARAMETERS
 
+  using MultiPatch::Cake::patch_piece;
   using MultiPatch::Cake::svec_u;
 
   using std::mt19937_64;
@@ -113,14 +128,16 @@ extern "C" void run_cake_tests() {
 
   CCTK_INFO("Running cake patch tests:");
 
+  // The patch_owner tests does not take random numbers as input because we
+  // need to compare results with known values
+  auto plus_x_p1 = svec_u{5.0, 0.0, 0.0};
+  CCTK_VINFO("  Patch owner test at point (0, 0, 5) %s",
+             patch_owner(pt, plus_x_p1, patch_piece::plus_x).c_str());
+
   for (int i = 0; i < repeat_tests; i++) {
     global_point = {x_distrib(engine), y_distrib(engine), z_distrib(engine)};
     local_point = {local_distrib(engine), local_distrib(engine),
                    local_distrib(engine)};
-
-    CCTK_VINFO("  Patch owner test at point (%f, %f, %f) %s", global_point(0),
-               global_point(1), global_point(2),
-               patch_owner(pt, global_point).c_str());
 
     CCTK_VINFO("  Global to local transformation test at point (%f, %f, %f) %s",
                global_point(0), global_point(1), global_point(2),
