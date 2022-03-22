@@ -3,6 +3,8 @@
 
 #include <cctk_Parameters.h>
 
+#include <utility>
+
 namespace MultiPatch {
 namespace CakeTests {
 
@@ -130,9 +132,15 @@ extern "C" void run_cake_tests() {
 
   // The patch_owner tests does not take random numbers as input because we
   // need to compare results with known values
-  auto plus_x_p1 = svec_u{5.0, 0.0, 0.0};
-  CCTK_VINFO("  Patch owner test at point (0, 0, 5) %s",
-             patch_owner(pt, plus_x_p1, patch_piece::plus_x).c_str());
+  const std::array<std::pair<svec_u, patch_piece>, 2> owner_test_data = {
+      std::make_pair(svec_u{5.0, 0.0, 0.0}, patch_piece::plus_x),
+      std::make_pair(svec_u{6.0, 0.0, 0.0}, patch_piece::plus_x)};
+
+  for (const auto &data : owner_test_data) {
+    CCTK_VINFO("  Patch owner test at point (%f, %f, %f) %s", data.first(0),
+               data.first(1), data.first(2),
+               patch_owner(pt, data.first, data.second).c_str());
+  }
 
   for (int i = 0; i < repeat_tests; i++) {
     global_point = {x_distrib(engine), y_distrib(engine), z_distrib(engine)};
