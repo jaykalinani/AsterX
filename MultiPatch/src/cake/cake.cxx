@@ -22,17 +22,24 @@ inline CCTK_REAL local_to_global_cake_core(const PatchTransformations &pt,
   using MultiPatchTests::within;
   using std::sqrt;
 
-  expects(within(a, 1.0) || at_boundary(a, 1.0),
-          "The variable a is out of the (-1,1) range.");
-  expects(within(b, 1.0) || at_boundary(b, 1.0),
-          "The variable b is out of the (-1,1) range.");
-  expects(within(c, 1.0) || at_boundary(c, 1.0),
-          "The variable c is out of the (-1,1) range.");
+  // Ensure that -1 <= a,b,c <= 1
+  expects(
+      within(a, 1.0) || at_boundary(a, 1.0),
+      "Invoked local_to_global_cake_core with the variable a not in the (-1,1) "
+      "range.");
+  expects(
+      within(b, 1.0) || at_boundary(b, 1.0),
+      "Invoked local_to_global_cake_core with the variable b not in the (-1,1) "
+      "range.");
+  expects(
+      within(c, 1.0) || at_boundary(c, 1.0),
+      "Invoked local_to_global_cake_core with the variable c not in the (-1,1) "
+      "range.");
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  const auto numerator = Chl * (1 - c) + Rf * (1 + c);
+  const auto numerator = r0 * (1 - c) + r1 * (1 + c);
   const auto denominator =
       sqrt(4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c));
 
@@ -54,14 +61,14 @@ inline CCTK_REAL local_to_global_cake_core_da(const PatchTransformations &pt,
                                               CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = factor * sqrt(factor);
-  const auto numerator = (-2 * a * (1 + c) * (Chl - c * Chl + Rf + c * Rf));
+  const auto denominator = sqrt(factor) * factor;
+  const auto numerator = 2 * a * (1 + c) * ((1 - c) * r0 + (1 + c) * r1);
 
-  return numerator / denominator;
+  return -numerator / denominator;
 }
 
 /**
@@ -79,14 +86,14 @@ inline CCTK_REAL local_to_global_cake_core_db(const PatchTransformations &pt,
                                               CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto numerator = (-2 * b * (1 + c) * (Chl - c * Chl + Rf + c * Rf));
   const auto denominator = factor * sqrt(factor);
+  const auto numerator = 2 * b * (1 + c) * ((1 - c) * r0 + (1 + c) * r1);
 
-  return numerator / denominator;
+  return -numerator / denominator;
 }
 
 /**
@@ -104,14 +111,14 @@ inline CCTK_REAL local_to_global_cake_core_dc(const PatchTransformations &pt,
                                               CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
+  const auto denominator = sqrt(factor) * factor;
   const auto numerator =
-      -((4 + Power(a, 2) * (3 + c) + Power(b, 2) * (3 + c)) * Chl) + 4 * Rf +
-      (Power(a, 2) + Power(b, 2)) * (1 + c) * Rf;
-  const auto denominator = factor * sqrt(factor);
+      (Power(a, 2) + Power(b, 2)) * ((c - 1) * r0 - (c + 1) * r1) +
+      (r1 - r0) * factor;
 
   return numerator / denominator;
 }
@@ -131,16 +138,16 @@ inline CCTK_REAL local_to_global_cake_core_da_da(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  const auto numerator =
-      -(((1 + c) * (-2 + 2 * Power(a, 2) * (1 + c) - Power(b, 2) * (1 + c)) *
-         ((-1 + c) * Chl - (1 + c) * Rf)));
-  const auto factor = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto denominator = Power(factor, 2) * sqrt(2 * factor);
+  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
+  const auto factor_2 = 2 * factor_1;
+  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
+  const auto numerator = sqrt(2) * (1 + c) * ((c - 1) * r0 - (c + 1) * r1) *
+                         (6 * Power(a, 2) * (1 + c) - Power(factor_2, 2));
 
-  return numerator / denominator;
+  return -numerator / denominator;
 }
 
 /**
@@ -158,13 +165,13 @@ inline CCTK_REAL local_to_global_cake_core_da_db(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  const auto numerator =
-      (12 * a * b * Power(1 + c, 2) * (Chl - c * Chl + Rf + c * Rf));
   const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = Power(factor, 2) * sqrt(factor);
+  const auto denominator = sqrt(factor) * Power(factor, 3);
+  const auto numerator =
+      12 * a * b * Power(1 + c, 2) * ((1 - c) * r0 + (1 + c) * r1);
 
   return numerator / denominator;
 }
@@ -184,19 +191,18 @@ inline CCTK_REAL local_to_global_cake_core_da_dc(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  const auto numerator =
-      (a *
-           (8 * c + Power(a, 2) * (1 + c) * (3 + c) +
-            Power(b, 2) * (1 + c) * (3 + c)) *
-           Chl -
-       a * (1 + c) * (8 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c)) * Rf);
-  const auto factor = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto denominator = 2 * Power(factor, 2) * sqrt(2 * factor);
+  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
+  const auto factor_2 = 2 * factor_1;
+  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
+  const auto numerator = Sqrt(2) * a *
+                         (3 * (Power(a, 2) + Power(b, 2)) * (1 + c) *
+                              ((-1 + c) * r0 - (1 + c) * r1) +
+                          2 * (r1 + c * (-r0 + r1)) * Power(factor_2, 2));
 
-  return numerator / denominator;
+  return -numerator / denominator;
 }
 
 /**
@@ -214,16 +220,16 @@ inline CCTK_REAL local_to_global_cake_core_db_db(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  const auto numerator =
-      ((1 + c) * (2 + Power(a, 2) * (1 + c) - 2 * Power(b, 2) * (1 + c)) *
-       ((-1 + c) * Chl - (1 + c) * Rf));
-  const auto factor = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto denominator = Power(factor, 2) * sqrt(2 * factor);
+  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
+  const auto factor_2 = 2 * factor_1;
+  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
+  const auto numerator = Sqrt(2) * (1 + c) * ((-1 + c) * r0 - (1 + c) * r1) *
+                         (6 * Power(b, 2) * (1 + c) - Power(factor_2, 2));
 
-  return numerator / denominator;
+  return -numerator / denominator;
 }
 
 /**
@@ -241,17 +247,18 @@ inline CCTK_REAL local_to_global_cake_core_db_dc(const PatchTransformations &pt,
                                                  CCTK_REAL c) {
   using std::sqrt;
 
-  const auto Chl = pt.cake_inner_boundary_radius;
-  const auto Rf = pt.cake_outer_boundary_radius;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
-  const auto numerator =
-      (b *
-           (8 * c + Power(a, 2) * (1 + c) * (3 + c) +
-            Power(b, 2) * (1 + c) * (3 + c)) *
-           Chl -
-       b * (1 + c) * (8 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c)) * Rf);
-  const auto factor = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto denominator = 2 * Power(factor, 2) * sqrt(2 * factor);
+  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
+  const auto factor_2 = 2 * factor_1;
+  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
+  const auto numerator = Sqrt(2) * b *
+                         (3 * (Power(a, 2) + Power(b, 2)) * (1 + c) *
+                              ((-1 + c) * r0 - (1 + c) * r1) +
+                          2 * Power(factor_2, 2) * (r1 + c * (-r0 + r1)));
+
+  return -numerator / denominator;
 }
 
 /**
@@ -267,19 +274,66 @@ inline CCTK_REAL local_to_global_cake_core_db_dc(const PatchTransformations &pt,
 inline CCTK_REAL local_to_global_cake_core_dc_dc(const PatchTransformations &pt,
                                                  CCTK_REAL a, CCTK_REAL b,
                                                  CCTK_REAL c) {
-  const auto f = pt.cake_inner_boundary_radius / 2;
-  return ((-1 + a) * (1 + a) *
-              (2 + (1 + a) * Power(b, 2) - 2 * (1 + a) * Power(c, 2)) * f +
-          (-1 - a) * (1 + a) *
-              (2 + (1 + a) * Power(b, 2) - 2 * (1 + a) * Power(c, 2)) *
-              pt.cake_outer_boundary_radius) /
-         std::sqrt(2 *
-                   Power(2 + (1 + a) * Power(b, 2) + (1 + a) * Power(c, 2), 2));
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
+
+  const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
+  const auto denominator = sqrt(factor) * Power(factor, 3);
+  const auto numerator =
+      (Power(a, 2) + Power(b, 2)) *
+      (-3 * (Power(a, 2) + Power(b, 2)) * ((-1 + c) * r0 - (1 + c) * r1) +
+       2 * (r0 - r1) * Power(factor, 2));
+
+  return numerator / denominator;
+}
+
+/**
+ * Core function of the cake coordinate transformations.
+ *
+ * @param pt The cake patch data.
+ * @param x The x global coordinate.
+ * @param y The y global coordiante.
+ * @param z the z global coordiante.
+ * @return The value of the core.
+ */
+inline CCTK_REAL global_to_local_cake_core(const PatchTransformations &pt,
+                                           CCTK_REAL x, CCTK_REAL y,
+                                           CCTK_REAL z) {
+
+  using MultiPatchTests::at_boundary;
+  using MultiPatchTests::within;
+  using std::sqrt;
+
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
+
+  // Ensure that -r1 <= x,y,z <= r1
+  expects(within(x, r1) || at_boundary(x, r1),
+          "Invoked local_to_global_cake_core with the variable x the (-1,1) "
+          "range.");
+  expects(within(y, r1) || at_boundary(y, r1),
+          "Invoked local_to_global_cake_core with the variable y the (-1,1) "
+          "range.");
+  expects(within(z, r1) || at_boundary(z, r1),
+          "Invoked local_to_global_cake_core with the variable z the (-1,1) "
+          "range.");
+
+  const auto x2 = Power(x, 2);
+  const auto y2 = Power(y, 2);
+  const auto z2 = Power(z, 2);
+  const auto r02 = Power(r0, 2);
+  const auto r12 = Power(r1, 2);
+
+  return (r02 - r12 + y2 + z2 +
+          Sqrt(4 * r12 * x2 + Power(y2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
+               4 * r0 * r1 * (2 * x2 + y2 + z2))) /
+         Power(r0 - r1, 2);
 }
 
 /**
  * The local to global coordinate transformation implementation.
- * This is where the actual coordinate transformations are performed.
+ * This is where the actual coordinate transformations are performed but it is
+ * not suitable for passing to CarpetX.
  *
  * @tparam p The patch piece to perform the coordinate transformations for.
  * @param pt The patch data
@@ -302,19 +356,19 @@ svec_u local_to_global(const PatchTransformations &pt,
     const auto c = local_vars(2);
 
     const auto base_x = local_to_global_cake_core(pt, a, b, c);
-    const auto base_y = a * base_x;
-    const auto base_z = b * base_x;
+    const auto base_y = b * base_x;
+    const auto base_z = a * base_x;
 
     if constexpr (p == patch_piece::plus_x) {
       global_vars = {base_x, base_y, base_z};
-    } else if constexpr (p == patch_piece::plus_y) {
-      global_vars = {-base_y, base_x, base_z};
-    } else if constexpr (p == patch_piece::plus_z) {
-      global_vars = {-base_z, base_y, base_x};
     } else if constexpr (p == patch_piece::minus_x) {
       global_vars = {-base_x, -base_y, base_z};
+    } else if constexpr (p == patch_piece::plus_y) {
+      global_vars = {-base_y, base_x, base_z};
     } else if constexpr (p == patch_piece::minus_y) {
       global_vars = {base_y, -base_x, base_z};
+    } else if constexpr (p == patch_piece::plus_z) {
+      global_vars = {-base_z, base_y, base_x};
     } else if constexpr (p == patch_piece::minus_z) {
       global_vars = {base_z, base_y, -base_x};
     } else {
@@ -323,6 +377,39 @@ svec_u local_to_global(const PatchTransformations &pt,
   }
 
   return global_vars;
+}
+
+/**
+ * Wrapper around local_to_global to make is suitable for passing to CarpetX.
+ *
+ * @param pt The patch data
+ * @param patch The index of the patch to transform.
+ * @param local_vars The values of the local variables (a,b,c)
+ * @return A spatial vector containing the coordinate transformations.
+ */
+CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
+                                          int patch, const svec_u &local_vars) {
+  switch (patch) {
+  case piece_idx(patch_piece::cartesian):
+    return local_to_global<patch_piece::cartesian>(pt, local_vars);
+  case piece_idx(patch_piece::minus_x):
+    return local_to_global<patch_piece::minus_x>(pt, local_vars);
+  case piece_idx(patch_piece::plus_x):
+    return local_to_global<patch_piece::plus_x>(pt, local_vars);
+  case piece_idx(patch_piece::minus_y):
+    return local_to_global<patch_piece::minus_y>(pt, local_vars);
+  case piece_idx(patch_piece::plus_y):
+    return local_to_global<patch_piece::plus_y>(pt, local_vars);
+  case piece_idx(patch_piece::minus_z):
+    return local_to_global<patch_piece::minus_z>(pt, local_vars);
+  case piece_idx(patch_piece::plus_z):
+    return local_to_global<patch_piece::plus_z>(pt, local_vars);
+  case piece_idx(patch_piece::exterior):
+    return local_to_global<patch_piece::exterior>(pt, local_vars);
+  default:
+    CCTK_VERROR("No local local2global for patch index %d", patch);
+    break;
+  }
 }
 
 /**
@@ -340,91 +427,49 @@ std::tuple<int, svec_u> global2local(const PatchTransformations &pt,
   const auto y = global_vars(1);
   const auto z = global_vars(2);
 
+  const auto base_c = global_to_local_cake_core(pt, x, y, z);
+  const auto base_b = y / x;
+  const auto base_a = z / x;
+
   const auto piece = get_owner_patch(pt, global_vars);
   svec_u local_vars = {0, 0, 0};
-
-  const auto f = pt.cake_inner_boundary_radius / 2;
-  const auto Rf = pt.cake_outer_boundary_radius;
 
   if (piece == patch_piece::cartesian) {
     local_vars = global_vars;
   } else if (piece == patch_piece::plus_x) {
-    local_vars(0) =
-        (Power(f, 2) - Power(Rf, 2) + Power(y, 2) + Power(z, 2) +
-         Sqrt(4 * Power(Rf, 2) * Power(x, 2) +
-              Power(Power(y, 2) + Power(z, 2), 2) +
-              4 * Power(f, 2) * (Power(x, 2) + Power(y, 2) + Power(z, 2)) -
-              4 * f * Rf * (2 * Power(x, 2) + Power(y, 2) + Power(z, 2)))) /
-        Power(f - Rf, 2);
-    local_vars(1) = y / x;
-    local_vars(2) = z / x;
+    local_vars = {base_a, base_b, base_c};
   } else if (piece == patch_piece::minus_x) {
-    local_vars(0) =
-        (Power(f, 2) - Power(Rf, 2) + Power(y, 2) + Power(z, 2) +
-         Sqrt(4 * Power(Rf, 2) * Power(x, 2) +
-              Power(Power(y, 2) + Power(z, 2), 2) +
-              4 * Power(f, 2) * (Power(x, 2) + Power(y, 2) + Power(z, 2)) -
-              4 * f * Rf * (2 * Power(x, 2) + Power(y, 2) + Power(z, 2)))) /
-        Power(f - Rf, 2);
-    local_vars(1) = y / x;
-    local_vars(2) = -z / x;
-  } else if (piece == patch_piece::plus_x) {
-    local_vars(0) =
-        (Power(f, 2) - Power(Rf, 2) + Power(x, 2) + Power(z, 2) +
-         Sqrt(4 * Power(Rf, 2) * Power(y, 2) +
-              Power(Power(x, 2) + Power(z, 2), 2) +
-              4 * Power(f, 2) * (Power(x, 2) + Power(y, 2) + Power(z, 2)) -
-              4 * f * Rf * (Power(x, 2) + 2 * Power(y, 2) + Power(z, 2)))) /
-        Power(f - Rf, 2);
-    local_vars(1) = -x / y;
-    local_vars(2) = z / y;
+    local_vars = {-base_a, -base_b, base_c};
+  } else if (piece == patch_piece::plus_y) {
+    local_vars = {-base_b, base_a, base_c};
   } else if (piece == patch_piece::minus_y) {
-    local_vars(0) =
-        (Power(f, 2) - Power(Rf, 2) + Power(x, 2) + Power(z, 2) +
-         Sqrt(4 * Power(Rf, 2) * Power(y, 2) +
-              Power(Power(x, 2) + Power(z, 2), 2) +
-              4 * Power(f, 2) * (Power(x, 2) + Power(y, 2) + Power(z, 2)) -
-              4 * f * Rf * (Power(x, 2) + 2 * Power(y, 2) + Power(z, 2)))) /
-        Power(f - Rf, 2);
-    local_vars(1) = -x / y;
-    local_vars(2) = -z / y;
+    local_vars = {base_b, -base_a, base_c};
   } else if (piece == patch_piece::plus_z) {
-    local_vars(0) = (Power(f, 2) - Power(Rf, 2) + Power(x, 2) + Power(y, 2) +
-                     Sqrt((Power(x, 2) + Power(y, 2)) *
-                              (4 * f * (f - Rf) + Power(x, 2) + Power(y, 2)) +
-                          4 * Power(f - Rf, 2) * Power(z, 2))) /
-                    Power(f - Rf, 2);
-    local_vars(1) = y / z;
-    local_vars(2) = -x / z;
+    local_vars = {-base_c, base_b, base_a};
   } else if (piece == patch_piece::minus_z) {
-    local_vars(0) = (Power(f, 2) - Power(Rf, 2) + Power(x, 2) + Power(y, 2) +
-                     Sqrt((Power(x, 2) + Power(y, 2)) *
-                              (4 * f * (f - Rf) + Power(x, 2) + Power(y, 2)) +
-                          4 * Power(f - Rf, 2) * Power(z, 2))) /
-                    Power(f - Rf, 2);
-    local_vars(1) = -y / z;
-    local_vars(2) = -x / z;
+    local_vars = {base_c, base_b, -base_a};
+  } else if (piece == patch_piece::inner_boundary ||
+             piece == patch_piece::outer_boundary) {
+    CCTK_ERROR(
+        "Invoked global2local for a boundary point. Not sure what to do.");
   } else if (piece == patch_piece::exterior) {
     CCTK_ERROR("Invoked global2local for a global coordinate triplet outside "
                "of the simulation domain.");
-  } else if (piece == patch_piece::inner_boundary ||
-             piece == patch_piece::inner_boundary) {
-    CCTK_ERROR(
-        "Invoked global2local for a boundary point. Not sure what to do.");
   }
 
   return std::make_tuple(piece_idx(piece), local_vars);
 }
 
 /*******************************************************************
- * Jacobians                                                       *
+ * TODO: Review Jacobians                                          *
  *******************************************************************/
 
 /**
- * This function computes the local to global coordinate transformation jacobian
- * and it's derivative. This is better than computng the two separatelly because
- * the derivative of J depends on J itself. J[i][j] = $J_{i j} = \frac{d x^i}{d
- * x^j}$. dJ[i][j][k] = $dJ_{i j k} = \frac{d^2 x^i}{d x^j d x^k}$.
+ * This function computes the local to global coordinate transformation
+ * jacobian and it's derivative. This is better than computng the two
+ * separatelly because the derivative of J depends on J itself. J[i][j] =
+ * $J_{i j} = \frac{d x^i}{d x^j}$. dJ[i][j][k] = $dJ_{i j k} = \frac{d^2
+ * x^i}{d x^j d x^k}$.
  *
  * @tparam p The patch piece to perform the coordinate transformations for.
  * @param pt The patch data
@@ -507,46 +552,13 @@ inline std::tuple<svec_u, jac_t> jacobian(const PatchTransformations &pt,
  *******************************************************************/
 
 /**
- * Wrapper around local_to_global to make is suitable for passing to CarpetX.
- *
- * @param pt The patch data
- * @param patch The index of the patch to transform.
- * @param local_vars The values of the local variables (a,b,c)
- * @return A spatial vector containing the coordinate transformations.
- */
-CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
-                                          int patch, const svec_u &local_vars) {
-  switch (patch) {
-  case piece_idx(patch_piece::cartesian):
-    return local_to_global<patch_piece::cartesian>(pt, local_vars);
-  case piece_idx(patch_piece::minus_x):
-    return local_to_global<patch_piece::minus_x>(pt, local_vars);
-  case piece_idx(patch_piece::plus_x):
-    return local_to_global<patch_piece::plus_x>(pt, local_vars);
-  case piece_idx(patch_piece::minus_y):
-    return local_to_global<patch_piece::minus_y>(pt, local_vars);
-  case piece_idx(patch_piece::plus_y):
-    return local_to_global<patch_piece::plus_y>(pt, local_vars);
-  case piece_idx(patch_piece::minus_z):
-    return local_to_global<patch_piece::minus_z>(pt, local_vars);
-  case piece_idx(patch_piece::plus_z):
-    return local_to_global<patch_piece::plus_z>(pt, local_vars);
-  case piece_idx(patch_piece::exterior):
-    return local_to_global<patch_piece::exterior>(pt, local_vars);
-  default:
-    CCTK_VERROR("No local local2global for patch index %d", patch);
-    break;
-  }
-}
-
-/**
  * Wrapper around jacobian to make is suitable for passing to CarpetX.
  *
  * @param pt The patch data
  * @param patch The index of the patch to transform.
  * @param local_vars The values of the local variables (a,b,c)
- * @return A tuple containing the local to global coordinate transformation and
- * the local to global jacobian matrix.
+ * @return A tuple containing the local to global coordinate transformation
+ * and the local to global jacobian matrix.
  */
 std::tuple<svec_u, jac_t> dlocal_dglobal(const PatchTransformations &pt,
                                          int patch, const svec_u &local_vars) {
@@ -577,8 +589,8 @@ std::tuple<svec_u, jac_t> dlocal_dglobal(const PatchTransformations &pt,
  * @param pt The patch data
  * @param patch The index of the patch to transform.
  * @param local_vars The values of the local variables (a,b,c)
- * @return A tuple containing the local to global coordinate transformation, the
- * local to global jacobian matrix and it's derivative.
+ * @return A tuple containing the local to global coordinate transformation,
+ * the local to global jacobian matrix and it's derivative.
  */
 std::tuple<svec_u, jac_t, djac_t>
 d2local_dglobal2(const PatchTransformations &pt, int patch,
@@ -619,8 +631,8 @@ template <patch_piece p> Patch make_patch(const PatchTransformations &pt) {
   const auto spherical_radial_cells = pt.cake_radial_cells;
   const auto spherical_angular_cells = pt.cake_angular_cells;
 
-  // This is the most likelly configuration to occur. The only exception is the
-  // cartesian patch where the contents of these fields are overwritten
+  // This is the most likelly configuration to occur. The only exception is
+  // the cartesian patch where the contents of these fields are overwritten
   Patch patch;
   patch.ncells = {spherical_radial_cells, spherical_angular_cells,
                   spherical_angular_cells};

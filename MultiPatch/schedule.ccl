@@ -13,6 +13,8 @@ SCHEDULE MultiPatch_Coordinates_Setup AT basegrid AFTER Coordinates_Setup
   WRITES: Coordinates::cell_volume(everywhere)
 } "Set coordinate grid functions"
 
+# TODO: Schedule a function at paramcheck to assert that r1 != r0
+
 if(run_tests)
 {
   SCHEDULE run_cartesian_tests AT wragh
