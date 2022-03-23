@@ -333,54 +333,7 @@ inline CCTK_REAL global_to_local_cake_core(const PatchTransformations &pt,
 /**
  * The local to global coordinate transformation implementation.
  * This is where the actual coordinate transformations are performed but it is
- * not suitable for passing to CarpetX.
- *
- * @tparam p The patch piece to perform the coordinate transformations for.
- * @param pt The patch data
- * @param local_vars The values of the local variables (a,b,c)
- * @return A vector containing the global coordinate triplet.
- */
-template <patch_piece p>
-svec_u local_to_global(const PatchTransformations &pt,
-                       const svec_u &local_vars) {
-
-  svec_u global_vars = {0.0, 0.0, 0.0};
-
-  // The local -> global transformation is a no-op for the cartesian patch.
-  if constexpr (p == patch_piece::cartesian) {
-    global_vars = local_vars;
-
-  } else {
-    const auto a = local_vars(0);
-    const auto b = local_vars(1);
-    const auto c = local_vars(2);
-
-    const auto base_x = local_to_global_cake_core(pt, a, b, c);
-    const auto base_y = b * base_x;
-    const auto base_z = a * base_x;
-
-    if constexpr (p == patch_piece::plus_x) {
-      global_vars = {base_x, base_y, base_z};
-    } else if constexpr (p == patch_piece::minus_x) {
-      global_vars = {-base_x, -base_y, base_z};
-    } else if constexpr (p == patch_piece::plus_y) {
-      global_vars = {-base_y, base_x, base_z};
-    } else if constexpr (p == patch_piece::minus_y) {
-      global_vars = {base_y, -base_x, base_z};
-    } else if constexpr (p == patch_piece::plus_z) {
-      global_vars = {-base_z, base_y, base_x};
-    } else if constexpr (p == patch_piece::minus_z) {
-      global_vars = {base_z, base_y, -base_x};
-    } else {
-      CCTK_VERROR("No transformations available for patch %s", piece_name<p>());
-    }
-  }
-
-  return global_vars;
-}
-
-/**
- * Wrapper around local_to_global to make is suitable for passing to CarpetX.
+ * also suitable for passing to CarpetX.
  *
  * @param pt The patch data
  * @param patch The index of the patch to transform.
@@ -389,27 +342,46 @@ svec_u local_to_global(const PatchTransformations &pt,
  */
 CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
                                           int patch, const svec_u &local_vars) {
+
+  svec_u global_vars = {0.0, 0.0, 0.0};
+
+  const auto a = local_vars(0);
+  const auto b = local_vars(1);
+  const auto c = local_vars(2);
+
+  const auto base_x = local_to_global_cake_core(pt, a, b, c);
+  const auto base_y = b * base_x;
+  const auto base_z = a * base_x;
+
   switch (patch) {
-  case piece_idx(patch_piece::cartesian):
-    return local_to_global<patch_piece::cartesian>(pt, local_vars);
-  case piece_idx(patch_piece::minus_x):
-    return local_to_global<patch_piece::minus_x>(pt, local_vars);
-  case piece_idx(patch_piece::plus_x):
-    return local_to_global<patch_piece::plus_x>(pt, local_vars);
-  case piece_idx(patch_piece::minus_y):
-    return local_to_global<patch_piece::minus_y>(pt, local_vars);
-  case piece_idx(patch_piece::plus_y):
-    return local_to_global<patch_piece::plus_y>(pt, local_vars);
-  case piece_idx(patch_piece::minus_z):
-    return local_to_global<patch_piece::minus_z>(pt, local_vars);
-  case piece_idx(patch_piece::plus_z):
-    return local_to_global<patch_piece::plus_z>(pt, local_vars);
-  case piece_idx(patch_piece::exterior):
-    return local_to_global<patch_piece::exterior>(pt, local_vars);
+  case static_cast<int>(patch_piece::cartesian):
+    global_vars = local_vars;
+    break;
+  case static_cast<int>(patch_piece::plus_x):
+    global_vars = {base_x, base_y, base_z};
+    break;
+  case static_cast<int>(patch_piece::minus_x):
+    global_vars = {-base_x, -base_y, base_z};
+    break;
+  case static_cast<int>(patch_piece::plus_y):
+    global_vars = {-base_y, base_x, base_z};
+    break;
+  case static_cast<int>(patch_piece::minus_y):
+    global_vars = {base_y, -base_x, base_z};
+    break;
+  case static_cast<int>(patch_piece::plus_z):
+    global_vars = {-base_z, base_y, base_x};
+    break;
+  case static_cast<int>(patch_piece::minus_z):
+    global_vars = {base_z, base_y, -base_x};
+    break;
   default:
-    CCTK_VERROR("No local local2global for patch index %d", patch);
+    CCTK_VERROR("No transformations available for patch %s",
+                piece_name(static_cast<patch_piece>(patch)).c_str());
     break;
   }
+
+  return global_vars;
 }
 
 /**
@@ -528,7 +500,8 @@ jacobians(const PatchTransformations &pt, const svec_u &local_vars) {
     }
   }
 
-  return std::make_tuple(local_to_global<p>(pt, local_vars), J, dJ);
+  return std::make_tuple(local2global(pt, static_cast<int>(p), local_vars), J,
+                         dJ);
 }
 
 /**
