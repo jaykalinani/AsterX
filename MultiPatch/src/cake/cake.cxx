@@ -376,7 +376,7 @@ CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
     global_vars = {base_z, base_y, -base_x};
     break;
   default:
-    CCTK_VERROR("No transformations available for patch %s",
+    CCTK_VERROR("No local -> global transformations available for patch %s",
                 piece_name(static_cast<patch_piece>(patch)).c_str());
     break;
   }
@@ -406,27 +406,32 @@ std::tuple<int, svec_u> global2local(const PatchTransformations &pt,
   const auto piece = get_owner_patch(pt, global_vars);
   svec_u local_vars = {0, 0, 0};
 
-  if (piece == patch_piece::cartesian) {
+  switch (static_cast<int>(piece)) {
+  case static_cast<int>(patch_piece::cartesian):
     local_vars = global_vars;
-  } else if (piece == patch_piece::plus_x) {
+    break;
+  case static_cast<int>(patch_piece::plus_x):
     local_vars = {base_a, base_b, base_c};
-  } else if (piece == patch_piece::minus_x) {
+    break;
+  case static_cast<int>(patch_piece::minus_x):
     local_vars = {-base_a, -base_b, base_c};
-  } else if (piece == patch_piece::plus_y) {
+    break;
+  case static_cast<int>(patch_piece::plus_y):
     local_vars = {-base_b, base_a, base_c};
-  } else if (piece == patch_piece::minus_y) {
+    break;
+  case static_cast<int>(patch_piece::minus_y):
     local_vars = {base_b, -base_a, base_c};
-  } else if (piece == patch_piece::plus_z) {
+    break;
+  case static_cast<int>(patch_piece::plus_z):
     local_vars = {-base_c, base_b, base_a};
-  } else if (piece == patch_piece::minus_z) {
+    break;
+  case static_cast<int>(patch_piece::minus_z):
     local_vars = {base_c, base_b, -base_a};
-  } else if (piece == patch_piece::inner_boundary ||
-             piece == patch_piece::outer_boundary) {
-    CCTK_ERROR(
-        "Invoked global2local for a boundary point. Not sure what to do.");
-  } else if (piece == patch_piece::exterior) {
-    CCTK_ERROR("Invoked global2local for a global coordinate triplet outside "
-               "of the simulation domain.");
+    break;
+  default:
+    CCTK_VERROR("No global -> local transformations available for patch %s",
+                piece_name(piece).c_str());
+    break;
   }
 
   return std::make_tuple(piece_idx(piece), local_vars);
