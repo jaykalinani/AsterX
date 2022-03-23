@@ -3,14 +3,19 @@
 
 #include <cctk_Parameters.h>
 
+#include <string>
 #include <utility>
+#include <cmath>
 
 namespace MultiPatch {
 namespace CakeTests {
 
-std::string patch_owner(const PatchTransformations &pt,
-                        const MultiPatch::Cake::svec_u &x,
-                        MultiPatch::Cake::patch_piece expected) {
+/**
+ * TODO: doc
+ */
+std::string patch_owner_test(const PatchTransformations &pt,
+                             const MultiPatch::Cake::svec_u &x,
+                             MultiPatch::Cake::patch_piece expected) {
 
   using namespace MultiPatch::Cake;
   using namespace MultiPatchTests;
@@ -33,61 +38,59 @@ std::string patch_owner(const PatchTransformations &pt,
   return msg;
 }
 
-std::string global2local_test(const PatchTransformations &pt,
-                              const MultiPatch::Cake::svec_u &x) {
-  std::string msg{"has returnd "};
+/**
+ * Tests if local2global(global2local(global)) == global
+ * TODO: doc
+ */
+std::string global_identity_test(const PatchTransformations &pt,
+                                 const MultiPatch::Cake::svec_u &global_vars) {
 
-  const auto g2l = pt.global2local(pt, x);
+  using MultiPatch::Cake::svec_u;
+  using MultiPatchTests::colored;
+  using MultiPatchTests::isapprox;
+  using MultiPatchTests::string_color;
 
-  msg += "(";
-  msg += std::to_string(std::get<1>(g2l)(0));
-  msg += ",";
-  msg += std::to_string(std::get<1>(g2l)(1));
-  msg += ",";
-  msg += std::to_string(std::get<1>(g2l)(2));
-  msg += ")";
+  std::string msg{"has "};
 
-  return msg;
-}
+  const auto g2l = pt.global2local(pt, global_vars);
 
-std::string local2global_test(const PatchTransformations &pt,
-                              const MultiPatch::Cake::svec_u &x) {
-  using MultiPatch::Cake::patch_piece;
-  std::string msg{"has returnd "};
+  const auto owner_patch_idx = std::get<0>(g2l);
+  const svec_u local_vars = {(std::get<1>(g2l))(0), (std::get<1>(g2l))(1),
+                             (std::get<1>(g2l))(2)};
 
-  const auto l2g = pt.local2global(pt, piece_idx(patch_piece::plus_z), x);
+  const auto l2g = pt.local2global(pt, owner_patch_idx, local_vars);
 
-  msg += "(";
-  msg += std::to_string(l2g(0));
-  msg += ",";
-  msg += std::to_string(l2g(1));
-  msg += ",";
-  msg += std::to_string(l2g(2));
-  msg += ")";
+  const auto test1 = isapprox(l2g(0), global_vars(0));
+  const auto test2 = isapprox(l2g(1), global_vars(1));
+  const auto test3 = isapprox(l2g(2), global_vars(2));
 
-  return msg;
-}
+  if (test1 && test2 && test3) {
+    msg += colored<string_color::green>("PASSED");
+  } else {
+    msg += colored<string_color::red>("FAILED");
+    msg += ". Reason: ";
 
-std::string glg_test(const PatchTransformations &pt,
-                     const MultiPatch::Cake::svec_u &original_x) {
-  std::string msg{"has returnd "};
+    if (!test1) {
+      msg += std::to_string(l2g(0));
+      msg += " =/= ";
+      msg += std::to_string(global_vars(0));
+      msg += ". ";
+    }
 
-  const auto g2l = pt.global2local(pt, original_x);
+    if (!test2) {
+      msg += std::to_string(l2g(1));
+      msg += " =/= ";
+      msg += std::to_string(global_vars(1));
+      msg += ". ";
+    }
 
-  MultiPatch::Cake::svec_u local_coords = {
-      (std::get<1>(g2l))(0), (std::get<1>(g2l))(1), (std::get<1>(g2l))(2)};
-
-  const auto owner_patch = MultiPatch::Cake::get_owner_patch(pt, original_x);
-
-  const auto l2g = pt.local2global(pt, piece_idx(owner_patch), local_coords);
-
-  msg += "(";
-  msg += std::to_string(l2g(0));
-  msg += ",";
-  msg += std::to_string(l2g(1));
-  msg += ",";
-  msg += std::to_string(l2g(2));
-  msg += ")";
+    if (!test3) {
+      msg += std::to_string(l2g(2));
+      msg += " =/= ";
+      msg += std::to_string(global_vars(2));
+      msg += ". ";
+    }
+  }
 
   return msg;
 }
@@ -98,42 +101,35 @@ std::string glg_test(const PatchTransformations &pt,
 extern "C" void run_cake_tests() {
   DECLARE_CCTK_PARAMETERS
 
-  using MultiPatch::Cake::patch_piece;
-  using MultiPatch::Cake::svec_u;
-
   using std::mt19937_64;
   using std::uniform_real_distribution;
 
-  using namespace MultiPatch::CakeTests;
+  using std::cos;
+  using std::sin;
+
+  using MultiPatch::Cake::patch_piece;
+  using MultiPatch::Cake::svec_u;
 
   using MultiPatch::dim;
   using MultiPatch::SetupCake;
   using MultiPatchTests::random_seed;
 
+  using namespace MultiPatch::CakeTests;
+
   const auto ps = SetupCake();
   const auto &pt = ps.transformations;
-
-  mt19937_64 engine(random_seed);
 
   const auto r0 = pt.cake_inner_boundary_radius;
   const auto r1 = pt.cake_outer_boundary_radius;
 
   const auto cube_midpoint = r0 / 2.0;
-  const auto patch_midpoint = r1 / 2.0;
-
-  uniform_real_distribution<CCTK_REAL> x_distrib(-r1, r1);
-  uniform_real_distribution<CCTK_REAL> y_distrib(-r1, r1);
-  uniform_real_distribution<CCTK_REAL> z_distrib(-r1, r1);
-
-  uniform_real_distribution<CCTK_REAL> local_distrib(-1.0, 1.0);
-
-  auto global_point = svec_u{0.0, 0.0, 0.0};
-  auto local_point = svec_u{0.0, 0.0, 0.0};
+  const auto patch_midpoint = r0 + (r1 - r0) / 2.0;
 
   CCTK_INFO("Running cake patch tests:");
 
-  // The patch_owner tests do not take random numbers as input because we
-  // need to compare results with known values.
+  /*
+   * Fixed point tests
+   */
   const std::array<std::pair<svec_u, patch_piece>, 27> owner_test_data = {
       // Cartesian cube interior
       std::make_pair(svec_u{cube_midpoint, cube_midpoint, cube_midpoint},
@@ -184,21 +180,44 @@ extern "C" void run_cake_tests() {
       std::make_pair(svec_u{r1 + 1.0, r1 + 1.0, r1 + 1.0},
                      patch_piece::exterior)};
 
+  // Tests if the patch owner is correct.
   for (const auto &data : owner_test_data) {
     CCTK_VINFO("  Patch owner test at point (%f, %f, %f) %s", data.first(0),
                data.first(1), data.first(2),
-               patch_owner(pt, data.first, data.second).c_str());
+               patch_owner_test(pt, data.first, data.second).c_str());
   }
 
-  // These tests take random numbers as input
-  for (int i = 0; i < repeat_tests; i++) {
-    global_point = {x_distrib(engine), y_distrib(engine), z_distrib(engine)};
-    local_point = {local_distrib(engine), local_distrib(engine),
-                   local_distrib(engine)};
+  /*
+   * Random point tests
+   */
+  mt19937_64 engine(random_seed);
 
-    CCTK_VINFO("  Global -> local -> global transformation test at point (%f, "
-               "%f, %f) %s",
-               local_point(0), local_point(1), local_point(2),
-               glg_test(pt, global_point).c_str());
+  constexpr const double pi = 3.14159265358979323846;
+
+  uniform_real_distribution<CCTK_REAL> r_distrib(0.0, r1);
+  uniform_real_distribution<CCTK_REAL> theta_distrib(0.0, pi);
+  uniform_real_distribution<CCTK_REAL> phi_distrib(0.0, 2.0 * pi);
+
+  uniform_real_distribution<CCTK_REAL> local_distrib(-1.0, 1.0);
+
+  auto global_point = svec_u{0.0, 0.0, 0.0};
+
+  // Tests if local2global(global2local(global)) == global
+  for (int i = 0; i < repeat_tests; i++) {
+    const double r = r_distrib(engine);
+    const double theta = theta_distrib(engine);
+    const double phi = phi_distrib(engine);
+
+    global_point = {r * sin(theta) * cos(phi), r * sin(theta) * sin(phi),
+                    r * cos(theta)};
+
+    const auto owner_patch =
+        MultiPatch::Cake::get_owner_patch(pt, global_point);
+
+    CCTK_VINFO("  local2global(global2local(global)) transformation test at "
+               "point (%f, %f, %f) patch %s %s",
+               global_point(0), global_point(1), global_point(2),
+               MultiPatch::Cake::piece_name(owner_patch).c_str(),
+               global_identity_test(pt, global_point).c_str());
   }
 }

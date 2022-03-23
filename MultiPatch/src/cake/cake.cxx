@@ -7,7 +7,7 @@ namespace MultiPatch {
 namespace Cake {
 
 /**
- * Core function of the cake coordinate transformations.
+ * Core function of the cake local -> global coordinate transformations.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -47,8 +47,8 @@ inline CCTK_REAL local_to_global_cake_core(const PatchTransformations &pt,
 }
 
 /**
- * Derivative of the core functions of the cake coordinate transformations.
- * with respect to a.
+ * Derivative of the local-> global core function of the cake coordinate
+ * transformation with respect to a.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -72,8 +72,8 @@ inline CCTK_REAL local_to_global_cake_core_da(const PatchTransformations &pt,
 }
 
 /**
- * Derivative of the core functions of the cake coordinate transformations.
- * with respect to b.
+ * Derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to b.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -97,8 +97,8 @@ inline CCTK_REAL local_to_global_cake_core_db(const PatchTransformations &pt,
 }
 
 /**
- * Derivative of the core functions of the cake coordinate transformations.
- * with respect to c.
+ * Derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to c.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -124,8 +124,8 @@ inline CCTK_REAL local_to_global_cake_core_dc(const PatchTransformations &pt,
 }
 
 /**
- * Second derivative of the core functions of the cake coordinate
- * transformations. with respect to a and a.
+ * Second derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to a and a.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -151,8 +151,8 @@ inline CCTK_REAL local_to_global_cake_core_da_da(const PatchTransformations &pt,
 }
 
 /**
- * Second derivative of the core functions of the cake coordinate
- * transformations. with respect to a and b.
+ * Second derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to a and b.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -177,8 +177,8 @@ inline CCTK_REAL local_to_global_cake_core_da_db(const PatchTransformations &pt,
 }
 
 /**
- * Second derivative of the core functions of the cake coordinate
- * transformations. with respect to a and c.
+ * Second derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to a and c.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -206,8 +206,8 @@ inline CCTK_REAL local_to_global_cake_core_da_dc(const PatchTransformations &pt,
 }
 
 /**
- * Second derivative of the core functions of the cake coordinate
- * transformations. with respect to b and b.
+ * Second derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to b and b.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -233,8 +233,8 @@ inline CCTK_REAL local_to_global_cake_core_db_db(const PatchTransformations &pt,
 }
 
 /**
- * Second derivative of the core functions of the cake coordinate
- * transformations. with respect to b and c.
+ * Second derivative of the local -> global core functions of the cake
+ * coordinate transformation with respect to b and c.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -262,8 +262,8 @@ inline CCTK_REAL local_to_global_cake_core_db_dc(const PatchTransformations &pt,
 }
 
 /**
- * Second derivative of the core functions of the cake coordinate
- * transformations. with respect to c and c.
+ * Second derivative of the local -> global core function of the cake coordinate
+ * transformation with respect to c and c.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -285,49 +285,6 @@ inline CCTK_REAL local_to_global_cake_core_dc_dc(const PatchTransformations &pt,
        2 * (r0 - r1) * Power(factor, 2));
 
   return numerator / denominator;
-}
-
-/**
- * Core function of the cake coordinate transformations.
- *
- * @param pt The cake patch data.
- * @param x The x global coordinate.
- * @param y The y global coordiante.
- * @param z the z global coordiante.
- * @return The value of the core.
- */
-inline CCTK_REAL global_to_local_cake_core(const PatchTransformations &pt,
-                                           CCTK_REAL x, CCTK_REAL y,
-                                           CCTK_REAL z) {
-
-  using MultiPatchTests::at_boundary;
-  using MultiPatchTests::within;
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  // Ensure that -r1 <= x,y,z <= r1
-  expects(within(x, r1) || at_boundary(x, r1),
-          "Invoked local_to_global_cake_core with the variable x the (-1,1) "
-          "range.");
-  expects(within(y, r1) || at_boundary(y, r1),
-          "Invoked local_to_global_cake_core with the variable y the (-1,1) "
-          "range.");
-  expects(within(z, r1) || at_boundary(z, r1),
-          "Invoked local_to_global_cake_core with the variable z the (-1,1) "
-          "range.");
-
-  const auto x2 = Power(x, 2);
-  const auto y2 = Power(y, 2);
-  const auto z2 = Power(z, 2);
-  const auto r02 = Power(r0, 2);
-  const auto r12 = Power(r1, 2);
-
-  return (r02 - r12 + y2 + z2 +
-          Sqrt(4 * r12 * x2 + Power(y2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
-               4 * r0 * r1 * (2 * x2 + y2 + z2))) /
-         Power(r0 - r1, 2);
 }
 
 /**
@@ -399,35 +356,76 @@ std::tuple<int, svec_u> global2local(const PatchTransformations &pt,
   const auto y = global_vars(1);
   const auto z = global_vars(2);
 
-  const auto base_c = global_to_local_cake_core(pt, x, y, z);
-  const auto base_b = y / x;
-  const auto base_a = z / x;
+  const auto r0 = pt.cake_inner_boundary_radius;
+  const auto r1 = pt.cake_outer_boundary_radius;
 
   const auto piece = get_owner_patch(pt, global_vars);
   svec_u local_vars = {0, 0, 0};
 
+  const auto x2 = x * x;
+  const auto y2 = y * y;
+  const auto z2 = z * z;
+  const auto r02 = r0 * r0;
+  const auto r12 = r1 * r1;
+
   switch (static_cast<int>(piece)) {
+
   case static_cast<int>(patch_piece::cartesian):
     local_vars = global_vars;
     break;
+
   case static_cast<int>(patch_piece::plus_x):
-    local_vars = {base_a, base_b, base_c};
+    local_vars = {
+        z / x, y / x,
+        (r02 - r12 + y2 + z2 +
+         sqrt(4 * r12 * x2 + Power(y2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
+              4 * r0 * r1 * (2 * x2 + y2 + z2))) /
+            Power(r0 - r1, 2)};
     break;
+
   case static_cast<int>(patch_piece::minus_x):
-    local_vars = {-base_a, -base_b, base_c};
+    local_vars = {
+        -z / x, y / x,
+        (r02 - r12 + y2 + z2 +
+         sqrt(4 * r12 * x2 + Power(y2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
+              4 * r0 * r1 * (2 * x2 + y2 + z2))) /
+            Power(r0 - r1, 2)};
     break;
+
   case static_cast<int>(patch_piece::plus_y):
-    local_vars = {-base_b, base_a, base_c};
+    local_vars = {
+        z / y, -x / y,
+        (r02 - r12 + x2 + z2 +
+         sqrt(4 * r12 * y2 + Power(x2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
+              4 * r0 * r1 * (x2 + 2 * y2 + z2))) /
+            Power(r0 - r1, 2)};
     break;
+
   case static_cast<int>(patch_piece::minus_y):
-    local_vars = {base_b, -base_a, base_c};
+    local_vars = {
+        -z / y, -x / y,
+        (r02 - r12 + x2 + z2 +
+         sqrt(4 * r12 * y2 + Power(x2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
+              4 * r0 * r1 * (x2 + 2 * y2 + z2))) /
+            Power(r0 - r1, 2)};
     break;
+
   case static_cast<int>(patch_piece::plus_z):
-    local_vars = {-base_c, base_b, base_a};
+    local_vars = {-x / z, y / z,
+                  (r02 - r12 + x2 + y2 +
+                   sqrt((x2 + y2) * (4 * r0 * (r0 - r1) + x2 + y2) +
+                        4 * Power(r0 - r1, 2) * z2)) /
+                      Power(r0 - r1, 2)};
     break;
+
   case static_cast<int>(patch_piece::minus_z):
-    local_vars = {base_c, base_b, -base_a};
+    local_vars = {-x / z, -y / z,
+                  (r02 - r12 + x2 + y2 +
+                   sqrt((x2 + y2) * (4 * r0 * (r0 - r1) + x2 + y2) +
+                        4 * Power(r0 - r1, 2) * z2)) /
+                      Power(r0 - r1, 2)};
     break;
+
   default:
     CCTK_VERROR("No global -> local transformations available for patch %s",
                 piece_name(piece).c_str());
@@ -460,8 +458,8 @@ jacobians(const PatchTransformations &pt, const svec_u &local_vars) {
   jac_t J = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   djac_t dJ = {zero<smat_d>()(), zero<smat_d>()(), zero<smat_d>()()};
 
-  // Since the cartesian patch has a trivial jacobian derivative, we can skip
-  // the whole calculation
+  // Since the cartesian patch has a trivial jacobian derivative, we can
+  // skip the whole calculation
   if constexpr (p == patch_piece::exterior) {
     CCTK_WARN(CCTK_WARN_DEBUG,
               "Attempted to compute the jacobians of the exterior of the grid. "
