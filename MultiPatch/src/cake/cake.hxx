@@ -44,6 +44,22 @@ using jac_t = vec<vec<CCTK_REAL, dim, DN>, dim, UP>;
 using djac_t = vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP>;
 
 /**
+ * Stores all the necessary data to compute a jacobian and it's derivative
+ */
+template <typename T> struct jacobian_data {
+  T core;
+  T d_core_da;
+  T d_core_db;
+  T d_core_dc;
+  T d2_core_da_da;
+  T d2_core_da_db;
+  T d2_core_da_dc;
+  T d2_core_db_db;
+  T d2_core_db_dc;
+  T d2_core_dc_dc;
+};
+
+/**
  * Precondition assertion macro. If the precondition fails, the code is aborted.
  *
  * @param predicate The predicate to test.
@@ -111,45 +127,10 @@ enum class patch_piece : int {
 };
 
 /**
- * Gets integer code for the piece.
- *
- * @tparam E A enum class type.
- * @param e Instance of the enum class member.
- * @return The underlying value of the enum member.
- */
-template <typename E> inline constexpr auto piece_idx(const E &e) noexcept {
-  return static_cast<std::underlying_type_t<E> >(e);
-}
-
-/**
  * Gets name from patch piece
  *
  * @tparam p A patch piece type.
  * @return A string representing the name of the piece.
- */
-template <patch_piece p> static inline constexpr const char *piece_name() {
-  if constexpr (p == patch_piece::cartesian)
-    return "cartesian";
-  else if constexpr (p == patch_piece::plus_x)
-    return "plus x";
-  else if constexpr (p == patch_piece::minus_x)
-    return "minus x";
-  else if constexpr (p == patch_piece::plus_y)
-    return "plus y";
-  else if constexpr (p == patch_piece::minus_y)
-    return "minus y";
-  else if constexpr (p == patch_piece::plus_z)
-    return "plus z";
-  else if constexpr (p == patch_piece::minus_z)
-    return "minus z";
-  else if constexpr (p == patch_piece::minus_z)
-    return "interpatch boundary";
-  else if constexpr (p == patch_piece::exterior)
-    return "exterior";
-}
-
-/**
- * TODO: Doc
  */
 inline const std::string piece_name(const patch_piece &p) {
   if (p == patch_piece::cartesian)
