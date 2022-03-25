@@ -565,7 +565,8 @@ GHExt::PatchData::LevelData::GroupData::GroupData(const int patch,
   if (parities.empty()) {
     array<int, dim> parity;
     for (int d = 0; d < dim; ++d)
-      parity[d] = indextype[d] == 0 ? +1 : -1;
+      // parity[d] = indextype[d] == 0 ? +1 : -1;
+      parity[d] = +1;
     parities.resize(numvars, parity);
   }
   assert(int(parities.size()) == numvars);
