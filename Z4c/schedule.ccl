@@ -264,6 +264,10 @@ if (calc_constraints) {
     READS: A_tilde(everywhere)
     READS: Gam_tilde(everywhere)
     READS: Theta(everywhere)
+    ##########################################################
+    READS: alphaG(everywhere)
+    READS: betaG(everywhere)
+    ##########################################################
     READS: TmunuBase::eTtt(interior)
     READS: TmunuBase::eTti(interior)
     READS: TmunuBase::eTij(interior)
