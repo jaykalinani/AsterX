@@ -79,6 +79,13 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
   const GF3D2<const CCTK_REAL> gf_Theta1(layout1, Theta);
 
+  const GF3D2<const CCTK_REAL> gf_alphaG1(layout1, alphaG);
+
+  const vec<GF3D2<const CCTK_REAL>, 3, UP> gf_betaG1{
+      GF3D2<const CCTK_REAL>(layout1, betaGx),
+      GF3D2<const CCTK_REAL>(layout1, betaGy),
+      GF3D2<const CCTK_REAL>(layout1, betaGz)};
+
   //
 
   const size_t mempool_id = GetCallFunctionCount();
@@ -95,7 +102,7 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
   const auto make_vec_gf = [&]() { return make_vec(make_gf); };
   const auto make_mat_gf = [&]() { return make_mat(make_gf); };
   const auto make_vec_vec_gf = [&]() { return make_vec(make_vec_gf); };
-  // const auto make_vec_mat_gf = [&]() { return make_vec(make_mat_gf); };
+  const auto make_vec_mat_gf = [&]() { return make_vec(make_mat_gf); };
   const auto make_mat_vec_gf = [&]() { return make_mat(make_vec_gf); };
   const auto make_mat_mat_gf = [&]() { return make_mat(make_mat_gf); };
 
@@ -128,6 +135,18 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
   const GF3D5<CCTK_REAL> gf_Theta0(make_gf());
   const vec<GF3D5<CCTK_REAL>, 3, DN> gf_dTheta0(make_vec_gf());
   calc_derivs(cctkGH, gf_Theta1, gf_Theta0, gf_dTheta0, layout0);
+
+  const GF3D5<CCTK_REAL> gf_alphaG0(make_gf());
+  const vec<GF3D5<CCTK_REAL>, 3, DN> gf_dalphaG0(make_vec_gf());
+  const smat<GF3D5<CCTK_REAL>, 3, DN, DN> gf_ddalphaG0(make_mat_gf());
+  calc_derivs2(cctkGH, gf_alphaG1, gf_alphaG0, gf_dalphaG0, gf_ddalphaG0,
+               layout0);
+
+  const vec<GF3D5<CCTK_REAL>, 3, UP> gf_betaG0(make_vec_gf());
+  const vec<vec<GF3D5<CCTK_REAL>, 3, DN>, 3, UP> gf_dbetaG0(make_vec_vec_gf());
+  const vec<smat<GF3D5<CCTK_REAL>, 3, DN, DN>, 3, UP> gf_ddbetaG0(
+      make_vec_mat_gf());
+  calc_derivs2(cctkGH, gf_betaG1, gf_betaG0, gf_dbetaG0, gf_ddbetaG0, layout0);
 
   //
 
@@ -178,13 +197,14 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
         // Load and calculate
 
-        const auto alphaG = one<CCTK_REAL>()();
-        const auto dalphaG = zero<vec<CCTK_REAL, 3, DN> >()();
-        const auto ddalphaG = zero<smat<CCTK_REAL, 3, DN, DN> >()();
+        // const auto alphaG = one<CCTK_REAL>()();
+        // const auto dalphaG = zero<vec<CCTK_REAL, 3, DN> >()();
+        // const auto ddalphaG = zero<smat<CCTK_REAL, 3, DN, DN> >()();
 
-        const auto betaG = zero<vec<CCTK_REAL, 3, UP> >()();
-        const auto dbetaG = zero<vec<vec<CCTK_REAL, 3, DN>, 3, UP> >()();
-        const auto ddbetaG = zero<vec<smat<CCTK_REAL, 3, DN, DN>, 3, UP> >()();
+        // const auto betaG = zero<vec<CCTK_REAL, 3, UP> >()();
+        // const auto dbetaG = zero<vec<vec<CCTK_REAL, 3, DN>, 3, UP> >()();
+        // const auto ddbetaG = zero<vec<smat<CCTK_REAL, 3, DN, DN>, 3, UP>
+        // >()();
 
         const z4c_vars<vreal> vars(
             kappa1, kappa2, f_mu_L, f_mu_S, eta, //
@@ -196,8 +216,10 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
             gf_At0(mask, index0), gf_dAt0(mask, index0),          //
             gf_Gamt0(mask, index0), gf_dGamt0(mask, index0),      //
             gf_Theta0(mask, index0, 1), gf_dTheta0(mask, index0), //
-            alphaG, dalphaG, ddalphaG,                            //
-            betaG, dbetaG, ddbetaG,                               //
+            gf_alphaG0(mask, index0, 1), gf_dalphaG0(mask, index0),
+            gf_ddalphaG0(mask, index0), //
+            gf_betaG0(mask, index0), gf_dbetaG0(mask, index0),
+            gf_ddbetaG0(mask, index0), //
             gf_eTtt1(mask, index1), gf_eTti1(mask, index1),
             gf_eTij1(mask, index1));
 
