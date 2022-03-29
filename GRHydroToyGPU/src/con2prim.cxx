@@ -214,8 +214,10 @@ Valid for just-hydro, ideal-fluid, and flat-space.
 This has been inspired by Siegel+2018.
 ****************************************************************************/
 extern "C" void GRHydroToyGPU_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Con2Prim;
+  DECLARE_CCTK_ARGUMENTS_GRHydroToyGPU_Con2Prim_2DNRNoble;
   DECLARE_CCTK_PARAMETERS;
+
+  constexpr auto DI = PointDesc::DI;
 
   const GridDescBaseDevice grid(cctkGH);
   constexpr array<int, dim> cell_centred = {1, 1, 1};
@@ -223,6 +225,10 @@ extern "C" void GRHydroToyGPU_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
   const GF3D2layout gf_layout_cell(cctkGH, cell_centred);
   const GF3D2layout gf_layout_vertex(cctkGH, vertex_centred);
 
+  const GF3D2<const CCTK_REAL> gf_alp(gf_layout_vertex, alp);
+  const GF3D2<const CCTK_REAL> gf_betax(gf_layout_vertex, betax);
+  const GF3D2<const CCTK_REAL> gf_betay(gf_layout_vertex, betay);
+  const GF3D2<const CCTK_REAL> gf_betaz(gf_layout_vertex, betaz);
   const GF3D2<const CCTK_REAL> gf_gxx(gf_layout_vertex, gxx);
   const GF3D2<const CCTK_REAL> gf_gxy(gf_layout_vertex, gxy);
   const GF3D2<const CCTK_REAL> gf_gxz(gf_layout_vertex, gxz);
@@ -247,22 +253,111 @@ extern "C" void GRHydroToyGPU_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        // TODO: Interpolate general metric to centers
-        const CCTK_REAL g_up[4][4] = {
-            {-1.0, 0.0, 0.0, 0.0},
-            {0.0, 1.0, 0.0, 0.0},
-            {0.0, 0.0, 1.0, 0.0},
-            {0.0, 0.0, 0.0, 1.0},
+        CCTK_REAL alp = 0.0;   // lapse
+        CCTK_REAL betax = 0.0; // beta^i
+        CCTK_REAL betay = 0.0;
+        CCTK_REAL betaz = 0.0;
+        CCTK_REAL betalx, betaly, betalz; // beta_i
+
+        CCTK_REAL g_up[4][4] = {
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
         };
 
-        const CCTK_REAL g_lo[4][4] = {
-            {-1.0, 0.0, 0.0, 0.0},
-            {0.0, 1.0, 0.0, 0.0},
-            {0.0, 0.0, 1.0, 0.0},
-            {0.0, 0.0, 0.0, 1.0},
+        CCTK_REAL g_lo[4][4] = {
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
         };
 
-        const CCTK_REAL alpha = sqrt(-1.0 / g_up[0][0]);
+        for (int dk = 0; dk < 2; ++dk)
+          for (int dj = 0; dj < 2; ++dj)
+            for (int di = 0; di < 2; ++di) {
+              g_lo[1][1] += gf_gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[1][2] += gf_gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[1][3] += gf_gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[2][2] += gf_gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[2][3] += gf_gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[3][3] += gf_gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              alp += gf_alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              betax += gf_betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              betay += gf_betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              betaz += gf_betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+            }
+
+        alp *= 0.125;
+        betax *= 0.125;
+        betay *= 0.125;
+        betaz *= 0.125;
+        g_lo[1][1] *= 0.125;
+        g_lo[1][2] *= 0.125;
+        g_lo[1][3] *= 0.125;
+        g_lo[2][2] *= 0.125;
+        g_lo[2][3] *= 0.125;
+        g_lo[3][3] *= 0.125;
+
+        betalx = g_lo[1][1] * betax + g_lo[1][2] * betay + g_lo[1][3] * betaz;
+        betaly = g_lo[1][2] * betax + g_lo[2][2] * betay + g_lo[2][3] * betaz;
+        betalz = g_lo[1][3] * betax + g_lo[2][3] * betay + g_lo[3][3] * betaz;
+
+        g_lo[0][0] =
+            -alp * alp + betax * betalx + betay * betaly + betaz * betalz;
+        g_lo[0][1] = betalx;
+        g_lo[0][2] = betaly;
+        g_lo[0][3] = betalz;
+
+        g_lo[1][0] = g_lo[0][1];
+        g_lo[2][0] = g_lo[0][2];
+        g_lo[3][0] = g_lo[0][3];
+        g_lo[2][1] = g_lo[1][2];
+        g_lo[3][1] = g_lo[1][3];
+        g_lo[3][2] = g_lo[2][3];
+
+        /* Calculate inverse of 4-dim metric */
+        // TODO: Move to function?
+        CCTK_REAL spatial_detg; // Determinant spatial metric
+        CCTK_REAL gamma11, gamma12, gamma13, gamma22, gamma23,
+            gamma33; // Inverse components of spatial metric
+
+        spatial_detg = -g_lo[1][3] * g_lo[1][3] * g_lo[2][2] +
+                       2 * g_lo[1][2] * g_lo[1][3] * g_lo[2][3] -
+                       g_lo[1][1] * g_lo[2][3] * g_lo[2][3] -
+                       g_lo[1][2] * g_lo[1][2] * g_lo[3][3] +
+                       g_lo[1][1] * g_lo[2][2] * g_lo[3][3];
+
+        gamma11 =
+            (-g_lo[2][3] * g_lo[2][3] + g_lo[2][2] * g_lo[3][3]) / spatial_detg;
+        gamma12 =
+            (g_lo[1][3] * g_lo[2][3] - g_lo[1][2] * g_lo[3][3]) / spatial_detg;
+        gamma13 =
+            (-g_lo[1][3] * g_lo[2][2] + g_lo[1][2] * g_lo[2][3]) / spatial_detg;
+        gamma22 =
+            (-g_lo[1][3] * g_lo[1][3] + g_lo[1][1] * g_lo[3][3]) / spatial_detg;
+        gamma23 =
+            (g_lo[1][2] * g_lo[1][3] - g_lo[1][1] * g_lo[2][3]) / spatial_detg;
+        gamma33 =
+            (-g_lo[1][2] * g_lo[1][2] + g_lo[1][1] * g_lo[2][2]) / spatial_detg;
+
+        g_up[0][0] = -1.0 / (alp * alp);
+        g_up[0][1] = betax / (alp * alp);
+        g_up[0][2] = betay / (alp * alp);
+        g_up[0][3] = betaz / (alp * alp);
+        g_up[1][1] = gamma11 - betax * betax / (alp * alp);
+        g_up[1][2] = gamma12 - betax * betay / (alp * alp);
+        g_up[1][3] = gamma13 - betax * betaz / (alp * alp);
+        g_up[2][2] = gamma22 - betay * betay / (alp * alp);
+        g_up[2][3] = gamma23 - betay * betaz / (alp * alp);
+        g_up[3][3] = gamma33 - betaz * betaz / (alp * alp);
+
+        g_up[1][0] = g_up[0][1];
+        g_up[2][0] = g_up[0][2];
+        g_up[3][0] = g_up[0][3];
+        g_up[2][1] = g_up[1][2];
+        g_up[3][1] = g_up[1][3];
+        g_up[3][2] = g_up[2][3];
 
         CCTK_REAL v1_coord_con, v2_coord_con, v3_coord_con;
         CCTK_REAL v1_coord_cov, v2_coord_cov, v3_coord_cov;
@@ -288,9 +383,9 @@ extern "C" void GRHydroToyGPU_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         v3_coord_cov = g_lo[3][1] * v1_coord_con + g_lo[3][2] * v2_coord_con +
                        g_lo[3][3] * v3_coord_con;
         // covariant Valencia velocity:
-        prim[V1_COV] = (v1_coord_cov + g_lo[0][1]) / alpha;
-        prim[V2_COV] = (v2_coord_cov + g_lo[0][2]) / alpha;
-        prim[V3_COV] = (v3_coord_cov + g_lo[0][3]) / alpha;
+        prim[V1_COV] = (v1_coord_cov + g_lo[0][1]) / alp;
+        prim[V2_COV] = (v2_coord_cov + g_lo[0][2]) / alp;
+        prim[V3_COV] = (v3_coord_cov + g_lo[0][3]) / alp;
         prim[EPS] = gf_eps(p.I);
 
         /* cons at this timestep */
@@ -366,9 +461,9 @@ extern "C" void GRHydroToyGPU_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
           prim[EPS] = (Z * (1.0 - x_2d[1]) / prim[RHO] - 1.0) / gamma;
         }
         gf_rho(p.I) = prim[0];
-        v1_coord_cov = alpha * prim[V1_COV] - g_lo[0][1];
-        v2_coord_cov = alpha * prim[V2_COV] - g_lo[0][2];
-        v3_coord_cov = alpha * prim[V3_COV] - g_lo[0][3];
+        v1_coord_cov = alp * prim[V1_COV] - g_lo[0][1];
+        v2_coord_cov = alp * prim[V2_COV] - g_lo[0][2];
+        v3_coord_cov = alp * prim[V3_COV] - g_lo[0][3];
         gf_velx(p.I) = g_up[1][1] * v1_coord_cov + g_up[1][2] * v2_coord_cov +
                        g_up[1][3] * v3_coord_cov;
         gf_vely(p.I) = g_up[1][2] * v1_coord_cov + g_up[2][2] * v2_coord_cov +

@@ -82,6 +82,8 @@ if(use_RePrimAnd) {
   {
     LANG: C
     READS: ADMBase::metric(everywhere)
+    READS: ADMBase::lapse(everywhere)
+    READS: ADMBase::shift(everywhere)
     READS: dens(everywhere) tau(everywhere) mom(everywhere)
     READS: HydroBase::rho(everywhere)
     READS: HydroBase::vel(everywhere)
