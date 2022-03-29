@@ -197,15 +197,6 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
         // Load and calculate
 
-        // const auto alphaG = one<CCTK_REAL>()();
-        // const auto dalphaG = zero<vec<CCTK_REAL, 3, DN> >()();
-        // const auto ddalphaG = zero<smat<CCTK_REAL, 3, DN, DN> >()();
-
-        // const auto betaG = zero<vec<CCTK_REAL, 3, UP> >()();
-        // const auto dbetaG = zero<vec<vec<CCTK_REAL, 3, DN>, 3, UP> >()();
-        // const auto ddbetaG = zero<vec<smat<CCTK_REAL, 3, DN, DN>, 3, UP>
-        // >()();
-
         const z4c_vars<vreal> vars(
             kappa1, kappa2, f_mu_L, f_mu_S, eta, //
             gf_chi0(mask, index0, 1), gf_dchi0(mask, index0),
