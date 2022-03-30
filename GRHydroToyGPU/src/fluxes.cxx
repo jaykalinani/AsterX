@@ -236,7 +236,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     const array<CCTK_REAL, 2> velx_rc = reconstruct(gf_velx, p);
     const array<CCTK_REAL, 2> vely_rc = reconstruct(gf_vely, p);
     const array<CCTK_REAL, 2> velz_rc = reconstruct(gf_velz, p);
-    const array<CCTK_REAL, 2> press_rc = reconstruct(gf_press, p);
+    const array<CCTK_REAL, 2> eps_rc = reconstruct(gf_press, p);
 
     const array<array<CCTK_REAL, 2>, 3> vels_rc = {velx_rc, vely_rc, velz_rc};
     const array<CCTK_REAL, 2> vel_rc = vels_rc[dir];
@@ -292,12 +292,11 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     const array<CCTK_REAL, 3> betas_avg = {betax_avg, betay_avg, betaz_avg};
     const CCTK_REAL beta_avg = betas_avg[dir];
 
-    // TODO: Compute specific internal energy based on user-specified EOS.
-    //       Currently, computing eps for classical ideal gas
+    // TODO: Compute pressure based on user-specified EOS.
+    // Currently, computing press for classical ideal gas from reconstructed vars
 
-    const array<CCTK_REAL, 2> eps_rc = {press_rc[0] / (rho_rc[0] * (gamma - 1)),
-                                        press_rc[1] /
-                                            (rho_rc[1] * (gamma - 1))};
+    const array<CCTK_REAL, 2> press_rc = { eps_rc[0]*rho_rc[0]*(gamma-1),
+                                           eps_rc[1]*rho_rc[1]*(gamma-1)};
 
     // Determinant of spatial metric
     const CCTK_REAL detg =
@@ -318,7 +317,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
     // Array containing uxx, uyy, uzz components of the upper metric
     const array<CCTK_REAL, 3> ugs_avg = {ug_avg[0], ug_avg[2], ug_avg[5]};
-    // variable for either uxx, uyy or uzz depending on the direction
+    // Variable for either uxx, uyy or uzz depending on the direction
     const CCTK_REAL u_avg = ugs_avg[dir];
 
     // v_j
@@ -334,44 +333,40 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         gxz_avg * velx_rc[0] + gyz_avg * vely_rc[0] + gzz_avg * velz_rc[0],
         gxz_avg * velx_rc[1] + gyz_avg * vely_rc[1] + gzz_avg * velz_rc[1]};
 
-    // w_lorentz
+    // Computing w_lorentz using reconstructed variables
     const array<CCTK_REAL, 2> w_lorentz_rc = {
         1.0 / sqrt(1 - (vlowx_rc[0] * velx_rc[0] + vlowy_rc[0] * vely_rc[0] +
                         vlowz_rc[0] * velz_rc[0])),
         1.0 / sqrt(1 - (vlowx_rc[1] * velx_rc[1] + vlowy_rc[1] * vely_rc[1] +
                         vlowz_rc[1] * velz_rc[1]))};
 
-    // cs2 for ideal gas EOS
+    // Computing cs2 for ideal gas EOS using reconstructed variables
     const array<CCTK_REAL, 2> cs2_rc = {
         (gamma - 1.0)*eps_rc[0] / (eps_rc[0] + 1.0/gamma),
         (gamma - 1.0)*eps_rc[1] / (eps_rc[1] + 1.0/gamma) };
 
-    //h for ideal gas EOS
+    // Computing enthalpy h for ideal gas EOS using reconstructed variables
     const array<CCTK_REAL, 2> h_rc = {
 	 1.0 + eps_rc[0] + press_rc[0]/rho_rc[0],
 	 1.0 + eps_rc[1] + press_rc[1]/rho_rc[1] };
 
-    // Auxiliary variables to compute conservatives
-    const CCTK_REAL aux_mom_0 = 1 + eps_rc[0] + press_rc[0] / rho_rc[0];
-    const CCTK_REAL aux_mom_1 = 1 + eps_rc[1] + press_rc[1] / rho_rc[1];
-
     // Computing conservatives from primitives
     const array<CCTK_REAL, 2> dens_rc = {
-        sqrt_detg * rho_rc[0] * w_lorentz_rc[0],
-        sqrt_detg * rho_rc[1] * w_lorentz_rc[1]};
+         sqrt_detg * rho_rc[0] * w_lorentz_rc[0],
+         sqrt_detg * rho_rc[1] * w_lorentz_rc[1]};
 
-    const array<CCTK_REAL, 2> momx_rc = {dens_rc[0] * aux_mom_0 * vlowx_rc[0],
-                                         dens_rc[1] * aux_mom_1 * vlowx_rc[1]};
+    const array<CCTK_REAL, 2> momx_rc = {dens_rc[0] * h_rc[0] * w_lorentz_rc[0] * vlowx_rc[0],
+                                         dens_rc[1] * h_rc[1] * w_lorentz_rc[1] * vlowx_rc[1]};
 
-    const array<CCTK_REAL, 2> momy_rc = {dens_rc[0] * aux_mom_0 * vlowy_rc[0],
-                                         dens_rc[1] * aux_mom_1 * vlowy_rc[1]};
+    const array<CCTK_REAL, 2> momy_rc = {dens_rc[0] * h_rc[0] * w_lorentz_rc[0] * vlowy_rc[0],
+                                         dens_rc[1] * h_rc[1] * w_lorentz_rc[1] * vlowy_rc[1]};
 
-    const array<CCTK_REAL, 2> momz_rc = {dens_rc[0] * aux_mom_0 * vlowz_rc[0],
-                                         dens_rc[1] * aux_mom_1 * vlowz_rc[1]};
+    const array<CCTK_REAL, 2> momz_rc = {dens_rc[0] * h_rc[0] * w_lorentz_rc[0] * vlowz_rc[0],
+                                         dens_rc[1] * h_rc[1] * w_lorentz_rc[1] * vlowz_rc[1]};
 
     const array<CCTK_REAL, 2> tau_rc = {
-        dens_rc[0] * (aux_mom_0 * w_lorentz_rc[0] - 1) - press_rc[0],
-        dens_rc[1] * (aux_mom_1 * w_lorentz_rc[1] - 1) - press_rc[1]};
+        dens_rc[0] * (h_rc[0] * w_lorentz_rc[0] - 1) - sqrt_detg * press_rc[0],
+        dens_rc[1] * (h_rc[1] * w_lorentz_rc[1] - 1) - sqrt_detg * press_rc[1]};
 
     // Auxiliary variables to compute fluxes of conservatives
     const CCTK_REAL aux_flux_0a = vel_rc[0] - beta_avg / alp_avg;

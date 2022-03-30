@@ -56,17 +56,15 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const prim &pv, cons &cv) {
   cv.dens = sqrt_detg * pv.rho * w_lorentz;
 
   cv.momx =
-      sqrt_detg * pv.rho * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowx;
+      sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowx;
 
   cv.momy =
-      sqrt_detg * pv.rho * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowy;
+      sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowy;
 
   cv.momz =
-      sqrt_detg * pv.rho * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowz;
+      sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowz;
 
-  cv.tau = sqrt_detg * pv.rho * w_lorentz *
-               ((1 + pv.eps + pv.press / pv.rho) * w_lorentz - 1) -
-           pv.press;
+  cv.tau = sqrt_detg * pv.rho * w_lorentz * ((1 + pv.eps + pv.press / pv.rho) * w_lorentz - 1) - sqrt_detg * pv.press;
 }
 
 } // namespace GRHydroToyGPU
