@@ -53,247 +53,6 @@ inline CCTK_REAL local_to_global_cake_core(const PatchTransformations &pt,
 }
 
 /**
- * Derivative of the local-> global core function of the cake coordinate
- * transformation with respect to a.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to a.
- */
-inline CCTK_REAL local_to_global_cake_core_da(const PatchTransformations &pt,
-                                              CCTK_REAL a, CCTK_REAL b,
-                                              CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = sqrt(factor) * factor;
-  const auto numerator = 2 * a * (1 + c) * ((1 - c) * r0 + (1 + c) * r1);
-
-  return -numerator / denominator;
-}
-
-/**
- * Derivative of the local -> global core function of the cake coordinate
- * transformation with respect to b.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to b.
- */
-inline CCTK_REAL local_to_global_cake_core_db(const PatchTransformations &pt,
-                                              CCTK_REAL a, CCTK_REAL b,
-                                              CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = factor * sqrt(factor);
-  const auto numerator = 2 * b * (1 + c) * ((1 - c) * r0 + (1 + c) * r1);
-
-  return -numerator / denominator;
-}
-
-/**
- * Derivative of the local -> global core function of the cake coordinate
- * transformation with respect to c.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_dc(const PatchTransformations &pt,
-                                              CCTK_REAL a, CCTK_REAL b,
-                                              CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = sqrt(factor) * factor;
-  const auto numerator =
-      (Power(a, 2) + Power(b, 2)) * ((c - 1) * r0 - (c + 1) * r1) +
-      (r1 - r0) * factor;
-
-  return numerator / denominator;
-}
-
-/**
- * Second derivative of the local -> global core function of the cake coordinate
- * transformation with respect to a and a.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_da_da(const PatchTransformations &pt,
-                                                 CCTK_REAL a, CCTK_REAL b,
-                                                 CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto factor_2 = 2 * factor_1;
-  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
-  const auto numerator = sqrt(2) * (1 + c) * ((c - 1) * r0 - (c + 1) * r1) *
-                         (6 * Power(a, 2) * (1 + c) - Power(factor_2, 2));
-
-  return -numerator / denominator;
-}
-
-/**
- * Second derivative of the local -> global core function of the cake coordinate
- * transformation with respect to a and b.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_da_db(const PatchTransformations &pt,
-                                                 CCTK_REAL a, CCTK_REAL b,
-                                                 CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = sqrt(factor) * Power(factor, 3);
-  const auto numerator =
-      12 * a * b * Power(1 + c, 2) * ((1 - c) * r0 + (1 + c) * r1);
-
-  return numerator / denominator;
-}
-
-/**
- * Second derivative of the local -> global core function of the cake coordinate
- * transformation with respect to a and c.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_da_dc(const PatchTransformations &pt,
-                                                 CCTK_REAL a, CCTK_REAL b,
-                                                 CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto factor_2 = 2 * factor_1;
-  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
-  const auto numerator = Sqrt(2) * a *
-                         (3 * (Power(a, 2) + Power(b, 2)) * (1 + c) *
-                              ((-1 + c) * r0 - (1 + c) * r1) +
-                          2 * (r1 + c * (-r0 + r1)) * Power(factor_2, 2));
-
-  return -numerator / denominator;
-}
-
-/**
- * Second derivative of the local -> global core function of the cake coordinate
- * transformation with respect to b and b.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_db_db(const PatchTransformations &pt,
-                                                 CCTK_REAL a, CCTK_REAL b,
-                                                 CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto factor_2 = 2 * factor_1;
-  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
-  const auto numerator = Sqrt(2) * (1 + c) * ((-1 + c) * r0 - (1 + c) * r1) *
-                         (6 * Power(b, 2) * (1 + c) - Power(factor_2, 2));
-
-  return -numerator / denominator;
-}
-
-/**
- * Second derivative of the local -> global core functions of the cake
- * coordinate transformation with respect to b and c.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_db_dc(const PatchTransformations &pt,
-                                                 CCTK_REAL a, CCTK_REAL b,
-                                                 CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor_1 = 2 + Power(a, 2) * (1 + c) + Power(b, 2) * (1 + c);
-  const auto factor_2 = 2 * factor_1;
-  const auto denominator = sqrt(factor_1) * Power(factor_2, 3);
-  const auto numerator = Sqrt(2) * b *
-                         (3 * (Power(a, 2) + Power(b, 2)) * (1 + c) *
-                              ((-1 + c) * r0 - (1 + c) * r1) +
-                          2 * Power(factor_2, 2) * (r1 + c * (-r0 + r1)));
-
-  return -numerator / denominator;
-}
-
-/**
- * Second derivative of the local -> global core function of the cake coordinate
- * transformation with respect to c and c.
- *
- * @param pt The cake patch data.
- * @param a The a local coordinate, ranging from (-1, 1)
- * @param b The b local coordiante, ranging from (-1, 1)
- * @param c the c local coordiante, ranging from (-1, 1)
- * @return The value of the core derivative with respect to c.
- */
-inline CCTK_REAL local_to_global_cake_core_dc_dc(const PatchTransformations &pt,
-                                                 CCTK_REAL a, CCTK_REAL b,
-                                                 CCTK_REAL c) {
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto factor = 4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c);
-  const auto denominator = sqrt(factor) * Power(factor, 3);
-  const auto numerator =
-      (Power(a, 2) + Power(b, 2)) *
-      (-3 * (Power(a, 2) + Power(b, 2)) * ((-1 + c) * r0 - (1 + c) * r1) +
-       2 * (r0 - r1) * Power(factor, 2));
-
-  return numerator / denominator;
-}
-
-/**
  * The local to global coordinate transformation implementation.
  * This is where the actual coordinate transformations are performed but it is
  * also suitable for passing to CarpetX.
@@ -442,11 +201,12 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
 }
 
 /**
- * This function computes the local to global coordinate transformation, the
- * jacobian and it's derivative. It can be passed directly to CarpetX.
+ * This function computes the local to global coordinate
+ * transformation, the jacobian and it's derivative. It can be passed directly
+ * to CarpetX.
  *
  * Note that:
- * J(i)(j) = $J^{i}_{j} = \frac{d x^i}{d x^j}$.
+ * J(i)(j) = $J^{i}_{j} = \frac{d a^i}{d x^j}$.
  * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d}{d x^k} \left( \frac{d a^i}{d x^j}
  * \right)$.
  *
@@ -462,23 +222,7 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
 
   auto local_to_global_result = pt.local2global(pt, patch, local_vars);
 
-  const auto a = local_vars(0);
-  const auto b = local_vars(1);
-  const auto c = local_vars(2);
-
-  jacobian_data<CCTK_REAL> data = {
-      local_to_global_cake_core(pt, a, b, c),
-      local_to_global_cake_core_da(pt, a, b, c),
-      local_to_global_cake_core_db(pt, a, b, c),
-      local_to_global_cake_core_dc(pt, a, b, c),
-      local_to_global_cake_core_da_da(pt, a, b, c),
-      local_to_global_cake_core_da_db(pt, a, b, c),
-      local_to_global_cake_core_da_dc(pt, a, b, c),
-      local_to_global_cake_core_db_db(pt, a, b, c),
-      local_to_global_cake_core_db_dc(pt, a, b, c),
-      local_to_global_cake_core_dc_dc(pt, a, b, c)};
-
-  auto jacobian_results = cake_cartesian_jac(pt, local_vars, data);
+  auto jacobian_results = cake_cartesian_jac(pt, local_vars);
 
   switch (patch) {
 
@@ -487,27 +231,27 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
     break;
 
   case static_cast<int>(patch_piece::plus_x):
-    jacobian_results = cake_plus_x_jac(pt, local_vars, data);
+    jacobian_results = cake_plus_x_jac(pt, local_vars);
     break;
 
   case static_cast<int>(patch_piece::minus_x):
-    jacobian_results = cake_minus_x_jac(pt, local_vars, data);
+    jacobian_results = cake_minus_x_jac(pt, local_vars);
     break;
 
   case static_cast<int>(patch_piece::plus_y):
-    jacobian_results = cake_plus_y_jac(pt, local_vars, data);
+    jacobian_results = cake_plus_y_jac(pt, local_vars);
     break;
 
   case static_cast<int>(patch_piece::minus_y):
-    jacobian_results = cake_minus_y_jac(pt, local_vars, data);
+    jacobian_results = cake_minus_y_jac(pt, local_vars);
     break;
 
   case static_cast<int>(patch_piece::plus_z):
-    jacobian_results = cake_plus_z_jac(pt, local_vars, data);
+    jacobian_results = cake_plus_z_jac(pt, local_vars);
     break;
 
   case static_cast<int>(patch_piece::minus_z):
-    jacobian_results = cake_minus_z_jac(pt, local_vars, data);
+    jacobian_results = cake_minus_z_jac(pt, local_vars);
     break;
 
   default:
@@ -525,7 +269,7 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
  * jacobian. It can be passed directly to CarpetX.
  *
  * Note that:
- * J(i)(j) = $J^{i}_{j} = \frac{d x^i}{d x^j}$.
+ * J(i)(j) = $J^{i}_{j} = \frac{d a^i}{d x^j}$.
  *
  * @param pt The patch data
  * @param patch The index of the patch to transform.
@@ -542,7 +286,7 @@ dlocal_dglobal(const PatchTransformations &pt, int patch,
 }
 
 /**
- * TODO: Review.
+ * TODO: Review. This is probably causing a segfault.
  * Creates a cake patch
  *
  * @tparam p The piece of the patc to make.
@@ -582,7 +326,7 @@ template <patch_piece p> Patch make_patch(const PatchTransformations &pt) {
 } // namespace Cake
 
 /**
- * TODO: Use correct device functions?
+ * TODO: Review. Are the correct device functions and signatures being used?
  * Creates a Cake patch system
  *
  * @return A PatchSystem object with Cake data and functions

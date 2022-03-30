@@ -1,5 +1,5 @@
-#include "tests.hxx"
 #include "multipatch.hxx"
+#include "tests.hxx"
 
 #include <cctk_Parameters.h>
 #include <string>

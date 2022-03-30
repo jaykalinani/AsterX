@@ -44,22 +44,6 @@ using jac_t = vec<vec<CCTK_REAL, dim, DN>, dim, UP>;
 using djac_t = vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP>;
 
 /**
- * Stores all the necessary data to compute a jacobian and it's derivative
- */
-template <typename T> struct jacobian_data {
-  T core;
-  T d_core_da;
-  T d_core_db;
-  T d_core_dc;
-  T d2_core_da_da;
-  T d2_core_da_db;
-  T d2_core_da_dc;
-  T d2_core_db_db;
-  T d2_core_db_dc;
-  T d2_core_dc_dc;
-};
-
-/**
  * Precondition assertion macro. If the precondition fails, the code is aborted.
  *
  * @param predicate The predicate to test.

@@ -11,7 +11,12 @@ namespace MultiPatch {
 namespace CakeTests {
 
 /**
- * TODO: doc
+ * Tests the get_owner_patch function.
+ *
+ * @param pt The patch transformations structure
+ * @param x A global point to test.
+ * @param expected The expected result of the get_owner_patch execution.
+ * @return A string indicating the test status.
  */
 std::string patch_owner_test(const PatchTransformations &pt,
                              const MultiPatch::Cake::svec_u &x,
@@ -40,7 +45,10 @@ std::string patch_owner_test(const PatchTransformations &pt,
 
 /**
  * Tests if local2global(global2local(global)) == global
- * TODO: doc
+ *
+ * @param pt The patch transformations structure
+ * @param global_vars A global point to test.
+ * @return A string indicating the test status.
  */
 std::string global_identity_test(const PatchTransformations &pt,
                                  const MultiPatch::Cake::svec_u &global_vars) {
@@ -95,7 +103,11 @@ std::string global_identity_test(const PatchTransformations &pt,
 
 /**
  * Tests if global2local(local2global(local, patch)) == (local, patch)
- * TODO: doc
+ *
+ * @param pt The patch transformations structure
+ * @param patch The patch index to test.
+ * @param local_point A local point to test.
+ * @return A string indicating the test status.
  */
 std::string local_identity_test(const PatchTransformations &pt, int patch,
                                 const MultiPatch::Cake::svec_u &local_point) {
@@ -153,9 +165,156 @@ std::string local_identity_test(const PatchTransformations &pt, int patch,
   return msg;
 }
 
+/**
+ * Tests the cake jacobian implementations by approximating da^i/dx^i with
+ * fourth order finite differences. The "step size" and comparison tolerance is
+ * customizable at compile time.
+ *
+ * @param pt The patch transformations structure
+ * @param patch The patch index to test.
+ * @param global_point A global point to test.
+ * @return A string indicating the test status.
+ */
+std::string jacobian_test(const PatchTransformations &pt, int patch,
+                          const MultiPatch::Cake::svec_u &global_point) {
+
+  using MultiPatch::Cake::patch_piece;
+  using MultiPatch::Cake::piece_name;
+  using MultiPatch::Cake::svec_u;
+  using MultiPatchTests::colored;
+  using MultiPatchTests::fd_4;
+  using MultiPatchTests::fd_comp_tol;
+  using MultiPatchTests::fd_delta;
+  using MultiPatchTests::fd_direction;
+  using MultiPatchTests::isapprox;
+  using MultiPatchTests::string_color;
+
+  std::string msg{"patch "};
+
+  // Compute a local point and patch number from the global poiint
+  const auto local_data = pt.global2local(pt, global_point);
+  msg += piece_name(static_cast<patch_piece>(std::get<0>(local_data)));
+  msg += " has ";
+
+  // From local point and patch number, we can compute the jacobian
+  const auto J_data =
+      pt.dlocal_dglobal(pt, std::get<0>(local_data), std::get<1>(local_data));
+  const auto &J = std::get<1>(J_data);
+
+  // Compute the derivative of local2global by finite differencing
+  const auto g2l_wrapper = [&](const svec_u &point) -> svec_u {
+    return std::get<1>(pt.global2local(pt, point));
+  };
+
+  const auto expected_dx =
+      fd_4<fd_direction::x, svec_u>(g2l_wrapper, global_point);
+  const auto expected_dy =
+      fd_4<fd_direction::y, svec_u>(g2l_wrapper, global_point);
+  const auto expected_dz =
+      fd_4<fd_direction::z, svec_u>(g2l_wrapper, global_point);
+
+  const bool test1 = isapprox(expected_dx(0), J(0)(0), fd_comp_tol);
+  const bool test2 = isapprox(expected_dx(1), J(1)(0), fd_comp_tol);
+  const bool test3 = isapprox(expected_dx(2), J(2)(0), fd_comp_tol);
+
+  const bool test4 = isapprox(expected_dy(0), J(0)(1), fd_comp_tol);
+  const bool test5 = isapprox(expected_dy(1), J(1)(1), fd_comp_tol);
+  const bool test6 = isapprox(expected_dy(2), J(2)(1), fd_comp_tol);
+
+  const bool test7 = isapprox(expected_dz(0), J(0)(2), fd_comp_tol);
+  const bool test8 = isapprox(expected_dz(1), J(1)(2), fd_comp_tol);
+  const bool test9 = isapprox(expected_dz(2), J(2)(2), fd_comp_tol);
+
+  const bool all_tests = test1 && test2 && test3 && test4 && test5 && test6;
+
+  if (all_tests) {
+    msg += colored<string_color::green>("PASSED");
+  } else {
+    msg += colored<string_color::red>("FAILED");
+    msg += ". Reason: ";
+
+    if (!test1) {
+      msg += "computed J(0)(0) value is ";
+      msg += std::to_string(J(0)(0));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dx(0));
+      msg += ". ";
+    }
+
+    if (!test2) {
+      msg += "computed  J(1)(0) value is ";
+      msg += std::to_string(J(1)(0));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dx(1));
+      msg += ". ";
+    }
+
+    if (!test3) {
+      msg += "computed  J(2)(0) value is ";
+      msg += std::to_string(J(2)(0));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dx(2));
+      msg += ". ";
+    }
+
+    if (!test4) {
+      msg += "computed  J(0)(1) value is ";
+      msg += std::to_string(J(0)(1));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dy(0));
+      msg += ". ";
+    }
+
+    if (!test5) {
+      msg += "computed  J(1)(1) value is ";
+      msg += std::to_string(J(1)(1));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dy(1));
+      msg += ". ";
+    }
+
+    if (!test6) {
+      msg += "computed  J(2)(1) value is ";
+      msg += std::to_string(J(2)(1));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dy(2));
+      msg += ". ";
+    }
+
+    if (!test7) {
+      msg += "computed  J(0)(2) value is ";
+      msg += std::to_string(J(0)(2));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dz(0));
+      msg += ". ";
+    }
+
+    if (!test8) {
+      msg += "computed  J(1)(2) value is ";
+      msg += std::to_string(J(1)(2));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dz(1));
+      msg += ". ";
+    }
+
+    if (!test9) {
+      msg += "computed  J(2)(2) value is ";
+      msg += std::to_string(J(2)(2));
+      msg += " and the expected value is ";
+      msg += std::to_string(expected_dz(2));
+      msg += ". ";
+    }
+  }
+
+  return msg;
+}
+
 } // namespace CakeTests
 } // namespace MultiPatch
 
+/**
+ * Runs all tests pertaining to the cake patch
+ */
 extern "C" void run_cake_tests() {
   DECLARE_CCTK_PARAMETERS
 
@@ -166,6 +325,7 @@ extern "C" void run_cake_tests() {
   using std::cos;
   using std::sin;
 
+  using MultiPatch::Cake::get_owner_patch;
   using MultiPatch::Cake::patch_piece;
   using MultiPatch::Cake::piece_name;
   using MultiPatch::Cake::svec_u;
@@ -295,4 +455,20 @@ extern "C" void run_cake_tests() {
                piece_name(static_cast<patch_piece>(patch)).c_str(),
                local_identity_test(pt, patch, local_point).c_str());
   }
+
+  // Tests if local -> global jacobians are correct.
+  for (int i = 0; i < repeat_tests; i++) {
+    r = r_distrib(engine);
+    theta = theta_distrib(engine);
+    phi = phi_distrib(engine);
+
+    global_point = {r * sin(theta) * cos(phi), r * sin(theta) * sin(phi),
+                    r * cos(theta)};
+
+    CCTK_VINFO("  local -> global jacobian test at point (%f, %f, %f) patch %s",
+               global_point(0), global_point(1), global_point(2),
+               jacobian_test(pt, patch, global_point).c_str());
+  }
+
+  // TODO: Test jacobian derivatives
 }

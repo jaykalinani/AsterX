@@ -13,7 +13,10 @@ SCHEDULE MultiPatch_Coordinates_Setup AT basegrid AFTER Coordinates_Setup
   WRITES: Coordinates::cell_volume(everywhere)
 } "Set coordinate grid functions"
 
-# TODO: Schedule a function at paramcheck to assert that r1 != r0
+SCHEDULE MultiPatch_Check_Parameters AT CCTK_PARAMCHECK
+{
+  LANG: C
+} "Check parameters"
 
 if(run_tests)
 {
