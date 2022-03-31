@@ -253,7 +253,7 @@ extern "C" void TestSymmetries_Sync(CCTK_ARGUMENTS) {
   // Do nothing
 }
 
-CCTK_REAL check;
+int check;
 
 extern "C" void TestSymmetries_CheckInit(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_TestSymmetries_CheckInit;
@@ -266,23 +266,28 @@ extern "C" void TestSymmetries_Check(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_TestSymmetries_Check;
   DECLARE_CCTK_PARAMETERS;
 
-  CCTK_REAL local_check = 0;
+  int local_check = 0;
 
   map_all_centerings_all_parities<Loop::where_t::everywhere>(
-      cctkGH, [&] CCTK_DEVICE(const auto &p, const auto &centering,
-                              const auto &parity, auto &var,
-                              const auto &value) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      cctkGH, [=, local_check_ptr = &local_check] CCTK_DEVICE(
+                  const auto &p, const auto &centering, const auto &parity,
+                  auto &var, const auto &value) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         using std::abs;
         if (abs(var - value) > 10 * std::numeric_limits<CCTK_REAL>::epsilon()) {
+#ifndef __CUDACC__
           CCTK_VERROR(
               "Grid function symmetry check failed: I=[%d,%d,%d] X=[%g,%g,%g] "
               "centering=[%d,%d,%d] parity=[%d,%d,%d] var=%.17g value=%.17g",
               p.I[0], p.I[1], p.I[2], p.X[0], p.X[1], p.X[2], centering[0],
               centering[1], centering[2], parity[0], parity[1], parity[2], var,
               value);
-          local_check = 1;
+#endif
+          *local_check_ptr = 1;
         }
       });
+
+  if (local_check)
+    CCTK_VERROR("Grid function symmetry check failed");
 
 #pragma omp atomic update
   check += local_check;
