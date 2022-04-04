@@ -210,6 +210,13 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
  * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d}{d x^k} \left( \frac{d a^i}{d x^j}
  * \right)$.
  *
+ * TODO: Erik says: "You have six files that contain very similar code.
+ * presumably, they differ in their permutations of x, y, and z, and a few minus
+ * signs. you could create just one file, and call the functions in that file
+ * six times with different arguments. this might reduce the amount of code
+ * generated, and might speed up things. or it might not. don’t worry about this
+ * now. this is just a thought for the future."
+ *
  * @param pt The patch data
  * @param patch The index of the patch to transform.
  * @param local_vars The values of the local variables (a,b,c)

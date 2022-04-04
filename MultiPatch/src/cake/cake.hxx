@@ -1,14 +1,6 @@
 #ifndef MULTIPATCH_CAKE_HXX
 #define MULTIPATCH_CAKE_HXX
 
-#include <fixmath.hxx>
-#include <cctk.h>
-
-#include <loop.hxx>
-#include <mat.hxx>
-#include <vec.hxx>
-#include <vect.hxx>
-
 #include "multipatch.hxx"
 #include "tests.hxx"
 
@@ -29,22 +21,22 @@ using svec_d = vec<CCTK_REAL, dim, DN>;
 using svec_u = vec<CCTK_REAL, dim, UP>;
 
 /**
- * Stores a 3-matrx with all indices down
+ * Stores a 3-matrix with all indices down
  */
 using smat_d = smat<CCTK_REAL, dim, DN, DN>;
 
 /**
- * Stores a Jacobian matrix of 3 dimentions
+ * Stores a Jacobian matrix of 3 dimensions
  */
 using jac_t = vec<vec<CCTK_REAL, dim, DN>, dim, UP>;
 
 /**
- * Stores a the derivatives of a Jacobian matrix of 3 dimentions
+ * Stores a the derivatives of a Jacobian matrix of 3 dimensions
  */
 using djac_t = vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP>;
 
 /**
- * Precondition assertion macro. If the precondition fails, the code is aborted.
+ * Precondition assertion. If the precondition fails, the code is aborted.
  *
  * @param predicate The predicate to test.
  * @param msg The message to display while aborting the code.

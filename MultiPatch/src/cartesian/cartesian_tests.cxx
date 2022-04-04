@@ -2,7 +2,9 @@
 #include "tests.hxx"
 
 #include <cctk_Parameters.h>
+
 #include <string>
+#include <sstream>
 
 namespace MultiPatch {
 namespace CartesianTests {
@@ -10,11 +12,10 @@ namespace CartesianTests {
 std::string local2global(const PatchTransformations &pt,
                          const vec<CCTK_REAL, dim, UP> &x) {
 
-  using MultiPatchTests::colored;
-  using MultiPatchTests::isapprox;
-  using MultiPatchTests::string_color;
+  using namespace MultiPatchTests;
 
-  std::string msg{"has "};
+  std::ostringstream msg;
+  msg << "has ";
 
   const auto l2g = pt.local2global(pt, 0, x);
   const bool eq_x = isapprox(l2g(0), x(0));
@@ -22,38 +23,33 @@ std::string local2global(const PatchTransformations &pt,
   const bool eq_z = isapprox(l2g(2), x(2));
 
   if (eq_x && eq_y && eq_z) {
-    msg += colored<string_color::green>("PASSED");
+    msg << colored<string_color::green>("PASSED");
   } else {
-    msg += colored<string_color::green>("FAILED");
+    msg << colored<string_color::green>("FAILED") << ". Reason:";
 
     if (!eq_x) {
-      msg += " The result in the x direction is ";
-      msg += std::to_string(l2g(0));
-      msg += ".";
+      msg << " The result in the x direction is " << l2g(0) << ".";
     }
 
     if (!eq_y) {
-      msg += " The result in the y direction is ";
-      msg += std::to_string(l2g(1));
-      msg += ".";
+      msg << " The result in the y direction is " << l2g(1) << ".";
     }
 
     if (!eq_z) {
-      msg += " The result in the z direction is ";
-      msg += std::to_string(l2g(02));
-      msg += ".";
+      msg << " The result in the z direction is " << l2g(02) << ".";
     }
   }
 
-  return msg;
+  return msg.str();
 }
 
 std::string global2local(const PatchTransformations &pt,
                          const vec<CCTK_REAL, dim, UP> &x) {
 
-  using MultiPatchTests::isapprox;
+  using namespace MultiPatchTests;
 
-  std::string msg{"has "};
+  std::ostringstream msg;
+  msg << "has ";
 
   const auto g2l = pt.global2local(pt, x);
   const bool eq_x = isapprox(std::get<1>(g2l)(0), x(0));
@@ -61,30 +57,24 @@ std::string global2local(const PatchTransformations &pt,
   const bool eq_z = isapprox(std::get<1>(g2l)(2), x(2));
 
   if (eq_x && eq_y && eq_z) {
-    msg += "\033[32;1mPASSED\033[0m.";
+    msg << colored<string_color::green>("PASSED");
   } else {
-    msg += "\033[31;1mFAILED\033[0m. Reason(s):";
+    msg << colored<string_color::green>("FAILED") << ". Reason:";
 
     if (!eq_x) {
-      msg += " The result in the x direction is ";
-      msg += std::to_string(std::get<1>(g2l)(0));
-      msg += ".";
+      msg << " The result in the x direction is " << std::get<1>(g2l)(0) << ".";
     }
 
     if (!eq_y) {
-      msg += " The result in the y direction is ";
-      msg += std::to_string(std::get<1>(g2l)(1));
-      msg += ".";
+      msg << " The result in the y direction is " << std::get<1>(g2l)(1) << ".";
     }
 
     if (!eq_z) {
-      msg += " The result in the z direction is ";
-      msg += std::to_string(std::get<1>(g2l)(02));
-      msg += ".";
+      msg << " The result in the z direction is " << std::get<1>(g2l)(2) << ".";
     }
   }
 
-  return msg;
+  return msg.str();
 }
 
 } // namespace CartesianTests
@@ -120,13 +110,13 @@ extern "C" void run_cartesian_tests() {
 
   CCTK_INFO("Running cartesian patch tests:");
 
-  for (int i = 0; i < repeat_tests; i++) {
+  for (int i = 0; i < test_repetitions; i++) {
     point = {x_distrib(engine), y_distrib(engine), z_distrib(engine)};
     CCTK_VINFO("  Local to global transformation test at point (%f, %f, %f) %s",
                point(0), point(1), point(2), local2global(pt, point).c_str());
   }
 
-  for (int i = 0; i < repeat_tests; i++) {
+  for (int i = 0; i < test_repetitions; i++) {
     point = {x_distrib(engine), y_distrib(engine), z_distrib(engine)};
     CCTK_VINFO("  Global to local transformation test at point (%f, %f, %f) %s",
                point(0), point(1), point(2), global2local(pt, point).c_str());

@@ -28,8 +28,8 @@ CarpetX::max_num_levels = 1
 
 CarpetX::dtfac = 0.5
 
-MultiPatch::run_tests    = yes
-MultiPatch::repeat_tests = 30
+MultiPatch::run_tests        = yes
+MultiPatch::test_repetitions = 30
 
 MultiPatch::patch_system = "Cartesian" # TODO: Replace with "Cake". Currently, 
                                        # it produces segmentation faults, probably 

@@ -4,6 +4,7 @@
 #include <cctk_Parameters.h>
 
 #include <string>
+#include <sstream>
 #include <utility>
 #include <cmath>
 
@@ -25,22 +26,21 @@ std::string patch_owner_test(const PatchTransformations &pt,
   using namespace MultiPatch::Cake;
   using namespace MultiPatchTests;
 
-  std::string msg{"has "};
+  std::ostringstream msg;
+  msg << "has ";
 
   const auto owner_patch = get_owner_patch(pt, x);
 
   if (owner_patch == expected) {
-    msg += colored<string_color::green>("PASSED");
+    msg << colored<string_color::green>("PASSED");
   } else {
-    msg += colored<string_color::red>("FAILED");
-    msg += ". Reason: Expected to get patch ";
-    msg += piece_name(expected);
-    msg += " and got ";
-    msg += piece_name(owner_patch);
+    msg << colored<string_color::red>("FAILED")
+        << ". Reason: Expected to get patch " << piece_name(expected)
+        << " and got " << piece_name(owner_patch);
   }
 
-  msg += ".";
-  return msg;
+  msg << ".";
+  return msg.str();
 }
 
 /**
@@ -57,7 +57,8 @@ std::string global_identity_test(const PatchTransformations &pt,
   using MultiPatchTests::isapprox;
   using MultiPatchTests::string_color;
 
-  std::string msg{"has "};
+  std::ostringstream msg;
+  msg << "has ";
 
   const auto g2l = pt.global2local(pt, global_vars);
 
@@ -71,34 +72,24 @@ std::string global_identity_test(const PatchTransformations &pt,
   const auto test3 = isapprox(l2g(2), global_vars(2));
 
   if (test1 && test2 && test3) {
-    msg += colored<string_color::green>("PASSED");
+    msg << colored<string_color::green>("PASSED");
   } else {
-    msg += colored<string_color::red>("FAILED");
-    msg += ". Reason: ";
+    msg << colored<string_color::red>("FAILED") << ". Reason: ";
 
     if (!test1) {
-      msg += std::to_string(l2g(0));
-      msg += " =/= ";
-      msg += std::to_string(global_vars(0));
-      msg += ". ";
+      msg << l2g(0) << " =/= " << global_vars(0) << ". ";
     }
 
     if (!test2) {
-      msg += std::to_string(l2g(1));
-      msg += " =/= ";
-      msg += std::to_string(global_vars(1));
-      msg += ". ";
+      msg << l2g(1) << " =/= " << global_vars(1) << ". ";
     }
 
     if (!test3) {
-      msg += std::to_string(l2g(2));
-      msg += " =/= ";
-      msg += std::to_string(global_vars(2));
-      msg += ". ";
+      msg << l2g(2) << " =/= " << global_vars(2) << ". ";
     }
   }
 
-  return msg;
+  return msg.str();
 }
 
 /**
@@ -118,7 +109,8 @@ std::string local_identity_test(const PatchTransformations &pt, int patch,
   using MultiPatchTests::isapprox;
   using MultiPatchTests::string_color;
 
-  std::string msg{"has "};
+  std::ostringstream msg;
+  msg << "has ";
 
   const auto l2g = pt.local2global(pt, patch, local_point);
   const auto g2l = pt.global2local(pt, l2g);
@@ -132,37 +124,32 @@ std::string local_identity_test(const PatchTransformations &pt, int patch,
   const bool test4 = isapprox(computed_local_point(2), local_point(2));
 
   if (test1 && test2 && test3 && test4) {
-    msg += colored<string_color::green>("PASSED");
+    msg << colored<string_color::green>("PASSED");
   } else {
-    msg += colored<string_color::red>("FAILED");
-    msg += ". Reason: ";
+    msg << colored<string_color::red>("FAILED") << ". Reason: ";
 
     if (!test1) {
-      msg += "the computed patch is ";
-      msg += piece_name(static_cast<patch_piece>(computed_patch_idx));
-      msg += ". ";
+      msg << "the computed patch is "
+          << piece_name(static_cast<patch_piece>(computed_patch_idx)) << ". ";
     }
 
     if (!test2) {
-      msg += "the computed local coordinate a is ";
-      msg += std::to_string(computed_local_point(0));
-      msg += ". ";
+      msg << "the computed local coordinate a is " << computed_local_point(0)
+          << ". ";
     }
 
     if (!test3) {
-      msg += "the computed local coordinate b is ";
-      msg += std::to_string(computed_local_point(1));
-      msg += ". ";
+      msg << "the computed local coordinate a is " << computed_local_point(1)
+          << ". ";
     }
 
     if (!test4) {
-      msg += "the computed local coordinate c is ";
-      msg += std::to_string(computed_local_point(2));
-      msg += ". ";
+      msg << "the computed local coordinate a is " << computed_local_point(2)
+          << ". ";
     }
   }
 
-  return msg;
+  return msg.str();
 }
 
 /**
@@ -189,12 +176,13 @@ std::string jacobian_test(const PatchTransformations &pt, int patch,
   using MultiPatchTests::isapprox;
   using MultiPatchTests::string_color;
 
-  std::string msg{"patch "};
+  std::ostringstream msg;
+  msg << "patch ";
 
   // Compute a local point and patch number from the global poiint
   const auto local_data = pt.global2local(pt, global_point);
-  msg += piece_name(static_cast<patch_piece>(std::get<0>(local_data)));
-  msg += " has ";
+  msg << piece_name(static_cast<patch_piece>(std::get<0>(local_data)))
+      << " has ";
 
   // From local point and patch number, we can compute the jacobian
   const auto J_data =
@@ -228,85 +216,57 @@ std::string jacobian_test(const PatchTransformations &pt, int patch,
   const bool all_tests = test1 && test2 && test3 && test4 && test5 && test6;
 
   if (all_tests) {
-    msg += colored<string_color::green>("PASSED");
+    msg << colored<string_color::green>("PASSED");
   } else {
-    msg += colored<string_color::red>("FAILED");
-    msg += ". Reason: ";
+    msg << colored<string_color::red>("FAILED") << ". Reason: ";
 
     if (!test1) {
-      msg += "computed J(0)(0) value is ";
-      msg += std::to_string(J(0)(0));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dx(0));
-      msg += ". ";
+      msg << "computed J(0)(0) value is " << (J(0)(0))
+          << " and the expected value is " << expected_dx(0) << ". ";
     }
 
     if (!test2) {
-      msg += "computed  J(1)(0) value is ";
-      msg += std::to_string(J(1)(0));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dx(1));
-      msg += ". ";
+      msg << "computed J(1)(0) value is " << (J(1)(0))
+          << " and the expected value is " << expected_dx(1) << ". ";
     }
 
     if (!test3) {
-      msg += "computed  J(2)(0) value is ";
-      msg += std::to_string(J(2)(0));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dx(2));
-      msg += ". ";
+      msg << "computed J(2)(0) value is " << (J(2)(0))
+          << " and the expected value is " << expected_dx(2) << ". ";
     }
 
     if (!test4) {
-      msg += "computed  J(0)(1) value is ";
-      msg += std::to_string(J(0)(1));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dy(0));
-      msg += ". ";
+      msg << "computed  J(0)(1) value is " << (J(0)(1))
+          << " and the expected value is " << expected_dy(0) << ". ";
     }
 
     if (!test5) {
-      msg += "computed  J(1)(1) value is ";
-      msg += std::to_string(J(1)(1));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dy(1));
-      msg += ". ";
+      msg << "computed  J(1)(1) value is " << (J(1)(1))
+          << " and the expected value is " << expected_dy(1) << ". ";
     }
 
     if (!test6) {
-      msg += "computed  J(2)(1) value is ";
-      msg += std::to_string(J(2)(1));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dy(2));
-      msg += ". ";
+      msg << "computed  J(2)(1) value is " << (J(2)(1))
+          << " and the expected value is " << expected_dy(2) << ". ";
     }
 
     if (!test7) {
-      msg += "computed  J(0)(2) value is ";
-      msg += std::to_string(J(0)(2));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dz(0));
-      msg += ". ";
+      msg << "computed  J(0)(2) value is " << (J(0)(2))
+          << " and the expected value is " << expected_dz(0) << ". ";
     }
 
     if (!test8) {
-      msg += "computed  J(1)(2) value is ";
-      msg += std::to_string(J(1)(2));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dz(1));
-      msg += ". ";
+      msg << "computed  J(1)(2) value is " << (J(1)(2))
+          << " and the expected value is " << expected_dz(1) << ". ";
     }
 
     if (!test9) {
-      msg += "computed  J(2)(2) value is ";
-      msg += std::to_string(J(2)(2));
-      msg += " and the expected value is ";
-      msg += std::to_string(expected_dz(2));
-      msg += ". ";
+      msg << "computed  J(2)(2) value is " << (J(2)(2))
+          << " and the expected value is " << expected_dz(2) << ". ";
     }
   }
 
-  return msg;
+  return msg.str();
 }
 
 } // namespace CakeTests
@@ -412,11 +372,9 @@ extern "C" void run_cake_tests() {
    */
   mt19937_64 engine(random_seed);
 
-  constexpr const double pi = 3.14159265358979323846;
-
   uniform_real_distribution<CCTK_REAL> r_distrib(0.0, r1);
-  uniform_real_distribution<CCTK_REAL> theta_distrib(0.0, pi);
-  uniform_real_distribution<CCTK_REAL> phi_distrib(0.0, 2.0 * pi);
+  uniform_real_distribution<CCTK_REAL> theta_distrib(0.0, M_PI);
+  uniform_real_distribution<CCTK_REAL> phi_distrib(0.0, 2.0 * M_PI);
 
   uniform_real_distribution<CCTK_REAL> local_distrib(-1.0, 1.0);
 
@@ -428,7 +386,7 @@ extern "C" void run_cake_tests() {
   int patch = 0;
 
   // Tests if local2global(global2local(global)) == global
-  for (int i = 0; i < repeat_tests; i++) {
+  for (int i = 0; i < test_repetitions; i++) {
     r = r_distrib(engine);
     theta = theta_distrib(engine);
     phi = phi_distrib(engine);
@@ -443,7 +401,7 @@ extern "C" void run_cake_tests() {
   }
 
   // Tests if global2local(local2global(local, patch)) == (local, patch)
-  for (int i = 0; i < repeat_tests; i++) {
+  for (int i = 0; i < test_repetitions; i++) {
     local_point = {local_distrib(engine), local_distrib(engine),
                    local_distrib(engine)};
 
@@ -457,7 +415,7 @@ extern "C" void run_cake_tests() {
   }
 
   // Tests if local -> global jacobians are correct.
-  for (int i = 0; i < repeat_tests; i++) {
+  for (int i = 0; i < test_repetitions; i++) {
     r = r_distrib(engine);
     theta = theta_distrib(engine);
     phi = phi_distrib(engine);
