@@ -47,10 +47,10 @@ public:
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");
     static_assert(VS > 0, "");
-    // TODO static_assert(VS is power of 2);
 
     for (int d = 0; d < dim; ++d)
-      assert(!(imin[d] >= imax[d]));
+      if (imin[d] >= imax[d])
+        return;
 
     // array<bool, dim> bforward;
     // for (int d = 0; d < dim; ++d)
