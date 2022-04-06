@@ -35,6 +35,8 @@ using Loop::dim;
 
 using rat64 = rational<int64_t>;
 
+enum class symmetry_t { none, periodic, reflection, dirichlet };
+
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
 
@@ -45,6 +47,7 @@ class CactusAmrCore final : public amrex::AmrCore {
   int patch;
 
 public:
+  bool cactus_is_initialized = false;
   vector<bool> level_modified;
 
   CactusAmrCore();
@@ -145,14 +148,35 @@ struct GHExt {
   GlobalData globaldata;
 
   struct PatchData {
+    PatchData() = delete;
+    PatchData(const PatchData &) = delete;
+    PatchData &operator=(const PatchData &) = delete;
+    PatchData(PatchData &&) = default;
+    PatchData &operator=(PatchData &&) = default;
+
+    PatchData(int patch);
+
     int patch;
+
+    array<array<symmetry_t, dim>, 2> symmetries;
 
     // AMReX grid structure
     // TODO: convert this from unique_ptr to optional
     unique_ptr<CactusAmrCore> amrcore;
 
     struct LevelData {
+      LevelData() = delete;
+      LevelData(const LevelData &) = delete;
+      LevelData &operator=(const LevelData &) = delete;
+      LevelData(LevelData &&) = default;
+      LevelData &operator=(LevelData &&) = default;
+
+      LevelData(const int patch, const int level, const amrex::BoxArray &ba,
+                const amrex::DistributionMapping &dm,
+                const function<string()> &why);
+
       int patch, level;
+
       const PatchData &patchdata() const;
       PatchData &patchdata();
 
@@ -169,7 +193,15 @@ struct GHExt {
       unique_ptr<amrex::FabArrayBase> fab;
 
       struct GroupData : public CommonGroupData {
-        GroupData(int patch, int level, int gi);
+        GroupData() = delete;
+        GroupData(const GroupData &) = delete;
+        GroupData &operator=(const GroupData &) = delete;
+        GroupData(GroupData &&) = default;
+        GroupData &operator=(GroupData &&) = default;
+
+        GroupData(int patch, int level, int gi, const amrex::BoxArray &ba,
+                  const amrex::DistributionMapping &dm,
+                  const function<string()> &why);
 
         int patch, level;
 
@@ -178,7 +210,9 @@ struct GHExt {
 
         array<int, dim> indextype;
         array<int, dim> nghostzones;
+
         vector<array<int, dim> > parities;
+        vector<CCTK_REAL> dirichlet_values;
 
         // each amrex::MultiFab has numvars components
         vector<unique_ptr<amrex::MultiFab> > mfab; // [time level]

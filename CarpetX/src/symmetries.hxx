@@ -9,7 +9,6 @@
 namespace CarpetX {
 
 void ApplySymmetries(
-    const cGH *restrict const cctkGH,
     const GHExt::PatchData::LevelData::GroupData &restrict groupdata, int tl);
 
 }

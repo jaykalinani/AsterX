@@ -3,6 +3,7 @@
 
 #include <fixmath.hxx>
 #include <cctk.h>
+#include <cctk_Parameters.h>
 
 #include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
@@ -684,6 +685,8 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
                                        amrex::Vector<amrex::BCRec> const &bcr,
                                        int actual_comp, int actual_state,
                                        amrex::RunOn gpu_or_cpu) {
+  DECLARE_CCTK_PARAMETERS;
+
   static once_flag have_timers;
   static vector<Timer> timers;
 
@@ -712,12 +715,21 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
 
-  const amrex::BCRec bcrec(amrex::BCType::int_dir, amrex::BCType::int_dir,
-                           amrex::BCType::int_dir, amrex::BCType::int_dir,
-                           amrex::BCType::int_dir, amrex::BCType::int_dir);
-  assert(int(bcr.size()) >= ncomp);
+  // Boundaries
+#warning "TODO: also allow dirichlet"
+  const array<array<bool, 3>, 2> is_symmetry{{
+      {{periodic_x || reflection_x, periodic_y || reflection_y,
+        periodic_z || reflection_z}},
+      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
+        periodic_z || reflection_upper_z}},
+  }};
+
   for (const auto &bc : bcr)
-    assert(bc == bcrec);
+    for (int f = 0; f < 2; ++f)
+      for (int d = 0; d < dim; ++d)
+        assert(bc.data()[f * dim + d] == amrex::BCType::int_dir ||
+               (bc.data()[f * dim + d] == amrex::BCType::ext_dir &&
+                is_symmetry[f][d]));
 
   assert(actual_comp == 0);  // ???
   assert(actual_state == 0); // ???

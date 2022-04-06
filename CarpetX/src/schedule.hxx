@@ -214,7 +214,7 @@ void enter_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
 void leave_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
 
 void loop_over_blocks(
-    const cGH *restrict const cctkGH, const active_levels_t &active_levels,
+    const active_levels_t &active_levels,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel);
 
@@ -223,7 +223,7 @@ cGH *get_level_cctkGH(int level);
 cGH *get_patch_cctkGH(int level, int patch);
 cGH *get_local_cctkGH(int level, int patch, int block);
 
-void setup_cctkGHs(cGH *cctkGH);
+void setup_cctkGHs();
 
 // These functions are defined in valid.cxx. These prototypes should
 // be moved to valid.hxx. Unfortunately, they depend on GHExt, which is declared
@@ -236,15 +236,9 @@ void error_if_invalid(const GHExt::PatchData::LevelData::GroupData &grouppdata,
 void warn_if_invalid(const GHExt::PatchData::LevelData ::GroupData &grouppdata,
                      int vi, int tl, const valid_t &required,
                      const function<string()> &msg);
-void poison_invalid_OLD(const GHExt::PatchData::LevelData::GroupData &groupdata,
-                        int vi, int tl);
-void poison_invalid(const cGH *const cctkGH,
-                    const GHExt::PatchData::LevelData::GroupData &groupdata,
+void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
                     int vi, int tl);
-void check_valid_OLD(const GHExt::PatchData::LevelData::GroupData &groupdata,
-                     int vi, int tl, const function<string()> &msg);
-void check_valid(const cGH *const cctkGH,
-                 const GHExt::PatchData::LevelData::GroupData &groupdata,
+void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
                  int vi, int tl, const function<string()> &msg);
 
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,

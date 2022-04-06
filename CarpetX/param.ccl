@@ -103,6 +103,30 @@ BOOLEAN reflection_upper_z "Reflection symmetry at the upper z boundary"
 {
 } no
 
+BOOLEAN dirichlet_x "Dirichlet condition at the lower x boundary"
+{
+} no
+
+BOOLEAN dirichlet_y "Dirichlet condition at the lower y boundary"
+{
+} no
+
+BOOLEAN dirichlet_z "Dirichlet condition at the lower z boundary"
+{
+} no
+
+BOOLEAN dirichlet_upper_x "Dirichlet condition at the upper x boundary"
+{
+} no
+
+BOOLEAN dirichlet_upper_y "Dirichlet condition at the upper y boundary"
+{
+} no
+
+BOOLEAN dirichlet_upper_z "Dirichlet condition at the upper z boundary"
+{
+} no
+
 
 
 CCTK_INT blocking_factor_x "Blocking factor"

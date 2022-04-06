@@ -825,7 +825,7 @@ extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
 }
 
 void loop_over_blocks(
-    const cGH *restrict const cctkGH, const active_levels_t &active_levels,
+    const active_levels_t &active_levels,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel) {
   DECLARE_CCTK_PARAMETERS;
@@ -953,11 +953,13 @@ cGH *get_local_cctkGH(const int level, const int patch, const int block) {
   return local_cctkGHs.at(patch).at(level).at(block).get();
 }
 
-void setup_cctkGHs(cGH *restrict const cctkGH) {
-  // global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
+void setup_cctkGHs() {
+  cGH *const cctkGH = global_cctkGH.get();
 
   level_cctkGHs.clear();
+  patch_cctkGHs.clear();
   patch_cctkGHs.resize(ghext->num_patches());
+  local_cctkGHs.clear();
   local_cctkGHs.resize(ghext->num_patches());
   for (auto &patchdata : ghext->patchdata)
     local_cctkGHs.at(patchdata.patch).resize(patchdata.leveldata.size());
@@ -1148,7 +1150,7 @@ int Initialise(tFleshConfig *config) {
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
   global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
-  setup_cctkGHs(cctkGH);
+  setup_cctkGHs();
 
   for (const auto &patchdata : ghext->patchdata)
     assert(patchdata.leveldata.empty());
@@ -1167,7 +1169,7 @@ int Initialise(tFleshConfig *config) {
     CCTK_VINFO("Recovering from checkpoint...");
 
     RecoverGridStructure(cctkGH);
-    setup_cctkGHs(cctkGH);
+    setup_cctkGHs();
 
     assert(!active_levels);
     active_levels = make_optional<active_levels_t>();
@@ -1190,6 +1192,10 @@ int Initialise(tFleshConfig *config) {
 
     active_levels = optional<active_levels_t>();
 
+    // Enable regridding
+    for (auto &patchdata : ghext->patchdata)
+      patchdata.amrcore->cactus_is_initialized = true;
+
   } else {
     // Set up initial conditions
 #pragma omp critical
@@ -1203,7 +1209,7 @@ int Initialise(tFleshConfig *config) {
       for (const auto &patchdata : ghext->patchdata)
         patchdata.amrcore->MakeNewGrids(time);
 
-      setup_cctkGHs(cctkGH);
+      setup_cctkGHs();
       assert(!active_levels);
       active_levels = make_optional<active_levels_t>(0, 1);
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
@@ -1250,6 +1256,12 @@ int Initialise(tFleshConfig *config) {
         }
       }
     }
+
+    // Enable regridding. We can only enable regridding after the
+    // coarse level has been initialized, since otherwise the error
+    // estimate is undefined.
+    for (auto &patchdata : ghext->patchdata)
+      patchdata.amrcore->cactus_is_initialized = true;
 
     for (;;) {
       const int level = ghext->num_levels() - 1;
@@ -1336,12 +1348,14 @@ int Initialise(tFleshConfig *config) {
         did_modify_any_level = last_modified_level >= first_modified_level;
 
         if (did_modify_any_level) {
-          setup_cctkGHs(cctkGH);
+          // setup_cctkGHs();
           assert(!active_levels);
           active_levels = make_optional<active_levels_t>(
               first_modified_level, last_modified_level + 1);
+#warning "TODO"
+#if 0
           // The logic where to apply symmetries mimics (is copied
-          // from the call to FillPatchTwoLevels in RemakeLevel
+          // from) the call to FillPatchTwoLevels in RemakeLevel
           active_levels->loop([&](const auto &leveldata) {
             const int num_groups = CCTK_NumGroups();
             for (int gi = 0; gi < num_groups; ++gi) {
@@ -1353,12 +1367,15 @@ int Initialise(tFleshConfig *config) {
                 // prolongate the oldest.
                 const int prolongate_tl =
                     groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+#warning                                                                       \
+    "TODO: need to sync after applyling symmetries. need to apply symmetries during regridding, after each level, not just once afterwards."
                 for (int tl = 0; tl < ntls; ++tl)
                   if (tl < prolongate_tl)
-                    ApplySymmetries(cctkGH, groupdata, tl);
+                    ApplySymmetries(groupdata, tl);
               }
             }
           });
+#endif
           CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
           CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
           active_levels = optional<active_levels_t>();
@@ -1468,7 +1485,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
                 return "InvalidateTimelevels (invalidate all "
                        "non-checkpointed variables)";
               });
-              poison_invalid(cctkGH, groupdata, vi, tl);
+              poison_invalid(groupdata, vi, tl);
             }
           }
         }
@@ -1528,7 +1545,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
             groupdata.valid.at(0).at(vi).set(valid_t(), []() {
               return "CycletimeLevels (invalidate current time level)";
             });
-            poison_invalid(cctkGH, groupdata, vi, 0);
+            poison_invalid(groupdata, vi, 0);
           }
         }
         // All time levels (except the current) must be valid everywhere for
@@ -1541,8 +1558,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
               });
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            check_valid(cctkGH, groupdata, vi, tl,
-                        []() { return "CycleTimelevels"; });
+            check_valid(groupdata, vi, tl, []() { return "CycleTimelevels"; });
       });
     } else { // CCTK_ARRAY or CCTK_SCALAR
 
@@ -1650,7 +1666,7 @@ int Evolve(tFleshConfig *config) {
           last_modified_level >= first_modified_level;
 
       if (did_modify_any_level) {
-        setup_cctkGHs(cctkGH);
+        // setup_cctkGHs();
         assert(!active_levels);
         active_levels = make_optional<active_levels_t>(first_modified_level,
                                                        last_modified_level + 1);
@@ -1803,7 +1819,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                 << "::" << attribute->routine << " checking input";
             return buf.str();
           });
-          check_valid(cctkGH, groupdata, rd.vi, rd.tl, [&]() {
+          check_valid(groupdata, rd.vi, rd.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -1867,7 +1883,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Poison output variables that are not input variables";
                 return buf.str();
               });
-          poison_invalid(cctkGH, groupdata, wr.vi, wr.tl);
+          poison_invalid(groupdata, wr.vi, wr.tl);
         });
       } else { // CCTK_ARRAY or CCTK_SCALAR
         auto &restrict arraygroupdata =
@@ -2048,7 +2064,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark output variables as valid";
                 return buf.str();
               });
-          check_valid(cctkGH, groupdata, wr.vi, wr.tl, [&]() {
+          check_valid(groupdata, wr.vi, wr.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2101,7 +2117,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark invalid variables as invalid";
                 return buf.str();
               });
-          check_valid(cctkGH, groupdata, inv.vi, inv.tl, [&]() {
+          check_valid(groupdata, inv.vi, inv.tl, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2234,8 +2250,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               return "SyncGroupsByDirI before syncing: Mark ghost zones as "
                      "invalid";
             });
-            poison_invalid(cctkGH, groupdata, vi, tl);
-            check_valid(cctkGH, groupdata, vi, tl,
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl,
                         []() { return "SyncGroupsByDirI before syncing"; });
           }
           {
@@ -2253,7 +2269,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             static Timer timer("Sync::ApplySymmetries");
             Interval interval(timer);
             nvtxRangePushA("Sync::ApplySymmetries");
-            ApplySymmetries(cctkGH, groupdata, tl);
+            ApplySymmetries(groupdata, tl);
             nvtxRangePop();
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi)
@@ -2281,17 +2297,28 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
 #warning "TODO: interpolation does not require boundaries: also for regridding!"
-            error_if_invalid(coarsegroupdata, vi, tl, make_valid_int(), []() {
-              return "SyncGroupsByDirI on coarse level before prolongation";
-            });
+            // Note: interpolation might require outer boundaries,
+            // which are not checked here. We apply symmetries, and
+            // this should handle the common cases. Where there are
+            // outer boundaries -- which we don't support -- should be
+            // checked in the prolongation operator. This needs to be
+            // cleaned up. We should probably register outer
+            // boundaries, and apply them whenever necessary. AMReX
+            // has a facility for this. This will probably only work
+            // with simple kinds of boundaries.
+            error_if_invalid(
+                coarsegroupdata, vi, tl, make_valid_int() | make_valid_outer(),
+                []() {
+                  return "SyncGroupsByDirI on coarse level before prolongation";
+                });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
-            poison_invalid(cctkGH, groupdata, vi, tl);
-            check_valid(cctkGH, coarsegroupdata, vi, tl, []() {
+            poison_invalid(groupdata, vi, tl);
+            check_valid(coarsegroupdata, vi, tl, []() {
               return "SyncGroupsByDirI on coarse level before prolongation";
             });
-            check_valid(cctkGH, groupdata, vi, tl, []() {
+            check_valid(groupdata, vi, tl, []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             groupdata.valid.at(tl).at(vi).set_ghosts(false, []() {
@@ -2316,7 +2343,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             static Timer timer("Sync::ApplySymmetries");
             Interval interval(timer);
             nvtxRangePushA("Sync::ApplySymmetries");
-            ApplySymmetries(cctkGH, groupdata, tl);
+            ApplySymmetries(groupdata, tl);
             nvtxRangePop();
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
@@ -2328,8 +2355,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
       for (int tl = 0; tl < sync_tl; ++tl) {
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          poison_invalid(cctkGH, groupdata, vi, tl);
-          check_valid(cctkGH, groupdata, vi, tl,
+          poison_invalid(groupdata, vi, tl);
+          check_valid(groupdata, vi, tl,
                       []() { return "SyncGroupsByDirI after syncing"; });
         }
       }
@@ -2416,7 +2443,7 @@ void Reflux(const cGH *cctkGH, int level) {
                                      groupdata.numvars, geom);
 
           for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-            check_valid(cctkGH, finegroupdata, vi, tl, []() {
+            check_valid(finegroupdata, vi, tl, []() {
               return "Reflux after refluxing: Fine level data";
             });
           }
@@ -2479,52 +2506,66 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
             error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on fine level before restricting";
             });
-            poison_invalid(cctkGH, finegroupdata, vi, tl);
-            check_valid(cctkGH, finegroupdata, vi, tl, []() {
+            poison_invalid(finegroupdata, vi, tl);
+            check_valid(finegroupdata, vi, tl, []() {
               return "Restrict on fine level before restricting";
             });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on coarse level before restricting";
             });
-            poison_invalid(cctkGH, groupdata, vi, tl);
-            check_valid(cctkGH, groupdata, vi, tl, []() {
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl, []() {
               return "Restrict on coarse level before restricting";
             });
           }
 
+          {
+            static Timer timer("Restrict::average_down");
+            Interval interval(timer);
+            nvtxRangePushA("Restrict::average_down");
 #warning                                                                       \
     "TODO: Allow different restriction operators, and ensure this is conservative"
-          // rank: 0: vertex, 1: edge, 2: face, 3: volume
-          int rank = 0;
-          for (int d = 0; d < dim; ++d)
-            rank += groupdata.indextype[d];
-          switch (rank) {
-          case 0:
-            average_down_nodal(*finegroupdata.mfab.at(tl),
-                               *groupdata.mfab.at(tl), reffact);
-            break;
-          case 1:
-            average_down_edges(*finegroupdata.mfab.at(tl),
-                               *groupdata.mfab.at(tl), reffact);
-            break;
-          case 2:
-            average_down_faces(*finegroupdata.mfab.at(tl),
-                               *groupdata.mfab.at(tl), reffact);
-            break;
-          case 3:
-            average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl), 0,
-                         groupdata.numvars, reffact);
-            break;
-          default:
-            assert(0);
+            // rank: 0: vertex, 1: edge, 2: face, 3: volume
+            int rank = 0;
+            for (int d = 0; d < dim; ++d)
+              rank += groupdata.indextype[d];
+            switch (rank) {
+            case 0:
+              average_down_nodal(*finegroupdata.mfab.at(tl),
+                                 *groupdata.mfab.at(tl), reffact);
+              break;
+            case 1:
+              average_down_edges(*finegroupdata.mfab.at(tl),
+                                 *groupdata.mfab.at(tl), reffact);
+              break;
+            case 2:
+              average_down_faces(*finegroupdata.mfab.at(tl),
+                                 *groupdata.mfab.at(tl), reffact);
+              break;
+            case 3:
+              average_down(*finegroupdata.mfab.at(tl), *groupdata.mfab.at(tl),
+                           0, groupdata.numvars, reffact);
+              break;
+            default:
+              assert(0);
+            }
+            nvtxRangePop();
+          }
+          {
+            static Timer timer("Restrict::ApplySymmetries");
+            Interval interval(timer);
+            nvtxRangePushA("Restrict::ApplySymmetries");
+            ApplySymmetries(groupdata, tl);
+            nvtxRangePop();
           }
 
           // TODO: Also remember old why_valid for interior?
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            groupdata.valid.at(tl).at(vi).set(make_valid_int(),
+            groupdata.valid.at(tl).at(vi).set(make_valid_int() |
+                                                  make_valid_outer(),
                                               []() { return "Restrict"; });
-            poison_invalid(cctkGH, groupdata, vi, tl);
-            check_valid(cctkGH, groupdata, vi, tl, []() {
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl, []() {
               return "Restrict on coarse level after restricting";
             });
           }

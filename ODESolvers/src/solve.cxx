@@ -66,7 +66,7 @@ struct statecomp_t {
   statecomp_t(const statecomp_t &) = delete;
   statecomp_t &operator=(const statecomp_t &) = delete;
 
-  const cGH *cctkGH;
+  const cGH *cctkGH;            // this might be unused
   vector<string> groupnames;
   vector<int> groupids;
   vector<amrex::MultiFab *> mfabs;
@@ -113,7 +113,7 @@ void statecomp_t::check_valid(const function<string()> &why) const {
         const auto &groupdata = *leveldata.groupdata.at(groupid);
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           const int tl = 0;
-          CarpetX::check_valid(cctkGH, groupdata, vi, tl, why);
+          CarpetX::check_valid(groupdata, vi, tl, why);
         }
       });
     }
