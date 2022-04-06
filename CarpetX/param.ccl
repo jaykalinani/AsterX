@@ -358,3 +358,10 @@ USES STRING checkpoint_file
 USES KEYWORD recover
 USES STRING recover_dir
 USES STRING recover_file
+
+USES CCTK_REAL out_xline_y
+USES CCTK_REAL out_xline_z
+USES CCTK_REAL out_yline_x
+USES CCTK_REAL out_yline_z
+USES CCTK_REAL out_zline_x
+USES CCTK_REAL out_zline_y

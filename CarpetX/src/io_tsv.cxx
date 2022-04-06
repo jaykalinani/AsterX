@@ -378,11 +378,11 @@ void OutputTSV(const cGH *restrict cctkGH) {
         break;
       case CCTK_GF:
         WriteTSVGFs(cctkGH, basename + ".x.tsv", gi, {true, false, false},
-                    {0, 0, 0});
+                    {0, out_xline_y, out_xline_z});
         WriteTSVGFs(cctkGH, basename + ".y.tsv", gi, {false, true, false},
-                    {0, 0, 0});
+                    {out_yline_x, 0, out_yline_z});
         WriteTSVGFs(cctkGH, basename + ".z.tsv", gi, {false, false, true},
-                    {0, 0, 0});
+                    {out_zline_x, out_zline_y, 0});
         break;
       default:
         assert(0);
