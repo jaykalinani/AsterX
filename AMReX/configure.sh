@@ -25,7 +25,7 @@ fi
 
 # Check version
 AMREX_GIT_VERSION=$(
-    grep 'AMREX_GIT_VERSION' "${AMREX_DIR}/include/AMReX_Config.H" |
+    grep 'AMREX_GIT_VERSION' "${AMREX_DIR}/include/AMReX_Config.H" "${AMREX_DIR}/include/AMReX_Version.H" |
         cut -d' ' -f 3 |
         tr -d '"')
 echo "BEGIN MESSAGE"
