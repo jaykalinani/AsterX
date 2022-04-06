@@ -287,38 +287,51 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
   assert(in_global_mode(cctkGH));
 
-  // Create particle container
-  typedef amrex::AmrParticleContainer<0, 2> Container;
-  // TODOPATCH: Convert global to patch-local coordinates
-  assert(ghext->patchdata.size() == 1);
-  const int patch = 0;
-  const auto &restrict patchdata = ghext->patchdata.at(patch);
-  Container container(patchdata.amrcore.get());
+  // Convert global to patch-local coordinates
+  // TODO: Call this only if there is a non-trivial patch system
+  std::vector<CCTK_INT> patches(npoints);
+  std::vector<CCTK_REAL> localsx(npoints);
+  std::vector<CCTK_REAL> localsy(npoints);
+  std::vector<CCTK_REAL> localsz(npoints);
+  MultiPatch_GlobalToLocal(npoints, coordsx, coordsy, coordsz, patches.data(),
+                           localsx.data(), localsy.data(), localsz.data());
 
-  // Set particle positions
-  {
+  // Create particle containers
+  using Container = amrex::AmrParticleContainer<0, 2>;
+  using ParticleTile = Container::ParticleTileType;
+  std::vector<Container> containers(ghext->num_patches());
+  std::vector<ParticleTile *> particle_tiles(ghext->num_patches());
+  for (int patch = 0; patch < ghext->num_patches(); ++patch) {
+    const auto &restrict patchdata = ghext->patchdata.at(patch);
+    containers.at(patch) = Container(patchdata.amrcore.get());
     const int level = 0;
     const auto &restrict leveldata = patchdata.leveldata.at(level);
     const amrex::MFIter mfi(*leveldata.fab);
     assert(mfi.isValid());
-    auto &particles = container.GetParticles(
+    particle_tiles.at(patch) = &containers.at(patch).GetParticles(
         level)[make_pair(mfi.index(), mfi.LocalTileIndex())];
-    // particles.Getamrex::ArrayOfStructs()().reserve(npoints);
+  }
+
+  // Set particle positions
+  {
+    const int proc = amrex::ParallelDescriptor::MyProc();
     for (int n = 0; n < npoints; ++n) {
+      const int patch = patches[n];
       amrex::Particle<0, 2> p;
       p.id() = Container::ParticleType::NextID();
-      p.cpu() = amrex::ParallelDescriptor::MyProc();
-      p.pos(0) = coordsx[n];
-      p.pos(1) = coordsy[n];
-      p.pos(2) = coordsz[n];
-      p.idata(0) = amrex::ParallelDescriptor::MyProc(); // source process
-      p.idata(1) = n;                                   // source index
-      particles.push_back(p);
+      p.cpu() = proc;
+      p.pos(0) = localsx[n];
+      p.pos(1) = localsy[n];
+      p.pos(2) = localsz[n];
+      p.idata(0) = proc; // source process
+      p.idata(1) = n;    // source index
+      particle_tiles.at(patch)->push_back(p);
     }
   }
 
   // Send particles to interpolation points
-  container.Redistribute();
+  for (auto &container : containers)
+    container.Redistribute();
 
   // Define result variables
   map<int, vector<CCTK_REAL> > results;
@@ -340,145 +353,150 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   }
 
   // CCTK_VINFO("interpolating");
-  for (const auto &leveldata : patchdata.leveldata) {
-    const int level = leveldata.level;
-    // CCTK_VINFO("interpolating level %d", level);
-    // TODO: use OpenMP
-    for (amrex::ParIter<0, 2> pti(container, level); pti.isValid(); ++pti) {
-      const amrex::Geometry &geom = patchdata.amrcore->Geom(level);
-      const CCTK_REAL *restrict const x0 = geom.ProbLo();
-      const CCTK_REAL *restrict const dx = geom.CellSize();
+  for (const auto &patchdata : ghext->patchdata) {
+    const int patch = patchdata.patch;
+    for (const auto &leveldata : patchdata.leveldata) {
+      const int level = leveldata.level;
+      // CCTK_VINFO("interpolating patch %d level %d", patch, level);
+      // TODO: use OpenMP
+      for (amrex::ParIter<0, 2> pti(containers.at(patch), level); pti.isValid();
+           ++pti) {
+        const amrex::Geometry &geom =
+            ghext->patchdata.at(patch).amrcore->Geom(level);
+        const CCTK_REAL *restrict const x0 = geom.ProbLo();
+        const CCTK_REAL *restrict const dx = geom.CellSize();
 
-      const int np = pti.numParticles();
-      const auto &particles = pti.GetArrayOfStructs();
+        const int np = pti.numParticles();
+        const auto &particles = pti.GetArrayOfStructs();
 
-      vector<vector<CCTK_REAL> > varresults(nvars);
+        vector<vector<CCTK_REAL> > varresults(nvars);
 
-      // TODO: Don't re-calculate interpolation coefficients for each
-      // variable
-      for (int v = 0; v < nvars; ++v) {
-        // CCTK_VINFO("interpolating level %d, variable %d", level, v);
-        const int gi = givis.at(v).gi;
-        const int vi = givis.at(v).vi;
-        const auto &restrict groupdata = *leveldata.groupdata.at(gi);
-        // Ensure interpolated variables are vertex centred
-        // TODO: Generalize this
-        assert((groupdata.indextype == array<int, dim>{0, 0, 0}));
-        const amrex::Array4<const CCTK_REAL> &vars =
-            groupdata.mfab.at(tl)->array(pti);
-        vect<int, dim> derivs;
-        int op = operations[v];
-        while (op > 0) {
-          const int dir = op % 10 - 1;
-          if (dir >= 0) {
-            assert(dir >= 0 && dir < dim);
-            ++derivs[dir];
+        // TODO: Don't re-calculate interpolation coefficients for each
+        // variable
+        for (int v = 0; v < nvars; ++v) {
+          // CCTK_VINFO("interpolating level %d, variable %d", level, v);
+          const int gi = givis.at(v).gi;
+          const int vi = givis.at(v).vi;
+          const auto &restrict groupdata = *leveldata.groupdata.at(gi);
+          // Ensure interpolated variables are vertex centred
+          // TODO: Generalize this
+          assert((groupdata.indextype == array<int, dim>{0, 0, 0}));
+          const amrex::Array4<const CCTK_REAL> &vars =
+              groupdata.mfab.at(tl)->array(pti);
+          vect<int, dim> derivs;
+          int op = operations[v];
+          while (op > 0) {
+            const int dir = op % 10 - 1;
+            if (dir >= 0) {
+              assert(dir >= 0 && dir < dim);
+              ++derivs[dir];
+            }
+            op /= 10;
           }
-          op /= 10;
-        }
-        auto &varresult = varresults.at(v);
-        varresult.resize(np);
+          auto &varresult = varresults.at(v);
+          varresult.resize(np);
 
-        switch (interpolation_order) {
-        case 0: {
-          constexpr int order = 0;
+          switch (interpolation_order) {
+          case 0: {
+            constexpr int order = 0;
 #pragma omp simd
-          for (int n = 0; n < np; ++n) {
-            vect<int, dim> i;
-            vect<CCTK_REAL, dim> di;
-            for (int d = 0; d < dim; ++d) {
-              CCTK_REAL x = particles[n].pos(d);
-              CCTK_REAL ri = (x - x0[d]) / dx[d];
-              i[d] = lrint(ri - (order / CCTK_REAL(2)));
-              di[d] = ri - i[d];
+            for (int n = 0; n < np; ++n) {
+              vect<int, dim> i;
+              vect<CCTK_REAL, dim> di;
+              for (int d = 0; d < dim; ++d) {
+                CCTK_REAL x = particles[n].pos(d);
+                CCTK_REAL ri = (x - x0[d]) / dx[d];
+                i[d] = lrint(ri - (order / CCTK_REAL(2)));
+                di[d] = ri - i[d];
+              }
+              const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
+              varresult.at(n) = interp.interpolate<dim - 1>(i, di);
             }
-            const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
-            varresult.at(n) = interp.interpolate<dim - 1>(i, di);
+            break;
           }
-          break;
-        }
-        case 1: {
-          constexpr int order = 1;
+          case 1: {
+            constexpr int order = 1;
 #pragma omp simd
-          for (int n = 0; n < np; ++n) {
-            vect<int, dim> i;
-            vect<CCTK_REAL, dim> di;
-            for (int d = 0; d < dim; ++d) {
-              CCTK_REAL x = particles[n].pos(d);
-              CCTK_REAL ri = (x - x0[d]) / dx[d];
-              i[d] = lrint(ri - (order / CCTK_REAL(2)));
-              di[d] = ri - i[d];
+            for (int n = 0; n < np; ++n) {
+              vect<int, dim> i;
+              vect<CCTK_REAL, dim> di;
+              for (int d = 0; d < dim; ++d) {
+                CCTK_REAL x = particles[n].pos(d);
+                CCTK_REAL ri = (x - x0[d]) / dx[d];
+                i[d] = lrint(ri - (order / CCTK_REAL(2)));
+                di[d] = ri - i[d];
+              }
+              const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
+              varresult.at(n) = interp.interpolate<dim - 1>(i, di);
             }
-            const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
-            varresult.at(n) = interp.interpolate<dim - 1>(i, di);
+            break;
           }
-          break;
-        }
-        case 2: {
-          constexpr int order = 2;
+          case 2: {
+            constexpr int order = 2;
 #pragma omp simd
-          for (int n = 0; n < np; ++n) {
-            vect<int, dim> i;
-            vect<CCTK_REAL, dim> di;
-            for (int d = 0; d < dim; ++d) {
-              CCTK_REAL x = particles[n].pos(d);
-              CCTK_REAL ri = (x - x0[d]) / dx[d];
-              i[d] = lrint(ri - (order / CCTK_REAL(2)));
-              di[d] = ri - i[d];
+            for (int n = 0; n < np; ++n) {
+              vect<int, dim> i;
+              vect<CCTK_REAL, dim> di;
+              for (int d = 0; d < dim; ++d) {
+                CCTK_REAL x = particles[n].pos(d);
+                CCTK_REAL ri = (x - x0[d]) / dx[d];
+                i[d] = lrint(ri - (order / CCTK_REAL(2)));
+                di[d] = ri - i[d];
+              }
+              const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
+              varresult.at(n) = interp.interpolate<dim - 1>(i, di);
             }
-            const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
-            varresult.at(n) = interp.interpolate<dim - 1>(i, di);
+            break;
           }
-          break;
-        }
-        case 3: {
-          constexpr int order = 3;
+          case 3: {
+            constexpr int order = 3;
 #pragma omp simd
-          for (int n = 0; n < np; ++n) {
-            vect<int, dim> i;
-            vect<CCTK_REAL, dim> di;
-            for (int d = 0; d < dim; ++d) {
-              CCTK_REAL x = particles[n].pos(d);
-              CCTK_REAL ri = (x - x0[d]) / dx[d];
-              i[d] = lrint(ri - (order / CCTK_REAL(2)));
-              di[d] = ri - i[d];
+            for (int n = 0; n < np; ++n) {
+              vect<int, dim> i;
+              vect<CCTK_REAL, dim> di;
+              for (int d = 0; d < dim; ++d) {
+                CCTK_REAL x = particles[n].pos(d);
+                CCTK_REAL ri = (x - x0[d]) / dx[d];
+                i[d] = lrint(ri - (order / CCTK_REAL(2)));
+                di[d] = ri - i[d];
+              }
+              const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
+              varresult.at(n) = interp.interpolate<dim - 1>(i, di);
             }
-            const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
-            varresult.at(n) = interp.interpolate<dim - 1>(i, di);
+            break;
           }
-          break;
-        }
-        case 4: {
-          constexpr int order = 4;
+          case 4: {
+            constexpr int order = 4;
 #pragma omp simd
-          for (int n = 0; n < np; ++n) {
-            vect<int, dim> i;
-            vect<CCTK_REAL, dim> di;
-            for (int d = 0; d < dim; ++d) {
-              CCTK_REAL x = particles[n].pos(d);
-              CCTK_REAL ri = (x - x0[d]) / dx[d];
-              i[d] = lrint(ri - (order / CCTK_REAL(2)));
-              di[d] = ri - i[d];
+            for (int n = 0; n < np; ++n) {
+              vect<int, dim> i;
+              vect<CCTK_REAL, dim> di;
+              for (int d = 0; d < dim; ++d) {
+                CCTK_REAL x = particles[n].pos(d);
+                CCTK_REAL ri = (x - x0[d]) / dx[d];
+                i[d] = lrint(ri - (order / CCTK_REAL(2)));
+                di[d] = ri - i[d];
+              }
+              const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
+              varresult.at(n) = interp.interpolate<dim - 1>(i, di);
             }
-            const interpolator<CCTK_REAL, order> interp{vars, vi, derivs, dx};
-            varresult.at(n) = interp.interpolate<dim - 1>(i, di);
+            break;
           }
-          break;
+          default:
+            assert(0);
+          }
         }
-        default:
-          assert(0);
-        }
-      }
 
-      for (int n = 0; n < np; ++n) {
-        const int proc = particles[n].idata(0);
-        const int id = particles[n].idata(1);
-        if (!results.count(proc))
-          results[proc];
-        auto &result = results.at(proc);
-        result.push_back(id);
-        for (int v = 0; v < nvars; ++v)
-          result.push_back(varresults.at(v).at(n));
+        for (int n = 0; n < np; ++n) {
+          const int proc = particles[n].idata(0);
+          const int id = particles[n].idata(1);
+          if (!results.count(proc))
+            results[proc];
+          auto &result = results.at(proc);
+          result.push_back(id);
+          for (int v = 0; v < nvars; ++v)
+            result.push_back(varresults.at(v).at(n));
+        }
       }
     }
   }
