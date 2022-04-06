@@ -1,7 +1,7 @@
 #ifndef INTERP_HXX
 #define INTERP_HXX
 
-#include "cctk.h"
+#include <cctk.h>
 
 /* Scheduled functions */
 extern "C" int CarpetX_InterpGridArrays(
