@@ -9,6 +9,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include "utils.hxx"
 
 namespace GRHydroToyGPU {
 using namespace std;
@@ -299,21 +300,11 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                                            eps_rc[1]*rho_rc[1]*(gamma-1)};
 
     // Determinant of spatial metric
-    const CCTK_REAL detg =
-        -gxz_avg * gxz_avg * gyy_avg + 2.0 * gxy_avg * gxz_avg * gyz_avg -
-        gxx_avg * gyz_avg * gyz_avg - gxy_avg * gxy_avg * gzz_avg +
-        gxx_avg * gyy_avg * gzz_avg;
+    const CCTK_REAL detg = calc_detg(gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg);
     const CCTK_REAL sqrt_detg = sqrt(detg);
 
     // Upper metric
-    const array<CCTK_REAL, 6> ug_avg = {
-	(-gyz_avg*gyz_avg + gyy_avg*gzz_avg)/detg,  //uxx
-        (gxz_avg*gyz_avg - gxy_avg*gzz_avg)/detg,   //uxy
-        (-gxz_avg*gxz_avg + gxx_avg*gzz_avg)/detg,  //uyy
-        (-gxz_avg*gyy_avg + gxy_avg*gyz_avg)/detg,  //uxz
-        (gxy_avg*gxz_avg - gxx_avg*gyz_avg)/detg,   //uyz
-        (-gxy_avg*gxy_avg + gxx_avg*gyy_avg)/detg   //uzz
-    };
+    const array<CCTK_REAL, 6> ug_avg = calc_upperg(gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg, detg);
 
     // Array containing uxx, uyy, uzz components of the upper metric
     const array<CCTK_REAL, 3> ugs_avg = {ug_avg[0], ug_avg[2], ug_avg[5]};

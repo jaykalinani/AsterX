@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include "utils.hxx"
 
 namespace GRHydroToyGPU {
 using namespace std;
@@ -32,9 +33,10 @@ struct cons {
 CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const prim &pv, cons &cv) {
 
   // determinant of spatial metric
-  const CCTK_REAL detg = -g.gxz * g.gxz * g.gyy + 2.0 * g.gxy * g.gxz * g.gyz -
-                         g.gxx * g.gyz * g.gyz - g.gxy * g.gxy * g.gzz +
-                         g.gxx * g.gyy * g.gzz;
+//  const CCTK_REAL detg = -g.gxz * g.gxz * g.gyy + 2.0 * g.gxy * g.gxz * g.gyz -
+//                         g.gxx * g.gyz * g.gyz - g.gxy * g.gxy * g.gzz +
+//                         g.gxx * g.gyy * g.gzz;
+  const CCTK_REAL detg = calc_detg(g.gxx,g.gxy,g.gxz,g.gyy,g.gyz,g.gzz);
   const CCTK_REAL sqrt_detg = sqrt(detg);
 
   // TODO: compute specific internal energy based on user-specified EOS
