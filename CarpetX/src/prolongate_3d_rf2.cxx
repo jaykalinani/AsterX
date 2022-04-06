@@ -415,13 +415,15 @@ template <int CENTERING, int ORDER, typename T>
 struct test_interp1d<CENTERING, CONS, ORDER, T> {
   test_interp1d() {
     for (int order = 0; order <= ORDER; ++order) {
-      // const auto f{[&](T x) {
-      //   return (order + 1) * pown(x, order);
-      // }};
+      // Function f, a polynomial
+      // const auto f{[&](T x) { return (order + 1) * pown(x, order); }};
+      // Integral of f (antiderivative)
       const auto fint{[&](T x) { return pown(x, order + 1); }};
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       if (CENTERING == CC) {
+        array<T, n + 2> xs;
         array<T, n + 2> ys;
+        xs[0] = xs[n + 1] = 0 / T(0);
         ys[0] = ys[n + 1] = 0 / T(0);
         constexpr int i0 = n / 2;
         static_assert(interp1d<CENTERING, CONS, ORDER>::required_ghosts <= i0,
@@ -434,7 +436,8 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
           const T dx = 1;
           const T xlo = x - dx / 2;
           const T xhi = x + dx / 2;
-          const T y = fint(xhi) - fint(xlo);
+          const T y = fint(xhi) - fint(xlo); // average of f over cell
+          xs[i + 1] = x;
           ys[i + 1] = y;
         }
         array<T, 2> x1;
