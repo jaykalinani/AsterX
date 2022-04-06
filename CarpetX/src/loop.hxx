@@ -291,7 +291,7 @@ public:
              const F &f) const {
     const array<int, dim> offset{CI, CJ, CK};
 
-    for (int rank = dim - 1; rank >= 0; --rank) {
+    for (int rank = dim; rank >= 0; --rank) {
 
       for (int nk = -1; nk <= +1; ++nk) {
         for (int nj = -1; nj <= +1; ++nj) {
