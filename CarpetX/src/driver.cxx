@@ -238,7 +238,7 @@ vector<array<int, dim> > get_group_parities(const int gi) {
   assert(tags >= 0);
   const int nelems = Util_TableGetIntArray(tags, 0, nullptr, "parities");
   if (nelems == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
-    // unset (will use index type)
+    // unset (will use +1)
     return {};
   } else if (nelems >= 0) {
     // do nothing
