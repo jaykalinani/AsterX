@@ -407,13 +407,13 @@ template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
           symm_t symm>
 struct nan<gten3<T, D, dnup1, dnup2, dnup3, symm> > {
   typedef gten3<T, D, dnup1, dnup2, dnup3, symm> value_type;
-  static constexpr value_type value =
-      gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>::value);
+  // static constexpr value_type value =
+  //     gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>::value);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return value;
+    return gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return value;
+    return gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>());
   }
 };
 

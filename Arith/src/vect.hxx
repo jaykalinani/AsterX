@@ -31,37 +31,43 @@ template <typename T, size_t N> using ntuple_t = typename ntuple<T, N>::type;
 
 namespace detail {
 template <typename T, class Tuple, std::size_t... Is>
-constexpr auto array_from_tuple(const Tuple &t, std::index_sequence<Is...>) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto
+array_from_tuple(const Tuple &t, std::index_sequence<Is...>) {
   return std::array<T, sizeof...(Is)>{std::get<Is>(t)...};
 }
 template <typename T, class Tuple, std::size_t... Is>
-constexpr auto array_from_tuple(Tuple &&t, std::index_sequence<Is...>) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto
+array_from_tuple(Tuple &&t, std::index_sequence<Is...>) {
   return std::array<T, sizeof...(Is)>{std::move(std::get<Is>(t))...};
 }
 
 template <typename T, class Tuple, std::size_t... Is, typename U>
-constexpr auto array_push(const Tuple &t, std::index_sequence<Is...>,
-                          const U &x) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto
+array_push(const Tuple &t, std::index_sequence<Is...>, const U &x) {
   return std::array<T, sizeof...(Is) + 1>{std::get<Is>(t)..., T(x)};
 }
 } // namespace detail
 
 template <typename T, std::size_t N, typename Tuple>
-constexpr std::array<T, N> array_from_tuple(const Tuple &t) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST std::array<T, N>
+array_from_tuple(const Tuple &t) {
   return detail::array_from_tuple<T>(t, std::make_index_sequence<N>());
 }
 template <typename T, std::size_t N, typename Tuple>
-constexpr std::array<T, N> array_from_tuple(Tuple &&t) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST std::array<T, N>
+array_from_tuple(Tuple &&t) {
   return detail::array_from_tuple<T>(move(t), std::make_index_sequence<N>());
 }
 
 template <class T, std::size_t N, typename U>
-constexpr auto array_push(const std::array<T, N> &a, const U &e) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto
+array_push(const std::array<T, N> &a, const U &e) {
   return detail::array_push<T>(a, std::make_index_sequence<N>(), e);
 }
 
 template <typename T, std::size_t N, typename F>
-constexpr std::array<T, N> construct_array(const F &f) {
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST std::array<T, N>
+construct_array(const F &f) {
   if constexpr (N == 0)
     return std::array<T, N>();
   if constexpr (N > 0)
