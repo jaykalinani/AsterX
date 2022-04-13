@@ -41,7 +41,7 @@ CCTK_DEVICE CCTK_HOST const T calc_fd2(const T &qp1, const T &qm1, const T &dx) 
 // Fourth order finite difference
 template <typename T>
 CCTK_DEVICE CCTK_HOST const T calc_fd4(const T &qp2, const T &qp1, const T &qm1, 
-		                   const T &qpm2, const T &dx) {
+		                   const T &qm2, const T &dx) {
         return (1.0/(12.0*dx))*(-qp2 + 8.0*qp1 - 8.0*qm1 + qm2);
   }
 
