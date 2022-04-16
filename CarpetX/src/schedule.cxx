@@ -340,17 +340,17 @@ GridPtrDesc1::GridPtrDesc1(
   const amrex::Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
   for (int d = 0; d < dim; ++d) {
-    assert(groupdata.nghostzones[d] >= 0);
-    assert(groupdata.nghostzones[d] <= nghostzones[d]);
+    assert(groupdata.nghostzones.at(d) >= 0);
+    assert(groupdata.nghostzones.at(d) <= nghostzones[d]);
   }
   for (int d = 0; d < dim; ++d)
-    gimin[d] = nghostzones[d] - groupdata.nghostzones[d];
+    gimin[d] = nghostzones[d] - groupdata.nghostzones.at(d);
   for (int d = 0; d < dim; ++d)
-    gimax[d] = lsh[d] - groupdata.indextype[d] -
-               (nghostzones[d] - groupdata.nghostzones[d]);
+    gimax[d] = lsh[d] - groupdata.indextype.at(d) -
+               (nghostzones[d] - groupdata.nghostzones.at(d));
   for (int d = 0; d < dim; ++d)
-    gash[d] = ash[d] - groupdata.indextype[d] -
-              2 * (nghostzones[d] - groupdata.nghostzones[d]);
+    gash[d] = ash[d] - groupdata.indextype.at(d) -
+              2 * (nghostzones[d] - groupdata.nghostzones.at(d));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2406,7 +2406,7 @@ void Reflux(const cGH *cctkGH, int level) {
             });
           }
           for (int d = 0; d < dim; ++d) {
-            const int flux_gi = finegroupdata.fluxes[d];
+            const int flux_gi = finegroupdata.fluxes.at(d);
             const auto &flux_finegroupdata =
                 *fineleveldata.groupdata.at(flux_gi);
             const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
@@ -2426,7 +2426,7 @@ void Reflux(const cGH *cctkGH, int level) {
           }
 
           for (int d = 0; d < dim; ++d) {
-            const int flux_gi = finegroupdata.fluxes[d];
+            const int flux_gi = finegroupdata.fluxes.at(d);
             const auto &flux_finegroupdata =
                 *fineleveldata.groupdata.at(flux_gi);
             const auto &flux_groupdata = *leveldata.groupdata.at(flux_gi);
@@ -2526,7 +2526,7 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
             // rank: 0: vertex, 1: edge, 2: face, 3: volume
             int rank = 0;
             for (int d = 0; d < dim; ++d)
-              rank += groupdata.indextype[d];
+              rank += groupdata.indextype.at(d);
             switch (rank) {
             case 0:
               average_down_nodal(*finegroupdata.mfab.at(tl),
