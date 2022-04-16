@@ -63,9 +63,11 @@ private:
       for (int patch = min_patch; patch < max_patch; ++patch) {
         const auto &patchdata = ghext->patchdata.at(patch);
         if (level < int(patchdata.leveldata.size())) {
+          const auto &leveldata = patchdata.leveldata.at(level);
+          const auto &iteration = leveldata.iteration;
           if (good_iteration == -1)
-            good_iteration = patchdata.leveldata.at(level).iteration;
-          assert(patchdata.leveldata.at(level).iteration == good_iteration);
+            good_iteration = iteration;
+          assert(iteration == good_iteration);
         }
       }
     }
