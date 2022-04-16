@@ -19,6 +19,7 @@ namespace Z4c {
 template <typename T> struct z4c_vars_noderivs {
 
   // Parameters
+  const bool set_Theta_zero;
   const T kappa1;
   const T kappa2;
   const T f_mu_L;
@@ -58,45 +59,46 @@ template <typename T> struct z4c_vars_noderivs {
 
   friend CCTK_ATTRIBUTE_NOINLINE ostream &
   operator<<(ostream &os, const z4c_vars_noderivs &vars) {
-    return os << "z4c_vars_noderivs{"              //
-              << "kappa1:" << vars.kappa1 << ","   //
-              << "kappa2:" << vars.kappa2 << ","   //
-              << "f_mu_L:" << vars.f_mu_L << ","   //
-              << "f_mu_S:" << vars.f_mu_S << ","   //
-              << "eta:" << vars.eta << ","         //
-              << "chi:" << vars.chi << ","         //
-              << "gammat:" << vars.gammat << ","   //
-              << "Kh:" << vars.Kh << ","           //
-              << "At:" << vars.At << ","           //
-              << "Gamt:" << vars.Gamt << ","       //
-              << "Theta:" << vars.Theta << ","     //
-              << "alphaG:" << vars.alphaG << ","   //
-              << "betaG:" << vars.betaG << ","     //
-              << "eTtt:" << vars.eTtt << ","       //
-              << "eTti:" << vars.eTti << ","       //
-              << "eTij:" << vars.eTij << ","       //
-              << "rho:" << vars.rho << ","         //
-              << "Si:" << vars.Si << ","           //
-              << "Sij:" << vars.Sij << ","         //
-              << "g:" << vars.g << ","             //
-              << "K:" << vars.K << ","             //
-              << "alpha:" << vars.alpha << ","     //
-              << "dtalpha:" << vars.dtalpha << "," //
-              << "dtbeta:" << vars.dtbeta << ","   //
+    return os << "z4c_vars_noderivs{"                            //
+              << "set_Theta_zero:" << vars.set_Theta_zero << "," //
+              << "kappa1:" << vars.kappa1 << ","                 //
+              << "kappa2:" << vars.kappa2 << ","                 //
+              << "f_mu_L:" << vars.f_mu_L << ","                 //
+              << "f_mu_S:" << vars.f_mu_S << ","                 //
+              << "eta:" << vars.eta << ","                       //
+              << "chi:" << vars.chi << ","                       //
+              << "gammat:" << vars.gammat << ","                 //
+              << "Kh:" << vars.Kh << ","                         //
+              << "At:" << vars.At << ","                         //
+              << "Gamt:" << vars.Gamt << ","                     //
+              << "Theta:" << vars.Theta << ","                   //
+              << "alphaG:" << vars.alphaG << ","                 //
+              << "betaG:" << vars.betaG << ","                   //
+              << "eTtt:" << vars.eTtt << ","                     //
+              << "eTti:" << vars.eTti << ","                     //
+              << "eTij:" << vars.eTij << ","                     //
+              << "rho:" << vars.rho << ","                       //
+              << "Si:" << vars.Si << ","                         //
+              << "Sij:" << vars.Sij << ","                       //
+              << "g:" << vars.g << ","                           //
+              << "K:" << vars.K << ","                           //
+              << "alpha:" << vars.alpha << ","                   //
+              << "dtalpha:" << vars.dtalpha << ","               //
+              << "dtbeta:" << vars.dtbeta << ","                 //
               << "}";
   }
 
   ARITH_INLINE ARITH_DEVICE ARITH_HOST z4c_vars_noderivs(
-      const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
-      const T &eta,
+      const bool set_Theta_zero, const T &kappa1, const T &kappa2,
+      const T &f_mu_L, const T &f_mu_S, const T &eta,
       //
       const T &chi, const smat<T, 3, DN, DN> &gammat, const T &Kh,
       const smat<T, 3, DN, DN> &At, const vec<T, 3, UP> &Gamt, const T &Theta,
       const T &alphaG, const vec<T, 3, UP> &betaG,
       //
       const T &eTtt, const vec<T, 3, DN> &eTti, const smat<T, 3, DN, DN> &eTij)
-      : kappa1(kappa1), kappa2(kappa2), f_mu_L(f_mu_L), f_mu_S(f_mu_S),
-        eta(eta),
+      : set_Theta_zero(set_Theta_zero), kappa1(kappa1), kappa2(kappa2),
+        f_mu_L(f_mu_L), f_mu_S(f_mu_S), eta(eta),
         //
         chi(chi), gammat(gammat), Kh(Kh), At(At), Gamt(Gamt), Theta(Theta),
         alphaG(alphaG), betaG(betaG),
@@ -147,8 +149,8 @@ template <typename T> struct z4c_vars_noderivs {
   {}
 
   ARITH_INLINE ARITH_DEVICE ARITH_HOST z4c_vars_noderivs(
-      const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
-      const T &eta,
+      const bool set_Theta_zero, const T &kappa1, const T &kappa2,
+      const T &f_mu_L, const T &f_mu_S, const T &eta,
       //
       const GF3D2<const T> &gf_chi_,
       //
@@ -218,6 +220,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   // C++ is tedious:
 
   // Parameters
+  using z4c_vars_noderivs<T>::set_Theta_zero;
   using z4c_vars_noderivs<T>::kappa1;
   using z4c_vars_noderivs<T>::kappa2;
   using z4c_vars_noderivs<T>::f_mu_L;
@@ -310,83 +313,84 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
 
   friend CCTK_ATTRIBUTE_NOINLINE ostream &operator<<(ostream &os,
                                                      const z4c_vars &vars) {
-    return os << "z4c_vars{"                               //
-              << "kappa1:" << vars.kappa1 << ","           //
-              << "kappa2:" << vars.kappa2 << ","           //
-              << "f_mu_L:" << vars.f_mu_L << ","           //
-              << "f_mu_S:" << vars.f_mu_S << ","           //
-              << "eta:" << vars.eta << ","                 //
-              << "chi:" << vars.chi << ","                 //
-              << "gammat:" << vars.gammat << ","           //
-              << "Kh:" << vars.Kh << ","                   //
-              << "At:" << vars.At << ","                   //
-              << "Gamt:" << vars.Gamt << ","               //
-              << "Theta:" << vars.Theta << ","             //
-              << "alphaG:" << vars.alphaG << ","           //
-              << "betaG:" << vars.betaG << ","             //
-              << "eTtt:" << vars.eTtt << ","               //
-              << "eTti:" << vars.eTti << ","               //
-              << "eTij:" << vars.eTij << ","               //
-              << "rho:" << vars.rho << ","                 //
-              << "Si:" << vars.Si << ","                   //
-              << "Sij:" << vars.Sij << ","                 //
-              << "g:" << vars.g << ","                     //
-              << "K:" << vars.K << ","                     //
-              << "alpha:" << vars.alpha << ","             //
-              << "dtalpha:" << vars.dtalpha << ","         //
-              << "dtbeta:" << vars.dtbeta << ","           //
-              << "dchi:" << vars.dchi << ","               //
-              << "ddchi:" << vars.ddchi << ","             //
-              << "dgammat:" << vars.dgammat << ","         //
-              << "ddgammat:" << vars.ddgammat << ","       //
-              << "dKh:" << vars.dKh << ","                 //
-              << "dAt:" << vars.dAt << ","                 //
-              << "dGamt:" << vars.dGamt << ","             //
-              << "dTheta:" << vars.dTheta << ","           //
-              << "dalphaG:" << vars.dalphaG << ","         //
-              << "ddalphaG:" << vars.ddalphaG << ","       //
-              << "dbetaG:" << vars.dbetaG << ","           //
-              << "ddbetaG:" << vars.ddbetaG << ","         //
-              << "gammatu:" << vars.gammatu << ","         //
-              << "dgammatu:" << vars.dgammatu << ","       //
-              << "Gammatl:" << vars.Gammatl << ","         //
-              << "Gammat:" << vars.Gammat << ","           //
-              << "Gamtd:" << vars.Gamtd << ","             //
-              << "DDchi:" << vars.DDchi << ","             //
-              << "gu:" << vars.gu << ","                   //
-              << "dg:" << vars.dg << ","                   //
-              << "Gammal:" << vars.Gammal << ","           //
-              << "Gamma:" << vars.Gamma << ","             //
-              << "DDalphaG:" << vars.DDalphaG << ","       //
-              << "Rchi:" << vars.Rchi << ","               //
-              << "Rt:" << vars.Rt << ","                   //
-              << "R:" << vars.R << ","                     //
-              << "Rsc:" << vars.Rsc << ","                 //
-              << "Atu:" << vars.Atu << ","                 //
-              << "dAtu:" << vars.dAtu << ","               //
-              << "traceSij:" << vars.traceSij << ","       //
-              << "ZtC:" << vars.ZtC << ","                 //
-              << "HC:" << vars.HC << ","                   //
-              << "MtC:" << vars.MtC << ","                 //
-              << "allC:" << vars.allC << ","               //
-              << "chi_rhs:" << vars.chi_rhs << ","         //
-              << "gammat_rhs:" << vars.gammat_rhs << ","   //
-              << "Kh_rhs:" << vars.Kh_rhs << ","           //
-              << "At_rhs:" << vars.At_rhs << ","           //
-              << "Gamt_rhs:" << vars.Gamt_rhs << ","       //
-              << "Theta_rhs:" << vars.Theta_rhs << ","     //
-              << "alphaG_rhs:" << vars.alphaG_rhs << ","   //
-              << "betaG_rhs:" << vars.betaG_rhs << ","     //
-              << "K_rhs:" << vars.K_rhs << ","             //
-              << "dtalpha_rhs:" << vars.dtalpha_rhs << "," //
-              << "dtbeta_rhs:" << vars.dtbeta_rhs << ","   //
+    return os << "z4c_vars{"                                     //
+              << "set_Theta_zero:" << vars.set_Theta_zero << "," //
+              << "kappa1:" << vars.kappa1 << ","                 //
+              << "kappa2:" << vars.kappa2 << ","                 //
+              << "f_mu_L:" << vars.f_mu_L << ","                 //
+              << "f_mu_S:" << vars.f_mu_S << ","                 //
+              << "eta:" << vars.eta << ","                       //
+              << "chi:" << vars.chi << ","                       //
+              << "gammat:" << vars.gammat << ","                 //
+              << "Kh:" << vars.Kh << ","                         //
+              << "At:" << vars.At << ","                         //
+              << "Gamt:" << vars.Gamt << ","                     //
+              << "Theta:" << vars.Theta << ","                   //
+              << "alphaG:" << vars.alphaG << ","                 //
+              << "betaG:" << vars.betaG << ","                   //
+              << "eTtt:" << vars.eTtt << ","                     //
+              << "eTti:" << vars.eTti << ","                     //
+              << "eTij:" << vars.eTij << ","                     //
+              << "rho:" << vars.rho << ","                       //
+              << "Si:" << vars.Si << ","                         //
+              << "Sij:" << vars.Sij << ","                       //
+              << "g:" << vars.g << ","                           //
+              << "K:" << vars.K << ","                           //
+              << "alpha:" << vars.alpha << ","                   //
+              << "dtalpha:" << vars.dtalpha << ","               //
+              << "dtbeta:" << vars.dtbeta << ","                 //
+              << "dchi:" << vars.dchi << ","                     //
+              << "ddchi:" << vars.ddchi << ","                   //
+              << "dgammat:" << vars.dgammat << ","               //
+              << "ddgammat:" << vars.ddgammat << ","             //
+              << "dKh:" << vars.dKh << ","                       //
+              << "dAt:" << vars.dAt << ","                       //
+              << "dGamt:" << vars.dGamt << ","                   //
+              << "dTheta:" << vars.dTheta << ","                 //
+              << "dalphaG:" << vars.dalphaG << ","               //
+              << "ddalphaG:" << vars.ddalphaG << ","             //
+              << "dbetaG:" << vars.dbetaG << ","                 //
+              << "ddbetaG:" << vars.ddbetaG << ","               //
+              << "gammatu:" << vars.gammatu << ","               //
+              << "dgammatu:" << vars.dgammatu << ","             //
+              << "Gammatl:" << vars.Gammatl << ","               //
+              << "Gammat:" << vars.Gammat << ","                 //
+              << "Gamtd:" << vars.Gamtd << ","                   //
+              << "DDchi:" << vars.DDchi << ","                   //
+              << "gu:" << vars.gu << ","                         //
+              << "dg:" << vars.dg << ","                         //
+              << "Gammal:" << vars.Gammal << ","                 //
+              << "Gamma:" << vars.Gamma << ","                   //
+              << "DDalphaG:" << vars.DDalphaG << ","             //
+              << "Rchi:" << vars.Rchi << ","                     //
+              << "Rt:" << vars.Rt << ","                         //
+              << "R:" << vars.R << ","                           //
+              << "Rsc:" << vars.Rsc << ","                       //
+              << "Atu:" << vars.Atu << ","                       //
+              << "dAtu:" << vars.dAtu << ","                     //
+              << "traceSij:" << vars.traceSij << ","             //
+              << "ZtC:" << vars.ZtC << ","                       //
+              << "HC:" << vars.HC << ","                         //
+              << "MtC:" << vars.MtC << ","                       //
+              << "allC:" << vars.allC << ","                     //
+              << "chi_rhs:" << vars.chi_rhs << ","               //
+              << "gammat_rhs:" << vars.gammat_rhs << ","         //
+              << "Kh_rhs:" << vars.Kh_rhs << ","                 //
+              << "At_rhs:" << vars.At_rhs << ","                 //
+              << "Gamt_rhs:" << vars.Gamt_rhs << ","             //
+              << "Theta_rhs:" << vars.Theta_rhs << ","           //
+              << "alphaG_rhs:" << vars.alphaG_rhs << ","         //
+              << "betaG_rhs:" << vars.betaG_rhs << ","           //
+              << "K_rhs:" << vars.K_rhs << ","                   //
+              << "dtalpha_rhs:" << vars.dtalpha_rhs << ","       //
+              << "dtbeta_rhs:" << vars.dtbeta_rhs << ","         //
               << "}";
   }
 
   // See arXiv:1212.2901 [gr-qc]
   ARITH_INLINE ARITH_DEVICE ARITH_HOST z4c_vars(
-      const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
-      const T &eta,
+      const bool set_Theta_zero, const T &kappa1, const T &kappa2,
+      const T &f_mu_L, const T &f_mu_S, const T &eta,
       //
       const T &chi, const vec<T, 3, DN> &dchi,
       const smat<T, 3, DN, DN> &ddchi, //
@@ -404,9 +408,9 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
       const vec<smat<T, 3, DN, DN>, 3, UP> &ddbetaG,
       //
       const T &eTtt, const vec<T, 3, DN> &eTti, const smat<T, 3, DN, DN> &eTij)
-      : z4c_vars_noderivs<T>(kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-                             chi, gammat, Kh, At, Gamt, Theta, alphaG, betaG,
-                             eTtt, eTti, eTij),
+      : z4c_vars_noderivs<T>(
+            set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            chi, gammat, Kh, At, Gamt, Theta, alphaG, betaG, eTtt, eTti, eTij),
         // Derivatives of Z4c variables
         dchi(dchi), ddchi(ddchi),             //
         dgammat(dgammat), ddgammat(ddgammat), //
@@ -652,14 +656,16 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
               - 2 * alphaG * kappa1 * (Gamt(a) - Gamtd(a));
         }),
         // (6)
-        Theta_rhs(1 / T(2) * alphaG *
-                      (Rsc //
-                       - sum_symm<3>([&](int x, int y) ARITH_INLINE {
-                           return At(x, y) * Atu(x, y);
-                         })                               //
-                       + 2 / T(3) * pow2(Kh + 2 * Theta)) //
-                  - alphaG * (8 * T(M_PI) * rho           //
-                              + kappa1 * (2 + kappa2) * Theta)),
+        Theta_rhs(set_Theta_zero
+                      ? T(0)
+                      : 1 / T(2) * alphaG *
+                                (Rsc //
+                                 - sum_symm<3>([&](int x, int y) ARITH_INLINE {
+                                     return At(x, y) * Atu(x, y);
+                                   })                               //
+                                 + 2 / T(3) * pow2(Kh + 2 * Theta)) //
+                            - alphaG * (8 * T(M_PI) * rho           //
+                                        + kappa1 * (2 + kappa2) * Theta)),
         //
         alphaG_rhs(dtalpha),
         //
@@ -688,8 +694,8 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   {}
 
   ARITH_INLINE ARITH_DEVICE ARITH_HOST z4c_vars(
-      const T &kappa1, const T &kappa2, const T &f_mu_L, const T &f_mu_S,
-      const T &eta,
+      const bool set_Theta_zero, const T &kappa1, const T &kappa2,
+      const T &f_mu_L, const T &f_mu_S, const T &eta,
       //
       const GF3D2<const T> &gf_chi_,
       //
@@ -724,7 +730,7 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
       //
       const vect<int, 3> &I, const vec<T, 3, UP> &dx)
       : z4c_vars(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta,
+            set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta,
             //
             gf_chi_(I), deriv(gf_chi_, I, dx), deriv2(gf_chi_, I, dx),
             //

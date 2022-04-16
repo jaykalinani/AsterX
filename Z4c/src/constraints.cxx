@@ -198,7 +198,7 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
         // Load and calculate
 
         const z4c_vars<vreal> vars(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta, //
             gf_chi0(mask, index0, 1), gf_dchi0(mask, index0),
             gf_ddchi0(mask, index0), //
             gf_gammat0(mask, index0, 1), gf_dgammat0(mask, index0),

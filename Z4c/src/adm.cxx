@@ -114,7 +114,7 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
 
         // Load and calculate
         const z4c_vars_noderivs<vreal> vars(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta, //
             gf_chi1(mask, index1, 1),
             gf_gammat1(mask, index1, one<smat<int, 3, DN, DN> >()()),
             gf_Kh1(mask, index1), gf_At1(mask, index1), gf_Gamt1(mask, index1),

@@ -228,7 +228,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
 
           // Load and calculate
           const z4c_vars<vreal> vars(
-              kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+              set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta, //
               gf_chi0(mask, index0, 1), gf_dchi0(mask, index0),
               gf_ddchi0(mask, index0), //
               gf_gammat0(mask, index0, one<smat<int, 3, DN, DN> >()()),
@@ -348,7 +348,8 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
   for (int a = 0; a < 3; ++a)
     apply_upwind_diss(cctkGH, gf_Gamt1(a), gf_betaG1, gf_Gamt_rhs1(a));
 
-  apply_upwind_diss(cctkGH, gf_Theta1, gf_betaG1, gf_Theta_rhs1);
+  if (!set_Theta_zero)
+    apply_upwind_diss(cctkGH, gf_Theta1, gf_betaG1, gf_Theta_rhs1);
 
   apply_upwind_diss(cctkGH, gf_alphaG1, gf_betaG1, gf_alphaG_rhs1);
 
