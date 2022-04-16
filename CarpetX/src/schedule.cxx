@@ -417,7 +417,6 @@ cGH *copy_cctkGH(const cGH *restrict const sourceGH) {
   const int numvars = CCTK_NumVars();
   cctkGH->data = new void **[numvars];
   for (int vi = 0; vi < numvars; ++vi)
-    // cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
     cctkGH->data[vi] =
         copy_array(sourceGH->data[vi], CCTK_DeclaredTimeLevelsVI(vi));
 
@@ -1264,12 +1263,6 @@ int Initialise(tFleshConfig *config) {
 
       active_levels = optional<active_levels_t>();
 
-      // int maxmaxlevel = 0;
-      // for (const auto &patchdata : ghext->patchdata)
-      //   maxmaxlevel = max(maxmaxlevel, patchdata.amrcore->maxLevel());
-      // if (level >= maxmaxlevel)
-      //   break;
-
       // Regrid
       bool did_modify_any_level;
       {
@@ -1330,34 +1323,9 @@ int Initialise(tFleshConfig *config) {
         did_modify_any_level = last_modified_level >= first_modified_level;
 
         if (did_modify_any_level) {
-          // setup_cctkGHs();
           assert(!active_levels);
           active_levels = make_optional<active_levels_t>(
               first_modified_level, last_modified_level + 1);
-#warning "TODO"
-#if 0
-          // The logic where to apply symmetries mimics (is copied
-          // from) the call to FillPatchTwoLevels in RemakeLevel
-          active_levels->loop([&](const auto &leveldata) {
-            const int num_groups = CCTK_NumGroups();
-            for (int gi = 0; gi < num_groups; ++gi) {
-              if (CCTK_GroupTypeI(gi) == CCTK_GF) {
-                const auto &restrict groupdata = *leveldata.groupdata.at(gi);
-                const int ntls = groupdata.mfab.size();
-                // We only prolongate the state vector. And if there
-                // is more than one time level, then we don't
-                // prolongate the oldest.
-                const int prolongate_tl =
-                    groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
-#warning                                                                       \
-    "TODO: need to sync after applyling symmetries. need to apply symmetries during regridding, after each level, not just once afterwards."
-                for (int tl = 0; tl < ntls; ++tl)
-                  if (tl < prolongate_tl)
-                    ApplySymmetries(groupdata, tl);
-              }
-            }
-          });
-#endif
           CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
           CCTK_Traverse(cctkGH, "CCTK_POSTREGRID");
           active_levels = optional<active_levels_t>();
@@ -1398,11 +1366,6 @@ int Initialise(tFleshConfig *config) {
 bool EvolutionIsDone(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
-  // static timeval starttime = {0, 0};
-  // // On the first time through, get the start time
-  // if (starttime.tv_sec == 0 && starttime.tv_usec == 0)
-  //   gettimeofday(&starttime, nullptr);
-
   if (terminate_next || CCTK_TerminationReached(cctkGH))
     return true;
 
@@ -1416,11 +1379,6 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
           ? cctkGH->cctk_time >= cctk_final_time
           : cctkGH->cctk_time <= cctk_final_time;
 
-  // Get the elapsed runtime in minutes and compare with max_runtime
-  // timeval currenttime;
-  // gettimeofday(&currenttime, NULL);
-  // bool max_runtime_reached =
-  //     CCTK_REAL(currenttime.tv_sec - starttime.tv_sec) / 60 >= max_runtime;
   const bool max_runtime_reached = CCTK_RunTime() >= 60 * max_runtime;
 
   if (CCTK_Equals(terminate, "iteration"))
@@ -1653,7 +1611,6 @@ int Evolve(tFleshConfig *config) {
           last_modified_level >= first_modified_level;
 
       if (did_modify_any_level) {
-        // setup_cctkGHs();
         assert(!active_levels);
         active_levels = make_optional<active_levels_t>(first_modified_level,
                                                        last_modified_level + 1);
