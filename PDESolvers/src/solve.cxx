@@ -169,11 +169,12 @@ void define_point_type() {
   // Restrict
   for (const auto &patchdata : CarpetX::ghext->patchdata) {
     for (int level = int(patchdata.leveldata.size()) - 2; level >= 0; --level) {
-      auto &leveldata = patchdata.leveldata.at(level);
+      const auto &leveldata = patchdata.leveldata.at(level);
       const auto &fineleveldata = patchdata.leveldata.at(level + 1);
-      amrex::MultiFab &mfab_ind = *leveldata.groupdata.at(gi_ind)->mfab.at(tl);
-      const amrex::MultiFab &finemfab_ind =
-          *fineleveldata.groupdata.at(gi_ind)->mfab.at(tl);
+      const auto &groupdata = *leveldata.groupdata.at(gi_ind);
+      const auto &finegroupdata = *fineleveldata.groupdata.at(gi_ind);
+      amrex::MultiFab &mfab_ind = *groupdata.mfab.at(tl);
+      const amrex::MultiFab &finemfab_ind = *finegroupdata.mfab.at(tl);
       const amrex::IntVect reffact{2, 2, 2};
       const int rank = sum(indextype);
       switch (rank) {
@@ -240,13 +241,13 @@ void define_point_type() {
 
   // Synchronize (as if there was no prolongation)
   for (const auto &patchdata : CarpetX::ghext->patchdata) {
-    for (int level = 0; level < int(patchdata.leveldata.size()); ++level) {
-      auto &leveldata = patchdata.leveldata.at(level);
-      amrex::MultiFab &mfab_ind = *leveldata.groupdata.at(gi_ind)->mfab.at(tl);
-      auto physbc_bcs = get_boundaries(*leveldata.groupdata.at(gi_ind));
-      CarpetX::CarpetXPhysBCFunct &physbc = std::get<0>(physbc_bcs);
+    for (const auto &leveldata : patchdata.leveldata) {
+      const int level = leveldata.level;
+      const auto &groupdata = *leveldata.groupdata.at(gi_ind);
+      amrex::MultiFab &mfab_ind = *groupdata.mfab.at(tl);
       FillPatchSingleLevel(mfab_ind, 0.0, {&mfab_ind}, {0.0}, 0, 0, 1 /*nvars*/,
-                           patchdata.amrcore->Geom(level), physbc, 0);
+                           patchdata.amrcore->Geom(level), *groupdata.physbc,
+                           0);
     }
   }
 
@@ -298,23 +299,23 @@ void define_point_type() {
 
   // Prolongate and synchronize (we cannot just prolongate)
   for (const auto &patchdata : CarpetX::ghext->patchdata) {
-    for (int level = 1; level < int(patchdata.leveldata.size()); ++level) {
-      auto &leveldata = patchdata.leveldata.at(level);
+    for (const auto &leveldata : patchdata.leveldata) {
+      const int level = leveldata.level;
+      if (level == 0)
+        continue;
       const auto &coarseleveldata = patchdata.leveldata.at(level - 1);
-      amrex::MultiFab &mfab_ind = *leveldata.groupdata.at(gi_ind)->mfab.at(tl);
-      amrex::MultiFab &coarsemfab_ind =
-          *coarseleveldata.groupdata.at(gi_ind)->mfab.at(tl);
+      const auto &groupdata = *leveldata.groupdata.at(gi_ind);
+      const auto &coarsegroupdata = *coarseleveldata.groupdata.at(gi_ind);
+      amrex::MultiFab &mfab_ind = *groupdata.mfab.at(tl);
+      amrex::MultiFab &coarsemfab_ind = *coarsegroupdata.mfab.at(tl);
       const amrex::IntVect reffact{2, 2, 2};
       amrex::Interpolater *const interpolator =
           CarpetX::get_interpolator(std::array<int, 3>(indextype));
-      auto physbc_bcs = get_boundaries(*leveldata.groupdata.at(gi_ind));
-      const amrex::Vector<amrex::BCRec> &bcs = std::get<1>(physbc_bcs);
-      CarpetX::CarpetXPhysBCFunct &physbc = std::get<0>(physbc_bcs);
-      FillPatchTwoLevels(mfab_ind, 0.0, {&coarsemfab_ind}, {0.0}, {&mfab_ind},
-                         {0.0}, 0, 0, 1 /*nvars*/,
-                         patchdata.amrcore->Geom(level - 1),
-                         patchdata.amrcore->Geom(level), physbc, 0, physbc, 0,
-                         reffact, interpolator, bcs, 0);
+      FillPatchTwoLevels(
+          mfab_ind, 0.0, {&coarsemfab_ind}, {0.0}, {&mfab_ind}, {0.0}, 0, 0,
+          1 /*nvars*/, patchdata.amrcore->Geom(level - 1),
+          patchdata.amrcore->Geom(level), *coarsegroupdata.physbc, 0,
+          *groupdata.physbc, 0, reffact, interpolator, groupdata.bcrecs, 0);
     }
   }
 
@@ -589,7 +590,7 @@ void enumerate_points(
   // Restrict index
   for (const auto &patchdata : CarpetX::ghext->patchdata) {
     for (int level = int(patchdata.leveldata.size()) - 2; level >= 0; --level) {
-      auto &leveldata = patchdata.leveldata.at(level);
+      const auto &leveldata = patchdata.leveldata.at(level);
       const auto &fineleveldata = patchdata.leveldata.at(level + 1);
       amrex::MultiFab &mfab_idx = *leveldata.groupdata.at(gi_idx)->mfab.at(tl);
       const amrex::MultiFab &finemfab_idx =
@@ -617,13 +618,13 @@ void enumerate_points(
 
   // Synchronize index
   for (const auto &patchdata : CarpetX::ghext->patchdata) {
-    for (int level = 0; level < int(patchdata.leveldata.size()); ++level) {
-      auto &leveldata = patchdata.leveldata.at(level);
-      amrex::MultiFab &mfab_idx = *leveldata.groupdata.at(gi_idx)->mfab.at(tl);
-      auto physbc_bcs = get_boundaries(*leveldata.groupdata.at(gi_idx));
-      CarpetX::CarpetXPhysBCFunct &physbc = std::get<0>(physbc_bcs);
+    for (const auto &leveldata : patchdata.leveldata) {
+      const int level = leveldata.level;
+      const auto &groupdata = *leveldata.groupdata.at(gi_idx);
+      amrex::MultiFab &mfab_idx = *groupdata.mfab.at(tl);
       FillPatchSingleLevel(mfab_idx, 0.0, {&mfab_idx}, {0.0}, 0, 0, 1 /*nvars*/,
-                           patchdata.amrcore->Geom(level), physbc, 0);
+                           patchdata.amrcore->Geom(level), *groupdata.physbc,
+                           0);
     }
   }
 
