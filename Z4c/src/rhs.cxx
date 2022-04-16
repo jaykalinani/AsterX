@@ -236,7 +236,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
               gf_Kh0(mask, index0), gf_dKh0(mask, index0),           //
               gf_At0(mask, index0), gf_dAt0(mask, index0),           //
               gf_Gamt0(mask, index0), gf_dGamt0(mask, index0),       //
-              gf_Theta0(mask, index0, 1), gf_dTheta0(mask, index0),  //
+              gf_Theta0(mask, index0), gf_dTheta0(mask, index0),     //
               gf_alphaG0(mask, index0, 1), gf_dalphaG0(mask, index0),
               gf_ddalphaG0(mask, index0), //
               gf_betaG0(mask, index0), gf_dbetaG0(mask, index0),
@@ -277,7 +277,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
               gf_Kh0(mask, index0), gf_dKh0(mask, index0),           //
               gf_At0(mask, index0), gf_dAt0(mask, index0),           //
               gf_Gamt0(mask, index0), gf_dGamt0(mask, index0),       //
-              gf_Theta0(mask, index0, 1), gf_dTheta0(mask, index0),  //
+              gf_Theta0(mask, index0, 0), gf_dTheta0(mask, index0),  //
               gf_alphaG0(mask, index0, 1), gf_dalphaG0(mask, index0),
               gf_ddalphaG0(mask, index0), //
               gf_betaG0(mask, index0), gf_dbetaG0(mask, index0),
@@ -310,7 +310,7 @@ extern "C" void Z4c_RHS(CCTK_ARGUMENTS) {
               gf_Kh0(mask, index0), gf_dKh0(mask, index0),           //
               gf_At0(mask, index0), gf_dAt0(mask, index0),           //
               gf_Gamt0(mask, index0), gf_dGamt0(mask, index0),       //
-              gf_Theta0(mask, index0, 1), gf_dTheta0(mask, index0),  //
+              gf_Theta0(mask, index0), gf_dTheta0(mask, index0),     //
               gf_alphaG0(mask, index0, 1), gf_dalphaG0(mask, index0),
               gf_ddalphaG0(mask, index0), //
               gf_betaG0(mask, index0), gf_dbetaG0(mask, index0),

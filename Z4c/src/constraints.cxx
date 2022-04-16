@@ -202,11 +202,11 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
             gf_chi0(mask, index0, 1), gf_dchi0(mask, index0),
             gf_ddchi0(mask, index0), //
             gf_gammat0(mask, index0, 1), gf_dgammat0(mask, index0),
-            gf_ddgammat0(mask, index0),                           //
-            gf_Kh0(mask, index0), gf_dKh0(mask, index0),          //
-            gf_At0(mask, index0), gf_dAt0(mask, index0),          //
-            gf_Gamt0(mask, index0), gf_dGamt0(mask, index0),      //
-            gf_Theta0(mask, index0, 1), gf_dTheta0(mask, index0), //
+            gf_ddgammat0(mask, index0),                        //
+            gf_Kh0(mask, index0), gf_dKh0(mask, index0),       //
+            gf_At0(mask, index0), gf_dAt0(mask, index0),       //
+            gf_Gamt0(mask, index0), gf_dGamt0(mask, index0),   //
+            gf_Theta0(mask, index0), gf_dTheta0(mask, index0), //
             gf_alphaG0(mask, index0, 1), gf_dalphaG0(mask, index0),
             gf_ddalphaG0(mask, index0), //
             gf_betaG0(mask, index0), gf_dbetaG0(mask, index0),
