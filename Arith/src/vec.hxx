@@ -274,6 +274,11 @@ public:
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  allisfinite(const vec &x) {
+    return allisfinite(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   anyisnan(const vec &x) {
     return anyisnan(x.elts);
   }

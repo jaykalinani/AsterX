@@ -132,6 +132,11 @@ template <typename T, typename U> struct dual {
     return {abs(x.val), copysign(T{1}, x.val) * x.eps};
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  allisfinite(const dual &x) {
+    return allisfinite(x.val) &&
+           all(fmap([](const auto &a) { return allisfinite(a); }, x.eps));
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   anyisnan(const dual &x) {
     return anyisnan(x.val) ||
            any(fmap([](const auto &a) { return anyisnan(a); }, x.eps));

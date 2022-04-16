@@ -336,6 +336,11 @@ public:
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  allisfinite(const rten &x) {
+    return allisfinite(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   anyisnan(const rten &x) {
     return anyisnan(x.elts);
   }

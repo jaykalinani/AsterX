@@ -340,6 +340,11 @@ template <typename T> struct simd {
 #endif
   }
 
+  friend constexpr ARITH_DEVICE ARITH_HOST bool allisfinite(const simd &x) {
+    using std::isfinite;
+    return all(isfinite(x));
+  }
+
   friend constexpr ARITH_DEVICE ARITH_HOST bool anyisnan(const simd &x) {
     using std::isnan;
     return any(isnan(x));
@@ -406,6 +411,12 @@ template <typename T> struct simd {
                                                      const T &b) {
     using std::min;
     return min(x.elts, b);
+  }
+
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> isfinite(const simd &x) {
+    // using std::isfinite;
+    // return isfinite(x.elts);
+    return !isnan(x) && !isinf(x);
   }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> isinf(const simd &x) {

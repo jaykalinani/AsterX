@@ -435,8 +435,12 @@ template <typename T, int D> struct vect {
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  allisfinite(const vect &x) {
+    return all(fmap([](const auto &a) { return allisfinite(a); }, x));
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   anyisnan(const vect &x) {
-    using std::isnan;
     return any(fmap([](const auto &a) { return anyisnan(a); }, x));
   }
 

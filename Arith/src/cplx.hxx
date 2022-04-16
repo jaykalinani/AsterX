@@ -123,6 +123,10 @@ template <typename T> struct cplx {
     return sqrt(norm(x));
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  allisfinite(const cplx &x) {
+    return allisfinite(x.real) && allisfinite(x.imag);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   anyisnan(const cplx &x) {
     return anyisnan(x.real) || anyisnan(x.imag);
   }

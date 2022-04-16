@@ -153,6 +153,16 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool all(bool x) { return x; }
 // Return true if any elements of a container are true
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool any(bool x) { return x; }
 
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+allisfinite(const float &x) {
+  using std::isfinite;
+  return isfinite(x);
+}
+constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+allisfinite(const double &x) {
+  using std::isfinite;
+  return isfinite(x);
+}
 // Return true if there is a nan anywhere in x. This always returns a bool, even
 // when x is a vector or SIMD type that would otherwise perform operations
 // pointwise. Use this for debugging.
