@@ -2,7 +2,6 @@
 #include "io.hxx"
 #include "loop.hxx"
 #include "schedule.hxx"
-#include "symmetries.hxx"
 #include "timer.hxx"
 #include "valid.hxx"
 
@@ -37,6 +36,7 @@ static inline int omp_in_parallel() { return 0; }
 #include <memory>
 #include <optional>
 #include <type_traits>
+#include <map>
 #include <vector>
 
 namespace CarpetX {
@@ -135,7 +135,7 @@ namespace CarpetX {
 
 GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
                    const MFPointer &mfp) {
-  DECLARE_CCTK_PARAMETERS;
+  // DECLARE_CCTK_PARAMETERS;
 
   const auto &patchdata = leveldata.patchdata();
   const amrex::Box &fbx = mfp.fabbox();   // allocated array
@@ -170,16 +170,11 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
   }
 
   // Boundaries
-  const array<array<bool, 3>, 2> is_symmetry{{
-      {{periodic_x || reflection_x, periodic_y || reflection_y,
-        periodic_z || reflection_z}},
-      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
-        periodic_z || reflection_upper_z}},
-  }};
+  const auto &symmetries = leveldata.patchdata().symmetries;
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      bbox[2 * d + f] =
-          vbx[orient(d, f)] == domain[orient(d, f)] && !is_symmetry[f][d];
+      bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)] &&
+                        symmetries[f][d] != symmetry_t::none;
 
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
@@ -240,7 +235,6 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
                    const int block) {
   // `global_block` is the global block index.
   // There is no tiling.
-  DECLARE_CCTK_PARAMETERS;
 
   const auto &patchdata = leveldata.patchdata();
 
@@ -278,16 +272,11 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
   }
 
   // Boundaries
-  const array<array<bool, 3>, 2> is_symmetry{{
-      {{periodic_x || reflection_x, periodic_y || reflection_y,
-        periodic_z || reflection_z}},
-      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
-        periodic_z || reflection_upper_z}},
-  }};
+  const auto &symmetries = leveldata.patchdata().symmetries;
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
-      bbox[2 * d + f] =
-          vbx[orient(d, f)] == domain[orient(d, f)] && !is_symmetry[f][d];
+      bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)] &&
+                        symmetries[f][d] != symmetry_t::none;
 
   // Thread tile box
   for (int d = 0; d < dim; ++d) {
@@ -1534,6 +1523,9 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       assert(active_levels);
       active_levels->loop([&](auto &restrict leveldata) {
         auto &restrict groupdata = *leveldata.groupdata.at(gi);
+        const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
         const int ntls = groupdata.mfab.size();
         // Rotate time levels and invalidate current time level
         if (ntls > 1) {
@@ -1558,12 +1550,16 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
               });
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            check_valid(groupdata, vi, tl, []() { return "CycleTimelevels"; });
+            check_valid(groupdata, vi, tl, nan_handling,
+                        []() { return "CycleTimelevels"; });
       });
     } else { // CCTK_ARRAY or CCTK_SCALAR
 
       auto &restrict globaldata = ghext->globaldata;
       auto &restrict arraygroupdata = *globaldata.arraygroupdata.at(gi);
+      const nan_handling_t nan_handling = arraygroupdata.do_checkpoint
+                                              ? nan_handling_t::forbid_nans
+                                              : nan_handling_t::allow_nans;
       const int ntls = arraygroupdata.data.size();
       // Rotate time levels and invalidate current time level
       if (ntls > 1) {
@@ -1580,7 +1576,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
       }
       for (int tl = 0; tl < ntls; ++tl)
         for (int vi = 0; vi < arraygroupdata.numvars; ++vi)
-          check_valid(arraygroupdata, vi, tl,
+          check_valid(arraygroupdata, vi, tl, nan_handling,
                       []() { return "CycleTimelevels"; });
     }
 
@@ -1811,6 +1807,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         active_levels->loop([&](const auto &restrict leveldata) {
           const auto &restrict groupdata = *leveldata.groupdata.at(rd.gi);
+          const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                  ? nan_handling_t::forbid_nans
+                                                  : nan_handling_t::allow_nans;
           const valid_t &need = rd.valid;
           error_if_invalid(groupdata, rd.vi, rd.tl, need, [&]() {
             ostringstream buf;
@@ -1819,7 +1818,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                 << "::" << attribute->routine << " checking input";
             return buf.str();
           });
-          check_valid(groupdata, rd.vi, rd.tl, [&]() {
+          check_valid(groupdata, rd.vi, rd.tl, nan_handling, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -1831,6 +1830,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         const auto &restrict arraygroupdata =
             *ghext->globaldata.arraygroupdata.at(rd.gi);
+        const nan_handling_t nan_handling = arraygroupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
         const valid_t &need = rd.valid;
         error_if_invalid(arraygroupdata, rd.vi, rd.tl, need, [&]() {
           ostringstream buf;
@@ -1839,7 +1841,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
               << "::" << attribute->routine << " checking input";
           return buf.str();
         });
-        check_valid(arraygroupdata, rd.vi, rd.tl, [&]() {
+        check_valid(arraygroupdata, rd.vi, rd.tl, nan_handling, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
@@ -2053,6 +2055,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         active_levels->loop([&](auto &restrict leveldata) {
           auto &restrict groupdata = *leveldata.groupdata.at(wr.gi);
+          const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                  ? nan_handling_t::forbid_nans
+                                                  : nan_handling_t::allow_nans;
           const valid_t &provided = wr.valid;
           groupdata.valid.at(wr.tl).at(wr.vi).set_or(
               provided,
@@ -2064,7 +2069,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark output variables as valid";
                 return buf.str();
               });
-          check_valid(groupdata, wr.vi, wr.tl, [&]() {
+          check_valid(groupdata, wr.vi, wr.tl, nan_handling, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2075,6 +2080,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       } else { // CCTK_ARRAY or CCTK_SCALAR
         auto &restrict arraygroupdata =
             *ghext->globaldata.arraygroupdata.at(wr.gi);
+        const nan_handling_t nan_handling = arraygroupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
         const valid_t &provided = wr.valid;
         arraygroupdata.valid.at(wr.tl).at(wr.vi).set_or(
             provided,
@@ -2086,7 +2094,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                   << ": Mark output variables as valid";
               return buf.str();
             });
-        check_valid(arraygroupdata, wr.vi, wr.tl, [&]() {
+        check_valid(arraygroupdata, wr.vi, wr.tl, nan_handling, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
@@ -2106,6 +2114,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
         active_levels->loop([&](auto &restrict leveldata) {
           auto &restrict groupdata = *leveldata.groupdata.at(inv.gi);
+          const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                  ? nan_handling_t::forbid_nans
+                                                  : nan_handling_t::allow_nans;
           const valid_t &provided = inv.valid;
           groupdata.valid.at(inv.tl).at(inv.vi).set_and(
               ~provided,
@@ -2117,7 +2128,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark invalid variables as invalid";
                 return buf.str();
               });
-          check_valid(groupdata, inv.vi, inv.tl, [&]() {
+          check_valid(groupdata, inv.vi, inv.tl, nan_handling, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2128,6 +2139,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
       } else { // CCTK_ARRAY or CCTK_SCALAR
         auto &restrict arraygroupdata =
             *ghext->globaldata.arraygroupdata.at(inv.gi);
+        const nan_handling_t nan_handling = arraygroupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
         const valid_t &provided = inv.valid;
         arraygroupdata.valid.at(inv.tl).at(inv.vi).set_and(
             ~provided,
@@ -2139,7 +2153,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                   << ": Mark invalid variables as invalid";
               return buf.str();
             });
-        check_valid(arraygroupdata, inv.vi, inv.tl, [&]() {
+        check_valid(arraygroupdata, inv.vi, inv.tl, nan_handling, [&]() {
           ostringstream buf;
           buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
               << attribute->where << ": " << attribute->thorn
@@ -2226,16 +2240,15 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
       assert(group.grouptype == CCTK_GF);
 
       auto &restrict groupdata = *leveldata.groupdata.at(gi);
+      const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                              ? nan_handling_t::forbid_nans
+                                              : nan_handling_t::allow_nans;
       // We always sync all directions.
       // If there is more than one time level, then we don't sync the
       // oldest.
       // TODO: during evolution, sync only one time level
       const int ntls = groupdata.mfab.size();
       const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
-
-      auto physbc_bcs = get_boundaries(groupdata);
-      CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
-      const amrex::Vector<amrex::BCRec> &bcs = get<1>(physbc_bcs);
 
       if (leveldata.level == 0) {
         // Coarsest level: Copy from adjacent boxes on same level
@@ -2251,32 +2264,32 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                      "invalid";
             });
             poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl,
+            check_valid(groupdata, vi, tl, nan_handling,
                         []() { return "SyncGroupsByDirI before syncing"; });
           }
           {
             static Timer timer("Sync::FillPatchSingleLevel");
             Interval interval(timer);
-            nvtxRangePushA("Sync::FillPatchSingleLevel");
             FillPatchSingleLevel(
                 *groupdata.mfab.at(tl), 0.0, {&*groupdata.mfab.at(tl)}, {0.0},
                 0, 0, groupdata.numvars,
-                leveldata.patchdata().amrcore->Geom(leveldata.level), physbc,
-                0);
-            nvtxRangePop();
+                leveldata.patchdata().amrcore->Geom(leveldata.level),
+                *groupdata.physbc, 0);
           }
-          {
-            static Timer timer("Sync::ApplySymmetries");
-            Interval interval(timer);
-            nvtxRangePushA("Sync::ApplySymmetries");
-            ApplySymmetries(groupdata, tl);
-            nvtxRangePop();
-          }
-          for (int vi = 0; vi < groupdata.numvars; ++vi)
+          for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
                      "valid";
             });
+            if (leveldata.patchdata().all_faces_have_symmetries())
+              groupdata.valid.at(tl).at(vi).set_outer(true, []() {
+                return "SyncGroupsByDirI after syncing: Mark outer boundaries "
+                       "as valid";
+              });
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl, nan_handling,
+                        []() { return "SyncGroupsByDirI after syncing"; });
+          }
         }
 
       } else {
@@ -2296,29 +2309,17 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-#warning "TODO: interpolation does not require boundaries: also for regridding!"
-            // Note: interpolation might require outer boundaries,
-            // which are not checked here. We apply symmetries, and
-            // this should handle the common cases. Where there are
-            // outer boundaries -- which we don't support -- should be
-            // checked in the prolongation operator. This needs to be
-            // cleaned up. We should probably register outer
-            // boundaries, and apply them whenever necessary. AMReX
-            // has a facility for this. This will probably only work
-            // with simple kinds of boundaries.
-            error_if_invalid(
-                coarsegroupdata, vi, tl, make_valid_int() | make_valid_outer(),
-                []() {
-                  return "SyncGroupsByDirI on coarse level before prolongation";
-                });
+            error_if_invalid(coarsegroupdata, vi, tl, make_valid_int(), []() {
+              return "SyncGroupsByDirI on coarse level before prolongation";
+            });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             poison_invalid(groupdata, vi, tl);
-            check_valid(coarsegroupdata, vi, tl, []() {
+            check_valid(coarsegroupdata, vi, tl, nan_handling, []() {
               return "SyncGroupsByDirI on coarse level before prolongation";
             });
-            check_valid(groupdata, vi, tl, []() {
+            check_valid(groupdata, vi, tl, nan_handling, []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             groupdata.valid.at(tl).at(vi).set_ghosts(false, []() {
@@ -2329,41 +2330,33 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           {
             static Timer timer("Sync::FillPatchTwoLevels");
             Interval interval(timer);
-            nvtxRangePushA("Sync::FillPatchTwoLevels");
-            FillPatchTwoLevels(
-                *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
-                {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                groupdata.numvars,
-                leveldata.patchdata().amrcore->Geom(level - 1),
-                leveldata.patchdata().amrcore->Geom(level), physbc, 0, physbc,
-                0, reffact, interpolator, bcs, 0);
-            nvtxRangePop();
-          }
-          {
-            static Timer timer("Sync::ApplySymmetries");
-            Interval interval(timer);
-            nvtxRangePushA("Sync::ApplySymmetries");
-            ApplySymmetries(groupdata, tl);
-            nvtxRangePop();
+            FillPatchTwoLevels(*groupdata.mfab.at(tl), 0.0,
+                               {&*coarsegroupdata.mfab.at(tl)}, {0.0},
+                               {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                               groupdata.numvars,
+                               leveldata.patchdata().amrcore->Geom(level - 1),
+                               leveldata.patchdata().amrcore->Geom(level),
+                               *coarsegroupdata.physbc, 0, *groupdata.physbc, 0,
+                               reffact, interpolator, groupdata.bcrecs, 0);
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            groupdata.valid.at(tl).at(vi).set_ghosts(
-                true, []() { return "SyncGroupsByDirI after prolongation"; });
+            groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
+              return "SyncGroupsByDirI after prolongation: Mark ghost zones as "
+                     "valid";
+            });
+            if (leveldata.patchdata().all_faces_have_symmetries())
+              groupdata.valid.at(tl).at(vi).set_outer(true, []() {
+                return "SyncGroupsByDirI after prolongation: Mark outer "
+                       "boundaries as valid";
+              });
+            poison_invalid(groupdata, vi, tl);
+            check_valid(groupdata, vi, tl, nan_handling,
+                        []() { return "SyncGroupsByDirI after prolongation"; });
           }
         } // if not all_invalid
       }   // for tl
-
-      for (int tl = 0; tl < sync_tl; ++tl) {
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          poison_invalid(groupdata, vi, tl);
-          check_valid(groupdata, vi, tl,
-                      []() { return "SyncGroupsByDirI after syncing"; });
-        }
-      }
     }
   });
-
-  nvtxRangePop();
 
   assert(sync_active);
   sync_active = false;
@@ -2395,6 +2388,9 @@ void Reflux(const cGH *cctkGH, int level) {
 
         auto &groupdata = *leveldata.groupdata.at(gi);
         const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
+        const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
 
         // If the group has associated fluxes
         if (finegroupdata.freg) {
@@ -2443,7 +2439,7 @@ void Reflux(const cGH *cctkGH, int level) {
                                      groupdata.numvars, geom);
 
           for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-            check_valid(finegroupdata, vi, tl, []() {
+            check_valid(finegroupdata, vi, tl, nan_handling, []() {
               return "Reflux after refluxing: Fine level data";
             });
           }
@@ -2485,6 +2481,9 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
         auto &groupdata = *leveldata.groupdata.at(gi);
         const auto &finegroupdata = *fineleveldata.groupdata.at(gi);
         const amrex::IntVect reffact{2, 2, 2};
+        const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
 
         // Don't restrict the regridding error nor the refinement level
         if (gi == gi_regrid_error || gi == gi_refinement_level)
@@ -2507,14 +2506,14 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
               return "Restrict on fine level before restricting";
             });
             poison_invalid(finegroupdata, vi, tl);
-            check_valid(finegroupdata, vi, tl, []() {
+            check_valid(finegroupdata, vi, tl, nan_handling, []() {
               return "Restrict on fine level before restricting";
             });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on coarse level before restricting";
             });
             poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, []() {
+            check_valid(groupdata, vi, tl, nan_handling, []() {
               return "Restrict on coarse level before restricting";
             });
           }
@@ -2549,23 +2548,16 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
             default:
               assert(0);
             }
-            nvtxRangePop();
-          }
-          {
-            static Timer timer("Restrict::ApplySymmetries");
-            Interval interval(timer);
-            nvtxRangePushA("Restrict::ApplySymmetries");
-            ApplySymmetries(groupdata, tl);
-            nvtxRangePop();
           }
 
           // TODO: Also remember old why_valid for interior?
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
-            groupdata.valid.at(tl).at(vi).set(make_valid_int() |
-                                                  make_valid_outer(),
+            // Should we mark ghosts and maybe outer boundaries as
+            // valid as well?
+            groupdata.valid.at(tl).at(vi).set(make_valid_int(),
                                               []() { return "Restrict"; });
             poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, []() {
+            check_valid(groupdata, vi, tl, nan_handling, []() {
               return "Restrict on coarse level after restricting";
             });
           }

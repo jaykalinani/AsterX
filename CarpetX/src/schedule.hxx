@@ -236,21 +236,26 @@ void error_if_invalid(const GHExt::PatchData::LevelData::GroupData &grouppdata,
 void warn_if_invalid(const GHExt::PatchData::LevelData ::GroupData &grouppdata,
                      int vi, int tl, const valid_t &required,
                      const function<string()> &msg);
-void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
-                    int vi, int tl);
-void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
-                 int vi, int tl, const function<string()> &msg);
-
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,
                       const function<string()> &msg);
 void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
                      int tl, const valid_t &required,
                      const function<string()> &msg);
+
+enum class nan_handling_t { allow_nans, forbid_nans };
+
+void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                    int vi, int tl);
+void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+                 int vi, int tl, nan_handling_t nan_handling,
+                 const function<string()> &msg);
+
 void poison_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
                     int tl);
 void check_valid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
-                 int tl, const function<string()> &msg);
+                 int tl, nan_handling_t nan_handling,
+                 const function<string()> &msg);
 
 } // namespace CarpetX
 

@@ -716,12 +716,14 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
 
   // Boundaries
-#warning "TODO: also allow dirichlet"
+  // TODO: Use `symmetries` in GHExt
   const array<array<bool, 3>, 2> is_symmetry{{
-      {{periodic_x || reflection_x, periodic_y || reflection_y,
-        periodic_z || reflection_z}},
-      {{periodic_x || reflection_upper_x, periodic_y || reflection_upper_y,
-        periodic_z || reflection_upper_z}},
+      {{periodic_x || reflection_x || dirichlet_x,
+        periodic_y || reflection_y || dirichlet_y,
+        periodic_z || reflection_z || dirichlet_z}},
+      {{periodic_x || reflection_upper_x || dirichlet_upper_x,
+        periodic_y || reflection_upper_y || dirichlet_upper_y,
+        periodic_z || reflection_upper_z || dirichlet_upper_z}},
   }};
 
   for (const auto &bc : bcr)
@@ -759,7 +761,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   // Check that the input values are finite
 #ifdef CCTK_DEBUG
   for (int comp = 0; comp < ncomp; ++comp) {
-    const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
+    const CCTK_REAL *restrict const crseptr = crse.dataPtr(crse_comp + comp);
     for (int k = source_region.loVect()[2]; k <= source_region.hiVect()[2];
          ++k) {
       for (int j = source_region.loVect()[1]; j <= source_region.hiVect()[1];

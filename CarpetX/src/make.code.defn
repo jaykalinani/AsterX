@@ -18,7 +18,6 @@ SRCS =						\
 	prolongate_3d_rf2.cxx			\
 	reduction.cxx				\
 	schedule.cxx				\
-	symmetries.cxx				\
 	timer.cxx                               \
 	valid.cxx
 

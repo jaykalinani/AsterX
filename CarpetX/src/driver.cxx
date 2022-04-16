@@ -3,7 +3,6 @@
 #include "logo.hxx"
 #include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
-#include "symmetries.hxx"
 #include "timer.hxx"
 #include "interp.hxx"
 
@@ -544,50 +543,6 @@ amrex::Interpolater *get_interpolator(const array<int, dim> indextype) {
   assert(0);
 }
 
-void apply_physbcs(const amrex::Box &, const amrex::FArrayBox &, int, int,
-                   const amrex::Geometry &, CCTK_REAL,
-                   const amrex::Vector<amrex::BCRec> &, int,
-                   int) { // do nothing
-}
-
-tuple<CarpetXPhysBCFunct, amrex::Vector<amrex::BCRec> >
-get_boundaries(const GHExt::PatchData::LevelData::GroupData &groupdata) {
-  DECLARE_CCTK_PARAMETERS;
-
-  // TODO: It seems that AMReX now also has `RB90`, `RB180`, and
-  // `PolarB` boundary conditions. Make these available as well.
-  const array<array<bool, 3>, 2> is_periodic{{
-      {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
-      {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
-  }};
-  // const array<array<bool, 3>, 2> is_reflect{{
-  //     {{bool(reflection_x), bool(reflection_y), bool(reflection_z)}},
-  //     {{bool(reflection_upper_x), bool(reflection_upper_y),
-  //       bool(reflection_upper_z)}},
-  // }};
-  const auto makebc = [&](const int vi, const int dir, const int face) {
-    assert(dir >= 0 && dir < dim);
-    assert(face >= 0 && face < 2);
-    if (is_periodic[face][dir])
-      return amrex::BCType::int_dir;
-    // if (is_reflect[face][dir])
-    //   return groupdata.parities.at(vi)[dir] > 0 ? amrex::BCType::reflect_even
-    //                                             : amrex::BCType::reflect_odd;
-    return amrex::BCType::ext_dir;
-  };
-
-  amrex::Vector<amrex::BCRec> bcs(groupdata.numvars);
-  for (int vi = 0; vi < groupdata.numvars; ++vi)
-    bcs.at(vi) =
-        amrex::BCRec(makebc(vi, 0, 0), makebc(vi, 1, 0), makebc(vi, 2, 0),
-                     makebc(vi, 0, 1), makebc(vi, 1, 1), makebc(vi, 2, 1));
-  CarpetXPhysBCFunct physbc(
-      ghext->patchdata.at(groupdata.patch).amrcore->Geom(groupdata.level), bcs,
-      apply_physbcs);
-
-  return {move(physbc), move(bcs)};
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 GHExt::PatchData::PatchData(const int patch) : patch(patch) {
@@ -605,7 +560,15 @@ GHExt::PatchData::PatchData(const int patch) : patch(patch) {
   const amrex::Vector<amrex::IntVect> reffacts{}; // empty
 
   // Periodicity
-  const amrex::Array<int, dim> is_periodic{periodic_x, periodic_y, periodic_z};
+  symmetries = get_symmetries();
+  CCTK_VINFO("PatchData: symmetries=[[%d,%d,%d],[%d,%d,%d]]",
+             int(symmetries[0][0]), int(symmetries[0][1]),
+             int(symmetries[0][2]), int(symmetries[1][0]),
+             int(symmetries[1][1]), int(symmetries[1][2]));
+  const amrex::Array<int, dim> is_periodic{
+      symmetries[0][0] == symmetry_t::periodic,
+      symmetries[0][1] == symmetry_t::periodic,
+      symmetries[0][2] == symmetry_t::periodic};
 
   // Set blocking factors via parameter table since AmrMesh needs to
   // know them when its constructor is running, but there are no
@@ -618,8 +581,6 @@ GHExt::PatchData::PatchData(const int patch) : patch(patch) {
   pp.add("amr.max_grid_size_y", max_grid_size_y);
   pp.add("amr.max_grid_size_z", max_grid_size_z);
   pp.add("amr.grid_eff", grid_efficiency);
-
-  symmetries = get_symmetries();
 
   amrcore = make_unique<CactusAmrCore>(patch, domain, max_num_levels - 1,
                                        ncells, coord, reffacts, is_periodic);
@@ -634,6 +595,14 @@ GHExt::PatchData::PatchData(const int patch) : patch(patch) {
       }
     }
   }
+}
+
+bool GHExt::PatchData::all_faces_have_symmetries() const {
+  bool res = true;
+  for (int f = 0; f < 2; ++f)
+    for (int d = 0; d < dim; ++d)
+      res &= symmetries.at(f).at(d) != symmetry_t::none;
+  return res;
 }
 
 GHExt::PatchData::LevelData::LevelData(const int patch, const int level,
@@ -726,6 +695,13 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
   do_restrict = get_group_restrict_flag(gi);
   indextype = get_group_indextype(gi);
   nghostzones = get_group_nghostzones(gi);
+
+  // Periodic boundaries require (num interior points) >= (num ghost points)
+  const auto &geom = ghext->patchdata.at(patch).amrcore->Geom(level);
+  for (int d = 0; d < dim; ++d)
+    if (geom.isPeriodic(d))
+      assert(geom.Domain().length(d) >= nghostzones[d]);
+
   parities = get_group_parities(gi);
   if (parities.empty()) {
     array<int, dim> parity;
@@ -738,15 +714,27 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
   for (int vi = 0; vi < numvars; ++vi)
     for (int d = 0; d < dim; ++d)
       assert(abs(parities.at(vi)[d]) == 1);
+
   dirichlet_values = get_group_dirichlet_values(gi);
   if (dirichlet_values.empty())
     dirichlet_values.resize(numvars, 0);
 
-  // Periodic boundaries require (num interior points) >= (num ghost points)
-  const auto &geom = ghext->patchdata.at(patch).amrcore->Geom(level);
-  for (int d = 0; d < dim; ++d)
-    if (geom.isPeriodic(d))
-      assert(geom.Domain().length(d) >= nghostzones[d]);
+  amrex::BCRec bcrec;
+  for (int d = 0; d < dim; ++d) {
+    for (int f = 0; f < dim; ++f) {
+      const auto bc =
+          ghext->patchdata.at(patch).symmetries[d][f] == symmetry_t::periodic
+              ? amrex::BCType::int_dir
+              : amrex::BCType::ext_dir;
+      if (f == 0)
+        bcrec.setLo(d, bc);
+      else
+        bcrec.setHi(d, bc);
+    }
+  }
+  bcrecs.resize(numvars, bcrec);
+  physbc = std::make_unique<amrex::PhysBCFunct<apply_physbcs_t> >(
+      geom, bcrecs, apply_physbcs_t(*this));
 
   // Allocate grid hierarchies
   // Note: CarpetX and AMReX use opposite constants for cell/vertex
@@ -776,6 +764,138 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
           numvars);
     } else {
       fluxes.fill(-1);
+    }
+  }
+}
+
+void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
+    const amrex::Box &box, amrex::FArrayBox &dest, const int dcomp,
+    const int numcomp, const amrex::Geometry &geom, const CCTK_REAL time,
+    const amrex::Vector<amrex::BCRec> &bcr, const int bcomp,
+    const int orig_comp) const {
+  assert(box.ixType() == dest.box().ixType());
+  for (int d = 0; d < dim; ++d)
+    assert((box.type(d) == amrex::IndexType::CELL) == groupdata.indextype[d]);
+
+  // Interior of domain
+  const Arith::vect<int, dim> imin{geom.Domain().smallEnd(0),
+                                   geom.Domain().smallEnd(1),
+                                   geom.Domain().smallEnd(2)};
+  const Arith::vect<int, dim> imax{
+      geom.Domain().bigEnd(0) + 1 + !groupdata.indextype[0],
+      geom.Domain().bigEnd(1) + 1 + !groupdata.indextype[1],
+      geom.Domain().bigEnd(2) + 1 + !groupdata.indextype[2]};
+
+  // Region to fill
+  const Arith::vect<int, dim> amin{box.smallEnd(0), box.smallEnd(1),
+                                   box.smallEnd(2)};
+  const Arith::vect<int, dim> amax{box.bigEnd(0) + 1, box.bigEnd(1) + 1,
+                                   box.bigEnd(2) + 1};
+  // Ensure the destination array is large enough
+  for (int d = 0; d < dim; ++d) {
+    assert(dest.box().smallEnd(d) <= amin[d]);
+    assert(dest.box().bigEnd(d) + 1 >= amax[d]);
+  }
+
+  for (int dir = 0; dir < dim; ++dir) {
+    for (int face = 0; face < 2; ++face) {
+      using std::max, std::min;
+      Arith::vect<int, dim> bmin, bmax;
+      for (int d = 0; d < dim; ++d) {
+        if (d < dir) {
+          // This direction have already been traversed; its boundaries can be
+          // filled
+          bmin[d] = amin[d];
+          bmax[d] = amax[d];
+        } else if (d == dir) {
+          // This is the direction we have to fill
+          if (face == 0) {
+            bmin[d] = amin[d];
+            bmax[d] = min(amax[d], imin[d]);
+          } else {
+            bmin[d] = max(amin[d], imax[d]);
+            bmax[d] = amax[d];
+          }
+        } else {
+          // This direction has not yet been traversed; its boundaries cannot be
+          // filled yet
+          // TODO: This is only true of that direction also is a
+          // symmetry boundary
+          // bmin[d] = max(amin[d], imin[d]);
+          // bmax[d] = min(amax[d], imax[d]);
+          bmin[d] = amin[d];
+          bmax[d] = amax[d];
+        }
+      }
+
+      int npoints = 1;
+      for (int d = 0; d < dim; ++d)
+        npoints *= max(0, bmax[d] - bmin[d]);
+      if (npoints == 0)
+        continue;
+
+      switch (groupdata.leveldata().patchdata().symmetries.at(face).at(dir)) {
+        // The order in which the symmetry conditions are checked is important.
+        // We prefer "simpler" symmetry conditions on corners and edges where
+        // multiple conditions might apply.
+
+      case symmetry_t::dirichlet: {
+        for (int comp = 0; comp < numcomp; ++comp) {
+          const CCTK_REAL dirichlet_value = groupdata.dirichlet_values.at(comp);
+          for (int k = bmin[2]; k < bmax[2]; ++k) {
+            for (int j = bmin[1]; j < bmax[1]; ++j) {
+#pragma omp simd
+              for (int i = bmin[0]; i < bmax[0]; ++i) {
+                const Arith::vect<int, dim> dst{i, j, k};
+                dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
+                    dirichlet_value;
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      case symmetry_t::reflection: {
+        const int offset = face == 0
+                               ? 2 * imin[dir] - groupdata.indextype.at(dir)
+                               : 2 * imax[dir] + groupdata.indextype.at(dir);
+        if (face == 0)
+          assert(offset - bmin[dir] < amax[dir]);
+        else
+          assert(amin[dir] <= offset - (bmax[dir] - 1));
+
+        for (int comp = 0; comp < numcomp; ++comp) {
+          const int parity = groupdata.parities.at(comp).at(dir);
+          for (int k = bmin[2]; k < bmax[2]; ++k) {
+            for (int j = bmin[1]; j < bmax[1]; ++j) {
+#pragma omp simd
+              for (int i = bmin[0]; i < bmax[0]; ++i) {
+                const Arith::vect<int, dim> dst{i, j, k};
+                Arith::vect<int, dim> src = dst;
+                // if (f == 0)
+                //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
+                //   groupdata.indextype[dir];
+                // else
+                //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) +
+                //   groupdata.indextype[dir];
+                src[dir] = offset - dst[dir];
+
+                dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
+                    parity *
+                    dest(amrex::IntVect(src[0], src[1], src[2]), dcomp + comp);
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      default:
+        // do nothing
+        break;
+      }
+      //
     }
   }
 }
@@ -929,6 +1049,9 @@ void SetupGlobals() {
     }
 
     // Allocate data
+    const nan_handling_t nan_handling = arraygroupdata.do_checkpoint
+                                            ? nan_handling_t::forbid_nans
+                                            : nan_handling_t::allow_nans;
     arraygroupdata.data.resize(group.numtimelevels);
     arraygroupdata.valid.resize(group.numtimelevels);
     for (int tl = 0; tl < int(arraygroupdata.data.size()); ++tl) {
@@ -949,7 +1072,8 @@ void SetupGlobals() {
         // TODO: make poison_invalid and check_invalid virtual members of
         // CommonGroupData
         poison_invalid(arraygroupdata, vi, tl);
-        check_valid(arraygroupdata, vi, tl, []() { return "SetupGlobals"; });
+        check_valid(arraygroupdata, vi, tl, nan_handling,
+                    []() { return "SetupGlobals"; });
       }
     }
   }
@@ -1051,15 +1175,14 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
 
     const amrex::IntVect reffact{2, 2, 2};
 
-    auto physbc_bcs = get_boundaries(groupdata);
-    CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
-    const amrex::Vector<amrex::BCRec> &bcs = get<1>(physbc_bcs);
-
     const int ntls = groupdata.mfab.size();
     // We only prolongate the state vector. And if there is more than
     // one time level, then we don't prolongate the oldest.
     const int prolongate_tl =
         groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+    const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                            ? nan_handling_t::forbid_nans
+                                            : nan_handling_t::allow_nans;
 
     groupdata.valid.resize(ntls);
     for (int tl = 0; tl < ntls; ++tl) {
@@ -1077,25 +1200,31 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
           error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
-          check_valid(coarsegroupdata, vi, tl, []() {
+          check_valid(coarsegroupdata, vi, tl, nan_handling, []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
         }
         InterpFromCoarseLevel(
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
             groupdata.numvars, patchdata.amrcore->Geom(level - 1),
-            patchdata.amrcore->Geom(level), physbc, 0, physbc, 0, reffact,
-            interpolator, bcs, 0);
-        ApplySymmetries(groupdata, tl);
-        for (int vi = 0; vi < groupdata.numvars; ++vi)
-          groupdata.valid.at(tl).at(vi).set(make_valid_int(), []() {
-            return "MakeNewLevelFromCoarse after prolongation";
-          });
+            patchdata.amrcore->Geom(level), *coarsegroupdata.physbc, 0,
+            *groupdata.physbc, 0, reffact, interpolator, groupdata.bcrecs, 0);
+        const auto outer_valid = patchdata.all_faces_have_symmetries()
+                                     ? make_valid_outer()
+                                     : valid_t();
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          groupdata.valid.at(tl).at(vi).set(
+              make_valid_int() | make_valid_ghosts() | outer_valid,
+              []() { return "MakeNewLevelFromCoarse after prolongation"; });
+          // check_valid(groupdata, vi, tl, nan_handling, []() {
+          //   return "MakeNewLevelFromCoarse after prolongation";
+          // });
+        }
       }
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         // Already poisoned by SetupLevel
-        check_valid(groupdata, vi, tl, []() {
+        check_valid(groupdata, vi, tl, nan_handling, []() {
           return "MakeNewLevelFromCoarse after prolongation";
         });
       }
@@ -1153,10 +1282,6 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 
     const amrex::IntVect reffact{2, 2, 2};
 
-    auto physbc_bcs = get_boundaries(groupdata);
-    CarpetXPhysBCFunct &physbc = get<0>(physbc_bcs);
-    const amrex::Vector<amrex::BCRec> &bcs = get<1>(physbc_bcs);
-
     const amrex::BoxArray &gba = convert(
         ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
                                                     : amrex::IndexType::NODE,
@@ -1170,6 +1295,9 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
     // one time level, then we don't prolongate the oldest.
     const int prolongate_tl =
         groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+    const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                            ? nan_handling_t::forbid_nans
+                                            : nan_handling_t::allow_nans;
 
     for (int tl = 0; tl < ntls; ++tl) {
       auto mfab = make_unique<amrex::MultiFab>(
@@ -1191,7 +1319,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
                            []() { return "RemakeLevel before prolongation"; });
           error_if_invalid(groupdata, vi, tl, make_valid_all(),
                            []() { return "RemakeLevel before prolongation"; });
-          check_valid(coarsegroupdata, vi, tl,
+          check_valid(coarsegroupdata, vi, tl, nan_handling,
                       []() { return "RemakeLevel before prolongation"; });
           // We cannot call this function since it would try to
           // traverse the old grid function with the new grid
@@ -1199,18 +1327,20 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
           // TODO: Use explicit loop instead (see above)
           // check_valid(leveldata, groupdata, vi, tl);
         }
-
         // Copy from same level and/or prolongate from next coarser level
         FillPatchTwoLevels(
             *mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
             {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
             patchdata.amrcore->Geom(level - 1), patchdata.amrcore->Geom(level),
-            physbc, 0, physbc, 0, reffact, interpolator, bcs, 0);
-
+            *coarsegroupdata.physbc, 0, *groupdata.physbc, 0, reffact,
+            interpolator, groupdata.bcrecs, 0);
+        const auto outer_valid = patchdata.all_faces_have_symmetries()
+                                     ? make_valid_outer()
+                                     : valid_t();
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          valid.at(vi) = why_valid_t(make_valid_int(), []() {
-            return "RemakeLevel after prolongation";
-          });
+          valid.at(vi) =
+              why_valid_t(make_valid_int() | make_valid_ghosts() | outer_valid,
+                          []() { return "RemakeLevel after prolongation"; });
       }
 
       groupdata.mfab.at(tl) = move(mfab);
@@ -1222,7 +1352,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         // Already poisoned above
-        check_valid(groupdata, vi, tl,
+        check_valid(groupdata, vi, tl, nan_handling,
                     []() { return "RemakeLevel after prolongation"; });
       }
     } // for tl
@@ -1770,10 +1900,15 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
       {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
       {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
   }};
-  const array<array<bool, 3>, 2> is_reflect{{
+  const array<array<bool, 3>, 2> is_reflection{{
       {{bool(reflection_x), bool(reflection_y), bool(reflection_z)}},
       {{bool(reflection_upper_x), bool(reflection_upper_y),
         bool(reflection_upper_z)}},
+  }};
+  const array<array<bool, 3>, 2> is_dirichlet{{
+      {{bool(dirichlet_x), bool(dirichlet_y), bool(dirichlet_z)}},
+      {{bool(dirichlet_upper_x), bool(dirichlet_upper_y),
+        bool(dirichlet_upper_z)}},
   }};
 
   for (int d = 0; d < dim; ++d) {
@@ -1781,7 +1916,8 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
       bndsize[2 * d + f] = cctkGH->cctk_nghostzones[d];
       is_ghostbnd[2 * d + f] = cctkGH->cctk_bbox[2 * d + f];
       is_symbnd[2 * d + f] =
-          !is_ghostbnd[2 * d + f] && (is_periodic[f][d] || is_reflect[f][d]);
+          !is_ghostbnd[2 * d + f] &&
+          (is_periodic[f][d] || is_reflection[f][d] || is_dirichlet[f][d]);
       is_physbnd[2 * d + f] = !is_ghostbnd[2 * d + f] && !is_symbnd[2 * d + f];
     }
   }
