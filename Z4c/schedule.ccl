@@ -107,12 +107,6 @@ SCHEDULE Z4c_Initial1 IN Z4c_InitialGroup
   WRITES: Theta(interior)
   WRITES: alphaG(interior)
   WRITES: betaG(interior)
-} "Convert ADM to Z4c variables, part 1"
-
-SCHEDULE Z4c_Sync1 IN Z4c_InitialGroup AFTER Z4c_Initial1
-{
-  LANG: C
-  OPTIONS: global
   SYNC: chi
   SYNC: gamma_tilde
   SYNC: K_hat
@@ -120,39 +114,15 @@ SCHEDULE Z4c_Sync1 IN Z4c_InitialGroup AFTER Z4c_Initial1
   SYNC: Theta
   SYNC: alphaG
   SYNC: betaG
-} "Synchronize Z4c variables, part 1"
+} "Convert ADM to Z4c variables, part 1"
 
-SCHEDULE Z4c_Boundaries1 IN Z4c_InitialGroup AFTER Z4c_Sync1
-{
-  LANG: C
-  WRITES: chi(boundary)
-  WRITES: gamma_tilde(boundary)
-  WRITES: K_hat(boundary)
-  WRITES: A_tilde(boundary)
-  WRITES: Theta(boundary)
-  WRITES: alphaG(boundary)
-  WRITES: betaG(boundary)
-} "Apply boundary conditions to Z4c variables, part 1"
-
-SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Boundaries1
+SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Initial1
 {
   LANG: C
   READS: gamma_tilde(everywhere)
   WRITES: Gam_tilde(interior)
-} "Convert ADM to Z4c variables, part 2"
-
-SCHEDULE Z4c_Sync2 IN Z4c_InitialGroup AFTER Z4c_Initial2
-{
-  LANG: C
-  OPTIONS: global
   SYNC: Gam_tilde
-} "Synchronize Z4c variables, part 2"
-
-SCHEDULE Z4c_Boundaries2 IN Z4c_InitialGroup AFTER Z4c_Sync2
-{
-  LANG: C
-  WRITES: Gam_tilde(boundary)
-} "Apply boundary conditions to Z4c variables, part 2"
+} "Convert ADM to Z4c variables, part 2"
 
 
 
@@ -170,20 +140,7 @@ SCHEDULE Z4c_Sync IN Z4c_PostStepGroup
   SYNC: betaG
 } "Synchronize Z4c variables"
 
-SCHEDULE Z4c_Boundaries IN Z4c_PostStepGroup AFTER Z4c_Sync
-{
-  LANG: C
-  WRITES: chi(boundary)
-  WRITES: gamma_tilde(boundary)
-  WRITES: K_hat(boundary)
-  WRITES: A_tilde(boundary)
-  WRITES: Gam_tilde(boundary)
-  WRITES: Theta(boundary)
-  WRITES: alphaG(boundary)
-  WRITES: betaG(boundary)
-} "Apply boundary conditions to Z4c variables"
-
-SCHEDULE Z4c_Enforce IN Z4c_PostStepGroup AFTER Z4c_Boundaries
+SCHEDULE Z4c_Enforce IN Z4c_PostStepGroup AFTER Z4c_Sync
 {
   LANG: C
   READS: chi(everywhere)
@@ -208,9 +165,9 @@ if (calc_ADM_vars) {
     READS: Theta(everywhere)
     READS: alphaG(everywhere)
     READS: betaG(everywhere)
-    READS: TmunuBase::eTtt(interior)
-    READS: TmunuBase::eTti(interior)
-    READS: TmunuBase::eTij(interior)
+    # READS: TmunuBase::eTtt(interior)
+    # READS: TmunuBase::eTti(interior)
+    # READS: TmunuBase::eTij(interior)
     WRITES: ADMBase::metric(everywhere)
     WRITES: ADMBase::curv(everywhere)
     WRITES: ADMBase::lapse(everywhere)
@@ -242,14 +199,6 @@ if (calc_ADMRHS_vars) {
     SYNC: ADMBase::dt2lapse
     SYNC: ADMBase::dt2shift
   } "Calculate second time derivatives of ADM variables"
-
-  SCHEDULE Z4c_ADM2Boundaries IN Z4c_PostStepGroup2
-  {
-    LANG: C
-    WRITES: ADMBase::dtcurv(boundary)
-    WRITES: ADMBase::dt2lapse(boundary)
-    WRITES: ADMBase::dt2shift(boundary)
-  } "Apply boundary conditions to second time derivatives of ADM variables"
 }
 
 
@@ -278,15 +227,6 @@ if (calc_constraints) {
     SYNC: MtC
     SYNC: allC
   } "Calculate Z4c constraints"
-
-  SCHEDULE Z4c_ConstraintBoundaries IN Z4c_AnalysisGroup AFTER Z4c_Constraints
-  {
-    LANG: C
-    WRITES: ZtC(boundary)
-    WRITES: HC(boundary)
-    WRITES: MtC(boundary)
-    WRITES: allC(boundary)
-  } "Apply boundary conditions to Z4c constraints"
 }
 
 
@@ -322,16 +262,3 @@ SCHEDULE Z4c_RHS IN Z4c_RHSGroup
   SYNC: alphaG_rhs
   SYNC: betaG_rhs
 } "Calculate Z4c RHS"
-
-SCHEDULE Z4c_RHSBoundaries IN Z4c_RHSGroup AFTER Z4c_RHS
-{
-  LANG: C
-  WRITES: chi_rhs(boundary)
-  WRITES: gamma_tilde_rhs(boundary)
-  WRITES: K_hat_rhs(boundary)
-  WRITES: A_tilde_rhs(boundary)
-  WRITES: Gam_tilde_rhs(boundary)
-  WRITES: Theta_rhs(boundary)
-  WRITES: alphaG_rhs(boundary)
-  WRITES: betaG_rhs(boundary)
-} "Apply boundary conditions to Z4c RHS variables"
