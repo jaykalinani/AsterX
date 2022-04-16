@@ -293,8 +293,18 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   std::vector<CCTK_REAL> localsx(npoints);
   std::vector<CCTK_REAL> localsy(npoints);
   std::vector<CCTK_REAL> localsz(npoints);
-  MultiPatch_GlobalToLocal(npoints, coordsx, coordsy, coordsz, patches.data(),
-                           localsx.data(), localsy.data(), localsz.data());
+  if (MultiPatch_GlobalToLocal != nullptr) {
+    MultiPatch_GlobalToLocal(npoints, coordsx, coordsy, coordsz, patches.data(),
+                             localsx.data(), localsy.data(), localsz.data());
+  } else {
+    // TODO: Don't copy
+    for (int n = 0; n < npoints; ++n) {
+      patches[n] = 0;
+      localsx[n] = coordsx[n];
+      localsy[n] = coordsy[n];
+      localsz[n] = coordsz[n];
+    }
+  }
 
   // Create particle containers
   using Container = amrex::AmrParticleContainer<0, 2>;
