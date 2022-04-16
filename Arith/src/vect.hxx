@@ -88,7 +88,7 @@ template <typename T, int D> struct vect {
   typedef int size_type;
   static constexpr int size() { return D; }
 
-  // initializes all elements to zero
+  // (no it doesn't) initializes all elements to zero
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect() : elts() {}
 
   constexpr ARITH_INLINE vect(const vect &) = default;
@@ -521,10 +521,10 @@ template <typename T, int D> struct zero<vect<T, D> > {
   typedef vect<T, D> value_type;
   // static constexpr value_type value = vect<T, D>::pure(zero_v<T>);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return vect<T, D>::pure(zero<T>());
+    return vect<T, D>::pure(zero<T>()());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return vect<T, D>::pure(zero<T>());
+    return vect<T, D>::pure(zero<T>()());
   }
 };
 
@@ -532,10 +532,10 @@ template <typename T, int D> struct nan<vect<T, D> > {
   typedef vect<T, D> value_type;
   // static constexpr value_type value = vect<T, D>::pure(nan_v<T>);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return vect<T, D>::pure(nan<T>());
+    return vect<T, D>::pure(nan<T>()());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return vect<T, D>::pure(nan<T>());
+    return vect<T, D>::pure(nan<T>()());
   }
 };
 
