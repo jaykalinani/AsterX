@@ -1,17 +1,11 @@
 #include "driver.hxx"
 #include "loop_device.hxx"
 #include "schedule.hxx"
+#include "timer.hxx"
 #include "valid.hxx"
 
 #include <cctk.h>
 #include <cctk_Parameters.h>
-
-#ifdef __CUDACC__
-#include <nvToolsExt.h>
-#else
-static inline void nvtxRangePushA(const char *region) {}
-static inline void nvtxRangePop() {}
-#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -97,7 +91,8 @@ void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
   if (valid.valid_all())
     return;
 
-  nvtxRangePushA("poison_invalid<GF>");
+  static Timer timer("poison_invalid<GF>");
+  Interval interval(timer);
 
   CCTK_REAL poison;
   std::memcpy(&poison, &ipoison, sizeof poison);
@@ -136,8 +131,6 @@ void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
                 CCTK_ATTRIBUTE_ALWAYS_INLINE { gf(p.I) = poison; });
     }
   });
-
-  nvtxRangePop();
 }
 
 // Ensure grid functions are not poisoned
@@ -152,7 +145,8 @@ void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
   if (!valid.valid_any())
     return;
 
-  nvtxRangePushA("check_valid<GF>");
+  static Timer timer("check_valid<GF>");
+  Interval interval(timer);
 
   CCTK_REAL poison;
   std::memcpy(&poison, &ipoison, sizeof poison);
@@ -293,8 +287,6 @@ void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
                   string(groupdata.valid.at(tl).at(vi)).c_str());
     }
   }
-
-  nvtxRangePop();
 }
 
 // Poison arrays
@@ -308,7 +300,8 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
   if (valid.valid_all())
     return;
 
-  nvtxRangePushA("poison_invalid<GA>");
+  static Timer timer("poison_invalid<GA>");
+  Interval interval(timer);
 
   CCTK_REAL poison;
   std::memcpy(&poison, &ipoison, sizeof poison);
@@ -324,8 +317,6 @@ void poison_invalid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
     for (int i = 0; i < n_elems; i++)
       ptr[i] = poison;
   }
-
-  nvtxRangePop();
 }
 
 // Ensure arrays are not poisoned
@@ -340,7 +331,8 @@ void check_valid(const GHExt::GlobalData::ArrayGroupData &arraygroupdata,
   if (!valid.valid_any())
     return;
 
-  nvtxRangePushA("check_valid<GA>");
+  static Timer timer("check_valid<GA>");
+  Interval interval(timer);
 
   CCTK_REAL poison;
   std::memcpy(&poison, &ipoison, sizeof poison);
@@ -386,7 +378,8 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
   if (!poison_undefined_values)
     return checksums;
 
-  nvtxRangePushA("calculate_checksums");
+  static Timer timer("calculate_checksums");
+  Interval interval(timer);
 
   assert(active_levels);
   active_levels->loop([&](auto &restrict leveldata) {
@@ -451,8 +444,6 @@ calculate_checksums(const vector<vector<vector<valid_t> > > &will_write) {
     }
   });
 
-  nvtxRangePop();
-
   return checksums;
 }
 
@@ -465,7 +456,8 @@ void check_checksums(const checksums_t &checksums,
   if (checksums.empty())
     return;
 
-  nvtxRangePushA("check_checksums");
+  static Timer timer("check_checksums");
+  Interval interval(timer);
 
   assert(active_levels);
   active_levels->loop([&](auto &restrict leveldata) {
@@ -531,8 +523,6 @@ void check_checksums(const checksums_t &checksums,
       }
     }
   });
-
-  nvtxRangePop();
 }
 
 } // namespace CarpetX

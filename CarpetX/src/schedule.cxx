@@ -14,13 +14,6 @@
 
 #include <AMReX_MultiFabUtil.H>
 
-#ifdef __CUDACC__
-#include <nvToolsExt.h>
-#else
-static inline void nvtxRangePushA(const char *region) {}
-static inline void nvtxRangePop() {}
-#endif
-
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -1192,7 +1185,7 @@ int Initialise(tFleshConfig *config) {
 
     // Create coarse grid
     {
-      static Timer timer("InitialiseRegrid");
+      static Timer timer("InitialiseRegrid [coarse]");
       Interval interval(timer);
       const CCTK_REAL time = 0.0; // dummy time
       for (const auto &patchdata : ghext->patchdata)
@@ -1282,7 +1275,7 @@ int Initialise(tFleshConfig *config) {
       {
 #pragma omp critical
         CCTK_VINFO("Regridding...");
-        static Timer timer("InitialiseRegrid");
+        static Timer timer("InitialiseRegrid [refined]");
         Interval interval(timer);
 
         for (const auto &patchdata : ghext->patchdata) {
@@ -1453,7 +1446,8 @@ bool EvolutionIsDone(cGH *restrict const cctkGH) {
 void InvalidateTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
-  nvtxRangePushA("InvalidateTimelevels");
+  static Timer timer("InvalidateTimelevels");
+  Interval interval(timer);
 
   const int num_groups = CCTK_NumGroups();
   for (int gi = 0; gi < num_groups; ++gi) {
@@ -1500,14 +1494,13 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
     }
 
   } // for gi
-
-  nvtxRangePop();
 }
 
 void CycleTimelevels(cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
-  nvtxRangePushA("CycleTimelevels");
+  static Timer timer("CycleTimelevels");
+  Interval interval(timer);
 
   cctkGH->cctk_iteration += 1;
   cctkGH->cctk_time += cctkGH->cctk_delta_time;
@@ -1581,8 +1574,6 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
     }
 
   } // for gi
-
-  nvtxRangePop();
 }
 
 // Schedule evolution
@@ -1795,7 +1786,21 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     CCTK_VINFO("CallFunction iteration %d %s: %s::%s", cctkGH->cctk_iteration,
                attribute->where, attribute->thorn, attribute->routine);
 
-  nvtxRangePushA(attribute->routine);
+  static map<cFunctionData *restrict, Timer> timers;
+
+  map<cFunctionData *restrict, Timer>::iterator timer_iter;
+#pragma omp critical(CarpetX_CallFunction)
+  {
+    timer_iter = timers.find(attribute);
+    if (timer_iter == timers.end()) {
+      ostringstream buf;
+      buf << "CallFunction " << attribute->where << ": " << attribute->thorn
+          << "::" << attribute->routine;
+      timer_iter = get<0>(timers.emplace(attribute, buf.str()));
+    }
+  }
+  const Timer &timer = timer_iter->second;
+  Interval interval(timer);
 
   assert(active_levels);
 
@@ -2164,8 +2169,6 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     }
   }
 
-  nvtxRangePop();
-
   constexpr int didsync = 0;
   return didsync;
 }
@@ -2186,8 +2189,6 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   static Timer timer("Sync");
   Interval interval(timer);
-
-  nvtxRangePushA("Sync");
 
   assert(cctkGH);
   assert(numgroups >= 0);
@@ -2460,7 +2461,6 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
   static Timer timer("Restrict");
   Interval interval(timer);
 
-  nvtxRangePushA("Restrict");
 
   const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
   assert(gi_regrid_error >= 0);
@@ -2521,7 +2521,6 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
           {
             static Timer timer("Restrict::average_down");
             Interval interval(timer);
-            nvtxRangePushA("Restrict::average_down");
 #warning                                                                       \
     "TODO: Allow different restriction operators, and ensure this is conservative"
             // rank: 0: vertex, 1: edge, 2: face, 3: volume
@@ -2566,8 +2565,6 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
       }   // for gi
     }     // if level exists
   }       // for patchdata
-
-  nvtxRangePop();
 }
 
 void Restrict(const cGH *cctkGH, int level) {

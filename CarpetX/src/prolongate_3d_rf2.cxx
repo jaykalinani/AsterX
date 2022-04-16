@@ -8,10 +8,6 @@
 #include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
 
-#ifdef __CUDACC__
-#include <nvToolsExt.h>
-#endif
-
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -707,10 +703,6 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   const Timer &timer = timers.at(thread_num);
   Interval interval(timer);
 
-#ifdef __CUDACC__
-  nvtxRangePushA(timers.at(thread_num).get_name().c_str());
-#endif
-
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
@@ -875,10 +867,6 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 #ifdef __CUDACC__
   amrex::Gpu::synchronize();
   AMREX_GPU_ERROR_CHECK();
-#endif
-
-#ifdef __CUDACC__
-  nvtxRangePop();
 #endif
 }
 
