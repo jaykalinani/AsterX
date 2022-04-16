@@ -150,12 +150,6 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   const smat<GF3D5<CCTK_REAL>, 3, DN, DN> gf_dtk0(make_mat_gf());
   calc_copy(cctkGH, gf_dtk1, gf_dtk0, layout0);
 
-  const GF3D5<CCTK_REAL> gf_dt2alpha0(make_gf());
-  calc_copy(cctkGH, gf_dt2alpha1, gf_dt2alpha0, layout0);
-
-  const vec<GF3D5<CCTK_REAL>, 3, UP> gf_dt2beta0(make_vec_gf());
-  calc_copy(cctkGH, gf_dt2beta1, gf_dt2beta0, layout0);
-
   //
 
   const smat<GF3D2<CCTK_REAL>, 4, DN, DN> gf_g41{
@@ -388,21 +382,21 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
           // Load and calculate
 
+          const auto id3 = one<smat<int, 3, DN, DN> >()();
+
           const vec<vreal, 3, UP> coord3(
               [&](int d) { return p.X[d] + iota<vreal>() * p.DX[d]; });
 
           const weyl_vars<vreal> vars(
               cctk_time, coord3, //
-              gf_gamma0(mask, index0, one<smat<int, 3, DN, DN> >()()),
-              gf_alpha0(mask, index0, 1), gf_beta0(mask, index0), //
+              gf_gamma0(mask, index0, id3), gf_alpha0(mask, index0, 1),
+              gf_beta0(mask, index0), //
               gf_k0(mask, index0), gf_dtalpha0(mask, index0),
               gf_dtbeta0(mask, index0), //
               gf_dgamma0(mask, index0), gf_dalpha0(mask, index0),
               gf_dbeta0(mask, index0), //
               gf_dtk1(mask, index1), gf_dt2alpha1(mask, index1),
               gf_dt2beta1(mask, index1), //
-              // gf_dtk0(mask, index0), gf_dt2alpha0(mask, index0),
-              // gf_dt2beta0(mask, index0), //
               gf_dk0(mask, index0), gf_ddtalpha0(mask, index0),
               gf_ddtbeta0(mask, index0), //
               gf_ddgamma0(mask, index0), gf_ddalpha0(mask, index0),
