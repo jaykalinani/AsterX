@@ -1640,7 +1640,7 @@ int Evolve(tFleshConfig *config) {
           if (max_level < int(patchdata.leveldata.size()))
             level_is_subcycling_level |=
                 patchdata.leveldata.at(max_level).is_subcycling_level;
-        if (!level_is_subcycling_level)
+        if (level_is_subcycling_level)
           break;
         ++max_level;
       }
