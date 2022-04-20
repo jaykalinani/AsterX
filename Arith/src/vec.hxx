@@ -213,12 +213,16 @@ public:
   operator-(const vec<T, D, dnup> &x) {
     return {-x.elts};
   }
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, dnup>
-  operator+(const vec<T, D, dnup> &x, const vec<T, D, dnup> &y) {
+  template <typename U,
+            typename R = decltype(std::declval<T>() + std::declval<U>())>
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<R, D, dnup>
+  operator+(const vec<T, D, dnup> &x, const vec<U, D, dnup> &y) {
     return {x.elts + y.elts};
   }
-  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, dnup>
-  operator-(const vec<T, D, dnup> &x, const vec<T, D, dnup> &y) {
+  template <typename U,
+            typename R = decltype(std::declval<T>() - std::declval<U>())>
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<R, D, dnup>
+  operator-(const vec<T, D, dnup> &x, const vec<U, D, dnup> &y) {
     return {x.elts - y.elts};
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, dnup>
@@ -238,28 +242,37 @@ public:
     return {x.elts % a};
   }
 
-  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator+=(const vec &x) {
+  template <typename U>
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec
+  operator+=(const vec<U, D, dnup> &x) {
     return *this = *this + x;
   }
-  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator-=(const vec &x) {
+  template <typename U>
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec
+  operator-=(const vec<U, D, dnup> &x) {
     return *this = *this - x;
   }
-  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator*=(const T &a) {
+  template <typename U>
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator*=(const U &a) {
     return *this = *this * a;
   }
-  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator/=(const T &a) {
+  template <typename U>
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator/=(const U &a) {
     return *this = *this / a;
   }
-  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator%=(const T &a) {
+  template <typename U>
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator%=(const U &a) {
     return *this = *this % a;
   }
 
+  template <typename U>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
-  operator==(const vec<T, D, dnup> &x, const vec<T, D, dnup> &y) {
+  operator==(const vec<T, D, dnup> &x, const vec<U, D, dnup> &y) {
     return all(x.elts == y.elts);
   }
+  template <typename U>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
-  operator!=(const vec<T, D, dnup> &x, const vec<T, D, dnup> &y) {
+  operator!=(const vec<T, D, dnup> &x, const vec<U, D, dnup> &y) {
     return !(x == y);
   }
 
