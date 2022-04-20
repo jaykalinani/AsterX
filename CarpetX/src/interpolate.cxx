@@ -5,6 +5,7 @@
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
+#include <cctk_Functions.h>
 #include <cctk_Parameters.h>
 #include <util_ErrorCodes.h>
 #include <util_Table.h>
@@ -287,13 +288,21 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   const cGH *restrict const cctkGH = static_cast<const cGH *>(cctkGH_);
   assert(in_global_mode(cctkGH));
 
+  static bool checked_MultiPatch_GlobalToLocal = false;
+  static bool have_MultiPatch_GlobalToLocal;
+  if (!checked_MultiPatch_GlobalToLocal) {
+    checked_MultiPatch_GlobalToLocal = true;
+    have_MultiPatch_GlobalToLocal =
+        CCTK_IsFunctionAliased("MultiPatch_GlobalToLocal");
+  }
+
   // Convert global to patch-local coordinates
   // TODO: Call this only if there is a non-trivial patch system
   std::vector<CCTK_INT> patches(npoints);
   std::vector<CCTK_REAL> localsx(npoints);
   std::vector<CCTK_REAL> localsy(npoints);
   std::vector<CCTK_REAL> localsz(npoints);
-  if (MultiPatch_GlobalToLocal != nullptr) {
+  if (have_MultiPatch_GlobalToLocal) {
     MultiPatch_GlobalToLocal(npoints, coordsx, coordsy, coordsz, patches.data(),
                              localsx.data(), localsy.data(), localsz.data());
   } else {
