@@ -204,6 +204,14 @@ template <template <typename> typename V, typename T> struct vectorspace_mixin {
                       },
                       std::numeric_limits<T>::lowest(), xs);
   }
+  friend T minimum(const V<T> &xs) {
+    return fmapreduce([](auto x) { return x; },
+                      [](auto x, auto y) {
+                        using std::min;
+                        return min(x, y);
+                      },
+                      std::numeric_limits<T>::max(), xs);
+  }
 
   friend bool operator==(const V<T> &xs, const V<T> &ys) {
     return fmapreduce([&](auto x, auto y) { return x == y; },
@@ -406,6 +414,11 @@ alm_t<T> coefficients_from_const(const geom_t &geom, const T r0,
   return alm;
 }
 
+template <typename T> T average(const alm_t<std::complex<T> > &alm) {
+  using std::sqrt;
+  return real(alm(0, 0)) / sqrt(4 * T(M_PI));
+}
+
 template <typename T>
 alm_t<std::complex<T> > expand(const aij_t<T> &aij, const int spin) {
   const ssht_dl_method_t method = SSHT_DL_RISBO;
@@ -500,6 +513,18 @@ template <typename T> struct scalar_aij_t : vectorspace_mixin<scalar_aij_t, T> {
 
   scalar_aij_t() = delete;
   scalar_aij_t(const geom_t &geom) : geom(geom), elts(geom) {}
+  scalar_aij_t(const scalar_aij_t &) = default;
+  scalar_aij_t(scalar_aij_t &&) = default;
+  scalar_aij_t &operator=(const scalar_aij_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  scalar_aij_t &operator=(scalar_aij_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const aij_t<T> &operator()() const { return elts; }
   aij_t<T> &operator()() { return elts; }
@@ -550,6 +575,18 @@ template <typename T> struct scalar_alm_t : vectorspace_mixin<scalar_alm_t, T> {
 
   scalar_alm_t() = delete;
   scalar_alm_t(const geom_t &geom) : geom(geom), elts(geom, 0) {}
+  scalar_alm_t(const scalar_alm_t &) = default;
+  scalar_alm_t(scalar_alm_t &&) = default;
+  scalar_alm_t &operator=(const scalar_alm_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  scalar_alm_t &operator=(scalar_alm_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const alm_t<T> &operator()() const { return elts; }
   alm_t<T> &operator()() { return elts; }
@@ -601,6 +638,10 @@ scalar_alm_t<T> scalar_from_const(const geom_t &geom, const T r0,
   return salm;
 }
 
+template <typename T> T average(const scalar_alm_t<std::complex<T> > &alm) {
+  return average(alm());
+}
+
 template <typename T>
 scalar_alm_t<std::complex<T> > expand(const scalar_aij_t<T> &saij) {
   const geom_t &geom = saij.geom;
@@ -643,6 +684,18 @@ template <typename T> struct vector_aij_t : vectorspace_mixin<vector_aij_t, T> {
   vector_aij_t() = delete;
   vector_aij_t(const geom_t &geom)
       : geom(geom), elts{aij_t<T>(geom), aij_t<T>(geom)} {}
+  vector_aij_t(const vector_aij_t &) = default;
+  vector_aij_t(vector_aij_t &&) = default;
+  vector_aij_t &operator=(const vector_aij_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  vector_aij_t &operator=(vector_aij_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const aij_t<T> &operator()(int i) const {
     assert(i >= 0 && i < 2);
@@ -704,6 +757,18 @@ template <typename T> struct vector_alm_t : vectorspace_mixin<vector_alm_t, T> {
   vector_alm_t() = delete;
   vector_alm_t(const geom_t &geom)
       : geom(geom), elts{alm_t<T>(geom, +1), alm_t<T>(geom, -1)} {}
+  vector_alm_t(const vector_alm_t &) = default;
+  vector_alm_t(vector_alm_t &&) = default;
+  vector_alm_t &operator=(const vector_alm_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  vector_alm_t &operator=(vector_alm_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const alm_t<T> &operator()(int i) const { return elts.at(i); }
   alm_t<T> &operator()(int i) { return elts.at(i); }
@@ -840,6 +905,18 @@ template <typename T> struct tensor_aij_t : vectorspace_mixin<tensor_aij_t, T> {
   tensor_aij_t(const geom_t &geom)
       : geom(geom), elts{{{{aij_t<T>(geom), aij_t<T>(geom)}},
                           {{aij_t<T>(geom), aij_t<T>(geom)}}}} {}
+  tensor_aij_t(const tensor_aij_t &) = default;
+  tensor_aij_t(tensor_aij_t &&) = default;
+  tensor_aij_t &operator=(const tensor_aij_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  tensor_aij_t &operator=(tensor_aij_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const aij_t<T> &operator()(int i, int j) const {
     assert(i >= 0 && i < 2);
@@ -903,6 +980,18 @@ template <typename T> struct tensor_alm_t : vectorspace_mixin<tensor_alm_t, T> {
   tensor_alm_t(const geom_t &geom)
       : geom(geom), elts{{{{alm_t<T>(geom, +2), alm_t<T>(geom, 0)}},
                           {{alm_t<T>(geom, 0), alm_t<T>(geom, -2)}}}} {}
+  tensor_alm_t(const tensor_alm_t &) = default;
+  tensor_alm_t(tensor_alm_t &&) = default;
+  tensor_alm_t &operator=(const tensor_alm_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  tensor_alm_t &operator=(tensor_alm_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const alm_t<T> &operator()(int i, int j) const { return elts.at(i).at(j); }
   alm_t<T> &operator()(int i, int j) { return elts.at(i).at(j); }
@@ -1056,6 +1145,18 @@ struct tensor3_aij_t : vectorspace_mixin<tensor3_aij_t, T> {
                             {{aij_t<T>(geom), aij_t<T>(geom)}}}},
                           {{{{aij_t<T>(geom), aij_t<T>(geom)}},
                             {{aij_t<T>(geom), aij_t<T>(geom)}}}}}} {}
+  tensor3_aij_t(const tensor3_aij_t &) = default;
+  tensor3_aij_t(tensor3_aij_t &&) = default;
+  tensor3_aij_t &operator=(const tensor3_aij_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  tensor3_aij_t &operator=(tensor3_aij_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const aij_t<T> &operator()(int i, int j, int k) const {
     assert(i >= 0 && i < 2);
@@ -1127,6 +1228,18 @@ struct tensor3_alm_t : vectorspace_mixin<tensor3_alm_t, T> {
                             {{alm_t<T>(geom, +1), alm_t<T>(geom, -1)}}}},
                           {{{{alm_t<T>(geom, +1), alm_t<T>(geom, -1)}},
                             {{alm_t<T>(geom, -1), alm_t<T>(geom, -3)}}}}}} {}
+  tensor3_alm_t(const tensor3_alm_t &) = default;
+  tensor3_alm_t(tensor3_alm_t &&) = default;
+  tensor3_alm_t &operator=(const tensor3_alm_t &other) {
+    assert(&geom == &other.geom);
+    elts = other.elts;
+    return *this;
+  }
+  tensor3_alm_t &operator=(tensor3_alm_t &&other) {
+    assert(&geom == &other.geom);
+    elts = std::move(other.elts);
+    return *this;
+  }
 
   const alm_t<T> &operator()(int i, int j, int k) const {
     return elts.at(i).at(j).at(k);
