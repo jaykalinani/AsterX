@@ -59,7 +59,7 @@ function step(h)
     l = 0
     hnew = h - A / (1 + B * l * (l + 1)) * (ρ * Θ)
 
-    hnew = clamp(hnew, 0.9*h, 1.1*h)
+    hnew = clamp(hnew, 0.9 * h, 1.1 * h)
 
     return hnew
 end
