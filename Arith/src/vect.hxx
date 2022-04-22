@@ -303,6 +303,14 @@ template <typename T, int D> struct vect {
     return fmap([&](const T &b) { return mod_floor(b, a); }, x);
   }
 
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator+=(const vect &x) {
+    return *this = *this + x;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  operator-=(const vect &x) {
+    return *this = *this - x;
+  }
   template <typename U>
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator+=(const vect<U, D> &x) {

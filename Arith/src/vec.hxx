@@ -242,6 +242,12 @@ public:
     return {x.elts % a};
   }
 
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator+=(const vec &x) {
+    return *this = *this + x;
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec operator-=(const vec &x) {
+    return *this = *this - x;
+  }
   template <typename U>
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec
   operator+=(const vec<U, D, dnup> &x) {
