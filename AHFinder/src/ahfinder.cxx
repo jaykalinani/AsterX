@@ -44,7 +44,8 @@ template <typename T> struct coords_t {
                     } {}
 };
 
-template <typename T> coords_t<T> coords_from_shape(const scalar_aij_t<T> &h) {
+template <typename T>
+coords_t<T> coords_from_shape(const vec3<T> &pos, const scalar_aij_t<T> &h) {
   DECLARE_CCTK_PARAMETERS;
   using std::cos, std::sin;
   const geom_t &geom = h.geom;
@@ -55,9 +56,9 @@ template <typename T> coords_t<T> coords_from_shape(const scalar_aij_t<T> &h) {
       const T r = h()(i, j);
       const T theta = geom.coord_theta(i, j);
       const T phi = geom.coord_phi(i, j);
-      coords.x(0)()(i, j) = x0 + r * sin(theta) * cos(phi);
-      coords.x(1)()(i, j) = y0 + r * sin(theta) * sin(phi);
-      coords.x(2)()(i, j) = z0 + r * cos(theta);
+      coords.x(0)()(i, j) = pos(0) + r * sin(theta) * cos(phi);
+      coords.x(1)()(i, j) = pos(1) + r * sin(theta) * sin(phi);
+      coords.x(2)()(i, j) = pos(2) + r * cos(theta);
     }
   }
   return coords;
@@ -116,15 +117,23 @@ template <typename T> struct metric_t {
 template <typename T>
 metric_t<T> brill_lindquist_metric(const cGH *const cctkGH,
                                    const coords_t<T> &coords) {
+  DECLARE_CCTK_PARAMETERS;
+
   const geom_t &geom = coords.geom;
   metric_t<T> metric(geom);
 
-  const T M = 1.0;
-  const vec3<T> x0{0.0, 0.0, 0.0};
+  const T M = Brill_Lindquist_mass;
+  const vec3<T> x0{Brill_Lindquist_x, Brill_Lindquist_y, Brill_Lindquist_z};
   const mat3<T> fx{
-      1.0, 0.0, 0.0, //
-      0.0, 1.0, 0.0, //
-      0.0, 0.0, 1.0, //
+      Brill_Lindquist_fx,
+      0.0,
+      0.0, //
+      0.0,
+      Brill_Lindquist_fy,
+      0.0, //
+      0.0,
+      0.0,
+      Brill_Lindquist_fz, //
   };
 
   for (int i = 0; i < geom.ntheta; ++i) {
@@ -255,7 +264,7 @@ template <typename T> struct Theta_t {
 };
 
 template <typename T>
-Theta_t<T> expansion(const metric_t<T> &metric,
+Theta_t<T> expansion(const metric_t<T> &metric, const vec3<T> &pos,
                      const scalar_alm_t<std::complex<T> > &hlm,
                      const which_Theta_t which_Theta = which_Theta_t::Theta_l) {
   DECLARE_CCTK_PARAMETERS;
@@ -324,9 +333,9 @@ Theta_t<T> expansion(const metric_t<T> &metric,
                   << "\n";
       using std::cos, std::sin;
       const vec3<T> x{
-          x0 + r * sin(theta) * cos(phi),
-          y0 + r * sin(theta) * sin(phi),
-          z0 + r * cos(theta),
+          pos(0) + r * sin(theta) * cos(phi),
+          pos(1) + r * sin(theta) * sin(phi),
+          pos(2) + r * cos(theta),
       };
       if (0)
         std::cout << "  x:" << x << "\n";
@@ -431,9 +440,9 @@ Theta_t<T> expansion(const metric_t<T> &metric,
                   << "\n";
       using std::cos, std::sin;
       const vec3<T> x{
-          x0 + r * sin(theta) * cos(phi),
-          y0 + r * sin(theta) * sin(phi),
-          z0 + r * cos(theta),
+          pos(0) + r * sin(theta) * cos(phi),
+          pos(1) + r * sin(theta) * sin(phi),
+          pos(2) + r * cos(theta),
       };
       if (0)
         std::cout << "  x:" << x << "\n";
@@ -539,71 +548,167 @@ Theta_t<T> expansion(const metric_t<T> &metric,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-scalar_alm_t<std::complex<T> > update(const cGH *const cctkGH,
-                                      const scalar_alm_t<std::complex<T> > &hlm,
-                                      const Theta_t<T> &Theta) {
-  const T alpha = 1.0;
-  const T beta = 0.5;
+void update_position(vec3<T> &pos, scalar_alm_t<std::complex<T> > &hlm) {
+  using std::sqrt;
+
+  // x = \cos\phi = (\exp i \phi + \exp -i \phi) / 2
+  // y = \sin\phi = (\exp i \phi - \exp -i \phi) / 2
+  // z = \cos\theta
+  const vec3<T> delta{
+      real(hlm()(1, -1) - hlm()(1, +1)) / 2 / sqrt(2 * T(M_PI) / 3),
+      imag(hlm()(1, -1) + hlm()(1, +1)) / 2 / sqrt(2 * T(M_PI) / 3),
+      real(hlm()(1, 0)) / sqrt(4 * T(M_PI) / 3),
+  };
+
+  pos += delta;
+
+  for (int m = -1; m <= +1; ++m)
+    hlm()(1, m) = 0;
+}
+
+template <typename T>
+scalar_alm_t<std::complex<T> >
+step(const cGH *const cctkGH, const vec3<T> &pos, const T &radius,
+     const scalar_alm_t<std::complex<T> > &hlm, const Theta_t<T> &Theta) {
+  DECLARE_CCTK_PARAMETERS;
 
   const geom_t &geom = hlm.geom;
   const auto &rhoThetalm = Theta.rhoThetalm;
 
-  const T A = alpha / (geom.lmax * (geom.lmax + 1)) + beta;
-  const T B = beta / alpha;
+  // const T alpha = 1.0;
+  // const T beta = 0.5;
+  // const T A = alpha / (geom.lmax * (geom.lmax + 1)) + beta;
+  // const T B = beta / alpha;
 
-  scalar_alm_t<std::complex<T> > hlm_new(geom);
+  const T A = fast_flow_A;
+  const T B = fast_flow_B;
+
+  scalar_alm_t<std::complex<T> > delta_hlm(geom);
   for (int l = 0; l <= geom.lmax; ++l) {
 #pragma omp simd
     for (int m = -l; m <= l; ++m) {
-      hlm_new()(l, m) =
-          hlm()(l, m) - A / (1 + B * l * (l + 1)) * rhoThetalm()(l, m);
+      // const T lambda = A / (1 + B * l * (l + 1));
+      const T lambda = l == 0 ? A : A / (B + T(l * (l + 1)));
+      delta_hlm()(l, m) = -lambda * rhoThetalm()(l, m);
+      // const auto L = geom.lmax;
+      // const auto ll1 = l * (l + 1);
+      // const auto LL1 = L * (L + 1);
+      // const auto Q = (alpha / LL1 + beta) / (1 + beta / alpha * ll1);
+      // const auto Q = alpha * (alpha / LL1 + beta) / (alpha + beta * ll1);
+      // const auto Q = (alpha / (LL1 * LL1) + beta / LL1) /
+      //                (1 / LL1 + beta / alpha * ll1 / LL1);
+      // delta_hlm()(l, m) = - Q * rhoThetalm()(l, m);
     }
   }
 
-  return hlm_new;
+  // Limit step size to 10% of the current radius
+  const T h00 = real(hlm()(0, 0));
+  delta_hlm()(0, 0) = clamp(real(delta_hlm()(0, 0)), -0.1 * h00, 0.1 * h00);
+
+  return delta_hlm;
 }
 
 template <typename T>
-void solve(const cGH *const cctkGH, scalar_alm_t<std::complex<T> > hlm) {
+void solve(const cGH *const cctkGH, vec3<T> &pos, T &radius,
+           scalar_alm_t<std::complex<T> > hlm) {
+  DECLARE_CCTK_ARGUMENTS;
   DECLARE_CCTK_PARAMETERS;
 
   int iter = 0;
   for (;;) {
-    if (iter >= maxiters)
+    if (iter >= max_iters)
       break;
 
     ++iter;
     CCTK_VINFO("iter: %d", iter);
 
-    const auto hij = evaluate(hlm);
-    CCTK_VINFO("    h=%g   h_min=%g h_max=%g", average(hlm), minimum(hij),
-               maximum(hij));
+    update_position(pos, hlm);
+    radius = average(hlm);
 
-    const auto coords = coords_from_shape(hij);
-    const auto metric = brill_lindquist_metric(cctkGH, coords);
-    // const auto metric = interpolate_metric(cctkGH, coords);
-    const auto Theta = expansion(metric, hlm);
+    const auto hij = evaluate(hlm);
+    CCTK_VINFO("    pos=[%g,%g,%g]", pos(0), pos(1), pos(2));
+    CCTK_VINFO("    r_avg=%g   r_min=%g r_max=%g", average(hlm), minimum(hij),
+               maximum(hij));
+    if (0) {
+      const int lmax = hlm.geom.lmax;
+      for (int l = 0; l <= min(4, lmax); ++l) {
+        using std::abs, std::max, std::min;
+        T r = 0.0, rmin = 1.0 / 0.0, rmax = -1.0 / 0.0;
+        for (int m = -l; m <= +l; ++m) {
+          rmin = min(rmin, real(hlm()(l, m)));
+          rmin = min(rmin, imag(hlm()(l, m)));
+          rmax = max(rmax, real(hlm()(l, m)));
+          rmax = max(rmax, imag(hlm()(l, m)));
+          r = max(r, abs(hlm()(l, m)));
+        }
+        CCTK_VINFO("    |h%dm|=%g   %g   %g", l, r, rmin, rmax);
+      }
+    }
+
+    const auto coords = coords_from_shape(pos, hij);
+    const auto metric = use_Brill_Lindquist_metric
+                            ? brill_lindquist_metric(cctkGH, coords)
+                            : interpolate_metric(cctkGH, coords);
+    const auto Theta = expansion(metric, pos, hlm);
     const auto &Thetalm = Theta.Thetalm;
     const auto Thetaij = evaluate(Thetalm);
-    CCTK_VINFO("    Θ=%g   |Θ|=%g", average(Thetalm), maxabs(Thetaij()));
+    CCTK_VINFO("    Θ_avg=%g   Θ_maxabs=%g", average(Thetalm),
+               maxabs(Thetaij()));
 
-    auto hlm_new = update(cctkGH, hlm, Theta);
+    auto delta_hlm = step(cctkGH, pos, radius, hlm, Theta);
+    CCTK_VINFO("    Δr_avg=%g", average(delta_hlm));
 
-    hlm = std::move(hlm_new);
-    if (maxabs(Thetaij()) <= 1.0e-11)
+    if (0) {
+      using std::abs, std::max, std::min;
+      const int lmax = hlm.geom.lmax;
+      for (int l = 0; l <= min(4, lmax); ++l) {
+        T r = 0.0, rmin = 1.0 / 0.0, rmax = -1.0 / 0.0;
+        for (int m = -l; m <= +l; ++m) {
+          rmin = min(rmin, real(delta_hlm()(l, m)));
+          rmin = min(rmin, imag(delta_hlm()(l, m)));
+          rmax = max(rmax, real(delta_hlm()(l, m)));
+          rmax = max(rmax, imag(delta_hlm()(l, m)));
+          r = max(r, abs(delta_hlm()(l, m)));
+        }
+        CCTK_VINFO("    |Δh%dm|=%g   %g   %g", l, r, rmin, rmax);
+      }
+    }
+
+    hlm = hlm + delta_hlm;
+    if (maxabs(Thetaij()) <= max_expansion)
       break;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+extern "C" void AHFinder_init(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_AHFinder_init;
+  DECLARE_CCTK_PARAMETERS;
+
+  *ah_pos_x = initial_pos_x;
+  *ah_pos_y = initial_pos_y;
+  *ah_pos_z = initial_pos_z;
+
+  *ah_radius = initial_radius;
+}
+
 extern "C" void AHFinder_find(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AHFinder_find;
   DECLARE_CCTK_PARAMETERS;
 
+  vec3<CCTK_REAL> pos{*ah_pos_x, *ah_pos_y, *ah_pos_z};
+  CCTK_REAL radius{*ah_radius};
+
   const geom_t geom(npoints);
-  const auto hlm = scalar_from_const(geom, CCTK_COMPLEX(r0), CCTK_COMPLEX(r1z));
-  solve(cctkGH, hlm);
+  scalar_alm_t<CCTK_COMPLEX> hlm =
+      scalar_from_const(geom, CCTK_COMPLEX(radius));
+  solve(cctkGH, pos, radius, hlm);
+
+  *ah_pos_x = pos(0);
+  *ah_pos_y = pos(1);
+  *ah_pos_z = pos(2);
+  *ah_radius = radius;
 }
 
 } // namespace AHFinder
