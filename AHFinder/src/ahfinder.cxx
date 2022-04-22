@@ -246,13 +246,19 @@ metric_t<T> interpolate_metric(const cGH *const cctkGH,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-scalar_alm_t<std::complex<T> >
-expansion(const metric_t<T> &metric,
-          const scalar_alm_t<std::complex<T> > &hlm) {
-  DECLARE_CCTK_PARAMETERS;
+enum class which_Theta_t { Theta_l, Theta_n };
 
-  using std::cos, std::sin;
+template <typename T> struct Theta_t {
+  which_Theta_t which_Theta;
+  scalar_alm_t<std::complex<T> > Thetalm;
+  scalar_alm_t<std::complex<T> > rhoThetalm;
+};
+
+template <typename T>
+Theta_t<T> expansion(const metric_t<T> &metric,
+                     const scalar_alm_t<std::complex<T> > &hlm,
+                     const which_Theta_t which_Theta = which_Theta_t::Theta_l) {
+  DECLARE_CCTK_PARAMETERS;
 
   const geom_t &geom = hlm.geom;
 
@@ -302,6 +308,7 @@ expansion(const metric_t<T> &metric,
       scalar_aij_t<T>(geom),
       scalar_aij_t<T>(geom),
   };
+  scalar_aij_t<T> rhoij(geom); // (28)
   for (int i = 0; i < geom.ntheta; ++i) {
 #pragma omp simd
     for (int j = 0; j < geom.nphi; ++j) {
@@ -315,6 +322,7 @@ expansion(const metric_t<T> &metric,
       if (0)
         std::cout << "  r:" << r << " theta:" << theta << " phi:" << phi
                   << "\n";
+      using std::cos, std::sin;
       const vec3<T> x{
           x0 + r * sin(theta) * cos(phi),
           y0 + r * sin(theta) * sin(phi),
@@ -329,7 +337,7 @@ expansion(const metric_t<T> &metric,
 
           sin(theta) * sin(phi),
           r * cos(theta) * sin(phi),
-          r * cos(phi), // dz/dphi / sin(theta)
+          r * cos(phi), // dy/dphi / sin(theta)
 
           cos(theta),
           -r * sin(theta),
@@ -340,6 +348,7 @@ expansion(const metric_t<T> &metric,
       const mat3<T> drdx = inv(dxdr);
       if (0)
         std::cout << "  drdx:" << drdx << "\n";
+      const vec3<T> grad_r([&](int a) { return drdx(0, a); });
 
       // Level set function
       // F(r, theta, phi) = r - h(theta, phi)
@@ -377,11 +386,23 @@ expansion(const metric_t<T> &metric,
         return sum3([&](int x) { return gu(a, x) * grad_F(x); });
       });
 
-      const T len2_grad_F =
-          sum3([&](int x) { return grad_F_u(x) * grad_F(x); });
-      const vec3<T> s = grad_F_u / sqrt(len2_grad_F);
+      using std::sqrt;
+      const T len_grad_F =
+          sqrt(sum3([&](int x) { return grad_F_u(x) * grad_F(x); }));
+      const vec3<T> s = grad_F / len_grad_F;
+      const vec3<T> su(
+          [&](int a) { return sum3([&](int x) { return gu(a, x) * s(x); }); });
       for (int a = 0; a < 3; ++a)
         (T &)sij(a)()(i, j) = s(a);
+
+      // Auxiliary term rho
+      const T rho = 2 * pow2(r) * len_grad_F / sum3([&](int a, int b) {
+                      return (gu(a, b) - su(a) * su(b)) *
+                             ((a == b) - grad_r(a) * grad_r(b));
+                    });
+      if (0)
+        std::cout << "  rho:" << rho << "\n";
+      rhoij()(i, j) = rho;
     }
   }
 
@@ -393,7 +414,8 @@ expansion(const metric_t<T> &metric,
   if (0)
     std::cout << "dsij:" << dsij << "\n";
 
-  scalar_aij_t<T> Thetaij(geom);
+  scalar_aij_t<T> Thetaij(geom); // (9), or (22)
+  scalar_aij_t<T> rhoThetaij(geom);
   for (int i = 0; i < geom.ntheta; ++i) {
 #pragma omp simd
     for (int j = 0; j < geom.nphi; ++j) {
@@ -407,6 +429,7 @@ expansion(const metric_t<T> &metric,
       if (0)
         std::cout << "  r:" << r << " theta:" << theta << " phi:" << phi
                   << "\n";
+      using std::cos, std::sin;
       const vec3<T> x{
           x0 + r * sin(theta) * cos(phi),
           y0 + r * sin(theta) * sin(phi),
@@ -491,154 +514,86 @@ expansion(const metric_t<T> &metric,
       const mat3<T> grad_s([&](int a, int b) {
         return dsdx(a, b) + sum3([&](int x) { return Gamma(a)(b, x) * s(x); });
       });
+      const vec3<T> su(
+          [&](int a) { return sum3([&](int x) { return gu(a, x) * s(x); }); });
 
-      // Expansion Theta_(l)
-      // Change sign in front of `K` for Theta_(n)
+      // Expansion Theta_(l) or Theta_(n)
+      const int sign = which_Theta == which_Theta_t::Theta_l ? -1 : +1;
       const T Theta = sum3([&](int x, int y) {
-        return (gu(x, y) - s(x) * s(y)) * (grad_s(x, y) - K(x, y));
+        return (gu(x, y) - su(x) * su(y)) * (grad_s(x, y) + sign * K(x, y));
       });
       if (0)
         std::cout << "  Theta:" << Theta << "\n";
       Thetaij()(i, j) = Theta;
+      const T rho = rhoij()(i, j);
+      rhoThetaij()(i, j) = rho * Theta;
     }
   }
 
-  const scalar_alm_t<std::complex<T> > Thetalm = expand(Thetaij);
+  scalar_alm_t<std::complex<T> > Thetalm = expand(Thetaij);
+  scalar_alm_t<std::complex<T> > rhoThetalm = expand(rhoThetaij);
 
-  return Thetalm;
-
-#if 0
-
-  const T area = sqrt(4 * T(M_PI)) * real(Alm(0, 0));
-
-  const T cx = real(cxlm(0, 0)) / real(Alm(0, 0));
-  const T cy = real(cylm(0, 0)) / real(Alm(0, 0));
-  const T cz = real(czlm(0, 0)) / real(Alm(0, 0));
-
-  const alm_t<std::complex<T> > Thetalm = expand(Thetaij, 0);
-  // [arXiv:gr-qc/0702038], (28)
-  aij_t<T> Sij(geom);
-  for (int i = 0; i < geom.ntheta; ++i)
-#pragma omp simd
-    for (int j = 0; j < geom.nphi; ++j)
-      Sij(i, j) = lambdaij(i, j) * Thetaij(i, j);
-  const alm_t<std::complex<T> > Slm = expand(Sij, 0);
-
-  alm_t<std::complex<T> > hlm_new(geom, 0);
-  for (int l = 0; l <= geom.lmax; ++l) {
-#pragma omp simd
-    for (int m = -l; m <= l; ++m) {
-      hlm_new(l, m) = hlm(l, m) - 1 / T(l * (l + 1) + 2) * Slm(l, m);
-    }
-  }
-
-  return {.hlm = hlm,
-          .area = area,
-          .cx = cx,
-          .cy = cy,
-          .cz = cz,
-          .Thetalm = Thetalm,
-          .hlm_new = hlm_new};
-
-#endif
+  return Theta_t<T>{which_Theta, std::move(Thetalm), std::move(rhoThetalm)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-  
 template <typename T>
-expansion_t<T> update(const cGH *const cctkGH,
-                      const alm_t<std::complex<T> > &hlm) {
-  const auto hij = evaluate(hlm);
-  const auto coords = coords_from_shape(hij);
-  // CCTK_VWARN(CCTK_WARN_ALERT, "Using Brill-Lindquist metric");
-  // const auto metric = brill_lindquist_metric(cctkGH, coords);
-  const auto metric = interpolate_metric(cctkGH, coords);
-  const auto res = expansion(metric, hlm);
-  return res;
+scalar_alm_t<std::complex<T> > update(const cGH *const cctkGH,
+                                      const scalar_alm_t<std::complex<T> > &hlm,
+                                      const Theta_t<T> &Theta) {
+  const T alpha = 1.0;
+  const T beta = 0.5;
+
+  const geom_t &geom = hlm.geom;
+  const auto &rhoThetalm = Theta.rhoThetalm;
+
+  const T A = alpha / (geom.lmax * (geom.lmax + 1)) + beta;
+  const T B = beta / alpha;
+
+  scalar_alm_t<std::complex<T> > hlm_new(geom);
+  for (int l = 0; l <= geom.lmax; ++l) {
+#pragma omp simd
+    for (int m = -l; m <= l; ++m) {
+      hlm_new()(l, m) =
+          hlm()(l, m) - A / (1 + B * l * (l + 1)) * rhoThetalm()(l, m);
+    }
+  }
+
+  return hlm_new;
 }
 
 template <typename T>
-expansion_t<T> solve(const cGH *const cctkGH,
-                     const alm_t<std::complex<T> > &hlm_ini) {
+void solve(const cGH *const cctkGH, scalar_alm_t<std::complex<T> > hlm) {
   DECLARE_CCTK_PARAMETERS;
+
   int iter = 0;
-  unique_ptr<const alm_t<std::complex<T> > > hlm_ptr =
-      make_unique<alm_t<std::complex<T> > >(filter(hlm_ini, lmax_filter));
   for (;;) {
+    if (iter >= maxiters)
+      break;
+
     ++iter;
-    const auto &hlm = *hlm_ptr;
-    const geom_t &geom = hlm.geom;
+    CCTK_VINFO("iter: %d", iter);
+
     const auto hij = evaluate(hlm);
+    CCTK_VINFO("    h=%g   h_min=%g h_max=%g", average(hlm), minimum(hij),
+               maximum(hij));
 
-    const auto res = update(cctkGH, hlm);
-
-    const auto &Thetalm = res.Thetalm;
-    const auto hlm_new = filter(res.hlm_new, lmax_filter);
-    const auto hij_new = evaluate(hlm_new);
-
-    T dh_maxabs{0};
-    for (int i = 0; i < geom.ntheta; ++i)
-#pragma omp simd
-      for (int j = 0; j < geom.nphi; ++j)
-        dh_maxabs = fmax(dh_maxabs, fabs(hij_new(i, j) - hij(i, j)));
-
-    alm_t<std::complex<T> > dhlm(geom, 0);
-    for (int l = 0; l <= geom.lmax; ++l)
-#pragma omp simd
-      for (int m = -l; m <= l; ++m)
-        dhlm(l, m) = hlm_new(l, m) - hlm(l, m);
-    auto dhij = evaluate(dhlm);
-    aij_t<T> dh2ij(geom);
-    for (int i = 0; i < geom.ntheta; ++i)
-#pragma omp simd
-      for (int j = 0; j < geom.nphi; ++j)
-        dh2ij(i, j) = pow(dhij(i, j), 2);
-    const auto dh2lm = expand(dh2ij, 0);
-    const T dh_norm2 = sqrt(sqrt(4 * M_PI) * real(dh2lm(0, 0)));
-
+    const auto coords = coords_from_shape(hij);
+    const auto metric = brill_lindquist_metric(cctkGH, coords);
+    // const auto metric = interpolate_metric(cctkGH, coords);
+    const auto Theta = expansion(metric, hlm);
+    const auto &Thetalm = Theta.Thetalm;
     const auto Thetaij = evaluate(Thetalm);
-    T Theta_maxabs{0};
-    for (int i = 0; i < geom.ntheta; ++i)
-#pragma omp simd
-      for (int j = 0; j < geom.nphi; ++j)
-        Theta_maxabs = fmax(Theta_maxabs, fabs(Thetaij(i, j)));
+    CCTK_VINFO("    Θ=%g   |Θ|=%g", average(Thetalm), maxabs(Thetaij()));
 
-    aij_t<T> Theta2ij(geom);
-    for (int i = 0; i < geom.ntheta; ++i)
-#pragma omp simd
-      for (int j = 0; j < geom.nphi; ++j)
-        Theta2ij(i, j) = pow(Thetaij(i, j), 2);
-    const auto Theta2lm = expand(Theta2ij, 0);
-    const T Theta_norm2 = sqrt(sqrt(4 * M_PI) * real(Theta2lm(0, 0)));
+    auto hlm_new = update(cctkGH, hlm, Theta);
 
-    const T h = real(hlm(0, 0)) / sqrt(4 * M_PI);
-
-    const T cx = res.cx;
-    const T cy = res.cy;
-    const T cz = res.cz;
-    const T R = sqrt(res.area / (4 * M_PI));
-
-    CCTK_VINFO("iter=%d h=%f c=[%f,%f,%f] R=%f", iter, double(h), double(cx),
-               double(cy), double(cz), double(R));
-    CCTK_VINFO("  h_0m=%f", double(real(hlm(0, 0))));
-    CCTK_VINFO("  h_1m=%f (%f,%f)", double(real(hlm(1, 0))),
-               double(real(hlm(1, 1))), double(imag(hlm(1, 1))));
-    CCTK_VINFO("  h_2m=%f (%f,%f) (%f,%f)", double(real(hlm(2, 0))),
-               double(real(hlm(2, 1))), double(imag(hlm(2, 1))),
-               double(real(hlm(2, 2))), double(imag(hlm(2, 2))));
-    CCTK_VINFO("  |Θ|∞=%g |Θ|2=%g |Δh|∞=%g |Δh|2=%g", double(Theta_maxabs),
-               double(Theta_norm2), double(dh_maxabs), double(dh_norm2));
-
-    const T eps = pow(numeric_limits<T>::epsilon(), T(3) / 4);
-    if (iter >= maxiters || dh_maxabs <= eps)
-      return res;
-    hlm_ptr = make_unique<alm_t<std::complex<T> > >(move(hlm_new));
+    hlm = std::move(hlm_new);
+    if (maxabs(Thetaij()) <= 1.0e-11)
+      break;
   }
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -647,31 +602,8 @@ extern "C" void AHFinder_find(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   const geom_t geom(npoints);
-  if (0)
-    std::cout << "geom:" << geom << "\n";
-
   const auto hlm = scalar_from_const(geom, CCTK_COMPLEX(r0), CCTK_COMPLEX(r1z));
-  if (0)
-    std::cout << "hlm:" << hlm << "\n";
-
-  const auto hij = evaluate(hlm);
-  if (0)
-    std::cout << "hij:" << hij << "\n";
-  const auto coords = coords_from_shape(hij);
-  CCTK_VWARN(CCTK_WARN_ALERT, "Using Brill-Lindquist metric");
-  const auto metric = brill_lindquist_metric(cctkGH, coords);
-  // const auto metric = interpolate_metric(cctkGH, coords);
-  const auto Thetalm = expansion(metric, hlm);
-  const auto Thetaij = evaluate(Thetalm);
-
-  const auto Theta_maxabs = maxabs(Thetaij());
-  using std::sqrt;
-  const auto Theta_avg = real(Thetalm()(0, 0)) / sqrt(4 * M_PI);
-  CCTK_VINFO("Θ=%.17g   |Θ|=%.17g", Theta_avg, Theta_maxabs);
-
-#if 0
-  const auto res = solve(cctkGH, hlm);
-#endif
+  solve(cctkGH, hlm);
 }
 
 } // namespace AHFinder
