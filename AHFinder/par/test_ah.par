@@ -42,6 +42,15 @@ CarpetX::regrid_error_threshold = 5.0
 CarpetX::prolongation_type = "ddf"
 
 AHFinder::test_ah = yes
+AHFinder::use_Brill_Lindquist_metric = yes
+AHFinder::Brill_Lindquist_y = 0.1
+AHFinder::Brill_Lindquist_fz = 1.1
+
+AHFinder::npoints = 20
+AHFinder::fast_flow_A = 1.0
+AHFinder::fast_flow_B = 1.0
+AHFinder::initial_pos_x = 0.1   #TODO 0.1
+AHFinder::initial_radius = 0.5   #TODO 0.8
 
 IO::out_dir = $parfile
 IO::out_every = 1   #TODO $ncells * 2 ** ($nlevels - 1) / 32
