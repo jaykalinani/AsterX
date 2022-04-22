@@ -49,6 +49,7 @@ PatchTransformations::PatchTransformations()
         DECLARE_CCTK_PARAMETERS;
         return cartesian_ncells_k;
       }()),
+
       // Cubed sphere
       cubed_sphere_rmin([] {
         DECLARE_CCTK_PARAMETERS;
@@ -58,6 +59,7 @@ PatchTransformations::PatchTransformations()
         DECLARE_CCTK_PARAMETERS;
         return cubed_sphere_rmax;
       }()),
+
       // Swirl
       swirl_ncells_i([] {
         DECLARE_CCTK_PARAMETERS;
@@ -70,6 +72,36 @@ PatchTransformations::PatchTransformations()
       swirl_ncells_k([] {
         DECLARE_CCTK_PARAMETERS;
         return swirl_ncells_k;
+      }()),
+
+      // Cake
+      cake_outer_boundary_radius([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_outer_boundary_radius;
+      }()),
+      cake_inner_boundary_radius([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_inner_boundary_radius;
+      }()),
+      cake_cartesian_ncells_i([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cartesian_ncells_i;
+      }()),
+      cake_cartesian_ncells_j([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cartesian_ncells_j;
+      }()),
+      cake_cartesian_ncells_k([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_cartesian_ncells_k;
+      }()),
+      cake_angular_cells([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_angular_cells;
+      }()),
+      cake_radial_cells([] {
+        DECLARE_CCTK_PARAMETERS;
+        return cake_radial_cells;
       }()) {}
 
 std::unique_ptr<PatchSystem> the_patch_system;
@@ -92,6 +124,8 @@ extern "C" int MultiPatch_Setup() {
     the_patch_system = std::make_unique<PatchSystem>(SetupCubedSphere());
   } else if (CCTK_EQUALS(patch_system, "Swirl")) {
     the_patch_system = std::make_unique<PatchSystem>(SetupSwirl());
+  } else if (CCTK_EQUALS(patch_system, "Cake")) {
+    the_patch_system = std::make_unique<PatchSystem>(SetupCake());
   } else {
     CCTK_VERROR("Unknown patch system \"%s\"", patch_system);
   }
@@ -152,6 +186,18 @@ extern "C" void MultiPatch_Coordinates_Setup(CCTK_ARGUMENTS) {
         gf_ccoordz(index) = x(2);
         gf_cvol(index) = vol;
       });
+}
+
+/**
+ * TODO: Fill with more parameter checks, if appropriate
+ */
+extern "C" void MultiPatch_Check_Parameters(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_MultiPatch_Coordinates_Setup;
+  DECLARE_CCTK_PARAMETERS;
+
+  if (cake_inner_boundary_radius > cake_outer_boundary_radius)
+    CCTK_PARAMWARN("Make sure that the cake inner boundary radius is smaller "
+                   "than and not equal to the outer boundary radius");
 }
 
 } // namespace MultiPatch

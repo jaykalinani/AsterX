@@ -52,6 +52,35 @@ struct PatchTransformations {
   const int swirl_ncells_j;
   const int swirl_ncells_k;
 
+  // Cake
+  const CCTK_REAL
+      cake_outer_boundary_radius; // The radius of the outer boundary
+
+  const CCTK_REAL
+      cake_inner_boundary_radius; /* Half the coordinate length of the
+                                   * central cartesian cube's face
+                                   */
+
+  const int cake_cartesian_ncells_i; /* The number of cells in the x direction
+                                      * of the central cartesian cube.
+                                      */
+
+  const int cake_cartesian_ncells_j; /* The number of cells in the y direction
+                                      * of the central cartesian cube.
+                                      */
+
+  const int cake_cartesian_ncells_k; /* The number of cells in the z direction
+                                      * of the central cartesian cube.
+                                      */
+
+  const int cake_angular_cells; /* The number of cells in the angular direction
+                                 * of spherical patches.
+                                 */
+
+  const int cake_radial_cells; /* The number of cells in the radial direction of
+                                * spherical patches.
+                                */
+
   PatchTransformations();
 
   PatchTransformations(const PatchTransformations &) = default;
@@ -113,6 +142,7 @@ struct PatchSystem {
 PatchSystem SetupCartesian();
 PatchSystem SetupCubedSphere();
 PatchSystem SetupSwirl();
+PatchSystem SetupCake();
 
 extern std::unique_ptr<PatchSystem> the_patch_system;
 
