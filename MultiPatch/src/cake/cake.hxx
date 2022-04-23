@@ -41,9 +41,13 @@ using djac_t = vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP>;
  * @param predicate The predicate to test.
  * @param msg The message to display while aborting the code.
  */
-inline void expects(bool predicate, const char *msg) {
+CCTK_DEVICE CCTK_HOST inline void expects(bool predicate, const char *msg) {
   if (!predicate) {
+#ifndef __CUDACC__
     CCTK_ERROR(msg);
+#else
+    assert(0);
+#endif
   }
 }
 
@@ -55,7 +59,8 @@ inline void expects(bool predicate, const char *msg) {
  * @param x The base.
  * @return The n-th power of x
  */
-template <typename T> static inline constexpr T Power(T x, unsigned n) {
+template <typename T>
+CCTK_DEVICE CCTK_HOST static inline constexpr T Power(T x, unsigned n) {
   return (n == 0) ? T(1) : x * Power(x, n - 1);
 }
 
@@ -67,7 +72,8 @@ template <typename T> static inline constexpr T Power(T x, unsigned n) {
  * @param x The base.
  * @return The n-th power of x
  */
-template <typename T> static inline constexpr T Power(T x, int n) {
+template <typename T>
+CCTK_DEVICE CCTK_HOST static inline constexpr T Power(T x, int n) {
   return (n < 0) ? T(1) / Power(x, unsigned(-n)) : Power(x, unsigned(n));
 }
 
@@ -76,7 +82,7 @@ template <typename T> static inline constexpr T Power(T x, int n) {
  *
  * @param x The radicand.
  */
-template <typename T> static inline T Sqrt(T x) {
+template <typename T> CCTK_DEVICE CCTK_HOST static inline T Sqrt(T x) {
   using std::sqrt;
   return sqrt(x);
 }
@@ -135,8 +141,8 @@ inline const std::string piece_name(const patch_piece &p) {
  * @param pt The patch data
  * @param global_vars The values of the local global (x, y, z)
  */
-patch_piece get_owner_patch(const PatchTransformations &pt,
-                            const svec_u &global_vars);
+CCTK_DEVICE CCTK_HOST patch_piece
+get_owner_patch(const PatchTransformations &pt, const svec_u &global_vars);
 
 } // namespace Cake
 } // namespace MultiPatch

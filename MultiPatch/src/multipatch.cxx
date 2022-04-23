@@ -115,6 +115,52 @@ CCTK_DEVICE CCTK_HOST inline T det(const vec<vec<T, D, dnup1>, D, dnup2> &A) {
 }
 } // namespace
 
+// Aliased functions
+
+extern "C" CCTK_INT
+MultiPatch1_GetSystemSpecification(CCTK_INT *restrict const npatches) {
+  *npatches = the_patch_system->num_patches();
+  return 0;
+}
+
+extern "C" CCTK_INT MultiPatch1_GetPatchSpecification(
+    const CCTK_INT ipatch, const CCTK_INT size, CCTK_INT *restrict const ncells,
+    CCTK_REAL *restrict const xmin, CCTK_REAL *restrict const xmax) {
+  assert(ipatch >= 0 && ipatch < the_patch_system->num_patches());
+  assert(size == dim);
+  const Patch &patch = the_patch_system->patches.at(ipatch);
+  for (int d = 0; d < dim; ++d) {
+    ncells[d] = patch.ncells[d];
+    xmin[d] = patch.xmin[d];
+    xmax[d] = patch.xmax[d];
+  }
+  return 0;
+}
+
+extern "C" void MultiPatch1_GlobalToLocal(
+    const CCTK_INT npoints, const CCTK_REAL *restrict const globalsx,
+    const CCTK_REAL *restrict const globalsy,
+    const CCTK_REAL *restrict const globalsz, CCTK_INT *restrict const patches,
+    CCTK_REAL *restrict const localsx, CCTK_REAL *restrict const localsy,
+    CCTK_REAL *restrict const localsz) {
+  const PatchTransformations &transformations =
+      the_patch_system->transformations;
+  const auto &global2local = *transformations.global2local;
+
+  for (int n = 0; n < npoints; ++n) {
+    const vec<CCTK_REAL, dim, UP> x{globalsx[n], globalsy[n], globalsz[n]};
+    const auto patch_a = global2local(transformations, x);
+    const auto patch = std::get<0>(patch_a);
+    const auto a = std::get<1>(patch_a);
+    patches[n] = patch;
+    localsx[n] = a(0);
+    localsy[n] = a(1);
+    localsz[n] = a(2);
+  }
+}
+
+// Scheduled functions
+
 extern "C" int MultiPatch_Setup() {
   DECLARE_CCTK_PARAMETERS;
 
@@ -173,7 +219,7 @@ extern "C" void MultiPatch_Coordinates_Setup(CCTK_ARGUMENTS) {
       [=] ARITH_DEVICE(const Loop::PointDesc &p) ARITH_INLINE {
         const Loop::GF3D2index index(layout_cc, p.I);
         const vec<CCTK_REAL, dim, UP> a = {p.x, p.y, p.z};
-        const std::tuple<vec<CCTK_REAL, dim, UP>,
+        const std_tuple<vec<CCTK_REAL, dim, UP>,
                          vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
             x_dadx = pt.dlocal_dglobal(pt, cctk_patch, a);
         const vec<CCTK_REAL, dim, UP> &x = std::get<0>(x_dadx);

@@ -1,5 +1,7 @@
 #include "cake.hxx"
 
+#include <cassert>
+
 /**
  * Get the patch piece that owns a global coordinate point.
  *
@@ -7,7 +9,7 @@
  * @param global_vars The global coordinate triplet to locate the owner for.
  * @return The patch piece owning the global coordinates.
  */
-MultiPatch::Cake::patch_piece
+CCTK_DEVICE CCTK_HOST MultiPatch::Cake::patch_piece
 MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
                                   const svec_u &global_vars) {
   using MultiPatchTests::at_boundary;
@@ -79,9 +81,13 @@ MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
 
     // We dont know where we are
     else {
+#ifndef __CUDACC__
       CCTK_VERROR("Coordinate triplet (%f, %f, %f) cannot be located within "
                   "the simulation domain",
                   x, y, z);
+#else
+      assert(0);
+#endif
     }
   }
 

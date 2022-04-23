@@ -40,7 +40,7 @@ Patch makePatch(const PatchTransformations &pt) {
 }
 
 // Implementations
-CCTK_DEVICE CCTK_HOST std::tuple<int, vec<CCTK_REAL, dim, UP> >
+CCTK_DEVICE CCTK_HOST std_tuple<int, vec<CCTK_REAL, dim, UP> >
 global2local_impl(const PatchTransformations &pt,
                   const vec<CCTK_REAL, dim, UP> &x) {
   using std::cbrt, std::cos, std::sin, std::sqrt;
@@ -62,11 +62,11 @@ global2local_impl(const PatchTransformations &pt,
     return sum<dim>([&](int j) { return Rinv(i, j) * x(j); });
   });
 
-  return std::make_tuple(0, a);
+  return std_make_tuple(0, a);
 }
 
 CCTK_DEVICE CCTK_HOST
-    std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+    std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
                vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
     d2local_dglobal2_impl(const PatchTransformations &pt, int patch,
                           const vec<CCTK_REAL, dim, UP> &a) {
@@ -158,7 +158,7 @@ CCTK_DEVICE CCTK_HOST
       });
     });
 
-    return std::make_tuple(x, dxda, ddxdada);
+    return std_make_tuple(x, dxda, ddxdada);
   }
 
   default:
@@ -167,11 +167,11 @@ CCTK_DEVICE CCTK_HOST
 }
 
 CCTK_DEVICE CCTK_HOST
-    std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+    std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
     dlocal_dglobal_impl(const PatchTransformations &pt, int patch,
                         const vec<CCTK_REAL, dim, UP> &a) {
   const auto x_dx_ddx = d2local_dglobal2_impl(pt, patch, a);
-  return std::make_tuple(std::get<0>(x_dx_ddx), std::get<1>(x_dx_ddx));
+  return std_make_tuple(std::get<0>(x_dx_ddx), std::get<1>(x_dx_ddx));
 }
 
 CCTK_DEVICE CCTK_HOST vec<CCTK_REAL, dim, UP>
@@ -182,7 +182,7 @@ local2global_impl(const PatchTransformations &pt, int patch,
 }
 
 // Host functions
-std::tuple<int, vec<CCTK_REAL, dim, UP> >
+std_tuple<int, vec<CCTK_REAL, dim, UP> >
 global2local(const PatchTransformations &pt, const vec<CCTK_REAL, dim, UP> &x) {
   return global2local_impl(pt, x);
 }
@@ -190,12 +190,12 @@ vec<CCTK_REAL, dim, UP> local2global(const PatchTransformations &pt, int patch,
                                      const vec<CCTK_REAL, dim, UP> &a) {
   return local2global_impl(pt, patch, a);
 }
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
 dlocal_dglobal(const PatchTransformations &pt, int patch,
                const vec<CCTK_REAL, dim, UP> &a) {
   return dlocal_dglobal_impl(pt, patch, a);
 }
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
            vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
 d2local_dglobal2(const PatchTransformations &pt, int patch,
                  const vec<CCTK_REAL, dim, UP> &a) {
@@ -203,7 +203,7 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
 }
 
 // Device functions
-CCTK_DEVICE std::tuple<int, vec<CCTK_REAL, dim, UP> >
+CCTK_DEVICE std_tuple<int, vec<CCTK_REAL, dim, UP> >
 global2local_device(const PatchTransformations &pt,
                     const vec<CCTK_REAL, dim, UP> &x) {
   return global2local_impl(pt, x);
@@ -214,13 +214,13 @@ local2global_device(const PatchTransformations &pt, int patch,
   return local2global_impl(pt, patch, a);
 }
 CCTK_DEVICE
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
 dlocal_dglobal_device(const PatchTransformations &pt, int patch,
                       const vec<CCTK_REAL, dim, UP> &a) {
   return dlocal_dglobal_impl(pt, patch, a);
 }
 CCTK_DEVICE
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
            vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
 d2local_dglobal2_device(const PatchTransformations &pt, int patch,
                         const vec<CCTK_REAL, dim, UP> &a) {
