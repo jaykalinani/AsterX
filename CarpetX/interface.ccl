@@ -10,6 +10,7 @@ USES INCLUDE HEADER: div.hxx
 USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: rational.hxx
 USES INCLUDE HEADER: simd.hxx
+USES INCLUDE HEADER: tuple.hxx
 USES INCLUDE HEADER: vect.hxx
 
 INCLUDES HEADER: loop.hxx IN loop.hxx

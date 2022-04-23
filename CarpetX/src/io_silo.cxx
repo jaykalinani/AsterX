@@ -4,6 +4,8 @@
 #include "io_meta.hxx"
 #include "timer.hxx"
 
+#include <tuple.hxx>
+
 #include <fixmath.hxx>
 #include <CactusBase/IOUtil/src/ioutil_CheckpointRecovery.h>
 #include <cctk.h>
@@ -32,7 +34,6 @@
 #include <set>
 #include <sstream>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 

@@ -1,6 +1,8 @@
 #ifndef VALID_HXX
 #define VALID_HXX
 
+#include <tuple.hxx>
+
 #include <AMReX_Box.H>
 
 #include <yaml-cpp/yaml.h>
@@ -11,7 +13,6 @@
 #include <iostream>
 #include <map>
 #include <sstream>
-#include <tuple>
 #include <vector>
 
 namespace CarpetX {

@@ -5,6 +5,7 @@
 #include "valid.hxx"
 
 #include <rational.hxx>
+#include <tuple.hxx>
 
 #include <cctk.h>
 
@@ -23,7 +24,6 @@
 #include <functional>
 #include <memory>
 #include <ostream>
-#include <tuple>
 #include <type_traits>
 #include <vector>
 
