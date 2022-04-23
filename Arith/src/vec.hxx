@@ -4,6 +4,7 @@
 #include "defs.hxx"
 #include "dual.hxx"
 #include "simd.hxx"
+#include "tuple.hxx"
 #include "vect.hxx"
 
 #include <fixmath.hxx> // include this before <cctk.h>
@@ -15,7 +16,6 @@
 #include <initializer_list>
 #include <iostream>
 #include <utility>
-#include <tuple>
 #include <vector>
 
 namespace Arith {

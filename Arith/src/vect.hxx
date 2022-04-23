@@ -4,13 +4,13 @@
 #include "defs.hxx"
 #include "div.hxx"
 #include "simd.hxx"
+#include "tuple.hxx"
 
 #include <array>
 #include <cmath>
 #include <functional>
 #include <initializer_list>
 #include <limits>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -20,12 +20,31 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
+// This does not work with thrust::tuple
+
+#if 0
+namespace detail {
+template <typename T, std::size_t... I>
+decltype(auto) make_tuple_type(const T &t, std::index_sequence<I...>) {
+  // return std_make_tuple((I, t)...);
+  return std_make_tuple(std::enable_if_t<(I || true), T>(t)...);
+}
+} // namespace detail
+
 template <typename T, size_t N> struct ntuple {
-  typedef decltype(tuple_cat(declval<tuple<T> >(),
-                             declval<typename ntuple<T, N - 1>::type>())) type;
+  using type = decltype(detail::make_tuple_type(declval<T>(),
+                                                std::make_index_sequence<N>{}));
 };
-template <typename T> struct ntuple<T, 0> { typedef tuple<> type; };
+#endif
+template <typename T, size_t N> struct ntuple {
+  using type = decltype(std_tuple_cat(
+      declval<std_tuple<T> >(), declval<typename ntuple<T, N - 1>::type>()));
+};
+template <typename T> struct ntuple<T, 0> { using type = std_tuple<>; };
 template <typename T, size_t N> using ntuple_t = typename ntuple<T, N>::type;
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,8 +123,10 @@ template <typename T, int D> struct vect {
       : elts(move(arr)) {}
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(const T (&arr)[D])
       : elts(construct_array<T, D>([&](int d) { return arr[d]; })) {}
+#if 0
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(ntuple_t<T, D> tup)
       : elts(array_from_tuple<T, D>(move(tup))) {}
+#endif
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(initializer_list<T> lst)
       : elts(construct_array<T, D>([&](size_t d) {
 #ifdef CCTK_DEBUG
