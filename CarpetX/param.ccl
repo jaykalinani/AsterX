@@ -127,6 +127,30 @@ BOOLEAN dirichlet_upper_z "Dirichlet condition at the upper z boundary"
 {
 } no
 
+BOOLEAN von_neumann_x "Von Neumann condition at the lower x boundary"
+{
+} no
+
+BOOLEAN von_neumann_y "Von Neumann condition at the lower y boundary"
+{
+} no
+
+BOOLEAN von_neumann_z "Von Neumann condition at the lower z boundary"
+{
+} no
+
+BOOLEAN von_neumann_upper_x "Von Neumann condition at the upper x boundary"
+{
+} no
+
+BOOLEAN von_neumann_upper_y "Von Neumann condition at the upper y boundary"
+{
+} no
+
+BOOLEAN von_neumann_upper_z "Von Neumann condition at the upper z boundary"
+{
+} no
+
 
 
 CCTK_INT blocking_factor_x "Blocking factor"

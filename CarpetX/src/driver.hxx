@@ -37,7 +37,7 @@ using rat64 = rational<int64_t>;
 
 // TODO: It seems that AMReX now also has `RB90`, `RB180`, and
 // `PolarB` boundary conditions. Make these available as well.
-enum class symmetry_t { none, periodic, reflection, dirichlet };
+enum class symmetry_t { none, periodic, reflection, dirichlet, von_neumann };
 
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
