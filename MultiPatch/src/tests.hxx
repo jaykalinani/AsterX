@@ -77,7 +77,7 @@ CCTK_DEVICE CCTK_HOST inline bool at_boundary(T variable, T boundary) {
 /**
  * Tag representing possible colors to apply to strings.
  */
-enum class string_color { none, green, red };
+enum class string_color { green, red };
 
 /**
  * Formats a string to be colored in ANSI compatible terminals.
@@ -86,22 +86,26 @@ enum class string_color { none, green, red };
  * @param string The string to color.
  * @return The colored string.
  */
+<<<<<<< HEAD
 template <string_color color> std::string colored(const std::string &string) {
+=======
+template <string_color color>
+constexpr const std::string colored(const std ::string &str) {
+  std::string output;
+  output.reserve(str.size() + 17);
+
+>>>>>>> c4f9f7d (Fixed a bug where failure messages would show green. Changed the colored string creation function to use pre-allocated strings. Added name to README.)
   if constexpr (color == string_color::red) {
-    std::string msg{"\033[31;1m"};
-    msg += string;
-    msg += "\033[0m";
-    return msg;
-
+    output = "\033[31;1m";
+    output += str;
+    output += "\033[0m";
   } else if constexpr (color == string_color::green) {
-    std::string msg{"\033[32;1m"};
-    msg += string;
-    msg += "\033[0m";
-
-    return msg;
+    output = "\033[32;1m";
+    output += str;
+    output += "\033[0m";
   }
 
-  return string;
+  return output;
 }
 
 /**

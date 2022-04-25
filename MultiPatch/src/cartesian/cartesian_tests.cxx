@@ -25,7 +25,7 @@ std::string local2global(const PatchTransformations &pt,
   if (eq_x && eq_y && eq_z) {
     msg << colored<string_color::green>("PASSED");
   } else {
-    msg << colored<string_color::green>("FAILED") << ". Reason:";
+    msg << colored<string_color::red>("FAILED") << ". Reason:";
 
     if (!eq_x) {
       msg << " The result in the x direction is " << l2g(0) << ".";
@@ -59,7 +59,7 @@ std::string global2local(const PatchTransformations &pt,
   if (eq_x && eq_y && eq_z) {
     msg << colored<string_color::green>("PASSED");
   } else {
-    msg << colored<string_color::green>("FAILED") << ". Reason:";
+    msg << colored<string_color::red>("FAILED") << ". Reason:";
 
     if (!eq_x) {
       msg << " The result in the x direction is " << std::get<1>(g2l)(0) << ".";
