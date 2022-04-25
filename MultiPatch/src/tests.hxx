@@ -2,9 +2,10 @@
 #define MULTIPATCH_TESTS_HXX
 
 #include <cmath>
-#include <string>
-#include <random>
 #include <functional>
+#include <limits>
+#include <random>
+#include <string>
 
 namespace MultiPatchTests {
 
@@ -37,7 +38,8 @@ constexpr const CCTK_REAL fd_comp_tol = 1.0e-7;
  * @return True if x ~ y, false otherwise.
  */
 template <typename fp_type>
-inline bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
+CCTK_DEVICE CCTK_HOST inline bool isapprox(fp_type x, fp_type y,
+                                           fp_type atol = 0.0) {
   using std::abs;
   using std::max;
   using std::sqrt;
@@ -54,7 +56,8 @@ inline bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
  * @param boundary The absolute value of the region boundary
  * @return A boolean indicating if the variable is within the region.
  */
-template <typename T> inline bool within(T variable, T boundary) {
+template <typename T>
+CCTK_DEVICE CCTK_HOST inline bool within(T variable, T boundary) {
   return (variable > -boundary && !isapprox(variable, -boundary)) &&
          (variable < boundary && !isapprox(variable, boundary));
 }
@@ -66,7 +69,8 @@ template <typename T> inline bool within(T variable, T boundary) {
  * @param boundary The absolute value of the region boundary
  * @return A boolean indicating if the variable is within the region.
  */
-template <typename T> inline bool at_boundary(T variable, T boundary) {
+template <typename T>
+CCTK_DEVICE CCTK_HOST inline bool at_boundary(T variable, T boundary) {
   return (isapprox(variable, boundary) || isapprox(variable, -boundary));
 }
 
@@ -82,8 +86,7 @@ enum class string_color { none, green, red };
  * @param string The string to color.
  * @return The colored string.
  */
-template <string_color color>
-constexpr const std::string colored(const std ::string &string) {
+template <string_color color> std::string colored(const std::string &string) {
   if constexpr (color == string_color::red) {
     std::string msg{"\033[31;1m"};
     msg += string;

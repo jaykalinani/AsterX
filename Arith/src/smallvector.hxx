@@ -294,6 +294,28 @@ public:
   }
 };
 
+template <typename T, std::size_t N> struct zero<smallvector<T, N> > {
+  typedef smallvector<T, N> value_type;
+  // static constexpr value_type value = smallvector<T, N>::pure(zero_v<T>);
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return smallvector<T, N>::pure(zero<T>()());
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return smallvector<T, N>::pure(zero<T>()());
+  }
+};
+
+template <typename T, std::size_t N> struct nan<smallvector<T, N> > {
+  typedef smallvector<T, N> value_type;
+  // static constexpr value_type value = smallvector<T, N>::pure(nan_v<T>);
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return smallvector<T, N>::pure(nan<T>()());
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return smallvector<T, N>::pure(nan<T>()());
+  }
+};
+
 } // namespace Arith
 
 #endif // #ifndef SMALLVECTOR_HXX

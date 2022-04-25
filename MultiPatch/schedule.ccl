@@ -18,8 +18,7 @@ SCHEDULE MultiPatch_Check_Parameters AT CCTK_PARAMCHECK
   LANG: C
 } "Check parameters"
 
-if(run_tests)
-{
+if (run_tests) {
   SCHEDULE run_cartesian_tests AT wragh
   {
     LANG: C

@@ -41,29 +41,29 @@ Patch makePatch1(const PatchTransformations &pt) {
 }
 
 // Implementations
-CCTK_DEVICE CCTK_HOST std::tuple<int, vec<CCTK_REAL, dim, UP> >
+CCTK_DEVICE CCTK_HOST std_tuple<int, vec<CCTK_REAL, dim, UP> >
 global2local_impl(const PatchTransformations &pt,
                   const vec<CCTK_REAL, dim, UP> &x) {
   const CCTK_REAL rmin = pt.cubed_sphere_rmin;
   if (abs(x(0)) <= rmin && abs(x(1)) <= rmin && abs(x(2)) <= rmin)
-    return std::make_tuple(0, x);
+    return std_make_tuple(0, x);
   if (x(0) >= abs(x(1)) && x(0) >= abs(x(2)))
-    return std::make_tuple(1, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
+    return std_make_tuple(1, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
   if (x(0) <= abs(x(1)) && x(0) <= abs(x(2)))
-    return std::make_tuple(4, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
+    return std_make_tuple(4, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
   if (x(1) >= abs(x(0)) && x(1) >= abs(x(2)))
-    return std::make_tuple(2, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
+    return std_make_tuple(2, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
   if (x(1) <= abs(x(0)) && x(1) <= abs(x(2)))
-    return std::make_tuple(5, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
+    return std_make_tuple(5, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
   if (x(2) >= abs(x(0)) && x(2) >= abs(x(1)))
-    return std::make_tuple(3, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
+    return std_make_tuple(3, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
   if (x(2) <= abs(x(0)) && x(2) <= abs(x(1)))
-    return std::make_tuple(6, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
+    return std_make_tuple(6, Arith::nan<vec<CCTK_REAL, dim, UP> >()());
   assert(0);
 }
 
 CCTK_DEVICE CCTK_HOST
-    std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+    std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
                vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
     d2local_dglobal2_impl(const PatchTransformations &pt, int patch,
                           const vec<CCTK_REAL, dim, UP> &a) {
@@ -71,7 +71,7 @@ CCTK_DEVICE CCTK_HOST
   const CCTK_REAL rmax = pt.cubed_sphere_rmax;
   switch (patch) {
   case 0:
-    return std::make_tuple(
+    return std_make_tuple(
         a, zero<vec<vec<CCTK_REAL, dim, DN>, dim, UP> >()(),
         zero<vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >()());
   case 1: {
@@ -101,7 +101,7 @@ CCTK_DEVICE CCTK_HOST
     const auto z = r * cos(theta_z);
     const auto x = sqrt(pow2(r) - pow2(y) - pow2(z));
 
-    return std::make_tuple(
+    return std_make_tuple(
         vec<CCTK_REAL, dim, UP>{x, y, z},
         Arith::nan<vec<vec<CCTK_REAL, dim, DN>, dim, UP> >()(),
         Arith::nan<vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >()());
@@ -122,11 +122,11 @@ CCTK_DEVICE CCTK_HOST
 }
 
 CCTK_DEVICE CCTK_HOST
-    std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+    std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
     dlocal_dglobal_impl(const PatchTransformations &pt, int patch,
                         const vec<CCTK_REAL, dim, UP> &a) {
   const auto x_dx_ddx = d2local_dglobal2_impl(pt, patch, a);
-  return std::make_tuple(std::get<0>(x_dx_ddx), std::get<1>(x_dx_ddx));
+  return std_make_tuple(std::get<0>(x_dx_ddx), std::get<1>(x_dx_ddx));
 }
 
 CCTK_DEVICE CCTK_HOST vec<CCTK_REAL, dim, UP>
@@ -137,7 +137,7 @@ local2global_impl(const PatchTransformations &pt, int patch,
 }
 
 // Host functions
-std::tuple<int, vec<CCTK_REAL, dim, UP> >
+std_tuple<int, vec<CCTK_REAL, dim, UP> >
 global2local(const PatchTransformations &pt, const vec<CCTK_REAL, dim, UP> &x) {
   return global2local_impl(pt, x);
 }
@@ -145,12 +145,12 @@ vec<CCTK_REAL, dim, UP> local2global(const PatchTransformations &pt, int patch,
                                      const vec<CCTK_REAL, dim, UP> &a) {
   return local2global_impl(pt, patch, a);
 }
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
 dlocal_dglobal(const PatchTransformations &pt, int patch,
                const vec<CCTK_REAL, dim, UP> &a) {
   return dlocal_dglobal_impl(pt, patch, a);
 }
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
            vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
 d2local_dglobal2(const PatchTransformations &pt, int patch,
                  const vec<CCTK_REAL, dim, UP> &a) {
@@ -158,7 +158,7 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
 }
 
 // Device functions
-CCTK_DEVICE std::tuple<int, vec<CCTK_REAL, dim, UP> >
+CCTK_DEVICE std_tuple<int, vec<CCTK_REAL, dim, UP> >
 global2local_device(const PatchTransformations &pt,
                     const vec<CCTK_REAL, dim, UP> &x) {
   return global2local_impl(pt, x);
@@ -169,13 +169,13 @@ local2global_device(const PatchTransformations &pt, int patch,
   return local2global_impl(pt, patch, a);
 }
 CCTK_DEVICE
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
 dlocal_dglobal_device(const PatchTransformations &pt, int patch,
                       const vec<CCTK_REAL, dim, UP> &a) {
   return dlocal_dglobal_impl(pt, patch, a);
 }
 CCTK_DEVICE
-std::tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
+std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
            vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
 d2local_dglobal2_device(const PatchTransformations &pt, int patch,
                         const vec<CCTK_REAL, dim, UP> &a) {

@@ -448,6 +448,9 @@ void OutputNorms(const cGH *restrict cctkGH) {
 
     const int tl = 0;
     for (int vi = 0; vi < groupdata.numvars; ++vi) {
+      // Only output variables with valid data
+      if (!groupdata.valid.at(tl).at(vi).get().valid_int)
+        continue;
 
       if (is_root)
         ofd.variables.push_back(CCTK_FullVarName(groupdata.firstvarindex + vi));

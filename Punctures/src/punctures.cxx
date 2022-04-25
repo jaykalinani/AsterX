@@ -33,7 +33,9 @@ template <typename T> T pown(T x, int n) {
   return r;
 }
 
-const mat<CCTK_REAL, 3, DN, DN> g([](int a, int b) { return a == b; });
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REAL delta(int a, int b) {
+  return a == b;
+}
 
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_REAL epsilon(int a, int b, int c) {
   if (a == 0 && b == 1 && c == 2)
@@ -60,6 +62,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE void fcalc(const PointDesc &p, const T &u,
   DECLARE_CCTK_PARAMETERS;
 
   T alpha1 = 0;
+  const mat<CCTK_REAL, 3, DN, DN> g([](int a, int b) { return a == b; });
   K = mat<T, 3, DN, DN>();
   for (int i = 0; i < npunctures; ++i) {
     const vec<T, 3, UP> x{posx[i], posy[i], posz[i]};
@@ -266,6 +269,7 @@ extern "C" void Punctures_ADMBase(CCTK_ARGUMENTS) {
 
   loop_all<0, 0, 0>(cctkGH, [&](const PointDesc &p) {
     const CCTK_REAL psi = fpsi(p, usol_(p.I));
+    const mat<CCTK_REAL, 3, DN, DN> g([](int a, int b) { return a == b; });
     const mat<CCTK_REAL, 3, DN, DN> K = fK(p, usol_(p.I));
     const mat<CCTK_REAL, 3, DN, DN> gph = pow(psi, 4) * g;
     const mat<CCTK_REAL, 3, DN, DN> Kph = pow(psi, -2) * K;

@@ -11,6 +11,8 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 {
   "Godunov" :: ""
   "minmod" :: ""
+  "monocentral" :: ""
+  "ppm" :: ""
 } "Godunov"
 
 # Parameter definitions for thorn RePrimAnd

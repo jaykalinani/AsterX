@@ -16,6 +16,7 @@ INCLUDES HEADER: smallvector.hxx IN smallvector.hxx
 INCLUDES HEADER: spvect.hxx IN spvect.hxx
 INCLUDES HEADER: sum.hxx IN sum.hxx
 INCLUDES HEADER: ten3.hxx IN ten3.hxx
+INCLUDES HEADER: tuple.hxx IN tuple.hxx
 INCLUDES HEADER: vec.hxx IN vec.hxx
 INCLUDES HEADER: vect.hxx IN vect.hxx
 

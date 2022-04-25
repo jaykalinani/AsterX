@@ -21,10 +21,22 @@ if (test_ah) {
   } "Test discretization based on spherical harmonics"
 }
 
+SCHEDULE AHFinder_init AT initial
+{
+  LANG: C
+  OPTIONS: global
+  WRITES: position
+  WRITES: radius
+} "Set up apparent horizons"
+
 SCHEDULE AHFinder_find AT poststep
 {
   LANG: C
   OPTIONS: global
   READS: ADMBase::metric(everywhere)
   READS: ADMBase::curv(everywhere)
+  READS: position
+  READS: radius
+  WRITES: position
+  WRITES: radius
 } "Find apparent horizons"

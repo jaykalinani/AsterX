@@ -28,9 +28,10 @@ template <typename T, typename U> struct dual {
   constexpr ARITH_INLINE dual &operator=(const dual &) = default;
   constexpr ARITH_INLINE dual &operator=(dual &&) = default;
 
-  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual() : val(), eps() {}
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual()
+      : val(nan<T>()()), eps(nan<U>()()) {}
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual(const T &x)
-      : val(x), eps() {}
+      : val(x), eps(zero<U>()()) {}
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual(const T &x, const U &y)
       : val(x), eps(y) {}
 
@@ -132,6 +133,11 @@ template <typename T, typename U> struct dual {
     return {abs(x.val), copysign(T{1}, x.val) * x.eps};
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  allisfinite(const dual &x) {
+    return allisfinite(x.val) &&
+           all(fmap([](const auto &a) { return allisfinite(a); }, x.eps));
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   anyisnan(const dual &x) {
     return anyisnan(x.val) ||
            any(fmap([](const auto &a) { return anyisnan(a); }, x.eps));
@@ -213,7 +219,7 @@ template <typename T, typename U> struct dual {
   }
 
   friend ostream &operator<<(ostream &os, const dual &x) {
-    return os << x.val << "+eps*" << x.val;
+    return os << x.val << "+ε*" << x.eps;
   }
 };
 

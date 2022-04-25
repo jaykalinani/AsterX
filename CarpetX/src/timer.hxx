@@ -22,6 +22,11 @@ class Timer {
 
 public:
   Timer() = delete;
+  Timer(const Timer &) = delete;
+  Timer &operator=(const Timer &) = delete;
+  Timer(Timer &&) = default;
+  Timer &operator=(Timer &&) = default;
+
   Timer(const string &name);
 
   string get_name() const { return name; }

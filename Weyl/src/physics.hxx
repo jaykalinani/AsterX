@@ -530,21 +530,6 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T dot(const vec<T, D, DN> &vl,
   return sum<D>([&](int x) ARITH_INLINE { return vl(x) * v(x); });
 }
 
-template <typename T>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto isbad(const T &x) {
-  using std::sqrt;
-  return x != x || x <= sqrt(numeric_limits<T>::epsilon()) ||
-         x >= T(1) / sqrt(numeric_limits<T>::epsilon());
-}
-
-template <typename T, int D, dnup_t dnup>
-constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, dnup>
-ifbad(const vec<T, D, dnup> &x, const vec<T, D, dnup> &x0) {
-  const auto xmaxabs = maxabs(x);
-  return if_else(isbad(xmaxabs), x0, x);
-  // return if_else(any(fmap([](const auto &a) { return isbad(a); }, x)), x0, x);
-}
-
 template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D, UP>
 normalized(const gmat<T, D, DN, DN, symm> &g, const vec<T, D, UP> &v) {
@@ -589,11 +574,6 @@ calc_et(const gmat<T, D, UP, UP, symm> &gu) {
   auto et = raise(gu, etl);
   const auto etlen2 = -dot(etl, et);
   et /= sqrt(etlen2);
-  // This is necessary near a singularity
-  et = ifbad(et, vec<T, D, UP>::unit(0));
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(et));
-#endif
   return et;
 }
 
@@ -605,10 +585,6 @@ calc_ephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g) {
   const auto ephil = lower(g, ephi);
   const auto ephi_len2 = dot(ephil, ephi);
   ephi /= sqrt(ephi_len2);
-  ephi = ifbad(ephi, zero<vec<T, 4, UP> >()());
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(ephi));
-#endif
   return ephi;
 }
 
@@ -624,10 +600,6 @@ calc_etheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
   etheta /= sqrt(etheta_len2); // to improve accuracy
   etheta = rejected(g, etheta, ephi);
   etheta = normalized(g, etheta);
-  etheta = ifbad(etheta, zero<vec<T, 4, UP> >()());
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(etheta));
-#endif
   return etheta;
 }
 
@@ -643,10 +615,6 @@ calc_er(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
   er = rejected(g, er, etheta);
   er = rejected(g, er, ephi);
   er = normalized(g, er);
-  er = ifbad(er, zero<vec<T, 4, UP> >()());
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(er));
-#endif
   return er;
 }
 
@@ -667,9 +635,6 @@ calc_det(const gmat<T, D, UP, UP, symm> &gu,
              sum<D>([&](int x) ARITH_INLINE { return Gamma(a)(b, x) * et(x); });
     });
   });
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(det));
-#endif
   return det;
 }
 
@@ -694,9 +659,6 @@ calc_dephi(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
              });
     });
   });
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(dephi));
-#endif
   return dephi;
 }
 
@@ -724,9 +686,6 @@ calc_detheta(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
              });
     });
   });
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(detheta));
-#endif
   return detheta;
 }
 
@@ -756,9 +715,6 @@ calc_der(const vec<T, 4, UP> &x, const gmat<T, 4, DN, DN, symm> &g,
              sum<4>([&](int x) ARITH_INLINE { return Gamma(a)(b, x) * er(x); });
     });
   });
-#ifdef CCTK_DEBUG
-  assert(!anyisnan(der));
-#endif
   return der;
 }
 

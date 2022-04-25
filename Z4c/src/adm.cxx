@@ -62,20 +62,8 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
       GF3D2<const CCTK_REAL>(layout1, betaGy),
       GF3D2<const CCTK_REAL>(layout1, betaGz)};
 
-  const GF3D2<const CCTK_REAL> gf_eTtt1(layout1, eTtt);
 
-  const vec<GF3D2<const CCTK_REAL>, 3, DN> gf_eTti1{
-      GF3D2<const CCTK_REAL>(layout1, eTtx),
-      GF3D2<const CCTK_REAL>(layout1, eTty),
-      GF3D2<const CCTK_REAL>(layout1, eTtz)};
 
-  const smat<GF3D2<const CCTK_REAL>, 3, DN, DN> gf_eTij1{
-      GF3D2<const CCTK_REAL>(layout1, eTxx),
-      GF3D2<const CCTK_REAL>(layout1, eTxy),
-      GF3D2<const CCTK_REAL>(layout1, eTxz),
-      GF3D2<const CCTK_REAL>(layout1, eTyy),
-      GF3D2<const CCTK_REAL>(layout1, eTyz),
-      GF3D2<const CCTK_REAL>(layout1, eTzz)};
 
   const smat<GF3D2<CCTK_REAL>, 3, DN, DN> gf_g1{
       GF3D2<CCTK_REAL>(layout1, gxx), GF3D2<CCTK_REAL>(layout1, gxy),
@@ -114,14 +102,14 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
 
         // Load and calculate
         const z4c_vars_noderivs<vreal> vars(
-            kappa1, kappa2, f_mu_L, f_mu_S, eta, //
+            set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta, //
             gf_chi1(mask, index1, 1),
             gf_gammat1(mask, index1, one<smat<int, 3, DN, DN> >()()),
             gf_Kh1(mask, index1), gf_At1(mask, index1), gf_Gamt1(mask, index1),
             gf_Theta1(mask, index1), gf_alphaG1(mask, index1, 1),
             gf_betaG1(mask, index1), //
-            gf_eTtt1(mask, index1), gf_eTti1(mask, index1),
-            gf_eTij1(mask, index1));
+            Arith::nan<vreal>()(), Arith::nan<vec<vreal, 3, DN> >()(),
+            Arith::nan<smat<vreal, 3, DN, DN> >()());
 
         // Store
         gf_g1.store(mask, index1, vars.g);

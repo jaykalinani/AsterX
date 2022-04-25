@@ -330,6 +330,11 @@ public:
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  allisfinite(const gmat &x) {
+    return allisfinite(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   anyisnan(const gmat &x) {
     return anyisnan(x.elts);
   }
@@ -408,13 +413,13 @@ struct one<gmat<T, D, dnup1, dnup2, symm_t::symm> > {
 template <typename T, int D, dnup_t dnup1, dnup_t dnup2, symm_t symm>
 struct nan<gmat<T, D, dnup1, dnup2, symm> > {
   typedef gmat<T, D, dnup1, dnup2, symm> value_type;
-  static constexpr value_type value =
-      gmat<T, D, dnup1, dnup2, symm>::pure(nan<T>::value);
+  // static constexpr value_type value =
+  //     gmat<T, D, dnup1, dnup2, symm>::pure(nan<T>::value);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return value;
+    return gmat<T, D, dnup1, dnup2, symm>::pure(nan<T>());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return value;
+    return gmat<T, D, dnup1, dnup2, symm>::pure(nan<T>());
   }
 };
 

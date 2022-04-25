@@ -35,7 +35,8 @@ public:
 
   // Loop over a given box
   template <int CI, int CJ, int CK, int VS = 1, typename F>
-  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  // inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+  CCTK_ATTRIBUTE_NOINLINE void
   loop_box_device(const F &f, const array<int, dim> &restrict imin,
                   const array<int, dim> &restrict imax,
                   const array<int, dim> &restrict inormal) const {
@@ -47,10 +48,10 @@ public:
     static_assert(CJ == 0 || CJ == 1, "");
     static_assert(CK == 0 || CK == 1, "");
     static_assert(VS > 0, "");
-    // TODO static_assert(VS is power of 2);
 
     for (int d = 0; d < dim; ++d)
-      assert(!(imin[d] >= imax[d]));
+      if (imin[d] >= imax[d])
+        return;
 
     // array<bool, dim> bforward;
     // for (int d = 0; d < dim; ++d)
@@ -191,7 +192,7 @@ public:
                     const F &f) const {
     const array<int, dim> offset{CI, CJ, CK};
 
-    for (int rank = dim - 1; rank >= 0; --rank) {
+    for (int rank = dim; rank >= 0; --rank) {
 
       for (int nk = -1; nk <= +1; ++nk) {
         for (int nj = -1; nj <= +1; ++nj) {

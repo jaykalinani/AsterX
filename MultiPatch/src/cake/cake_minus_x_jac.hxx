@@ -7,7 +7,7 @@
 namespace MultiPatch {
 namespace Cake {
 
-inline std::tuple<jac_t, djac_t>
+CCTK_DEVICE CCTK_HOST inline std_tuple<jac_t, djac_t>
 cake_minus_x_jac(const PatchTransformations &pt, const svec_u &local_vars) {
   jac_t J{};
   djac_t dJ{};
@@ -185,7 +185,7 @@ cake_minus_x_jac(const PatchTransformations &pt, const svec_u &local_vars) {
              4 * r0 * r1 * (2 * Power(x, 2) + Power(y, 2) + Power(z, 2))))) /
       Power(r0 - r1, 2);
 
-  return std::make_tuple(J, dJ);
+  return std_make_tuple(J, dJ);
 }
 
 } // namespace Cake

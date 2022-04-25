@@ -88,6 +88,16 @@ template <typename T> struct simd {
 #endif
   }
 
+  constexpr ARITH_DEVICE ARITH_HOST T operator[](const std::ptrdiff_t n) const {
+    constexpr size_t vsize = tuple_size_v<simd>;
+#ifdef CCTK_DEBUG
+    assert(n >= 0 && n < int(vsize));
+#endif
+    T xarr[vsize];
+    storeu(xarr, *this);
+    return xarr[n];
+  }
+
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!(const simd &x) {
     return !x.elts;
   }
@@ -340,6 +350,11 @@ template <typename T> struct simd {
 #endif
   }
 
+  friend constexpr ARITH_DEVICE ARITH_HOST bool allisfinite(const simd &x) {
+    using std::isfinite;
+    return all(isfinite(x));
+  }
+
   friend constexpr ARITH_DEVICE ARITH_HOST bool anyisnan(const simd &x) {
     using std::isnan;
     return any(isnan(x));
@@ -406,6 +421,12 @@ template <typename T> struct simd {
                                                      const T &b) {
     using std::min;
     return min(x.elts, b);
+  }
+
+  friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> isfinite(const simd &x) {
+    // using std::isfinite;
+    // return isfinite(x.elts);
+    return !isnan(x) && !isinf(x);
   }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> isinf(const simd &x) {
@@ -521,12 +542,10 @@ template <typename T> struct simd {
   friend ostream &operator<<(ostream &os, const simd &x) {
     os << "Ⓢ[";
     constexpr size_t vsize = tuple_size_v<simd>;
-    T xarr[vsize];
-    storeu(xarr, x);
     for (size_t n = 0; n < vsize; ++n) {
       if (n != 0)
         os << ",";
-      os << xarr[n];
+      os << x[n];
     }
     os << "]";
     return os;
@@ -763,6 +782,22 @@ template <typename T> struct simdl {
 #endif
   }
 
+  constexpr ARITH_DEVICE ARITH_HOST bool
+  operator[](const std::ptrdiff_t n) const {
+    constexpr size_t vsize = tuple_size_v<simdl>;
+#ifdef CCTK_DEBUG
+    assert(n >= 0 && n < int(vsize));
+#endif
+    T xarr[vsize];
+#ifndef SIMD_CPU
+    // TOOD: Introduce `to_mask` for simd/simdl
+    storeu(xarr, nsimd::to_mask(elts));
+#else
+    *xarr = elts;
+#endif
+    return xarr[n];
+  }
+
   friend ARITH_DEVICE ARITH_HOST simdl operator!(const simdl &x) {
     return !x.elts;
   }
@@ -984,17 +1019,10 @@ template <typename T> struct simdl {
   friend ostream &operator<<(ostream &os, const simdl &x) {
     os << "Ⓑ[";
     constexpr size_t vsize = tuple_size_v<simdl>;
-    T xarr[vsize];
-    // TOOD: Introduce `to_mask` for simd/simdl
-#ifndef SIMD_CPU
-    storeu(xarr, to_mask(x.elts));
-#else
-    *xarr = x.elts;
-#endif
     for (size_t n = 0; n < vsize; ++n) {
       if (n != 0)
         os << ",";
-      os << (xarr[n] ? 1 : 0);
+      os << x[n];
     }
     os << "]";
     return os;

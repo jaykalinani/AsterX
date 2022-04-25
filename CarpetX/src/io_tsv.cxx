@@ -187,12 +187,11 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
         x0[d] = geom.ProbLo(d) + 0.5 * groupdata.indextype[d] * dx[d];
       }
       vect<int, dim> icoord;
-      for (int d = 0; d < dim; ++d) {
+      for (int d = 0; d < dim; ++d)
         if (outdirs[d])
           icoord[d] = INT_MIN;
         else
           icoord[d] = lrint((outcoords[d] - x0[d]) / dx[d]);
-      }
 
       const auto &mfab = *groupdata.mfab.at(tl);
       for (amrex::MFIter mfi(mfab); mfi.isValid(); ++mfi) {
@@ -276,7 +275,15 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
     assert(total_npoints % nvalues == 0);
     vector<int> iptr(total_npoints / nvalues);
     iota(iptr.begin(), iptr.end(), 0);
-    const auto compare = [&](const int i, const int j) {
+    const auto compare_eq = [&](const int i, const int j) {
+      array<int, nintvalues> pi, pj;
+      for (int d = 0; d < nintvalues; ++d)
+        pi[d] = int(all_data.at(i * nvalues + d));
+      for (int d = 0; d < nintvalues; ++d)
+        pj[d] = int(all_data.at(j * nvalues + d));
+      return pi == pj;
+    };
+    const auto compare_lt = [&](const int i, const int j) {
       array<int, nintvalues> pi, pj;
       for (int d = 0; d < nintvalues; ++d)
         pi[d] = int(all_data.at(i * nvalues + d));
@@ -284,7 +291,9 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
         pj[d] = int(all_data.at(j * nvalues + d));
       return pi < pj;
     };
-    sort(iptr.begin(), iptr.end(), compare);
+    sort(iptr.begin(), iptr.end(), compare_lt);
+    const auto last = unique(iptr.begin(), iptr.end(), compare_eq);
+    iptr.erase(last, iptr.end());
 
     vector<string> varnames;
     for (int vi = 0; vi < groupdata0.numvars; ++vi)
@@ -378,11 +387,11 @@ void OutputTSV(const cGH *restrict cctkGH) {
         break;
       case CCTK_GF:
         WriteTSVGFs(cctkGH, basename + ".x.tsv", gi, {true, false, false},
-                    {0, 0, 0});
+                    {0, out_xline_y, out_xline_z});
         WriteTSVGFs(cctkGH, basename + ".y.tsv", gi, {false, true, false},
-                    {0, 0, 0});
+                    {out_yline_x, 0, out_yline_z});
         WriteTSVGFs(cctkGH, basename + ".z.tsv", gi, {false, false, true},
-                    {0, 0, 0});
+                    {out_zline_x, out_zline_y, 0});
         break;
       default:
         assert(0);

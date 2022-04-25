@@ -9,6 +9,9 @@
 #include "cake_minus_z_jac.hxx"
 #include "cake.hxx"
 
+#include <cassert>
+#include <cmath>
+
 namespace MultiPatch {
 namespace Cake {
 
@@ -21,9 +24,9 @@ namespace Cake {
  * @param c the c local coordiante, ranging from (-1, 1)
  * @return The value of the core.
  */
-inline CCTK_REAL local_to_global_cake_core(const PatchTransformations &pt,
-                                           CCTK_REAL a, CCTK_REAL b,
-                                           CCTK_REAL c) {
+CCTK_DEVICE CCTK_HOST inline CCTK_REAL
+local_to_global_cake_core(const PatchTransformations &pt, CCTK_REAL a,
+                          CCTK_REAL b, CCTK_REAL c) {
   using MultiPatchTests::at_boundary;
   using MultiPatchTests::within;
   using std::sqrt;
@@ -98,8 +101,12 @@ CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
     global_vars = {base_z, base_y, -base_x};
     break;
   default:
+#ifndef __CUDACC__
     CCTK_VERROR("No local -> global transformations available for patch %s",
                 piece_name(static_cast<patch_piece>(patch)).c_str());
+#else
+    assert(0);
+#endif
     break;
   }
 
@@ -115,7 +122,7 @@ CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
  * @param global_vars The values of the local global (x, y, z)
  * @return A tuple containing the patch piece and the global coordinate triplet.
  */
-CCTK_DEVICE CCTK_HOST std::tuple<int, svec_u>
+CCTK_DEVICE CCTK_HOST std_tuple<int, svec_u>
 global2local(const PatchTransformations &pt, const svec_u &global_vars) {
   const auto x = global_vars(0);
   const auto y = global_vars(1);
@@ -192,12 +199,16 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
     break;
 
   default:
+#ifndef __CUDACC__
     CCTK_VERROR("No global -> local transformations available for patch %s",
                 piece_name(piece).c_str());
+#else
+    assert(0);
+#endif
     break;
   }
 
-  return std::make_tuple(static_cast<int>(piece), local_vars);
+  return std_make_tuple(static_cast<int>(piece), local_vars);
 }
 
 /**
@@ -223,7 +234,7 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
  * @return A tuple containing the local to global coordinate transformation,
  * the local to global jacobian matrix and it's derivative.
  */
-CCTK_DEVICE CCTK_HOST std::tuple<svec_u, jac_t, djac_t>
+CCTK_DEVICE CCTK_HOST std_tuple<svec_u, jac_t, djac_t>
 d2local_dglobal2(const PatchTransformations &pt, int patch,
                  const svec_u &local_vars) {
 
@@ -262,12 +273,16 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
     break;
 
   default:
+#ifndef __CUDACC__
     CCTK_VERROR("No jacobians available for patch %s",
                 piece_name(static_cast<patch_piece>(patch)).c_str());
+#else
+    assert(0);
+#endif
     break;
   }
 
-  return std::make_tuple(local_to_global_result, std::get<0>(jacobian_results),
+  return std_make_tuple(local_to_global_result, std::get<0>(jacobian_results),
                          std::get<1>(jacobian_results));
 } // namespace Cake
 
@@ -284,12 +299,12 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
  * @return A tuple containing the local to global coordinate transformation
  * and the local to global jacobian matrix.
  */
-CCTK_DEVICE CCTK_HOST std::tuple<svec_u, jac_t>
+CCTK_DEVICE CCTK_HOST std_tuple<svec_u, jac_t>
 dlocal_dglobal(const PatchTransformations &pt, int patch,
                const svec_u &local_vars) {
 
   const auto data = pt.d2local_dglobal2(pt, patch, local_vars);
-  return std::make_tuple(std::get<0>(data), std::get<1>(data));
+  return std_make_tuple(std::get<0>(data), std::get<1>(data));
 }
 
 /**

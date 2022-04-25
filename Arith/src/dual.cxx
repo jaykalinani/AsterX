@@ -16,8 +16,8 @@ void TestDual() {
   constexpr equal_to<CCTK_REAL> eq;
   constexpr equal_to<DREAL> eqd;
 
-  static_assert(eq(DREAL().val, 0));
-  static_assert(eq(DREAL().eps, 0));
+  static_assert(eq(DREAL(0).val, 0));
+  static_assert(eq(DREAL(0).eps, 0));
 
   static_assert(eq(DREAL(1).val, 1));
   static_assert(eq(DREAL(1).eps, 0));

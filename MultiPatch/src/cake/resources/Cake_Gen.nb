@@ -961,7 +961,7 @@ Cell[BoxData[{
        "\"\<_HXX\n#define MULTIPATCH_\>\"", "<>", 
        RowBox[{"ToUpperCase", "[", "functionsName", "]"}], "<>", 
        "\"\<_HXX\n\n#include \\\"cake.hxx\\\"\n\nnamespace MultiPatch {\n\
-namespace Cake {\n\ninline std::tuple<jac_t, djac_t> \>\"", "<>", 
+namespace Cake {\n\ninline std_tuple<jac_t, djac_t> \>\"", "<>", 
        "functionsName", "<>", 
        "\"\<(const PatchTransformations &pt, const svec_u &local_vars) {\n  \
 jac_t J{};\n  djac_t dJ{};\n\n  const auto r0 = \

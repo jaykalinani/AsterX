@@ -4,20 +4,12 @@
 SRCS =						\
 	adm.cxx					\
 	adm2.cxx				\
-	adm2boundaries.cxx			\
-	boundaries.cxx				\
-	boundaries1.cxx				\
-	boundaries2.cxx				\
 	constraints.cxx				\
-	constraintboundaries.cxx		\
 	enforce.cxx				\
 	initial1.cxx				\
 	initial2.cxx				\
 	rhs.cxx					\
-	rhsboundaries.cxx			\
         sync.cxx				\
-        sync1.cxx				\
-        sync2.cxx				\
 	test.cxx
 
 # Subdirectories containing source files

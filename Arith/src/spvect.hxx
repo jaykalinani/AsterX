@@ -322,6 +322,29 @@ ARITH_DEVICE ARITH_HOST T maximum(const spvect<I, T, V> &x) {
       -std::numeric_limits<T>::infinity(), x);
 }
 
+template <typename I, typename T, template <typename> typename V>
+struct zero<spvect<I, T, V> > {
+  typedef spvect<I, T, V> value_type;
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return spvect<I, T, V>();
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return spvect<I, T, V>();
+  }
+};
+
+template <typename I, typename T, template <typename> typename V>
+struct nan<spvect<I, T, V> > {
+  typedef spvect<I, T, V> value_type;
+  // static constexpr value_type value = spvect<I,T,V>::pure(nan_v<T>);
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
+    return spvect<I, T, V>::pure(nan<T>()());
+  }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
+    return spvect<I, T, V>::pure(nan<T>()());
+  }
+};
+
 } // namespace Arith
 
 #endif // #ifndef SPVECT_HXX

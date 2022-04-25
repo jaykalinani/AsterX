@@ -336,6 +336,11 @@ public:
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
+  allisfinite(const rten &x) {
+    return allisfinite(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST auto /*bool*/
   anyisnan(const rten &x) {
     return anyisnan(x.elts);
   }
@@ -368,13 +373,13 @@ template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
           dnup_t dnup4>
 struct zero<rten<T, D, dnup1, dnup2, dnup3, dnup4> > {
   typedef rten<T, D, dnup1, dnup2, dnup3, dnup4> value_type;
-  static constexpr value_type value =
-      rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(zero<T>::value);
+  // static constexpr value_type value =
+  //     rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(zero<T>::value);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return value;
+    return rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(zero<T>());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return value;
+    return rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(zero<T>());
   }
 };
 
@@ -382,13 +387,13 @@ template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
           dnup_t dnup4>
 struct nan<rten<T, D, dnup1, dnup2, dnup3, dnup4> > {
   typedef rten<T, D, dnup1, dnup2, dnup3, dnup4> value_type;
-  static constexpr value_type value =
-      rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(nan<T>::value);
+  // static constexpr value_type value =
+  //     rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(nan<T>::value);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return value;
+    return rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(nan<T>());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return value;
+    return rten<T, D, dnup1, dnup2, dnup3, dnup4>::pure(nan<T>());
   }
 };
 

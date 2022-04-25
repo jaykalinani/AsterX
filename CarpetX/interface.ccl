@@ -10,6 +10,7 @@ USES INCLUDE HEADER: div.hxx
 USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: rational.hxx
 USES INCLUDE HEADER: simd.hxx
+USES INCLUDE HEADER: tuple.hxx
 USES INCLUDE HEADER: vect.hxx
 
 INCLUDES HEADER: loop.hxx IN loop.hxx
@@ -91,6 +92,7 @@ PROVIDES FUNCTION Interpolate WITH CarpetX_Interpolate LANGUAGE C
 
 
 # Interpolation
+
 #TODO: This will be needed for interface with SymmetryInterpolate
 #CCTK_INT FUNCTION SymmetryInterpolate(
 #  CCTK_POINTER_TO_CONST IN cctkGH,
@@ -107,6 +109,17 @@ PROVIDES FUNCTION Interpolate WITH CarpetX_Interpolate LANGUAGE C
 #  CCTK_INT ARRAY IN output_array_types,
 #  CCTK_POINTER ARRAY IN output_arrays)
 #USES FUNCTION SymmetryInterpolate
+
+void FUNCTION MultiPatch_GlobalToLocal( \
+  CCTK_INT IN npoints, \
+  CCTK_REAL ARRAY IN globalsx, \
+  CCTK_REAL ARRAY IN globalsy, \
+  CCTK_REAL ARRAY IN globalsz, \
+  CCTK_INT ARRAY OUT patches, \
+  CCTK_REAL ARRAY OUT localsx, \
+  CCTK_REAL ARRAY OUT localsy, \
+  CCTK_REAL ARRAY OUT localsz)
+USES FUNCTION MultiPatch_GlobalToLocal
 
 CCTK_INT FUNCTION DriverInterpolate(
   CCTK_POINTER_TO_CONST IN cctkGH,
@@ -128,12 +141,12 @@ PROVIDES FUNCTION DriverInterpolate WITH CarpetX_DriverInterpolate LANGUAGE C
 
 PUBLIC:
 
-CCTK_REAL regrid_error TYPE=gf CENTERING={ccc} TAGS='checkpoing="no"'
+CCTK_REAL regrid_error TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {
   regrid_error
 } "Regridding condition"
 
-CCTK_REAL refinement_level TYPE=gf CENTERING={ccc} TAGS='checkpoing="no"'
+CCTK_REAL refinement_level TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {
   refinement_level
 } "Refinement level"

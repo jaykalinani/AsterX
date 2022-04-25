@@ -2,10 +2,8 @@
 
 # Source files in this directory
 SRCS =						\
-	boundaries.cxx				\
 	con2prim.cxx				\
 	estimate_error.cxx			\
-	flux_boundaries.cxx			\
 	fluxes.cxx				\
 	prim2con.cxx				\
 	rhs.cxx					\

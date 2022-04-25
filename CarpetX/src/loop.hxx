@@ -160,7 +160,8 @@ public:
 
   // Loop over a given box
   template <int CI, int CJ, int CK, int VS = 1, typename F>
-  CCTK_ATTRIBUTE_ALWAYS_INLINE void
+  // inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+  CCTK_ATTRIBUTE_NOINLINE void
   loop_box(const F &f, const array<int, dim> &restrict imin,
            const array<int, dim> &restrict imax,
            const array<int, dim> &restrict inormal) const {
@@ -291,7 +292,7 @@ public:
              const F &f) const {
     const array<int, dim> offset{CI, CJ, CK};
 
-    for (int rank = dim - 1; rank >= 0; --rank) {
+    for (int rank = dim; rank >= 0; --rank) {
 
       for (int nk = -1; nk <= +1; ++nk) {
         for (int nj = -1; nj <= +1; ++nj) {

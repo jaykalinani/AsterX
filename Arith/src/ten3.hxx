@@ -3,6 +3,7 @@
 
 #include "defs.hxx"
 #include "simd.hxx"
+#include "tuple.hxx"
 #include "vect.hxx"
 
 #include "vec.hxx" // for dnup_t, symm_t
@@ -16,7 +17,6 @@
 #include <functional>
 #include <initializer_list>
 #include <iostream>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -41,15 +41,15 @@ public:
   static constexpr int size_value = N;
 
 private:
-  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST tuple<int, int, int>
+  static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST std::array<int, 3>
   sorted(const int i, const int j, const int k) {
     using std::max, std::min;
     if (i <= j && i <= k)
-      return make_tuple(i, min(j, k), max(j, k));
+      return std::array<int, 3>{i, min(j, k), max(j, k)};
     else if (j <= i && j <= k)
-      return make_tuple(j, min(i, k), max(i, k));
+      return std::array<int, 3>{j, min(i, k), max(i, k)};
     else
-      return make_tuple(k, min(i, j), max(i, j));
+      return std::array<int, 3>{k, min(i, j), max(i, j)};
   }
 
   static constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST int
@@ -350,6 +350,11 @@ public:
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
+  allisfinite(const gten3 &x) {
+    return allisfinite(x.elts);
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST bool
   anyisnan(const gten3 &x) {
     return anyisnan(x.elts);
   }
@@ -407,13 +412,13 @@ template <typename T, int D, dnup_t dnup1, dnup_t dnup2, dnup_t dnup3,
           symm_t symm>
 struct nan<gten3<T, D, dnup1, dnup2, dnup3, symm> > {
   typedef gten3<T, D, dnup1, dnup2, dnup3, symm> value_type;
-  static constexpr value_type value =
-      gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>::value);
+  // static constexpr value_type value =
+  //     gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>::value);
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST operator value_type() const {
-    return value;
+    return gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>());
   }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST value_type operator()() const {
-    return value;
+    return gten3<T, D, dnup1, dnup2, dnup3, symm>::pure(nan<T>());
   }
 };
 

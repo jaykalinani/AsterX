@@ -3,13 +3,10 @@
 
 #include <fixmath.hxx>
 #include <cctk.h>
+#include <cctk_Parameters.h>
 
 #include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
-
-#ifdef __CUDACC__
-#include <nvToolsExt.h>
-#endif
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -415,13 +412,15 @@ template <int CENTERING, int ORDER, typename T>
 struct test_interp1d<CENTERING, CONS, ORDER, T> {
   test_interp1d() {
     for (int order = 0; order <= ORDER; ++order) {
-      // const auto f{[&](T x) {
-      //   return (order + 1) * pown(x, order);
-      // }};
+      // Function f, a polynomial
+      // const auto f{[&](T x) { return (order + 1) * pown(x, order); }};
+      // Integral of f (antiderivative)
       const auto fint{[&](T x) { return pown(x, order + 1); }};
       constexpr int n = (ORDER + 1) / 2 * 2 + 1;
       if (CENTERING == CC) {
+        array<T, n + 2> xs;
         array<T, n + 2> ys;
+        xs[0] = xs[n + 1] = 0 / T(0);
         ys[0] = ys[n + 1] = 0 / T(0);
         constexpr int i0 = n / 2;
         static_assert(interp1d<CENTERING, CONS, ORDER>::required_ghosts <= i0,
@@ -434,7 +433,8 @@ struct test_interp1d<CENTERING, CONS, ORDER, T> {
           const T dx = 1;
           const T xlo = x - dx / 2;
           const T xhi = x + dx / 2;
-          const T y = fint(xhi) - fint(xlo);
+          const T y = fint(xhi) - fint(xlo); // average of f over cell
+          xs[i + 1] = x;
           ys[i + 1] = y;
         }
         array<T, 2> x1;
@@ -681,6 +681,8 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
                                        amrex::Vector<amrex::BCRec> const &bcr,
                                        int actual_comp, int actual_state,
                                        amrex::RunOn gpu_or_cpu) {
+  DECLARE_CCTK_PARAMETERS;
+
   static once_flag have_timers;
   static vector<Timer> timers;
 
@@ -701,20 +703,27 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   const Timer &timer = timers.at(thread_num);
   Interval interval(timer);
 
-#ifdef __CUDACC__
-  nvtxRangePushA(timers.at(thread_num).get_name().c_str());
-#endif
-
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
   // ??? assert(gpu_or_cpu == RunOn::Cpu);
 
-  const amrex::BCRec bcrec(amrex::BCType::int_dir, amrex::BCType::int_dir,
-                           amrex::BCType::int_dir, amrex::BCType::int_dir,
-                           amrex::BCType::int_dir, amrex::BCType::int_dir);
-  assert(int(bcr.size()) >= ncomp);
+  // Boundaries
+  // TODO: Use `symmetries` in GHExt
+  const array<array<bool, 3>, 2> is_symmetry{{
+      {{periodic_x || reflection_x || dirichlet_x,
+        periodic_y || reflection_y || dirichlet_y,
+        periodic_z || reflection_z || dirichlet_z}},
+      {{periodic_x || reflection_upper_x || dirichlet_upper_x,
+        periodic_y || reflection_upper_y || dirichlet_upper_y,
+        periodic_z || reflection_upper_z || dirichlet_upper_z}},
+  }};
+
   for (const auto &bc : bcr)
-    assert(bc == bcrec);
+    for (int f = 0; f < 2; ++f)
+      for (int d = 0; d < dim; ++d)
+        assert(bc.data()[f * dim + d] == amrex::BCType::int_dir ||
+               (bc.data()[f * dim + d] == amrex::BCType::ext_dir &&
+                is_symmetry[f][d]));
 
   assert(actual_comp == 0);  // ???
   assert(actual_state == 0); // ???
@@ -744,7 +753,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   // Check that the input values are finite
 #ifdef CCTK_DEBUG
   for (int comp = 0; comp < ncomp; ++comp) {
-    const CCTK_REAL *restrict crseptr = crse.dataPtr(crse_comp + comp);
+    const CCTK_REAL *restrict const crseptr = crse.dataPtr(crse_comp + comp);
     for (int k = source_region.loVect()[2]; k <= source_region.hiVect()[2];
          ++k) {
       for (int j = source_region.loVect()[1]; j <= source_region.hiVect()[1];
@@ -858,10 +867,6 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 #ifdef __CUDACC__
   amrex::Gpu::synchronize();
   AMREX_GPU_ERROR_CHECK();
-#endif
-
-#ifdef __CUDACC__
-  nvtxRangePop();
 #endif
 }
 

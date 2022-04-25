@@ -5,6 +5,7 @@
 #include "valid.hxx"
 
 #include <rational.hxx>
+#include <tuple.hxx>
 
 #include <cctk.h>
 
@@ -23,7 +24,6 @@
 #include <functional>
 #include <memory>
 #include <ostream>
-#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -35,6 +35,10 @@ using Loop::dim;
 
 using rat64 = rational<int64_t>;
 
+// TODO: It seems that AMReX now also has `RB90`, `RB180`, and
+// `PolarB` boundary conditions. Make these available as well.
+enum class symmetry_t { none, periodic, reflection, dirichlet };
+
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
 
@@ -45,6 +49,7 @@ class CactusAmrCore final : public amrex::AmrCore {
   int patch;
 
 public:
+  bool cactus_is_initialized = false;
   vector<bool> level_modified;
 
   CactusAmrCore();
@@ -145,14 +150,36 @@ struct GHExt {
   GlobalData globaldata;
 
   struct PatchData {
+    PatchData() = delete;
+    PatchData(const PatchData &) = delete;
+    PatchData &operator=(const PatchData &) = delete;
+    PatchData(PatchData &&) = default;
+    PatchData &operator=(PatchData &&) = default;
+
+    PatchData(int patch);
+
     int patch;
+
+    array<array<symmetry_t, dim>, 2> symmetries;
+    bool all_faces_have_symmetries() const;
 
     // AMReX grid structure
     // TODO: convert this from unique_ptr to optional
     unique_ptr<CactusAmrCore> amrcore;
 
     struct LevelData {
+      LevelData() = delete;
+      LevelData(const LevelData &) = delete;
+      LevelData &operator=(const LevelData &) = delete;
+      LevelData(LevelData &&) = default;
+      LevelData &operator=(LevelData &&) = default;
+
+      LevelData(const int patch, const int level, const amrex::BoxArray &ba,
+                const amrex::DistributionMapping &dm,
+                const function<string()> &why);
+
       int patch, level;
+
       const PatchData &patchdata() const;
       PatchData &patchdata();
 
@@ -169,7 +196,15 @@ struct GHExt {
       unique_ptr<amrex::FabArrayBase> fab;
 
       struct GroupData : public CommonGroupData {
-        GroupData(int patch, int level, int gi);
+        GroupData() = delete;
+        GroupData(const GroupData &) = delete;
+        GroupData &operator=(const GroupData &) = delete;
+        GroupData(GroupData &&) = delete;
+        GroupData &operator=(GroupData &&) = delete;
+
+        GroupData(int patch, int level, int gi, const amrex::BoxArray &ba,
+                  const amrex::DistributionMapping &dm,
+                  const function<string()> &why);
 
         int patch, level;
 
@@ -178,7 +213,27 @@ struct GHExt {
 
         array<int, dim> indextype;
         array<int, dim> nghostzones;
+
         vector<array<int, dim> > parities;
+        vector<CCTK_REAL> dirichlet_values;
+        amrex::Vector<amrex::BCRec> bcrecs;
+
+        struct apply_physbcs_t {
+          apply_physbcs_t() = delete;
+          apply_physbcs_t(const apply_physbcs_t &) = default;
+          apply_physbcs_t(apply_physbcs_t &&) = default;
+          apply_physbcs_t &operator=(const apply_physbcs_t &) = default;
+          apply_physbcs_t &operator=(apply_physbcs_t &&) = default;
+          apply_physbcs_t(const GroupData &groupdata) : groupdata(groupdata) {}
+
+          const GroupData &groupdata;
+          void operator()(const amrex::Box &box, amrex::FArrayBox &dest,
+                          int dcomp, int numcomp, const amrex::Geometry &geom,
+                          CCTK_REAL time,
+                          const amrex::Vector<amrex::BCRec> &bcr, int bcomp,
+                          int orig_comp) const;
+        };
+        std::unique_ptr<amrex::PhysBCFunct<apply_physbcs_t> > physbc;
 
         // each amrex::MultiFab has numvars components
         vector<unique_ptr<amrex::MultiFab> > mfab; // [time level]
@@ -237,12 +292,18 @@ GHExt::PatchData::LevelData::GroupData::leveldata() {
 
 amrex::Interpolater *get_interpolator(const array<int, dim> indextype);
 
-typedef void apply_physbcs_t(const amrex::Box &, const amrex::FArrayBox &, int,
-                             int, const amrex::Geometry &, CCTK_REAL,
-                             const amrex::Vector<amrex::BCRec> &, int, int);
-typedef amrex::PhysBCFunct<apply_physbcs_t *> CarpetXPhysBCFunct;
-tuple<CarpetXPhysBCFunct, amrex::Vector<amrex::BCRec> >
-get_boundaries(const GHExt::PatchData::LevelData::GroupData &groupdata);
+struct apply_physbcs_t {
+  apply_physbcs_t() = delete;
+  apply_physbcs_t(const GHExt::PatchData::LevelData::GroupData &groupdata)
+      : groupdata(groupdata) {}
+
+  const GHExt::PatchData::LevelData::GroupData &groupdata;
+
+  void operator()(const amrex::Box &box, amrex::FArrayBox &dest, int dcomp,
+                  int numcomp, const amrex::Geometry &geom, CCTK_REAL time,
+                  const amrex::Vector<amrex::BCRec> &bcr, int bcomp,
+                  int orig_comp) const;
+};
 
 } // namespace CarpetX
 

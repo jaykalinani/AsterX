@@ -298,63 +298,67 @@ calc_derivs2(const cGH *restrict const cctkGH, const GF3D2<const T> &gf1,
 }
 
 template <typename T, dnup_t dnup>
-void calc_copy(const cGH *restrict const cctkGH,
-               const vec<GF3D2<const T>, dim, dnup> &gf0_,
-               const vec<GF3D5<T>, dim, dnup> &gf_, const GF3D5layout &layout) {
+void CCTK_ATTRIBUTE_NOINLINE
+calc_copy(const cGH *restrict const cctkGH,
+          const vec<GF3D2<const T>, dim, dnup> &gf0_,
+          const vec<GF3D5<T>, dim, dnup> &gf_, const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     calc_copy(cctkGH, gf0_(a), gf_(a), layout);
 }
 
 template <typename T, dnup_t dnup>
-void calc_derivs(const cGH *restrict const cctkGH,
-                 const vec<GF3D2<const T>, dim, dnup> &gf0_,
-                 const vec<GF3D5<T>, dim, dnup> &gf_,
-                 const vec<vec<GF3D5<T>, dim, DN>, dim, dnup> &dgf_,
-                 const GF3D5layout &layout) {
+void CCTK_ATTRIBUTE_NOINLINE
+calc_derivs(const cGH *restrict const cctkGH,
+            const vec<GF3D2<const T>, dim, dnup> &gf0_,
+            const vec<GF3D5<T>, dim, dnup> &gf_,
+            const vec<vec<GF3D5<T>, dim, DN>, dim, dnup> &dgf_,
+            const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     calc_derivs(cctkGH, gf0_(a), gf_(a), dgf_(a), layout);
 }
 
 template <typename T, dnup_t dnup>
-void calc_derivs2(const cGH *restrict const cctkGH,
-                  const vec<GF3D2<const T>, dim, dnup> &gf0_,
-                  const vec<GF3D5<T>, dim, dnup> &gf_,
-                  const vec<vec<GF3D5<T>, dim, DN>, dim, dnup> &dgf_,
-                  const vec<smat<GF3D5<T>, dim, DN, DN>, dim, dnup> &ddgf_,
-                  const GF3D5layout &layout) {
+void CCTK_ATTRIBUTE_NOINLINE
+calc_derivs2(const cGH *restrict const cctkGH,
+             const vec<GF3D2<const T>, dim, dnup> &gf0_,
+             const vec<GF3D5<T>, dim, dnup> &gf_,
+             const vec<vec<GF3D5<T>, dim, DN>, dim, dnup> &dgf_,
+             const vec<smat<GF3D5<T>, dim, DN, DN>, dim, dnup> &ddgf_,
+             const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     calc_derivs2(cctkGH, gf0_(a), gf_(a), dgf_(a), ddgf_(a), layout);
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
-void calc_copy(const cGH *restrict const cctkGH,
-               const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
-               const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
-               const GF3D5layout &layout) {
+void CCTK_ATTRIBUTE_NOINLINE calc_copy(
+    const cGH *restrict const cctkGH,
+    const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
+    const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_, const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
       calc_copy(cctkGH, gf0_(a, b), gf_(a, b), layout);
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
-void calc_derivs(const cGH *restrict const cctkGH,
-                 const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
-                 const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
-                 const smat<vec<GF3D5<T>, dim, DN>, dim, dnup1, dnup2> &dgf_,
-                 const GF3D5layout &layout) {
+void CCTK_ATTRIBUTE_NOINLINE
+calc_derivs(const cGH *restrict const cctkGH,
+            const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
+            const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
+            const smat<vec<GF3D5<T>, dim, DN>, dim, dnup1, dnup2> &dgf_,
+            const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
       calc_derivs(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), layout);
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
-void calc_derivs2(
-    const cGH *restrict const cctkGH,
-    const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
-    const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
-    const smat<vec<GF3D5<T>, dim, DN>, dim, dnup1, dnup2> &dgf_,
-    const smat<smat<GF3D5<T>, dim, DN, DN>, dim, dnup1, dnup2> &ddgf_,
-    const GF3D5layout &layout) {
+void CCTK_ATTRIBUTE_NOINLINE
+calc_derivs2(const cGH *restrict const cctkGH,
+             const smat<GF3D2<const T>, dim, dnup1, dnup2> &gf0_,
+             const smat<GF3D5<T>, dim, dnup1, dnup2> &gf_,
+             const smat<vec<GF3D5<T>, dim, DN>, dim, dnup1, dnup2> &dgf_,
+             const smat<smat<GF3D5<T>, dim, DN, DN>, dim, dnup1, dnup2> &ddgf_,
+             const GF3D5layout &layout) {
   for (int a = 0; a < 3; ++a)
     for (int b = a; b < 3; ++b)
       calc_derivs2(cctkGH, gf0_(a, b), gf_(a, b), dgf_(a, b), ddgf_(a, b),
