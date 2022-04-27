@@ -518,6 +518,16 @@ template <typename T, int D> struct vect {
     using std::max;
     return fmap([](const T &x, const T &y) { return max(x, y); }, x, y);
   }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  max(const T &a, const vect &y) {
+    using std::max;
+    return fmap([&](const T &y) { return max(a, y); }, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect max(const vect &x,
+                                                                 const T &a) {
+    using std::max;
+    return fmap([&](const T &x) { return max(x, a); }, x);
+  }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   max1(const vect &x, const vect &y) {
@@ -541,6 +551,16 @@ template <typename T, int D> struct vect {
   min(const vect &x, const vect &y) {
     using std::min;
     return fmap([](const T &x, const T &y) { return min(x, y); }, x, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  min(const T &a, const vect &y) {
+    using std::min;
+    return fmap([&](const T &y) { return min(a, y); }, y);
+  }
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect min(const vect &x,
+                                                                 const T &a) {
+    using std::min;
+    return fmap([&](const T &x) { return min(x, a); }, x);
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
