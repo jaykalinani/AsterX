@@ -100,16 +100,22 @@ array<array<symmetry_t, dim>, 2> get_symmetries() {
       {{bool(dirichlet_upper_x), bool(dirichlet_upper_y),
         bool(dirichlet_upper_z)}},
   }};
+  const array<array<bool, 3>, 2> is_von_neumann{{
+      {{bool(von_neumann_x), bool(von_neumann_y), bool(von_neumann_z)}},
+      {{bool(von_neumann_upper_x), bool(von_neumann_upper_y),
+        bool(von_neumann_upper_z)}},
+  }};
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
       assert(is_periodic[f][d] + is_reflection[f][d] + is_dirichlet[f][d] <= 1);
   array<array<symmetry_t, dim>, 2> symmetries;
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
-      symmetries[f][d] = is_periodic[f][d]     ? symmetry_t::periodic
-                         : is_reflection[f][d] ? symmetry_t::reflection
-                         : is_dirichlet[f][d]  ? symmetry_t::dirichlet
-                                               : symmetry_t::none;
+      symmetries[f][d] = is_periodic[f][d]      ? symmetry_t::periodic
+                         : is_reflection[f][d]  ? symmetry_t::reflection
+                         : is_dirichlet[f][d]   ? symmetry_t::dirichlet
+                         : is_von_neumann[f][d] ? symmetry_t::von_neumann
+                                                : symmetry_t::none;
   return symmetries;
 }
 
@@ -278,7 +284,7 @@ vector<array<int, dim> > get_group_parities(const int gi) {
   vector<array<int, dim> > parities(nelems / dim);
   for (size_t n = 0; n < parities.size(); ++n)
     for (int d = 0; d < dim; ++d)
-      parities.at(n)[d] = parities1.at(dim * n + d);
+      parities.at(n).at(d) = parities1.at(dim * n + d);
   return parities;
 }
 
@@ -856,10 +862,35 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         break;
       }
 
+      case symmetry_t::von_neumann: {
+        const int source = face == 0 ? imin[dir] : imax[dir] - 1;
+        if (face == 0)
+          assert(source < amax[dir]);
+        else
+          assert(amin[dir] <= source);
+
+        for (int comp = 0; comp < numcomp; ++comp) {
+          for (int k = bmin[2]; k < bmax[2]; ++k) {
+            for (int j = bmin[1]; j < bmax[1]; ++j) {
+#pragma omp simd
+              for (int i = bmin[0]; i < bmax[0]; ++i) {
+                const Arith::vect<int, dim> dst{i, j, k};
+                Arith::vect<int, dim> src = dst;
+                src[dir] = source;
+
+                dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
+                    dest(amrex::IntVect(src[0], src[1], src[2]), dcomp + comp);
+              }
+            }
+          }
+        }
+        break;
+      }
+
       case symmetry_t::reflection: {
         const int offset = face == 0
                                ? 2 * imin[dir] - groupdata.indextype.at(dir)
-                               : 2 * imax[dir] + groupdata.indextype.at(dir);
+                               : 2 * imax[dir] - groupdata.indextype.at(dir);
         if (face == 0)
           assert(offset - bmin[dir] < amax[dir]);
         else
@@ -873,12 +904,12 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
               for (int i = bmin[0]; i < bmax[0]; ++i) {
                 const Arith::vect<int, dim> dst{i, j, k};
                 Arith::vect<int, dim> src = dst;
-                // if (f == 0)
+                // if (face == 0)
                 //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
-                //   groupdata.indextype[dir];
+                //   groupdata.indextype.at(dir);
                 // else
-                //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) +
-                //   groupdata.indextype[dir];
+                //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) -
+                //   groupdata.indextype.at(dir);
                 src[dir] = offset - dst[dir];
 
                 dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
@@ -1910,14 +1941,19 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
       {{bool(dirichlet_upper_x), bool(dirichlet_upper_y),
         bool(dirichlet_upper_z)}},
   }};
+  const array<array<bool, 3>, 2> is_von_neumann{{
+      {{bool(von_neumann_x), bool(von_neumann_y), bool(von_neumann_z)}},
+      {{bool(von_neumann_upper_x), bool(von_neumann_upper_y),
+        bool(von_neumann_upper_z)}},
+  }};
 
   for (int d = 0; d < dim; ++d) {
     for (int f = 0; f < 2; ++f) {
       bndsize[2 * d + f] = cctkGH->cctk_nghostzones[d];
       is_ghostbnd[2 * d + f] = cctkGH->cctk_bbox[2 * d + f];
-      is_symbnd[2 * d + f] =
-          !is_ghostbnd[2 * d + f] &&
-          (is_periodic[f][d] || is_reflection[f][d] || is_dirichlet[f][d]);
+      is_symbnd[2 * d + f] = !is_ghostbnd[2 * d + f] &&
+                             (is_periodic[f][d] || is_reflection[f][d] ||
+                              is_dirichlet[f][d] || is_von_neumann[f][d]);
       is_physbnd[2 * d + f] = !is_ghostbnd[2 * d + f] && !is_symbnd[2 * d + f];
     }
   }
