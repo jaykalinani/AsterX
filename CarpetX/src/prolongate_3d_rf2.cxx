@@ -609,6 +609,7 @@ void interp3d(const T *restrict const crseptr,
 #endif
   };
 
+  // TODO: Use `loop_region` from driver.cxx (to be moved to loop.hxx)
 #ifndef __CUDACC__
   // CPU
 

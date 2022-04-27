@@ -1,6 +1,7 @@
 #include "driver.hxx"
 #include "io.hxx"
 #include "logo.hxx"
+#include "loop_device.hxx"
 #include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
 #include "timer.hxx"
@@ -20,6 +21,7 @@
 #include <omp.h>
 #include <mpi.h>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -774,6 +776,40 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
   }
 }
 
+// TODO: Move this function to loop.hxx
+template <typename F>
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
+loop_region(const F &f, const Arith::vect<int, dim> &imin,
+            const Arith::vect<int, dim> &imax) {
+  using std::max;
+  const int npoints = prod(max(0, imax - imin));
+  if (npoints == 0)
+    return;
+
+#ifndef __CUDACC__
+  // CPU
+  for (int k = imin[2]; k < imax[2]; ++k) {
+    for (int j = imin[1]; j < imax[1]; ++j) {
+#pragma omp simd
+      for (int i = imin[0]; i < imax[0]; ++i) {
+        const Arith::vect<int, dim> p{i, j, k};
+        f(p);
+      }
+    }
+  }
+#else
+  // GPU
+  const amrex::Box box(amrex::IntVect(imin[0], imin[1], imin[2]),
+                       amrex::IntVect(imax[0] - 1, imax[1] - 1, imax[2] - 1));
+  amrex::launch(
+      box, [=] CCTK_DEVICE(const amrex::Box &box) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        const Arith::vect<int, dim> p{box.smallEnd(0), box.smallEnd(1),
+                                      box.smallEnd(2)};
+        f(p);
+      });
+#endif
+}
+
 void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
     const amrex::Box &box, amrex::FArrayBox &dest, const int dcomp,
     const int numcomp, const amrex::Geometry &geom, const CCTK_REAL time,
@@ -802,6 +838,14 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
     assert(dest.box().smallEnd(d) <= amin[d]);
     assert(dest.box().bigEnd(d) + 1 >= amax[d]);
   }
+
+  // dest index domain
+  const Arith::vect<int, dim> dmin{
+      dest.box().smallEnd(0), dest.box().smallEnd(1), dest.box().smallEnd(2)};
+  const Arith::vect<int, dim> dmax{dest.box().bigEnd(0) + 1,
+                                   dest.box().bigEnd(1) + 1,
+                                   dest.box().bigEnd(2) + 1};
+  const GF3D2layout layout(dmin, dmax);
 
   for (int dir = 0; dir < dim; ++dir) {
     for (int face = 0; face < 2; ++face) {
@@ -847,17 +891,14 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
 
       case symmetry_t::dirichlet: {
         for (int comp = 0; comp < numcomp; ++comp) {
+          GF3D2<CCTK_REAL> var(layout, dest.dataPtr(comp));
           const CCTK_REAL dirichlet_value = groupdata.dirichlet_values.at(comp);
-          for (int k = bmin[2]; k < bmax[2]; ++k) {
-            for (int j = bmin[1]; j < bmax[1]; ++j) {
-#pragma omp simd
-              for (int i = bmin[0]; i < bmax[0]; ++i) {
-                const Arith::vect<int, dim> dst{i, j, k};
-                dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
-                    dirichlet_value;
-              }
-            }
-          }
+          loop_region(
+              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                    var.store(dst, dirichlet_value);
+                  },
+              bmin, bmax);
         }
         break;
       }
@@ -870,19 +911,15 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
           assert(amin[dir] <= source);
 
         for (int comp = 0; comp < numcomp; ++comp) {
-          for (int k = bmin[2]; k < bmax[2]; ++k) {
-            for (int j = bmin[1]; j < bmax[1]; ++j) {
-#pragma omp simd
-              for (int i = bmin[0]; i < bmax[0]; ++i) {
-                const Arith::vect<int, dim> dst{i, j, k};
-                Arith::vect<int, dim> src = dst;
-                src[dir] = source;
-
-                dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
-                    dest(amrex::IntVect(src[0], src[1], src[2]), dcomp + comp);
-              }
-            }
-          }
+          GF3D2<CCTK_REAL> var(layout, dest.dataPtr(comp));
+          loop_region(
+              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                    Arith::vect<int, dim> src = dst;
+                    src[dir] = source;
+                    var.store(dst, var(src));
+                  },
+              bmin, bmax);
         }
         break;
       }
@@ -898,26 +935,21 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
 
         for (int comp = 0; comp < numcomp; ++comp) {
           const int parity = groupdata.parities.at(comp).at(dir);
-          for (int k = bmin[2]; k < bmax[2]; ++k) {
-            for (int j = bmin[1]; j < bmax[1]; ++j) {
-#pragma omp simd
-              for (int i = bmin[0]; i < bmax[0]; ++i) {
-                const Arith::vect<int, dim> dst{i, j, k};
-                Arith::vect<int, dim> src = dst;
-                // if (face == 0)
-                //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
-                //   groupdata.indextype.at(dir);
-                // else
-                //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) -
-                //   groupdata.indextype.at(dir);
-                src[dir] = offset - dst[dir];
-
-                dest(amrex::IntVect(dst[0], dst[1], dst[2]), dcomp + comp) =
-                    parity *
-                    dest(amrex::IntVect(src[0], src[1], src[2]), dcomp + comp);
-              }
-            }
-          }
+          GF3D2<CCTK_REAL> var(layout, dest.dataPtr(comp));
+          loop_region(
+              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                    Arith::vect<int, dim> src = dst;
+                    // if (face == 0)
+                    //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
+                    //   groupdata.indextype.at(dir);
+                    // else
+                    //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) -
+                    //   groupdata.indextype.at(dir);
+                    src[dir] = offset - dst[dir];
+                    var.store(dst, parity * var(src));
+                  },
+              bmin, bmax);
         }
         break;
       }
