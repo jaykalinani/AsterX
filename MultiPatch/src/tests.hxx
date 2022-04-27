@@ -17,7 +17,7 @@ constexpr const int random_seed = 100;
 /**
  * The "grid spacing" used in finite difference operators
  */
-constexpr const CCTK_REAL fd_delta = 1.0e-8;
+constexpr const CCTK_REAL fd_delta = 1.0e-3;
 
 /**
  * The floating point comparison tolerance when testing the equality of exact
@@ -86,15 +86,11 @@ enum class string_color { green, red };
  * @param string The string to color.
  * @return The colored string.
  */
-<<<<<<< HEAD
-template <string_color color> std::string colored(const std::string &string) {
-=======
 template <string_color color>
 constexpr const std::string colored(const std ::string &str) {
   std::string output;
   output.reserve(str.size() + 17);
 
->>>>>>> c4f9f7d (Fixed a bug where failure messages would show green. Changed the colored string creation function to use pre-allocated strings. Added name to README.)
   if constexpr (color == string_color::red) {
     output = "\033[31;1m";
     output += str;
@@ -112,12 +108,12 @@ constexpr const std::string colored(const std ::string &str) {
  * Determines the direction that a finite difference derivative will be
  * performed
  */
-enum class fd_direction { x, y, z };
+enum class fd_direction { x = 0, y = 1, z = 2 };
 
 /**
- * Computes the second order accurate finite difference derivative of a function
- * that takes a vector as input and produces another vector as output in a
- * specified direction.
+ * Computes the second order accurate finite difference derivative of a
+ * function that takes a vector as input and produces another vector as output
+ * in a specified direction.
  *
  * @param function The function to derivate
  * @param point The point where the derivative is to be computed.
@@ -154,6 +150,40 @@ inline vector_t fd_4(std::function<vector_t(const vector_t &)> function,
   const auto f_p_2d = function(point_p_2d);
   const auto f_m_1d = function(point_m_1d);
   const auto f_m_2d = function(point_m_2d);
+  return (f_m_2d - 8 * f_m_1d + 8 * f_p_1d - f_p_2d) / (12 * fd_delta);
+}
+
+template <fd_direction dir_inner, fd_direction dir_outer, typename vector_t>
+inline vector_t fd2_4(std::function<vector_t(const vector_t &)> function,
+                      vector_t point) {
+
+  vector_t point_p_1d = point;
+  vector_t point_p_2d = point;
+  vector_t point_m_1d = point;
+  vector_t point_m_2d = point;
+
+  if constexpr (dir_outer == fd_direction::x) {
+    point_p_1d += {fd_delta, 0, 0};
+    point_p_2d += {2 * fd_delta, 0, 0};
+    point_m_1d -= {fd_delta, 0, 0};
+    point_m_2d -= {2 * fd_delta, 0, 0};
+  } else if constexpr (dir_outer == fd_direction::y) {
+    point_p_1d += {0, fd_delta, 0};
+    point_p_2d += {0, 2 * fd_delta, 0};
+    point_m_1d -= {0, fd_delta, 0};
+    point_m_2d -= {0, 2 * fd_delta, 0};
+  } else if constexpr (dir_outer == fd_direction::z) {
+    point_p_1d += {0, 0, fd_delta};
+    point_p_2d += {0, 0, 2 * fd_delta};
+    point_m_1d -= {0, 0, fd_delta};
+    point_m_2d -= {0, 0, 2 * fd_delta};
+  }
+
+  const auto f_p_1d = fd_4<dir_inner>(function, point_p_1d);
+  const auto f_p_2d = fd_4<dir_inner>(function, point_p_2d);
+  const auto f_m_1d = fd_4<dir_inner>(function, point_m_1d);
+  const auto f_m_2d = fd_4<dir_inner>(function, point_m_2d);
+
   return (f_m_2d - 8 * f_m_1d + 8 * f_p_1d - f_p_2d) / (12 * fd_delta);
 }
 

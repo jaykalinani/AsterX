@@ -218,7 +218,7 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
  *
  * Note that:
  * J(i)(j) = $J^{i}_{j} = \frac{d a^i}{d x^j}$.
- * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d}{d x^k} \left( \frac{d a^i}{d x^j}
+ * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d^2 a^i}{d x^j d x^k}
  * \right)$.
  *
  * TODO: Erik says: "You have six files that contain very similar code.
@@ -283,7 +283,7 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
   }
 
   return std_make_tuple(local_to_global_result, std::get<0>(jacobian_results),
-                         std::get<1>(jacobian_results));
+                        std::get<1>(jacobian_results));
 } // namespace Cake
 
 /**
