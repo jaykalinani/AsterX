@@ -145,9 +145,6 @@ extern "C" void GRHydroToyGPU_Con2Prim(CCTK_ARGUMENTS) {
       });
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 /***************************************************************************
 2D Newton-Raphson for just-hydro ideal-fluid c2p
 ------------------------------------
@@ -202,9 +199,6 @@ CCTK_DEVICE CCTK_INT mnewt(CCTK_INT ntrial, CCTK_REAL x[], CCTK_REAL Dens,
   }
   return 1;
 }
-#ifdef __cplusplus
-}
-#endif
 
 /***************************************************************************
 2DNRNoble just-hydro ideal-fluid flat-space C2P
