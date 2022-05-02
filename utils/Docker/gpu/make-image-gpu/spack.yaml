@@ -4,7 +4,6 @@ spack:
     - boost cxxstd=17 +mpi
     - cuda
     - fftw +mpi +openmp
-    - googletest
     - gsl
     - hdf5 @1.10.7 +cxx +fortran +hl +mpi +threadsafe
     - hwloc

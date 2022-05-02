@@ -118,7 +118,7 @@ ExternalLibraries/HDF5
 #DISABLED ExternalLibraries/LAPACK
 ExternalLibraries/MPI
 ExternalLibraries/OpenBLAS
-ExternalLibraries/PETSc
+#ExternalLibraries/PETSc
 ExternalLibraries/hwloc
 ExternalLibraries/zlib
 
@@ -127,7 +127,7 @@ ExternalLibraries/zlib
 !TYPE     = svn
 !URL      = https://github.com/wokast/RePrimAnd.git/trunk/ET_interface/thorns/$2
 !CHECKOUT =
-ExternalLibraries/RePrimAnd
+# ExternalLibraries/RePrimAnd
 
 
 
@@ -152,7 +152,8 @@ CarpetX/DGCoordinates
 CarpetX/DGWaveToy
 CarpetX/ErrorEstimator
 CarpetX/Forms
-CarpetX/GRHydroToyGPU
+#CarpetX/GRHydroToyGPU
+CarpetX/AsterX
 CarpetX/Hydro
 CarpetX/HydroBase
 CarpetX/HydroInitial

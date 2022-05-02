@@ -3,7 +3,6 @@ spack:
     - amrex ~fortran +hdf5 +openmp +particles +shared ^cmake @3.19.5
     - boost cxxstd=17 +mpi
     - fftw +mpi +openmp
-    - googletest
     - gsl
     - hdf5 @1.10.7 +cxx +fortran +hl +mpi +threadsafe
     - hwloc
