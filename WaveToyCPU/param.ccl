@@ -51,14 +51,6 @@ CCTK_REAL width "width"
 
 
 
-KEYWORD boundary_condition "Boundary condition"
-{
-  "none" :: ""
-  "initial" :: ""
-} "none"
-
-
-
 CCTK_REAL phi_abs "Typical value of phi to determine absolute error" STEERABLE=always
 {
   (0.0:* :: ""
