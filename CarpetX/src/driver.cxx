@@ -846,6 +846,7 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                                    dest.box().bigEnd(1) + 1,
                                    dest.box().bigEnd(2) + 1};
   const GF3D2layout layout(dmin, dmax);
+  CCTK_REAL *restrict const destptr = dest.dataPtr();
 
   for (int dir = 0; dir < dim; ++dir) {
     for (int face = 0; face < 2; ++face) {
@@ -890,16 +891,23 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         // multiple conditions might apply.
 
       case symmetry_t::dirichlet: {
-        for (int comp = 0; comp < numcomp; ++comp) {
-          GF3D2<CCTK_REAL> var(layout, dest.dataPtr(comp));
-          const CCTK_REAL dirichlet_value = groupdata.dirichlet_values.at(comp);
-          loop_region(
-              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        amrex::Gpu::ManagedVector<CCTK_REAL> dirichlet_values(numcomp);
+        for (int comp = 0; comp < numcomp; ++comp)
+          dirichlet_values[comp] = groupdata.dirichlet_values.at(comp);
+        const CCTK_REAL *restrict const dirichlet_values_ptr =
+            dirichlet_values.data();
+
+        loop_region(
+            [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                  for (int comp = 0; comp < numcomp; ++comp) {
+                    GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
+                    const CCTK_REAL dirichlet_value =
+                        dirichlet_values_ptr[comp];
                     var.store(dst, dirichlet_value);
-                  },
-              bmin, bmax);
-        }
+                  }
+                },
+            bmin, bmax);
         break;
       }
 
@@ -910,17 +918,17 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         else
           assert(amin[dir] <= source);
 
-        for (int comp = 0; comp < numcomp; ++comp) {
-          GF3D2<CCTK_REAL> var(layout, dest.dataPtr(comp));
-          loop_region(
-              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                    Arith::vect<int, dim> src = dst;
-                    src[dir] = source;
+        loop_region(
+            [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                  Arith::vect<int, dim> src = dst;
+                  src[dir] = source;
+                  for (int comp = 0; comp < numcomp; ++comp) {
+                    GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
                     var.store(dst, var(src));
-                  },
-              bmin, bmax);
-        }
+                  }
+                },
+            bmin, bmax);
         break;
       }
 
@@ -933,24 +941,29 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         else
           assert(amin[dir] <= offset - (bmax[dir] - 1));
 
-        for (int comp = 0; comp < numcomp; ++comp) {
-          const int parity = groupdata.parities.at(comp).at(dir);
-          GF3D2<CCTK_REAL> var(layout, dest.dataPtr(comp));
-          loop_region(
-              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                    Arith::vect<int, dim> src = dst;
-                    // if (face == 0)
-                    //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
-                    //   groupdata.indextype.at(dir);
-                    // else
-                    //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) -
-                    //   groupdata.indextype.at(dir);
-                    src[dir] = offset - dst[dir];
+        amrex::Gpu::ManagedVector<int> parities(numcomp);
+        for (int comp = 0; comp < numcomp; ++comp)
+          parities[comp] = groupdata.parities.at(comp).at(dir);
+        const int *restrict const parities_ptr = parities.data();
+
+        loop_region(
+            [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                  Arith::vect<int, dim> src = dst;
+                  // if (face == 0)
+                  //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
+                  //   groupdata.indextype.at(dir);
+                  // else
+                  //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) -
+                  //   groupdata.indextype.at(dir);
+                  src[dir] = offset - dst[dir];
+                  for (int comp = 0; comp < numcomp; ++comp) {
+                    GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
+                    const int parity = parities_ptr[comp];
                     var.store(dst, parity * var(src));
-                  },
-              bmin, bmax);
-        }
+                  };
+                },
+            bmin, bmax);
         break;
       }
 

@@ -1016,9 +1016,9 @@ template <typename T> struct GF3D2 {
   GF3D2(GF3D2 &&) = default;
   GF3D2 &operator=(const GF3D2 &) = default;
   GF3D2 &operator=(GF3D2 &&) = default;
-  GF3D2(const GF3D2layout &layout, T *restrict ptr)
+  CCTK_DEVICE CCTK_HOST GF3D2(const GF3D2layout &layout, T *restrict ptr)
       : ptr(ptr), layout(layout) {}
-  GF3D2(const GF3D2layout &layout, mempool_t &mempool)
+  CCTK_DEVICE CCTK_HOST GF3D2(const GF3D2layout &layout, mempool_t &mempool)
       : GF3D2(layout, mempool.alloc<T>(layout.np)) {}
   CCTK_DEVICE CCTK_HOST GF3D2index index(const vect<int, dim> &I) const {
     return GF3D2index(layout, I);
