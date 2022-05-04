@@ -139,7 +139,7 @@ ExternalLibraries/zlib
 !CHECKOUT = CarpetX/Kokkos CarpetX/SHTOOLS CarpetX/libsharp
 CarpetX/ADIOS2
 CarpetX/ADMBase
-CarpetX/AHFinder
+#CarpetX/AHFinder
 CarpetX/AMReX
 CarpetX/Algo
 CarpetX/Arith
@@ -151,7 +151,7 @@ CarpetX/Coordinates
 CarpetX/DGCoordinates
 CarpetX/DGWaveToy
 CarpetX/ErrorEstimator
-CarpetX/Forms
+#CarpetX/Forms
 #CarpetX/GRHydroToyGPU
 CarpetX/AsterX
 CarpetX/Hydro
@@ -185,7 +185,6 @@ CarpetX/WaveToyGPU
 CarpetX/WaveToyMoL
 CarpetX/Weyl
 CarpetX/Z4c
-CarpetX/googletest
 #DISABLED CarpetX/libsharp
 CarpetX/ssht
 CarpetX/yaml_cpp
