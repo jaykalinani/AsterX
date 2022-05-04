@@ -31,11 +31,8 @@ CarpetX::dtfac = 0.5
 MultiPatch::run_tests        = yes
 MultiPatch::test_repetitions = 30
 
-MultiPatch::patch_system = "Cartesian" # TODO: Replace with "Cake". Currently, 
-                                       # it produces segmentation faults, probably 
-                                       # due to por patch setup but it is not necessary
-                                       # for running the tests.
-
+MultiPatch::patch_system = "Cake"
+                                                                        
 MultiPatch::cake_outer_boundary_radius = 2.0
 MultiPatch::cake_inner_boundary_radius = 1.0
 

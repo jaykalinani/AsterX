@@ -23,7 +23,7 @@ constexpr const CCTK_REAL fd_delta = 1.0e-3;
  * The floating point comparison tolerance when testing the equality of exact
  * and FD computed derivatives
  */
-constexpr const CCTK_REAL fd_comp_tol = 1.0e-7;
+constexpr const CCTK_REAL fd_comp_tol = 1.0e-7; // sqrt(machine eps)
 
 /**
  * Test two floating point values for approximate equality.

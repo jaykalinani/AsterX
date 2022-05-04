@@ -52,7 +52,7 @@ CCTK_DEVICE CCTK_HOST inline void expects(bool predicate, const char *msg) {
 }
 
 /**
- * Computes the positive integer power of a number at compile time. Comptible
+ * Computes the power of a number at compile time. Comptible
  * with Mathematica's Power function
  *
  * @param n The exponent.
@@ -60,21 +60,14 @@ CCTK_DEVICE CCTK_HOST inline void expects(bool predicate, const char *msg) {
  * @return The n-th power of x
  */
 template <typename T>
-CCTK_DEVICE CCTK_HOST static inline constexpr T Power(T x, unsigned n) {
-  return (n == 0) ? T(1) : x * Power(x, n - 1);
-}
-
-/**
- * Computes the integer power of a number at compile time. Comptible with
- * Mathematica's Power function
- *
- * @param n The exponent.
- * @param x The base.
- * @return The n-th power of x
- */
-template <typename T>
 CCTK_DEVICE CCTK_HOST static inline constexpr T Power(T x, int n) {
-  return (n < 0) ? T(1) / Power(x, unsigned(-n)) : Power(x, unsigned(n));
+  if (n == 0) {
+    return T{1};
+  } else if (n < 0) {
+    return T{1} / Power(x, -n);
+  } else {
+    return x * Power(x, n - 1);
+  }
 }
 
 /**
@@ -131,15 +124,20 @@ inline const std::string piece_name(const patch_piece &p) {
     return "minus z";
   else if (p == patch_piece::minus_z)
     return "interpatch boundary";
+  else if (p == patch_piece::inner_boundary)
+    return "inner cube boundary";
+  else if (p == patch_piece::outer_boundary)
+    return "outer boundary";
   else
     return "exterior";
 }
 
 /**
- * Determine which patch piece owns a global coordinate triplet
+ * Get the patch piece that owns a global coordinate point.
  *
- * @param pt The patch data
- * @param global_vars The values of the local global (x, y, z)
+ * @param pt The PatchTransformations structure describing the patch system.
+ * @param global_vars The global coordinate triplet to locate the owner for.
+ * @return The patch piece owning the global coordinates.
  */
 CCTK_DEVICE CCTK_HOST patch_piece
 get_owner_patch(const PatchTransformations &pt, const svec_u &global_vars);

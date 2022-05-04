@@ -21,7 +21,7 @@ Mathematica Notebooks used for visualization and code generation of patches can 
 
 ## Visualizing the Cake patch system
 
-The notebook [`Cake7_Vis.nb`](resources/Cake7_Vis.nb) allows one to interactively visualize the Cake patch system in 3D while by drawing constant `c` coordinate surfaces. To produce and interactive plot, simply evaluate the whole notebook.
+The notebook [`Cake7_Vis.nb`](resources/Cake7_Vis.nb) allows one to interactively visualize the Cake patch system in 3D by drawing constant `c` coordinate surfaces. To produce and interactive plot, simply evaluate the whole notebook.
 
 ## Generating C++ code
 

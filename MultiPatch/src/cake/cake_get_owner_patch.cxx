@@ -2,13 +2,6 @@
 
 #include <cassert>
 
-/**
- * Get the patch piece that owns a global coordinate point.
- *
- * @param pt The PatchTransformations structure describing the patch system.
- * @param global_vars The global coordinate triplet to locate the owner for.
- * @return The patch piece owning the global coordinates.
- */
 CCTK_DEVICE CCTK_HOST MultiPatch::Cake::patch_piece
 MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
                                   const svec_u &global_vars) {
@@ -28,8 +21,8 @@ MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
 
   patch_piece piece = patch_piece::exterior;
 
-  // Are we on the interior interior?
-  if (r < r1 || isapprox(r, r1)) {
+  // Are we on the interior?
+  if (r < r1 || !isapprox(r, r1)) {
 
     // Are we on the Cartesian core?
     if (within(x, r0) && within(y, r0) && within(z, r0)) {
