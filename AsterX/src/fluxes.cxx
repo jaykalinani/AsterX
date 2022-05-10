@@ -131,12 +131,16 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   switch (reconstruction) {
   case reconstruction_t::Godunov:
     assert(cctk_nghostzones[dir] >= 1);
+    break;
   case reconstruction_t::minmod:
     assert(cctk_nghostzones[dir] >= 2);
+    break;
   case reconstruction_t::monocentral:
     assert(cctk_nghostzones[dir] >= 2);
+    break;
   case reconstruction_t::ppm:
-    assert(cctk_nghostzones[dir] >= 3); // Check this
+    assert(cctk_nghostzones[dir] >= 3);
+    break;
   }
 
   constexpr auto DI = PointDesc::DI;
