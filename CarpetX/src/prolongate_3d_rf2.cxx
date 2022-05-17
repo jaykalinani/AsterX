@@ -712,8 +712,8 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
   // TODO: Use `symmetries` in GHExt
   const array<array<bool, 3>, 2> is_symmetry{{
       {{periodic_x || reflection_x || dirichlet_x || von_neumann_x,
-        periodic_y || reflection_y || dirichlet_y || dirichlet_y,
-        periodic_z || reflection_z || dirichlet_z || dirichlet_z}},
+        periodic_y || reflection_y || dirichlet_y || von_neumann_y,
+        periodic_z || reflection_z || dirichlet_z || von_neumann_z}},
       {{periodic_x || reflection_upper_x || dirichlet_upper_x ||
             von_neumann_upper_x,
         periodic_y || reflection_upper_y || dirichlet_upper_y ||
