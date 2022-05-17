@@ -168,10 +168,14 @@ template <typename T> struct cplx {
       return 1;
     if (n == 1)
       return x;
+    // const auto y = pow(x * x, n / 2);
+    // if (n % 2 == 0)
+    //   return y;
+    // return x * y;
     const auto y = pow(x * x, n / 2);
     if (n % 2 == 0)
-      return y;
-    return x * y;
+      return pow(x * x, n / 2);
+    return x * pow(x * x, n / 2);
   }
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST cplx
   pow2(const cplx &x) {
