@@ -44,6 +44,7 @@ template <typename T, typename U> struct dual {
     return {-x.val, -x.eps};
   }
 
+  template <typename = T>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
   operator+(const dual &x, const dual &y) {
     return {x.val + y.val, x.eps + y.eps};
@@ -72,6 +73,7 @@ template <typename T, typename U> struct dual {
   operator/(const dual &x, const T &y) {
     return {x.val / y, x.eps / y};
   }
+  template <typename = T>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
   operator*(const dual &x, const dual &y) {
     return {x.val * y.val, x.val * y.eps + x.eps * y.val};
@@ -202,6 +204,7 @@ template <typename T, typename U> struct dual {
       return {1, U{}};
     return {pow(x.val, n), n * pow(x.val, n - 1) * x.eps};
   }
+  template <typename = T>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
   pow2(const dual &x) {
     return x * x;
@@ -211,6 +214,7 @@ template <typename T, typename U> struct dual {
     using std::cos, std::sin;
     return {sin(x.val), cos(x.val) * x.eps};
   }
+  template <typename = T>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST dual
   sqrt(const dual &x) {
     using std::sqrt;

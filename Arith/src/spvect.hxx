@@ -218,9 +218,11 @@ public:
     return elts.end();
   }
 
+  template <typename = T>
   friend constexpr ARITH_DEVICE ARITH_HOST spvect operator+(const spvect &x) {
     return fmap([](const auto &a) { return +a; }, x);
   }
+  template <typename = T>
   friend constexpr ARITH_DEVICE ARITH_HOST spvect operator-(const spvect &x) {
     return fmap([](const auto &a) { return -a; }, x);
   }
