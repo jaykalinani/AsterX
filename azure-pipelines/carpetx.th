@@ -157,6 +157,7 @@ CarpetX/AsterX
 CarpetX/Hydro
 CarpetX/HydroBase
 CarpetX/HydroInitial
+CarpetX/KHInitial
 CarpetX/HydroToyCarpetX
 #DISABLED CarpetX/Kokkos
 CarpetX/Maxwell
