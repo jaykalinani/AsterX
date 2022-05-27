@@ -12,6 +12,8 @@ ActiveThorns = "
     TmunuBase
     openPMD
 "
+$nlevels = 3
+$ncells = 64
  
 Cactus::cctk_show_schedule = yes
 
@@ -19,6 +21,13 @@ Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 2.0
+
+ADMBase::set_adm_variables_during_evolution = yes
+ADMBase::initial_data = "Cartesian Minkowski"
+ADMBase::initial_lapse = "one"
+ADMBase::initial_shift = "zero"
+ADMBase::initial_dtlapse = "none"
+ADMBase::initial_dtshift = "none"
 
 CarpetX::verbose = no
 
@@ -30,8 +39,8 @@ CarpetX::xmax = 0.5
 CarpetX::ymax = 0.5
 CarpetX::zmax = 0.5
 
-CarpetX::ncells_x = 256
-CarpetX::ncells_y = 256
+CarpetX::ncells_x = $ncells
+CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = 2 
 
 CarpetX::periodic_x = yes
@@ -42,7 +51,7 @@ CarpetX::von_neumann_z = yes
 CarpetX::von_neumann_upper_y = yes
 CarpetX::von_neumann_upper_z = yes
 
-CarpetX::max_num_levels = 1
+CarpetX::max_num_levels = 3
 CarpetX::regrid_every = 1
 CarpetX::blocking_factor_x = 1
 CarpetX::blocking_factor_y = 1
@@ -53,13 +62,6 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.5
 CarpetX::poison_undefined_values = no
-
-ADMBase::set_adm_variables_during_evolution = yes
-ADMBase::initial_data = "Cartesian Minkowski"
-ADMBase::initial_lapse = "one"
-ADMBase::initial_shift = "zero"
-ADMBase::initial_dtlapse = "none"
-ADMBase::initial_dtshift = "none"
 
 HydroBase::initial_hydro = "KHI"
 KHInitial::gamma = 1.6667
@@ -100,3 +102,4 @@ TimerReport::out_filename = "TimerReport"
 TimerReport::output_all_timers_together = yes
 TimerReport::output_all_timers_readable = yes
 TimerReport::n_top_timers = 50
+
