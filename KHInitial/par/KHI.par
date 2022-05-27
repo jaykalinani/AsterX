@@ -10,49 +10,43 @@ ActiveThorns = "
     SystemTopology
     TimerReport
     TmunuBase
-    openPMD
+    openPMD_api
 "
- 
-Cactus::cctk_show_schedule = yes
 
-Cactus::presync_mode = "mixed-error"
-
-Cactus::terminate = "time"
-Cactus::cctk_final_time = 2.0
+$nlevels = 1
+$ncells = 256
 
 CarpetX::verbose = no
 
+Cactus::presync_mode = "mixed-error"
+CarpetX::poison_undefined_values = no
+
 CarpetX::xmin = -0.5
 CarpetX::ymin = -0.5
-CarpetX::zmin = -0.5
+CarpetX::zmin = -0.5 * 2 / $ncells
 
 CarpetX::xmax = 0.5
 CarpetX::ymax = 0.5
-CarpetX::zmax = 0.5
+CarpetX::zmax = 0.5 * 2 / $ncells
 
-CarpetX::ncells_x = 256
-CarpetX::ncells_y = 256
-CarpetX::ncells_z = 2 
+CarpetX::ncells_x = $ncells
+CarpetX::ncells_y = $ncells
+CarpetX::ncells_z = 2
+CarpetX::blocking_factor_z = 2
 
 CarpetX::periodic_x = yes
-CarpetX::periodic_y = no
-CarpetX::periodic_z = no
 CarpetX::von_neumann_y = yes
 CarpetX::von_neumann_z = yes
 CarpetX::von_neumann_upper_y = yes
 CarpetX::von_neumann_upper_z = yes
 
-CarpetX::max_num_levels = 1
-CarpetX::regrid_every = 1
-CarpetX::blocking_factor_x = 1
-CarpetX::blocking_factor_y = 1
-CarpetX::blocking_factor_z = 1
+CarpetX::max_num_levels = $nlevels
+CarpetX::regrid_every = 10
 CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.5
-CarpetX::poison_undefined_values = no
 
 ADMBase::set_adm_variables_during_evolution = yes
 ADMBase::initial_data = "Cartesian Minkowski"
@@ -75,6 +69,8 @@ AsterX::gamma = 1.6667
 AsterX::reconstruction_method = "minmod"
 AsterX::max_iter = 100
 
+Cactus::terminate = "time"
+Cactus::cctk_final_time = 2.0
 ODESolvers::method = "RK4"
 
 IO::out_dir = $parfile
@@ -95,7 +91,7 @@ CarpetX::out_openpmd_vars = "
     CarpetX::regrid_error
 "
 
-TimerReport::out_every = 100 
+TimerReport::out_every = 100
 TimerReport::out_filename = "TimerReport"
 TimerReport::output_all_timers_together = yes
 TimerReport::output_all_timers_readable = yes
