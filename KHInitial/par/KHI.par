@@ -63,7 +63,7 @@ ADMBase::initial_dtshift = "none"
 
 HydroBase::initial_hydro = "KHI"
 KHInitial::gamma = 1.6667
-KHInitial::w0 = 0.01
+KHInitial::w0 = 0.1
 KHInitial::sigma = 0.0353553390593274   # 0.05/sqrt(2)
 KHInitial::rhoUp = 1.0
 KHInitial::vxUp = -0.5
