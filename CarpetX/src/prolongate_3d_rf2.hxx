@@ -50,6 +50,16 @@ public:
                       const amrex::Geometry &fine_geom,
                       amrex::Vector<amrex::BCRec> const &bcr, int actual_comp,
                       int actual_state, amrex::RunOn gpu_or_cpu) override;
+
+  virtual void interp_face(const amrex::FArrayBox &crse, int crse_comp,
+                           amrex::FArrayBox &fine, int fine_comp, int ncomp,
+                           const amrex::Box &fine_region,
+                           const amrex::IntVect &ratio,
+                           const amrex::IArrayBox &solve_mask,
+                           const amrex::Geometry &crse_geom,
+                           const amrex::Geometry &fine_geom,
+                           amrex::Vector<amrex::BCRec> const &bcr,
+                           int actual_bccomp, amrex::RunOn gpu_or_cpu) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

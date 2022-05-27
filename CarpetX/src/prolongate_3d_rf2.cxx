@@ -890,6 +890,28 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 #endif
 }
 
+template <int CENTI, int CENTJ, int CENTK, bool CONSI, bool CONSJ, bool CONSK,
+          int ORDERI, int ORDERJ, int ORDERK>
+void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
+                       ORDERK>::interp_face(const amrex::FArrayBox &crse,
+                                            int crse_comp,
+                                            amrex::FArrayBox &fine,
+                                            int fine_comp, int ncomp,
+                                            const amrex::Box &fine_region,
+                                            const amrex::IntVect &ratio,
+                                            const amrex::IArrayBox &solve_mask,
+                                            const amrex::Geometry &crse_geom,
+                                            const amrex::Geometry &fine_geom,
+                                            amrex::Vector<amrex::BCRec> const
+                                                &bcr,
+                                            int bccomp,
+                                            amrex::RunOn gpu_or_cpu) {
+  // solve_mask; ???
+  assert(bccomp == 0); // ???
+  interp(crse, crse_comp, fine, fine_comp, ncomp, fine_region, ratio, crse_geom,
+         fine_geom, bcr, 0, 0, gpu_or_cpu);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
