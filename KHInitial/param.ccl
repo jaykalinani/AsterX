@@ -3,10 +3,10 @@ SHARES: HydroBase
 
 EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
 {
-  "KHI" :: ""
-} 
+  "KHI" :: "Kelvin-Helmholtz instability"
+}
 
-private:
+PRIVATE:
 
 CCTK_REAL gamma "EOS parameter" STEERABLE=always
 {
@@ -29,7 +29,7 @@ CCTK_REAL sigma "parameter for the exponential in v^y" STEERABLE=always
   0.0:* :: ""
 } 0.0353553390593274
 
-#Initial data for region above the slip surface
+# Initial data for region above the slip surface
 
 CCTK_REAL rhoUp "initial density" STEERABLE=always
 {
@@ -41,7 +41,7 @@ CCTK_REAL vxUp "initial x component of velocity" STEERABLE=always
   *:* :: ""
 } -0.5
 
-#Initial data for region below the slip surface
+# Initial data for region below the slip surface
 
 CCTK_REAL rhoLow "initial density" STEERABLE=always
 {
@@ -52,5 +52,3 @@ CCTK_REAL vxLow "initial x component of velocity" STEERABLE=always
 {
   *:* :: ""
 } 0.5
-
-

@@ -1,16 +1,16 @@
 ActiveThorns = "
+    ADIOS2
+    ADMBase
+    AsterX
     CarpetX
+    HydroBase
     IOUtil
+    KHInitial
     ODESolvers
     SystemTopology
     TimerReport
-    ADMBase
-    HydroBase
     TmunuBase
     openPMD
-    ADIOS2
-    AsterX
-    KHInitial
 "
  
 Cactus::cctk_show_schedule = yes
@@ -19,13 +19,6 @@ Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 20.0
-
-ADMBase::set_adm_variables_during_evolution = "yes"
-ADMBase::initial_data            = "Cartesian Minkowski"
-ADMBase::initial_lapse           = "one"
-ADMBase::initial_shift           = "zero"
-ADMBase::initial_dtlapse         = "none"
-ADMBase::initial_dtshift         = "none"
 
 CarpetX::verbose = no
 
@@ -60,18 +53,23 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.5
 
-#KHIinitial
+ADMBase::set_adm_variables_during_evolution = yes
+ADMBase::initial_data = "Cartesian Minkowski"
+ADMBase::initial_lapse = "one"
+ADMBase::initial_shift = "zero"
+ADMBase::initial_dtlapse = "none"
+ADMBase::initial_dtshift = "none"
+
 HydroBase::initial_hydro = "KHI"
 KHInitial::gamma = 1.6667
 KHInitial::w0 = 0.01
-KHInitial::sigma = 0.0353553390593274 # 0.05/sqrt(2)
+KHInitial::sigma = 0.0353553390593274   # 0.05/sqrt(2)
 KHInitial::rhoUp = 1.0
 KHInitial::vxUp = -0.5
 KHInitial::rhoLow = 2.0
 KHInitial::vxLow = 0.5
 KHInitial::p_val= 2.5
 
-#AsterX
 AsterX::gamma = 1.6667
 AsterX::reconstruction_method = "minmod"
 AsterX::max_iter = 100
@@ -101,4 +99,3 @@ TimerReport::out_filename = "TimerReport"
 TimerReport::output_all_timers_together = yes
 TimerReport::output_all_timers_readable = yes
 TimerReport::n_top_timers = 50
-

@@ -5,5 +5,8 @@
 SCHEDULE KHInitial_Initialize IN HydroBase_InitialData
 {
   LANG: C
-  WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+  WRITES: HydroBase::rho(everywhere)
+  WRITES: HydroBase::vel(everywhere)
+  WRITES: HydroBase::eps(everywhere)
+  WRITES: HydroBase::press(everywhere)
 } "Set up KHI initial conditions"
