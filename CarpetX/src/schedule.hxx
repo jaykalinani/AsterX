@@ -166,7 +166,8 @@ struct GridPtrDesc1 : GridDesc {
   GridPtrDesc1(const GridPtrDesc1 &) = delete;
   GridPtrDesc1 &operator=(const GridPtrDesc1 &) = delete;
 
-  GridPtrDesc1(const GHExt::PatchData::LevelData::GroupData &groupdata,
+  GridPtrDesc1(const GHExt::PatchData::LevelData &leveldata,
+               const GHExt::PatchData::LevelData::GroupData &groupdata,
                const MFPointer &mfp);
 
   template <typename T> T *ptr(const amrex::Array4<T> &vars, int vi) const {
@@ -199,33 +200,37 @@ struct GridPtrDesc1 : GridDesc {
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
+cGH *copy_cctkGH(const cGH *restrict const sourceGH);
+void delete_cctkGH(cGH *cctkGH);
+
 bool in_local_mode(const cGH *restrict cctkGH);
 bool in_patch_mode(const cGH *restrict cctkGH);
 bool in_level_mode(const cGH *restrict cctkGH);
 bool in_global_mode(const cGH *restrict cctkGH);
 bool in_meta_mode(const cGH *restrict cctkGH);
 
-void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH);
+void update_cctkGH_UNUSED(cGH *restrict cctkGH, const cGH *restrict sourceGH);
 void enter_global_mode(cGH *restrict cctkGH);
 void leave_global_mode(cGH *restrict cctkGH);
 void enter_level_mode(cGH *restrict cctkGH, int level);
 void leave_level_mode(cGH *restrict cctkGH, int level);
-void enter_patch_mode(cGH *restrict cctkGH, int patch);
-void leave_patch_mode(cGH *restrict cctkGH, int patch);
-void enter_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
-void leave_local_mode(cGH *restrict cctkGH, int level, const MFPointer &mfp);
+void enter_patch_mode(cGH *restrict cctkGH,
+                      const GHExt::PatchData::LevelData &restrict leveldata);
+void leave_patch_mode(cGH *restrict cctkGH,
+                      const GHExt::PatchData::LevelData &restrict leveldata);
+void enter_local_mode(cGH *restrict cctkGH,
+                      const GHExt::PatchData::LevelData &restrict leveldata,
+                      const MFPointer &mfp);
+void leave_local_mode(cGH *restrict cctkGH,
+                      const GHExt::PatchData::LevelData &restrict leveldata,
+                      const MFPointer &mfp);
 
 void loop_over_blocks(
     const active_levels_t &active_levels,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel);
-
-cGH *get_global_cctkGH();
-cGH *get_level_cctkGH(int level);
-cGH *get_patch_cctkGH(int level, int patch);
-cGH *get_local_cctkGH(int level, int patch, int block);
-
-void setup_cctkGHs();
 
 // These functions are defined in valid.cxx. These prototypes should
 // be moved to valid.hxx. Unfortunately, they depend on GHExt, which is declared
@@ -235,9 +240,10 @@ void setup_cctkGHs();
 void error_if_invalid(const GHExt::PatchData::LevelData::GroupData &grouppdata,
                       int vi, int tl, const valid_t &required,
                       const function<string()> &msg);
-void warn_if_invalid(const GHExt::PatchData::LevelData ::GroupData &grouppdata,
+void warn_if_invalid(const GHExt::PatchData::LevelData::GroupData &grouppdata,
                      int vi, int tl, const valid_t &required,
                      const function<string()> &msg);
+
 void error_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata,
                       int vi, int tl, const valid_t &required,
                       const function<string()> &msg);
@@ -247,9 +253,11 @@ void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
 
 enum class nan_handling_t { allow_nans, forbid_nans };
 
-void poison_invalid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+void poison_invalid(const GHExt::PatchData::LevelData &leveldata,
+                    const GHExt::PatchData::LevelData::GroupData &groupdata,
                     int vi, int tl);
-void check_valid(const GHExt::PatchData::LevelData::GroupData &groupdata,
+void check_valid(const GHExt::PatchData::LevelData &leveldata,
+                 const GHExt::PatchData::LevelData::GroupData &groupdata,
                  int vi, int tl, nan_handling_t nan_handling,
                  const function<string()> &msg);
 

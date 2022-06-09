@@ -88,6 +88,23 @@ public:
 // Cactus grid hierarchy extension
 struct GHExt {
 
+  struct cctkGHptr {
+    cGH *cctkGH;
+    cctkGHptr(const cctkGHptr &) = delete;
+    cctkGHptr(cctkGHptr &&ptr) : cctkGH(ptr.cctkGH) { ptr.cctkGH = nullptr; }
+    cctkGHptr &operator=(const cctkGHptr &) = delete;
+    cctkGHptr &operator=(cctkGHptr &&ptr);
+    cctkGHptr() : cctkGH(nullptr) {}
+    cctkGHptr(cGH *&&cctkGH) : cctkGH(cctkGH) {}
+    cctkGHptr &operator=(cGH *&&cctkGH);
+    ~cctkGHptr();
+    operator bool() const { return bool(cctkGH); }
+    cGH *get() const { return cctkGH; }
+  };
+
+  cctkGHptr global_cctkGH;
+  vector<cctkGHptr> level_cctkGHs; // [reflevel]
+
   struct CommonGroupData {
     int groupindex;
     int firstvarindex;
@@ -180,9 +197,6 @@ struct GHExt {
 
       int patch, level;
 
-      const PatchData &patchdata() const;
-      PatchData &patchdata();
-
       // This level uses subcycling with respect to the next coarser
       // level. (Ignored for the coarsest level.)
       bool is_subcycling_level;
@@ -194,6 +208,14 @@ struct GHExt {
       // iterating over grid functions. This stores the grid structure
       // and its distribution over all processes, but holds no data.
       unique_ptr<amrex::FabArrayBase> fab;
+
+      cctkGHptr patch_cctkGH;
+      vector<cctkGHptr> local_cctkGHs; // [block]
+
+      cGH *get_patch_cctkGH() const { return patch_cctkGH.get(); }
+      cGH *get_local_cctkGH(const int block) const {
+        return local_cctkGHs.at(block).get();
+      }
 
       struct GroupData : public CommonGroupData {
         GroupData() = delete;
@@ -207,9 +229,6 @@ struct GHExt {
                   const function<string()> &why);
 
         int patch, level;
-
-        const LevelData &leveldata() const;
-        LevelData &leveldata();
 
         array<int, dim> indextype;
         array<int, dim> nghostzones;
@@ -268,27 +287,26 @@ struct GHExt {
     return nlevels;
   }
 
+  cGH *get_global_cctkGH() const { return global_cctkGH.get(); }
+  cGH *get_level_cctkGH(const int level) const {
+    return level_cctkGHs.at(level).get();
+  }
+  cGH *get_patch_cctkGH(const int level, const int patch) const {
+    return patchdata.at(patch).leveldata.at(level).patch_cctkGH.get();
+  }
+  cGH *get_local_cctkGH(const int level, const int patch,
+                        const int block) const {
+    return patchdata.at(patch)
+        .leveldata.at(level)
+        .local_cctkGHs.at(block)
+        .get();
+  }
+
   friend YAML::Emitter &operator<<(YAML::Emitter &yaml, const GHExt &ghext);
   friend ostream &operator<<(ostream &os, const GHExt &ghext);
 };
 
 extern unique_ptr<GHExt> ghext;
-
-inline const GHExt::PatchData &GHExt::PatchData::LevelData::patchdata() const {
-  return ghext->patchdata.at(patch);
-}
-inline GHExt::PatchData &GHExt::PatchData::LevelData::patchdata() {
-  return ghext->patchdata.at(patch);
-}
-
-inline const GHExt::PatchData::LevelData &
-GHExt::PatchData::LevelData::GroupData::leveldata() const {
-  return ghext->patchdata.at(patch).leveldata.at(level);
-}
-inline GHExt::PatchData::LevelData &
-GHExt::PatchData::LevelData::GroupData::leveldata() {
-  return ghext->patchdata.at(patch).leveldata.at(level);
-}
 
 amrex::Interpolater *get_interpolator(const array<int, dim> indextype);
 

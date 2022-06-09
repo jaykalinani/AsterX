@@ -148,7 +148,7 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
                    const MFPointer &mfp) {
   // DECLARE_CCTK_PARAMETERS;
 
-  const auto &patchdata = leveldata.patchdata();
+  const auto &patchdata = ghext->patchdata.at(leveldata.patch);
   const amrex::Box &fbx = mfp.fabbox();   // allocated array
   const amrex::Box &vbx = mfp.validbox(); // interior region (without ghosts)
   const amrex::Box &gbx = mfp.growntilebox(); // current region (with ghosts)
@@ -181,7 +181,7 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
   }
 
   // Boundaries
-  const auto &symmetries = leveldata.patchdata().symmetries;
+  const auto &symmetries = ghext->patchdata.at(leveldata.patch).symmetries;
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)] &&
@@ -247,7 +247,7 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
   // `global_block` is the global block index.
   // There is no tiling.
 
-  const auto &patchdata = leveldata.patchdata();
+  const auto &patchdata = ghext->patchdata.at(leveldata.patch);
 
   const amrex::FabArrayBase &fab = *leveldata.fab;
 
@@ -283,7 +283,7 @@ GridDesc::GridDesc(const GHExt::PatchData::LevelData &leveldata,
   }
 
   // Boundaries
-  const auto &symmetries = leveldata.patchdata().symmetries;
+  const auto &symmetries = ghext->patchdata.at(leveldata.patch).symmetries;
   for (int d = 0; d < dim; ++d)
     for (int f = 0; f < 2; ++f)
       bbox[2 * d + f] = vbx[orient(d, f)] == domain[orient(d, f)] &&
@@ -352,9 +352,10 @@ GridPtrDesc::GridPtrDesc(const GHExt::PatchData::LevelData &leveldata,
 }
 
 GridPtrDesc1::GridPtrDesc1(
+    const GHExt::PatchData::LevelData &leveldata,
     const GHExt::PatchData::LevelData::GroupData &groupdata,
     const MFPointer &mfp)
-    : GridDesc(groupdata.leveldata(), mfp) {
+    : GridDesc(leveldata, mfp) {
   const amrex::Box &fbx = mfp.fabbox(); // allocated array
   cactus_offset = lbound(fbx);
   for (int d = 0; d < dim; ++d) {
@@ -372,35 +373,6 @@ GridPtrDesc1::GridPtrDesc1(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-// Create a new cGH, copying those data that are set by the flesh, and
-// allocating space for these data that are set per thread by the driver
-void clone_cctkGH(cGH *restrict const cctkGH,
-                  const cGH *restrict const sourceGH) {
-  // Copy all fields by default
-  *cctkGH = *sourceGH;
-  // Allocate most fields anew
-  cctkGH->cctk_gsh = new int[dim];
-  cctkGH->cctk_lsh = new int[dim];
-  cctkGH->cctk_lbnd = new int[dim];
-  cctkGH->cctk_ubnd = new int[dim];
-  cctkGH->cctk_tile_min = new int[dim];
-  cctkGH->cctk_tile_max = new int[dim];
-  cctkGH->cctk_ash = new int[dim];
-  cctkGH->cctk_to = new int[dim];
-  cctkGH->cctk_from = new int[dim];
-  cctkGH->cctk_delta_space = new CCTK_REAL[dim];
-  cctkGH->cctk_origin_space = new CCTK_REAL[dim];
-  cctkGH->cctk_bbox = new int[2 * dim];
-  cctkGH->cctk_levfac = new int[dim];
-  cctkGH->cctk_levoff = new int[dim];
-  cctkGH->cctk_levoffdenom = new int[dim];
-  cctkGH->cctk_nghostzones = new int[dim];
-  const int numvars = CCTK_NumVars();
-  cctkGH->data = new void **[numvars];
-  for (int vi = 0; vi < numvars; ++vi)
-    cctkGH->data[vi] = new void *[CCTK_DeclaredTimeLevelsVI(vi)];
-}
 
 cGH *copy_cctkGH(const cGH *restrict const sourceGH) {
   cGH *restrict const cctkGH = new cGH;
@@ -557,7 +529,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
 }
 
 // Update fields that carry state and change over time
-void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
+void update_cctkGH_UNUSED(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
   cctkGH->cctk_iteration = sourceGH->cctk_iteration;
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_origin_space[d] = sourceGH->cctk_origin_space[d];
@@ -672,7 +644,7 @@ void enter_patch_mode(cGH *restrict cctkGH,
   DECLARE_CCTK_PARAMETERS;
   assert(in_level_mode(cctkGH));
 
-  const auto &patchdata = leveldata.patchdata();
+  const auto &patchdata = ghext->patchdata.at(leveldata.patch);
 
   cctkGH->cctk_patch = leveldata.patch;
   const amrex::Box &domain = patchdata.amrcore->Geom(leveldata.level).Domain();
@@ -744,7 +716,7 @@ void enter_local_mode(cGH *restrict cctkGH,
       continue;
 
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
-    const GridPtrDesc1 grid1(groupdata, mfp);
+    const GridPtrDesc1 grid1(leveldata, groupdata, mfp);
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl) {
       const amrex::Array4<CCTK_REAL> vars =
           groupdata.mfab.at(tl)->array(mfp.index());
@@ -866,8 +838,7 @@ void loop_over_blocks(
       for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
            ++mfi, ++block) {
         const MFPointer mfp(mfi);
-        cGH *restrict const localGH =
-            get_local_cctkGH(leveldata.level, leveldata.patch, block);
+        cGH *restrict const localGH = leveldata.get_local_cctkGH(block);
         block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                      localGH);
       }
@@ -888,8 +859,7 @@ void loop_over_blocks(
            ++mfi, ++block) {
         const MFPointer mfp(mfi);
         auto task = [&block_kernel, &leveldata, mfp, block]() {
-          cGH *restrict const localGH =
-              get_local_cctkGH(leveldata.level, leveldata.patch, block);
+          cGH *restrict const localGH = leveldata.get_local_cctkGH(block);
           block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                        localGH);
         };
@@ -921,8 +891,7 @@ void loop_over_blocks(
       for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
            ++mfi, ++block) {
         const MFPointer mfp(mfi);
-        cGH *const localGH =
-            get_local_cctkGH(leveldata.level, leveldata.patch, block);
+        cGH *const localGH = leveldata.get_local_cctkGH(block);
         block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                      localGH);
         ++CallFunction_count;
@@ -939,67 +908,6 @@ void loop_over_blocks(
 
   default:
     CCTK_ERROR("internal error");
-  }
-}
-
-// cGH for all blocks
-using GHptr = unique_ptr<cGH, void (*)(cGH *)>;
-GHptr global_cctkGH(nullptr, delete_cctkGH);
-vector<GHptr> level_cctkGHs;                   // [level]
-vector<vector<GHptr> > patch_cctkGHs;          // [patch][level]
-vector<vector<vector<GHptr> > > local_cctkGHs; // [patch][level][block]
-
-cGH *get_global_cctkGH() { return global_cctkGH.get(); }
-cGH *get_level_cctkGH(const int level) { return level_cctkGHs.at(level).get(); }
-cGH *get_patch_cctkGH(const int level, const int patch) {
-  return patch_cctkGHs.at(patch).at(level).get();
-}
-cGH *get_local_cctkGH(const int level, const int patch, const int block) {
-  return local_cctkGHs.at(patch).at(level).at(block).get();
-}
-
-void setup_cctkGHs() {
-  cGH *const cctkGH = global_cctkGH.get();
-
-  level_cctkGHs.clear();
-  patch_cctkGHs.clear();
-  patch_cctkGHs.resize(ghext->num_patches());
-  local_cctkGHs.clear();
-  local_cctkGHs.resize(ghext->num_patches());
-  for (auto &patchdata : ghext->patchdata)
-    local_cctkGHs.at(patchdata.patch).resize(patchdata.leveldata.size());
-  for (int level = 0; level < ghext->num_levels(); ++level) {
-    enter_level_mode(cctkGH, level);
-    assert(int(level_cctkGHs.size()) == level);
-    level_cctkGHs.emplace_back(copy_cctkGH(cctkGH), delete_cctkGH);
-
-    for (auto &patchdata : ghext->patchdata) {
-      const int patch = patchdata.patch;
-      if (level < int(patchdata.leveldata.size())) {
-        const auto &leveldata = patchdata.leveldata.at(level);
-        enter_patch_mode(cctkGH, leveldata);
-        assert(int(patch_cctkGHs.at(patch).size()) == level);
-        patch_cctkGHs.at(patch).emplace_back(copy_cctkGH(cctkGH),
-                                             delete_cctkGH);
-
-        int block = 0;
-        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi, ++block) {
-          const MFPointer mfp(mfi);
-          enter_local_mode(cctkGH, leveldata, mfp);
-          assert(int(local_cctkGHs.at(patch).at(level).size()) == block);
-          local_cctkGHs.at(patch).at(level).emplace_back(copy_cctkGH(cctkGH),
-                                                         delete_cctkGH);
-
-          leave_local_mode(cctkGH, leveldata, mfp);
-        }
-
-        leave_patch_mode(cctkGH, leveldata);
-      }
-    }
-
-    leave_level_mode(cctkGH, level);
   }
 }
 
@@ -1154,8 +1062,7 @@ int Initialise(tFleshConfig *config) {
   // Set up cctkGH
   setup_cctkGH(cctkGH);
   enter_global_mode(cctkGH);
-  global_cctkGH = GHptr(copy_cctkGH(cctkGH), delete_cctkGH);
-  setup_cctkGHs();
+  ghext->global_cctkGH = GHExt::cctkGHptr(copy_cctkGH(cctkGH));
 
   for (const auto &patchdata : ghext->patchdata)
     assert(patchdata.leveldata.empty());
@@ -1174,7 +1081,6 @@ int Initialise(tFleshConfig *config) {
     CCTK_VINFO("Recovering from checkpoint...");
 
     RecoverGridStructure(cctkGH);
-    setup_cctkGHs();
 
     assert(!active_levels);
     active_levels = make_optional<active_levels_t>();
@@ -1210,11 +1116,11 @@ int Initialise(tFleshConfig *config) {
     {
       static Timer timer("InitialiseRegrid [coarse]");
       Interval interval(timer);
+
       const CCTK_REAL time = 0.0; // dummy time
       for (const auto &patchdata : ghext->patchdata)
         patchdata.amrcore->MakeNewGrids(time);
 
-      setup_cctkGHs();
       assert(!active_levels);
       active_levels = make_optional<active_levels_t>(0, 1);
       CCTK_Traverse(cctkGH, "CCTK_BASEGRID");
@@ -1226,7 +1132,8 @@ int Initialise(tFleshConfig *config) {
     if (CCTK_MyProc(nullptr) == 0) {
       for (const auto &patchdata : ghext->patchdata) {
         const int level = 0;
-        const cGH *const patchGH = get_patch_cctkGH(patchdata.patch, level);
+        const cGH *const patchGH =
+            ghext->get_patch_cctkGH(level, patchdata.patch);
         const int *restrict const gsh = patchGH->cctk_gsh;
         const int *restrict const nghostzones = patchGH->cctk_nghostzones;
         CCTK_REAL x0[dim], x1[dim], dx[dim];
@@ -1296,6 +1203,7 @@ int Initialise(tFleshConfig *config) {
         Interval interval(timer);
 
         for (const auto &patchdata : ghext->patchdata) {
+
           const int old_numlevels = patchdata.amrcore->finestLevel() + 1;
           patchdata.amrcore->level_modified.clear();
           patchdata.amrcore->level_modified.resize(old_numlevels, false);
@@ -1450,7 +1358,7 @@ void InvalidateTimelevels(cGH *restrict const cctkGH) {
                 return "InvalidateTimelevels (invalidate all "
                        "non-checkpointed variables)";
               });
-              poison_invalid(groupdata, vi, tl);
+              poison_invalid(leveldata, groupdata, vi, tl);
             }
           }
         }
@@ -1512,7 +1420,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
             groupdata.valid.at(0).at(vi).set(valid_t(), []() {
               return "CycletimeLevels (invalidate current time level)";
             });
-            poison_invalid(groupdata, vi, 0);
+            poison_invalid(leveldata, groupdata, vi, 0);
           }
         }
         // All time levels (except the current) must be valid everywhere for
@@ -1525,7 +1433,7 @@ void CycleTimelevels(cGH *restrict const cctkGH) {
               });
         for (int tl = 0; tl < ntls; ++tl)
           for (int vi = 0; vi < groupdata.numvars; ++vi)
-            check_valid(groupdata, vi, tl, nan_handling,
+            check_valid(leveldata, groupdata, vi, tl, nan_handling,
                         []() { return "CycleTimelevels"; });
       });
     } else { // CCTK_ARRAY or CCTK_SCALAR
@@ -1804,7 +1712,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                 << "::" << attribute->routine << " checking input";
             return buf.str();
           });
-          check_valid(groupdata, rd.vi, rd.tl, nan_handling, [&]() {
+          check_valid(leveldata, groupdata, rd.vi, rd.tl, nan_handling, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -1871,7 +1779,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Poison output variables that are not input variables";
                 return buf.str();
               });
-          poison_invalid(groupdata, wr.vi, wr.tl);
+          poison_invalid(leveldata, groupdata, wr.vi, wr.tl);
         });
       } else { // CCTK_ARRAY or CCTK_SCALAR
         auto &restrict arraygroupdata =
@@ -1929,8 +1837,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH =
-              get_local_cctkGH(leveldata.level, leveldata.patch, block);
+          cGH *const localGH = leveldata.get_local_cctkGH(block);
           CCTK_CallFunction(function, attribute, localGH);
         }
       });
@@ -1955,8 +1862,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH =
-              get_local_cctkGH(leveldata.level, leveldata.patch, block);
+          cGH *const localGH = leveldata.get_local_cctkGH(block);
           auto task = [function, attribute, localGH]() {
             CCTK_CallFunction(function, attribute, localGH);
           };
@@ -1987,8 +1893,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
         for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
-          cGH *const localGH =
-              get_local_cctkGH(leveldata.level, leveldata.patch, block);
+          cGH *const localGH = leveldata.get_local_cctkGH(block);
           CCTK_CallFunction(function, attribute, localGH);
           ++CallFunction_count;
         }
@@ -2055,7 +1960,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark output variables as valid";
                 return buf.str();
               });
-          check_valid(groupdata, wr.vi, wr.tl, nan_handling, [&]() {
+          check_valid(leveldata, groupdata, wr.vi, wr.tl, nan_handling, [&]() {
             ostringstream buf;
             buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
                 << attribute->where << ": " << attribute->thorn
@@ -2114,13 +2019,14 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
                     << ": Mark invalid variables as invalid";
                 return buf.str();
               });
-          check_valid(groupdata, inv.vi, inv.tl, nan_handling, [&]() {
-            ostringstream buf;
-            buf << "CallFunction iteration " << cctkGH->cctk_iteration << " "
-                << attribute->where << ": " << attribute->thorn
-                << "::" << attribute->routine << " checking output";
-            return buf.str();
-          });
+          check_valid(
+              leveldata, groupdata, inv.vi, inv.tl, nan_handling, [&]() {
+                ostringstream buf;
+                buf << "CallFunction iteration " << cctkGH->cctk_iteration
+                    << " " << attribute->where << ": " << attribute->thorn
+                    << "::" << attribute->routine << " checking output";
+                return buf.str();
+              });
         });
       } else { // CCTK_ARRAY or CCTK_SCALAR
         auto &restrict arraygroupdata =
@@ -2243,31 +2149,33 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               return "SyncGroupsByDirI before syncing: Mark ghost zones as "
                      "invalid";
             });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, nan_handling,
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl, nan_handling,
                         []() { return "SyncGroupsByDirI before syncing"; });
           }
           {
             static Timer timer("Sync::FillPatchSingleLevel");
             Interval interval(timer);
-            FillPatchSingleLevel(
-                *groupdata.mfab.at(tl), 0.0, {&*groupdata.mfab.at(tl)}, {0.0},
-                0, 0, groupdata.numvars,
-                leveldata.patchdata().amrcore->Geom(leveldata.level),
-                *groupdata.physbc, 0);
+            FillPatchSingleLevel(*groupdata.mfab.at(tl), 0.0,
+                                 {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                                 groupdata.numvars,
+                                 ghext->patchdata.at(leveldata.patch)
+                                     .amrcore->Geom(leveldata.level),
+                                 *groupdata.physbc, 0);
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
                      "valid";
             });
-            if (leveldata.patchdata().all_faces_have_symmetries())
+            if (ghext->patchdata.at(leveldata.patch)
+                    .all_faces_have_symmetries())
               groupdata.valid.at(tl).at(vi).set_outer(true, []() {
                 return "SyncGroupsByDirI after syncing: Mark outer boundaries "
                        "as valid";
               });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, nan_handling,
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl, nan_handling,
                         []() { return "SyncGroupsByDirI after syncing"; });
           }
         }
@@ -2278,7 +2186,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
         const int level = leveldata.level;
         const auto &restrict coarseleveldata =
-            leveldata.patchdata().leveldata.at(level - 1);
+            ghext->patchdata.at(leveldata.patch).leveldata.at(level - 1);
         auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
         assert(coarsegroupdata.numvars == groupdata.numvars);
 
@@ -2295,11 +2203,12 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(coarsegroupdata, vi, tl, nan_handling, []() {
-              return "SyncGroupsByDirI on coarse level before prolongation";
-            });
-            check_valid(groupdata, vi, tl, nan_handling, []() {
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(
+                coarseleveldata, coarsegroupdata, vi, tl, nan_handling, []() {
+                  return "SyncGroupsByDirI on coarse level before prolongation";
+                });
+            check_valid(leveldata, groupdata, vi, tl, nan_handling, []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             groupdata.valid.at(tl).at(vi).set_ghosts(false, []() {
@@ -2310,27 +2219,28 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           {
             static Timer timer("Sync::FillPatchTwoLevels");
             Interval interval(timer);
-            FillPatchTwoLevels(*groupdata.mfab.at(tl), 0.0,
-                               {&*coarsegroupdata.mfab.at(tl)}, {0.0},
-                               {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                               groupdata.numvars,
-                               leveldata.patchdata().amrcore->Geom(level - 1),
-                               leveldata.patchdata().amrcore->Geom(level),
-                               *coarsegroupdata.physbc, 0, *groupdata.physbc, 0,
-                               reffact, interpolator, groupdata.bcrecs, 0);
+            FillPatchTwoLevels(
+                *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+                {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+                groupdata.numvars,
+                ghext->patchdata.at(leveldata.patch).amrcore->Geom(level - 1),
+                ghext->patchdata.at(leveldata.patch).amrcore->Geom(level),
+                *coarsegroupdata.physbc, 0, *groupdata.physbc, 0, reffact,
+                interpolator, groupdata.bcrecs, 0);
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
               return "SyncGroupsByDirI after prolongation: Mark ghost zones as "
                      "valid";
             });
-            if (leveldata.patchdata().all_faces_have_symmetries())
+            if (ghext->patchdata.at(leveldata.patch)
+                    .all_faces_have_symmetries())
               groupdata.valid.at(tl).at(vi).set_outer(true, []() {
                 return "SyncGroupsByDirI after prolongation: Mark outer "
                        "boundaries as valid";
               });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, nan_handling,
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl, nan_handling,
                         []() { return "SyncGroupsByDirI after prolongation"; });
           }
         } // if not all_invalid
@@ -2419,9 +2329,9 @@ void Reflux(const cGH *cctkGH, int level) {
                                      groupdata.numvars, geom);
 
           for (int vi = 0; vi < finegroupdata.numvars; ++vi) {
-            check_valid(finegroupdata, vi, tl, nan_handling, []() {
-              return "Reflux after refluxing: Fine level data";
-            });
+            check_valid(
+                fineleveldata, finegroupdata, vi, tl, nan_handling,
+                []() { return "Reflux after refluxing: Fine level data"; });
           }
         }
       } // for gi
@@ -2481,15 +2391,15 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
             error_if_invalid(finegroupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on fine level before restricting";
             });
-            poison_invalid(finegroupdata, vi, tl);
-            check_valid(finegroupdata, vi, tl, nan_handling, []() {
-              return "Restrict on fine level before restricting";
-            });
+            poison_invalid(fineleveldata, finegroupdata, vi, tl);
+            check_valid(
+                fineleveldata, finegroupdata, vi, tl, nan_handling,
+                []() { return "Restrict on fine level before restricting"; });
             error_if_invalid(groupdata, vi, tl, make_valid_int(), []() {
               return "Restrict on coarse level before restricting";
             });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, nan_handling, []() {
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl, nan_handling, []() {
               return "Restrict on coarse level before restricting";
             });
           }
@@ -2531,8 +2441,8 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
             // valid as well?
             groupdata.valid.at(tl).at(vi).set(make_valid_int(),
                                               []() { return "Restrict"; });
-            poison_invalid(groupdata, vi, tl);
-            check_valid(groupdata, vi, tl, nan_handling, []() {
+            poison_invalid(leveldata, groupdata, vi, tl);
+            check_valid(leveldata, groupdata, vi, tl, nan_handling, []() {
               return "Restrict on coarse level after restricting";
             });
           }

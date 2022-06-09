@@ -554,6 +554,27 @@ amrex::Interpolater *get_interpolator(const array<int, dim> indextype) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+GHExt::cctkGHptr &GHExt::cctkGHptr::operator=(cctkGHptr &&ptr) {
+  if (cctkGH)
+    delete_cctkGH(cctkGH);
+  cctkGH = ptr.cctkGH;
+  ptr.cctkGH = nullptr;
+  return *this;
+}
+
+GHExt::cctkGHptr &GHExt::cctkGHptr::operator=(cGH *&&cctkGH) {
+  if (this->cctkGH)
+    delete_cctkGH(this->cctkGH);
+  this->cctkGH = cctkGH;
+  return *this;
+}
+
+GHExt::cctkGHptr::~cctkGHptr() {
+  if (cctkGH)
+    delete_cctkGH(cctkGH);
+  cctkGH = nullptr;
+}
+
 GHExt::PatchData::PatchData(const int patch) : patch(patch) {
   DECLARE_CCTK_PARAMETERS;
 
@@ -629,7 +650,7 @@ GHExt::PatchData::LevelData::LevelData(const int patch, const int level,
     delta_iteration = 1;
   } else {
     // We are creating a new refined level
-    auto &coarseleveldata = patchdata().leveldata.at(level - 1);
+    auto &coarseleveldata = ghext->patchdata.at(patch).leveldata.at(level - 1);
     is_subcycling_level = use_subcycling_wip;
     iteration = coarseleveldata.iteration;
     delta_iteration = coarseleveldata.delta_iteration / timereffact;
@@ -681,6 +702,33 @@ GHExt::PatchData::LevelData::LevelData(const int patch, const int level,
         assert(flux_groupdata.numvars == groupdata.numvars);
       }
     }
+  }
+
+  // Set up cctkGHs
+  if (int(ghext->level_cctkGHs.size()) <= level) {
+    cGH *const cctkGH = ghext->get_global_cctkGH();
+    enter_level_mode(cctkGH, level);
+    assert(int(ghext->level_cctkGHs.size()) == level);
+    ghext->level_cctkGHs.emplace_back(copy_cctkGH(cctkGH));
+    leave_level_mode(cctkGH, level);
+  }
+
+  {
+    LevelData &leveldata = *this;
+    cGH *const cctkGH = ghext->get_level_cctkGH(level);
+    enter_patch_mode(cctkGH, leveldata);
+    patch_cctkGH = GHExt::cctkGHptr(copy_cctkGH(cctkGH));
+    int block = 0;
+    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
+    for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
+         ++mfi, ++block) {
+      const MFPointer mfp(mfi);
+      enter_local_mode(cctkGH, leveldata, mfp);
+      assert(int(local_cctkGHs.size()) == block);
+      local_cctkGHs.emplace_back(copy_cctkGH(cctkGH));
+      leave_local_mode(cctkGH, leveldata, mfp);
+    }
+    leave_patch_mode(cctkGH, leveldata);
   }
 }
 
@@ -769,8 +817,8 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
     if (have_fluxes) {
       assert((indextype == array<int, dim>{1, 1, 1}));
       freg = make_unique<amrex::FluxRegister>(
-          gba, dm, leveldata().patchdata().amrcore->refRatio(level - 1), level,
-          numvars);
+          gba, dm, ghext->patchdata.at(patch).amrcore->refRatio(level - 1),
+          level, numvars);
     } else {
       fluxes.fill(-1);
     }
@@ -816,9 +864,15 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
     const int numcomp, const amrex::Geometry &geom, const CCTK_REAL time,
     const amrex::Vector<amrex::BCRec> &bcr, const int bcomp,
     const int orig_comp) const {
+  // Check centering
   assert(box.ixType() == dest.box().ixType());
   for (int d = 0; d < dim; ++d)
     assert((box.type(d) == amrex::IndexType::CELL) == groupdata.indextype[d]);
+
+  // Ensure we have enough ghost zones
+  // TODO: Implement this
+  // for (int d = 0; d < dim; ++d)
+  //   assert(... <= groupdata.nghostzones[d]);
 
   // Interior of domain
   const Arith::vect<int, dim> imin{geom.Domain().smallEnd(0),
@@ -886,7 +940,8 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
       if (npoints == 0)
         continue;
 
-      switch (groupdata.leveldata().patchdata().symmetries.at(face).at(dir)) {
+      switch (
+          ghext->patchdata.at(groupdata.patch).symmetries.at(face).at(dir)) {
         // The order in which the symmetry conditions are checked is important.
         // We prefer "simpler" symmetry conditions on corners and edges where
         // multiple conditions might apply.
@@ -1032,7 +1087,7 @@ void CactusAmrCore::ErrorEst(const int level, amrex::TagBoxArray &tags,
   auto mfitinfo = amrex::MFItInfo().SetDynamic(true).EnableTiling();
 #pragma omp parallel
   for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid(); ++mfi) {
-    GridPtrDesc1 grid(groupdata, mfi);
+    GridPtrDesc1 grid(leveldata, groupdata, mfi);
 
     const amrex::Array4<const CCTK_REAL> &err_array4 =
         groupdata.mfab.at(tl)->array(mfi);
@@ -1173,9 +1228,6 @@ void CactusAmrCore::SetupLevel(const int level, const amrex::BoxArray &ba,
     level_modified.resize(level + 1, true);
   level_modified.at(level) = true;
 
-  // TODO: Recreate cctkGHs only for the current level
-  setup_cctkGHs();
-
   // Initialize data
   const auto &leveldata = patchdata.leveldata.at(level);
   const int numgroups = CCTK_NumGroups();
@@ -1193,7 +1245,7 @@ void CactusAmrCore::SetupLevel(const int level, const amrex::BoxArray &ba,
 
     for (int tl = 0; tl < int(groupdata.mfab.size()); ++tl)
       for (int vi = 0; vi < groupdata.numvars; ++vi)
-        poison_invalid(groupdata, vi, tl);
+        poison_invalid(leveldata, groupdata, vi, tl);
   }
 
   if (verbose)
@@ -1211,6 +1263,7 @@ void CactusAmrCore::MakeNewLevelFromScratch(
     CCTK_VINFO("MakeNewLevelFromScratch patch %d level %d", patch, level);
 
   SetupLevel(level, ba, dm, []() { return "MakeNewLevelFromScratch"; });
+
   if (verbose)
 #pragma omp critical
     CCTK_VINFO("MakeNewLevelFromScratch patch %d level %d done.", patch, level);
@@ -1277,9 +1330,9 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
           error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(), []() {
             return "MakeNewLevelFromCoarse before prolongation";
           });
-          check_valid(coarsegroupdata, vi, tl, nan_handling, []() {
-            return "MakeNewLevelFromCoarse before prolongation";
-          });
+          check_valid(
+              coarseleveldata, coarsegroupdata, vi, tl, nan_handling,
+              []() { return "MakeNewLevelFromCoarse before prolongation"; });
         }
         InterpFromCoarseLevel(
             *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
@@ -1289,6 +1342,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
         const auto outer_valid = patchdata.all_faces_have_symmetries()
                                      ? make_valid_outer()
                                      : valid_t();
+        assert(outer_valid == make_valid_outer());
         for (int vi = 0; vi < groupdata.numvars; ++vi) {
           groupdata.valid.at(tl).at(vi).set(
               make_valid_int() | make_valid_ghosts() | outer_valid,
@@ -1301,7 +1355,7 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
 
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
         // Already poisoned by SetupLevel
-        check_valid(groupdata, vi, tl, nan_handling, []() {
+        check_valid(leveldata, groupdata, vi, tl, nan_handling, []() {
           return "MakeNewLevelFromCoarse after prolongation";
         });
       }
@@ -1323,12 +1377,56 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 #pragma omp critical
     CCTK_VINFO("RemakeLevel patch %d level %d", patch, level);
 
-  // Copy or prolongate
   auto &patchdata = ghext->patchdata.at(patch);
   auto &leveldata = patchdata.leveldata.at(level);
-  assert(!use_subcycling_wip);
   assert(leveldata.level > 0);
   auto &coarseleveldata = patchdata.leveldata.at(level - 1);
+
+  // Copy or prolongate
+  assert(!use_subcycling_wip);
+
+  // Check old level
+  const int num_groups = CCTK_NumGroups();
+  for (int gi = 0; gi < num_groups; ++gi) {
+    cGroup group;
+    int ierr = CCTK_GroupData(gi, &group);
+    assert(!ierr);
+
+    if (group.grouptype != CCTK_GF)
+      continue;
+
+    auto &restrict groupdata = *leveldata.groupdata.at(gi);
+    auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
+    assert(coarsegroupdata.numvars == groupdata.numvars);
+
+    const int ntls = groupdata.mfab.size();
+    // We only prolongate the state vector. And if there is more than
+    // one time level, then we don't prolongate the oldest.
+    const int prolongate_tl =
+        groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
+    const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                            ? nan_handling_t::forbid_nans
+                                            : nan_handling_t::allow_nans;
+
+    for (int tl = 0; tl < ntls; ++tl) {
+      for (int vi = 0; vi < groupdata.numvars; ++vi)
+        poison_invalid(leveldata, groupdata, vi, tl);
+
+      if (tl < prolongate_tl) {
+        for (int vi = 0; vi < groupdata.numvars; ++vi) {
+          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(),
+                           []() { return "RemakeLevel before prolongation"; });
+          error_if_invalid(groupdata, vi, tl, make_valid_all(),
+                           []() { return "RemakeLevel before prolongation"; });
+          check_valid(coarseleveldata, coarsegroupdata, vi, tl, nan_handling,
+                      []() { return "RemakeLevel before prolongation"; });
+          check_valid(leveldata, groupdata, vi, tl, nan_handling,
+                      []() { return "RemakeLevel before prolongation"; });
+        }
+      }
+    } // for tl
+
+  } // for gi
 
   const amrex::IntVect nghostzones = {
       ghost_size >= 0 ? ghost_size : ghost_size_x,
@@ -1342,7 +1440,12 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
   // We assume that this level is at the same time as the next coarser level
   assert(leveldata.iteration == coarseleveldata.iteration);
 
-  const int num_groups = CCTK_NumGroups();
+  // Update LevelData data structure
+  GHExt::PatchData::LevelData oldleveldata(patch, level, ba, dm,
+                                           []() { return "RemakeLevel"; });
+  using std::swap;
+  swap(oldleveldata, leveldata);
+
   for (int gi = 0; gi < num_groups; ++gi) {
     cGroup group;
     int ierr = CCTK_GroupData(gi, &group);
@@ -1352,6 +1455,7 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
       continue;
 
     auto &restrict groupdata = *leveldata.groupdata.at(gi);
+    auto &restrict oldgroupdata = *oldleveldata.groupdata.at(gi);
     auto &restrict coarsegroupdata = *coarseleveldata.groupdata.at(gi);
     assert(coarsegroupdata.numvars == groupdata.numvars);
     amrex::Interpolater *const interpolator =
@@ -1359,79 +1463,41 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
 
     const amrex::IntVect reffact{2, 2, 2};
 
-    const amrex::BoxArray &gba = convert(
-        ba, amrex::IndexType(groupdata.indextype[0] ? amrex::IndexType::CELL
-                                                    : amrex::IndexType::NODE,
-                             groupdata.indextype[1] ? amrex::IndexType::CELL
-                                                    : amrex::IndexType::NODE,
-                             groupdata.indextype[2] ? amrex::IndexType::CELL
-                                                    : amrex::IndexType::NODE));
+    const auto outer_valid =
+        patchdata.all_faces_have_symmetries() ? make_valid_outer() : valid_t();
+    assert(outer_valid == make_valid_outer());
+
+    const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                            ? nan_handling_t::forbid_nans
+                                            : nan_handling_t::allow_nans;
 
     const int ntls = groupdata.mfab.size();
     // We only prolongate the state vector. And if there is more than
     // one time level, then we don't prolongate the oldest.
     const int prolongate_tl =
         groupdata.do_checkpoint ? (ntls > 1 ? ntls - 1 : ntls) : 0;
-    const nan_handling_t nan_handling = groupdata.do_checkpoint
-                                            ? nan_handling_t::forbid_nans
-                                            : nan_handling_t::allow_nans;
 
     for (int tl = 0; tl < ntls; ++tl) {
-      auto mfab = make_unique<amrex::MultiFab>(
-          gba, dm, groupdata.numvars, amrex::IntVect(groupdata.nghostzones));
-      vector<why_valid_t> valid(groupdata.numvars, why_valid_t([]() {
-                                  return "RemakeLevel: not prolongated/copied "
-                                         "because variable is not evolved";
-                                }));
-      // We cannot poison the grid variables because the grid
-      // structure in `leveldata.fab` already changed, but the new
-      // variables in `mfab` have not yet been assigned to the driver
-      // data structure.
-      // for (int vi = 0; vi < groupdata.numvars; ++vi)
-      //   poison_invalid(groupdata, vi, tl);
-
       if (tl < prolongate_tl) {
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          error_if_invalid(coarsegroupdata, vi, tl, make_valid_all(),
-                           []() { return "RemakeLevel before prolongation"; });
-          error_if_invalid(groupdata, vi, tl, make_valid_all(),
-                           []() { return "RemakeLevel before prolongation"; });
-          check_valid(coarsegroupdata, vi, tl, nan_handling,
-                      []() { return "RemakeLevel before prolongation"; });
-          // We cannot call this function since it would try to
-          // traverse the old grid function with the new grid
-          // structure.
-          // TODO: Use explicit loop instead (see above)
-          // check_valid(leveldata, groupdata, vi, tl);
-        }
         // Copy from same level and/or prolongate from next coarser level
         FillPatchTwoLevels(
-            *mfab, 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
-            {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
+            *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
+            {&*oldgroupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
             patchdata.amrcore->Geom(level - 1), patchdata.amrcore->Geom(level),
             *coarsegroupdata.physbc, 0, *groupdata.physbc, 0, reffact,
             interpolator, groupdata.bcrecs, 0);
-        const auto outer_valid = patchdata.all_faces_have_symmetries()
-                                     ? make_valid_outer()
-                                     : valid_t();
         for (int vi = 0; vi < groupdata.numvars; ++vi)
-          valid.at(vi) =
+          groupdata.valid.at(tl).at(vi) =
               why_valid_t(make_valid_int() | make_valid_ghosts() | outer_valid,
                           []() { return "RemakeLevel after prolongation"; });
       }
 
-      groupdata.mfab.at(tl) = move(mfab);
-      groupdata.valid.at(tl) = move(valid);
-      if (groupdata.freg)
-        groupdata.freg = make_unique<amrex::FluxRegister>(
-            gba, dm, patchdata.amrcore->refRatio(level - 1), level,
-            groupdata.numvars);
-
       for (int vi = 0; vi < groupdata.numvars; ++vi) {
-        // Already poisoned above
-        check_valid(groupdata, vi, tl, nan_handling,
+        poison_invalid(leveldata, groupdata, vi, tl);
+        check_valid(leveldata, groupdata, vi, tl, nan_handling,
                     []() { return "RemakeLevel after prolongation"; });
       }
+
     } // for tl
 
   } // for gi
@@ -1449,14 +1515,11 @@ void CactusAmrCore::ClearLevel(const int level) {
   if (verbose)
 #pragma omp critical
     CCTK_VINFO("ClearLevel patch %d level %d", patch, level);
-
   // note: several levels can be removed at once
   auto &leveldata = ghext->patchdata.at(patch).leveldata;
   leveldata.erase(leveldata.begin() + level, leveldata.end());
 
   level_modified.resize(level);
-
-  // TOOD: Delete level(s) from level_cctkGHs
 
   if (verbose)
 #pragma omp critical
