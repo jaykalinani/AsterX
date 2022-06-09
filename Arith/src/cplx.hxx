@@ -168,11 +168,11 @@ template <typename T> struct cplx {
       return 1;
     if (n == 1)
       return x;
+    // Older compilers cannot handle variable definitions in constexpr functions
     // const auto y = pow(x * x, n / 2);
     // if (n % 2 == 0)
     //   return y;
     // return x * y;
-    const auto y = pow(x * x, n / 2);
     if (n % 2 == 0)
       return pow(x * x, n / 2);
     return x * pow(x * x, n / 2);
