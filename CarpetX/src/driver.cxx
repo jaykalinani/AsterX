@@ -1,11 +1,12 @@
 #include "driver.hxx"
+
+#include "interp.hxx"
 #include "io.hxx"
 #include "logo.hxx"
 #include "loop_device.hxx"
 #include "prolongate_3d_rf2.hxx"
 #include "schedule.hxx"
 #include "timer.hxx"
-#include "interp.hxx"
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
