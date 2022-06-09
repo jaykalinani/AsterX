@@ -513,6 +513,9 @@ bool in_meta_mode(const cGH *restrict cctkGH) {
 void setup_cctkGH(cGH *restrict cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
+  // Dimensions
+  cctkGH->cctk_dim = 3;
+
   // Grid function alignment
   // TODO: Check whether AMReX guarantees a particular alignment
   cctkGH->cctk_alignment = 1;
