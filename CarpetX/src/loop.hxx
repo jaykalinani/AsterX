@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <ostream>
 #include <string>
@@ -39,6 +40,7 @@ using Arith::vect;
 constexpr int dim = 3;
 
 enum class where_t { everywhere, interior, boundary, ghosts_inclusive, ghosts };
+std::ostream &operator<<(std::ostream &os, const where_t where);
 
 // TODO: Add this `template <int CI, int CJ, int CK>` here, and to `GF3D2` etc.
 struct PointDesc {

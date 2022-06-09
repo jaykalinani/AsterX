@@ -71,6 +71,23 @@ int GroupStorageCrease(const cGH *cctkGH, int n_groups, const int *groups,
 } // namespace CarpetX
 namespace Loop {
 
+std::ostream &operator<<(std::ostream &os, const where_t where) {
+  switch (where) {
+  case where_t::everywhere:
+    return os << "everywhere";
+  case where_t::interior:
+    return os << "interior";
+  case where_t::boundary:
+    return os << "boundary";
+  case where_t::ghosts_inclusive:
+    return os << "ghosts_inclusive";
+  case where_t::ghosts:
+    return os << "ghosts";
+  default:
+    assert(0);
+  }
+}
+
 bool CarpetX_poison_undefined_values = true;
 
 // TODO: This struct is defined in loop.hxx and thus these should be
