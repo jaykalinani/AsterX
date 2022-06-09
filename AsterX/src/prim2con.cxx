@@ -64,6 +64,12 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         momy(p.I) = cv.momy;
         momz(p.I) = cv.momz;
         tau(p.I) = cv.tau;
+
+        saved_rho(p.I) = pv.rho;
+        saved_velx(p.I) = pv.velx;
+        saved_vely(p.I) = pv.vely;
+        saved_velz(p.I) = pv.velz;
+        saved_eps(p.I) = pv.eps;
       });
 }
 

@@ -51,3 +51,12 @@ CCTK_REAL momrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 } "Conserved momentum density RHS"
 
 CCTK_REAL taurhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved internal energy density RHS" 
+
+
+
+CCTK_REAL saved_prims TYPE=gf CENTERING={ccc}
+{
+  saved_rho
+  saved_velx saved_vely saved_velz
+  saved_eps
+} "Saved primitive variables as initial guesses for con2prim"

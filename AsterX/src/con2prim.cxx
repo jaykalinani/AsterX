@@ -1,10 +1,13 @@
+#include "con2prim.h"
+
 #include <fixmath.hxx>
-#include <loop_device.hxx>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+
+#include <loop_device.hxx>
+
 #include <cmath>
-#include "con2prim.h"
 
 namespace AsterX {
 using namespace std;
@@ -73,50 +76,20 @@ Valid for just-hydro, ideal-fluid, and flat-space.
 This has been inspired by Siegel+2018.
 ****************************************************************************/
 extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_AsterX_Con2Prim_2DNRNoble;
+  DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim_2DNRNoble;
   DECLARE_CCTK_PARAMETERS;
 
   constexpr auto DI = PointDesc::DI;
 
-  const GridDescBaseDevice grid(cctkGH);
-  constexpr array<int, dim> cell_centred = {1, 1, 1};
-  constexpr array<int, dim> vertex_centred = {0, 0, 0};
-  const GF3D2layout gf_layout_cell(cctkGH, cell_centred);
-  const GF3D2layout gf_layout_vertex(cctkGH, vertex_centred);
-
-  const GF3D2<const CCTK_REAL> gf_alp(gf_layout_vertex, alp);
-  const GF3D2<const CCTK_REAL> gf_betax(gf_layout_vertex, betax);
-  const GF3D2<const CCTK_REAL> gf_betay(gf_layout_vertex, betay);
-  const GF3D2<const CCTK_REAL> gf_betaz(gf_layout_vertex, betaz);
-  const GF3D2<const CCTK_REAL> gf_gxx(gf_layout_vertex, gxx);
-  const GF3D2<const CCTK_REAL> gf_gxy(gf_layout_vertex, gxy);
-  const GF3D2<const CCTK_REAL> gf_gxz(gf_layout_vertex, gxz);
-  const GF3D2<const CCTK_REAL> gf_gyy(gf_layout_vertex, gyy);
-  const GF3D2<const CCTK_REAL> gf_gyz(gf_layout_vertex, gyz);
-  const GF3D2<const CCTK_REAL> gf_gzz(gf_layout_vertex, gzz);
-
-  GF3D2<CCTK_REAL> gf_dens(gf_layout_cell, dens);
-  GF3D2<CCTK_REAL> gf_momx(gf_layout_cell, momx);
-  GF3D2<CCTK_REAL> gf_momy(gf_layout_cell, momy);
-  GF3D2<CCTK_REAL> gf_momz(gf_layout_cell, momz);
-  GF3D2<CCTK_REAL> gf_tau(gf_layout_cell, tau);
-
-  GF3D2<CCTK_REAL> gf_rho(gf_layout_cell, rho);
-  GF3D2<CCTK_REAL> gf_velx(gf_layout_cell, velx);
-  GF3D2<CCTK_REAL> gf_vely(gf_layout_cell, vely);
-  GF3D2<CCTK_REAL> gf_velz(gf_layout_cell, velz);
-  GF3D2<CCTK_REAL> gf_press(gf_layout_cell, press);
-  GF3D2<CCTK_REAL> gf_eps(gf_layout_cell, eps);
-
-  // Loop over the entire grid (0 to n-1 points in each direction)
-  grid.loop_all_device<1, 1, 1>(
+  // Loop over the interior of the grid
+  cctk_grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        CCTK_REAL alp = 0.0;   // lapse
-        CCTK_REAL betax = 0.0; // beta^i
-        CCTK_REAL betay = 0.0;
-        CCTK_REAL betaz = 0.0;
-        CCTK_REAL betalx, betaly, betalz; // beta_i
+        CCTK_REAL cc_alp = 0.0;   // lapse
+        CCTK_REAL cc_betax = 0.0; // beta^i
+        CCTK_REAL cc_betay = 0.0;
+        CCTK_REAL cc_betaz = 0.0;
+        CCTK_REAL cc_betalx, cc_betaly, cc_betalz; // beta_i
 
         CCTK_REAL g_up[4][4] = {
             {0.0, 0.0, 0.0, 0.0},
@@ -135,22 +108,22 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         for (int dk = 0; dk < 2; ++dk)
           for (int dj = 0; dj < 2; ++dj)
             for (int di = 0; di < 2; ++di) {
-              g_lo[1][1] += gf_gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g_lo[1][2] += gf_gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g_lo[1][3] += gf_gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g_lo[2][2] += gf_gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g_lo[2][3] += gf_gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g_lo[3][3] += gf_gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              alp += gf_alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              betax += gf_betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              betay += gf_betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              betaz += gf_betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[1][1] += gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[1][2] += gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[1][3] += gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[2][2] += gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[2][3] += gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              g_lo[3][3] += gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              cc_alp += alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              cc_betax += betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              cc_betay += betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+              cc_betaz += betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
             }
 
-        alp *= 0.125;
-        betax *= 0.125;
-        betay *= 0.125;
-        betaz *= 0.125;
+        cc_alp *= 0.125;
+        cc_betax *= 0.125;
+        cc_betay *= 0.125;
+        cc_betaz *= 0.125;
         g_lo[1][1] *= 0.125;
         g_lo[1][2] *= 0.125;
         g_lo[1][3] *= 0.125;
@@ -158,15 +131,18 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         g_lo[2][3] *= 0.125;
         g_lo[3][3] *= 0.125;
 
-        betalx = g_lo[1][1] * betax + g_lo[1][2] * betay + g_lo[1][3] * betaz;
-        betaly = g_lo[1][2] * betax + g_lo[2][2] * betay + g_lo[2][3] * betaz;
-        betalz = g_lo[1][3] * betax + g_lo[2][3] * betay + g_lo[3][3] * betaz;
+        cc_betalx = g_lo[1][1] * cc_betax + g_lo[1][2] * cc_betay +
+                    g_lo[1][3] * cc_betaz;
+        cc_betaly = g_lo[1][2] * cc_betax + g_lo[2][2] * cc_betay +
+                    g_lo[2][3] * cc_betaz;
+        cc_betalz = g_lo[1][3] * cc_betax + g_lo[2][3] * cc_betay +
+                    g_lo[3][3] * cc_betaz;
 
-        g_lo[0][0] =
-            -alp * alp + betax * betalx + betay * betaly + betaz * betalz;
-        g_lo[0][1] = betalx;
-        g_lo[0][2] = betaly;
-        g_lo[0][3] = betalz;
+        g_lo[0][0] = -cc_alp * cc_alp + cc_betax * cc_betalx +
+                     cc_betay * cc_betaly + cc_betaz * cc_betalz;
+        g_lo[0][1] = cc_betalx;
+        g_lo[0][2] = cc_betaly;
+        g_lo[0][3] = cc_betalz;
 
         g_lo[1][0] = g_lo[0][1];
         g_lo[2][0] = g_lo[0][2];
@@ -200,16 +176,16 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         gamma33 =
             (-g_lo[1][2] * g_lo[1][2] + g_lo[1][1] * g_lo[2][2]) / spatial_detg;
 
-        g_up[0][0] = -1.0 / (alp * alp);
-        g_up[0][1] = betax / (alp * alp);
-        g_up[0][2] = betay / (alp * alp);
-        g_up[0][3] = betaz / (alp * alp);
-        g_up[1][1] = gamma11 - betax * betax / (alp * alp);
-        g_up[1][2] = gamma12 - betax * betay / (alp * alp);
-        g_up[1][3] = gamma13 - betax * betaz / (alp * alp);
-        g_up[2][2] = gamma22 - betay * betay / (alp * alp);
-        g_up[2][3] = gamma23 - betay * betaz / (alp * alp);
-        g_up[3][3] = gamma33 - betaz * betaz / (alp * alp);
+        g_up[0][0] = -1.0 / (cc_alp * cc_alp);
+        g_up[0][1] = cc_betax / (cc_alp * cc_alp);
+        g_up[0][2] = cc_betay / (cc_alp * cc_alp);
+        g_up[0][3] = cc_betaz / (cc_alp * cc_alp);
+        g_up[1][1] = gamma11 - cc_betax * cc_betax / (cc_alp * cc_alp);
+        g_up[1][2] = gamma12 - cc_betax * cc_betay / (cc_alp * cc_alp);
+        g_up[1][3] = gamma13 - cc_betax * cc_betaz / (cc_alp * cc_alp);
+        g_up[2][2] = gamma22 - cc_betay * cc_betay / (cc_alp * cc_alp);
+        g_up[2][3] = gamma23 - cc_betay * cc_betaz / (cc_alp * cc_alp);
+        g_up[3][3] = gamma33 - cc_betaz * cc_betaz / (cc_alp * cc_alp);
 
         g_up[1][0] = g_up[0][1];
         g_up[2][0] = g_up[0][2];
@@ -227,13 +203,13 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         CCTK_INT c2p_failed;
         CCTK_REAL Z, W;
 
-        /* prims from last timestep */
         CCTK_REAL prim[NPRIMS];
-        prim[RHO] = gf_rho(p.I);
+        /* saved prims */
+        prim[RHO] = saved_rho(p.I);
         // contravariant coordinate velocity:
-        v1_coord_con = gf_velx(p.I);
-        v2_coord_con = gf_vely(p.I);
-        v3_coord_con = gf_velz(p.I);
+        v1_coord_con = saved_velx(p.I);
+        v2_coord_con = saved_vely(p.I);
+        v3_coord_con = saved_velz(p.I);
         // convariant coordinate velocity:
         v1_coord_cov = g_lo[1][1] * v1_coord_con + g_lo[1][2] * v2_coord_con +
                        g_lo[1][3] * v3_coord_con;
@@ -242,18 +218,18 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         v3_coord_cov = g_lo[3][1] * v1_coord_con + g_lo[3][2] * v2_coord_con +
                        g_lo[3][3] * v3_coord_con;
         // covariant Valencia velocity:
-        prim[V1_COV] = (v1_coord_cov + g_lo[0][1]) / alp;
-        prim[V2_COV] = (v2_coord_cov + g_lo[0][2]) / alp;
-        prim[V3_COV] = (v3_coord_cov + g_lo[0][3]) / alp;
-        prim[EPS] = gf_eps(p.I);
+        prim[V1_COV] = (v1_coord_cov + g_lo[0][1]) / cc_alp;
+        prim[V2_COV] = (v2_coord_cov + g_lo[0][2]) / cc_alp;
+        prim[V3_COV] = (v3_coord_cov + g_lo[0][3]) / cc_alp;
+        prim[EPS] = saved_eps(p.I);
 
         /* cons at this timestep */
         CCTK_REAL con[NCONS];
-        con[D] = gf_dens(p.I);
-        con[S1_cov] = gf_momx(p.I);
-        con[S2_cov] = gf_momy(p.I);
-        con[S3_cov] = gf_momz(p.I);
-        con[TAU] = gf_tau(p.I);
+        con[D] = dens(p.I);
+        con[S1_cov] = momx(p.I);
+        con[S2_cov] = momy(p.I);
+        con[S3_cov] = momz(p.I);
+        con[TAU] = tau(p.I);
 
         /* calculate W from last timestep and use for guess */
         vsq_last = prim[V1_COV] *
@@ -265,10 +241,10 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
         vsq_last += prim[V3_COV] *
                     (g_up[3][1] * prim[V1_COV] + g_up[3][2] * prim[V2_COV] +
                      g_up[3][3] * prim[V3_COV]);
-        if ((vsq_last < 0.) && (fabs(vsq_last) < 1.0e-13)) {
+        if ((vsq_last < 0) && (fabs(vsq_last) < 1.0e-13)) {
           vsq_last = fabs(vsq_last);
         }
-        gamma_last = 1. / sqrt(1. - vsq_last);
+        gamma_last = 1.0 / sqrt(1.0 - vsq_last);
 
         /* calculate S_squared */
         S_squared =
@@ -319,18 +295,24 @@ extern "C" void AsterX_Con2Prim_2DNRNoble(CCTK_ARGUMENTS) {
           prim[V3_COV] = con[S3_cov] / Z;
           prim[EPS] = (Z * (1.0 - x_2d[1]) / prim[RHO] - 1.0) / gamma;
         }
-        gf_rho(p.I) = prim[0];
-        v1_coord_cov = alp * prim[V1_COV] - g_lo[0][1];
-        v2_coord_cov = alp * prim[V2_COV] - g_lo[0][2];
-        v3_coord_cov = alp * prim[V3_COV] - g_lo[0][3];
-        gf_velx(p.I) = g_up[1][1] * v1_coord_cov + g_up[1][2] * v2_coord_cov +
-                       g_up[1][3] * v3_coord_cov;
-        gf_vely(p.I) = g_up[1][2] * v1_coord_cov + g_up[2][2] * v2_coord_cov +
-                       g_up[1][3] * v3_coord_cov;
-        gf_velz(p.I) = g_up[1][3] * v1_coord_cov + g_up[1][3] * v2_coord_cov +
-                       g_up[3][3] * v3_coord_cov;
-        gf_eps(p.I) = prim[EPS];
-        gf_press(p.I) = (gamma - 1.0) * prim[4] * prim[0];
+        rho(p.I) = prim[0];
+        v1_coord_cov = cc_alp * prim[V1_COV] - g_lo[0][1];
+        v2_coord_cov = cc_alp * prim[V2_COV] - g_lo[0][2];
+        v3_coord_cov = cc_alp * prim[V3_COV] - g_lo[0][3];
+        velx(p.I) = g_up[1][1] * v1_coord_cov + g_up[1][2] * v2_coord_cov +
+                    g_up[1][3] * v3_coord_cov;
+        vely(p.I) = g_up[1][2] * v1_coord_cov + g_up[2][2] * v2_coord_cov +
+                    g_up[1][3] * v3_coord_cov;
+        velz(p.I) = g_up[1][3] * v1_coord_cov + g_up[1][3] * v2_coord_cov +
+                    g_up[3][3] * v3_coord_cov;
+        eps(p.I) = prim[EPS];
+        press(p.I) = (gamma - 1.0) * prim[4] * prim[0];
+
+        saved_rho(p.I) = rho(p.I);
+        saved_velx(p.I) = velx(p.I);
+        saved_vely(p.I) = vely(p.I);
+        saved_velz(p.I) = velz(p.I);
+        saved_eps(p.I) = eps(p.I);
       });
 }
 
