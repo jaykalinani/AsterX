@@ -546,6 +546,6 @@ loop_device_idx(const cGH *cctkGH, const std::array<int, dim> &indextype,
 } // namespace Loop
 
 #undef CCTK_CENTERING_GRID
-#define CCTK_CENTERING_GRID const Loop::GridDescBaseDevice grid(cctkGH)
+#define CCTK_CENTERING_GRID const Loop::GridDescBaseDevice cctk_grid(cctkGH)
 
 #endif // #ifndef LOOP_DEVICE_HXX

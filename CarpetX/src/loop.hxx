@@ -1395,7 +1395,8 @@ template <typename T> inline constexpr bool is_GF3D5_v = is_GF3D5<T>::value;
 } // namespace Loop
 
 // Macros for declaring variables using DECLARE_CCTK_ARGUMENTSX_func_name
-#define CCTK_CENTERING_GRID const Loop::GridDescBase grid(cctkGH)
+#define CCTK_CENTERING_GRID const Loop::GridDescBase cctk_grid(cctkGH)
+#define grid cctk_grid
 #define CCTK_CENTERING_LAYOUT(L, V)                                            \
   constexpr std::array<int, Loop::dim> L##_centered V;                         \
   const Loop::GF3D2layout L##gf_layout(cctkGH, L##_centered)
