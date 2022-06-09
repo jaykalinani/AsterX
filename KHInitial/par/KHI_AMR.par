@@ -10,7 +10,6 @@ ActiveThorns = "
     SystemTopology
     TimerReport
     TmunuBase
-    openPMD
 "
 
 $nlevels = 3
