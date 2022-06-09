@@ -20,21 +20,4 @@ extern "C" void CarpetX_InitError(CCTK_ARGUMENTS) {
           CCTK_ATTRIBUTE_ALWAYS_INLINE { regrid_error(p.I) = 0; });
 }
 
-extern "C" void CarpetX_SetLevel(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTSX_CarpetX_SetLevel;
-  DECLARE_CCTK_PARAMETERS;
-
-  int levfac = cctk_levfac[0];
-  int lev = 0;
-  while (levfac > 1) {
-    levfac >>= 1;
-    lev += 1;
-  }
-
-  grid.loop_device<1, 1, 1, where_t::everywhere>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const Loop::PointDesc &p)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE { refinement_level(p.I) = lev; });
-}
-
 } // namespace CarpetX

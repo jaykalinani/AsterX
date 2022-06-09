@@ -28,12 +28,6 @@ SCHEDULE CarpetX_InitError AT basegrid
   WRITES: CarpetX::regrid_error(everywhere)
 } "Initialize regridding error to zero"
 
-SCHEDULE CarpetX_SetLevel AT basegrid
-{
-  LANG: C
-  WRITES: CarpetX::refinement_level(everywhere)
-} "Set refinemenet level grid function"
-
 
 
 # I/O

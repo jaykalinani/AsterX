@@ -2164,16 +2164,14 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
 
   const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
   assert(gi_regrid_error >= 0);
-  const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
-  assert(gi_refinement_level >= 0);
 
   vector<int> groups;
   for (int n = 0; n < numgroups; ++n) {
     const int gi = groups0[n];
     if (CCTK_GroupTypeI(gi) != CCTK_GF)
       continue;
-    // Don't restrict the regridding error nor the refinement level
-    if (gi == gi_regrid_error || gi == gi_refinement_level)
+    // Don't restrict the regridding error
+    if (gi == gi_regrid_error)
       continue;
     groups.push_back(gi);
   }
@@ -2418,11 +2416,8 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
   static Timer timer("Restrict");
   Interval interval(timer);
 
-
   const int gi_regrid_error = CCTK_GroupIndex("CarpetX::regrid_error");
   assert(gi_regrid_error >= 0);
-  const int gi_refinement_level = CCTK_GroupIndex("CarpetX::refinement_level");
-  assert(gi_refinement_level >= 0);
 
   for (const auto &patchdata : ghext->patchdata) {
     if (level + 1 < int(patchdata.leveldata.size())) {
@@ -2442,8 +2437,8 @@ void Restrict(const cGH *cctkGH, int level, const vector<int> &groups) {
                                                 ? nan_handling_t::forbid_nans
                                                 : nan_handling_t::allow_nans;
 
-        // Don't restrict the regridding error nor the refinement level
-        if (gi == gi_regrid_error || gi == gi_refinement_level)
+        // Don't restrict the regridding error
+        if (gi == gi_regrid_error)
           continue;
         // Don't restrict groups that have restriction disabled
         if (!groupdata.do_restrict)

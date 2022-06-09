@@ -145,8 +145,3 @@ CCTK_REAL regrid_error TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {
   regrid_error
 } "Regridding condition"
-
-CCTK_REAL refinement_level TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
-{
-  refinement_level
-} "Refinement level"
