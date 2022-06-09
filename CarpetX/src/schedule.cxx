@@ -26,6 +26,7 @@ static inline int omp_in_parallel() { return 0; }
 #include <sys/time.h>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -461,6 +462,9 @@ void delete_cctkGH(cGH *cctkGH) {
   for (int vi = 0; vi < numvars; ++vi)
     delete[] cctkGH->data[vi];
   delete[] cctkGH->data;
+#ifdef CCTK_DEBUG
+  memset(cctkGH, 0, sizeof *cctkGH);
+#endif
   delete cctkGH;
 }
 
