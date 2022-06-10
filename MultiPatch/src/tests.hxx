@@ -6,6 +6,7 @@
 #include <limits>
 #include <random>
 #include <string>
+#include <sstream>
 
 namespace MultiPatchTests {
 
@@ -88,21 +89,23 @@ enum class string_color { green, red };
  */
 template <string_color color>
 constexpr const std::string colored(const std ::string &str) {
-  std::string output;
-  output.reserve(str.size() + 17);
+  std::ostringstream output;
 
   if constexpr (color == string_color::red) {
-    output = "\033[31;1m";
-    output += str;
-    output += "\033[0m";
+    output << "\033[31;1m";
+    output << str;
+    output << "\033[0m";
   } else if constexpr (color == string_color::green) {
-    output = "\033[32;1m";
-    output += str;
-    output += "\033[0m";
+    output << "\033[32;1m";
+    output << str;
+    output << "\033[0m";
   }
 
-  return output;
+  return output.str();
 }
+
+const auto PASSED = colored<string_color::green>("PASSED");
+const auto FAILED = colored<string_color::red>("FAILED");
 
 /**
  * Determines the direction that a finite difference derivative will be
@@ -120,31 +123,18 @@ enum class fd_direction { x = 0, y = 1, z = 2 };
  * @tparam dir The direction of the derivative.
  * @return The derivative of function in the specified direction and point.
  */
-template <fd_direction dir, typename vector_t>
-inline vector_t fd_4(std::function<vector_t(const vector_t &)> function,
-                     vector_t point) {
+template <fd_direction dir, typename vector_t, typename function_t>
+inline vector_t fd_4(const function_t &function, vector_t point) {
 
   vector_t point_p_1d = point;
   vector_t point_p_2d = point;
   vector_t point_m_1d = point;
   vector_t point_m_2d = point;
 
-  if constexpr (dir == fd_direction::x) {
-    point_p_1d += {fd_delta, 0, 0};
-    point_p_2d += {2 * fd_delta, 0, 0};
-    point_m_1d -= {fd_delta, 0, 0};
-    point_m_2d -= {2 * fd_delta, 0, 0};
-  } else if constexpr (dir == fd_direction::y) {
-    point_p_1d += {0, fd_delta, 0};
-    point_p_2d += {0, 2 * fd_delta, 0};
-    point_m_1d -= {0, fd_delta, 0};
-    point_m_2d -= {0, 2 * fd_delta, 0};
-  } else if constexpr (dir == fd_direction::z) {
-    point_p_1d += {0, 0, fd_delta};
-    point_p_2d += {0, 0, 2 * fd_delta};
-    point_m_1d -= {0, 0, fd_delta};
-    point_m_2d -= {0, 0, 2 * fd_delta};
-  }
+  point_p_1d(static_cast<int>(dir)) += fd_delta;
+  point_p_2d(static_cast<int>(dir)) += 2 * fd_delta;
+  point_m_1d(static_cast<int>(dir)) -= fd_delta;
+  point_m_2d(static_cast<int>(dir)) -= 2 * fd_delta;
 
   const auto f_p_1d = function(point_p_1d);
   const auto f_p_2d = function(point_p_2d);
@@ -153,31 +143,19 @@ inline vector_t fd_4(std::function<vector_t(const vector_t &)> function,
   return (f_m_2d - 8 * f_m_1d + 8 * f_p_1d - f_p_2d) / (12 * fd_delta);
 }
 
-template <fd_direction dir_inner, fd_direction dir_outer, typename vector_t>
-inline vector_t fd2_4(std::function<vector_t(const vector_t &)> function,
-                      vector_t point) {
+template <fd_direction dir_inner, fd_direction dir_outer, typename vector_t,
+          typename function_t>
+inline vector_t fd2_4(const function_t &function, vector_t point) {
 
   vector_t point_p_1d = point;
   vector_t point_p_2d = point;
   vector_t point_m_1d = point;
   vector_t point_m_2d = point;
 
-  if constexpr (dir_outer == fd_direction::x) {
-    point_p_1d += {fd_delta, 0, 0};
-    point_p_2d += {2 * fd_delta, 0, 0};
-    point_m_1d -= {fd_delta, 0, 0};
-    point_m_2d -= {2 * fd_delta, 0, 0};
-  } else if constexpr (dir_outer == fd_direction::y) {
-    point_p_1d += {0, fd_delta, 0};
-    point_p_2d += {0, 2 * fd_delta, 0};
-    point_m_1d -= {0, fd_delta, 0};
-    point_m_2d -= {0, 2 * fd_delta, 0};
-  } else if constexpr (dir_outer == fd_direction::z) {
-    point_p_1d += {0, 0, fd_delta};
-    point_p_2d += {0, 0, 2 * fd_delta};
-    point_m_1d -= {0, 0, fd_delta};
-    point_m_2d -= {0, 0, 2 * fd_delta};
-  }
+  point_p_1d(static_cast<int>(dir_outer)) += fd_delta;
+  point_p_2d(static_cast<int>(dir_outer)) += 2 * fd_delta;
+  point_m_1d(static_cast<int>(dir_outer)) -= fd_delta;
+  point_m_2d(static_cast<int>(dir_outer)) -= 2 * fd_delta;
 
   const auto f_p_1d = fd_4<dir_inner>(function, point_p_1d);
   const auto f_p_2d = fd_4<dir_inner>(function, point_p_2d);

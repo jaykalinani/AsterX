@@ -33,11 +33,10 @@ std::string patch_owner_test(const PatchTransformations &pt,
   const auto owner_patch = get_owner_patch(pt, x);
 
   if (owner_patch == expected) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED")
-        << ". Reason: Expected to get patch " << piece_name(expected)
-        << " and got " << piece_name(owner_patch);
+    msg << MultiPatchTests::FAILED << ". Reason: Expected to get patch "
+        << piece_name(expected) << " and got " << piece_name(owner_patch);
   }
 
   msg << ".";
@@ -73,9 +72,9 @@ std::string global_identity_test(const PatchTransformations &pt,
   const auto test3 = isapprox(l2g(2), global_vars(2));
 
   if (test1 && test2 && test3) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << l2g(0) << " =/= " << global_vars(0) << ". ";
@@ -125,9 +124,9 @@ std::string local_identity_test(const PatchTransformations &pt, int patch,
   const bool test4 = isapprox(computed_local_point(2), local_point(2));
 
   if (test1 && test2 && test3 && test4) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << "the computed patch is "
@@ -217,9 +216,9 @@ std::string jacobian_test(const PatchTransformations &pt, int patch,
   const bool all_tests = test1 && test2 && test3 && test4 && test5 && test6;
 
   if (all_tests) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << "computed J(0)(0) value is " << (J(0)(0))
@@ -346,9 +345,9 @@ std::string djacobian_test(const PatchTransformations &pt, int patch,
                          test17 && test18;
 
   if (all_tests) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << "computed dJ(0)(0, 0) value is " << (dJ(0)(0, 0))

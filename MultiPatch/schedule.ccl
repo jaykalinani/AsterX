@@ -19,15 +19,20 @@ SCHEDULE MultiPatch_Check_Parameters AT CCTK_PARAMCHECK
 } "Check parameters"
 
 if (run_tests) {
-  SCHEDULE run_cartesian_tests AT wragh
-  {
-    LANG: C
-    OPTIONS: meta
-  } "Perform Cartesian patch system tests"
 
-  SCHEDULE run_cake_tests AT wragh
-  {
-    LANG: C
-    OPTIONS: meta
-  } "Perform Cake patch system tests"
+  if(CCTK_EQUALS(patch_system, "Cartesian")) {
+    SCHEDULE run_cartesian_tests AT wragh
+    {
+      LANG: C
+      OPTIONS: meta
+    } "Perform Cartesian patch system tests"
+  }
+
+  if(CCTK_EQUALS(patch_system, "Cake")) {
+    SCHEDULE run_cake_tests AT wragh
+    {
+      LANG: C
+      OPTIONS: meta
+    } "Perform Cake patch system tests"
+  }
 }

@@ -23,9 +23,9 @@ std::string local2global(const PatchTransformations &pt,
   const bool eq_z = isapprox(l2g(2), x(2));
 
   if (eq_x && eq_y && eq_z) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason:";
+    msg << MultiPatchTests::FAILED << ". Reason:";
 
     if (!eq_x) {
       msg << " The result in the x direction is " << l2g(0) << ".";
@@ -57,9 +57,9 @@ std::string global2local(const PatchTransformations &pt,
   const bool eq_z = isapprox(std::get<1>(g2l)(2), x(2));
 
   if (eq_x && eq_y && eq_z) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason:";
+    msg << MultiPatchTests::FAILED << ". Reason:";
 
     if (!eq_x) {
       msg << " The result in the x direction is " << std::get<1>(g2l)(0) << ".";

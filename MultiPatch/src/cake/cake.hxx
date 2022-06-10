@@ -52,22 +52,16 @@ CCTK_DEVICE CCTK_HOST inline void expects(bool predicate, const char *msg) {
 }
 
 /**
- * Computes the power of a number at compile time. Comptible
- * with Mathematica's Power function
+ * Compatibility wrapper for replacing Mathematica's Power function.
  *
  * @param n The exponent.
  * @param x The base.
  * @return The n-th power of x
  */
-template <typename T>
-CCTK_DEVICE CCTK_HOST static inline constexpr T Power(T x, int n) {
-  if (n == 0) {
-    return T{1};
-  } else if (n < 0) {
-    return T{1} / Power(x, -n);
-  } else {
-    return x * Power(x, n - 1);
-  }
+template <typename base_type, typename exponent_type>
+CCTK_DEVICE CCTK_HOST static inline auto Power(base_type x, exponent_type n) {
+  using std::pow;
+  return pow(x, n);
 }
 
 /**
@@ -75,7 +69,7 @@ CCTK_DEVICE CCTK_HOST static inline constexpr T Power(T x, int n) {
  *
  * @param x The radicand.
  */
-template <typename T> CCTK_DEVICE CCTK_HOST static inline T Sqrt(T x) {
+template <typename T> CCTK_DEVICE CCTK_HOST static inline auto Sqrt(T x) {
   using std::sqrt;
   return sqrt(x);
 }
@@ -108,28 +102,28 @@ enum class patch_piece : int {
  * @return A string representing the name of the piece.
  */
 inline const std::string piece_name(const patch_piece &p) {
-  if (p == patch_piece::cartesian)
+  switch (static_cast<int>(p)) {
+  case static_cast<int>(patch_piece::cartesian):
     return "cartesian";
-  else if (p == patch_piece::plus_x)
+  case static_cast<int>(patch_piece::plus_x):
     return "plus x";
-  else if (p == patch_piece::minus_x)
+  case static_cast<int>(patch_piece::minus_x):
     return "minus x";
-  else if (p == patch_piece::plus_y)
+  case static_cast<int>(patch_piece::plus_y):
     return "plus y";
-  else if (p == patch_piece::minus_y)
+  case static_cast<int>(patch_piece::minus_y):
     return "minus y";
-  else if (p == patch_piece::plus_z)
+  case static_cast<int>(patch_piece::plus_z):
     return "plus z";
-  else if (p == patch_piece::minus_z)
+  case static_cast<int>(patch_piece::minus_z):
     return "minus z";
-  else if (p == patch_piece::minus_z)
-    return "interpatch boundary";
-  else if (p == patch_piece::inner_boundary)
-    return "inner cube boundary";
-  else if (p == patch_piece::outer_boundary)
+  case static_cast<int>(patch_piece::inner_boundary):
+    return "inner boundary";
+  case static_cast<int>(patch_piece::outer_boundary):
     return "outer boundary";
-  else
+  default:
     return "exterior";
+  }
 }
 
 /**
