@@ -1392,6 +1392,22 @@ template <typename T> struct is_GF3D5 : false_type {};
 template <typename T> struct is_GF3D5<GF3D5<T> > : true_type {};
 template <typename T> inline constexpr bool is_GF3D5_v = is_GF3D5<T>::value;
 
+template <typename T> struct GF3D5vector {
+  static_assert((std::is_same_v<T, amrex::Real>), "");
+  typedef T value_type;
+  GF3D5layout layout;
+  amrex::FArrayBox fab;
+  GF3D5vector(const GF3D5layout &layout, const int nvars)
+      : layout(layout), fab(amrex::Box(amrex::IntVect(0, 0, 0),
+                                       amrex::IntVect(layout.off - 1, 0, 0)),
+                            nvars, amrex::The_Async_Arena()) {}
+  size_t size() const { return fab.nComp(); }
+  GF3D5<T> operator()(const int n) const {
+    assert(n >= 0 && n < size());
+    return GF3D5<T>(layout, const_cast<T *>(fab.dataPtr(n)));
+  }
+};
+
 } // namespace Loop
 
 // Macros for declaring variables using DECLARE_CCTK_ARGUMENTSX_func_name
