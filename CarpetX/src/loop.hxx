@@ -1,13 +1,11 @@
 #ifndef LOOP_HXX
 #define LOOP_HXX
 
-#ifdef __CUDACC__
-#define CCTK_DEVICE __device__
-#define CCTK_HOST __host__
-#else
-#define CCTK_DEVICE
-#define CCTK_HOST
-#endif
+
+#include <AMReX_FArrayBox.H>
+
+#define CCTK_DEVICE AMREX_GPU_DEVICE
+#define CCTK_HOST AMREX_GPU_HOST
 
 #include "mempool.hxx"
 
