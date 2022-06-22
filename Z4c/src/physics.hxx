@@ -137,7 +137,8 @@ calc_det(const mat<T, 4, dnup1, dnup2> &g) {
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr smat<T, 0, !dnup1, !dnup2>
 calc_inv(const smat<T, 0, dnup1, dnup2> &g, const T &detg) {
-  return smat<T, 0, !dnup1, !dnup2>([&](int i, int j) { return one<T>()(); });
+  return smat<T, 0, !dnup1, !dnup2>([&](int i, int j)
+                                        ARITH_INLINE { return one<T>()(); });
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
@@ -220,7 +221,8 @@ calc_inv(const smat<T, 4, dnup1, dnup2> &g, const T &detg) {
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr mat<T, 0, !dnup1, !dnup2>
 calc_inv(const mat<T, 0, dnup1, dnup2> &g, const T &detg) {
-  return mat<T, 0, !dnup1, !dnup2>([&](int i, int j) { return one<T>()(); });
+  return mat<T, 0, !dnup1, !dnup2>([&](int i, int j)
+                                       ARITH_INLINE { return one<T>()(); });
 }
 
 template <typename T, dnup_t dnup1, dnup_t dnup2>
