@@ -87,8 +87,7 @@ enum class string_color { green, red };
  * @param string The string to color.
  * @return The colored string.
  */
-template <string_color color>
-constexpr const std::string colored(const std ::string &str) {
+template <string_color color> std::string colored(const std ::string &str) {
   std::ostringstream output;
 
   if constexpr (color == string_color::red) {
