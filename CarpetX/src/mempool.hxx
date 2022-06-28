@@ -38,6 +38,8 @@ private:
   void *restrict alloc_bytes(size_t count);
 
 public:
+  size_t size() const { return total_size; }
+  size_t capacity() const { return total_size + arena_size - arena_used; }
   template <typename T> T *restrict alloc(size_t count) {
     return reinterpret_cast<T *>(alloc_bytes(count * sizeof(T)));
   }
@@ -52,6 +54,8 @@ public:
   mempool_set_t &operator=(const mempool_set_t &) = delete;
 
   void reset();
+
+  size_t size() const { return mempools.size(); }
 
   mempool_t &restrict get_mempool(size_t id);
 };
