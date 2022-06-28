@@ -67,7 +67,7 @@ global2local_impl(const PatchTransformations &pt,
 
 CCTK_DEVICE CCTK_HOST
     std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
-               vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
+              vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
     d2local_dglobal2_impl(const PatchTransformations &pt, int patch,
                           const vec<CCTK_REAL, dim, UP> &a) {
   switch (patch) {
@@ -196,7 +196,7 @@ dlocal_dglobal(const PatchTransformations &pt, int patch,
   return dlocal_dglobal_impl(pt, patch, a);
 }
 std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
-           vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
+          vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
 d2local_dglobal2(const PatchTransformations &pt, int patch,
                  const vec<CCTK_REAL, dim, UP> &a) {
   return d2local_dglobal2_impl(pt, patch, a);
@@ -221,7 +221,7 @@ dlocal_dglobal_device(const PatchTransformations &pt, int patch,
 }
 CCTK_DEVICE
 std_tuple<vec<CCTK_REAL, dim, UP>, vec<vec<CCTK_REAL, dim, DN>, dim, UP>,
-           vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
+          vec<smat<CCTK_REAL, dim, DN, DN>, dim, UP> >
 d2local_dglobal2_device(const PatchTransformations &pt, int patch,
                         const vec<CCTK_REAL, dim, UP> &a) {
   return d2local_dglobal2_impl(pt, patch, a);

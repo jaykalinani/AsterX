@@ -220,7 +220,7 @@ extern "C" void MultiPatch_Coordinates_Setup(CCTK_ARGUMENTS) {
         const Loop::GF3D2index index(layout_cc, p.I);
         const vec<CCTK_REAL, dim, UP> a = {p.x, p.y, p.z};
         const std_tuple<vec<CCTK_REAL, dim, UP>,
-                         vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
+                        vec<vec<CCTK_REAL, dim, DN>, dim, UP> >
             x_dadx = pt.dlocal_dglobal(pt, cctk_patch, a);
         const vec<CCTK_REAL, dim, UP> &x = std::get<0>(x_dadx);
         const vec<vec<CCTK_REAL, dim, DN>, dim, UP> &dadx = std::get<1>(x_dadx);
