@@ -55,9 +55,9 @@ RUN mkdir dist && \
 # ADIOS2 is a parallel I/O library, comparable to HDF5
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/ornladios/ADIOS2/archive/refs/tags/v2.7.1.tar.gz && \
-    tar xzf v2.7.1.tar.gz && \
-    cd ADIOS2-2.7.1 && \
+    wget https://github.com/ornladios/ADIOS2/archive/refs/tags/v2.8.1.tar.gz && \
+    tar xzf v2.8.1.tar.gz && \
+    cd ADIOS2-2.8.1 && \
     mkdir build && \
     cd build && \
     cmake .. && \
@@ -93,9 +93,9 @@ RUN mkdir src && \
 # - Depends on ADIOS2
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/openPMD/openPMD-api/archive/refs/tags/0.14.4.tar.gz && \
-    tar xzf 0.14.4.tar.gz && \
-    cd openPMD-api-0.14.4 && \
+    wget https://github.com/openPMD/openPMD-api/archive/refs/tags/0.14.5.tar.gz && \
+    tar xzf 0.14.5.tar.gz && \
+    cd openPMD-api-0.14.5 && \
     mkdir build && \
     cd build && \
     cmake .. && \
@@ -168,9 +168,9 @@ RUN mkdir src && \
 # - Install this last because it changes most often
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/22.05.tar.gz && \
-    tar xzf 22.05.tar.gz && \
-    cd amrex-22.05 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/22.06.tar.gz && \
+    tar xzf 22.06.tar.gz && \
+    cd amrex-22.06 && \
     mkdir build && \
     cd build && \
     cmake \
