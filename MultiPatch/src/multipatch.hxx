@@ -33,24 +33,24 @@ struct Patch {
 
 struct PatchTransformations {
   // Cartesian
-  const CCTK_REAL cartesian_xmax;
-  const CCTK_REAL cartesian_xmin;
-  const CCTK_REAL cartesian_ymax;
-  const CCTK_REAL cartesian_ymin;
-  const CCTK_REAL cartesian_zmax;
-  const CCTK_REAL cartesian_zmin;
-  const int cartesian_ncells_i;
-  const int cartesian_ncells_j;
-  const int cartesian_ncells_k;
+  CCTK_REAL cartesian_xmax;
+  CCTK_REAL cartesian_xmin;
+  CCTK_REAL cartesian_ymax;
+  CCTK_REAL cartesian_ymin;
+  CCTK_REAL cartesian_zmax;
+  CCTK_REAL cartesian_zmin;
+  int cartesian_ncells_i;
+  int cartesian_ncells_j;
+  int cartesian_ncells_k;
 
   // Cubed sphere
-  const CCTK_REAL cubed_sphere_rmin;
-  const CCTK_REAL cubed_sphere_rmax;
+  CCTK_REAL cubed_sphere_rmin;
+  CCTK_REAL cubed_sphere_rmax;
 
   // Swirl
-  const int swirl_ncells_i;
-  const int swirl_ncells_j;
-  const int swirl_ncells_k;
+  int swirl_ncells_i;
+  int swirl_ncells_j;
+  int swirl_ncells_k;
 
   // Cake
   // The radius of the outer boundary
