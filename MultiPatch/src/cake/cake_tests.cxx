@@ -3,6 +3,7 @@
 
 #include <cctk_Parameters.h>
 
+#include <cstddef>
 #include <string>
 #include <sstream>
 #include <utility>
@@ -32,11 +33,10 @@ std::string patch_owner_test(const PatchTransformations &pt,
   const auto owner_patch = get_owner_patch(pt, x);
 
   if (owner_patch == expected) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED")
-        << ". Reason: Expected to get patch " << piece_name(expected)
-        << " and got " << piece_name(owner_patch);
+    msg << MultiPatchTests::FAILED << ". Reason: Expected to get patch "
+        << piece_name(expected) << " and got " << piece_name(owner_patch);
   }
 
   msg << ".";
@@ -72,9 +72,9 @@ std::string global_identity_test(const PatchTransformations &pt,
   const auto test3 = isapprox(l2g(2), global_vars(2));
 
   if (test1 && test2 && test3) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << l2g(0) << " =/= " << global_vars(0) << ". ";
@@ -124,9 +124,9 @@ std::string local_identity_test(const PatchTransformations &pt, int patch,
   const bool test4 = isapprox(computed_local_point(2), local_point(2));
 
   if (test1 && test2 && test3 && test4) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << "the computed patch is "
@@ -189,7 +189,7 @@ std::string jacobian_test(const PatchTransformations &pt, int patch,
       pt.dlocal_dglobal(pt, std::get<0>(local_data), std::get<1>(local_data));
   const auto &J = std::get<1>(J_data);
 
-  // Compute the derivative of local2global by finite differencing
+  // Compute the second derivative of local2global by finite differencing
   const auto g2l_wrapper = [&](const svec_u &point) -> svec_u {
     return std::get<1>(pt.global2local(pt, point));
   };
@@ -216,9 +216,9 @@ std::string jacobian_test(const PatchTransformations &pt, int patch,
   const bool all_tests = test1 && test2 && test3 && test4 && test5 && test6;
 
   if (all_tests) {
-    msg << colored<string_color::green>("PASSED");
+    msg << MultiPatchTests::PASSED;
   } else {
-    msg << colored<string_color::red>("FAILED") << ". Reason: ";
+    msg << MultiPatchTests::FAILED << ". Reason: ";
 
     if (!test1) {
       msg << "computed J(0)(0) value is " << (J(0)(0))
@@ -263,6 +263,180 @@ std::string jacobian_test(const PatchTransformations &pt, int patch,
     if (!test9) {
       msg << "computed  J(2)(2) value is " << (J(2)(2))
           << " and the expected value is " << expected_dz(2) << ". ";
+    }
+  }
+
+  return msg.str();
+}
+
+std::string djacobian_test(const PatchTransformations &pt, int patch,
+                           const MultiPatch::Cake::svec_u &global_point) {
+
+  using MultiPatch::Cake::patch_piece;
+  using MultiPatch::Cake::piece_name;
+  using MultiPatch::Cake::svec_u;
+  using MultiPatchTests::colored;
+  using MultiPatchTests::fd2_4;
+  using MultiPatchTests::fd_4;
+  using MultiPatchTests::fd_comp_tol;
+  using MultiPatchTests::fd_delta;
+  using MultiPatchTests::fd_direction;
+  using MultiPatchTests::isapprox;
+  using MultiPatchTests::string_color;
+
+  std::ostringstream msg;
+  msg << "patch ";
+
+  // Compute a local point and patch number from the global poiint
+  const auto local_data = pt.global2local(pt, global_point);
+  msg << piece_name(static_cast<patch_piece>(std::get<0>(local_data)))
+      << " has ";
+
+  // From local point and patch number, we can compute the jacobian derivative
+  const auto J_data =
+      pt.d2local_dglobal2(pt, std::get<0>(local_data), std::get<1>(local_data));
+  const auto &dJ = std::get<2>(J_data);
+
+  // Compute the derivative of the jacobian by finite differencing
+  const auto g2l_wrapper = [&](const svec_u &point) -> svec_u {
+    return std::get<1>(pt.global2local(pt, point));
+  };
+
+  const auto expected_dxdx = fd2_4<fd_direction::x, fd_direction::x, svec_u>(
+      g2l_wrapper, global_point);
+  const auto expected_dxdy = fd2_4<fd_direction::x, fd_direction::y, svec_u>(
+      g2l_wrapper, global_point);
+  const auto expected_dxdz = fd2_4<fd_direction::x, fd_direction::z, svec_u>(
+      g2l_wrapper, global_point);
+  const auto expected_dydy = fd2_4<fd_direction::y, fd_direction::y, svec_u>(
+      g2l_wrapper, global_point);
+  const auto expected_dydz = fd2_4<fd_direction::y, fd_direction::z, svec_u>(
+      g2l_wrapper, global_point);
+  const auto expected_dzdz = fd2_4<fd_direction::z, fd_direction::z, svec_u>(
+      g2l_wrapper, global_point);
+
+  const bool test1 = isapprox(expected_dxdx(0), dJ(0)(0, 0), fd_comp_tol);
+  const bool test2 = isapprox(expected_dxdx(1), dJ(1)(0, 0), fd_comp_tol);
+  const bool test3 = isapprox(expected_dxdx(2), dJ(2)(0, 0), fd_comp_tol);
+
+  const bool test4 = isapprox(expected_dxdy(0), dJ(0)(0, 1), fd_comp_tol);
+  const bool test5 = isapprox(expected_dxdy(1), dJ(1)(0, 1), fd_comp_tol);
+  const bool test6 = isapprox(expected_dxdy(2), dJ(2)(0, 1), fd_comp_tol);
+
+  const bool test7 = isapprox(expected_dxdz(0), dJ(0)(0, 2), fd_comp_tol);
+  const bool test8 = isapprox(expected_dxdz(1), dJ(1)(0, 2), fd_comp_tol);
+  const bool test9 = isapprox(expected_dxdz(2), dJ(2)(0, 2), fd_comp_tol);
+
+  const bool test10 = isapprox(expected_dydy(0), dJ(0)(1, 1), fd_comp_tol);
+  const bool test11 = isapprox(expected_dydy(1), dJ(1)(1, 1), fd_comp_tol);
+  const bool test12 = isapprox(expected_dydy(2), dJ(2)(1, 1), fd_comp_tol);
+
+  const bool test13 = isapprox(expected_dydz(0), dJ(0)(1, 2), fd_comp_tol);
+  const bool test14 = isapprox(expected_dydz(1), dJ(1)(1, 2), fd_comp_tol);
+  const bool test15 = isapprox(expected_dydz(2), dJ(2)(1, 2), fd_comp_tol);
+
+  const bool test16 = isapprox(expected_dzdz(0), dJ(0)(2, 2), fd_comp_tol);
+  const bool test17 = isapprox(expected_dzdz(1), dJ(1)(2, 2), fd_comp_tol);
+  const bool test18 = isapprox(expected_dzdz(2), dJ(2)(2, 2), fd_comp_tol);
+
+  const bool all_tests = test1 && test2 && test3 && test4 && test5 && test6 &&
+                         test7 && test8 && test9 && test10 && test11 &&
+                         test12 && test13 && test14 && test15 && test16 &&
+                         test17 && test18;
+
+  if (all_tests) {
+    msg << MultiPatchTests::PASSED;
+  } else {
+    msg << MultiPatchTests::FAILED << ". Reason: ";
+
+    if (!test1) {
+      msg << "computed dJ(0)(0, 0) value is " << (dJ(0)(0, 0))
+          << " and the expected value is " << expected_dxdx(0) << ". ";
+    }
+
+    if (!test2) {
+      msg << "computed dJ(1)(0, 0) value is " << (dJ(1)(0, 0))
+          << " and the expected value is " << expected_dxdx(1) << ". ";
+    }
+
+    if (!test3) {
+      msg << "computed dJ(2)(0, 0) value is " << (dJ(2)(0, 0))
+          << " and the expected value is " << expected_dxdx(2) << ". ";
+    }
+
+    if (!test4) {
+      msg << "computed dJ(0)(0, 1) value is " << (dJ(0)(0, 1))
+          << " and the expected value is " << expected_dxdy(0) << ". ";
+    }
+
+    if (!test5) {
+      msg << "computed dJ(1)(0, 1) value is " << (dJ(1)(0, 1))
+          << " and the expected value is " << expected_dxdy(1) << ". ";
+    }
+
+    if (!test6) {
+      msg << "computed dJ(2)(0, 1) value is " << (dJ(2)(0, 1))
+          << " and the expected value is " << expected_dxdy(2) << ". ";
+    }
+
+    if (!test7) {
+      msg << "computed dJ(0)(0, 2) value is " << (dJ(0)(0, 2))
+          << " and the expected value is " << expected_dxdz(0) << ". ";
+    }
+
+    if (!test8) {
+      msg << "computed dJ(1)(0, 2) value is " << (dJ(1)(0, 2))
+          << " and the expected value is " << expected_dxdz(1) << ". ";
+    }
+
+    if (!test9) {
+      msg << "computed dJ(2)(0, 2) value is " << (dJ(2)(0, 2))
+          << " and the expected value is " << expected_dxdz(2) << ". ";
+    }
+
+    if (!test10) {
+      msg << "computed dJ(0)(1, 1) value is " << (dJ(0)(1, 1))
+          << " and the expected value is " << expected_dydy(0) << ". ";
+    }
+
+    if (!test11) {
+      msg << "computed dJ(1)(1, 1) value is " << (dJ(1)(1, 1))
+          << " and the expected value is " << expected_dydy(1) << ". ";
+    }
+
+    if (!test12) {
+      msg << "computed dJ(2)(1, 1) value is " << (dJ(2)(1, 1))
+          << " and the expected value is " << expected_dydy(2) << ". ";
+    }
+
+    if (!test13) {
+      msg << "computed dJ(0)(1, 2) value is " << (dJ(0)(1, 2))
+          << " and the expected value is " << expected_dydz(0) << ". ";
+    }
+
+    if (!test14) {
+      msg << "computed dJ(1)(1, 2) value is " << (dJ(1)(1, 2))
+          << " and the expected value is " << expected_dydz(1) << ". ";
+    }
+
+    if (!test15) {
+      msg << "computed dJ(2)(1, 2) value is " << (dJ(2)(1, 2))
+          << " and the expected value is " << expected_dydz(2) << ". ";
+    }
+
+    if (!test16) {
+      msg << "computed dJ(0)(2, 2) value is " << (dJ(0)(2, 2))
+          << " and the expected value is " << expected_dzdz(0) << ". ";
+    }
+
+    if (!test17) {
+      msg << "computed dJ(1)(2, 2) value is " << (dJ(1)(2, 2))
+          << " and the expected value is " << expected_dzdz(1) << ". ";
+    }
+
+    if (!test18) {
+      msg << "computed dJ(2)(2, 2) value is " << (dJ(2)(2, 2))
+          << " and the expected value is " << expected_dzdz(2) << ". ";
     }
   }
 
@@ -428,5 +602,18 @@ extern "C" void run_cake_tests() {
                jacobian_test(pt, patch, global_point).c_str());
   }
 
-  // TODO: Test jacobian derivatives
+  // Tests if local -> global jacobian derivatives are correct.
+  for (int i = 0; i < test_repetitions; i++) {
+    r = r_distrib(engine);
+    theta = theta_distrib(engine);
+    phi = phi_distrib(engine);
+
+    global_point = {r * sin(theta) * cos(phi), r * sin(theta) * sin(phi),
+                    r * cos(theta)};
+
+    CCTK_VINFO("  local -> global jacobian derivative test at point (%f, %f, "
+               "%f) patch %s",
+               global_point(0), global_point(1), global_point(2),
+               djacobian_test(pt, patch, global_point).c_str());
+  }
 }

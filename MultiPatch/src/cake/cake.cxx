@@ -11,6 +11,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <string>
 
 namespace MultiPatch {
 namespace Cake {
@@ -27,23 +28,7 @@ namespace Cake {
 CCTK_DEVICE CCTK_HOST inline CCTK_REAL
 local_to_global_cake_core(const PatchTransformations &pt, CCTK_REAL a,
                           CCTK_REAL b, CCTK_REAL c) {
-  using MultiPatchTests::at_boundary;
-  using MultiPatchTests::within;
   using std::sqrt;
-
-  // Ensure that -1 <= a,b,c <= 1
-  expects(
-      within(a, 1.0) || at_boundary(a, 1.0),
-      "Invoked local_to_global_cake_core with the variable a not in the (-1,1) "
-      "range.");
-  expects(
-      within(b, 1.0) || at_boundary(b, 1.0),
-      "Invoked local_to_global_cake_core with the variable b not in the (-1,1) "
-      "range.");
-  expects(
-      within(c, 1.0) || at_boundary(c, 1.0),
-      "Invoked local_to_global_cake_core with the variable c not in the (-1,1) "
-      "range.");
 
   const auto r0 = pt.cake_inner_boundary_radius;
   const auto r1 = pt.cake_outer_boundary_radius;
@@ -218,7 +203,7 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
  *
  * Note that:
  * J(i)(j) = $J^{i}_{j} = \frac{d a^i}{d x^j}$.
- * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d}{d x^k} \left( \frac{d a^i}{d x^j}
+ * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d^2 a^i}{d x^j d x^k}
  * \right)$.
  *
  * TODO: Erik says: "You have six files that contain very similar code.
@@ -283,7 +268,7 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
   }
 
   return std_make_tuple(local_to_global_result, std::get<0>(jacobian_results),
-                         std::get<1>(jacobian_results));
+                        std::get<1>(jacobian_results));
 } // namespace Cake
 
 /**
@@ -308,48 +293,75 @@ dlocal_dglobal(const PatchTransformations &pt, int patch,
 }
 
 /**
- * TODO: Review. This is probably causing a segfault.
- * Creates a cake patch
+ * Creates a cake patch piece
  *
- * @tparam p The piece of the patc to make.
+ * @tparam p The piece of the patch to make.
  * @param pt The patch transformation object with patch data.
  * @return The constructed patch piece.
  */
 template <patch_piece p> Patch make_patch(const PatchTransformations &pt) {
-  const auto cartesian_ncells_i = pt.cake_cartesian_ncells_i;
-  const auto cartesian_ncells_j = pt.cake_cartesian_ncells_j;
-  const auto cartesian_ncells_k = pt.cake_cartesian_ncells_k;
-
-  const auto spherical_radial_cells = pt.cake_radial_cells;
-  const auto spherical_angular_cells = pt.cake_angular_cells;
-
-  // This is the most likelly configuration to occur. The only exception is
-  // the cartesian patch where the contents of these fields are overwritten
   Patch patch;
-  patch.ncells = {spherical_radial_cells, spherical_angular_cells,
-                  spherical_angular_cells};
 
-  patch.xmin = {-1, -1, -1};
-  patch.xmax = {+1, +1, +1};
+  // Basic configuration for a thornburg patch piece
+  patch.ncells = {pt.cake_angular_cells, pt.cake_angular_cells,
+                  pt.cake_radial_cells};
+
+  patch.xmin = {-1.0, -1.0, -1.0};
+  patch.xmax = {1.0, 1.0, 1.0};
 
   patch.is_cartesian = false;
 
-  PatchFace m_i = {true, -1};
-  PatchFace p_i = {true, -1};
-  PatchFace m_j = {true, -1};
-  PatchFace p_j = {true, -1};
-  PatchFace m_k = {true, -1};
-  PatchFace p_k = {true, -1};
+  PatchFace co{false, static_cast<int>(patch_piece::cartesian)};
+  PatchFace ex{true, static_cast<int>(patch_piece::exterior)};
+  PatchFace px{false, static_cast<int>(patch_piece::plus_x)};
+  PatchFace mx{false, static_cast<int>(patch_piece::minus_x)};
+  PatchFace py{false, static_cast<int>(patch_piece::plus_y)};
+  PatchFace my{false, static_cast<int>(patch_piece::minus_y)};
+  PatchFace pz{false, static_cast<int>(patch_piece::plus_z)};
+  PatchFace mz{false, static_cast<int>(patch_piece::minus_z)};
 
-  patch.faces = {{m_i, m_j, m_k}, {p_i, p_j, p_k}};
+  if constexpr (p == patch_piece::cartesian) {
+    patch.ncells = {pt.cake_cartesian_ncells_i, pt.cake_cartesian_ncells_j,
+                    pt.cake_cartesian_ncells_k};
+
+    patch.xmin = {-pt.cake_inner_boundary_radius,
+                  -pt.cake_inner_boundary_radius,
+                  -pt.cake_inner_boundary_radius};
+
+    patch.xmax = {pt.cake_inner_boundary_radius, pt.cake_inner_boundary_radius,
+                  pt.cake_inner_boundary_radius};
+
+    patch.is_cartesian = true;
+
+    patch.faces = {{mx, my, mz}, {px, py, pz}};
+
+  } else if constexpr (p == patch_piece::plus_x) {
+    patch.faces = {{mz, my, co}, {pz, py, ex}};
+
+  } else if constexpr (p == patch_piece::minus_x) {
+    patch.faces = {{mz, py, co}, {pz, my, ex}};
+
+  } else if constexpr (p == patch_piece::plus_y) {
+    patch.faces = {{mz, px, co}, {pz, mx, ex}};
+
+  } else if constexpr (p == patch_piece::minus_y) {
+    patch.faces = {{mz, mx, co}, {pz, px, ex}};
+
+  } else if constexpr (p == patch_piece::plus_z) {
+    patch.faces = {{px, my, co}, {mx, py, ex}};
+
+  } else if constexpr (p == patch_piece::minus_z) {
+    patch.faces = {{mx, my, co}, {px, py, ex}};
+  }
+
   return patch;
 }
 
 } // namespace Cake
 
 /**
- * TODO: Review. Are the correct device functions and signatures being used?
- * Creates a Cake patch system
+ * TODO: Add correct host/device annotations for the functions. This work as is
+ * if not compiling with the CUDA compiler Creates a Cake patch system
  *
  * @return A PatchSystem object with Cake data and functions
  */

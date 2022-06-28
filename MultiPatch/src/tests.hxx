@@ -6,6 +6,7 @@
 #include <limits>
 #include <random>
 #include <string>
+#include <sstream>
 
 namespace MultiPatchTests {
 
@@ -17,13 +18,13 @@ constexpr const int random_seed = 100;
 /**
  * The "grid spacing" used in finite difference operators
  */
-constexpr const CCTK_REAL fd_delta = 1.0e-8;
+constexpr const CCTK_REAL fd_delta = 1.0e-3;
 
 /**
  * The floating point comparison tolerance when testing the equality of exact
  * and FD computed derivatives
  */
-constexpr const CCTK_REAL fd_comp_tol = 1.0e-7;
+constexpr const CCTK_REAL fd_comp_tol = 1.0e-7; // sqrt(machine eps)
 
 /**
  * Test two floating point values for approximate equality.
@@ -77,7 +78,7 @@ CCTK_DEVICE CCTK_HOST inline bool at_boundary(T variable, T boundary) {
 /**
  * Tag representing possible colors to apply to strings.
  */
-enum class string_color { none, green, red };
+enum class string_color { green, red };
 
 /**
  * Formats a string to be colored in ANSI compatible terminals.
@@ -86,70 +87,81 @@ enum class string_color { none, green, red };
  * @param string The string to color.
  * @return The colored string.
  */
-template <string_color color> std::string colored(const std::string &string) {
+template <string_color color>
+constexpr const std::string colored(const std ::string &str) {
+  std::ostringstream output;
+
   if constexpr (color == string_color::red) {
-    std::string msg{"\033[31;1m"};
-    msg += string;
-    msg += "\033[0m";
-    return msg;
-
+    output << "\033[31;1m";
+    output << str;
+    output << "\033[0m";
   } else if constexpr (color == string_color::green) {
-    std::string msg{"\033[32;1m"};
-    msg += string;
-    msg += "\033[0m";
-
-    return msg;
+    output << "\033[32;1m";
+    output << str;
+    output << "\033[0m";
   }
 
-  return string;
+  return output.str();
 }
+
+const auto PASSED = colored<string_color::green>("PASSED");
+const auto FAILED = colored<string_color::red>("FAILED");
 
 /**
  * Determines the direction that a finite difference derivative will be
  * performed
  */
-enum class fd_direction { x, y, z };
+enum class fd_direction { x = 0, y = 1, z = 2 };
 
 /**
- * Computes the second order accurate finite difference derivative of a function
- * that takes a vector as input and produces another vector as output in a
- * specified direction.
+ * Computes the second order accurate finite difference derivative of a
+ * function that takes a vector as input and produces another vector as output
+ * in a specified direction.
  *
  * @param function The function to derivate
  * @param point The point where the derivative is to be computed.
  * @tparam dir The direction of the derivative.
  * @return The derivative of function in the specified direction and point.
  */
-template <fd_direction dir, typename vector_t>
-inline vector_t fd_4(std::function<vector_t(const vector_t &)> function,
-                     vector_t point) {
+template <fd_direction dir, typename vector_t, typename function_t>
+inline vector_t fd_4(const function_t &function, vector_t point) {
 
   vector_t point_p_1d = point;
   vector_t point_p_2d = point;
   vector_t point_m_1d = point;
   vector_t point_m_2d = point;
 
-  if constexpr (dir == fd_direction::x) {
-    point_p_1d += {fd_delta, 0, 0};
-    point_p_2d += {2 * fd_delta, 0, 0};
-    point_m_1d -= {fd_delta, 0, 0};
-    point_m_2d -= {2 * fd_delta, 0, 0};
-  } else if constexpr (dir == fd_direction::y) {
-    point_p_1d += {0, fd_delta, 0};
-    point_p_2d += {0, 2 * fd_delta, 0};
-    point_m_1d -= {0, fd_delta, 0};
-    point_m_2d -= {0, 2 * fd_delta, 0};
-  } else if constexpr (dir == fd_direction::z) {
-    point_p_1d += {0, 0, fd_delta};
-    point_p_2d += {0, 0, 2 * fd_delta};
-    point_m_1d -= {0, 0, fd_delta};
-    point_m_2d -= {0, 0, 2 * fd_delta};
-  }
+  point_p_1d(static_cast<int>(dir)) += fd_delta;
+  point_p_2d(static_cast<int>(dir)) += 2 * fd_delta;
+  point_m_1d(static_cast<int>(dir)) -= fd_delta;
+  point_m_2d(static_cast<int>(dir)) -= 2 * fd_delta;
 
   const auto f_p_1d = function(point_p_1d);
   const auto f_p_2d = function(point_p_2d);
   const auto f_m_1d = function(point_m_1d);
   const auto f_m_2d = function(point_m_2d);
+  return (f_m_2d - 8 * f_m_1d + 8 * f_p_1d - f_p_2d) / (12 * fd_delta);
+}
+
+template <fd_direction dir_inner, fd_direction dir_outer, typename vector_t,
+          typename function_t>
+inline vector_t fd2_4(const function_t &function, vector_t point) {
+
+  vector_t point_p_1d = point;
+  vector_t point_p_2d = point;
+  vector_t point_m_1d = point;
+  vector_t point_m_2d = point;
+
+  point_p_1d(static_cast<int>(dir_outer)) += fd_delta;
+  point_p_2d(static_cast<int>(dir_outer)) += 2 * fd_delta;
+  point_m_1d(static_cast<int>(dir_outer)) -= fd_delta;
+  point_m_2d(static_cast<int>(dir_outer)) -= 2 * fd_delta;
+
+  const auto f_p_1d = fd_4<dir_inner>(function, point_p_1d);
+  const auto f_p_2d = fd_4<dir_inner>(function, point_p_2d);
+  const auto f_m_1d = fd_4<dir_inner>(function, point_m_1d);
+  const auto f_m_2d = fd_4<dir_inner>(function, point_m_2d);
+
   return (f_m_2d - 8 * f_m_1d + 8 * f_p_1d - f_p_2d) / (12 * fd_delta);
 }
 
