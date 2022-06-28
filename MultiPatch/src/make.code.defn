@@ -6,4 +6,4 @@ SRCS =						\
 	multipatch.cxx
 
 # Subdirectories containing source files
-SUBDIRS = cartesian cubed_sphere swirl cake
+SUBDIRS = cake cartesian cubed_sphere swirl

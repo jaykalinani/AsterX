@@ -57,3 +57,12 @@ void FUNCTION Interpolate(
   CCTK_INT ARRAY IN operations,
   CCTK_POINTER IN resultptrs)
 REQUIRES FUNCTION Interpolate
+
+void FUNCTION MultiPatch_Interpolate( \
+  CCTK_POINTER_TO_CONST IN cctkGH, \
+  CCTK_INT IN nvars, \
+  CCTK_INT ARRAY IN varinds \
+)
+PROVIDES FUNCTION MultiPatch_Interpolate \
+  WITH MultiPatch1_Interpolate \
+  LANGUAGE C

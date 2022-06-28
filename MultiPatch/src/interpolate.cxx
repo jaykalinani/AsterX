@@ -61,8 +61,15 @@ template <> struct hash<MultiPatch::Location> {
 namespace MultiPatch {
 using SourcePoints = std::array<std::vector<CCTK_REAL>, dim>;
 
-extern "C" void MultiPatch_Interpolate(const cGH *const cctkGH,
-                                       const std::vector<int> &varinds) {
+extern "C" void
+MultiPatch1_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
+                        const CCTK_INT nvars_,
+                        const CCTK_INT *restrict const varinds_) {
+  assert(cctkGH_);
+  assert(nvars_ >= 0);
+  assert(varinds_);
+  const cGH *const cctkGH = static_cast<const cGH *>(cctkGH_);
+  const std::vector<int> varinds(varinds_, varinds_ + nvars_);
 
   // Step 0: Check input
 
