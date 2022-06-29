@@ -338,7 +338,7 @@ STRING out_adios2_vars "Variables to output in ADIOS2 format" STEERABLE=always
 
 BOOLEAN out_metadata "Output metadata in YAML format?" STEERABLE=always
 {
-} no
+} yes
 
 STRING out_norm_vars "Variables to output as norms" STEERABLE=always
 {
