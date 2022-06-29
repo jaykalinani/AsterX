@@ -608,8 +608,7 @@ int OutputGH(const cGH *restrict cctkGH) {
       task.wait();
 
     // Describe all output files
-    //TODO: Fix output and uncomment line below
-    //OutputMeta(cctkGH);
+    OutputMeta(cctkGH);
 
     if (is_root)
       CCTK_VINFO("OutputGH done.");
