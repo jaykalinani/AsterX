@@ -110,6 +110,11 @@ struct real_output_file_description_t {
 
 real_output_file_description_t::real_output_file_description_t(
     output_file_description_t ofd) {
+  if (iterations.empty())
+    return; // CCTK_ERROR("Empty iterations");
+  if (variables.empty())
+    return; // CCTK_ERROR("Empty variables");
+
   filename = ofd.filename;
   // TODO: Check whether file exists
   if (filename == "")
@@ -134,8 +139,6 @@ real_output_file_description_t::real_output_file_description_t(
   }
 
   iterations = ofd.iterations;
-  if (iterations.empty())
-    CCTK_ERROR("Empty iterations");
   for (const auto &iter : iterations)
     if (iter < 0)
       CCTK_VERROR("Bad iteration number %d", iter);
@@ -169,13 +172,11 @@ real_output_file_description_t::real_output_file_description_t(
   }
 
   iterations = ofd.iterations;
-  if (iterations.empty())
-    CCTK_ERROR("Empty iterations");
   for (const auto &iter : iterations)
     if (iter < 0)
       CCTK_VERROR("Bad iteration number %d", iter);
 
-  {
+  if (!variables.empty()) {
     const int groupindex0 = CCTK_GroupIndexFromVar(variables.front().c_str());
     assert(groupindex0 >= 0);
     const int grouptype0 = CCTK_GroupTypeI(groupindex0);
@@ -286,8 +287,7 @@ void OutputMeta(const cGH *restrict const cctkGH) {
   DECLARE_CCTK_PARAMETERS;
 
   // Only the root process outputs metadata
-  const bool is_root = CCTK_MyProc(nullptr) == 0;
-  if (!is_root)
+  if (CCTK_MyProc(nullptr) != 0)
     return;
 
   // Skip metadata output if no files were written
