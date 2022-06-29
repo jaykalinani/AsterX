@@ -257,7 +257,7 @@ template <int ORDER> struct interp1d<CC, POLY, ORDER> {
         y += cs[i] * crseptr[(i - i0) * di];
     else
       for (int i = 0; i < ORDER + 1; ++i)
-        y += cs[i] * crseptr[-(i - i0) * di];
+        y += cs[i] * crseptr[(ORDER - i - i0) * di];
 #ifdef CCTK_DEBUG
     assert(isfinite(y));
 #endif
@@ -363,10 +363,9 @@ template <int ORDER> struct interp1d<CC, CONS, ORDER> {
 #ifdef CCTK_DEBUG
         assert(cs[i1] == -cs[i]);
 #endif
-        y +=
-            cs[i] * (crseptr[-(i - i0) * di] - crseptr[-(ORDER / 2 - i0) * di]);
+        y += cs[i] * (crseptr[(i1 - i0) * di] - crseptr[(i - i0) * di]);
       }
-      y += cs[ORDER / 2] * crseptr[-(ORDER / 2 - i0) * di];
+      y += cs[ORDER / 2] * crseptr[(ORDER / 2 - i0) * di];
     }
     return y;
   }
@@ -913,6 +912,18 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// Self-tests
+namespace {
+// The constructors for these objects run the self-tests. These definitions will
+// make them run at start-up. These tests are very cheap.
+static test_interp1d<VC, POLY, 1, CCTK_REAL> test_c0_o1;
+static test_interp1d<VC, POLY, 3, CCTK_REAL> test_c0_o3;
+static test_interp1d<VC, POLY, 5, CCTK_REAL> test_c0_o5;
+static test_interp1d<CC, CONS, 0, CCTK_REAL> test_c1_o0;
+static test_interp1d<CC, CONS, 2, CCTK_REAL> test_c1_o2;
+static test_interp1d<CC, CONS, 4, CCTK_REAL> test_c1_o4;
+} // namespace
 
 prolongate_3d_rf2<VC, VC, VC, POLY, POLY, POLY, 1, 1, 1>
     prolongate_3d_rf2_c000_o1;
