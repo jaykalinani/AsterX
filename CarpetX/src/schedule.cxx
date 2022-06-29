@@ -794,8 +794,10 @@ void leave_local_mode(cGH *restrict cctkGH,
 int CallFunction_count = -1;
 extern "C" CCTK_INT CarpetX_GetCallFunctionCount() {
 #ifndef AMREX_USE_GPU
+  // CPU: use hardware thread index
   return omp_get_thread_num();
 #else
+  // GPU: count tiles
   assert(CallFunction_count >= 0);
   return CallFunction_count;
 #endif
@@ -894,11 +896,18 @@ void loop_over_blocks(
         cGH *const localGH = leveldata.get_local_cctkGH(block);
         block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                      localGH);
+#ifdef AMREX_USE_GPU
+        if (gpu_sync_after_every_kernel) {
+          amrex::Gpu::streamSynchronize();
+          AMREX_GPU_ERROR_CHECK();
+        }
+#endif
+        // TODO: `CallFunction_count` is the same as `block`. Get rid
+        // of `CallFunction_count`, and make `block` more easily
+        // accessible, e.g. as part of `cGH`.
         ++CallFunction_count;
       }
     });
-
-    // There is NO CUDA kernel barrier here!
 
     assert(CallFunction_count >= 0);
     CallFunction_count = -1;
@@ -909,6 +918,14 @@ void loop_over_blocks(
   default:
     CCTK_ERROR("internal error");
   }
+
+#ifdef AMREX_USE_GPU
+  // TODO: Synchronize only if GPU kernels were actually launched
+  // TODO: Switch to streamSynchronizeAll if AMReX is new enough
+  amrex::Gpu::synchronize();
+  // amrex::Gpu::streamSynchronizeAll();
+  AMREX_GPU_ERROR_CHECK();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1823,6 +1840,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     checksums = calculate_checksums(gfs);
   }
 
+#if 0
   const mode_t mode = decode_mode(attribute);
   switch (mode) {
   case mode_t::local: {
@@ -1895,6 +1913,12 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           const MFPointer mfp(mfi);
           cGH *const localGH = leveldata.get_local_cctkGH(block);
           CCTK_CallFunction(function, attribute, localGH);
+#ifdef AMREX_USE_GPU
+          if (gpu_sync_after_every_kernel) {
+            amrex::Gpu::streamSynchronize();
+            AMREX_GPU_ERROR_CHECK();
+          }
+#endif
           ++CallFunction_count;
         }
       });
@@ -1924,9 +1948,35 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
 
 #ifdef AMREX_USE_GPU
   // TODO: Synchronize only if GPU kernels were actually launched
+  // TODO: Switch to streamSynchronizeAll if AMReX is new enough
   amrex::Gpu::synchronize();
+  // amrex::Gpu::streamSynchronizeAll();
   AMREX_GPU_ERROR_CHECK();
 #endif
+#endif
+
+  const mode_t mode = decode_mode(attribute);
+  switch (mode) {
+  case mode_t::local:
+    // Call function once per tile
+    loop_over_blocks(*active_levels, [&](int patch, int level, int index,
+                                         int block, const cGH *cctkGH) {
+      CCTK_CallFunction(function, attribute, const_cast<cGH *>(cctkGH));
+    });
+    break;
+
+  case mode_t::meta:
+  case mode_t::global:
+  case mode_t::level:
+    // Call function just once
+    // Note: meta mode scheduling must continue to work even after we
+    // shut down ourselves!
+    CCTK_CallFunction(function, attribute, cctkGH);
+    break;
+
+  default:
+    assert(0);
+  }
 
   // Check checksums
   if (poison_undefined_values)
