@@ -15,7 +15,6 @@
 
 #include <loop_device.hxx>
 #include <mat.hxx>
-#include <mempool.hxx>
 #include <simd.hxx>
 #include <vec.hxx>
 
@@ -90,10 +89,11 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
 
   //
 
-  const size_t mempool_id = GetCallFunctionCount();
-  mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
+  const int ntmps = 154;
+  GF3D5vector<CCTK_REAL> tmps(layout0, ntmps);
+  int itmp = 0;
 
-  const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(layout0, mempool); };
+  const auto make_gf = [&]() { return GF3D5<CCTK_REAL>(tmps(itmp++)); };
   const auto make_vec = [&](const auto &f) {
     return vec<result_of_t<decltype(f)()>, 3, DN>([&](int) { return f(); });
   };
@@ -149,6 +149,11 @@ extern "C" void Z4c_ADM2(CCTK_ARGUMENTS) {
   const vec<smat<GF3D5<CCTK_REAL>, 3, DN, DN>, 3, UP> gf_ddbetaG0(
       make_vec_mat_gf());
   calc_derivs2(cctkGH, gf_betaG1, gf_betaG0, gf_dbetaG0, gf_ddbetaG0, layout0);
+
+  if (itmp != ntmps)
+    CCTK_VERROR("Wrong number of temporary variables: ntmps=%d itmp=%d", ntmps,
+                itmp);
+  itmp = -1;
 
   //
 
