@@ -49,6 +49,8 @@ calc_inv(const gmat<T, D, dnup1, dnup2, symm> &g, const T &detg) {
 }
 #endif
 
+#if 0
+
 template <typename T, dnup_t dnup1, dnup_t dnup2>
 ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
 calc_det(const smat<T, 0, dnup1, dnup2> &g) {
@@ -326,6 +328,8 @@ calc_inv(const mat<T, 4, dnup1, dnup2> &g, const T &detg) {
                          g(0, 0) * (-(g(1, 2) * g(2, 1)) + g(1, 1) * g(2, 2)),
                  };
 }
+
+#endif
 
 template <typename T, int D, dnup_t dnup1, dnup_t dnup2>
 ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T calc_trace(
