@@ -1391,8 +1391,6 @@ template <typename T> struct is_GF3D5 : false_type {};
 template <typename T> struct is_GF3D5<GF3D5<T> > : true_type {};
 template <typename T> inline constexpr bool is_GF3D5_v = is_GF3D5<T>::value;
 
-#if 1
-
 template <typename T> struct GF3D5vector {
   static_assert((std::is_same_v<T, amrex::Real>), "");
   typedef T value_type;
@@ -1413,34 +1411,12 @@ private:
 public:
   GF3D5vector(const GF3D5layout &layout, const int nvars)
       : layout(layout), fab(make_fab(layout, nvars)) {}
-  CCTK_DEVICE CCTK_HOST size_t size() const { return fab.nComp(); }
-  CCTK_DEVICE CCTK_HOST GF3D5<T> operator()(const int n) const {
+  size_t size() const { return fab.nComp(); }
+  GF3D5<T> operator()(const int n) const {
     assert(n >= 0 && n < int(size()));
     return GF3D5<T>(layout, (T *)fab.dataPtr(n) + layout.off);
   }
 };
-
-#else
-
-extern "C" CCTK_INT CarpetX_GetCallFunctionCount();
-template <typename T> struct GF3D5vector {
-  static_assert((std::is_same_v<T, amrex::Real>), "");
-  typedef T value_type;
-  GF3D5layout layout;
-  std::vector<GF3D5<T> > gfs;
-
-  GF3D5vector(const GF3D5layout &layout, const int nvars) : layout(layout) {
-    const size_t mempool_id = CarpetX_GetCallFunctionCount();
-    mempool_t &restrict mempool = mempools.get_mempool(mempool_id);
-    gfs.reserve(nvars);
-    for (size_t n = 0; n < size_t(nvars); ++n)
-      gfs.emplace_back(layout, mempool);
-  }
-  size_t size() const { return gfs.size(); }
-  GF3D5<T> operator()(const int n) const { return gfs.at(n); }
-};
-
-#endif
 
 } // namespace Loop
 
