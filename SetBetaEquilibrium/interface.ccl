@@ -1,0 +1,39 @@
+# Interface definition for thorn SetBetaEquilibrium
+
+IMPLEMENTS: SetBetaEquilibrium
+INHERITS:   grid ADMBase HydroBase GRHydro
+
+
+###### REPLACE EOS_OMNI WITH RIT_EOS ###############
+# ************************* Functions from EOS_Omni ****************************
+
+CCTK_INT FUNCTION EOS_Omni_GetHandle(CCTK_STRING IN name)
+USES FUNCTION EOS_Omni_GetHandle
+
+
+void FUNCTION EOS_Omni_press(CCTK_INT  IN          eoskey,       \
+			                 CCTK_INT  IN          havetemp,     \
+			                 CCTK_REAL IN          rf_precision, \
+                             CCTK_INT  IN          npoints,      \
+			                 CCTK_REAL IN    ARRAY rho,          \
+			                 CCTK_REAL INOUT ARRAY eps,          \
+			                 CCTK_REAL INOUT ARRAY temp,         \
+			                 CCTK_REAL IN    ARRAY ye,           \
+			                 CCTK_REAL OUT   ARRAY press,        \
+			                 CCTK_INT  OUT   ARRAY keyerr,       \
+			                 CCTK_INT  OUT         anyerr)
+
+USES FUNCTION EOS_Omni_press
+
+# ******************************************************************************
+
+
+
+
+
+# ************************* Functions from Carpet ******************************
+
+CCTK_INT FUNCTION GetRefinementLevel (CCTK_POINTER_TO_CONST IN cctkGH)
+USES FUNCTION GetRefinementLevel
+
+# ******************************************************************************
