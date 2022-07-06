@@ -1,5 +1,0 @@
-# Configuration definition for thorn SetBetaEquilibrium
-
-##### FIXME: REQUIRES RIT_EOS #####
-REQUIRES EOS_Omni
-REQUIRES LORENE (<=2017-05-08)
