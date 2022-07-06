@@ -6,8 +6,6 @@
 #define CCTK_DEVICE AMREX_GPU_DEVICE
 #define CCTK_HOST AMREX_GPU_HOST
 
-#include "mempool.hxx"
-
 #include <simd.hxx>
 #include <vect.hxx>
 
@@ -798,12 +796,6 @@ template <typename T, int CI, int CJ, int CK> struct GF3D {
         dk(dj * (cctkGH->cctk_ash[1] - CJ)),
         np(dk * (cctkGH->cctk_ash[2] - CK)), ni(cctkGH->cctk_lsh[0] - CI),
         nj(cctkGH->cctk_lsh[1] - CJ), nk(cctkGH->cctk_lsh[2] - CK), ptr(ptr) {}
-  GF3D(const cGH *restrict cctkGH, mempool_t &mempool)
-      : dj(di * (cctkGH->cctk_ash[0] - CI)),
-        dk(dj * (cctkGH->cctk_ash[1] - CJ)),
-        np(dk * (cctkGH->cctk_ash[2] - CK)), ni(cctkGH->cctk_lsh[0] - CI),
-        nj(cctkGH->cctk_lsh[1] - CJ), nk(cctkGH->cctk_lsh[2] - CK),
-        ptr(mempool.alloc<T>(np)) {}
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
     // them in debug mode.
@@ -870,11 +862,6 @@ template <typename T> struct GF3D1 {
       ash[d] = cctkGH->cctk_ash[d] - indextype[d] -
                2 * (cctkGH->cctk_nghostzones[d] - nghostzones[d]);
     *this = GF3D1(ptr, imin, imax, ash);
-  }
-  GF3D1(const cGH *restrict cctkGH, const array<int, dim> &indextype,
-        const array<int, dim> &nghostzones, mempool_t &mempool)
-      : GF3D1(cctkGH, indextype, nghostzones, nullptr) {
-    ptr = mempool.alloc<T>(np);
   }
   int offset(int i, int j, int k) const {
     // These index checks prevent vectorization. We thus only enable
@@ -1017,8 +1004,6 @@ template <typename T> struct GF3D2 {
   GF3D2 &operator=(GF3D2 &&) = default;
   CCTK_DEVICE CCTK_HOST GF3D2(const GF3D2layout &layout, T *restrict ptr)
       : ptr(ptr), layout(layout) {}
-  CCTK_DEVICE CCTK_HOST GF3D2(const GF3D2layout &layout, mempool_t &mempool)
-      : GF3D2(layout, mempool.alloc<T>(layout.np)) {}
   CCTK_DEVICE CCTK_HOST GF3D2index index(const vect<int, dim> &I) const {
     return GF3D2index(layout, I);
   }
@@ -1314,8 +1299,6 @@ template <typename T> struct GF3D5 {
     assert(&(*this)(layout, layout.imin) == ptr);
 #endif
   }
-  CCTK_HOST GF3D5(const GF3D5layout &layout, mempool_t &mempool)
-      : GF3D5(layout, mempool.alloc<T>(layout.np)) {}
   CCTK_DEVICE CCTK_HOST constexpr T &restrict
   operator()(const GF3D5index &index) const {
 #ifdef CCTK_DEBUG

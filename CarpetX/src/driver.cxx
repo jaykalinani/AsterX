@@ -1922,9 +1922,6 @@ extern "C" int CarpetX_Shutdown() {
   ShutdownADIOS2();
   ShutdownOpenPMD();
 
-  // Deallocate memory pools
-  mempools.reset();
-
   if (false) {
     // Should we really do this? Cactus's extension handling mechanism
     // becomes inconsistent once extensions have been unregistered.

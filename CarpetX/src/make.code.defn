@@ -14,7 +14,6 @@ SRCS =						\
 	linsolve.cxx				\
 	logo.cxx				\
 	loopcontrol.cxx                         \
-	mempool.cxx				\
 	prolongate_3d_rf2.cxx			\
 	reduction.cxx				\
 	regrid_error.cxx			\
