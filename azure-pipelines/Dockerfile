@@ -168,9 +168,9 @@ RUN mkdir src && \
 # - Install this last because it changes most often
 RUN mkdir src && \
     (cd src && \
-    wget https://github.com/AMReX-Codes/amrex/archive/22.06.tar.gz && \
-    tar xzf 22.06.tar.gz && \
-    cd amrex-22.06 && \
+    wget https://github.com/AMReX-Codes/amrex/archive/22.07.tar.gz && \
+    tar xzf 22.07.tar.gz && \
+    cd amrex-22.07 && \
     mkdir build && \
     cd build && \
     cmake \
