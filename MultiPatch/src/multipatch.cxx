@@ -164,17 +164,18 @@ extern "C" void MultiPatch1_GlobalToLocal(
 extern "C" int MultiPatch_Setup() {
   DECLARE_CCTK_PARAMETERS;
 
-  if (CCTK_EQUALS(patch_system, "Cartesian")) {
+  if (CCTK_EQUALS(patch_system, "none"))
+    the_patch_system = nullptr;
+  else if (CCTK_EQUALS(patch_system, "Cartesian"))
     the_patch_system = std::make_unique<PatchSystem>(SetupCartesian());
-  } else if (CCTK_EQUALS(patch_system, "Cubed sphere")) {
+  else if (CCTK_EQUALS(patch_system, "Cubed sphere"))
     the_patch_system = std::make_unique<PatchSystem>(SetupCubedSphere());
-  } else if (CCTK_EQUALS(patch_system, "Swirl")) {
+  else if (CCTK_EQUALS(patch_system, "Swirl"))
     the_patch_system = std::make_unique<PatchSystem>(SetupSwirl());
-  } else if (CCTK_EQUALS(patch_system, "Cake")) {
+  else if (CCTK_EQUALS(patch_system, "Cake"))
     the_patch_system = std::make_unique<PatchSystem>(SetupCake());
-  } else {
+  else
     CCTK_VERROR("Unknown patch system \"%s\"", patch_system);
-  }
 
   return 0;
 }

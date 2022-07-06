@@ -13,6 +13,8 @@ USES INCLUDE HEADER: tuple.hxx
 USES INCLUDE HEADER: vec.hxx
 USES INCLUDE HEADER: vect.hxx
 
+INCLUDES HEADER: multipatch.hxx IN multipatch.hxx
+
 
 
 # Number of patches

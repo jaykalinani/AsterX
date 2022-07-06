@@ -2,11 +2,12 @@
 
 KEYWORD patch_system "Patch system"
 {
+  "none" :: "disable multi-patch systems"
   "Cartesian" :: ""
   "Cubed sphere" :: ""
   "Swirl" :: ""
   "Cake" :: "6 Thornburg-like spherical patches perfectly matched with a central cartesian cube patch. For details, see https://arxiv.org/abs/gr-qc/0512001 or the included Mathematica notebooks."
-} "Cartesian"
+} "none"
 
 # Cartesian patch system
 

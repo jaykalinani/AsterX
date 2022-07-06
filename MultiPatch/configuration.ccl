@@ -3,3 +3,7 @@
 REQUIRES AMReX
 
 REQUIRES Arith
+
+PROVIDES MultiPatch
+{
+}
