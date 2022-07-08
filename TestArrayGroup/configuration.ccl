@@ -1,6 +1,6 @@
 # Configuration definitions for thorn TestArrayGroup
 
-REQUIRES CarpetX
+REQUIRES Loop
 
 PROVIDES TestArrayGroup
 {
