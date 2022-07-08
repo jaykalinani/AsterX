@@ -13,6 +13,8 @@ USES INCLUDE HEADER: simd.hxx
 USES INCLUDE HEADER: tuple.hxx
 USES INCLUDE HEADER: vect.hxx
 
+USES INCLUDE HEADER: multipatch.hxx
+
 USES INCLUDE HEADER: loop.hxx
 USES INCLUDE HEADER: loop_device.hxx
 

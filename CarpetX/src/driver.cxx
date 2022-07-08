@@ -8,6 +8,8 @@
 #include "schedule.hxx"
 #include "timer.hxx"
 
+#include <multipatch.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -1879,10 +1881,35 @@ int InitGH(cGH *restrict cctkGH) {
 
   assert(cctkGH);
 
-  // Set up a single patch
+  // Set up patch system
   assert(ghext->patchdata.size() == 0);
-  const int patch = 0;
-  ghext->patchdata.emplace_back(patch);
+  bool have_multipatch = false;
+#ifdef HAVE_CAPABILITY_MultiPatch
+  if (CCTK_IsThornActive("MultiPatch")) {
+    int type;
+    const void *const patch_system_ptr =
+        CCTK_ParameterGet("patch_system", "MultiPatch", &type);
+    assert(patch_system_ptr);
+    assert(type == PARAMETER_KEYWORD);
+    const char *const patch_system =
+        *static_cast<const char *const *>(patch_system_ptr);
+    have_multipatch = !CCTK_EQUALS(patch_system, "none");
+  }
+#endif
+  if (have_multipatch) {
+#ifdef HAVE_CAPABILITY_MultiPatch
+    // Set up all patches
+    const int num_patches = MultiPatch::the_patch_system->num_patches();
+    for (int patch = 0; patch < num_patches; ++patch)
+      ghext->patchdata.emplace_back(patch);
+#else
+    assert(0);
+#endif
+  } else {
+    // Set up a single patch
+    const int patch = 0;
+    ghext->patchdata.emplace_back(patch);
+  }
 
   return 0; // unused
 }
