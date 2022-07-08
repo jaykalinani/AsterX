@@ -2,7 +2,7 @@
 
 REQUIRES AMReX
 
-REQUIRES Arith
+REQUIRES Arith Loop
 
 PROVIDES MultiPatch
 {
