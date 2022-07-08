@@ -1804,9 +1804,6 @@ extern "C" int CarpetX_Startup() {
   int ierr = CCTK_RegisterBanner(buf.str().c_str());
   assert(!ierr);
 
-  // Copy parameters
-  Loop::CarpetX_poison_undefined_values = poison_undefined_values;
-
   // Register a GH extension
   ghext_handle = CCTK_RegisterGHExtension("CarpetX");
   assert(ghext_handle >= 0);

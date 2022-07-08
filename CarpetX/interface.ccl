@@ -13,9 +13,8 @@ USES INCLUDE HEADER: simd.hxx
 USES INCLUDE HEADER: tuple.hxx
 USES INCLUDE HEADER: vect.hxx
 
-INCLUDES HEADER: loop.hxx IN loop.hxx
-INCLUDES HEADER: loop_device.hxx IN loop_device.hxx
-INCLUDES HEADER: loopcontrol.h IN loopcontrol.h
+USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: loop_device.hxx
 
 
 
