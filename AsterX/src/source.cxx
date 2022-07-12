@@ -27,6 +27,10 @@ namespace {
 extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_SourceTerms;
   DECLARE_CCTK_PARAMETERS;
+
+  if ((local_spatial_order != 2) && (local_spatial_order != 4)){
+        CCTK_VERROR("local_spatial_order must be set to 2 or 4.");
+  }
   
   /* Loop over the entire grid (0 to n-1 cells in each direction) */
   grid.loop_int_device<1, 1, 1>(
@@ -189,9 +193,6 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
             dx_gzz = calc_fd4_v2c(gzz, p, 0);
             dy_gzz = calc_fd4_v2c(gzz, p, 1);
             dz_gzz = calc_fd4_v2c(gzz, p, 2);
-      }
-      else {
-	    CCTK_VERROR("local_spatial_order must be set to 2 or 4.");
       }
       
       const CCTK_REAL velxshift = v_up[0] - betax_avg/alp_avg;
