@@ -24,3 +24,8 @@ CCTK_INT max_iter "Maximum allowed number of iterations for root finding" STEERA
   1:* :: "Must be no smaller than 1"
 } 30
 
+CCTK_INT local_spatial_order "Order of spatial finite differencing" STEERABLE=never
+{
+  2 :: "Second order finite difference"
+  4 :: "Fourth order finite difference"
+} 4
