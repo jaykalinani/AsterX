@@ -713,7 +713,7 @@ GHExt::PatchData::LevelData::LevelData(const int patch, const int level,
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    /* only grid functions live on levels (and the grid) */
+    // only grid functions live on levels (and the grid)
     if (group.grouptype != CCTK_GF)
       continue;
     const auto &groupdata = *this->groupdata.at(gi);
