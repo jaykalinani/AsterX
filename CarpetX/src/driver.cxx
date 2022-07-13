@@ -8,8 +8,6 @@
 #include "schedule.hxx"
 #include "timer.hxx"
 
-#include <multipatch.hxx>
-
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -581,18 +579,43 @@ GHExt::PatchData::PatchData(const int patch) : patch(patch) {
   DECLARE_CCTK_PARAMETERS;
 
   // Domain
-  const amrex::RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
+  amrex::RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
 
   // Number of coarse grid cells
-  const amrex::Vector<int> ncells{ncells_x, ncells_y, ncells_z};
+  amrex::Vector<int> ncells{ncells_x, ncells_y, ncells_z};
+
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_GetPatchSpecification")) {
+    CCTK_INT ncells1[dim];
+    CCTK_REAL xmin1[dim], xmax1[dim];
+    const int ierr =
+        MultiPatch_GetPatchSpecification(patch, dim, ncells1, xmin1, xmax1);
+    assert(!ierr);
+    for (int d = 0; d < dim; ++d)
+      ncells[d] = ncells1[d];
+    domain = amrex::RealBox(xmin1, xmax1);
+  }
 
   const int coord = -1; // undefined?
 
   // Refinement ratios
   const amrex::Vector<amrex::IntVect> reffacts{}; // empty
 
-  // Periodicity
-  symmetries = get_symmetries();
+  // Symmetries
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_GetBoundarySpecification2")) {
+    CCTK_INT is_interpatch_boundary[2 * dim];
+    const int ierr = MultiPatch_GetBoundarySpecification2(
+        patch, 2 * dim, is_interpatch_boundary);
+    assert(!ierr);
+    for (int f = 0; f < 2; ++f)
+      for (int d = 0; d < dim; ++d)
+        symmetries[f][d] = is_interpatch_boundary[2 * d + f]
+                               ? symmetry_t::interpatch
+                               : symmetry_t::none;
+  } else {
+    symmetries = get_symmetries();
+  }
   CCTK_VINFO("PatchData: symmetries=[[%d,%d,%d],[%d,%d,%d]]",
              int(symmetries[0][0]), int(symmetries[0][1]),
              int(symmetries[0][2]), int(symmetries[1][0]),
@@ -1883,33 +1906,15 @@ int InitGH(cGH *restrict cctkGH) {
 
   // Set up patch system
   assert(ghext->patchdata.size() == 0);
-  bool have_multipatch = false;
-#ifdef HAVE_CAPABILITY_MultiPatch
-  if (CCTK_IsThornActive("MultiPatch")) {
-    int type;
-    const void *const patch_system_ptr =
-        CCTK_ParameterGet("patch_system", "MultiPatch", &type);
-    assert(patch_system_ptr);
-    assert(type == PARAMETER_KEYWORD);
-    const char *const patch_system =
-        *static_cast<const char *const *>(patch_system_ptr);
-    have_multipatch = !CCTK_EQUALS(patch_system, "none");
+  CCTK_INT num_patches = 1;
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_GetSystemSpecification")) {
+    const int ierr = MultiPatch_GetSystemSpecification(&num_patches);
+    assert(!ierr);
   }
-#endif
-  if (have_multipatch) {
-#ifdef HAVE_CAPABILITY_MultiPatch
-    // Set up all patches
-    const int num_patches = MultiPatch::the_patch_system->num_patches();
-    for (int patch = 0; patch < num_patches; ++patch)
-      ghext->patchdata.emplace_back(patch);
-#else
-    assert(0);
-#endif
-  } else {
-    // Set up a single patch
-    const int patch = 0;
+  // Set up all patches
+  for (int patch = 0; patch < num_patches; ++patch)
     ghext->patchdata.emplace_back(patch);
-  }
 
   return 0; // unused
 }

@@ -35,6 +35,15 @@ PROVIDES FUNCTION MultiPatch_GetPatchSpecification \
   WITH MultiPatch1_GetPatchSpecification \
   LANGUAGE C
 
+# Patch boundaries
+CCTK_INT FUNCTION MultiPatch_GetBoundarySpecification2( \
+  CCTK_INT IN patch, \
+  CCTK_INT IN size, \
+  CCTK_INT OUT ARRAY is_interpatch_boundary)
+PROVIDES FUNCTION MultiPatch_GetBoundarySpecification2 \
+    WITH MultiPatch1_GetBoundarySpecification2 \
+    LANGUAGE C
+
 void FUNCTION MultiPatch_GlobalToLocal( \
   CCTK_INT IN npoints, \
   CCTK_REAL ARRAY IN globalsx, \
@@ -63,8 +72,7 @@ REQUIRES FUNCTION Interpolate
 void FUNCTION MultiPatch_Interpolate( \
   CCTK_POINTER_TO_CONST IN cctkGH, \
   CCTK_INT IN nvars, \
-  CCTK_INT ARRAY IN varinds \
-)
+  CCTK_INT ARRAY IN varinds)
 PROVIDES FUNCTION MultiPatch_Interpolate \
   WITH MultiPatch1_Interpolate \
   LANGUAGE C

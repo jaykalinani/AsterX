@@ -20,10 +20,6 @@ OPTIONAL Silo
 {
 }
 
-OPTIONAL MultiPatch
-{
-}
-
 PROVIDES CarpetX
 {
 }
