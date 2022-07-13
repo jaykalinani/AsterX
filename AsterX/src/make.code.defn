@@ -7,7 +7,8 @@ SRCS =						\
 	fluxes.cxx				\
 	prim2con.cxx				\
 	rhs.cxx					\
-	sync.cxx
+	sync.cxx                                \
+        source.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 
