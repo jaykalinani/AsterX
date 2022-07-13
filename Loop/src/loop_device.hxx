@@ -84,51 +84,34 @@ public:
     if (!has_normal) {
       // Loop over an interior box
 
-      amrex::launch(box, [=, *this] CCTK_DEVICE(const amrex::Box &box)
-                             CCTK_ATTRIBUTE_ALWAYS_INLINE {
-#ifdef CCTK_DEBUG
-                               assert(box.bigEnd()[0] == box.smallEnd()[0] &&
-                                      box.bigEnd()[1] == box.smallEnd()[1] &&
-                                      box.bigEnd()[2] == box.smallEnd()[2]);
-#endif
-                               const int i = box.smallEnd()[0];
-                               const int j = box.smallEnd()[1];
-                               const int k = box.smallEnd()[2];
-                               constexpr std::array<int, dim> izero = {0, 0, 0};
-                               f(point_desc<CI, CJ, CK>(izero, izero, imin1[0],
-                                                        imax1[0], i, j, k));
-                             });
+      amrex::ParallelFor(box, [=, *this] CCTK_DEVICE(
+                                  const int i, const int j,
+                                  const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        constexpr std::array<int, dim> izero = {0, 0, 0};
+        f(point_desc<CI, CJ, CK>(izero, izero, imin1[0], imax1[0], i, j, k));
+      });
 
     } else {
       // Loop over a box at a boundary
 
-      amrex::launch(box, [=, *this] CCTK_DEVICE(const amrex::Box &box)
-                             CCTK_ATTRIBUTE_ALWAYS_INLINE {
-#ifdef CCTK_DEBUG
-                               assert(box.bigEnd()[0] == box.smallEnd()[0] &&
-                                      box.bigEnd()[1] == box.smallEnd()[1] &&
-                                      box.bigEnd()[2] == box.smallEnd()[2]);
-#endif
-                               const int i = box.smallEnd()[0];
-                               const int j = box.smallEnd()[1];
-                               const int k = box.smallEnd()[2];
-
-                               const std::array<int, dim> I = {i, j, k};
-                               std::array<int, dim> I0;
-                               for (int d = 0; d < dim; ++d) {
-                                 if (inormal1[d] == 0)
-                                   // interior
-                                   I0[d] = I[d];
-                                 else if (inormal1[d] < 0)
-                                   // left boundary
-                                   I0[d] = imax1[d];
-                                 else
-                                   // right boundary
-                                   I0[d] = imin1[d] - 1;
-                               }
-                               f(point_desc<CI, CJ, CK>(inormal1, I0, imin1[0],
-                                                        imax1[0], i, j, k));
-                             });
+      amrex::ParallelFor(box, [=, *this] CCTK_DEVICE(
+                                  const int i, const int j,
+                                  const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        const std::array<int, dim> I = {i, j, k};
+        std::array<int, dim> I0;
+        for (int d = 0; d < dim; ++d) {
+          if (inormal1[d] == 0)
+            // interior
+            I0[d] = I[d];
+          else if (inormal1[d] < 0)
+            // left boundary
+            I0[d] = imax1[d];
+          else
+            // right boundary
+            I0[d] = imin1[d] - 1;
+        }
+        f(point_desc<CI, CJ, CK>(inormal1, I0, imin1[0], imax1[0], i, j, k));
+      });
     }
 
 #endif
