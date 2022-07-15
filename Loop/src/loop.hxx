@@ -1421,10 +1421,23 @@ public:
 // Macros for declaring variables using DECLARE_CCTK_ARGUMENTSX_func_name
 #define CCTK_CENTERING_GRID const Loop::GridDescBase cctk_grid(cctkGH)
 #define grid cctk_grid
+
+#ifdef CARPETX_GF3D5
+
+#define CCTK_CENTERING_LAYOUT(L, V)                                            \
+  constexpr std::array<int, Loop::dim> L##_centered V;                         \
+  const Loop::GF3D5layout L##gf_layout(cctkGH, L##_centered)
+#define CCTK_CENTERING_GF(C, L, N)                                             \
+  const Loop::GF3D5<C CCTK_REAL> N(L##gf_layout, cctk_ptr_##N)
+
+#else
+
 #define CCTK_CENTERING_LAYOUT(L, V)                                            \
   constexpr std::array<int, Loop::dim> L##_centered V;                         \
   const Loop::GF3D2layout L##gf_layout(cctkGH, L##_centered)
 #define CCTK_CENTERING_GF(C, L, N)                                             \
   const Loop::GF3D2<C CCTK_REAL> N(L##gf_layout, cctk_ptr_##N)
+
+#endif
 
 #endif // #ifndef LOOP_HXX
