@@ -160,6 +160,7 @@ CarpetX/HydroInitial
 CarpetX/KHInitial
 CarpetX/HydroToyCarpetX
 #DISABLED CarpetX/Kokkos
+CarpetX/Loop
 CarpetX/Maxwell
 CarpetX/MaxwellToyCarpetX
 CarpetX/MultiPatch
