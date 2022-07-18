@@ -68,7 +68,7 @@ RUN mkdir src && \
 
 # Install NSIMD
 # NSIMD allows writing explicitly SIMD-vectorized code
-# Note: This assumes that the system has x86_64 CPUs with AVX2
+# Note: This assumes that the system has x86_64 CPUs
 RUN mkdir src && \
     (cd src && \
     wget https://github.com/agenium-scale/nsimd/archive/refs/tags/v3.0.1.tar.gz && \
@@ -80,7 +80,7 @@ RUN mkdir src && \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_C_COMPILER=gcc \
         -DCMAKE_CXX_COMPILER=g++ \
-        -Dsimd=AVX2 \
+        -Dsimd=SSE2 \
         -DCMAKE_INSTALL_PREFIX=/usr/local \
         .. && \
     make -j$(nproc) && \
