@@ -30,9 +30,7 @@ CCTK_INT FUNCTION MultiPatch_GetPatchSpecification( \
   CCTK_INT OUT ARRAY ncells, \
   CCTK_REAL OUT ARRAY xmin, \
   CCTK_REAL OUT ARRAY xmax)
-PROVIDES FUNCTION MultiPatch_GetPatchSpecification \
-  WITH MultiPatch1_GetPatchSpecification \
-  LANGUAGE C
+USES FUNCTION MultiPatch_GetPatchSpecification
 
 # Patch boundaries
 CCTK_INT FUNCTION MultiPatch_GetBoundarySpecification2( \
