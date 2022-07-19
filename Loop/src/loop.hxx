@@ -1335,12 +1335,48 @@ template <typename T> struct GF3D5 {
                                    const T &value) const {
     operator()(layout, I) = value;
   }
-  CCTK_DEVICE CCTK_HOST Arith::simd<std::remove_cv_t<T> >
+  // CCTK_DEVICE CCTK_HOST Arith::simd<std::remove_cv_t<T> >
+  // operator()(const Arith::simdl<std::remove_cv_t<T> > &mask,
+  //            const GF3D5index &index) const {
+  //   return Arith::maskz_loadu(mask, &(*this)(index));
+  // }
+  // CCTK_DEVICE CCTK_HOST Arith::simd<std::remove_cv_t<T> >
+  // operator()(const Arith::simdl<std::remove_cv_t<T> > &mask,
+  //            const GF3D5layout &layout, const vect<int, dim> &I) const {
+  //   return (*this)(mask, GF3D5index(layout, I));
+  // }
+  struct simd_reference {
+    using element_type = std::remove_cv_t<T>;
+    using value_type = Arith::simd<element_type>;
+    T *ptr;
+    Arith::simdl<element_type> mask;
+    template <typename U>
+    CCTK_DEVICE CCTK_HOST simd_reference(T *const ptr,
+                                         const Arith::simdl<U> mask)
+        : ptr(ptr), mask(mask) {}
+    simd_reference() = delete;
+    simd_reference(const simd_reference &) = default;
+    simd_reference(simd_reference &&) = default;
+    CCTK_DEVICE CCTK_HOST operator value_type() const {
+      return Arith::maskz_loadu(mask, ptr);
+    }
+    template <typename U>
+    CCTK_DEVICE CCTK_HOST simd_reference operator=(const Arith::simd<U> value) {
+      mask_storeu(mask, ptr, value);
+      return *this;
+    }
+    template <typename U>
+    CCTK_DEVICE CCTK_HOST simd_reference operator=(const U value) {
+      mask_storeu(mask, ptr, value_type(value));
+      return *this;
+    }
+  };
+  CCTK_DEVICE CCTK_HOST simd_reference
   operator()(const Arith::simdl<std::remove_cv_t<T> > &mask,
              const GF3D5index &index) const {
-    return Arith::maskz_loadu(mask, &(*this)(index));
+    return simd_reference(&(*this)(index), mask);
   }
-  CCTK_DEVICE CCTK_HOST Arith::simd<std::remove_cv_t<T> >
+  CCTK_DEVICE CCTK_HOST simd_reference
   operator()(const Arith::simdl<std::remove_cv_t<T> > &mask,
              const GF3D5layout &layout, const vect<int, dim> &I) const {
     return (*this)(mask, GF3D5index(layout, I));
