@@ -1,0 +1,8 @@
+# Schedule definitions for thorn TestInterpolate
+
+SCHEDULE TestInterpolate_test_interpolation AT poststep
+{
+  LANG: C
+  OPTIONS: global
+  READS: Coordinates::vertex_coords(everywhere)
+} "Test interpolation operators"
