@@ -1367,8 +1367,7 @@ template <typename T> struct GF3D5 {
     }
     template <typename U>
     CCTK_DEVICE CCTK_HOST simd_reference operator=(const U value) {
-      mask_storeu(mask, ptr, value_type(value));
-      return *this;
+      return *this = value_type(value);
     }
   };
   CCTK_DEVICE CCTK_HOST simd_reference
