@@ -33,7 +33,7 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
   }
   
   /* Loop over the entire grid (0 to n-1 cells in each direction) */
-  grid.loop_int_device<1, 1, 1>(
+  grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
       
