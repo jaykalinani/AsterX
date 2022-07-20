@@ -115,8 +115,11 @@ PatchSystem SetupCartesian() {
   pt.local2global_device = &Cartesian::local2global_device;
   pt.dlocal_dglobal_device = &Cartesian::dlocal_dglobal_device;
   pt.d2local_dglobal2_device = &Cartesian::d2local_dglobal2_device;
-  return PatchSystem(std::vector<Patch>{Cartesian::makePatch(pt)},
-                     std::move(pt));
+
+  PatchSystem ps(std::vector<Patch>{Cartesian::makePatch(pt)}, std::move(pt));
+  ps.name = "Cartesian";
+
+  return ps;
 }
 
 } // namespace MultiPatch
