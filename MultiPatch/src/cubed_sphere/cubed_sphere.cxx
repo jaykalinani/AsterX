@@ -18,6 +18,7 @@ Patch makePatch0(const PatchTransformations &pt) {
   const CCTK_REAL rmin = pt.cubed_sphere_rmin;
   const CCTK_REAL rmax = pt.cubed_sphere_rmax;
   Patch patch0;
+  patch0.name = "cubed_sphere 0";
   patch0.ncells = {ncells_i, ncells_j, ncells_k};
   patch0.xmin = {-rmin, -rmin, -rmin};
   patch0.xmax = {+rmax, +rmax, +rmax};
@@ -31,6 +32,7 @@ Patch makePatch1(const PatchTransformations &pt) {
   const CCTK_REAL rmin = pt.cubed_sphere_rmin;
   const CCTK_REAL rmax = pt.cubed_sphere_rmax;
   Patch patch1;
+  patch1.name = "cubed_sphere 1";
   patch1.ncells = {ncells_rad, ncells_j, ncells_k};
   patch1.xmin = {rmin, -1.0, -1.0};
   patch1.xmax = {rmax, +1.0, +1.0};

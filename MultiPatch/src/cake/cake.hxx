@@ -78,19 +78,19 @@ template <typename T> CCTK_DEVICE CCTK_HOST static inline auto Sqrt(T x) {
  * Tags for each patch piece in the cake
  */
 enum class patch_piece : int {
-  cartesian,
+  cartesian = 0,
 
-  plus_x,
-  minus_x,
+  plus_x = 1,
+  minus_x = 2,
 
-  plus_y,
-  minus_y,
+  plus_y = 3,
+  minus_y = 4,
 
-  plus_z,
-  minus_z,
+  plus_z = 5,
+  minus_z = 6,
 
-  inner_boundary,
-  outer_boundary,
+  inner_boundary = 7,
+  outer_boundary = 8,
 
   exterior = -1
 };

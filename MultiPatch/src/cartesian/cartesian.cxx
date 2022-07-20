@@ -10,6 +10,7 @@ Patch makePatch(const PatchTransformations &pt) {
   DECLARE_CCTK_PARAMETERS;
   const PatchFace outer_boundary{true, -1};
   Patch patch0;
+  patch0.name = "cartesian";
   patch0.ncells = {cartesian_ncells_i, cartesian_ncells_j, cartesian_ncells_k};
   patch0.xmin = {cartesian_xmin, cartesian_ymin, cartesian_zmin};
   patch0.xmax = {cartesian_xmax, cartesian_ymax, cartesian_zmax};

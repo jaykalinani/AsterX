@@ -302,6 +302,8 @@ dlocal_dglobal(const PatchTransformations &pt, int patch,
 template <patch_piece p> Patch make_patch(const PatchTransformations &pt) {
   Patch patch;
 
+  patch.name = piece_name(p);
+
   // Basic configuration for a thornburg patch piece
   patch.ncells = {pt.cake_angular_cells, pt.cake_angular_cells,
                   pt.cake_radial_cells};
