@@ -2,6 +2,10 @@
 
 The "Cake" patch system consists of 6 Thornburg-like spherical patches that perfectly match with a central cartesian cube patch, thus having a total of 7 patches.
 
+# Patch naming/indexing convention
+
+Each patch in the cake has a name and index. These are defined [here](https://bitbucket.org/eschnett/cactusamrex/src/d89fc96eaf7dbdf831fc76c0fd3a9df8633ee445/MultiPatch/src/cake/cake.hxx#lines-80:96).
+
 # References
 
 The equations that define this patch system can be found in Sec. IV of https://arxiv.org/pdf/gr-qc/0512001.pdf. Other useful references are

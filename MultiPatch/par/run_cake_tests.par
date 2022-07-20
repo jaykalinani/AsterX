@@ -11,18 +11,10 @@ Cactus::cctk_itlast = 0
 
 CarpetX::verbose = yes
 
-CarpetX::xmin = -1.0
-CarpetX::xmax = 1.0
-
-CarpetX::ymin = -1.0
-CarpetX::ymax = 1.0
-
-CarpetX::zmin = -1.0
-CarpetX::zmax = 1.0
-
-CarpetX::ncells_x = 80
-CarpetX::ncells_y = 80
-CarpetX::ncells_z = 80
+# TODO: Blocking factors != 1 throw "domain size not divisible by blocking_factor"
+CarpetX::blocking_factor_x = 1
+CarpetX::blocking_factor_y = 1
+CarpetX::blocking_factor_z = 1
 
 CarpetX::max_num_levels = 1
 
@@ -33,8 +25,8 @@ MultiPatch::test_repetitions = 30
 
 MultiPatch::patch_system = "Cake"
                                                                         
-MultiPatch::cake_outer_boundary_radius = 2.0
-MultiPatch::cake_inner_boundary_radius = 1.0
+MultiPatch::cake_outer_boundary_radius = 4.0
+MultiPatch::cake_inner_boundary_radius = 2.0
 
 MultiPatch::cake_cartesian_ncells_i    = 10
 MultiPatch::cake_cartesian_ncells_j    = 10

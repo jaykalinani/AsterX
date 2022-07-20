@@ -10,6 +10,7 @@ Patch makePatch(const PatchTransformations &pt) {
   DECLARE_CCTK_PARAMETERS;
   const PatchFace outer_boundary{true, -1};
   Patch patch0;
+  patch0.name = "cartesian";
   patch0.ncells = {cartesian_ncells_i, cartesian_ncells_j, cartesian_ncells_k};
   patch0.xmin = {cartesian_xmin, cartesian_ymin, cartesian_zmin};
   patch0.xmax = {cartesian_xmax, cartesian_ymax, cartesian_zmax};
@@ -114,8 +115,11 @@ PatchSystem SetupCartesian() {
   pt.local2global_device = &Cartesian::local2global_device;
   pt.dlocal_dglobal_device = &Cartesian::dlocal_dglobal_device;
   pt.d2local_dglobal2_device = &Cartesian::d2local_dglobal2_device;
-  return PatchSystem(std::vector<Patch>{Cartesian::makePatch(pt)},
-                     std::move(pt));
+
+  PatchSystem ps(std::vector<Patch>{Cartesian::makePatch(pt)}, std::move(pt));
+  ps.name = "Cartesian";
+
+  return ps;
 }
 
 } // namespace MultiPatch

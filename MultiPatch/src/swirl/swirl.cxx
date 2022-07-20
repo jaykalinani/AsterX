@@ -30,6 +30,7 @@ Patch makePatch(const PatchTransformations &pt) {
   const int ncells_k = pt.swirl_ncells_k;
   const PatchFace outer_boundary{true, -1};
   Patch patch0;
+  patch0.name = "swirl";
   patch0.ncells = {ncells_i, ncells_j, ncells_k};
   patch0.xmin = {-1, -1, -1};
   patch0.xmax = {+1, +1, +1};
@@ -238,7 +239,11 @@ PatchSystem SetupSwirl() {
   pt.local2global_device = &Swirl::local2global_device;
   pt.dlocal_dglobal_device = &Swirl::dlocal_dglobal_device;
   pt.d2local_dglobal2_device = &Swirl::d2local_dglobal2_device;
-  return PatchSystem(std::vector<Patch>{Swirl::makePatch(pt)}, std::move(pt));
+
+  PatchSystem ps(std::vector<Patch>{Swirl::makePatch(pt)}, std::move(pt));
+  ps.name = "Swirl";
+
+  return ps;
 }
 
 } // namespace MultiPatch
