@@ -15,9 +15,9 @@
 
 #include <cassert>
 
-#ifndef HAVE_CAPABILITY_AMReX
+#ifndef HAVE_CAPABILITY_Loop
 #error                                                                         \
-    "Using #include <loop_device.hxx> requires the capability 'AMReX' in the calling thorn. Add this to the thorn's 'configuration.ccl' file."
+    "Using #include <loop_device.hxx> requires the capability 'Loop' in the calling thorn. Add this to the thorn's 'configuration.ccl' file."
 #endif
 
 namespace Loop {
@@ -37,9 +37,9 @@ public:
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   // inline CCTK_ATTRIBUTE_ALWAYS_INLINE
   CCTK_ATTRIBUTE_NOINLINE void
-  loop_box_device(const F &f, const array<int, dim> &restrict imin,
-                  const array<int, dim> &restrict imax,
-                  const array<int, dim> &restrict inormal) const {
+  loop_box_device(const F &f, const std::array<int, dim> &restrict imin,
+                  const std::array<int, dim> &restrict imax,
+                  const std::array<int, dim> &restrict inormal) const {
 #ifndef AMREX_USE_GPU
     return this->template loop_box<CI, CJ, CK, VS>(f, imin, imax, inormal);
 #else
@@ -53,7 +53,7 @@ public:
       if (imin[d] >= imax[d])
         return;
 
-    // array<bool, dim> bforward;
+    // std::array<bool, dim> bforward;
     // for (int d = 0; d < dim; ++d)
     //   bforward[d] = inormal[d] >= 0;
     // bool all_forward = true;
@@ -84,51 +84,34 @@ public:
     if (!has_normal) {
       // Loop over an interior box
 
-      amrex::launch(box, [=, *this] CCTK_DEVICE(const amrex::Box &box)
-                             CCTK_ATTRIBUTE_ALWAYS_INLINE {
-#ifdef CCTK_DEBUG
-                               assert(box.bigEnd()[0] == box.smallEnd()[0] &&
-                                      box.bigEnd()[1] == box.smallEnd()[1] &&
-                                      box.bigEnd()[2] == box.smallEnd()[2]);
-#endif
-                               const int i = box.smallEnd()[0];
-                               const int j = box.smallEnd()[1];
-                               const int k = box.smallEnd()[2];
-                               constexpr array<int, dim> izero = {0, 0, 0};
-                               f(point_desc<CI, CJ, CK>(izero, izero, imin1[0],
-                                                        imax1[0], i, j, k));
-                             });
+      amrex::ParallelFor(box, [=, *this] CCTK_DEVICE(
+                                  const int i, const int j,
+                                  const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        constexpr std::array<int, dim> izero = {0, 0, 0};
+        f(point_desc<CI, CJ, CK>(izero, izero, imin1[0], imax1[0], i, j, k));
+      });
 
     } else {
       // Loop over a box at a boundary
 
-      amrex::launch(box, [=, *this] CCTK_DEVICE(const amrex::Box &box)
-                             CCTK_ATTRIBUTE_ALWAYS_INLINE {
-#ifdef CCTK_DEBUG
-                               assert(box.bigEnd()[0] == box.smallEnd()[0] &&
-                                      box.bigEnd()[1] == box.smallEnd()[1] &&
-                                      box.bigEnd()[2] == box.smallEnd()[2]);
-#endif
-                               const int i = box.smallEnd()[0];
-                               const int j = box.smallEnd()[1];
-                               const int k = box.smallEnd()[2];
-
-                               const array<int, dim> I = {i, j, k};
-                               array<int, dim> I0;
-                               for (int d = 0; d < dim; ++d) {
-                                 if (inormal1[d] == 0)
-                                   // interior
-                                   I0[d] = I[d];
-                                 else if (inormal1[d] < 0)
-                                   // left boundary
-                                   I0[d] = imax1[d];
-                                 else
-                                   // right boundary
-                                   I0[d] = imin1[d] - 1;
-                               }
-                               f(point_desc<CI, CJ, CK>(inormal1, I0, imin1[0],
-                                                        imax1[0], i, j, k));
-                             });
+      amrex::ParallelFor(box, [=, *this] CCTK_DEVICE(
+                                  const int i, const int j,
+                                  const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        const std::array<int, dim> I = {i, j, k};
+        std::array<int, dim> I0;
+        for (int d = 0; d < dim; ++d) {
+          if (inormal1[d] == 0)
+            // interior
+            I0[d] = I[d];
+          else if (inormal1[d] < 0)
+            // left boundary
+            I0[d] = imax1[d];
+          else
+            // right boundary
+            I0[d] = imin1[d] - 1;
+        }
+        f(point_desc<CI, CJ, CK>(inormal1, I0, imin1[0], imax1[0], i, j, k));
+      });
     }
 
 #endif
@@ -155,15 +138,16 @@ public:
   // Loop over all points
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_all_device(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{CI, CJ, CK};
-    array<int, dim> imin, imax;
+  loop_all_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    const std::array<int, dim> offset{CI, CJ, CK};
+    std::array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       int ghost_offset = nghostzones[d] - group_nghostzones[d];
       imin[d] = std::max(tmin[d], ghost_offset);
       imax[d] = std::min(tmax[d], lsh[d] - offset[d] - ghost_offset);
     }
-    const array<int, dim> inormal{0, 0, 0};
+    const std::array<int, dim> inormal{0, 0, 0};
 
     loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
   }
@@ -171,14 +155,15 @@ public:
   // Loop over all interior points
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_int_device(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{CI, CJ, CK};
-    array<int, dim> imin, imax;
+  loop_int_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    const std::array<int, dim> offset{CI, CJ, CK};
+    std::array<int, dim> imin, imax;
     for (int d = 0; d < dim; ++d) {
       imin[d] = std::max(tmin[d], nghostzones[d]);
       imax[d] = std::min(tmax[d], lsh[d] - offset[d] - nghostzones[d]);
     }
-    const array<int, dim> inormal{0, 0, 0};
+    const std::array<int, dim> inormal{0, 0, 0};
 
     loop_box_device<CI, CJ, CK, VS>(f, imin, imax, inormal);
   }
@@ -186,11 +171,11 @@ public:
   // Loop over a part of the domain. Loop over the interior first,
   // then faces, then edges, then corners.
   template <int CI, int CJ, int CK, int VS = 1, typename F>
-  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_there_device(const array<int, dim> &group_nghostzones,
-                    const array<array<array<bool, dim>, dim>, dim> &there,
-                    const F &f) const {
-    const array<int, dim> offset{CI, CJ, CK};
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_there_device(
+      const std::array<int, dim> &group_nghostzones,
+      const std::array<std::array<std::array<bool, dim>, dim>, dim> &there,
+      const F &f) const {
+    const std::array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim; rank >= 0; --rank) {
 
@@ -201,9 +186,9 @@ public:
 
               if (there[ni + 1][nj + 1][nk + 1]) {
 
-                const array<int, dim> inormal{ni, nj, nk};
+                const std::array<int, dim> inormal{ni, nj, nk};
 
-                array<int, dim> imin, imax;
+                std::array<int, dim> imin, imax;
                 for (int d = 0; d < dim; ++d) {
                   const int ghost_offset =
                       nghostzones[d] - group_nghostzones[d];
@@ -247,8 +232,9 @@ public:
   // then edges, then corners.
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_bnd_device(const array<int, dim> &group_nghostzones, const F &f) const {
-    const array<int, dim> offset{CI, CJ, CK};
+  loop_bnd_device(const std::array<int, dim> &group_nghostzones,
+                  const F &f) const {
+    const std::array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim - 1; rank >= 0; --rank) {
 
@@ -261,9 +247,9 @@ public:
                   (nj != 0 && bbox[2 + (nj == -1 ? 0 : 1)]) ||
                   (nk != 0 && bbox[4 + (nk == -1 ? 0 : 1)])) {
 
-                const array<int, dim> inormal{ni, nj, nk};
+                const std::array<int, dim> inormal{ni, nj, nk};
 
-                array<int, dim> imin, imax;
+                std::array<int, dim> imin, imax;
                 for (int d = 0; d < dim; ++d) {
                   const int ghost_offset =
                       nghostzones[d] - group_nghostzones[d];
@@ -306,9 +292,9 @@ public:
   // non-ghost faces. Loop over faces first, then edges, then corners.
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_ghosts_device(const array<int, dim> &group_nghostzones,
+  loop_ghosts_device(const std::array<int, dim> &group_nghostzones,
                      const F &f) const {
-    const array<int, dim> offset{CI, CJ, CK};
+    const std::array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim - 1; rank >= 0; --rank) {
 
@@ -321,9 +307,9 @@ public:
                   (nj == 0 || !bbox[2 + (nj == -1 ? 0 : 1)]) &&
                   (nk == 0 || !bbox[4 + (nk == -1 ? 0 : 1)])) {
 
-                const array<int, dim> inormal{ni, nj, nk};
+                const std::array<int, dim> inormal{ni, nj, nk};
 
-                array<int, dim> imin, imax;
+                std::array<int, dim> imin, imax;
                 for (int d = 0; d < dim; ++d) {
                   const int ghost_offset =
                       nghostzones[d] - group_nghostzones[d];
@@ -365,9 +351,9 @@ public:
   // non-ghost faces. Loop over faces first, then edges, then corners.
   template <int CI, int CJ, int CK, int VS = 1, typename F>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_ghosts_inclusive_device(const array<int, dim> &group_nghostzones,
+  loop_ghosts_inclusive_device(const std::array<int, dim> &group_nghostzones,
                                const F &f) const {
-    const array<int, dim> offset{CI, CJ, CK};
+    const std::array<int, dim> offset{CI, CJ, CK};
 
     for (int rank = dim - 1; rank >= 0; --rank) {
 
@@ -380,9 +366,9 @@ public:
                   (nj != 0 && !bbox[2 + (nj == -1 ? 0 : 1)]) ||
                   (nk != 0 && !bbox[4 + (nk == -1 ? 0 : 1)])) {
 
-                const array<int, dim> inormal{ni, nj, nk};
+                const std::array<int, dim> inormal{ni, nj, nk};
 
-                array<int, dim> imin, imax;
+                std::array<int, dim> imin, imax;
                 for (int d = 0; d < dim; ++d) {
                   const int ghost_offset =
                       nghostzones[d] - group_nghostzones[d];
@@ -457,11 +443,10 @@ public:
   }
 
   template <typename F>
-  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
-  loop_there_device_idx(const std::array<int, dim> &indextype,
-                        const array<array<array<bool, dim>, dim>, dim> &there,
-                        const std::array<int, dim> &group_nghostzones,
-                        const F &f) const {
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE void loop_there_device_idx(
+      const std::array<int, dim> &indextype,
+      const std::array<std::array<std::array<bool, dim>, dim>, dim> &there,
+      const std::array<int, dim> &group_nghostzones, const F &f) const {
     switch (indextype[0] + 2 * indextype[1] + 4 * indextype[2]) {
     case 0b000:
       return noinline([&] {

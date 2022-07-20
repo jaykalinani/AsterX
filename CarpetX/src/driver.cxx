@@ -579,18 +579,43 @@ GHExt::PatchData::PatchData(const int patch) : patch(patch) {
   DECLARE_CCTK_PARAMETERS;
 
   // Domain
-  const amrex::RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
+  amrex::RealBox domain({xmin, ymin, zmin}, {xmax, ymax, zmax});
 
   // Number of coarse grid cells
-  const amrex::Vector<int> ncells{ncells_x, ncells_y, ncells_z};
+  amrex::Vector<int> ncells{ncells_x, ncells_y, ncells_z};
+
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_GetPatchSpecification")) {
+    CCTK_INT ncells1[dim];
+    CCTK_REAL xmin1[dim], xmax1[dim];
+    const int ierr =
+        MultiPatch_GetPatchSpecification(patch, dim, ncells1, xmin1, xmax1);
+    assert(!ierr);
+    for (int d = 0; d < dim; ++d)
+      ncells[d] = ncells1[d];
+    domain = amrex::RealBox(xmin1, xmax1);
+  }
 
   const int coord = -1; // undefined?
 
   // Refinement ratios
   const amrex::Vector<amrex::IntVect> reffacts{}; // empty
 
-  // Periodicity
-  symmetries = get_symmetries();
+  // Symmetries
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_GetBoundarySpecification2")) {
+    CCTK_INT is_interpatch_boundary[2 * dim];
+    const int ierr = MultiPatch_GetBoundarySpecification2(
+        patch, 2 * dim, is_interpatch_boundary);
+    assert(!ierr);
+    for (int f = 0; f < 2; ++f)
+      for (int d = 0; d < dim; ++d)
+        symmetries[f][d] = is_interpatch_boundary[2 * d + f]
+                               ? symmetry_t::interpatch
+                               : symmetry_t::none;
+  } else {
+    symmetries = get_symmetries();
+  }
   CCTK_VINFO("PatchData: symmetries=[[%d,%d,%d],[%d,%d,%d]]",
              int(symmetries[0][0]), int(symmetries[0][1]),
              int(symmetries[0][2]), int(symmetries[1][0]),
@@ -688,7 +713,7 @@ GHExt::PatchData::LevelData::LevelData(const int patch, const int level,
     int ierr = CCTK_GroupData(gi, &group);
     assert(!ierr);
 
-    /* only grid functions live on levels (and the grid) */
+    // only grid functions live on levels (and the grid)
     if (group.grouptype != CCTK_GF)
       continue;
     const auto &groupdata = *this->groupdata.at(gi);
@@ -1804,9 +1829,6 @@ extern "C" int CarpetX_Startup() {
   int ierr = CCTK_RegisterBanner(buf.str().c_str());
   assert(!ierr);
 
-  // Copy parameters
-  Loop::CarpetX_poison_undefined_values = poison_undefined_values;
-
   // Register a GH extension
   ghext_handle = CCTK_RegisterGHExtension("CarpetX");
   assert(ghext_handle >= 0);
@@ -1882,10 +1904,17 @@ int InitGH(cGH *restrict cctkGH) {
 
   assert(cctkGH);
 
-  // Set up a single patch
+  // Set up patch system
   assert(ghext->patchdata.size() == 0);
-  const int patch = 0;
-  ghext->patchdata.emplace_back(patch);
+  CCTK_INT num_patches = 1;
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_GetSystemSpecification")) {
+    const int ierr = MultiPatch_GetSystemSpecification(&num_patches);
+    assert(!ierr);
+  }
+  // Set up all patches
+  for (int patch = 0; patch < num_patches; ++patch)
+    ghext->patchdata.emplace_back(patch);
 
   return 0; // unused
 }

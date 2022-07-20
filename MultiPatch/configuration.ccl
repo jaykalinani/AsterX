@@ -1,9 +1,3 @@
 # Configuration definitions for thorn MultiPatch
 
-REQUIRES AMReX
-
-REQUIRES Arith
-
-PROVIDES MultiPatch
-{
-}
+REQUIRES Arith Loop

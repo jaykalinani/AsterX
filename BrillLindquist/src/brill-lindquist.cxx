@@ -11,6 +11,7 @@
 
 namespace BrillLindquist {
 using namespace Loop;
+using namespace std;
 
 template <typename T> constexpr T pow2(const T x) { return x * x; }
 template <typename T> constexpr T pow4(const T x) { return pow2(x) * pow2(x); }

@@ -17,6 +17,7 @@
 #include <iomanip>
 #include <limits>
 #include <mutex>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -120,7 +121,11 @@ void OutputNorms(const cGH *restrict cctkGH) {
           continue;
 
         std::ostringstream buf;
-        buf << out_dir << "/norms/" << CCTK_FullGroupName(gi) << ".tsv";
+        std::string groupname = CCTK_FullGroupName(gi);
+        groupname = std::regex_replace(groupname, std::regex("::"), "-");
+        for (auto &ch : groupname)
+          ch = std::tolower(ch);
+        buf << out_dir << "/norms/" << groupname << ".tsv";
         const std::string filename = buf.str();
         std::ofstream file;
         file.open(filename, std::ios_base::app);
@@ -134,10 +139,11 @@ void OutputNorms(const cGH *restrict cctkGH) {
           if (!groupdata.valid.at(tl).at(vi).get().valid_int)
             continue;
 
+          std::string varname = CCTK_FullVarName(groupdata.firstvarindex + vi);
+          for (auto &ch : varname)
+            ch = std::tolower(ch);
           for (const auto &reduction : reductions)
-            file << sep << ++col << ":"
-                 << CCTK_FullVarName(groupdata.firstvarindex + vi) << "."
-                 << reduction;
+            file << sep << ++col << ":" << varname << "." << reduction;
         }
         file << "\n";
 
@@ -174,7 +180,11 @@ void OutputNorms(const cGH *restrict cctkGH) {
     output_file_description_t ofd;
     if (is_root) {
       std::ostringstream buf;
-      buf << out_dir << "/norms/" << CCTK_FullGroupName(gi) << ".tsv";
+      std::string groupname = CCTK_FullGroupName(gi);
+      groupname = std::regex_replace(groupname, std::regex("::"), "-");
+      for (auto &ch : groupname)
+        ch = std::tolower(ch);
+      buf << out_dir << "/norms/" << groupname << ".tsv";
       const std::string filename = buf.str();
       file.open(filename, std::ios_base::app);
       ofd.filename = filename;

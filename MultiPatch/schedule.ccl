@@ -22,7 +22,6 @@ if (!CCTK_EQUALS(patch_system, "none")) {
 }
 
 if (run_tests) {
-
   if (CCTK_EQUALS(patch_system, "Cartesian")) {
     SCHEDULE run_cartesian_tests AT wragh
     {

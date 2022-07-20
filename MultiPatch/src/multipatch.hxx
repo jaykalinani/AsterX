@@ -11,6 +11,7 @@
 #include <vect.hxx>
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -25,6 +26,7 @@ struct PatchFace {
 };
 
 struct Patch {
+  std::string name;
   vect<int, dim> ncells;
   vect<CCTK_REAL, dim> xmin, xmax; // cell boundaries
   bool is_cartesian;               // Jacobian is trivial
@@ -113,6 +115,7 @@ struct PatchTransformations {
 };
 
 struct PatchSystem {
+  std::string name;
   std::vector<Patch> patches;
   int num_patches() const { return patches.size(); }
 

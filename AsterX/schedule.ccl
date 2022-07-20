@@ -76,12 +76,24 @@ SCHEDULE AsterX_Fluxes IN ODESolvers_RHS AFTER AsterX_Con2Prim_2DNRNoble
   SYNC: flux_x flux_y flux_z
 } "Calculate the hydro fluxes"
 
-SCHEDULE AsterX_RHS IN ODESolvers_RHS AFTER AsterX_Fluxes
+SCHEDULE AsterX_SourceTerms IN ODESolvers_RHS AFTER AsterX_Fluxes 
+{
+  LANG: C
+  READS: ADMBase::metric(everywhere)
+  READS: ADMBase::lapse(everywhere)
+  READS: ADMBase::shift(everywhere)
+  READS: ADMBase::curv(everywhere)
+  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+  WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
+} "Calculate the source terms and compute the RHS of the hydro equations"
+
+SCHEDULE AsterX_RHS IN ODESolvers_RHS AFTER AsterX_SourceTerms
 {
   LANG: C
   READS: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
+  READS: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
   WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
-} "Calculate the RHS of the hydro equations"
+} "Update the RHS of the hydro equations with the flux contributions"
 
 SCHEDULE AsterX_Sync IN ODESolvers_PostStep
 {

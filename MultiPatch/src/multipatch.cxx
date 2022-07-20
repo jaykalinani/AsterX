@@ -137,6 +137,18 @@ extern "C" CCTK_INT MultiPatch1_GetPatchSpecification(
   return 0;
 }
 
+extern "C" CCTK_INT MultiPatch1_GetBoundarySpecification2(
+    const CCTK_INT ipatch, const CCTK_INT size,
+    CCTK_INT *restrict const is_interpatch_boundary) {
+  assert(ipatch >= 0 && ipatch < the_patch_system->num_patches());
+  assert(size == 2 * dim);
+  const Patch &patch = the_patch_system->patches.at(ipatch);
+  for (int f = 0; f < 2; ++f)
+    for (int d = 0; d < dim; ++d)
+      is_interpatch_boundary[2 * d + f] = !patch.faces[f][d].is_outer_boundary;
+  return 0;
+}
+
 extern "C" void MultiPatch1_GlobalToLocal(
     const CCTK_INT npoints, const CCTK_REAL *restrict const globalsx,
     const CCTK_REAL *restrict const globalsy,

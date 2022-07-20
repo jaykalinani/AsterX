@@ -13,9 +13,31 @@ USES INCLUDE HEADER: simd.hxx
 USES INCLUDE HEADER: tuple.hxx
 USES INCLUDE HEADER: vect.hxx
 
-INCLUDES HEADER: loop.hxx IN loop.hxx
-INCLUDES HEADER: loop_device.hxx IN loop_device.hxx
-INCLUDES HEADER: loopcontrol.h IN loopcontrol.h
+USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: loop_device.hxx
+
+
+
+# Number of patches
+CCTK_INT FUNCTION MultiPatch_GetSystemSpecification( \
+  CCTK_INT OUT npatches)
+USES FUNCTION MultiPatch_GetSystemSpecification
+
+# Overall size of the domain
+CCTK_INT FUNCTION MultiPatch_GetPatchSpecification( \
+  CCTK_INT IN patch, \
+  CCTK_INT IN size, \
+  CCTK_INT OUT ARRAY ncells, \
+  CCTK_REAL OUT ARRAY xmin, \
+  CCTK_REAL OUT ARRAY xmax)
+USES FUNCTION MultiPatch_GetPatchSpecification
+
+# Patch boundaries
+CCTK_INT FUNCTION MultiPatch_GetBoundarySpecification2( \
+  CCTK_INT IN patch, \
+  CCTK_INT IN size, \
+  CCTK_INT OUT ARRAY is_interpatch_boundary)
+USES FUNCTION MultiPatch_GetBoundarySpecification2 \
 
 
 
@@ -88,6 +110,7 @@ void FUNCTION Interpolate(
   CCTK_INT ARRAY IN operations,
   CCTK_POINTER IN resultptrs)
 PROVIDES FUNCTION Interpolate WITH CarpetX_Interpolate LANGUAGE C
+
 
 
 # Interpolation
