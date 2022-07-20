@@ -387,10 +387,7 @@ PatchSystem SetupCake() {
                          Cake::make_patch<Cake::patch_piece::minus_z>(pt),
                          Cake::make_patch<Cake::patch_piece::plus_z>(pt)};
 
-  PatchSystem ps(patches, std::move(pt));
-  ps.name = "Cake";
-
-  return ps;
+  return PatchSystem("Cake", std::move(patches), std::move(pt));
 }
 
 } // namespace MultiPatch
