@@ -46,10 +46,12 @@ ODESolvers::method = "$methods{$method}->{name}"
 TestODESolvers::order = $methods{$method}->{order} + 1
 
 IO::out_dir = \$parfile
-IO::out_fileinfo  = "axis labels"
+IO::out_fileinfo = "axis labels"
 IO::parfile_write = "no"
 
 IO::out_every = 1
+CarpetX::out_metadata = no
+CarpetX::out_norm_omit_unstable = yes
 EOF
   my $fn = "test-$method.par";
   open (my $fh, ">", $fn) or die "Could not open '$fn': $!";

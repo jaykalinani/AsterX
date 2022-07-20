@@ -30,5 +30,5 @@ IO::out_fileinfo = "axis labels"
 IO::parfile_write = "no"
 
 IO::out_every = 1
-CarpetX::output_metadata = no
+CarpetX::out_metadata = no
 CarpetX::out_norm_omit_unstable = yes

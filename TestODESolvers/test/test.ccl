@@ -1,3 +1,5 @@
+NPROCS 1
+
 TEST test-dp87
 {
   # These tolerances are ridiculous. It seems that floating-point
