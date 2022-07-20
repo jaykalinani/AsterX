@@ -19,15 +19,107 @@ namespace Derivs {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace stencils {
+using namespace Arith;
+using namespace Loop;
+
+// Stencil coefficients
+
+enum symmetry { none, symmetric, antisymmetric };
+
+template <typename T, std::ptrdiff_t I0, std::ptrdiff_t I1, symmetry S>
+struct stencil {
+  using type = T;
+  static constexpr std::ptrdiff_t N = I1 - I0 + 1;
+  static_assert(N >= 0, "");
+  static_assert(S == none || S == symmetric || S == antisymmetric, "");
+
+  std::array<T, N> coeffs;
+
+  template <typename Array>
+  inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+      CCTK_DEVICE CCTK_HOST std::result_of_t<Array(std::ptrdiff_t)>
+      apply(const Array &arr) const {
+    using R = std::result_of_t<Array(std::ptrdiff_t)>;
+    if constexpr (S == symmetric) {
+      R r{0};
+      for (std::ptrdiff_t n = 0; n < N / 2; ++n) {
+        const std::ptrdiff_t n1 = N - 1 - n;
+        r += coeffs[n] * (arr(n + I0) + arr(n1 + I0));
+      }
+      if (N % 2 != 0) {
+        const std::ptrdiff_t n = N / 2 + 1;
+        r += coeffs[n] * arr(n + I0);
+      }
+      return std::move(r);
+    }
+    if constexpr (antisymmetric) {
+      R r{0};
+      for (std::ptrdiff_t n = 0; n < N / 2; ++n) {
+        const std::ptrdiff_t n1 = N - 1 - n;
+        r += coeffs[n] * (arr(n + I0) - arr(n1 + I0));
+      }
+      return std::move(r);
+    }
+    R r{0};
+    for (std::ptrdiff_t n = 0; n < N; ++n)
+      r += coeffs[n] * arr(n + I0);
+    return std::move(r);
+  }
+};
+
+// Interpolate at i = 0
+template <typename T> constexpr stencil<T, 0, 0, symmetric> interp{{1}};
+
+// Derivative at i = 0
+template <typename T>
+constexpr stencil<T, -1, +1, antisymmetric> deriv1_o2{
+    {-1 / T(2), 0, +1 / T(2)}};
+
+template <typename T>
+constexpr stencil<T, -2, +2, antisymmetric> deriv1_o4{
+    {+2 / T(3), -1 / T(12), 0, +1 / T(12), -2 / T(3)}};
+
+template <typename T>
+constexpr stencil<T, -1, +1, symmetric> deriv2_o2{{-2, +1, -2}};
+
+template <typename T>
+constexpr stencil<T, -2, +2, symmetric> deriv2_o4{
+    {-1 / T(12), 4 / T(3), -5 / T(2), 4 / T(3), -1 / T(12)}};
+
+// Interpolate at i = 1/2
+template <typename T>
+constexpr stencil<T, -0, +1, symmetric> interp_c_o1{{1 / T(2), 1 / T(2)}};
+
+template <typename T>
+constexpr stencil<T, -1, +2, symmetric> interp_c_o3{
+    {-1 / T(16), +9 / T(16), +9 / T(16), -1 / T(16)}};
+
+template <typename T>
+constexpr stencil<T, -2, +3, symmetric> interp_c_o5{
+    {+3 / T(256), -25 / T(256), +75 / T(128), +75 / T(128), -25 / T(256),
+     +3 / T(256)}};
+
+template <typename T>
+constexpr stencil<T, -3, +4, symmetric> interp_c_o7{
+    {-5 / T(2048), +49 / T(2048), -245 / T(2048), +1225 / T(2048),
+     +1225 / T(2048), -245 / T(2048), +49 / T(2048), -5 / T(2048)}};
+
+// Derivative at i = 1/2
+template <typename T>
+constexpr stencil<T, -0, +1, antisymmetric> deriv1_c_o2{{-1, +1}};
+
+} // namespace stencils
+
 namespace detail {
 using namespace Arith;
 using namespace Loop;
 
-// Pointwise one-dimensional derivative operators
+// Pointwise one-dimensional operators
 
 template <int deriv_order, typename T>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST simd<T>
-copy1d(const simdl<T> &mask, const T *restrict const var) {
+interp1d(const simdl<T> &mask, const T *restrict const var) {
   return maskz_loadu(mask, var);
 }
 
