@@ -14,8 +14,8 @@ SCHEDULE TestODESolvers_Initial AT initial
 SCHEDULE TestODESolvers_RHS IN ODESolvers_RHS
 {
   LANG: C
-  READS: state, state2
-  WRITES: rhs, rhs2
+  READS: state(everywhere), state2(everywhere)
+  WRITES: rhs(everywhere), rhs2(everywhere)
 } "RHS function"
 
 SCHEDULE TestODESolvers_Boundary AT poststep
@@ -28,6 +28,6 @@ SCHEDULE TestODESolvers_Boundary AT poststep
 SCHEDULE TestODESolvers_Error AT analysis
 {
   LANG: C
-  READS: state, state2
-  WRITES: error, error2, corder
+  READS: state(everywhere), state2(everywhere)
+  WRITES: error(everywhere), error2(everywhere), corder(everywhere)
 } "Calculate error in state vector"
