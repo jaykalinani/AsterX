@@ -448,7 +448,7 @@ void setup_cctkGH(cGH *restrict cctkGH) {
 }
 
 // Update fields that carry state and change over time
-void update_cctkGH_UNUSED(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
+void update_cctkGH(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
   cctkGH->cctk_iteration = sourceGH->cctk_iteration;
   for (int d = 0; d < dim; ++d)
     cctkGH->cctk_origin_space[d] = sourceGH->cctk_origin_space[d];
@@ -1775,6 +1775,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
           cGH *const localGH = leveldata.get_local_cctkGH(block);
+          update_cctkGH(localGH, ghext->get_global_cctkGH());
           CCTK_CallFunction(function, attribute, localGH);
         }
       });
@@ -1801,6 +1802,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
           const MFPointer mfp(mfi);
           cGH *const localGH = leveldata.get_local_cctkGH(block);
           auto task = [function, attribute, localGH]() {
+            update_cctkGH(localGH, ghext->get_global_cctkGH());
             CCTK_CallFunction(function, attribute, localGH);
           };
           tasks.emplace_back(move(task));
@@ -1831,6 +1833,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
              ++mfi, ++block) {
           const MFPointer mfp(mfi);
           cGH *const localGH = leveldata.get_local_cctkGH(block);
+          update_cctkGH(localGH, ghext->get_global_cctkGH());
           CCTK_CallFunction(function, attribute, localGH);
 #ifdef AMREX_USE_GPU
           if (gpu_sync_after_every_kernel) {
@@ -1880,6 +1883,7 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     // Call function once per tile
     loop_over_blocks(*active_levels, [&](int patch, int level, int index,
                                          int block, const cGH *cctkGH) {
+      update_cctkGH(const_cast<cGH *>(cctkGH), ghext->get_global_cctkGH());
       CCTK_CallFunction(function, attribute, const_cast<cGH *>(cctkGH));
     });
     break;
