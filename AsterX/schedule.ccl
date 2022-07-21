@@ -83,7 +83,7 @@ SCHEDULE AsterX_SourceTerms IN ODESolvers_RHS AFTER AsterX_Fluxes
   READS: ADMBase::lapse(everywhere)
   READS: ADMBase::shift(everywhere)
   READS: ADMBase::curv(everywhere)
-  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere) HydroBase::Bvec(everywhere)
   WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
 } "Calculate the source terms and compute the RHS of the hydro equations"
 

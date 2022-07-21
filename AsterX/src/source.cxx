@@ -200,35 +200,113 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
     const CCTK_REAL velzshift = v_up[2] - betaz_avg / alp_avg;
 
     /* Computing T_munu */
-    const CCTK_REAL t00 = (rhoenthalpyW2 - press(p.I)) / pow2(alp_avg);
-    const CCTK_REAL t0x = rhoenthalpyW2 * velxshift / alp_avg +
-                          press(p.I) * betax_avg / pow2(alp_avg);
-    const CCTK_REAL t0y = rhoenthalpyW2 * velyshift / alp_avg +
-                          press(p.I) * betay_avg / pow2(alp_avg);
-    const CCTK_REAL t0z = rhoenthalpyW2 * velzshift / alp_avg +
-                          press(p.I) * betaz_avg / pow2(alp_avg);
-    const CCTK_REAL txx = rhoenthalpyW2 * velxshift * velxshift +
-                          press(p.I) * (ug[0] - betax_avg * betax_avg /
-                                                    pow2(alp_avg)); // ug[0]=uxx
-    const CCTK_REAL txy = rhoenthalpyW2 * velxshift * velyshift +
-                          press(p.I) * (ug[1] - betax_avg * betay_avg /
-                                                    pow2(alp_avg)); // ug[1]=uxy
-    const CCTK_REAL txz = rhoenthalpyW2 * velxshift * velzshift +
-                          press(p.I) * (ug[2] - betax_avg * betaz_avg /
-                                                    pow2(alp_avg)); // ug[2]=uxz
-    const CCTK_REAL tyy = rhoenthalpyW2 * velyshift * velyshift +
-                          press(p.I) * (ug[3] - betay_avg * betay_avg /
-                                                    pow2(alp_avg)); // ug[3]=uyy
-    const CCTK_REAL tyz = rhoenthalpyW2 * velyshift * velzshift +
-                          press(p.I) * (ug[4] - betay_avg * betaz_avg /
-                                                    pow2(alp_avg)); // ug[4]=uyz
-    const CCTK_REAL tzz = rhoenthalpyW2 * velzshift * velzshift +
-                          press(p.I) * (ug[5] - betaz_avg * betaz_avg /
-                                                    pow2(alp_avg)); // ug[5]=uzz
+    CCTK_REAL t00 = (rhoenthalpyW2 - press(p.I)) / pow2(alp_avg);
+    CCTK_REAL t0x = rhoenthalpyW2 * velxshift / alp_avg +
+                    press(p.I) * betax_avg / pow2(alp_avg);
+    CCTK_REAL t0y = rhoenthalpyW2 * velyshift / alp_avg +
+                    press(p.I) * betay_avg / pow2(alp_avg);
+    CCTK_REAL t0z = rhoenthalpyW2 * velzshift / alp_avg +
+                    press(p.I) * betaz_avg / pow2(alp_avg);
+    CCTK_REAL txx = rhoenthalpyW2 * velxshift * velxshift +
+                    press(p.I) * (ug[0] - betax_avg * betax_avg /
+                                              pow2(alp_avg)); // ug[0]=uxx
+    CCTK_REAL txy = rhoenthalpyW2 * velxshift * velyshift +
+                    press(p.I) * (ug[1] - betax_avg * betay_avg /
+                                              pow2(alp_avg)); // ug[1]=uxy
+    CCTK_REAL txz = rhoenthalpyW2 * velxshift * velzshift +
+                    press(p.I) * (ug[2] - betax_avg * betaz_avg /
+                                              pow2(alp_avg)); // ug[2]=uxz
+    CCTK_REAL tyy = rhoenthalpyW2 * velyshift * velyshift +
+                    press(p.I) * (ug[3] - betay_avg * betay_avg /
+                                              pow2(alp_avg)); // ug[3]=uyy
+    CCTK_REAL tyz = rhoenthalpyW2 * velyshift * velzshift +
+                    press(p.I) * (ug[4] - betay_avg * betaz_avg /
+                                              pow2(alp_avg)); // ug[4]=uyz
+    CCTK_REAL tzz = rhoenthalpyW2 * velzshift * velzshift +
+                    press(p.I) * (ug[5] - betaz_avg * betaz_avg /
+                                              pow2(alp_avg)); // ug[5]=uzz
 
-    const CCTK_REAL t0lowx = rhoenthalpyW2 * v_low[0] / alp_avg;
-    const CCTK_REAL t0lowy = rhoenthalpyW2 * v_low[1] / alp_avg;
-    const CCTK_REAL t0lowz = rhoenthalpyW2 * v_low[2] / alp_avg;
+    CCTK_REAL t0lowx = rhoenthalpyW2 * v_low[0] / alp_avg;
+    CCTK_REAL t0lowy = rhoenthalpyW2 * v_low[1] / alp_avg;
+    CCTK_REAL t0lowz = rhoenthalpyW2 * v_low[2] / alp_avg;
+
+    /* consider magnetic field */
+    {
+      /* cell-centered B^i and B_i */
+      const array<CCTK_REAL, 3> B_up = {Bvecx(p.I), Bvecy(p.I), Bvecz(p.I)};
+      const array<CCTK_REAL, 3> B_low =
+          calc_vlow(B_up, gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg);
+      /* b^mu */
+      const CCTK_REAL bst =
+          w_lorentz *
+          (B_up[0] * v_low[0] + B_up[1] * v_low[1] + B_up[2] * v_low[2]) /
+          alp_avg;
+      const CCTK_REAL bsx =
+          (B_up[0] + alp_avg * bst * w_lorentz * velxshift) / w_lorentz;
+      const CCTK_REAL bsy =
+          (B_up[1] + alp_avg * bst * w_lorentz * velyshift) / w_lorentz;
+      const CCTK_REAL bsz =
+          (B_up[2] + alp_avg * bst * w_lorentz * velzshift) / w_lorentz;
+      /* b^2 */
+      const CCTK_REAL bs2 = (B_up[0] * B_low[0] + B_up[1] * B_low[1] +
+                             B_up[2] * B_low[2] + pow2(alp_avg * bst)) /
+                            pow2(w_lorentz);
+
+      t00 +=
+          (pow2(w_lorentz / alp_avg) - 0.5 / pow2(alp_avg)) * bs2 - pow2(bst);
+      t0x += (pow2(w_lorentz) * velxshift / alp_avg +
+              0.5 * betax_avg / pow2(alp_avg)) *
+                 bs2 -
+             bst * bsx;
+      t0y += (pow2(w_lorentz) * velyshift / alp_avg +
+              0.5 * betay_avg / pow2(alp_avg)) *
+                 bs2 -
+             bst * bsy;
+      t0z += (pow2(w_lorentz) * velzshift / alp_avg +
+              0.5 * betaz_avg / pow2(alp_avg)) *
+                 bs2 -
+             bst * bsz;
+      txx += (pow2(w_lorentz * velxshift) +
+              0.5 * (ug[0] - pow2(betax_avg / alp_avg))) *
+                 bs2 -
+             pow2(bsx);
+      txy += (pow2(w_lorentz) * velxshift * velyshift +
+              0.5 * (ug[1] - betax_avg * betay_avg / pow2(alp_avg))) *
+                 bs2 -
+             bsx * bsy;
+      txz += (pow2(w_lorentz) * velxshift * velzshift +
+              0.5 * (ug[2] - betax_avg * betaz_avg / pow2(alp_avg))) *
+                 bs2 -
+             bsx * bsz;
+      tyy += (pow2(w_lorentz * velyshift) +
+              0.5 * (ug[3] - pow2(betay_avg / alp_avg))) *
+                 bs2 -
+             pow2(bsy);
+      tyz += (pow2(w_lorentz) * velyshift * velzshift +
+              0.5 * (ug[4] - betay_avg * betaz_avg / pow2(alp_avg))) *
+                 bs2 -
+             bsy * bsz;
+      tzz += (pow2(w_lorentz * velzshift) +
+              0.5 * (ug[5] - pow2(betaz_avg / alp_avg))) *
+                 bs2 -
+             pow2(bsz);
+
+      /* beta_i */
+      const array<CCTK_REAL, 3> beta_up = {betax_avg, betay_avg, betaz_avg};
+      const array<CCTK_REAL, 3> beta_low = calc_vlow(
+          beta_up, gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg);
+      /* b_i */
+      const CCTK_REAL bsx_low =
+          beta_low[0] * bst + gxx_avg * bsx + gxy_avg * bsy + gxz_avg * bsz;
+      const CCTK_REAL bsy_low =
+          beta_low[1] * bst + gxy_avg * bsx + gyy_avg * bsy + gxz_avg * bsz;
+      const CCTK_REAL bsz_low =
+          beta_low[2] * bst + gxz_avg * bsx + gyz_avg * bsy + gzz_avg * bsz;
+      /* T^0_i */
+      t0lowx += bs2 * pow2(w_lorentz) * v_low[0] / alp_avg - bsx_low * bst;
+      t0lowy += bs2 * pow2(w_lorentz) * v_low[1] / alp_avg - bsy_low * bst;
+      t0lowz += bs2 * pow2(w_lorentz) * v_low[2] / alp_avg - bsz_low * bst;
+    }
 
     /* Contract the shift with the extrinsic curvature */
     const CCTK_REAL shiftshiftk =
