@@ -238,8 +238,11 @@ extern "C" void MultiPatch_Coordinates_Setup(CCTK_ARGUMENTS) {
         const vec<CCTK_REAL, dim, UP> &x = std::get<0>(x_dadx);
         const vec<vec<CCTK_REAL, dim, DN>, dim, UP> &dadx = std::get<1>(x_dadx);
         const CCTK_REAL det_dadx = det(dadx);
-        using std::sqrt;
-        const CCTK_REAL vol = (p.dx * p.dy * p.dz) * sqrt(det_dadx);
+        const CCTK_REAL vol =
+            (p.dx * p.dy * p.dz) *
+            det_dadx; // TODO: Is it det_dadx or sqrt(det_dadx)? As far as we
+                      // know no sqrt is necessary. Note that det_dadx is
+                      // negative in the cake patch, so that causes NaNs
         gf_ccoordx(index) = x(0);
         gf_ccoordy(index) = x(1);
         gf_ccoordz(index) = x(2);
