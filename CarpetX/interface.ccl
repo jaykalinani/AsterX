@@ -39,6 +39,13 @@ CCTK_INT FUNCTION MultiPatch_GetBoundarySpecification2( \
   CCTK_INT OUT ARRAY is_interpatch_boundary)
 USES FUNCTION MultiPatch_GetBoundarySpecification2 \
 
+# Patch interpolation
+void FUNCTION MultiPatch_Interpolate( \
+  CCTK_POINTER_TO_CONST IN cctkGH, \
+  CCTK_INT IN nvars, \
+  CCTK_INT ARRAY IN varinds)
+USES FUNCTION MultiPatch_Interpolate
+
 
 
 # The overall size of the domain

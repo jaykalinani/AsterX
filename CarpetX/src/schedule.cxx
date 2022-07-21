@@ -2108,6 +2108,10 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   assert(sync_active);
   sync_active = false;
 
+  if (CCTK_IsImplementationActive("MultiPatch") &&
+      CCTK_IsFunctionAliased("MultiPatch_Interpolate"))
+    MultiPatch_Interpolate(cctkGH, groups.size(), groups.data());
+
   return numgroups; // number of groups synchronized
 }
 
