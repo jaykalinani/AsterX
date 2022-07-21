@@ -240,10 +240,8 @@ PatchSystem SetupSwirl() {
   pt.dlocal_dglobal_device = &Swirl::dlocal_dglobal_device;
   pt.d2local_dglobal2_device = &Swirl::d2local_dglobal2_device;
 
-  PatchSystem ps(std::vector<Patch>{Swirl::makePatch(pt)}, std::move(pt));
-  ps.name = "Swirl";
-
-  return ps;
+  return PatchSystem("Swirl", std::vector<Patch>{Swirl::makePatch(pt)},
+                     std::move(pt));
 }
 
 } // namespace MultiPatch

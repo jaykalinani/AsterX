@@ -32,6 +32,7 @@ RUN apt-get update && \
         pkg-config \
         python2 \
         python3 \
+        python3-pip \
         python3-requests \
         rsync \
         subversion \
@@ -40,6 +41,14 @@ RUN apt-get update && \
         zlib1g-dev \
         && \
     rm -rf /var/lib/apt/lists/*
+
+# jinja2 >= 3.1 removes jinja2.Markup, causing failures:
+# https://github.com/bokeh/bokeh/pull/11174
+RUN pip install jinja2==3.0.3 && \
+    pip install bokeh==2.0.1 && \
+    pip install matplotlib && \
+    pip install requests && \
+    pip install pygit2
 
 # Install cmake
 # We need a modern cmake to build AMReX

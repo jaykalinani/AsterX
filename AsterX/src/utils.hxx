@@ -35,14 +35,14 @@ CCTK_DEVICE CCTK_HOST array<T, 6> calc_upperg(const T &gxx, const T &gxy, const 
 
 // FD2: cell centered input, cell centered output
 template <typename T> 
-CCTK_DEVICE CCTK_HOST T calc_fd2_c2c(const GF3D2<const T&> &gf, const PointDesc &p, const int dir) {
+CCTK_DEVICE CCTK_HOST T calc_fd2_c2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 	constexpr auto DI = PointDesc::DI;
         return (0.5/p.DX[dir])*(gf(p.I + DI[dir]) - gf(p.I - DI[dir]));
   }
 
 // FD2: vertex centered input, edge centered output
 template <typename T> 
-CCTK_DEVICE CCTK_HOST T calc_fd2_v2e(const GF3D2<const T&> &gf, const PointDesc &p, const int dir) {
+CCTK_DEVICE CCTK_HOST T calc_fd2_v2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 	constexpr auto DI = PointDesc::DI;
 	return (gf(p.I + DI[dir]) - gf(p.I))/p.DX[dir];
   }
@@ -77,7 +77,7 @@ CCTK_DEVICE CCTK_HOST T calc_fd2_v2c(const GF3D2<const T> &gf, const PointDesc &
 
 // FD4: cell centered input, cell centered output
 template <typename T>
-CCTK_DEVICE CCTK_HOST T calc_fd4_c2c(const GF3D2<const T&> &gf, const PointDesc &p, const int dir) {
+CCTK_DEVICE CCTK_HOST T calc_fd4_c2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
         constexpr auto DI = PointDesc::DI;
         return (1.0/(12.0*p.DX[dir]))*(-gf(p.I + 2*DI[dir]) + 8.0*gf(p.I + DI[dir]) - 8.0*gf(p.I - DI[dir]) + gf(p.I - 2*DI[dir]));
   }

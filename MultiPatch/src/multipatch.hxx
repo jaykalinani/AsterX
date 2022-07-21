@@ -122,8 +122,9 @@ struct PatchSystem {
   PatchTransformations transformations;
 
   PatchSystem() {}
-  PatchSystem(std::vector<Patch> patches, PatchTransformations transformations)
-      : patches(std::move(patches)),
+  PatchSystem(std::string name, std::vector<Patch> patches,
+              PatchTransformations transformations)
+      : name(std::move(name)), patches(std::move(patches)),
         transformations(std::move(transformations)) {}
 };
 

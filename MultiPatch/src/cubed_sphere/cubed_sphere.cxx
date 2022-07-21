@@ -197,12 +197,10 @@ PatchSystem SetupCubedSphere() {
   pt.dlocal_dglobal_device = &CubedSphere::dlocal_dglobal_device;
   pt.d2local_dglobal2_device = &CubedSphere::d2local_dglobal2_device;
 
-  PatchSystem ps(std::vector<Patch>{CubedSphere::makePatch0(pt),
-                                    CubedSphere::makePatch1(pt)},
-                 std::move(pt));
-  ps.name = "Cubed Sphere";
-
-  return ps;
+  return PatchSystem("Cubed Sphere",
+                     std::vector<Patch>{CubedSphere::makePatch0(pt),
+                                        CubedSphere::makePatch1(pt)},
+                     std::move(pt));
 }
 
 } // namespace MultiPatch

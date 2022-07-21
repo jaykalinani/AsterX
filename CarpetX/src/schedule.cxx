@@ -448,14 +448,16 @@ void setup_cctkGH(cGH *restrict cctkGH) {
 }
 
 // Update fields that carry state and change over time
-void update_cctkGH_UNUSED(cGH *restrict cctkGH, const cGH *restrict sourceGH) {
+void update_cctkGH(cGH *const cctkGH, const cGH *const sourceGH) {
+  if (cctkGH == sourceGH)
+    return;
   cctkGH->cctk_iteration = sourceGH->cctk_iteration;
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_origin_space[d] = sourceGH->cctk_origin_space[d];
-  for (int d = 0; d < dim; ++d)
-    cctkGH->cctk_delta_space[d] = sourceGH->cctk_delta_space[d];
   cctkGH->cctk_time = sourceGH->cctk_time;
   cctkGH->cctk_delta_time = sourceGH->cctk_delta_time;
+  // for (int d = 0; d < dim; ++d)
+  //   cctkGH->cctk_origin_space[d] = sourceGH->cctk_origin_space[d];
+  // for (int d = 0; d < dim; ++d)
+  //   cctkGH->cctk_delta_space[d] = sourceGH->cctk_delta_space[d];
 }
 
 // Set cctkGH entries for global mode
@@ -1759,127 +1761,13 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
     checksums = calculate_checksums(gfs);
   }
 
-#if 0
-  const mode_t mode = decode_mode(attribute);
-  switch (mode) {
-  case mode_t::local: {
-    // Call function once per tile
-    // TODO: provide looping function
-
-    if (CCTK_EQUALS(kernel_launch_method, "serial")) {
-
-      active_levels->loop([&](const auto &restrict leveldata) {
-        int block = 0;
-        const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi, ++block) {
-          const MFPointer mfp(mfi);
-          cGH *const localGH = leveldata.get_local_cctkGH(block);
-          CCTK_CallFunction(function, attribute, localGH);
-        }
-      });
-
-    } else if (CCTK_EQUALS(kernel_launch_method, "openmp")
-#ifndef AMREX_USE_GPU
-               || CCTK_EQUALS(kernel_launch_method, "default")
-#endif
-    ) {
-
-      // TODO: Call the Cactus routines only once per block, i.e.
-      // without tiling. Tile only the loops, but execute the loops
-      // asynchronously. To make this efficient, find a way
-      // ("streams"?) to daisy-chain loop kernels.
-
-      vector<std::function<void()> > tasks;
-      active_levels->loop([&](const auto &restrict leveldata) {
-        // Note: The amrex::MFIter uses global variables and OpenMP barriers
-        int block = 0;
-        const auto mfitinfo =
-            amrex::MFItInfo().DisableDeviceSync().EnableTiling();
-        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi, ++block) {
-          const MFPointer mfp(mfi);
-          cGH *const localGH = leveldata.get_local_cctkGH(block);
-          auto task = [function, attribute, localGH]() {
-            CCTK_CallFunction(function, attribute, localGH);
-          };
-          tasks.emplace_back(move(task));
-        }
-      });
-
-      // run all tasks
-#pragma omp parallel for schedule(dynamic)
-      for (size_t i = 0; i < tasks.size(); ++i)
-        tasks[i]();
-
-    } else if (CCTK_EQUALS(kernel_launch_method, "cuda")
-#ifdef AMREX_USE_GPU
-               || CCTK_EQUALS(kernel_launch_method, "default")
-#endif
-
-    ) {
-
-      assert(CallFunction_count == -1);
-      CallFunction_count = 0;
-
-      active_levels->loop([&](const auto &restrict leveldata) {
-        // No OpenMP parallelization when using GPUs
-        int block = 0;
-        const auto mfitinfo =
-            amrex::MFItInfo().DisableDeviceSync().EnableTiling();
-        for (amrex::MFIter mfi(*leveldata.fab, mfitinfo); mfi.isValid();
-             ++mfi, ++block) {
-          const MFPointer mfp(mfi);
-          cGH *const localGH = leveldata.get_local_cctkGH(block);
-          CCTK_CallFunction(function, attribute, localGH);
-#ifdef AMREX_USE_GPU
-          if (gpu_sync_after_every_kernel) {
-            amrex::Gpu::streamSynchronize();
-            AMREX_GPU_ERROR_CHECK();
-          }
-#endif
-          ++CallFunction_count;
-        }
-      });
-
-      assert(CallFunction_count >= 0);
-      CallFunction_count = -1;
-
-    } else {
-      assert(0);
-    }
-
-    break;
-  }
-  case mode_t::meta:
-  case mode_t::global:
-  case mode_t::level: {
-    // Call function just once
-    // Note: meta mode scheduling must continue to work even after we
-    // shut down ourselves!
-    CCTK_CallFunction(function, attribute, cctkGH);
-    break;
-  }
-
-  default:
-    assert(0);
-  }
-
-#ifdef AMREX_USE_GPU
-  // TODO: Synchronize only if GPU kernels were actually launched
-  // TODO: Switch to streamSynchronizeAll if AMReX is new enough
-  amrex::Gpu::synchronize();
-  // amrex::Gpu::streamSynchronizeAll();
-  AMREX_GPU_ERROR_CHECK();
-#endif
-#endif
-
   const mode_t mode = decode_mode(attribute);
   switch (mode) {
   case mode_t::local:
     // Call function once per tile
     loop_over_blocks(*active_levels, [&](int patch, int level, int index,
                                          int block, const cGH *cctkGH) {
+      update_cctkGH(const_cast<cGH *>(cctkGH), cctkGH);
       CCTK_CallFunction(function, attribute, const_cast<cGH *>(cctkGH));
     });
     break;
