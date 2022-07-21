@@ -33,3 +33,57 @@ void FUNCTION Interpolate(
   CCTK_INT ARRAY IN operations,
   CCTK_POINTER IN resultptrs)
 REQUIRES FUNCTION Interpolate
+
+CCTK_REAL results_interpolate[4] TYPE=SCALAR
+{
+  interpolate_x_o1_op0,
+  interpolate_y_o1_op0,
+  interpolate_z_o1_op0,
+
+  interpolate_x_o1_op1, interpolate_y_o1_op1, interpolate_z_o1_op1,
+  interpolate_x_o1_op2, interpolate_y_o1_op2, interpolate_z_o1_op2,
+  interpolate_x_o1_op3, interpolate_y_o1_op3, interpolate_z_o1_op3,
+
+  interpolate_x_o1_op11, interpolate_y_o1_op11, interpolate_z_o1_op11,
+  interpolate_x_o1_op12, interpolate_y_o1_op12, interpolate_z_o1_op12,
+  interpolate_x_o1_op13, interpolate_y_o1_op13, interpolate_z_o1_op13,
+  interpolate_x_o1_op22, interpolate_y_o1_op22, interpolate_z_o1_op22,
+  interpolate_x_o1_op23, interpolate_y_o1_op23, interpolate_z_o1_op23,
+  interpolate_x_o1_op33, interpolate_y_o1_op33, interpolate_z_o1_op33,
+} "interpolator results using CarpetX interpolator"
+
+CCTK_REAL results_driver_interpolate[4] TYPE=SCALAR
+{
+  driver_interpolate_x_o1_op0,
+  driver_interpolate_y_o1_op0,
+  driver_interpolate_z_o1_op0,
+
+  driver_interpolate_x_o1_op1, driver_interpolate_y_o1_op1, driver_interpolate_z_o1_op1,
+  driver_interpolate_x_o1_op2, driver_interpolate_y_o1_op2, driver_interpolate_z_o1_op2,
+  driver_interpolate_x_o1_op3, driver_interpolate_y_o1_op3, driver_interpolate_z_o1_op3,
+
+  driver_interpolate_x_o1_op11, driver_interpolate_y_o1_op11, driver_interpolate_z_o1_op11,
+  driver_interpolate_x_o1_op12, driver_interpolate_y_o1_op12, driver_interpolate_z_o1_op12,
+  driver_interpolate_x_o1_op13, driver_interpolate_y_o1_op13, driver_interpolate_z_o1_op13,
+  driver_interpolate_x_o1_op22, driver_interpolate_y_o1_op22, driver_interpolate_z_o1_op22,
+  driver_interpolate_x_o1_op23, driver_interpolate_y_o1_op23, driver_interpolate_z_o1_op23,
+  driver_interpolate_x_o1_op33, driver_interpolate_y_o1_op33, driver_interpolate_z_o1_op33,
+} "interpolator results using Cactus interpolator"
+
+CCTK_REAL reference[4] TYPE=SCALAR
+{
+  reference_x_o1_op0,
+  reference_y_o1_op0,
+  reference_z_o1_op0,
+
+  reference_x_o1_op1, reference_y_o1_op1, reference_z_o1_op1,
+  reference_x_o1_op2, reference_y_o1_op2, reference_z_o1_op2,
+  reference_x_o1_op3, reference_y_o1_op3, reference_z_o1_op3,
+
+  reference_x_o1_op11, reference_y_o1_op11, reference_z_o1_op11,
+  reference_x_o1_op12, reference_y_o1_op12, reference_z_o1_op12,
+  reference_x_o1_op13, reference_y_o1_op13, reference_z_o1_op13,
+  reference_x_o1_op22, reference_y_o1_op22, reference_z_o1_op22,
+  reference_x_o1_op23, reference_y_o1_op23, reference_z_o1_op23,
+  reference_x_o1_op33, reference_y_o1_op33, reference_z_o1_op33,
+} "expected results of interpolator"
