@@ -55,13 +55,6 @@ SCHEDULE WaveToyGPU_Sync IN WaveToyGPU_PostStepGroup
   SYNC: state
 } "Boundary conditions for the wave equation"
 
-SCHEDULE WaveToyGPU_Boundaries IN WaveToyGPU_PostStepGroup AFTER WaveToyGPU_Sync
-{
-  LANG: C
-  READS: state(interior)
-  WRITES: state(boundary)
-} "Boundary conditions for the wave equation"
-
 
 
 SCHEDULE WaveToyGPU_EstimateError IN WaveToyGPU_PostStepGroup AFTER (WaveToyGPU_Sync WaveToyGPU_Boundaries)
@@ -86,12 +79,6 @@ SCHEDULE WaveToyGPU_RHSSync IN WaveToyGPU_RHSGroup AFTER WaveToyGPU_RHS
   LANG: C
   OPTIONS: global
   SYNC: rhs
-} "Boundary conditions for the RHS of the wave equation"
-
-SCHEDULE WaveToyGPU_RHSBoundaries IN WaveToyGPU_RHSGroup AFTER WaveToyGPU_RHSSync
-{
-  LANG: C
-  WRITES: phirhs(boundary) psirhs(boundary)
 } "Boundary conditions for the RHS of the wave equation"
 
 
