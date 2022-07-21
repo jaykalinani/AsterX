@@ -31,3 +31,6 @@ The notebook [`Cake7_Vis.nb`](resources/Cake7_Vis.nb) allows one to interactivel
 
 Jacobians and their derivatives are auto-generated in this patch system. To generate the source files, evaluate the whole notebook file [`Cake7_Gen.nb`](resources/Cake_Gen.nb)
 
+# Pluto.jl notebook
+
+The `Pluto.jl` notebook [`coordinate_tests.jl`](./resources/coordinate_tests.jl) compares data output by `CarpetX` via the [`run_cake_tests.par`](../../par/run_cake_tests.par) parameter file with the expected output of `global2local` and `local2global`. If the tests pass, no output is produced, otherwise an error message will be printed. Note that in order to reproduce the tests, one must change the directory information near the top of the notebook
