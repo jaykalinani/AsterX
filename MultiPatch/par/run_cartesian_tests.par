@@ -46,4 +46,6 @@ CarpetX::out_tsv_vars = "
     Coordinates::vertex_coords
     Coordinates::cell_coords
     Coordinates::cell_volume
+    MultiPatch::vertex_Jacobians
+    MultiPatch::vertex_dJacobians
 "

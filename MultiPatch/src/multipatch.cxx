@@ -214,17 +214,81 @@ extern "C" void MultiPatch_Coordinates_Setup(CCTK_ARGUMENTS) {
 
   const Loop::GF3D2<CCTK_REAL> gf_cvol(layout_cc, cvol);
 
+  // Vertex centered Jacobian matrix
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_da_dx(layout_vc, vJ_da_dx);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_da_dy(layout_vc, vJ_da_dy);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_da_dz(layout_vc, vJ_da_dz);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_db_dx(layout_vc, vJ_db_dx);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_db_dy(layout_vc, vJ_db_dy);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_db_dz(layout_vc, vJ_db_dz);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_dc_dx(layout_vc, vJ_dc_dx);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_dc_dy(layout_vc, vJ_dc_dy);
+  const Loop::GF3D2<CCTK_REAL> gf_vJ_dc_dz(layout_vc, vJ_dc_dz);
+
+  // Vertex centered Jacobian matrix derivative
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2a_dxdx(layout_vc, vdJ_d2a_dxdx);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2a_dxdy(layout_vc, vdJ_d2a_dxdy);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2a_dxdz(layout_vc, vdJ_d2a_dxdz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2a_dydy(layout_vc, vdJ_d2a_dydy);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2a_dydz(layout_vc, vdJ_d2a_dydz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2a_dzdz(layout_vc, vdJ_d2a_dzdz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2b_dxdx(layout_vc, vdJ_d2b_dxdx);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2b_dxdy(layout_vc, vdJ_d2b_dxdy);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2b_dxdz(layout_vc, vdJ_d2b_dxdz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2b_dydy(layout_vc, vdJ_d2b_dydy);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2b_dydz(layout_vc, vdJ_d2b_dydz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2b_dzdz(layout_vc, vdJ_d2b_dzdz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2c_dxdx(layout_vc, vdJ_d2c_dxdx);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2c_dxdy(layout_vc, vdJ_d2c_dxdy);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2c_dxdz(layout_vc, vdJ_d2c_dxdz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2c_dydy(layout_vc, vdJ_d2c_dydy);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2c_dydz(layout_vc, vdJ_d2c_dydz);
+  const Loop::GF3D2<CCTK_REAL> gf_vdJ_d2c_dzdz(layout_vc, vdJ_d2c_dzdz);
+
   const PatchTransformations pt = the_patch_system->transformations;
   grid.loop_all_device<0, 0, 0>(
       grid.nghostzones,
       [=] ARITH_DEVICE(const Loop::PointDesc &p) ARITH_INLINE {
         const Loop::GF3D2index index(layout_vc, p.I);
         const vec<CCTK_REAL, dim, UP> a = {p.x, p.y, p.z};
-        const vec<CCTK_REAL, dim, UP> x =
-            pt.local2global_device(pt, cctk_patch, a);
+
+        const auto d2J_tuple = pt.d2local_dglobal2(pt, cctk_patch, a);
+        const auto x = std::get<0>(d2J_tuple);
+        const auto J = std::get<1>(d2J_tuple);
+        const auto dJ = std::get<2>(d2J_tuple);
+
         gf_vcoordx(index) = x(0);
         gf_vcoordy(index) = x(1);
         gf_vcoordz(index) = x(2);
+
+        gf_vJ_da_dx(index) = J(0)(0);
+        gf_vJ_da_dy(index) = J(0)(1);
+        gf_vJ_da_dz(index) = J(0)(2);
+        gf_vJ_db_dx(index) = J(1)(0);
+        gf_vJ_db_dy(index) = J(1)(1);
+        gf_vJ_db_dz(index) = J(1)(2);
+        gf_vJ_dc_dx(index) = J(2)(0);
+        gf_vJ_dc_dy(index) = J(2)(1);
+        gf_vJ_dc_dz(index) = J(2)(2);
+
+        gf_vdJ_d2a_dxdx(index) = dJ(0)(0, 0);
+        gf_vdJ_d2a_dxdy(index) = dJ(0)(0, 1);
+        gf_vdJ_d2a_dxdz(index) = dJ(0)(0, 2);
+        gf_vdJ_d2a_dydy(index) = dJ(0)(1, 1);
+        gf_vdJ_d2a_dydz(index) = dJ(0)(1, 2);
+        gf_vdJ_d2a_dzdz(index) = dJ(0)(2, 2);
+        gf_vdJ_d2b_dxdx(index) = dJ(1)(0, 0);
+        gf_vdJ_d2b_dxdy(index) = dJ(1)(0, 1);
+        gf_vdJ_d2b_dxdz(index) = dJ(1)(0, 2);
+        gf_vdJ_d2b_dydy(index) = dJ(1)(1, 1);
+        gf_vdJ_d2b_dydz(index) = dJ(1)(1, 2);
+        gf_vdJ_d2b_dzdz(index) = dJ(1)(2, 2);
+        gf_vdJ_d2c_dxdx(index) = dJ(2)(0, 0);
+        gf_vdJ_d2c_dxdy(index) = dJ(2)(0, 1);
+        gf_vdJ_d2c_dxdz(index) = dJ(2)(0, 2);
+        gf_vdJ_d2c_dydy(index) = dJ(2)(1, 1);
+        gf_vdJ_d2c_dydz(index) = dJ(2)(1, 2);
+        gf_vdJ_d2c_dzdz(index) = dJ(2)(2, 2);
       });
 
   grid.loop_all_device<1, 1, 1>(
