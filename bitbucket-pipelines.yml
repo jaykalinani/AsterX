@@ -11,4 +11,4 @@ pipelines:
         name: 'Build and Test'
         script:
           - >
-            curl -H "Accept: application/vnd.github.everest-preview+json" -H "Authorization: token $TRIGGER_TOKEN" --request POST --data '{"event_type": "webhook", "client_payload": {"trigger":"$BITBUCKET_COMMIT"}}' https://api.github.com/repos/einsteintoolkit/carpetx-tests/dispatches
+            curl -H "Accept: application/vnd.github.everest-preview+json" -H "Authorization: token $TRIGGER_TOKEN" --request POST --data '{"event_type": "webhook", "client_payload": {"trigger":"'$BITBUCKET_COMMIT'"}}' https://api.github.com/repos/einsteintoolkit/carpetx-tests/dispatches
