@@ -31,6 +31,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
   const GF3D2<CCTK_REAL> gf_velz(gf_layout_cell, velz);
   const GF3D2<CCTK_REAL> gf_press(gf_layout_cell, press);
   const GF3D2<CCTK_REAL> gf_eps(gf_layout_cell, eps);
+  const GF3D2<CCTK_REAL> gf_Bvecx(gf_layout_cell, Bvecx);
+  const GF3D2<CCTK_REAL> gf_Bvecy(gf_layout_cell, Bvecy);
+  const GF3D2<CCTK_REAL> gf_Bvecz(gf_layout_cell, Bvecz);
 
   if (CCTK_EQUALS(initial_hydro, "equilibrium")) {
 
@@ -45,6 +48,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
           gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
+          gf_Bvecx(p.I) = 0.0;
+          gf_Bvecy(p.I) = 0.0;
+          gf_Bvecz(p.I) = 0.0;
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "sound wave")) {
@@ -60,6 +66,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
                                // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
           gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
+          gf_Bvecx(p.I) = 0.0;
+          gf_Bvecy(p.I) = 0.0;
+          gf_Bvecz(p.I) = 0.0;
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "shock tube")) {
@@ -84,6 +93,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
           gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
+          gf_Bvecx(p.I) = 0.0;
+          gf_Bvecy(p.I) = 0.0;
+          gf_Bvecz(p.I) = 0.0;
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "balsara1")) {
@@ -108,6 +120,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
           gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
+          gf_Bvecx(p.I) = 0.0;
+          gf_Bvecy(p.I) = 0.0;
+          gf_Bvecz(p.I) = 0.0;
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "spherical shock")) {
@@ -133,6 +148,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
           gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
+          gf_Bvecx(p.I) = 0.0;
+          gf_Bvecy(p.I) = 0.0;
+          gf_Bvecz(p.I) = 0.0;
         });
 
   } else {

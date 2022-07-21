@@ -5,5 +5,5 @@
 SCHEDULE HydroInitial_Initialize IN HydroBase_InitialData
 {
   LANG: C
-  WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+  WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere) HydroBase::Bvec(everywhere)
 } "Set up hydro initial conditions"
