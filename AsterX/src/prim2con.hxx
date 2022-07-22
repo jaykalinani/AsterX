@@ -22,6 +22,7 @@ struct prim {
   CCTK_REAL rho;
   CCTK_REAL velx, vely, velz;
   CCTK_REAL eps, press;
+  CCTK_REAL Bvecx, Bvecy, Bvecz;
 };
 
 struct cons {

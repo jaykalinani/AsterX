@@ -55,6 +55,9 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         pv.velz = velz(p.I);
         pv.eps = eps(p.I);
         pv.press = press(p.I);
+        pv.Bvecx = Bvecx(p.I);
+        pv.Bvecy = Bvecy(p.I);
+        pv.Bvecz = Bvecz(p.I);
 
         cons cv;
         prim2con(g, pv, cv);
@@ -70,6 +73,9 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         saved_vely(p.I) = pv.vely;
         saved_velz(p.I) = pv.velz;
         saved_eps(p.I) = pv.eps;
+        saved_Bvecx(p.I) = pv.Bvecx;
+        saved_Bvecy(p.I) = pv.Bvecy;
+        saved_Bvecz(p.I) = pv.Bvecz;
       });
 }
 
