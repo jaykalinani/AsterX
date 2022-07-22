@@ -29,6 +29,7 @@ struct cons {
   CCTK_REAL dens;
   CCTK_REAL momx, momy, momz;
   CCTK_REAL tau;
+  CCTK_REAL dBvecx, dBvecy, dBvecz;
 };
 
 CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const prim &pv, cons &cv) {
@@ -68,6 +69,11 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const prim &pv, cons &cv) {
       sqrt_detg * pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + pv.press / pv.rho) * vlowz;
 
   cv.tau = sqrt_detg * pv.rho * w_lorentz * ((1 + pv.eps + pv.press / pv.rho) * w_lorentz - 1) - sqrt_detg * pv.press;
+
+  cv.dBvecx = sqrt_detg * pv.Bvecx;
+  cv.dBvecy = sqrt_detg * pv.Bvecy;
+  cv.dBvecz = sqrt_detg * pv.Bvecz;
+
 }
 
 } // namespace AsterX

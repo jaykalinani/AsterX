@@ -21,32 +21,12 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Interpolate metric terms from vertices to center
         metric g;
-        g.gxx = 0.0;
-        g.gxy = 0.0;
-        g.gxz = 0.0;
-        g.gyy = 0.0;
-        g.gyz = 0.0;
-        g.gzz = 0.0;
-
-        for (int dk = 0; dk < 2; ++dk) {
-          for (int dj = 0; dj < 2; ++dj) {
-            for (int di = 0; di < 2; ++di) {
-              g.gxx += gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g.gxy += gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g.gxz += gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g.gyy += gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g.gyz += gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              g.gzz += gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-            }
-          }
-        }
-
-        g.gxx *= 0.125;
-        g.gxy *= 0.125;
-        g.gxz *= 0.125;
-        g.gyy *= 0.125;
-        g.gyz *= 0.125;
-        g.gzz *= 0.125;
+        g.gxx = calc_avg_v2c(gxx, p);
+        g.gxy = calc_avg_v2c(gxy, p);
+        g.gxz = calc_avg_v2c(gxz, p);
+        g.gyy = calc_avg_v2c(gyy, p);
+        g.gyz = calc_avg_v2c(gyz, p);
+        g.gzz = calc_avg_v2c(gzz, p);
 
         prim pv;
         pv.rho = rho(p.I);
@@ -67,6 +47,9 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         momy(p.I) = cv.momy;
         momz(p.I) = cv.momz;
         tau(p.I) = cv.tau;
+        dBx(p.I) = cv.dBvecx;
+        dBy(p.I) = cv.dBvecy;
+        dBz(p.I) = cv.dBvecz;
 
         saved_rho(p.I) = pv.rho;
         saved_velx(p.I) = pv.velx;
