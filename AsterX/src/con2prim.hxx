@@ -4,6 +4,8 @@
 #define CCTK_DEVICE AMREX_GPU_DEVICE
 #define CCTK_HOST AMREX_GPU_HOST
 
+namespace AsterX
+{
 
 constexpr int NCONS = 8;
 constexpr int NPRIMS = 8;
@@ -55,19 +57,19 @@ public:
     CCTK_REAL gcov[10], gcon[10];
     CCTK_REAL Bsq;
     CCTK_REAL BiSi;
-    CCTK_HOST CCTK_DEVICE virtual void get_Ssq_Exact()=0;          // From cons (exact)
-    CCTK_HOST CCTK_DEVICE virtual void get_Press_Seed()=0;         // From seed prims and cons
-    CCTK_HOST CCTK_DEVICE virtual void get_Z_Seed()=0;             // From seed prims and cons
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_2DNRNoble_f0(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_2DNRNoble_f1(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)=0; 
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_2DNRNoble_df0dZ(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_2DNRNoble_df0dVsq(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_2DNRNoble_df1dZ(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual CCTK_REAL get_2DNRNoble_df1dVsq(CCTK_REAL Z, CCTK_REAL Vsq)=0;
-    CCTK_HOST CCTK_DEVICE virtual void WZ2Prim()=0;
+    CCTK_HOST CCTK_DEVICE void get_Ssq_Exact();          // From cons (exact)
+    CCTK_HOST CCTK_DEVICE void get_Press_Seed();         // From seed prims and cons
+    CCTK_HOST CCTK_DEVICE void get_Z_Seed();             // From seed prims and cons
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_f0(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_f1(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq); 
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_df0dZ(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_df0dVsq(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_df1dZ(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_df1dVsq(CCTK_REAL Z, CCTK_REAL Vsq);
+    CCTK_HOST CCTK_DEVICE void WZ2Prim();
 };
 
 
@@ -75,9 +77,9 @@ class idealFluid : public con2primFactory
 {
 public:
     /* Some attributes */
-    CCTK_REAL GammaIdealFluid = 4. / 3.;
+    CCTK_REAL GammaIdealFluid;
     /* Constructor */
-    CCTK_HOST CCTK_DEVICE idealFluid(CCTK_REAL cons[NCONS], CCTK_REAL prim[NPRIMS], CCTK_REAL gcov[4][4], CCTK_REAL gcon[4][4]);
+    CCTK_HOST CCTK_DEVICE idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)[NCONS], CCTK_REAL (&prim)[NPRIMS], CCTK_REAL (&gcov)[4][4], CCTK_REAL (&gcon)[4][4]);
 
     /* Called by 2DNRNoble */
     CCTK_HOST CCTK_DEVICE void get_Ssq_Exact();
@@ -97,4 +99,6 @@ public:
     /* Destructor */
     CCTK_HOST CCTK_DEVICE ~idealFluid();
 };
+}
 #endif // #ifndef CON2PRIM_H
+

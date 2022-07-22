@@ -8,14 +8,16 @@
 #include <cmath>
 
 #include "con2prim.hxx"
-//namespace AsterX
-//{
+namespace AsterX
+{
 using namespace std;
 using namespace Loop;
 
 /* Constructor */
-CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL cons[NCONS], CCTK_REAL prim[NPRIMS], CCTK_REAL g_lo[4][4], CCTK_REAL g_up[4][4])
+CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)[NCONS], CCTK_REAL (&prim)[NPRIMS], CCTK_REAL (&g_lo)[4][4], CCTK_REAL (&g_up)[4][4])
   {
+    GammaIdealFluid = gamma;
+
     PrimitiveVarsSeed[RHO] = prim[RHO];
     PrimitiveVarsSeed[V1_CON] = prim[V1_CON];
     PrimitiveVarsSeed[V2_CON] = prim[V2_CON];
@@ -221,7 +223,8 @@ CCTK_HOST CCTK_DEVICE  idealFluid::~idealFluid()
 Sources: Noble+2006, Section 3.1 of Siegel+2018, 
 NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
 ****************************************************************************/
-CCTK_HOST CCTK_DEVICE  void Con2Prim_2DNRNoble(CCTK_INT max_iter, con2primFactory &plasma)
+template< typename typeEoS>
+CCTK_HOST CCTK_DEVICE  void Con2Prim_2DNRNoble(CCTK_INT max_iter, typeEoS &plasma)
   { // Send con2primFactory object as reference to modify it, and because we can not instantiate abstract class
 
     /* get Lorentz factor seed, calculated by constructor */
@@ -286,15 +289,14 @@ CCTK_HOST CCTK_DEVICE  void Con2Prim_2DNRNoble(CCTK_INT max_iter, con2primFactor
     plasma.vsq_Sol = x[1];
   }
 
-/***************************************************************************
-AsterX_Con2Prim
----
-Routines implemented:
- 1) 2DNRNoble
 
-Based on con2primFactory (https://github.com/fedelopezar/con2primFactory)
-****************************************************************************/
-  extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS)
+
+///
+
+
+
+template <typename typeEoS>
+void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
   {
     DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
     DECLARE_CCTK_PARAMETERS;
@@ -437,22 +439,18 @@ Based on con2primFactory (https://github.com/fedelopezar/con2primFactory)
           prims[B3] = saved_Bvecz(p.I);
 
           // Construct con2primFactory object:
-          idealFluid plasma_0(cons, prims, g_lo, g_up);
+          typeEoS plasma_0(gamma, cons, prims, g_lo, g_up);
           // 1) Try 2DNRNoble
           Con2Prim_2DNRNoble(100, plasma_0);
 
           if (plasma_0.Failed_2DNRNoble)
             {
               // If c2p fails, reset prims
-              // TODO: set counter and error message
               rho(p.I) = prims[RHO];
               velx(p.I) = 0.0;
               vely(p.I) = 0.0;
               velz(p.I) = 0.0;
               eps(p.I) = prims[EPS];
-              //Bvecx(p.I) = prims[B1];
-              //Bvecy(p.I) = prims[B2];
-              //Bvecz(p.I) = prims[B3];
               assert(0); // Terminate?
             }
           else
@@ -477,4 +475,18 @@ Based on con2primFactory (https://github.com/fedelopezar/con2primFactory)
         }); // Loop
   } // AsterX_Con2Prim_2DNRNoble
 
-//} // namespace AsterX
+/***************************************************************************
+ * AsterX_Con2Prim
+ * ---
+ *  Routines implemented:
+ *   1) 2DNRNoble
+ *
+ *   Based on con2primFactory (https://github.com/fedelopezar/con2primFactory)
+ *   ****************************************************************************/
+extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
+    if(1) { // Use this if for idealFluid/tabeos
+      AsterX_Con2Prim_typeEoS< idealFluid>( CCTK_PASS_CTOC);
+    }
+}
+
+} // namespace AsterX
