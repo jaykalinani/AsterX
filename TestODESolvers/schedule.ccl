@@ -18,13 +18,6 @@ SCHEDULE TestODESolvers_RHS IN ODESolvers_RHS
   WRITES: rhs(everywhere), rhs2(everywhere)
 } "RHS function"
 
-SCHEDULE TestODESolvers_Boundary AT poststep
-{
-  LANG: C
-  OPTIONS: global
-  SYNC: state, state2
-} "Apply boundary conditions to state vector"
-
 SCHEDULE TestODESolvers_Error AT analysis
 {
   LANG: C

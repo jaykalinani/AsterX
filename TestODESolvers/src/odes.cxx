@@ -29,13 +29,6 @@ extern "C" void TestODESolvers_Initial(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void TestODESolvers_Boundary(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_TestODESolvers_Boundary;
-  DECLARE_CCTK_PARAMETERS;
-
-  // do nothing
-}
-
 extern "C" void TestODESolvers_RHS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_TestODESolvers_RHS;
   DECLARE_CCTK_PARAMETERS;
