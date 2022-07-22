@@ -194,6 +194,19 @@ CCTK_DEVICE CCTK_HOST T calc_avg_v2c(const GF3D2<const T> &gf,
   return gf_avg / 8.0;
 }
 
+// Second-order average of edge-centered grid functions to vertex-centered
+template <typename T>
+CCTK_DEVICE CCTK_HOST T calc_avg_e2v(const GF3D2<const T> &gf,
+                                     const PointDesc &p, const int dir) {
+  constexpr auto DI = PointDesc::DI;
+  T gf_avg = 0.0;
+
+  for (int di = -1; di < 1; ++di) {
+    gf_avg += gf(p.I + DI[dir] * di);
+  }
+  return gf_avg / 2.0;
+}
+
 // Second-order average of edge-centered grid functions (along dir) to cell
 // center
 template <typename T>
