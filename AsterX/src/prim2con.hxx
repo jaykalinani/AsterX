@@ -86,15 +86,16 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap, const shi
   cv.dens = sqrt_detg * pv.rho * w_lorentz;
 
   cv.momx =
-      sqrt_detg * (pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + (pv.press + bs2) / pv.rho) * v_low[0] - bst*b_low[0]);
+      sqrt_detg * (w_lorentz * w_lorentz * (pv.rho * (1 + pv.eps) + pv.press + bs2) * v_low[0] - bst*b_low[0]);
 
   cv.momy =
-      sqrt_detg * (pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + (pv.press + bs2) / pv.rho) * v_low[1] - bst*b_low[1]);
+      sqrt_detg * (w_lorentz * w_lorentz * (pv.rho * (1 + pv.eps) + pv.press + bs2) * v_low[1] - bst*b_low[1]);
 
   cv.momz =
-      sqrt_detg * (pv.rho * w_lorentz * w_lorentz * (1 + pv.eps + (pv.press + bs2) / pv.rho) * v_low[2] - bst*b_low[2]);
+      sqrt_detg * (w_lorentz * w_lorentz * (pv.rho * (1 + pv.eps) + pv.press + bs2) * v_low[2] - bst*b_low[2]);
 
-  cv.tau = sqrt_detg * (pv.rho * w_lorentz * ((1 + pv.eps + (pv.press + bs2) / pv.rho) * w_lorentz - 1) - (pv.press + 0.5*bs2) - bst*bst) - cv.dens;
+  cv.tau =
+      sqrt_detg * (w_lorentz * w_lorentz * (pv.rho * (1 + pv.eps) + pv.press + bs2) - (pv.press + 0.5*bs2) - bst*bst) - cv.dens;
 
   cv.dBvecx = sqrt_detg * pv.Bvecx;
   cv.dBvecy = sqrt_detg * pv.Bvecy;
