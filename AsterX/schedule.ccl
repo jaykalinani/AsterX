@@ -4,6 +4,7 @@ STORAGE: dens mom tau
 STORAGE: flux_x flux_y flux_z
 STORAGE: densrhs momrhs taurhs
 STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
+STORAGE: Aux_in_RHSof_A_Psi
 
 
 
@@ -15,8 +16,11 @@ SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
   READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
   READS: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior) HydroBase::Bvec(interior)
   WRITES: dens(interior) tau(interior) mom(interior) dB(interior)
+  WRITES: Ex(interior) Ey(interior) Ez(interior)
+  WRITES: Avec_x(interior) Avec_y(interior) Avec_z(interior) Psi(interior)
   WRITES: saved_prims
   SYNC: dens tau mom dB
+  SYNC: Ex Ey Ez Avec_x Avec_y Avec_z Psi
   SYNC: saved_prims
 } "Compute conserved variables from primitive variables at initial"
 
@@ -74,7 +78,10 @@ SCHEDULE AsterX_Fluxes IN ODESolvers_RHS AFTER Con2Prim_2DNRNoble
   READS: ADMBase::shift(everywhere)
   READS: dens(everywhere) tau(everywhere) mom(everywhere)
   READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
+  READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere) Psi(everywhere)
   WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
+  WRITES: Aux_in_RHSof_A_Psi(interior)
+  SYNC: Aux_in_RHSof_A_Psi
   SYNC: flux_x flux_y flux_z
 } "Calculate the hydro fluxes"
 
@@ -86,16 +93,21 @@ SCHEDULE AsterX_SourceTerms IN ODESolvers_RHS AFTER AsterX_Fluxes
   READS: ADMBase::shift(everywhere)
   READS: ADMBase::curv(everywhere)
   READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
-  READS: HydroBase::Bvec(everywhere) 
+  READS: HydroBase::Bvec(everywhere)
   WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
 } "Calculate the source terms and compute the RHS of the hydro equations"
 
 SCHEDULE AsterX_RHS IN ODESolvers_RHS AFTER AsterX_SourceTerms
 {
   LANG: C
+  READS: ADMBase::metric(everywhere) ADMBase::lapse(everywhere) ADMBase::shift(everywhere)
   READS: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
   READS: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
+  READS: Ex(everywhere) Ey(everywhere) Ez(everywhere) Psi(everywhere)
+  READS: Aux_in_RHSof_A_Psi(everywhere)
   WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
+  WRITES: Avec_x_rhs(interior) Avec_y_rhs(interior) Avec_z_rhs(interior) Psi_rhs(interior)
+  SYNC: Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 } "Update the RHS of the hydro equations with the flux contributions"
 
 SCHEDULE AsterX_Sync IN ODESolvers_PostStep

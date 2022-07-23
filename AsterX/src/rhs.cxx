@@ -5,6 +5,8 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include "utils.hxx"
+
 // #ifdef AMREX_USE_GPU
 // #include <AMReX_GpuDevice.H>
 // #endif
@@ -44,20 +46,71 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         const auto Ipy = p.I + DI[1];
         const auto Ipz = p.I + DI[2];
 
-
-	//TODO: add lapse terms, and check calcupdate code
-        densrhs(p.I) = densrhs(p.I) + calcupdate(fxdens(Imx), fxdens(Ipx), fydens(Imy),
-                                  fydens(Ipy), fzdens(Imz), fzdens(Ipz));
-        momxrhs(p.I) = momxrhs(p.I) + calcupdate(fxmomx(Imx), fxmomx(Ipx), fymomx(Imy),
-                                  fymomx(Ipy), fzmomx(Imz), fzmomx(Ipz));
-        momyrhs(p.I) = momyrhs(p.I) + calcupdate(fxmomy(Imx), fxmomy(Ipx), fymomy(Imy),
-                                  fymomy(Ipy), fzmomy(Imz), fzmomy(Ipz));
-        momzrhs(p.I) = momzrhs(p.I) + calcupdate(fxmomz(Imx), fxmomz(Ipx), fymomz(Imy),
-                                  fymomz(Ipy), fzmomz(Imz), fzmomz(Ipz));
-        taurhs(p.I) = taurhs(p.I) + calcupdate(fxtau(Imx), fxtau(Ipx), fytau(Imy), fytau(Ipy),
-                                 fztau(Imz), fztau(Ipz));
+        // TODO: add lapse terms, and check calcupdate code
+        densrhs(p.I) =
+            densrhs(p.I) + calcupdate(fxdens(Imx), fxdens(Ipx), fydens(Imy),
+                                      fydens(Ipy), fzdens(Imz), fzdens(Ipz));
+        momxrhs(p.I) =
+            momxrhs(p.I) + calcupdate(fxmomx(Imx), fxmomx(Ipx), fymomx(Imy),
+                                      fymomx(Ipy), fzmomx(Imz), fzmomx(Ipz));
+        momyrhs(p.I) =
+            momyrhs(p.I) + calcupdate(fxmomy(Imx), fxmomy(Ipx), fymomy(Imy),
+                                      fymomy(Ipy), fzmomy(Imz), fzmomy(Ipz));
+        momzrhs(p.I) =
+            momzrhs(p.I) + calcupdate(fxmomz(Imx), fxmomz(Ipx), fymomz(Imy),
+                                      fymomz(Ipy), fzmomz(Imz), fzmomz(Ipz));
+        taurhs(p.I) =
+            taurhs(p.I) + calcupdate(fxtau(Imx), fxtau(Ipx), fytau(Imy),
+                                     fytau(Ipy), fztau(Imz), fztau(Ipz));
       });
 
+  grid.loop_int_device<1, 0, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Avec_x_rhs(p.I) = -Ex(p.I) - calc_fd2_v2e(G, p, 0);
+      });
+
+  grid.loop_int_device<0, 1, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Avec_y_rhs(p.I) = -Ey(p.I) - calc_fd2_v2e(G, p, 1);
+      });
+
+  grid.loop_int_device<0, 0, 1>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Avec_z_rhs(p.I) = -Ez(p.I) - calc_fd2_v2e(G, p, 2);
+      });
+
+  grid.loop_int_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        /* diFi on vertices */
+        const CCTK_REAL dF =
+            calc_fd2_c2c(Fx, p, 0) + calc_fd2_c2c(Fy, p, 1) +
+            calc_fd2_c2c(Fz, p, 2); // should be v2v but c2c works too
+        /* diFbetai */
+        CCTK_REAL dFbeta = 0.0;
+        if (betax(p.I) < 0) {
+          dFbeta += calc_fd2_v2v_oneside(Fbetax, p, 0, -1);
+        } else {
+          dFbeta += calc_fd2_v2v_oneside(Fbetax, p, 0, 1);
+        }
+        if (betay(p.I) < 0) {
+          dFbeta += calc_fd2_v2v_oneside(Fbetay, p, 1, -1);
+        } else {
+          dFbeta += calc_fd2_v2v_oneside(Fbetay, p, 1, 1);
+        }
+        if (betaz(p.I) < 0) {
+          dFbeta += calc_fd2_v2v_oneside(Fbetaz, p, 2, -1);
+        } else {
+          dFbeta += calc_fd2_v2v_oneside(Fbetaz, p, 2, 1);
+        }
+
+        const CCTK_REAL lorentz_damp_fac = 0.0;
+        /* rhs of Psi */
+        Psi_rhs(p.I) = -dF + dFbeta - lorentz_damp_fac * alp(p.I) * Psi(p.I);
+      });
 }
 
 } // namespace AsterX

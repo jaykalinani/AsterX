@@ -15,7 +15,6 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // Loop over the entire grid (0 to n-1 cells in each direction)
-  constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -67,6 +66,34 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         saved_Bvecx(p.I) = pv.Bvecx;
         saved_Bvecy(p.I) = pv.Bvecy;
         saved_Bvecz(p.I) = pv.Bvecz;
+      });
+
+  /* Initialize Avec_x, Ex */
+  grid.loop_int_device<1, 0, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Ex(p.I) = 0.0;
+        Avec_x(p.I) = 0.0; // TODO fix this
+      });
+  /* Initialize Avec_y, Ey */
+  grid.loop_int_device<0, 1, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Ey(p.I) = 0.0;
+        Avec_y(p.I) = 0.0; // TODO fix this
+      });
+  /* Initialize Avec_z, Ez */
+  grid.loop_int_device<0, 0, 1>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Ez(p.I) = 0.0;
+        Avec_z(p.I) = 0.0; // TODO fix this
+      });
+  /* Initilaize Psi */
+  grid.loop_int_device<0, 0, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        Psi(p.I) = 0.0; // TODO fix this
       });
 }
 

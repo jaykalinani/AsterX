@@ -35,6 +35,18 @@ calc_upperg(const T &gxx, const T &gxy, const T &gxz, const T &gyy,
   };
 }
 
+// FD2: vertex centered input, vertex centered output, oneside stencil
+template <typename T>
+CCTK_DEVICE CCTK_HOST T calc_fd2_v2v_oneside(const GF3D2<const T> &gf,
+                                             const PointDesc &p, const int dir,
+                                             const int sign) {
+  constexpr auto DI = PointDesc::DI;
+  return -sign *
+         (gf(p.I + 2.0 * sign * DI[dir]) - 4.0 * gf(p.I + sign * DI[dir]) +
+          3.0 * gf(p.I)) *
+         (0.5 / p.DX[dir]);
+}
+
 // FD2: cell centered input, cell centered output
 template <typename T>
 CCTK_DEVICE CCTK_HOST T calc_fd2_c2c(const GF3D2<const T> &gf,
