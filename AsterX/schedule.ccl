@@ -54,6 +54,16 @@ SCHEDULE AsterX_EstimateError AT poststep
 
 # Time stepping
 
+SCHEDULE AsterX_ComputeBfromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
+{
+  LANG: C
+  READS: Avec_x(interior) Avec_y(interior) Avec_z(interior)
+  READS: dBx_stag(interior) dBy_stag(interior) dBz_stag(interior)
+  WRITES: dBx_stag(interior) dBy_stag(interior) dBz_stag(interior)
+  WRITES: dB
+  SYNC: Avec_x Avec_y Avec_z dBx_stag dBy_stag dBz_stag
+} "Calculate primitive variables from conservative variables"
+
 SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
 {
   LANG: C
