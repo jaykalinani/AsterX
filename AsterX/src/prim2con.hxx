@@ -69,8 +69,8 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap,
       calc_vlow(B_up, g.gxx, g.gxy, g.gxz, g.gyy, g.gyz, g.gzz);
 
   /* Computing b^t : this is b^0 * alp */
-  const CCTK_REAL bst = w_lorentz * (B_low[0] * v_low[0] + B_low[1] * v_low[1] +
-                                     B_low[2] * v_low[2]);
+  const CCTK_REAL bst = w_lorentz * (B_up[0] * v_low[0] + B_up[1] * v_low[1] +
+                                     B_up[2] * v_low[2]);
 
   /* Computing b^j */
   const CCTK_REAL bsx =
@@ -117,8 +117,7 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap,
 
   cv.tau = sqrt_detg * (w_lorentz * w_lorentz *
                             (pv.rho * (1 + pv.eps) + pv.press + bs2) -
-                        (pv.press + 0.5 * bs2) - bst * bst) -
-           cv.dens;
+                        (pv.press + 0.5 * bs2) - bst * bst - cv.dens);
 
   cv.dBvecx = sqrt_detg * pv.Bvecx;
   cv.dBvecy = sqrt_detg * pv.Bvecy;
