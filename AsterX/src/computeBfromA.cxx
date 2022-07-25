@@ -42,8 +42,8 @@ template <int dir> void ComputeStaggeredB(CCTK_ARGUMENTS) {
         dBy_stag(p.I) = idx[2]*(Avec_x(p.I) - Avec_x(ijkm)) -
                         idx[0]*(Avec_z(p.I) - Avec_z(imjk));
 
-        /* dBy is curl(A) at j+1/2 */
-        dBy_stag(p.I) = idx[0]*(Avec_y(p.I) - Avec_y(imjk)) -
+        /* dBz is curl(A) at z+1/2 */
+        dBz_stag(p.I) = idx[0]*(Avec_y(p.I) - Avec_y(imjk)) -
                         idx[1]*(Avec_x(p.I) - Avec_x(ijmk));
 
         //TODO: need to implement copy conditions?
@@ -68,6 +68,7 @@ extern "C" void AsterX_ComputeBfromA(CCTK_ARGUMENTS) {
         const auto ijmk = p.I - DI[1];
         const auto ijkm = p.I - DI[2];
 
+	/* Second order interpolation of staggered B components to cell center */
         dBx(p.I) = 0.5 * (dBx_stag(p.I) + dBx_stag(imjk));
         dBy(p.I) = 0.5 * (dBy_stag(p.I) + dBy_stag(ijmk));
         dBz(p.I) = 0.5 * (dBz_stag(p.I) + dBz_stag(ijkm));
