@@ -64,28 +64,16 @@ CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)
     BiSi = prim[B1] * ConservedVars[S1_COV] + prim[B2] * ConservedVars[S2_COV] + prim[B3] * ConservedVars[S3_COV];
 
     /* Seed Lorentz factor */
-    // covariant coordinate velocity:
-    CCTK_REAL v1_coord_cov = gcov[XX] * PrimitiveVarsSeed[V1_CON] + gcov[XY] * PrimitiveVarsSeed[V2_CON] +
+    // covariant Valencia velocity:
+    CCTK_REAL v1_cov = gcov[XX] * PrimitiveVarsSeed[V1_CON] + gcov[XY] * PrimitiveVarsSeed[V2_CON] +
                           gcov[XZ] * PrimitiveVarsSeed[V3_CON];
-    CCTK_REAL v2_coord_cov = gcov[XY] * PrimitiveVarsSeed[V1_CON] + gcov[YY] * PrimitiveVarsSeed[V2_CON] +
+    CCTK_REAL v2_cov = gcov[XY] * PrimitiveVarsSeed[V1_CON] + gcov[YY] * PrimitiveVarsSeed[V2_CON] +
                           gcov[YZ] * PrimitiveVarsSeed[V3_CON];
-    CCTK_REAL v3_coord_cov = gcov[XZ] * PrimitiveVarsSeed[V1_CON] + gcov[YZ] * PrimitiveVarsSeed[V2_CON] +
+    CCTK_REAL v3_cov = gcov[XZ] * PrimitiveVarsSeed[V1_CON] + gcov[YZ] * PrimitiveVarsSeed[V2_CON] +
                           gcov[ZZ] * PrimitiveVarsSeed[V3_CON];
 
-    // covariant Valencia velocity:
-    CCTK_REAL v1_Valencia_cov = v1_coord_cov / alp;
-    CCTK_REAL v2_Valencia_cov = v2_coord_cov / alp;
-    CCTK_REAL v3_Valencia_cov = v3_coord_cov / alp;
+    CCTK_REAL vsq = v1_cov * PrimitiveVarsSeed[V1_CON] + v2_cov * PrimitiveVarsSeed[V2_CON] + v3_cov * PrimitiveVarsSeed[V3_CON]
 
-    CCTK_REAL vsq = v1_Valencia_cov *
-                 (gcon[XX] * v1_Valencia_cov + gcon[XY] * v2_Valencia_cov +
-                  gcon[XZ] * v3_Valencia_cov);
-    vsq += v2_Valencia_cov *
-           (gcon[XY] * v1_Valencia_cov + gcon[YY] * v2_Valencia_cov +
-            gcon[YZ] * v3_Valencia_cov);
-    vsq += v3_Valencia_cov *
-           (gcon[XZ] * v1_Valencia_cov + gcon[YZ] * v2_Valencia_cov +
-            gcon[ZZ] * v3_Valencia_cov);
     if ((vsq < 0.) && (fabs(vsq) < 1.0e-13))
     {
       vsq = fabs(vsq);
@@ -100,7 +88,7 @@ CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)
 
     Bsq = B1_cov * prim[B1] + B2_cov * prim[B2] + B3_cov * prim[B3];
 
-    CCTK_REAL bt = W_Seed / alp * (prim[B1] * v1_Valencia_cov + prim[B2] * v2_Valencia_cov + prim[B3] * v3_Valencia_cov);
+    CCTK_REAL bt = W_Seed / alp * (prim[B1] * v1_cov + prim[B2] * v2_cov + prim[B3] * v3_cov);
 
     bsq = (Bsq + (alp * bt) * (alp * bt)) / (W_Seed * W_Seed);
 
@@ -191,18 +179,14 @@ CCTK_HOST CCTK_DEVICE  void idealFluid::WZ2Prim()
     PrimitiveVars[RHO] = ConservedVars[D] / W_Sol;
     CCTK_REAL alp = sqrt(-1. / gcon[TT]);
 
-    CCTK_REAL v1_Valencia = (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] + gcon[XZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
-    v1_Valencia += BiSi * PrimitiveVars[B1] / (Z_Sol * (Z_Sol + Bsq));
+    PrimitiveVars[V1_CON] = (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] + gcon[XZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
+    PrimitiveVars[V1_CON] += BiSi * PrimitiveVars[B1] / (Z_Sol * (Z_Sol + Bsq));
 
-    CCTK_REAL v2_Valencia = (gcon[XY] * ConservedVars[S1_COV] + gcon[YY] * ConservedVars[S2_COV] + gcon[YZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
-    v2_Valencia += BiSi * PrimitiveVars[B2] / (Z_Sol * (Z_Sol + Bsq));
+    PrimitiveVars[V2_CON] = (gcon[XY] * ConservedVars[S1_COV] + gcon[YY] * ConservedVars[S2_COV] + gcon[YZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
+    PrimitiveVars[V2_CON] += BiSi * PrimitiveVars[B2] / (Z_Sol * (Z_Sol + Bsq));
 
-    CCTK_REAL v3_Valencia = (gcon[XZ] * ConservedVars[S1_COV] + gcon[YZ] * ConservedVars[S2_COV] + gcon[ZZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
-    v3_Valencia += BiSi * PrimitiveVars[B3] / (Z_Sol * (Z_Sol + Bsq));
-
-    PrimitiveVars[V1_CON] = alp * v1_Valencia - alp * alp * gcon[TX];
-    PrimitiveVars[V2_CON] = alp * v2_Valencia - alp * alp * gcon[TY];
-    PrimitiveVars[V3_CON] = alp * v3_Valencia - alp * alp * gcon[TZ];
+    PrimitiveVars[V3_CON] = (gcon[XZ] * ConservedVars[S1_COV] + gcon[YZ] * ConservedVars[S2_COV] + gcon[ZZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
+    PrimitiveVars[V3_CON] += BiSi * PrimitiveVars[B3] / (Z_Sol * (Z_Sol + Bsq));
 
     PrimitiveVars[EPS] = (Z_Sol * (1. - vsq_Sol) / PrimitiveVars[RHO] - 1.0) / GammaIdealFluid;
     PrimitiveVars[B1] = ConservedVars[B1];
