@@ -54,15 +54,23 @@ SCHEDULE AsterX_EstimateError AT poststep
 
 # Time stepping
 
-SCHEDULE AsterX_ComputeBfromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
+SCHEDULE AsterX_ComputeBstagFromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
 {
   LANG: C
-  READS: Avec_x(interior) Avec_y(interior) Avec_z(interior)
-  READS: dBx_stag(interior) dBy_stag(interior) dBz_stag(interior)
+  READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere)
   WRITES: dBx_stag(interior) dBy_stag(interior) dBz_stag(interior)
-  WRITES: dB
-  SYNC: Avec_x Avec_y Avec_z dBx_stag dBy_stag dBz_stag
-} "Calculate primitive variables from conservative variables"
+  SYNC: dBx_stag dBy_stag dBz_stag
+} "Calculate Bstag from curl of A"
+
+SCHEDULE AsterX_ComputeBFromBstag IN ODESolvers_RHS BEFORE AsterX_Con2Prim
+{
+  LANG: C
+  READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
+  WRITES: dB(interior)
+  SYNC: dB
+} "Calculate centered B from Bstag"
+
+
 
 SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
 {

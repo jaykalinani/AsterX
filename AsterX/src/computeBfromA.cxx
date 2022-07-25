@@ -12,7 +12,7 @@ namespace AsterX {
 using namespace Loop;
 
 template <int dir> void ComputeStaggeredB(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBfromA;
+  DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBstagFromA;
   DECLARE_CCTK_PARAMETERS;
 
   const std::array dx{CCTK_DELTA_SPACE(0), CCTK_DELTA_SPACE(1),
@@ -50,13 +50,21 @@ template <int dir> void ComputeStaggeredB(CCTK_ARGUMENTS) {
       });
 }
 
-extern "C" void AsterX_ComputeBfromA(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBfromA;
+extern "C" void AsterX_ComputeBstagFromA(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBstagFromA;
   DECLARE_CCTK_PARAMETERS;
 
   ComputeStaggeredB<0>(cctkGH);
   ComputeStaggeredB<1>(cctkGH);
   ComputeStaggeredB<2>(cctkGH);
+
+}
+
+
+
+extern "C" void AsterX_ComputeBFromBstag(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBFromBstag;
+  DECLARE_CCTK_PARAMETERS;
 
   constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
@@ -74,5 +82,7 @@ extern "C" void AsterX_ComputeBfromA(CCTK_ARGUMENTS) {
         dBz(p.I) = 0.5 * (dBz_stag(p.I) + dBz_stag(ijkm));
       });
 }
+
+
 
 } // namespace AsterX
