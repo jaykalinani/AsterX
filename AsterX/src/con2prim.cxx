@@ -72,7 +72,7 @@ CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)
     CCTK_REAL v3_cov = gcov[XZ] * PrimitiveVarsSeed[V1_CON] + gcov[YZ] * PrimitiveVarsSeed[V2_CON] +
                           gcov[ZZ] * PrimitiveVarsSeed[V3_CON];
 
-    CCTK_REAL vsq = v1_cov * PrimitiveVarsSeed[V1_CON] + v2_cov * PrimitiveVarsSeed[V2_CON] + v3_cov * PrimitiveVarsSeed[V3_CON]
+    CCTK_REAL vsq = v1_cov * PrimitiveVarsSeed[V1_CON] + v2_cov * PrimitiveVarsSeed[V2_CON] + v3_cov * PrimitiveVarsSeed[V3_CON];
 
     if ((vsq < 0.) && (fabs(vsq) < 1.0e-13))
     {
