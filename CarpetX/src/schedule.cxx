@@ -1786,9 +1786,9 @@ int CallFunction(void *function, cFunctionData *restrict attribute,
   case mode_t::local:
     // Call function once per tile
     loop_over_blocks(*active_levels, [&](int patch, int level, int index,
-                                         int block, const cGH *cctkGH) {
-      update_cctkGH(const_cast<cGH *>(cctkGH), cctkGH);
-      CCTK_CallFunction(function, attribute, const_cast<cGH *>(cctkGH));
+                                         int block, const cGH *local_cctkGH) {
+      update_cctkGH(const_cast<cGH *>(local_cctkGH), cctkGH);
+      CCTK_CallFunction(function, attribute, const_cast<cGH *>(local_cctkGH));
     });
     break;
 
