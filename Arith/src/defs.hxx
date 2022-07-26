@@ -220,6 +220,13 @@ inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T min1(const T &x, const T &y) {
   return if_else(x != x, x, if_else(y != y, y, min(x, y)));
 }
 
+// Multiply-add
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T muladd(const T &x, const T &y,
+                                                     const T &z) {
+  return x * y + z;
+}
+
 // Factorial
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST int factorial(int n) {
   int r = 1;

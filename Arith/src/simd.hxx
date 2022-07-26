@@ -486,6 +486,41 @@ template <typename T> struct simd {
     return r;
   }
 
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const simd &x,
+                                                       const simd &y,
+                                                       const simd &z) {
+    using std::fma;
+    return fma(x.elts, y.elts, z.elts);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const T &a,
+                                                       const simd &y,
+                                                       const simd &z) {
+    return muladd(simd(a), y, z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const simd &x,
+                                                       const T &b,
+                                                       const simd &z) {
+    return muladd(x, simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const T &a, const T &b,
+                                                       const simd &z) {
+    return muladd(simd(a), simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const simd &x,
+                                                       const simd &y,
+                                                       const T &c) {
+    return muladd(x, y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const T &a,
+                                                       const simd &y,
+                                                       const T &c) {
+    return muladd(simd(a), y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const simd &x,
+                                                       const T &b, const T &c) {
+    return muladd(x, simd(b), simd(c));
+  }
+
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> signbit(const simd &x) {
 #ifndef SIMD_CPU
     typedef detail::unsigned_type<T> U;
