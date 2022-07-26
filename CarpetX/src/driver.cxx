@@ -1014,9 +1014,9 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
       }
 
       case symmetry_t::reflection: {
-        const int offset = face == 0
-                               ? 2 * imin[dir] - groupdata.indextype.at(dir)
-                               : 2 * imax[dir] - groupdata.indextype.at(dir);
+        const int offset =
+            face == 0 ? 2 * imin[dir] - groupdata.indextype.at(dir)
+                      : 2 * (imax[dir] - 1) + groupdata.indextype.at(dir);
         if (face == 0)
           assert(offset - bmin[dir] < amax[dir]);
         else
@@ -1033,10 +1033,11 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                   Arith::vect<int, dim> src = dst;
                   // if (face == 0)
                   //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
-                  //   groupdata.indextype.at(dir);
+                  //              groupdata.indextype.at(dir);
                   // else
-                  //   src[dir] = dst[dir] - 2 * (dst[dir] - imax[dir]) -
-                  //   groupdata.indextype.at(dir);
+                  //   src[dir] = dst[dir] - 2 * (dst[dir] - (imax[dir] - 1)) +
+                  //              groupdata.indextype.at(dir);
+                  // assert(src[dir] >= amin[dir] && src[dir] < amax[dir]);
                   src[dir] = offset - dst[dir];
                   for (int comp = 0; comp < numcomp; ++comp) {
                     GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
