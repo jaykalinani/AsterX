@@ -558,7 +558,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Step 2
 
     // Add scaled RHS to state vector
-    statecomp_t::lincomb(var, 0, make_array(dt), make_array(&k1));
+    statecomp_t::lincomb(var, 1, make_array(dt), make_array(&k1));
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
