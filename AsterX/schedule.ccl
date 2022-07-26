@@ -88,7 +88,7 @@ SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
   SYNC: saved_prims
 } "Calculate primitive variables from conservative variables"
   
-SCHEDULE AsterX_Fluxes IN ODESolvers_RHS AFTER Con2Prim_2DNRNoble
+SCHEDULE AsterX_Fluxes IN ODESolvers_RHS AFTER AsterX_Con2Prim
 {
   LANG: C
   READS: ADMBase::metric(everywhere)
@@ -97,6 +97,7 @@ SCHEDULE AsterX_Fluxes IN ODESolvers_RHS AFTER Con2Prim_2DNRNoble
   READS: dens(everywhere) tau(everywhere) mom(everywhere)
   READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
   READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere) Psi(everywhere)
+  READS: HydroBase::Bvec(everywhere)
   WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
   WRITES: Aux_in_RHSof_A_Psi(interior)
   SYNC: Aux_in_RHSof_A_Psi

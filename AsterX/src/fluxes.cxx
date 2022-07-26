@@ -95,6 +95,11 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   const GF3D2<const CCTK_REAL> gf_press(gf_layout_cell, press);
   const GF3D2<const CCTK_REAL> gf_eps(gf_layout_cell, eps);
 
+  // FIXME: are Bvecx, Bvecy, Bvecz really GFs? I can't find where they are defined
+  const GF3D2<const CCTK_REAL> gf_Bx(gf_layout_cell, Bvecx);
+  const GF3D2<const CCTK_REAL> gf_By(gf_layout_cell, Bvecy);
+  const GF3D2<const CCTK_REAL> gf_Bz(gf_layout_cell, Bvecz);
+
   // Face-centred grid functions (in direction `dir`)
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
                                             !(dir == 2)};
@@ -367,14 +372,20 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     // Reconstruct primitives from the cells on left (indice 0) and right
     // (indice 1) side of this face rc = reconstructed variables or computed
     // from reconstructed variables
-    const array<CCTK_REAL, 2> rho_rc = reconstruct(gf_rho, p);
-    const array<CCTK_REAL, 2> velx_rc = reconstruct(gf_velx, p);
-    const array<CCTK_REAL, 2> vely_rc = reconstruct(gf_vely, p);
-    const array<CCTK_REAL, 2> velz_rc = reconstruct(gf_velz, p);
-    const array<CCTK_REAL, 2> eps_rc = reconstruct(gf_eps, p);
+    const array<CCTK_REAL, 2> rho_rc   = reconstruct(gf_rho,   p);
+    const array<CCTK_REAL, 2> velx_rc  = reconstruct(gf_velx,  p);
+    const array<CCTK_REAL, 2> vely_rc  = reconstruct(gf_vely,  p);
+    const array<CCTK_REAL, 2> velz_rc  = reconstruct(gf_velz,  p);
+    const array<CCTK_REAL, 2> eps_rc   = reconstruct(gf_eps,   p);
+    const array<CCTK_REAL, 2> Bx_rc = reconstruct(gf_Bx, p);
+    const array<CCTK_REAL, 2> By_rc = reconstruct(gf_By, p);
+    const array<CCTK_REAL, 2> Bz_rc = reconstruct(gf_Bz, p);
 
     const array<array<CCTK_REAL, 2>, 3> vels_rc = {velx_rc, vely_rc, velz_rc};
     const array<CCTK_REAL, 2> vel_rc = vels_rc[dir];
+
+    const array<array<CCTK_REAL, 2>, 3> Bs_rc = {Bx_rc, By_rc, Bz_rc};
+    const array<CCTK_REAL, 2> B_rc = Bs_rc[dir];
 
     constexpr auto DI = PointDesc::DI;
 
@@ -461,12 +472,52 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         gxz_avg * velx_rc[0] + gyz_avg * vely_rc[0] + gzz_avg * velz_rc[0],
         gxz_avg * velx_rc[1] + gyz_avg * vely_rc[1] + gzz_avg * velz_rc[1]};
 
+
+    // Computing the contravariant coordinate velocity v^i - beta^i/alpha using
+    // the reconstructed variables
+    const CCTK_REAL beta_over_alpha_avg = beta_avg / alp_avg;
+
+    const array<CCTK_REAL, 2> velxshift_rc = {
+        velx_rc[0] - beta_over_alpha_avg,
+        velx_rc[1] - beta_over_alpha_avg};
+
+    const array<CCTK_REAL, 2> velyshift_rc = {
+        vely_rc[0] - beta_over_alpha_avg,
+        vely_rc[1] - beta_over_alpha_avg};
+
+    const array<CCTK_REAL, 2> velzshift_rc = {
+        vely_rc[0] - beta_over_alpha_avg,
+        vely_rc[1] - beta_over_alpha_avg};
+
+    const array<array<CCTK_REAL, 2>, 3> velsshift_rc = {
+        velxshift_rc, velyshift_rc, velzshift_rc};
+
+    const array<CCTK_REAL, 2> velshift_rc = velsshift_rc[dir];
+
+
+    // Computing the covariant coordinate velocity v^i - beta^i/alpha using the
+    // reconstructed variables
+    const array<CCTK_REAL, 2> velxshift_low_rc = {
+        gxx_avg * velxshift_rc[0] + gxy_avg * velyshift_rc[0] + gxz_avg * velzshift_rc[0],
+        gxx_avg * velxshift_rc[1] + gxy_avg * velyshift_rc[1] + gxz_avg * velzshift_rc[1]};
+
+    const array<CCTK_REAL, 2> velyshift_low_rc = {
+        gxy_avg * velxshift_rc[0] + gyy_avg * velyshift_rc[0] + gyz_avg * velzshift_rc[0],
+        gxy_avg * velxshift_rc[1] + gyy_avg * velyshift_rc[1] + gyz_avg * velzshift_rc[1]};
+
+    const array<CCTK_REAL, 2> velzshift_low_rc = {
+        gxz_avg * velxshift_rc[0] + gyz_avg * velyshift_rc[0] + gzz_avg * velzshift_rc[0],
+        gxz_avg * velxshift_rc[1] + gyz_avg * velyshift_rc[1] + gzz_avg * velzshift_rc[1]};
+
+
+
     // Computing w_lorentz using reconstructed variables
     const array<CCTK_REAL, 2> w_lorentz_rc = {
         1.0 / sqrt(1 - (vlowx_rc[0] * velx_rc[0] + vlowy_rc[0] * vely_rc[0] +
                         vlowz_rc[0] * velz_rc[0])),
         1.0 / sqrt(1 - (vlowx_rc[1] * velx_rc[1] + vlowy_rc[1] * vely_rc[1] +
                         vlowz_rc[1] * velz_rc[1]))};
+
 
     // Computing cs2 for ideal gas EOS using reconstructed variables
     const array<CCTK_REAL, 2> cs2_rc = {
@@ -478,55 +529,152 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                                       1.0 + eps_rc[1] +
                                           press_rc[1] / rho_rc[1]};
 
+
+    // Computing the covariant magnetic field measured by the Eulerian observer
+    // using the reconstructed variables
+    const array<CCTK_REAL, 2> Blowx_rc = {
+        gxx_avg * Bx_rc[0] + gxy_avg * By_rc[0] + gxz_avg * Bz_rc[0],
+        gxx_avg * Bx_rc[1] + gxy_avg * By_rc[1] + gxz_avg * Bz_rc[1]};
+
+    const array<CCTK_REAL, 2> Blowy_rc = {
+        gxy_avg * Bx_rc[0] + gyy_avg * By_rc[0] + gyz_avg * Bz_rc[0],
+        gxy_avg * Bx_rc[1] + gyy_avg * By_rc[1] + gyz_avg * Bz_rc[1]};
+
+    const array<CCTK_REAL, 2> Blowz_rc = {
+        gxz_avg * Bx_rc[0] + gyz_avg * By_rc[0] + gzz_avg * Bz_rc[0],
+        gxz_avg * Bx_rc[1] + gyz_avg * By_rc[1] + gzz_avg * Bz_rc[1]};
+
+    const array<CCTK_REAL, 2> B2_rc = {
+        Bx_rc[0]*Blowx_rc[0] + By_rc[0]*Blowy_rc[0] + Bz_rc[0]*Blowz_rc[0],
+        Bx_rc[1]*Blowx_rc[1] + By_rc[1]*Blowy_rc[1] + Bz_rc[1]*Blowz_rc[1]};
+
+
+    // Computing the magnetic field measured by the observer comoving with the
+    // fluid using the reconstructed variables
+    const array<CCTK_REAL, 2> alpha_b0_rc = {
+        w_lorentz_rc[0]*(Bx_rc[0]*vlowx_rc[0] + By_rc[0]*vlowy_rc[0] + Bz_rc[0]*vlowz_rc[0]),
+        w_lorentz_rc[1]*(Bx_rc[1]*vlowx_rc[1] + By_rc[0]*vlowy_rc[1] + Bz_rc[1]*vlowz_rc[1])};
+
+    const array<CCTK_REAL, 2> blowx_rc = {
+        Blowx_rc[0]/w_lorentz_rc[0] + alpha_b0_rc[0]*velxshift_low_rc[0],
+        Blowx_rc[1]/w_lorentz_rc[1] + alpha_b0_rc[1]*velxshift_low_rc[1]};
+
+    const array<CCTK_REAL, 2> blowy_rc = {
+        Blowy_rc[0]/w_lorentz_rc[0] + alpha_b0_rc[0]*velyshift_low_rc[0],
+        Blowy_rc[1]/w_lorentz_rc[1] + alpha_b0_rc[1]*velyshift_low_rc[1]};
+
+    const array<CCTK_REAL, 2> blowz_rc = {
+        Blowz_rc[0]/w_lorentz_rc[0] + alpha_b0_rc[0]*velzshift_low_rc[0],
+        Blowz_rc[1]/w_lorentz_rc[1] + alpha_b0_rc[1]*velzshift_low_rc[1]};
+
+    // FIXME: likely not needed by itself, but we'll see
+    /*const array<CCTK_REAL, 2> b2_rc = {
+        (B2_rc[0] + pow2(alpha_b0_rc[0]))/pow2(w_lorentz_rc[0]),
+        (B2_rc[1] + pow2(alpha_b0_rc[1]))/pow2(w_lorentz_rc[1])};*/
+
+
+    // Auxiliary variables to compute the conservative variables and their
+    // fluxes
+    const array<CCTK_REAL, 2> sqrt_detg_press_plus_pmag_rc = {
+        sqrt_detg * (press_rc[0] + 0.5*(B2_rc[0] + pow2(alpha_b0_rc[0]))/pow2(w_lorentz_rc[0])),
+        sqrt_detg * (press_rc[1] + 0.5*(B2_rc[1] + pow2(alpha_b0_rc[1]))/pow2(w_lorentz_rc[1]))};
+
+    const array<CCTK_REAL, 2> sqrt_detg_B2_rc = {
+        sqrt_detg * B2_rc[0],
+        sqrt_detg * B2_rc[1]};
+
+    const array<CCTK_REAL, 2> sqrt_detg_W2b2_rc = {
+        sqrt_detg * (pow2(alpha_b0_rc[0]) + B2_rc[0]),
+        sqrt_detg * (pow2(alpha_b0_rc[1]) + B2_rc[1])};
+
+    const array<CCTK_REAL, 2> B_over_w_lorentz_rc = {
+        B_rc[0] / w_lorentz_rc[0],
+        B_rc[1] / w_lorentz_rc[1]};
+
+    const array<CCTK_REAL, 2> alpha_b0_over_w_lorentz_rc = {
+        alpha_b0_rc[0]/w_lorentz_rc[0],
+        alpha_b0_rc[1]/w_lorentz_rc[1]};
+
+
     // Computing conservatives from primitives
     const array<CCTK_REAL, 2> dens_rc = {
         sqrt_detg * rho_rc[0] * w_lorentz_rc[0],
         sqrt_detg * rho_rc[1] * w_lorentz_rc[1]};
 
+    const array<CCTK_REAL, 2> dens_h_W_rc = {
+        dens_rc[0] * h_rc[0] * w_lorentz_rc[0],
+        dens_rc[1] * h_rc[1] * w_lorentz_rc[1]};
+
+    const array<CCTK_REAL, 2> dens_h_W_plus_sqrt_detg_W2b2_rc = {
+        dens_h_W_rc[0] + sqrt_detg * (pow2(alpha_b0_rc[0]) + B2_rc[0]),
+        dens_h_W_rc[1] + sqrt_detg * (pow2(alpha_b0_rc[1]) + B2_rc[1])};
+
     const array<CCTK_REAL, 2> momx_rc = {
-        dens_rc[0] * h_rc[0] * w_lorentz_rc[0] * vlowx_rc[0],
-        dens_rc[1] * h_rc[1] * w_lorentz_rc[1] * vlowx_rc[1]};
+        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowx_rc[0] - alpha_b0_rc[0]*blowx_rc[0],
+        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowx_rc[1] - alpha_b0_rc[1]*blowx_rc[1]};
 
     const array<CCTK_REAL, 2> momy_rc = {
-        dens_rc[0] * h_rc[0] * w_lorentz_rc[0] * vlowy_rc[0],
-        dens_rc[1] * h_rc[1] * w_lorentz_rc[1] * vlowy_rc[1]};
+        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowy_rc[0] - alpha_b0_rc[0]*blowy_rc[0],
+        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowy_rc[1] - alpha_b0_rc[1]*blowy_rc[1]};
 
     const array<CCTK_REAL, 2> momz_rc = {
-        dens_rc[0] * h_rc[0] * w_lorentz_rc[0] * vlowz_rc[0],
-        dens_rc[1] * h_rc[1] * w_lorentz_rc[1] * vlowz_rc[1]};
+        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowz_rc[0] - alpha_b0_rc[0]*blowz_rc[0],
+        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowz_rc[1] - alpha_b0_rc[1]*blowz_rc[1]};
 
+    // FIXME: B^2 = W^2·b^2 - (alpha·b^0)^2, is that true?
     const array<CCTK_REAL, 2> tau_rc = {
-        dens_rc[0] * (h_rc[0] * w_lorentz_rc[0] - 1) - sqrt_detg * press_rc[0],
-        dens_rc[1] * (h_rc[1] * w_lorentz_rc[1] - 1) - sqrt_detg * press_rc[1]};
+        dens_h_W_rc[0] - dens[0] - sqrt_detg_press_plus_pmag_rc[0] + sqrt_detg_B2_rc[0],
+        dens_h_W_rc[1] - dens[1] - sqrt_detg_press_plus_pmag_rc[1] + sqrt_detg_B2_rc[1]};
 
-    // Auxiliary variables to compute fluxes of conservatives
-    const CCTK_REAL aux_flux_0a = vel_rc[0] - beta_avg / alp_avg;
-    const CCTK_REAL aux_flux_0b = sqrt_detg * press_rc[0];
+    const array<CCTK_REAL, 2> Btildex_rc = {
+        sqrt_detg * Bx_rc[0],
+        sqrt_detg * Bx_rc[1]};
 
-    const CCTK_REAL aux_flux_1a = vel_rc[1] - beta_avg / alp_avg;
-    const CCTK_REAL aux_flux_1b = sqrt_detg * press_rc[1];
+    const array<CCTK_REAL, 2> Btildey_rc = {
+        sqrt_detg * By_rc[0],
+        sqrt_detg * By_rc[1]};
+
+    const array<CCTK_REAL, 2> Btildez_rc = {
+        sqrt_detg * Bz_rc[0],
+        sqrt_detg * Bz_rc[1]};
+
 
     // Computing fluxes of conserved variables
-    const array<CCTK_REAL, 2> flux_dens = {dens_rc[0] * aux_flux_0a,
-                                           dens_rc[1] * aux_flux_1a};
+    const array<CCTK_REAL, 2> flux_dens = {dens_rc[0] * velshift_rc[0],
+                                           dens_rc[1] * velshift_rc[1]};
+
     const array<CCTK_REAL, 2> flux_momx = {
-        momx_rc[0] * aux_flux_0a + (dir == 0) * aux_flux_0b,
-        momx_rc[1] * aux_flux_1a + (dir == 0) * aux_flux_1b};
+        momx_rc[0] * velshift_rc[0] + (dir == 0) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowx_rc[0],
+        momx_rc[1] * velshift_rc[1] + (dir == 0) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowx_rc[1]};
 
     const array<CCTK_REAL, 2> flux_momy = {
-        momy_rc[0] * aux_flux_0a + (dir == 1) * aux_flux_0b,
-        momy_rc[1] * aux_flux_1a + (dir == 1) * aux_flux_1b};
+        momy_rc[0] * velshift_rc[0] + (dir == 1) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowy_rc[0],
+        momy_rc[1] * velshift_rc[1] + (dir == 1) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowy_rc[1]};
 
     const array<CCTK_REAL, 2> flux_momz = {
-        momz_rc[0] * aux_flux_0a + (dir == 2) * aux_flux_0b,
-        momz_rc[1] * aux_flux_1a + (dir == 2) * aux_flux_1b};
+        momz_rc[0] * velshift_rc[0] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowz_rc[0],
+        momz_rc[1] * velshift_rc[1] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowz_rc[1]};
 
     const array<CCTK_REAL, 2> flux_tau = {
-        tau_rc[0] * aux_flux_0a + aux_flux_0b * vel_rc[0],
-        tau_rc[1] * aux_flux_1a + aux_flux_1b * vel_rc[1]};
+        tau_rc[0] * velshift_rc[0] + sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_over_w_lorentz_rc[0]*B_rc[0],
+        tau_rc[1] * velshift_rc[1] + sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_over_w_lorentz_rc[1]*B_rc[1]};
+
+    const array<CCTK_REAL, 2> flux_Btildex = {
+        velshift_rc[0] * Btildex_rc[0] - velxshift_rc[0] * B_rc[0],
+        velshift_rc[1] * Btildex_rc[1] - velxshift_rc[1] * B_rc[1]};
+
+    const array<CCTK_REAL, 2> flux_Btildey = {
+        velshift_rc[0] * Btildey_rc[0] - velyshift_rc[0] * B_rc[0],
+        velshift_rc[1] * Btildey_rc[1] - velyshift_rc[1] * B_rc[1]};
+
+    const array<CCTK_REAL, 2> flux_Btildez = {
+        velshift_rc[0] * Btildez_rc[0] - velzshift_rc[0] * B_rc[0],
+        velshift_rc[1] * Btildez_rc[1] - velzshift_rc[1] * B_rc[1]};
+
 
     array<array<CCTK_REAL, 4>, 2> lambda = eigenvalues(
         alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc);
+
 
     gf_fluxdens(p.I) = calcflux(lambda, dens_rc, flux_dens);
     gf_fluxmomx(p.I) = calcflux(lambda, momx_rc, flux_momx);
@@ -535,6 +683,10 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     gf_fluxtau(p.I) = calcflux(lambda, tau_rc, flux_tau);
   });
 }
+
+
+
+
 
 void CalcAuxForAvecPsi(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
