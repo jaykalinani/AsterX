@@ -503,7 +503,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Tile-based  multi-dimensional operators
+// Tile-based multi-dimensional operators
 
 template <int CI, int CJ, int CK, typename T>
 CCTK_ATTRIBUTE_NOINLINE void
