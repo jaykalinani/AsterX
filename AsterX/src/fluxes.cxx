@@ -501,7 +501,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     const array<CCTK_REAL, 2> velshift_rc = velsshift_rc[dir];
 
 
-    // Computing the covariant coordinate velocity v^i - beta^i/alpha using the
+    // Computing the covariant coordinate velocity v_i - beta_i/alpha using the
     // reconstructed variables
     const array<CCTK_REAL, 2> velxshift_low_rc = {
         gxx_avg * velxshift_rc[0] + gxy_avg * velyshift_rc[0] + gxz_avg * velzshift_rc[0],
@@ -585,10 +585,6 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         sqrt_detg * (press_rc[0] + 0.5*(B2_rc[0] + pow2(alpha_b0_rc[0]))/pow2(w_lorentz_rc[0])),
         sqrt_detg * (press_rc[1] + 0.5*(B2_rc[1] + pow2(alpha_b0_rc[1]))/pow2(w_lorentz_rc[1]))};
 
-    const array<CCTK_REAL, 2> sqrt_detg_B2_rc = {
-        sqrt_detg * B2_rc[0],
-        sqrt_detg * B2_rc[1]};
-
     //const array<CCTK_REAL, 2> sqrt_detg_W2b2_rc = {
     //    sqrt_detg * (pow2(alpha_b0_rc[0]) + B2_rc[0]),
     //    sqrt_detg * (pow2(alpha_b0_rc[1]) + B2_rc[1])};
@@ -596,10 +592,6 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     const array<CCTK_REAL, 2> B_over_w_lorentz_rc = {
         B_rc[0] / w_lorentz_rc[0],
         B_rc[1] / w_lorentz_rc[1]};
-
-    const array<CCTK_REAL, 2> alpha_b0_over_w_lorentz_rc = {
-        alpha_b0_rc[0]/w_lorentz_rc[0],
-        alpha_b0_rc[1]/w_lorentz_rc[1]};
 
 
     // Computing conservatives from primitives
@@ -629,8 +621,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
     // FIXME: B^2 = W^2·b^2 - (alpha·b^0)^2, is that true?
     const array<CCTK_REAL, 2> tau_rc = {
-        dens_h_W_rc[0] - dens_rc[0] - sqrt_detg_press_plus_pmag_rc[0] + sqrt_detg_B2_rc[0],
-        dens_h_W_rc[1] - dens_rc[1] - sqrt_detg_press_plus_pmag_rc[1] + sqrt_detg_B2_rc[1]};
+        dens_h_W_rc[0] - dens_rc[0] - sqrt_detg_press_plus_pmag_rc[0] + sqrt_detg * B2_rc[0],
+        dens_h_W_rc[1] - dens_rc[1] - sqrt_detg_press_plus_pmag_rc[1] + sqrt_detg * B2_rc[1]};
 
     const array<CCTK_REAL, 2> Btildex_rc = {
         sqrt_detg * Bx_rc[0],
@@ -662,8 +654,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         momz_rc[1] * velshift_rc[1] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowz_rc[1]};
 
     const array<CCTK_REAL, 2> flux_tau = {
-        tau_rc[0] * velshift_rc[0] + sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_over_w_lorentz_rc[0]*B_rc[0],
-        tau_rc[1] * velshift_rc[1] + sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_over_w_lorentz_rc[1]*B_rc[1]};
+        tau_rc[0] * velshift_rc[0] + sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_rc[0] * B_rc[0] / w_lorentz_rc[0],
+        tau_rc[1] * velshift_rc[1] + sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_rc[1] * B_rc[1] / w_lorentz_rc[1]};
 
     const array<CCTK_REAL, 2> flux_Btildex = { // (0, -Ez, Ey)
         -(dir==1)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) + (dir==2)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0]),
