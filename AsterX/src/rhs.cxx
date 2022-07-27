@@ -67,19 +67,28 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
   grid.loop_int_device<1, 0, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Avec_x_rhs(p.I) = -Ex(p.I) - calc_fd2_v2e(G, p, 0);
+        const auto I1m = p.I - DI[1];
+        const auto I2m = p.I - DI[2];
+        const auto Ex = 0.25*(- fyBz(p.I) - fyBz(I1m) + fzBy(p.I) + fzBy(I2m));
+        Avec_x_rhs(p.I) = -Ex - calc_fd2_v2e(G, p, 0);
       });
 
   grid.loop_int_device<0, 1, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Avec_y_rhs(p.I) = -Ey(p.I) - calc_fd2_v2e(G, p, 1);
+        const auto I1m = p.I - DI[2];
+        const auto I2m = p.I - DI[0];
+        const auto Ey = 0.25*(- fzBx(p.I) - fzBx(I1m) + fxBz(p.I) + fxBz(I2m));
+        Avec_y_rhs(p.I) = -Ey - calc_fd2_v2e(G, p, 1);
       });
 
   grid.loop_int_device<0, 0, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Avec_z_rhs(p.I) = -Ez(p.I) - calc_fd2_v2e(G, p, 2);
+        const auto I1m = p.I - DI[0];
+        const auto I2m = p.I - DI[1];
+        const auto Ez = 0.25*(- fxBy(p.I) - fxBy(I1m) + fyBx(p.I) + fyBx(I2m));
+        Avec_z_rhs(p.I) = -Ez - calc_fd2_v2e(G, p, 2);
       });
 
   grid.loop_int_device<0, 0, 0>(

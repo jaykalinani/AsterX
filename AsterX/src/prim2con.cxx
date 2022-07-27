@@ -72,21 +72,18 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
   grid.loop_int_device<1, 0, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Ex(p.I) = 0.0;
         Avec_x(p.I) = 0.0; // TODO fix this
       });
   /* Initialize Avec_y, Ey */
   grid.loop_int_device<0, 1, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Ey(p.I) = 0.0;
         Avec_y(p.I) = 0.0; // TODO fix this
       });
   /* Initialize Avec_z, Ez */
   grid.loop_int_device<0, 0, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Ez(p.I) = 0.0;
         Avec_z(p.I) = 0.0; // TODO fix this
       });
   /* Initilaize Psi */

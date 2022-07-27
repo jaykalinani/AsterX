@@ -111,11 +111,17 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   const array<CCTK_REAL *, dim> fluxmomys = {fxmomy, fymomy, fzmomy};
   const array<CCTK_REAL *, dim> fluxmomzs = {fxmomz, fymomz, fzmomz};
   const array<CCTK_REAL *, dim> fluxtaus = {fxtau, fytau, fztau};
+  const array<CCTK_REAL *, dim> fluxBxs = {fxBx, fyBx, fzBx};
+  const array<CCTK_REAL *, dim> fluxBys = {fxBy, fyBy, fzBy};
+  const array<CCTK_REAL *, dim> fluxBzs = {fxBz, fyBz, fzBz};
   const GF3D2<CCTK_REAL> gf_fluxdens(gf_fluxlayout, fluxdenss[dir]);
   const GF3D2<CCTK_REAL> gf_fluxmomx(gf_fluxlayout, fluxmomxs[dir]);
   const GF3D2<CCTK_REAL> gf_fluxmomy(gf_fluxlayout, fluxmomys[dir]);
   const GF3D2<CCTK_REAL> gf_fluxmomz(gf_fluxlayout, fluxmomzs[dir]);
   const GF3D2<CCTK_REAL> gf_fluxtau(gf_fluxlayout, fluxtaus[dir]);
+  const GF3D2<CCTK_REAL> gf_fluxBx(gf_fluxlayout, fluxBxs[dir]);
+  const GF3D2<CCTK_REAL> gf_fluxBy(gf_fluxlayout, fluxBys[dir]);
+  const GF3D2<CCTK_REAL> gf_fluxBz(gf_fluxlayout, fluxBzs[dir]);
 
   // fdens^i = rho vel^i
   // fmom^i_j = mom_j vel^i + delta^i_j press
@@ -583,9 +589,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         sqrt_detg * B2_rc[0],
         sqrt_detg * B2_rc[1]};
 
-    const array<CCTK_REAL, 2> sqrt_detg_W2b2_rc = {
-        sqrt_detg * (pow2(alpha_b0_rc[0]) + B2_rc[0]),
-        sqrt_detg * (pow2(alpha_b0_rc[1]) + B2_rc[1])};
+    //const array<CCTK_REAL, 2> sqrt_detg_W2b2_rc = {
+    //    sqrt_detg * (pow2(alpha_b0_rc[0]) + B2_rc[0]),
+    //    sqrt_detg * (pow2(alpha_b0_rc[1]) + B2_rc[1])};
 
     const array<CCTK_REAL, 2> B_over_w_lorentz_rc = {
         B_rc[0] / w_lorentz_rc[0],
@@ -659,18 +665,17 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         tau_rc[0] * velshift_rc[0] + sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_over_w_lorentz_rc[0]*B_rc[0],
         tau_rc[1] * velshift_rc[1] + sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_over_w_lorentz_rc[1]*B_rc[1]};
 
-    const array<CCTK_REAL, 2> flux_Btildex = {
-        velshift_rc[0] * Btildex_rc[0] - velxshift_rc[0] * B_rc[0],
-        velshift_rc[1] * Btildex_rc[1] - velxshift_rc[1] * B_rc[1]};
+    const array<CCTK_REAL, 2> flux_Btildex = { // (0, -Ez, Ey)
+        -(dir==1)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) + (dir==2)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0]),
+        -(dir==1)*(Btildex_rc[1] * velyshift_rc[1] - Btildey_rc[1] * velxshift_rc[1]) + (dir==2)*(Btildez_rc[1] * velxshift_rc[1] - Btildex_rc[1] * velzshift_rc[1])};
 
-    const array<CCTK_REAL, 2> flux_Btildey = {
-        velshift_rc[0] * Btildey_rc[0] - velyshift_rc[0] * B_rc[0],
-        velshift_rc[1] * Btildey_rc[1] - velyshift_rc[1] * B_rc[1]};
+    const array<CCTK_REAL, 2> flux_Btildey = { // (Ez, 0, -Ex)
+         (dir==0)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) - (dir==2)*(Btildey_rc[0] * velzshift_rc[0] - Btildez_rc[0] * velyshift_rc[0]),
+         (dir==0)*(Btildex_rc[1] * velyshift_rc[1] - Btildey_rc[1] * velxshift_rc[1]) - (dir==2)*(Btildey_rc[1] * velzshift_rc[1] - Btildez_rc[1] * velyshift_rc[1])};
 
-    const array<CCTK_REAL, 2> flux_Btildez = {
-        velshift_rc[0] * Btildez_rc[0] - velzshift_rc[0] * B_rc[0],
-        velshift_rc[1] * Btildez_rc[1] - velzshift_rc[1] * B_rc[1]};
-
+    const array<CCTK_REAL, 2> flux_Btildez = { // (-Ey, Ex, 0)
+        -(dir==0)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0]) + (dir==1)*(Btildey_rc[0] * velzshift_rc[0] - Btildez_rc[0] * velyshift_rc[0]),
+        -(dir==0)*(Btildez_rc[1] * velxshift_rc[1] - Btildex_rc[1] * velzshift_rc[1]) + (dir==1)*(Btildey_rc[1] * velzshift_rc[1] - Btildez_rc[1] * velyshift_rc[1])};
 
     array<array<CCTK_REAL, 4>, 2> lambda = eigenvalues(
         alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc);
@@ -681,6 +686,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     gf_fluxmomy(p.I) = calcflux(lambda, momy_rc, flux_momy);
     gf_fluxmomz(p.I) = calcflux(lambda, momz_rc, flux_momz);
     gf_fluxtau(p.I) = calcflux(lambda, tau_rc, flux_tau);
+    gf_fluxBx(p.I) = calcflux(lambda, Btildex_rc, flux_Btildex);
+    gf_fluxBy(p.I) = calcflux(lambda, Btildex_rc, flux_Btildey);
+    gf_fluxBz(p.I) = calcflux(lambda, Btildex_rc, flux_Btildez);
   });
 }
 
