@@ -623,8 +623,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
     // FIXME: B^2 = W^2·b^2 - (alpha·b^0)^2, is that true?
     const array<CCTK_REAL, 2> tau_rc = {
-        dens_h_W_rc[0] - dens[0] - sqrt_detg_press_plus_pmag_rc[0] + sqrt_detg_B2_rc[0],
-        dens_h_W_rc[1] - dens[1] - sqrt_detg_press_plus_pmag_rc[1] + sqrt_detg_B2_rc[1]};
+        dens_h_W_rc[0] - dens_rc[0] - sqrt_detg_press_plus_pmag_rc[0] + sqrt_detg_B2_rc[0],
+        dens_h_W_rc[1] - dens_rc[1] - sqrt_detg_press_plus_pmag_rc[1] + sqrt_detg_B2_rc[1]};
 
     const array<CCTK_REAL, 2> Btildex_rc = {
         sqrt_detg * Bx_rc[0],
