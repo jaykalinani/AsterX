@@ -117,7 +117,7 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap,
 
   cv.tau = sqrt_detg * (w_lorentz * w_lorentz *
                             (pv.rho * (1 + pv.eps) + pv.press + bs2) -
-                        (pv.press + 0.5 * bs2) - bst * bst - cv.dens);
+                        (pv.press + 0.5 * bs2) - bst * bst) - cv.dens;
 
   cv.dBvecx = sqrt_detg * pv.Bvecx;
   cv.dBvecy = sqrt_detg * pv.Bvecy;
