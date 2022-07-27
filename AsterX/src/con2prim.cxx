@@ -10,11 +10,11 @@
 #include "con2prim.hxx"
 namespace AsterX
 {
-using namespace std;
-using namespace Loop;
+  using namespace std;
+  using namespace Loop;
 
-/* Constructor */
-CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)[NCONS], CCTK_REAL (&prim)[NPRIMS], CCTK_REAL (&g_lo)[4][4], CCTK_REAL (&g_up)[4][4])
+  /* Constructor */
+  CCTK_HOST CCTK_DEVICE idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)[NCONS], CCTK_REAL (&prim)[NPRIMS], CCTK_REAL (&g_lo)[4][4], CCTK_REAL (&g_up)[4][4])
   {
     GammaIdealFluid = gamma;
 
@@ -66,11 +66,11 @@ CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)
     /* Seed Lorentz factor */
     // covariant Valencia velocity:
     CCTK_REAL v1_cov = gcov[XX] * PrimitiveVarsSeed[V1_CON] + gcov[XY] * PrimitiveVarsSeed[V2_CON] +
-                          gcov[XZ] * PrimitiveVarsSeed[V3_CON];
+                       gcov[XZ] * PrimitiveVarsSeed[V3_CON];
     CCTK_REAL v2_cov = gcov[XY] * PrimitiveVarsSeed[V1_CON] + gcov[YY] * PrimitiveVarsSeed[V2_CON] +
-                          gcov[YZ] * PrimitiveVarsSeed[V3_CON];
+                       gcov[YZ] * PrimitiveVarsSeed[V3_CON];
     CCTK_REAL v3_cov = gcov[XZ] * PrimitiveVarsSeed[V1_CON] + gcov[YZ] * PrimitiveVarsSeed[V2_CON] +
-                          gcov[ZZ] * PrimitiveVarsSeed[V3_CON];
+                       gcov[ZZ] * PrimitiveVarsSeed[V3_CON];
 
     CCTK_REAL vsq = v1_cov * PrimitiveVarsSeed[V1_CON] + v2_cov * PrimitiveVarsSeed[V2_CON] + v3_cov * PrimitiveVarsSeed[V3_CON];
 
@@ -97,8 +97,8 @@ CCTK_HOST CCTK_DEVICE  idealFluid::idealFluid(CCTK_REAL gamma, CCTK_REAL (&cons)
     PrimitiveVarsSeed[0] = ConservedVars[D] / W_Seed;
   }
 
-/* Called by 2dNRNoble */
-CCTK_HOST CCTK_DEVICE  void idealFluid::get_Ssq_Exact()
+  /* Called by 2dNRNoble */
+  CCTK_HOST CCTK_DEVICE void idealFluid::get_Ssq_Exact()
   {
 
     /* calculate S_squared */
@@ -117,63 +117,63 @@ CCTK_HOST CCTK_DEVICE  void idealFluid::get_Ssq_Exact()
     }
   }
 
-CCTK_HOST CCTK_DEVICE  void idealFluid::get_Press_Seed()
+  CCTK_HOST CCTK_DEVICE void idealFluid::get_Press_Seed()
   {
     Press_Seed = PrimitiveVarsSeed[RHO] * PrimitiveVarsSeed[EPS] * (GammaIdealFluid - 1.0);
   }
 
-CCTK_HOST CCTK_DEVICE  void idealFluid::get_Z_Seed()
+  CCTK_HOST CCTK_DEVICE void idealFluid::get_Z_Seed()
   {
     Z_Seed = (PrimitiveVarsSeed[RHO] + PrimitiveVarsSeed[EPS] * PrimitiveVarsSeed[RHO] + Press_Seed) * W_Seed * W_Seed;
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_f0(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_f0(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return (Vsq * (Bsq + Z) * (Bsq + Z) - (BiSi * BiSi * (Bsq + 2.0 * Z)) / (Z * Z) - Ssq);
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_f1(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_f1(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     CCTK_REAL Press = get_Press_funcZVsq(Z, Vsq);
     return ConservedVars[TAU] + ConservedVars[D] - Bsq / 2.0 * (1 + Vsq) + BiSi * BiSi / 2.0 / (Z * Z) - Z + Press;
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df0dZ(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df0dZ(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return (2.0 * Vsq * (Bsq + Z) - 2.0 * BiSi * BiSi / (Z * Z) + 2.0 * BiSi * BiSi * (Bsq + 2.0 * Z) / (Z * Z * Z));
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df0dVsq(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df0dVsq(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return (Bsq + Z) * (Bsq + Z);
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df1dZ(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df1dZ(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return (-BiSi * BiSi / (Z * Z * Z) - 1.0 + get_dPdZ_funcZVsq(Z, Vsq));
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df1dVsq(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_2DNRNoble_df1dVsq(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return (-Bsq / 2.0 + get_dPdVsq_funcZVsq(Z, Vsq));
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return ((Z * (1.0 - Vsq) - ConservedVars[D] * sqrt(1.0 - Vsq)) * (GammaIdealFluid - 1.0) / (GammaIdealFluid));
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return ((1.0 - Vsq) * (GammaIdealFluid - 1.0) / GammaIdealFluid);
   }
 
-CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)
+  CCTK_HOST CCTK_DEVICE CCTK_REAL idealFluid::get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq)
   {
     return ((-Z + ConservedVars[D] / (2.0 * sqrt(1.0 - Vsq))) * (GammaIdealFluid - 1.0) / GammaIdealFluid);
   }
 
-CCTK_HOST CCTK_DEVICE  void idealFluid::WZ2Prim()
+  CCTK_HOST CCTK_DEVICE void idealFluid::WZ2Prim()
   {
     CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
     PrimitiveVars[RHO] = ConservedVars[D] / W_Sol;
@@ -194,21 +194,21 @@ CCTK_HOST CCTK_DEVICE  void idealFluid::WZ2Prim()
     PrimitiveVars[B3] = ConservedVars[B3];
   }
 
-/* Destructor */
-CCTK_HOST CCTK_DEVICE  idealFluid::~idealFluid()
+  /* Destructor */
+  CCTK_HOST CCTK_DEVICE idealFluid::~idealFluid()
   {
     // How to destruct properly a vector?
   }
 
-/***************************************************************************
+  /***************************************************************************
 2DNRNoble C2P
 ------------------------------------
 2D-NR Noble scheme for c2p.
 Sources: Noble+2006, Section 3.1 of Siegel+2018, 
 NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
 ****************************************************************************/
-template< typename typeEoS>
-CCTK_HOST CCTK_DEVICE  void Con2Prim_2DNRNoble(CCTK_INT max_iter, typeEoS &plasma)
+  template <typename typeEoS>
+  CCTK_HOST CCTK_DEVICE void Con2Prim_2DNRNoble(CCTK_INT max_iter, CCTK_REAL tolf, typeEoS &plasma)
   { // Send con2primFactory object as reference to modify it, and because we can not instantiate abstract class
 
     /* get Lorentz factor seed, calculated by constructor */
@@ -230,7 +230,6 @@ CCTK_HOST CCTK_DEVICE  void Con2Prim_2DNRNoble(CCTK_INT max_iter, typeEoS &plasm
 
     /* Start Recovery with 2D NR Solver */
     const CCTK_INT n = 2;
-    CCTK_REAL tolf = 1E-10; // TODO: Make parameter
     CCTK_REAL fvec[n];
     CCTK_REAL dx[n];
     CCTK_REAL fjac[n][n];
@@ -273,85 +272,46 @@ CCTK_HOST CCTK_DEVICE  void Con2Prim_2DNRNoble(CCTK_INT max_iter, typeEoS &plasm
     plasma.vsq_Sol = x[1];
   }
 
+  ///
 
-
-///
-
-
-
-template <typename typeEoS>
-void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
+  template <typename typeEoS>
+  void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
   {
     DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
     DECLARE_CCTK_PARAMETERS;
-
-    constexpr auto DI = PointDesc::DI;
 
     // Loop over the interior of the grid
     cctk_grid.loop_int_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE
         {
-          CCTK_REAL cc_alp = 0.0;   // lapse
-          CCTK_REAL cc_betax = 0.0; // beta^i
-          CCTK_REAL cc_betay = 0.0;
-          CCTK_REAL cc_betaz = 0.0;
-          CCTK_REAL cc_betalx, cc_betaly, cc_betalz; // beta_i
+          CCTK_REAL g_up[4][4];
+          CCTK_REAL g_lo[4][4];
 
-          CCTK_REAL g_up[4][4] = {
-              {0.0, 0.0, 0.0, 0.0},
-              {0.0, 0.0, 0.0, 0.0},
-              {0.0, 0.0, 0.0, 0.0},
-              {0.0, 0.0, 0.0, 0.0},
-          };
+          /* Get covariant metric */
+          g_lo[1][1] = calc_avg_v2c(gxx, p);
+          g_lo[1][2] = calc_avg_v2c(gxy, p);
+          g_lo[1][3] = calc_avg_v2c(gxz, p);
+          g_lo[2][2] = calc_avg_v2c(gyy, p);
+          g_lo[2][3] = calc_avg_v2c(gyz, p);
+          g_lo[3][3] = calc_avg_v2c(gzz, p);
+          CCTK_REAL lapse = calc_avg_v2c(alp, p);
+          CCTK_REAL betax_up = calc_avg_v2c(betax, p);
+          CCTK_REAL betay_up = calc_avg_v2c(betay, p);
+          CCTK_REAL betaz_up = calc_avg_v2c(betaz, p);
 
-          CCTK_REAL g_lo[4][4] = {
-              {0.0, 0.0, 0.0, 0.0},
-              {0.0, 0.0, 0.0, 0.0},
-              {0.0, 0.0, 0.0, 0.0},
-              {0.0, 0.0, 0.0, 0.0},
-          };
+          // beta_lo
+          g_lo[0][1] = g_lo[1][1] * betax_up + g_lo[1][2] * betay_up +
+                       g_lo[1][3] * betaz_up;
+          g_lo[0][2] = g_lo[1][2] * betax_up + g_lo[2][2] * betay_up +
+                       g_lo[2][3] * betaz_up;
+          g_lo[0][3] = g_lo[1][3] * betax_up + g_lo[2][3] * betay_up +
+                       g_lo[3][3] * betaz_up;
 
-          for (CCTK_INT dk = 0; dk < 2; ++dk)
-            for (CCTK_INT dj = 0; dj < 2; ++dj)
-              for (CCTK_INT di = 0; di < 2; ++di)
-              {
-                g_lo[1][1] += gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                g_lo[1][2] += gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                g_lo[1][3] += gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                g_lo[2][2] += gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                g_lo[2][3] += gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                g_lo[3][3] += gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                cc_alp += alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                cc_betax += betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                cc_betay += betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-                cc_betaz += betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-              }
+          g_lo[0][0] = -lapse * lapse + betax_up * g_lo[0][1] +
+                       betay_up * g_lo[0][2] + betaz_up * g_lo[0][3];
 
-          cc_alp *= 0.125;
-          cc_betax *= 0.125;
-          cc_betay *= 0.125;
-          cc_betaz *= 0.125;
-          g_lo[1][1] *= 0.125;
-          g_lo[1][2] *= 0.125;
-          g_lo[1][3] *= 0.125;
-          g_lo[2][2] *= 0.125;
-          g_lo[2][3] *= 0.125;
-          g_lo[3][3] *= 0.125;
-
-          cc_betalx = g_lo[1][1] * cc_betax + g_lo[1][2] * cc_betay +
-                      g_lo[1][3] * cc_betaz;
-          cc_betaly = g_lo[1][2] * cc_betax + g_lo[2][2] * cc_betay +
-                      g_lo[2][3] * cc_betaz;
-          cc_betalz = g_lo[1][3] * cc_betax + g_lo[2][3] * cc_betay +
-                      g_lo[3][3] * cc_betaz;
-
-          g_lo[0][0] = -cc_alp * cc_alp + cc_betax * cc_betalx +
-                       cc_betay * cc_betaly + cc_betaz * cc_betalz;
-          g_lo[0][1] = cc_betalx;
-          g_lo[0][2] = cc_betaly;
-          g_lo[0][3] = cc_betalz;
-
+          // symmetric components
           g_lo[1][0] = g_lo[0][1];
           g_lo[2][0] = g_lo[0][2];
           g_lo[3][0] = g_lo[0][3];
@@ -360,12 +320,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
           g_lo[3][2] = g_lo[2][3];
 
           /* Calculate inverse of 4-dim metric */
-          // TODO: Move to function?
-          CCTK_REAL spatial_detg; // Determinant spatial metric
           CCTK_REAL gamma11, gamma12, gamma13, gamma22, gamma23,
               gamma33; // Inverse components of spatial metric
 
-          spatial_detg = -g_lo[1][3] * g_lo[1][3] * g_lo[2][2] +
+          CCTK_REAL spatial_detg = -g_lo[1][3] * g_lo[1][3] * g_lo[2][2] +
                          2 * g_lo[1][2] * g_lo[1][3] * g_lo[2][3] -
                          g_lo[1][1] * g_lo[2][3] * g_lo[2][3] -
                          g_lo[1][2] * g_lo[1][2] * g_lo[3][3] +
@@ -384,16 +342,16 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
           gamma33 =
               (-g_lo[1][2] * g_lo[1][2] + g_lo[1][1] * g_lo[2][2]) / spatial_detg;
 
-          g_up[0][0] = -1.0 / (cc_alp * cc_alp);
-          g_up[0][1] = cc_betax / (cc_alp * cc_alp);
-          g_up[0][2] = cc_betay / (cc_alp * cc_alp);
-          g_up[0][3] = cc_betaz / (cc_alp * cc_alp);
-          g_up[1][1] = gamma11 - cc_betax * cc_betax / (cc_alp * cc_alp);
-          g_up[1][2] = gamma12 - cc_betax * cc_betay / (cc_alp * cc_alp);
-          g_up[1][3] = gamma13 - cc_betax * cc_betaz / (cc_alp * cc_alp);
-          g_up[2][2] = gamma22 - cc_betay * cc_betay / (cc_alp * cc_alp);
-          g_up[2][3] = gamma23 - cc_betay * cc_betaz / (cc_alp * cc_alp);
-          g_up[3][3] = gamma33 - cc_betaz * cc_betaz / (cc_alp * cc_alp);
+          g_up[0][0] = -1.0 / (lapse * lapse);
+          g_up[0][1] = g_lo[0][1] / (lapse * lapse);
+          g_up[0][2] = g_lo[0][2] / (lapse * lapse);
+          g_up[0][3] = g_lo[0][3] / (lapse * lapse);
+          g_up[1][1] = gamma11 - g_lo[0][1] * g_lo[0][1] / (lapse * lapse);
+          g_up[1][2] = gamma12 - g_lo[0][1] * g_lo[0][2] / (lapse * lapse);
+          g_up[1][3] = gamma13 - g_lo[0][1] * g_lo[0][3] / (lapse * lapse);
+          g_up[2][2] = gamma22 - g_lo[0][2] * g_lo[0][2] / (lapse * lapse);
+          g_up[2][3] = gamma23 - g_lo[0][2] * g_lo[0][3] / (lapse * lapse);
+          g_up[3][3] = gamma33 - g_lo[0][3] * g_lo[0][3] / (lapse * lapse);
 
           g_up[1][0] = g_up[0][1];
           g_up[2][0] = g_up[0][2];
@@ -425,18 +383,18 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
           // Construct con2primFactory object:
           typeEoS plasma_0(gamma, cons, prims, g_lo, g_up);
           // 1) Try 2DNRNoble
-          Con2Prim_2DNRNoble(100, plasma_0);
+          Con2Prim_2DNRNoble( max_iter, c2p_tol, plasma_0);
 
           if (plasma_0.Failed_2DNRNoble)
-            {
-              // If c2p fails, reset prims
-              rho(p.I) = prims[RHO];
-              velx(p.I) = 0.0;
-              vely(p.I) = 0.0;
-              velz(p.I) = 0.0;
-              eps(p.I) = prims[EPS];
-              assert(0); // Terminate?
-            }
+          {
+            // If c2p fails, reset prims
+            rho(p.I) = prims[RHO];
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            eps(p.I) = prims[EPS];
+            assert(0); // Terminate?
+          }
           else
           {
             plasma_0.WZ2Prim();
@@ -457,9 +415,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
           saved_Bvecy(p.I) = Bvecy(p.I);
           saved_Bvecz(p.I) = Bvecz(p.I);
         }); // Loop
-  } // AsterX_Con2Prim_2DNRNoble
+  }         // AsterX_Con2Prim_2DNRNoble
 
-/***************************************************************************
+  /***************************************************************************
  * AsterX_Con2Prim
  * ---
  *  Routines implemented:
@@ -467,10 +425,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS)
  *
  *   Based on con2primFactory (https://github.com/fedelopezar/con2primFactory)
  *   ****************************************************************************/
-extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
-    if(1) { // Use this if for idealFluid/tabeos
-      AsterX_Con2Prim_typeEoS< idealFluid>( CCTK_PASS_CTOC);
+  extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS)
+  {
+    if (1)
+    { // Use this if for idealFluid/tabeos
+      AsterX_Con2Prim_typeEoS<idealFluid>(CCTK_PASS_CTOC);
     }
-}
+  }
 
 } // namespace AsterX

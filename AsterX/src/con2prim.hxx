@@ -3,6 +3,7 @@
 #include "AMReX_GpuQualifiers.H"
 #define CCTK_DEVICE AMREX_GPU_DEVICE
 #define CCTK_HOST AMREX_GPU_HOST
+#include "utils.hxx"
 
 namespace AsterX
 {
