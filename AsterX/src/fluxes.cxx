@@ -492,8 +492,8 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         vely_rc[1] - beta_over_alpha_avg};
 
     const array<CCTK_REAL, 2> velzshift_rc = {
-        vely_rc[0] - beta_over_alpha_avg,
-        vely_rc[1] - beta_over_alpha_avg};
+        velz_rc[0] - beta_over_alpha_avg,
+        velz_rc[1] - beta_over_alpha_avg};
 
     const array<array<CCTK_REAL, 2>, 3> velsshift_rc = {
         velxshift_rc, velyshift_rc, velzshift_rc};
@@ -638,36 +638,36 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
 
     // Computing fluxes of conserved variables
-    const array<CCTK_REAL, 2> flux_dens = {dens_rc[0] * velshift_rc[0],
-                                           dens_rc[1] * velshift_rc[1]};
+    const array<CCTK_REAL, 2> flux_dens = {alp_avg*(dens_rc[0] * velshift_rc[0]),
+                                           alp_avg*(dens_rc[1] * velshift_rc[1])};
 
     const array<CCTK_REAL, 2> flux_momx = {
-        momx_rc[0] * velshift_rc[0] + (dir == 0) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowx_rc[0],
-        momx_rc[1] * velshift_rc[1] + (dir == 0) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowx_rc[1]};
+        alp_avg*(momx_rc[0] * velshift_rc[0] + (dir == 0) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowx_rc[0]),
+        alp_avg*(momx_rc[1] * velshift_rc[1] + (dir == 0) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowx_rc[1])};
 
     const array<CCTK_REAL, 2> flux_momy = {
-        momy_rc[0] * velshift_rc[0] + (dir == 1) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowy_rc[0],
-        momy_rc[1] * velshift_rc[1] + (dir == 1) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowy_rc[1]};
+        alp_avg*(momy_rc[0] * velshift_rc[0] + (dir == 1) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowy_rc[0]),
+        alp_avg*(momy_rc[1] * velshift_rc[1] + (dir == 1) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowy_rc[1])};
 
     const array<CCTK_REAL, 2> flux_momz = {
-        momz_rc[0] * velshift_rc[0] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowz_rc[0],
-        momz_rc[1] * velshift_rc[1] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowz_rc[1]};
+        alp_avg*(momz_rc[0] * velshift_rc[0] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[0] - B_over_w_lorentz_rc[0] * blowz_rc[0]),
+        alp_avg*(momz_rc[1] * velshift_rc[1] + (dir == 2) * sqrt_detg_press_plus_pmag_rc[1] - B_over_w_lorentz_rc[1] * blowz_rc[1])};
 
     const array<CCTK_REAL, 2> flux_tau = {
-        tau_rc[0] * velshift_rc[0] + sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_rc[0] * B_rc[0] / w_lorentz_rc[0],
-        tau_rc[1] * velshift_rc[1] + sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_rc[1] * B_rc[1] / w_lorentz_rc[1]};
+        alp_avg*(tau_rc[0] * velshift_rc[0] + sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_rc[0] * B_rc[0] / w_lorentz_rc[0]),
+        alp_avg*(tau_rc[1] * velshift_rc[1] + sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_rc[1] * B_rc[1] / w_lorentz_rc[1])};
 
     const array<CCTK_REAL, 2> flux_Btildex = { // (0, -Ez, Ey)
-        -(dir==1)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) + (dir==2)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0]),
-        -(dir==1)*(Btildex_rc[1] * velyshift_rc[1] - Btildey_rc[1] * velxshift_rc[1]) + (dir==2)*(Btildez_rc[1] * velxshift_rc[1] - Btildex_rc[1] * velzshift_rc[1])};
+        alp_avg*(-(dir==1)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) + (dir==2)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0])),
+        alp_avg*(-(dir==1)*(Btildex_rc[1] * velyshift_rc[1] - Btildey_rc[1] * velxshift_rc[1]) + (dir==2)*(Btildez_rc[1] * velxshift_rc[1] - Btildex_rc[1] * velzshift_rc[1]))};
 
     const array<CCTK_REAL, 2> flux_Btildey = { // (Ez, 0, -Ex)
-         (dir==0)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) - (dir==2)*(Btildey_rc[0] * velzshift_rc[0] - Btildez_rc[0] * velyshift_rc[0]),
-         (dir==0)*(Btildex_rc[1] * velyshift_rc[1] - Btildey_rc[1] * velxshift_rc[1]) - (dir==2)*(Btildey_rc[1] * velzshift_rc[1] - Btildez_rc[1] * velyshift_rc[1])};
+        alp_avg*((dir==0)*(Btildex_rc[0] * velyshift_rc[0] - Btildey_rc[0] * velxshift_rc[0]) - (dir==2)*(Btildey_rc[0] * velzshift_rc[0] - Btildez_rc[0] * velyshift_rc[0])),
+        alp_avg*((dir==0)*(Btildex_rc[1] * velyshift_rc[1] - Btildey_rc[1] * velxshift_rc[1]) - (dir==2)*(Btildey_rc[1] * velzshift_rc[1] - Btildez_rc[1] * velyshift_rc[1]))};
 
     const array<CCTK_REAL, 2> flux_Btildez = { // (-Ey, Ex, 0)
-        -(dir==0)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0]) + (dir==1)*(Btildey_rc[0] * velzshift_rc[0] - Btildez_rc[0] * velyshift_rc[0]),
-        -(dir==0)*(Btildez_rc[1] * velxshift_rc[1] - Btildex_rc[1] * velzshift_rc[1]) + (dir==1)*(Btildey_rc[1] * velzshift_rc[1] - Btildez_rc[1] * velyshift_rc[1])};
+        alp_avg*(-(dir==0)*(Btildez_rc[0] * velxshift_rc[0] - Btildex_rc[0] * velzshift_rc[0]) + (dir==1)*(Btildey_rc[0] * velzshift_rc[0] - Btildez_rc[0] * velyshift_rc[0])),
+        alp_avg*(-(dir==0)*(Btildez_rc[1] * velxshift_rc[1] - Btildex_rc[1] * velzshift_rc[1]) + (dir==1)*(Btildey_rc[1] * velzshift_rc[1] - Btildez_rc[1] * velyshift_rc[1]))};
 
     array<array<CCTK_REAL, 4>, 2> lambda = eigenvalues(
         alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc);

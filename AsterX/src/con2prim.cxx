@@ -177,7 +177,6 @@ namespace AsterX
   {
     CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
     PrimitiveVars[RHO] = ConservedVars[D] / W_Sol;
-    CCTK_REAL alp = sqrt(-1. / gcon[TT]);
 
     PrimitiveVars[V1_CON] = (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] + gcon[XZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
     PrimitiveVars[V1_CON] += BiSi * PrimitiveVars[B1] / (Z_Sol * (Z_Sol + Bsq));
@@ -376,9 +375,9 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           prims[V2_CON] = saved_vely(p.I);
           prims[V3_CON] = saved_velz(p.I);
           prims[EPS] = saved_eps(p.I);
-          prims[B1] = saved_Bvecx(p.I);
-          prims[B2] = saved_Bvecy(p.I);
-          prims[B3] = saved_Bvecz(p.I);
+          prims[B1] = cons[B1]/sqrt(spatial_detg);
+          prims[B2] = cons[B2]/sqrt(spatial_detg);
+          prims[B3] = cons[B3]/sqrt(spatial_detg);
 
           // Construct con2primFactory object:
           typeEoS plasma_0(gamma, cons, prims, g_lo, g_up);
