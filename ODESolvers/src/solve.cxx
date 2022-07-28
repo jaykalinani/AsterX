@@ -352,8 +352,22 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
     return detail::call_lincomb<8>(dst, scale, factors, srcs, indices);
   case 9:
     return detail::call_lincomb<9>(dst, scale, factors, srcs, indices);
+  case 10:
+    return detail::call_lincomb<10>(dst, scale, factors, srcs, indices);
+  case 11:
+    return detail::call_lincomb<11>(dst, scale, factors, srcs, indices);
+  case 12:
+    return detail::call_lincomb<12>(dst, scale, factors, srcs, indices);
+  case 13:
+    return detail::call_lincomb<13>(dst, scale, factors, srcs, indices);
+  case 14:
+    return detail::call_lincomb<14>(dst, scale, factors, srcs, indices);
+  case 15:
+    return detail::call_lincomb<15>(dst, scale, factors, srcs, indices);
+  case 16:
+    return detail::call_lincomb<16>(dst, scale, factors, srcs, indices);
   default:
-    CCTK_ERROR("Unsupported vector length");
+    CCTK_VERROR("Unsupported vector length: %d", (int)NNZ);
   }
 }
 
