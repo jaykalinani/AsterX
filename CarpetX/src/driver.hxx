@@ -248,8 +248,8 @@ struct GHExt {
           apply_physbcs_t() = delete;
           apply_physbcs_t(const apply_physbcs_t &) = default;
           apply_physbcs_t(apply_physbcs_t &&) = default;
-          apply_physbcs_t &operator=(const apply_physbcs_t &) = default;
-          apply_physbcs_t &operator=(apply_physbcs_t &&) = default;
+          apply_physbcs_t &operator=(const apply_physbcs_t &) = delete;
+          apply_physbcs_t &operator=(apply_physbcs_t &&) = delete;
           apply_physbcs_t(const GroupData &groupdata) : groupdata(groupdata) {}
 
           const GroupData &groupdata;
