@@ -7,7 +7,7 @@ EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
   "sound wave" :: ""
   "shock tube" :: ""
   "spherical shock" :: ""
-  "balsara1" :: ""
+  "Balsara1" :: ""
 } 
 
 private:

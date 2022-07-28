@@ -15,42 +15,30 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
   return x * x;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_HydroInitial_Initialize;
+  DECLARE_CCTK_ARGUMENTSX_HydroInitial_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
-  const GridDescBaseDevice grid(cctkGH);
-  constexpr array<int, dim> cell_centred = {1, 1, 1};
-  const GF3D2layout gf_layout_cell(cctkGH, cell_centred);
-
-  const GF3D2<CCTK_REAL> gf_rho(gf_layout_cell, rho);
-  const GF3D2<CCTK_REAL> gf_velx(gf_layout_cell, velx);
-  const GF3D2<CCTK_REAL> gf_vely(gf_layout_cell, vely);
-  const GF3D2<CCTK_REAL> gf_velz(gf_layout_cell, velz);
-  const GF3D2<CCTK_REAL> gf_press(gf_layout_cell, press);
-  const GF3D2<CCTK_REAL> gf_eps(gf_layout_cell, eps);
-  const GF3D2<CCTK_REAL> gf_Bvecx(gf_layout_cell, Bvecx);
-  const GF3D2<CCTK_REAL> gf_Bvecy(gf_layout_cell, Bvecy);
-  const GF3D2<CCTK_REAL> gf_Bvecz(gf_layout_cell, Bvecz);
+  const std::array dx{CCTK_DELTA_SPACE(0), CCTK_DELTA_SPACE(1),
+                      CCTK_DELTA_SPACE(2)};
+  const std::array idx{1 / dx[0], 1 / dx[1], 1 / dx[2]};
 
   if (CCTK_EQUALS(initial_hydro, "equilibrium")) {
 
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          gf_rho(p.I) = 1.0;
-          gf_velx(p.I) = 0.0;
-          gf_vely(p.I) = 0.0;
-          gf_velz(p.I) = 0.0;
-          gf_press(p.I) = 1.0;
+          rho(p.I) = 1.0;
+          velx(p.I) = 0.0;
+          vely(p.I) = 0.0;
+          velz(p.I) = 0.0;
+          press(p.I) = 1.0;
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
-          gf_Bvecx(p.I) = 0.0;
-          gf_Bvecy(p.I) = 0.0;
-          gf_Bvecz(p.I) = 0.0;
+          eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1));
+          Bvecx(p.I) = 0.0;
+          Bvecy(p.I) = 0.0;
+          Bvecz(p.I) = 0.0;
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "sound wave")) {
@@ -58,17 +46,17 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          gf_rho(p.I) = 1.0;
-          gf_velx(p.I) = 0.0 + amplitude * sin(M_PI * p.x);
-          gf_vely(p.I) = 0.0;
-          gf_velz(p.I) = 0.0;
-          gf_press(p.I) = 1.0; // should add kinetic energy here
+          rho(p.I) = 1.0;
+          velx(p.I) = 0.0 + amplitude * sin(M_PI * p.x);
+          vely(p.I) = 0.0;
+          velz(p.I) = 0.0;
+          press(p.I) = 1.0; // should add kinetic energy here
                                // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
-          gf_Bvecx(p.I) = 0.0;
-          gf_Bvecy(p.I) = 0.0;
-          gf_Bvecz(p.I) = 0.0;
+          eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1));
+          Bvecx(p.I) = 0.0;
+          Bvecy(p.I) = 0.0;
+          Bvecz(p.I) = 0.0;
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "shock tube")) {
@@ -77,52 +65,73 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.x <= 0.0) {
-            gf_rho(p.I) = 2.0;
-            gf_velx(p.I) = 0.0;
-            gf_vely(p.I) = 0.0;
-            gf_velz(p.I) = 0.0;
-            gf_press(p.I) = 2.0;
+            rho(p.I) = 2.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 2.0;
           } else {
-            gf_rho(p.I) = 1.0;
-            gf_velx(p.I) = 0.0;
-            gf_vely(p.I) = 0.0;
-            gf_velz(p.I) = 0.0;
-            gf_press(p.I) = 1.0;
+            rho(p.I) = 1.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 1.0;
           }
 
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
-          gf_Bvecx(p.I) = 0.0;
-          gf_Bvecy(p.I) = 0.0;
-          gf_Bvecz(p.I) = 0.0;
+          eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1));
+          Bvecx(p.I) = 0.0;
+          Bvecy(p.I) = 0.0;
+          Bvecz(p.I) = 0.0;
         });
 
-  } else if (CCTK_EQUALS(initial_hydro, "balsara1")) {
+  } else if (CCTK_EQUALS(initial_hydro, "Balsara1")) {
 
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.x <= 0.0) {
-            gf_rho(p.I) = 1.0;
-            gf_velx(p.I) = 0.0;
-            gf_vely(p.I) = 0.0;
-            gf_velz(p.I) = 0.0;
-            gf_press(p.I) = 1.0;
-          } else {
-            gf_rho(p.I) = 0.125;
-            gf_velx(p.I) = 0.0;
-            gf_vely(p.I) = 0.0;
-            gf_velz(p.I) = 0.0;
-            gf_press(p.I) = 0.1;
-          }
+            rho(p.I) = 1.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 1.0;
+	    Bvecx(p.I) = 0.5;
+	    Bvecy(p.I) = 1.0;
+	    Bvecz(p.I) = 0.0;
 
+          } else {
+            rho(p.I) = 0.125;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 0.1;
+	    Bvecx(p.I) = 0.5;
+            Bvecy(p.I) = -1.0;
+            Bvecz(p.I) = 0.0;
+          }
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
-          gf_Bvecx(p.I) = 0.0;
-          gf_Bvecy(p.I) = 0.0;
-          gf_Bvecz(p.I) = 0.0;
+          eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1));
+        });
+
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+	  Avec_x(p.I) = Bvecy(p.I) * (p.z+idx[2]/2.0) - Bvecz(p.I) * (p.y+idx[1]/2.0);
+        });
+
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          Avec_y(p.I) = 0.0;
+        });
+
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          Avec_z(p.I) = Bvecx(p.I) * (p.y+idx[1]/2.0);
         });
 
   } else if (CCTK_EQUALS(initial_hydro, "spherical shock")) {
@@ -132,25 +141,25 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const CCTK_REAL r2 = pow2(p.x) + pow2(p.y) + pow2(p.z);
           if (r2 <= pow2(shock_radius)) {
-            gf_rho(p.I) = 2.0;
-            gf_velx(p.I) = 0.0;
-            gf_vely(p.I) = 0.0;
-            gf_velz(p.I) = 0.0;
-            gf_press(p.I) = 2.0;
+            rho(p.I) = 2.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 2.0;
           } else {
-            gf_rho(p.I) = 1.0;
-            gf_velx(p.I) = 0.0;
-            gf_vely(p.I) = 0.0;
-            gf_velz(p.I) = 0.0;
-            gf_press(p.I) = 1.0;
+            rho(p.I) = 1.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 1.0;
           }
 
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          gf_eps(p.I) = gf_press(p.I) / (gf_rho(p.I) * (gamma - 1));
-          gf_Bvecx(p.I) = 0.0;
-          gf_Bvecy(p.I) = 0.0;
-          gf_Bvecz(p.I) = 0.0;
+          eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1));
+          Bvecx(p.I) = 0.0;
+          Bvecy(p.I) = 0.0;
+          Bvecz(p.I) = 0.0;
         });
 
   } else {
