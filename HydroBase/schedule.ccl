@@ -8,13 +8,6 @@ SCHEDULE GROUP HydroBase_PostInitial AT initial AFTER HydroBase_InitialData
 {
 } "Schedule group for modifying the hydro initial data, such as e.g. adding noise"
 
-SCHEDULE GROUP HydroBase_InitialData AT postregrid
-{
-} "Schedule group for calculating hydro initial data"
-
-SCHEDULE GROUP HydroBase_PostInitial AT postregrid AFTER HydroBase_InitialData
-{
-} "Schedule group for modifying the hydro initial data, such as e.g. adding noise"
 
 SCHEDULE GROUP HydroBase_SetHydroVars AT postregrid
 {
