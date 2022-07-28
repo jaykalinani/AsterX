@@ -877,8 +877,6 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
     const int numcomp, const amrex::Geometry &geom, const CCTK_REAL time,
     const amrex::Vector<amrex::BCRec> &bcr, const int bcomp,
     const int orig_comp) const {
-  assert(omp_in_parallel());
-
   // Check centering
   assert(box.ixType() == dest.box().ixType());
   for (int d = 0; d < dim; ++d)
