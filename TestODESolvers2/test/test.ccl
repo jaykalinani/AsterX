@@ -1,3 +1,5 @@
+NPROCS 1
+
 TEST test-dp87
 {
   ABSTOL 1.0e-11
