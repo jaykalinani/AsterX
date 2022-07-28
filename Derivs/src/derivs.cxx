@@ -94,17 +94,6 @@ CCTK_ATTRIBUTE_NOINLINE void calc_derivs2(
 
 using T = CCTK_REAL;
 
-namespace stencils {
-template decltype(interp<T>) interp<T>;
-template decltype(deriv1_o2<T>) deriv1_o2<T>;
-template decltype(deriv1_o4<T>) deriv1_o4<T>;
-
-template decltype(interp_c_o1<T>) interp_c_o1<T>;
-template decltype(interp_c_o3<T>) interp_c_o3<T>;
-template decltype(interp_c_o5<T>) interp_c_o5<T>;
-template decltype(deriv1_c_o2<T>) deriv1_c_o2<T>;
-} // namespace stencils
-
 template CCTK_DEVICE CCTK_HOST Arith::vec<Arith::simd<T>, Loop::dim, Arith::DN>
 calc_deriv<2>(const Loop::GF3D5<const T> &gf, const Arith::simdl<T> &mask,
               const Loop::GF3D5layout &layout,

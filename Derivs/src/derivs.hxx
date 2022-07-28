@@ -27,14 +27,13 @@ using namespace Loop;
 
 enum symmetry { none, symmetric, antisymmetric };
 
-template <typename T, std::ptrdiff_t I0, std::ptrdiff_t I1, symmetry S>
-struct stencil {
-  using type = T;
+template <std::ptrdiff_t I0, std::ptrdiff_t I1, symmetry S> struct stencil {
   static constexpr std::ptrdiff_t N = I1 - I0 + 1;
   static_assert(N >= 0, "");
   static_assert(S == none || S == symmetric || S == antisymmetric, "");
 
-  std::array<T, N> coeffs;
+  int divisor;
+  std::array<int, N> coeffs;
 
   template <typename Array>
   inline CCTK_ATTRIBUTE_ALWAYS_INLINE
@@ -51,6 +50,7 @@ struct stencil {
         const std::ptrdiff_t n = N / 2 + 1;
         r += coeffs[n] * arr(n + I0);
       }
+      r /= divisor;
       return std::move(r);
     }
     if constexpr (antisymmetric) {
@@ -59,6 +59,7 @@ struct stencil {
         const std::ptrdiff_t n1 = N - 1 - n;
         r += coeffs[n] * (arr(n + I0) - arr(n1 + I0));
       }
+      r /= divisor;
       return std::move(r);
     }
     R r{0};
@@ -69,45 +70,32 @@ struct stencil {
 };
 
 // Interpolate at i = 0
-template <typename T> constexpr stencil<T, 0, 0, symmetric> interp{{1}};
+constexpr stencil<0, 0, symmetric> interp{1, {1}};
 
 // Derivative at i = 0
-template <typename T>
-constexpr stencil<T, -1, +1, antisymmetric> deriv1_o2{
-    {-1 / T(2), 0, +1 / T(2)}};
+constexpr stencil<-1, +1, antisymmetric> deriv1_o2{2, {-1, 0, +1}};
 
-template <typename T>
-constexpr stencil<T, -2, +2, antisymmetric> deriv1_o4{
-    {+2 / T(3), -1 / T(12), 0, +1 / T(12), -2 / T(3)}};
+constexpr stencil<-2, +2, antisymmetric> deriv1_o4{12, {-1, +8, 0, -8, +1}};
 
-template <typename T>
-constexpr stencil<T, -1, +1, symmetric> deriv2_o2{{-2, +1, -2}};
+constexpr stencil<-1, +1, symmetric> deriv2_o2{1, {-2, +1, -2}};
 
-template <typename T>
-constexpr stencil<T, -2, +2, symmetric> deriv2_o4{
-    {-1 / T(12), 4 / T(3), -5 / T(2), 4 / T(3), -1 / T(12)}};
+constexpr stencil<-2, +2, symmetric> deriv2_o4{12, {-1, +16, -30, +16, -1}};
 
 // Interpolate at i = 1/2
-template <typename T>
-constexpr stencil<T, -0, +1, symmetric> interp_c_o1{{1 / T(2), 1 / T(2)}};
+constexpr stencil<-0, +1, symmetric> interp_c_o1{2, {1, 1}};
 
-template <typename T>
-constexpr stencil<T, -1, +2, symmetric> interp_c_o3{
-    {-1 / T(16), +9 / T(16), +9 / T(16), -1 / T(16)}};
+constexpr stencil<-1, +2, symmetric> interp_c_o3{16, {-1, +9, +9, -1}};
 
-template <typename T>
-constexpr stencil<T, -2, +3, symmetric> interp_c_o5{
-    {+3 / T(256), -25 / T(256), +75 / T(128), +75 / T(128), -25 / T(256),
-     +3 / T(256)}};
+constexpr stencil<-2, +3, symmetric> interp_c_o5{
+    256, {+3, -25, +150, +150, -25, +3}};
 
-template <typename T>
-constexpr stencil<T, -3, +4, symmetric> interp_c_o7{
-    {-5 / T(2048), +49 / T(2048), -245 / T(2048), +1225 / T(2048),
-     +1225 / T(2048), -245 / T(2048), +49 / T(2048), -5 / T(2048)}};
+constexpr stencil<-3, +4, symmetric> interp_c_o7{
+    2048, {-5, +49, -245, +1225, +1225, -245, +49, -5}};
 
 // Derivative at i = 1/2
-template <typename T>
-constexpr stencil<T, -0, +1, antisymmetric> deriv1_c_o2{{-1, +1}};
+constexpr stencil<-0, +1, antisymmetric> deriv1_c_o2{1, {-1, +1}};
+
+constexpr stencil<-1, +2, antisymmetric> deriv1_c_o4{12, {-1, +15, -15, +1}};
 
 } // namespace stencils
 
@@ -128,8 +116,8 @@ template <int deriv_order, typename T, typename TS,
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE
     CCTK_DEVICE CCTK_HOST std::enable_if_t<deriv_order == 2, R>
     deriv1d(const TS var, const T dx) {
-  constexpr T c1 = 1 / T(2);
-  return c1 * (var(1) - var(-1)) / dx;
+  const T c1 = 1 / (2 * dx);
+  return c1 * (var(1) - var(-1));
 }
 
 template <int deriv_order, typename T, typename TS,
@@ -137,9 +125,9 @@ template <int deriv_order, typename T, typename TS,
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE
     CCTK_DEVICE CCTK_HOST std::enable_if_t<deriv_order == 4, R>
     deriv1d(const TS var, const T dx) {
-  constexpr T c1 = 2 / T(3);
-  constexpr T c2 = -1 / T(12);
-  return (c2 * (var(2) - var(-2)) + c1 * (var(1) - var(-1))) / dx;
+  const T c1 = 2 / (3 * dx);
+  const T c2 = -1 / (12 * dx);
+  return c2 * (var(2) - var(-2)) + c1 * (var(1) - var(-1));
 }
 
 template <int deriv_order, typename T>
@@ -243,9 +231,11 @@ template <int deriv_order, typename T, typename TS,
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE
     CCTK_DEVICE CCTK_HOST std::enable_if_t<deriv_order == 2, R>
     deriv2_1d(const TS var, const T dx) {
-  constexpr T c0 = -2;
-  constexpr T c1 = 1;
-  return (c1 * (var(-1) + var(1)) + c0 * var(0)) / pow2(dx);
+  // constexpr T c0 = -2 / pow(dx);
+  // constexpr T c1 = 1 / pow(dx);
+  // return c1 * (var(-1) + var(1)) + c0 * var(0);
+  const T c0 = 1 / pow2(dx);
+  return c0 * ((var(1) - var(0)) - (var(0) - var(-1)));
 }
 
 template <int deriv_order, typename T, typename TS,
@@ -253,11 +243,15 @@ template <int deriv_order, typename T, typename TS,
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE
     CCTK_DEVICE CCTK_HOST std::enable_if_t<deriv_order == 4, R>
     deriv2_1d(const TS var, const T dx) {
-  constexpr T c0 = -5 / T(2);
-  constexpr T c1 = 4 / T(3);
-  constexpr T c2 = -1 / T(12);
-  return (c2 * (var(-2) + var(2)) + c1 * (var(-1) + var(1)) + c0 * var(0)) /
-         pow2(dx);
+  // constexpr T c0 = -5 / T(2);
+  // constexpr T c1 = 4 / T(3);
+  // constexpr T c2 = -1 / T(12);
+  // return (c2 * (var(-2) + var(2)) + c1 * (var(-1) + var(1)) + c0 * var(0)) /
+  //        pow2(dx);
+  const T c0 = 15 / (12 * pow2(dx));
+  const T c1 = -1 / (12 * pow2(dx));
+  return c1 * ((var(4) - var(1)) - (var(3) - var(0))) +
+         c0 * ((var(3) - var(2)) - (var(2) - var(1)));
 }
 
 template <int deriv_order, typename T, typename TS,
