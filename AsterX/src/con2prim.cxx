@@ -365,9 +365,9 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           cons[S2_COV] = momy(p.I);
           cons[S3_COV] = momz(p.I);
           cons[TAU] = tau(p.I);
-          cons[B1] = Bvecx(p.I);
-          cons[B2] = Bvecy(p.I);
-          cons[B3] = Bvecz(p.I);
+          cons[B1] = dBx(p.I);
+          cons[B2] = dBy(p.I);
+          cons[B3] = dBz(p.I);
 
           CCTK_REAL prims[NPRIMS];
           prims[RHO] = saved_rho(p.I);
@@ -392,7 +392,12 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
             eps(p.I) = prims[EPS];
-            assert(0); // Terminate?
+	    press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+	    Bvecx(p.I) = prims[B1];
+	    Bvecy(p.I) = prims[B2];
+	    Bvecz(p.I) = prims[B3];
+
+            //assert(0); // Terminate?
           }
           else
           {
@@ -403,6 +408,9 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             velz(p.I) = plasma_0.PrimitiveVars[V3_CON];
             eps(p.I) = plasma_0.PrimitiveVars[EPS];
             press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+	    Bvecx(p.I) = prims[B1];
+            Bvecy(p.I) = prims[B2];
+            Bvecz(p.I) = prims[B3];
           }
 
           saved_rho(p.I) = rho(p.I);

@@ -61,7 +61,7 @@ SCHEDULE AsterX_ComputeBstagFromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
   SYNC: dBx_stag dBy_stag dBz_stag
 } "Calculate Bstag from curl of A"
 
-SCHEDULE AsterX_ComputeBFromBstag IN ODESolvers_RHS BEFORE AsterX_Con2Prim
+SCHEDULE AsterX_ComputeBFromBstag IN ODESolvers_RHS AFTER AsterX_ComputeBstagFromA BEFORE AsterX_Con2Prim 
 {
   LANG: C
   READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
@@ -76,14 +76,14 @@ SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
   LANG: C
   READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
   READS: dens(interior) tau(interior) mom(interior)
-  READS: HydroBase::Bvec(interior)
+  READS: HydroBase::Bvec(interior) dBx(interior) dBy(interior) dBz(interior)
   READS: saved_prims(interior)
   # WRITES: dens(interior) tau(interior) mom(interior)
   WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior)
   WRITES: saved_prims(interior)
   WRITES: HydroBase::Bvec(interior)
   # SYNC: dens tau mom
-  SYNC: HydroBase::rho HydroBase::vel HydroBase::eps HydroBase::press
+  SYNC: HydroBase::rho HydroBase::vel HydroBase::eps HydroBase::press HydroBase::Bvec
   SYNC: saved_prims
 } "Calculate primitive variables from conservative variables"
   

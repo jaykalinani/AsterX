@@ -38,23 +38,16 @@ namespace AsterX
           const auto ijkm = p.I - DI[2];
 
           /* dBx is curl(A) at i+1/2 */
-          if (dir == 0)
-          {
-            dBx_stag(p.I) = idx[1] * (Avec_z(p.I) - Avec_z(ijmk)) -
+          dBx_stag(p.I) = idx[1] * (Avec_z(p.I) - Avec_z(ijmk)) -
                             idx[2] * (Avec_y(p.I) - Avec_y(ijkm));
-          }
-          else if (dir == 1)
-          {
-            /* dBy is curl(A) at j+1/2 */
-            dBy_stag(p.I) = idx[2] * (Avec_x(p.I) - Avec_x(ijkm)) -
+          
+          /* dBy is curl(A) at j+1/2 */
+          dBy_stag(p.I) = idx[2] * (Avec_x(p.I) - Avec_x(ijkm)) -
                             idx[0] * (Avec_z(p.I) - Avec_z(imjk));
-          }
-          else if (dir == 2)
-          {
-            /* dBz is curl(A) at z+1/2 */
-            dBz_stag(p.I) = idx[0] * (Avec_y(p.I) - Avec_y(imjk)) -
+          
+          /* dBz is curl(A) at z+1/2 */
+          dBz_stag(p.I) = idx[0] * (Avec_y(p.I) - Avec_y(imjk)) -
                             idx[1] * (Avec_x(p.I) - Avec_x(ijmk));
-          }
           //TODO: need to implement copy conditions?
         });
   }
