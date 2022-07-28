@@ -963,7 +963,7 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         for (int comp = 0; comp < numcomp; ++comp) {
           GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
           const CCTK_REAL dirichlet_value = groupdata.dirichlet_values.at(comp);
-#pragma omp task final(true) untied
+          // #pragma omp task final(true) untied
           loop_region(
               [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
                   CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -983,7 +983,7 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
 
         for (int comp = 0; comp < numcomp; ++comp) {
           GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
-#pragma omp task final(true) untied
+          // #pragma omp task final(true) untied
           loop_region(
               [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
                   CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -1008,7 +1008,7 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         for (int comp = 0; comp < numcomp; ++comp) {
           GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
           const int parity = groupdata.parities.at(comp).at(dir);
-#pragma omp task final(true) untied
+          // #pragma omp task final(true) untied
           loop_region(
               [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
                   CCTK_ATTRIBUTE_ALWAYS_INLINE {
