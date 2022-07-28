@@ -226,6 +226,21 @@ inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T muladd(const T &x, const T &y,
                                                      const T &z) {
   return x * y + z;
 }
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T mulsub(const T &x, const T &y,
+                                                     const T &z) {
+  return x * y - z;
+}
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T negmuladd(const T &x, const T &y,
+                                                        const T &z) {
+  return -(x * y) + z;
+}
+template <typename T>
+inline ARITH_INLINE ARITH_DEVICE ARITH_HOST T negmulsub(const T &x, const T &y,
+                                                        const T &z) {
+  return -(x * y) - z;
+}
 
 // Factorial
 inline ARITH_INLINE ARITH_DEVICE ARITH_HOST int factorial(int n) {

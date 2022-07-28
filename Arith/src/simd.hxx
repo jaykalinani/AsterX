@@ -497,8 +497,11 @@ template <typename T> struct simd {
   friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const simd &x,
                                                        const simd &y,
                                                        const simd &z) {
-    using std::fma;
-    return fma(x.elts, y.elts, z.elts);
+#ifndef SIMD_CPU
+    return nsimd::fma(x.elts, y.elts, z.elts);
+#else
+    return muladd(x.elts, y.elts, z.elts);
+#endif
   }
   friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const T &a,
                                                        const simd &y,
@@ -527,6 +530,124 @@ template <typename T> struct simd {
   friend constexpr ARITH_DEVICE ARITH_HOST simd muladd(const simd &x,
                                                        const T &b, const T &c) {
     return muladd(x, simd(b), simd(c));
+  }
+
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const simd &x,
+                                                       const simd &y,
+                                                       const simd &z) {
+#ifndef SIMD_CPU
+    return nsimd::fms(x.elts, y.elts, z.elts);
+#else
+    return mulsub(x.elts, y.elts, z.elts);
+#endif
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const T &a,
+                                                       const simd &y,
+                                                       const simd &z) {
+    return mulsub(simd(a), y, z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const simd &x,
+                                                       const T &b,
+                                                       const simd &z) {
+    return mulsub(x, simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const T &a, const T &b,
+                                                       const simd &z) {
+    return mulsub(simd(a), simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const simd &x,
+                                                       const simd &y,
+                                                       const T &c) {
+    return mulsub(x, y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const T &a,
+                                                       const simd &y,
+                                                       const T &c) {
+    return mulsub(simd(a), y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd mulsub(const simd &x,
+                                                       const T &b, const T &c) {
+    return mulsub(x, simd(b), simd(c));
+  }
+
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const simd &x,
+                                                          const simd &y,
+                                                          const simd &z) {
+#ifndef SIMD_CPU
+    return nsimd::fnma(x.elts, y.elts, z.elts);
+#else
+    return negmuladd(x.elts, y.elts, z.elts);
+#endif
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const T &a,
+                                                          const simd &y,
+                                                          const simd &z) {
+    return negmuladd(simd(a), y, z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const simd &x,
+                                                          const T &b,
+                                                          const simd &z) {
+    return negmuladd(x, simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const T &a,
+                                                          const T &b,
+                                                          const simd &z) {
+    return negmuladd(simd(a), simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const simd &x,
+                                                          const simd &y,
+                                                          const T &c) {
+    return negmuladd(x, y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const T &a,
+                                                          const simd &y,
+                                                          const T &c) {
+    return negmuladd(simd(a), y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmuladd(const simd &x,
+                                                          const T &b,
+                                                          const T &c) {
+    return negmuladd(x, simd(b), simd(c));
+  }
+
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const simd &x,
+                                                          const simd &y,
+                                                          const simd &z) {
+#ifndef SIMD_CPU
+    return nsimd::fnms(x.elts, y.elts, z.elts);
+#else
+    return negmulsub(x.elts, y.elts, z.elts);
+#endif
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const T &a,
+                                                          const simd &y,
+                                                          const simd &z) {
+    return negmulsub(simd(a), y, z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const simd &x,
+                                                          const T &b,
+                                                          const simd &z) {
+    return negmulsub(x, simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const T &a,
+                                                          const T &b,
+                                                          const simd &z) {
+    return negmulsub(simd(a), simd(b), z);
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const simd &x,
+                                                          const simd &y,
+                                                          const T &c) {
+    return negmulsub(x, y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const T &a,
+                                                          const simd &y,
+                                                          const T &c) {
+    return negmulsub(simd(a), y, simd(c));
+  }
+  friend constexpr ARITH_DEVICE ARITH_HOST simd negmulsub(const simd &x,
+                                                          const T &b,
+                                                          const T &c) {
+    return negmulsub(x, simd(b), simd(c));
   }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> signbit(const simd &x) {
