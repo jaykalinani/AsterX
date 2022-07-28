@@ -437,6 +437,7 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
     if (1)
     { // Use this if for idealFluid/tabeos
       AsterX_Con2Prim_typeEoS<idealFluid>(CCTK_PASS_CTOC);
+      // CCTK_PASS_CTOC == cctkGH, and more. Preferred over just cctkGH.
     }
   }
 
