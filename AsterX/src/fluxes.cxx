@@ -490,7 +490,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         alp_avg*vely_rc[0] - beta_avg,
         alp_avg*vely_rc[1] - beta_avg};
 
-    const array<CCTK_REAL, 2> vtildey_rc = {
+    const array<CCTK_REAL, 2> vtildez_rc = {
         alp_avg*velz_rc[0] - beta_avg,
         alp_avg*velz_rc[1] - beta_avg};
 
