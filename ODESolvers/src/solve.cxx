@@ -183,7 +183,7 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
 #endif
 
   for (size_t m = 0; m < size; ++m) {
-    const size_t ncomp = dst.mfabs.at(m)->nComp();
+    const ptrdiff_t ncomps = dst.mfabs.at(m)->nComp();
     const auto mfitinfo = amrex::MFItInfo().DisableDeviceSync();
     for (amrex::MFIter mfi(*dst.mfabs.at(m), mfitinfo); mfi.isValid(); ++mfi) {
       const amrex::Array4<CCTK_REAL> dstvar = dst.mfabs.at(m)->array(mfi);
@@ -201,36 +201,40 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
       array<const CCTK_REAL *restrict, N> srcptrs;
       for (size_t n = 0; n < N; ++n)
         srcptrs[n] = srcvars[n].dataPtr();
-      const ptrdiff_t npoints = nstride * ncomp;
+      const ptrdiff_t npoints = nstride;
 
 #ifndef AMREX_USE_GPU
       // CPU
 
       if (!read_dst) {
 
-        auto task = [=]() {
+        for (ptrdiff_t comp = 0; comp < ncomps; ++comp) {
+          auto task = [=]() {
 #pragma omp simd
-          for (ptrdiff_t i = 0; i < npoints; ++i) {
-            CCTK_REAL accum = 0;
-            for (size_t n = 0; n < N; ++n)
-              accum += factors[n] * srcptrs[n][i];
-            dstptr[i] = accum;
-          }
-        };
-        tasks.emplace_back(move(task));
+            for (ptrdiff_t i = 0; i < npoints; ++i) {
+              CCTK_REAL accum = 0;
+              for (size_t n = 0; n < N; ++n)
+                accum += factors[n] * srcptrs[n][comp * npoints + i];
+              dstptr[comp * npoints + i] = accum;
+            }
+          };
+          tasks.push_back(std::move(task));
+        }
 
       } else {
 
-        auto task = [=]() {
+        for (ptrdiff_t comp = 0; comp < ncomps; ++comp) {
+          auto task = [=]() {
 #pragma omp simd
-          for (ptrdiff_t i = 0; i < npoints; ++i) {
-            CCTK_REAL accum = scale * dstptr[i];
-            for (size_t n = 0; n < N; ++n)
-              accum += factors[n] * srcptrs[n][i];
-            dstptr[i] = accum;
-          }
-        };
-        tasks.emplace_back(move(task));
+            for (ptrdiff_t i = 0; i < npoints; ++i) {
+              CCTK_REAL accum = scale * dstptr[comp * npoints + i];
+              for (size_t n = 0; n < N; ++n)
+                accum += factors[n] * srcptrs[n][comp * npoints + i];
+              dstptr[comp * npoints + i] = accum;
+            }
+          };
+          tasks.push_back(std::move(task));
+        }
       }
 
 #else
@@ -245,29 +249,35 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
 
       if (!read_dst) {
 
-        amrex::launch(box, [=] CCTK_DEVICE(const amrex::Box &box)
-                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                 const int i = box.smallEnd()[0];
-                                 // const int j = box.smallEnd()[1];
-                                 // const int k = box.smallEnd()[2];
-                                 CCTK_REAL accum = 0;
-                                 for (size_t n = 0; n < N; ++n)
-                                   accum += factors[n] * srcptrs[n][i];
-                                 dstptr[i] = accum;
-                               });
+        for (ptrdiff_t comp = 0; comp < ncomps; ++comp) {
+          amrex::launch(box, [=] CCTK_DEVICE(const amrex::Box &box)
+                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                   const int i = box.smallEnd()[0];
+                                   // const int j = box.smallEnd()[1];
+                                   // const int k = box.smallEnd()[2];
+                                   CCTK_REAL accum = 0;
+                                   for (size_t n = 0; n < N; ++n)
+                                     accum += factors[n] *
+                                              srcptrs[n][comp * npoints + i];
+                                   dstptr[comp * npoints + i] = accum;
+                                 });
+        }
 
       } else {
 
-        amrex::launch(box, [=] CCTK_DEVICE(const amrex::Box &box)
-                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                 const int i = box.smallEnd()[0];
-                                 // const int j = box.smallEnd()[1];
-                                 // const int k = box.smallEnd()[2];
-                                 CCTK_REAL accum = scale1 * dstptr[i];
-                                 for (size_t n = 0; n < N; ++n)
-                                   accum += factors[n] * srcptrs[n][i];
-                                 dstptr[i] = accum;
-                               });
+        for (ptrdiff_t comp = 0; comp < ncomps; ++comp) {
+          amrex::launch(
+              box, [=] CCTK_DEVICE(const amrex::Box &box)
+                       CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                         const int i = box.smallEnd()[0];
+                         // const int j = box.smallEnd()[1];
+                         // const int k = box.smallEnd()[2];
+                         CCTK_REAL accum = scale1 * dstptr[comp * npoints + i];
+                         for (size_t n = 0; n < N; ++n)
+                           accum += factors[n] * srcptrs[n][comp * npoints + i];
+                         dstptr[comp * npoints + i] = accum;
+                       });
+        }
       }
 
 #endif
