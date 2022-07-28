@@ -317,19 +317,6 @@ extern unique_ptr<GHExt> ghext;
 
 amrex::Interpolater *get_interpolator(const array<int, dim> indextype);
 
-struct apply_physbcs_t {
-  apply_physbcs_t() = delete;
-  apply_physbcs_t(const GHExt::PatchData::LevelData::GroupData &groupdata)
-      : groupdata(groupdata) {}
-
-  const GHExt::PatchData::LevelData::GroupData &groupdata;
-
-  void operator()(const amrex::Box &box, amrex::FArrayBox &dest, int dcomp,
-                  int numcomp, const amrex::Geometry &geom, CCTK_REAL time,
-                  const amrex::Vector<amrex::BCRec> &bcr, int bcomp,
-                  int orig_comp) const;
-};
-
 } // namespace CarpetX
 
 #endif // #ifndef DRIVER_HXX
