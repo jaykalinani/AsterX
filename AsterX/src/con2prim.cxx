@@ -418,9 +418,9 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           saved_vely(p.I) = vely(p.I);
           saved_velz(p.I) = velz(p.I);
           saved_eps(p.I) = eps(p.I);
-          saved_Bvecx(p.I) = Bvecx(p.I);
-          saved_Bvecy(p.I) = Bvecy(p.I);
-          saved_Bvecz(p.I) = Bvecz(p.I);
+          saved_Bvecx(p.I) = prims[B1];
+          saved_Bvecy(p.I) = prims[B2];
+          saved_Bvecz(p.I) = prims[B3];
         }); // Loop
   }         // AsterX_Con2Prim_2DNRNoble
 
