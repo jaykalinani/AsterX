@@ -4,15 +4,11 @@ IMPLEMENTS: AsterX
 
 INHERITS: CarpetX ADMBase HydroBase
 
-
-
 USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: loop_device.hxx
 
+PUBLIC:
 
-
-# The "fluxes=..." declaration would be required for refluxing. We're not using refluxing, though.
-# CCTK_REAL conserved TYPE=gf CENTERING={ccc} TAGS='fluxes="HydroToyGPU::flux_x HydroToyGPU::flux_y HydroToyGPU::flux_z" rhs="rhs"'
 CCTK_REAL dens TYPE=gf CENTERING={ccc} TAGS='rhs="densrhs"' "Conserved rest mass density"
 
 CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs"'
