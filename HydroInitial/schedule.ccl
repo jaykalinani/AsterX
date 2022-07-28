@@ -6,5 +6,7 @@ SCHEDULE HydroInitial_Initialize IN HydroBase_InitialData
 {
   LANG: C
   WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere) 
-  WRITES: HydroBase::Bvec(everywhere) AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
+  WRITES: HydroBase::Bvec(everywhere) 
+  WRITES: AsterX::Avec_x(interior) AsterX::Avec_y(interior) AsterX::Avec_z(interior)
+  SYNC: AsterX::Avec_x AsterX::Avec_y AsterX::Avec_z
 } "Set up hydro initial conditions"
