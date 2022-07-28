@@ -35,18 +35,6 @@
 namespace CarpetX {
 using namespace std;
 
-template <typename T> constexpr T ipow(T x, int n) {
-  assert(n >= 0);
-  T r = 1;
-  while (n > 0) {
-    if (n % 2)
-      r *= x;
-    n /= 2;
-    x *= x;
-  }
-  return r;
-}
-
 // Global variables
 
 int ghext_handle = -1;
