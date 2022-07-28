@@ -60,12 +60,14 @@ template <typename T> using float_type = typename reinterpret<T>::float_type;
 // this wrapper class here might be avoided.
 
 template <typename T> struct simd {
-  typedef T value_type;
+  using value_type = T;
 #ifndef SIMD_CPU
-  nsimd::pack<T> elts;
+  using storage_type = nsimd::pack<T>;
 #else
-  T elts;
+  using storage_type = T;
 #endif
+  storage_type elts;
+  static constexpr std::size_t storage_size = sizeof(storage_type) / sizeof(T);
 
   constexpr simd(const simd &) = default;
   constexpr simd(simd &&) = default;
@@ -90,13 +92,19 @@ template <typename T> struct simd {
   }
 
   constexpr ARITH_DEVICE ARITH_HOST T operator[](const std::ptrdiff_t n) const {
-    constexpr size_t vsize = tuple_size_v<simd>;
 #ifdef CCTK_DEBUG
-    assert(n >= 0 && n < int(vsize));
+    assert(n >= 0 && n < int(storage_size));
 #endif
-    T xarr[vsize];
+    T xarr[storage_size];
     storeu(xarr, *this);
     return xarr[n];
+  }
+
+  template <std::size_t I>
+  friend constexpr
+      ARITH_DEVICE ARITH_HOST std::enable_if_t<(I >= 0 && I < storage_size), T>
+      get(const simd &x) {
+    return x[I];
   }
 
   friend constexpr ARITH_DEVICE ARITH_HOST simdl<T> operator!(const simd &x) {
@@ -577,8 +585,7 @@ template <typename T> struct simd {
 
   friend ostream &operator<<(ostream &os, const simd &x) {
     os << "Ⓢ[";
-    constexpr size_t vsize = tuple_size_v<simd>;
-    for (size_t n = 0; n < vsize; ++n) {
+    for (size_t n = 0; n < storage_size; ++n) {
       if (n != 0)
         os << ",";
       os << x[n];
@@ -592,8 +599,7 @@ template <typename T> struct simd {
 namespace std {
 template <typename T>
 struct tuple_size<Arith::simd<T> >
-    : std::integral_constant<std::size_t, sizeof(Arith::simd<T>) / sizeof(T)> {
-};
+    : std::integral_constant<std::size_t, Arith::simd<T>::storage_size> {};
 } // namespace std
 namespace Arith {
 
@@ -731,21 +737,19 @@ masko_loadu(const simdl<T> &mask, const T *ptr, const U &other) {
 
 template <typename T>
 ARITH_DEVICE ARITH_HOST inline simd<T> cbrt(const simd<T> &x) {
-  constexpr size_t vsize = tuple_size_v<simd<T> >;
-  alignas(alignof(simd<T>)) T xarr[vsize];
+  alignas(alignof(simd<T>)) T xarr[simd<T>::storage_size];
   storea(xarr, x);
-  alignas(alignof(simd<T>)) T yarr[vsize];
+  alignas(alignof(simd<T>)) T yarr[simd<T>::storage_size];
   for (std::size_t n = 0; n < x.size(); ++n) {
     using std::cbrt;
     yarr[n] = cbrt(xarr[n]);
   }
   const simd<T> y = loada<simd<T> >(yarr);
   return y;
-  // constexpr size_t vsize = tuple_size_v<simd<T> >;
-  // T xarr[vsize];
+  // T xarr[storage_size];
   // storeu(xarr, x);
-  // T yarr[vsize];
-  // for (std::size_t n = 0; n < vsize; ++n) {
+  // T yarr[storage_size];
+  // for (std::size_t n = 0; n < storage_size; ++n) {
   //   using std::cbrt;
   //   yarr[n] = cbrt(xarr[n]);
   // }
@@ -755,21 +759,19 @@ ARITH_DEVICE ARITH_HOST inline simd<T> cbrt(const simd<T> &x) {
 
 template <typename T>
 ARITH_DEVICE ARITH_HOST inline simd<T> sin(const simd<T> &x) {
-  constexpr size_t vsize = tuple_size_v<simd<T> >;
-  alignas(alignof(simd<T>)) T xarr[vsize];
+  alignas(alignof(simd<T>)) T xarr[simd<T>::storage_size];
   storea(xarr, x);
-  alignas(alignof(simd<T>)) T yarr[vsize];
+  alignas(alignof(simd<T>)) T yarr[simd<T>::storage_size];
   for (std::size_t n = 0; n < x.size(); ++n) {
     using std::sin;
     yarr[n] = sin(xarr[n]);
   }
   const simd<T> y = loada<simd<T> >(yarr);
   return y;
-  // constexpr size_t vsize = tuple_size_v<simd<T> >;
-  // T xarr[vsize];
+  // T xarr[storage_size];
   // storeu(xarr, x);
-  // T yarr[vsize];
-  // for (std::size_t n = 0; n < vsize; ++n) {
+  // T yarr[storage_size];
+  // for (std::size_t n = 0; n < storage_size; ++n) {
   //   using std::sin;
   //   yarr[n] = sin(xarr[n]);
   // }
@@ -793,10 +795,12 @@ ARITH_DEVICE ARITH_HOST inline simd<T> sin(const simd<T> &x) {
 template <typename T> struct simdl {
   typedef T value_type;
 #ifndef SIMD_CPU
-  nsimd::packl<T> elts;
+  using storage_type = nsimd::packl<T>;
 #else
-  bool elts;
+  using storage_type = bool;
 #endif
+  storage_type elts;
+  static constexpr std::size_t storage_size = simd<T>::storage_size;
 
   simdl(const simdl &) = default;
   simdl(simdl &&) = default;
@@ -820,11 +824,10 @@ template <typename T> struct simdl {
 
   constexpr ARITH_DEVICE ARITH_HOST bool
   operator[](const std::ptrdiff_t n) const {
-    constexpr size_t vsize = tuple_size_v<simdl>;
 #ifdef CCTK_DEBUG
-    assert(n >= 0 && n < int(vsize));
+    assert(n >= 0 && n < int(storage_size));
 #endif
-    T xarr[vsize];
+    T xarr[storage_size];
 #ifndef SIMD_CPU
     // TOOD: Introduce `to_mask` for simd/simdl
     storeu(xarr, nsimd::to_mask(elts));
@@ -832,6 +835,13 @@ template <typename T> struct simdl {
     *xarr = elts;
 #endif
     return xarr[n];
+  }
+
+  template <std::size_t I>
+  friend constexpr ARITH_DEVICE ARITH_HOST
+      std::enable_if_t<(I >= 0 && I < storage_size), bool>
+      get(const simdl &x) {
+    return x[I];
   }
 
   friend ARITH_DEVICE ARITH_HOST simdl operator!(const simdl &x) {
@@ -1054,8 +1064,7 @@ template <typename T> struct simdl {
 
   friend ostream &operator<<(ostream &os, const simdl &x) {
     os << "Ⓑ[";
-    constexpr size_t vsize = tuple_size_v<simdl>;
-    for (size_t n = 0; n < vsize; ++n) {
+    for (size_t n = 0; n < storage_size; ++n) {
       if (n != 0)
         os << ",";
       os << x[n];
@@ -1069,8 +1078,7 @@ template <typename T> struct simdl {
 namespace std {
 template <typename T>
 struct tuple_size<Arith::simdl<T> >
-    : std::integral_constant<std::size_t, sizeof(Arith::simd<T>) / sizeof(T)> {
-};
+    : std::integral_constant<std::size_t, Arith::simdl<T>::storage_size> {};
 } // namespace std
 namespace Arith {
 
