@@ -786,7 +786,7 @@ void loop_over_blocks(
           block_kernel(leveldata.patch, leveldata.level, mfp.index(), block,
                        localGH);
         };
-        tasks.emplace_back(move(task));
+        tasks.push_back(std::move(task));
       }
     });
 
