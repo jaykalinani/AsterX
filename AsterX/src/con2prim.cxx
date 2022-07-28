@@ -323,10 +323,10 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
               gamma33; // Inverse components of spatial metric
 
           CCTK_REAL spatial_detg = -g_lo[1][3] * g_lo[1][3] * g_lo[2][2] +
-                         2 * g_lo[1][2] * g_lo[1][3] * g_lo[2][3] -
-                         g_lo[1][1] * g_lo[2][3] * g_lo[2][3] -
-                         g_lo[1][2] * g_lo[1][2] * g_lo[3][3] +
-                         g_lo[1][1] * g_lo[2][2] * g_lo[3][3];
+                                   2 * g_lo[1][2] * g_lo[1][3] * g_lo[2][3] -
+                                   g_lo[1][1] * g_lo[2][3] * g_lo[2][3] -
+                                   g_lo[1][2] * g_lo[1][2] * g_lo[3][3] +
+                                   g_lo[1][1] * g_lo[2][2] * g_lo[3][3];
 
           gamma11 =
               (-g_lo[2][3] * g_lo[2][3] + g_lo[2][2] * g_lo[3][3]) / spatial_detg;
@@ -360,14 +360,14 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           g_up[3][2] = g_up[2][3];
 
           CCTK_REAL cons[NCONS];
-          cons[D] = dens(p.I);
-          cons[S1_COV] = momx(p.I);
-          cons[S2_COV] = momy(p.I);
-          cons[S3_COV] = momz(p.I);
-          cons[TAU] = tau(p.I);
-          cons[B1] = dBx(p.I);
-          cons[B2] = dBy(p.I);
-          cons[B3] = dBz(p.I);
+          cons[D] = dens(p.I) / sqrt(spatial_detg);
+          cons[S1_COV] = momx(p.I) / sqrt(spatial_detg);
+          cons[S2_COV] = momy(p.I) / sqrt(spatial_detg);
+          cons[S3_COV] = momz(p.I / sqrt(spatial_detg));
+          cons[TAU] = tau(p.I) / sqrt(spatial_detg);
+          cons[B1] = dBx(p.I) / sqrt(spatial_detg);
+          cons[B2] = dBy(p.I) / sqrt(spatial_detg);
+          cons[B3] = dBz(p.I) / sqrt(spatial_detg);
 
           CCTK_REAL prims[NPRIMS];
           prims[RHO] = saved_rho(p.I);
@@ -375,14 +375,14 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           prims[V2_CON] = saved_vely(p.I);
           prims[V3_CON] = saved_velz(p.I);
           prims[EPS] = saved_eps(p.I);
-          prims[B1] = cons[B1]/sqrt(spatial_detg);
-          prims[B2] = cons[B2]/sqrt(spatial_detg);
-          prims[B3] = cons[B3]/sqrt(spatial_detg);
+          prims[B1] = cons[B1];
+          prims[B2] = cons[B2];
+          prims[B3] = cons[B3];
 
           // Construct con2primFactory object:
           typeEoS plasma_0(gamma, cons, prims, g_lo, g_up);
           // 1) Try 2DNRNoble
-          Con2Prim_2DNRNoble( max_iter, c2p_tol, plasma_0);
+          Con2Prim_2DNRNoble(max_iter, c2p_tol, plasma_0);
 
           if (plasma_0.Failed_2DNRNoble)
           {
@@ -392,10 +392,10 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
             eps(p.I) = prims[EPS];
-	    press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
-	    Bvecx(p.I) = prims[B1];
-	    Bvecy(p.I) = prims[B2];
-	    Bvecz(p.I) = prims[B3];
+            press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+            Bvecx(p.I) = prims[B1];
+            Bvecy(p.I) = prims[B2];
+            Bvecz(p.I) = prims[B3];
 
             //assert(0); // Terminate?
           }
@@ -408,7 +408,7 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             velz(p.I) = plasma_0.PrimitiveVars[V3_CON];
             eps(p.I) = plasma_0.PrimitiveVars[EPS];
             press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
-	    Bvecx(p.I) = prims[B1];
+            Bvecx(p.I) = prims[B1];
             Bvecy(p.I) = prims[B2];
             Bvecz(p.I) = prims[B3];
           }
