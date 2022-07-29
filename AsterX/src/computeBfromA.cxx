@@ -33,21 +33,24 @@ namespace AsterX
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE
         {
           // Neighbouring "plus" and "minus" cell indices
-          const auto imjk = p.I - DI[0];
-          const auto ijmk = p.I - DI[1];
-          const auto ijkm = p.I - DI[2];
+          const auto ipjk = p.I + DI[0];
+          const auto ijpk = p.I + DI[1];
+          const auto ijkp = p.I + DI[2];
 
-          /* dBx is curl(A) at i+1/2 */
-          dBx_stag(p.I) = idx[1] * (Avec_z(p.I) - Avec_z(ijmk)) -
-                            idx[2] * (Avec_y(p.I) - Avec_y(ijkm));
-          
-          /* dBy is curl(A) at j+1/2 */
-          dBy_stag(p.I) = idx[2] * (Avec_x(p.I) - Avec_x(ijkm)) -
-                            idx[0] * (Avec_z(p.I) - Avec_z(imjk));
-          
-          /* dBz is curl(A) at z+1/2 */
-          dBz_stag(p.I) = idx[0] * (Avec_y(p.I) - Avec_y(imjk)) -
-                            idx[1] * (Avec_x(p.I) - Avec_x(ijmk));
+          if (dir == 0) {
+            /* dBx is curl(A) at (i-1/2,j,k) */
+            dBx_stag(p.I) = idx[1] * (Avec_z(ijpk) - Avec_z(p.I)) -
+                            idx[2] * (Avec_y(ijkp) - Avec_y(p.I));
+          } else if (dir == 1) {
+            /* dBy is curl(A) at (i,j-1/2,k) */
+            dBy_stag(p.I) = idx[2] * (Avec_x(ijkp) - Avec_x(p.I)) -
+                            idx[0] * (Avec_z(ipjk) - Avec_z(p.I));
+          } else if (dir == 2) {
+            /* dBz is curl(A) at (i,j,z-1/2) */
+            dBz_stag(p.I) = idx[0] * (Avec_y(ipjk) - Avec_y(p.I)) -
+                            idx[1] * (Avec_x(ijpk) - Avec_x(p.I));
+          }
+
           //TODO: need to implement copy conditions?
         });
   }
@@ -73,14 +76,14 @@ namespace AsterX
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE
         {
           // Neighbouring "plus" and "minus" cell indices
-          const auto imjk = p.I - DI[0];
-          const auto ijmk = p.I - DI[1];
-          const auto ijkm = p.I - DI[2];
+          const auto ipjk = p.I + DI[0];
+          const auto ijpk = p.I + DI[1];
+          const auto ijkp = p.I + DI[2];
 
           /* Second order interpolation of staggered B components to cell center */
-          dBx(p.I) = 0.5 * (dBx_stag(p.I) + dBx_stag(imjk));
-          dBy(p.I) = 0.5 * (dBy_stag(p.I) + dBy_stag(ijmk));
-          dBz(p.I) = 0.5 * (dBz_stag(p.I) + dBz_stag(ijkm));
+          dBx(p.I) = 0.5 * (dBx_stag(p.I) + dBx_stag(ipjk));
+          dBy(p.I) = 0.5 * (dBy_stag(p.I) + dBy_stag(ijpk));
+          dBz(p.I) = 0.5 * (dBz_stag(p.I) + dBz_stag(ijkp));
         });
   }
 

@@ -15,82 +15,71 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // Loop over the entire grid (0 to n-1 cells in each direction)
-  grid.loop_int_device<1, 1, 1>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        // Interpolate metric terms from vertices to center
-        metric g;
-        g.gxx = calc_avg_v2c(gxx, p);
-        g.gxy = calc_avg_v2c(gxy, p);
-        g.gxz = calc_avg_v2c(gxz, p);
-        g.gyy = calc_avg_v2c(gyy, p);
-        g.gyz = calc_avg_v2c(gyz, p);
-        g.gzz = calc_avg_v2c(gzz, p);
-        
-	// Interpolate lapse and shift from vertice to center
-	lapse l;
-        l.alp = calc_avg_v2c(alp, p);
-	shift shft;
-        shft.betax = calc_avg_v2c(betax, p);
-        shft.betay = calc_avg_v2c(betay, p);
-        shft.betaz = calc_avg_v2c(betaz, p);
+  grid.loop_int_device<1, 1, 1>(grid.nghostzones,
+                                [=] CCTK_DEVICE(const PointDesc &p)
+                                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                      // Interpolate metric terms from vertices
+                                      // to center
+                                      metric g;
+                                      g.gxx = calc_avg_v2c(gxx, p);
+                                      g.gxy = calc_avg_v2c(gxy, p);
+                                      g.gxz = calc_avg_v2c(gxz, p);
+                                      g.gyy = calc_avg_v2c(gyy, p);
+                                      g.gyz = calc_avg_v2c(gyz, p);
+                                      g.gzz = calc_avg_v2c(gzz, p);
 
-        prim pv;
-        pv.rho = rho(p.I);
-        pv.velx = velx(p.I);
-        pv.vely = vely(p.I);
-        pv.velz = velz(p.I);
-        pv.eps = eps(p.I);
-        pv.press = press(p.I);
-        pv.Bvecx = Bvecx(p.I);
-        pv.Bvecy = Bvecy(p.I);
-        pv.Bvecz = Bvecz(p.I);
+                                      // Interpolate lapse and shift from
+                                      // vertice to center
+                                      lapse l;
+                                      l.alp = calc_avg_v2c(alp, p);
+                                      shift shft;
+                                      shft.betax = calc_avg_v2c(betax, p);
+                                      shft.betay = calc_avg_v2c(betay, p);
+                                      shft.betaz = calc_avg_v2c(betaz, p);
 
-        cons cv;
-        prim2con(g, l, shft, pv, cv);
+                                      prim pv;
+                                      pv.rho = rho(p.I);
+                                      pv.velx = velx(p.I);
+                                      pv.vely = vely(p.I);
+                                      pv.velz = velz(p.I);
+                                      pv.eps = eps(p.I);
+                                      pv.press = press(p.I);
+                                      pv.Bvecx = Bvecx(p.I);
+                                      pv.Bvecy = Bvecy(p.I);
+                                      pv.Bvecz = Bvecz(p.I);
 
-        dens(p.I) = cv.dens;
-        momx(p.I) = cv.momx;
-        momy(p.I) = cv.momy;
-        momz(p.I) = cv.momz;
-        tau(p.I) = cv.tau;
-        dBx(p.I) = cv.dBvecx;
-        dBy(p.I) = cv.dBvecy;
-        dBz(p.I) = cv.dBvecz;
+                                      cons cv;
+                                      prim2con(g, l, shft, pv, cv);
 
-        saved_rho(p.I) = pv.rho;
-        saved_velx(p.I) = pv.velx;
-        saved_vely(p.I) = pv.vely;
-        saved_velz(p.I) = pv.velz;
-        saved_eps(p.I) = pv.eps;
-        saved_Bvecx(p.I) = pv.Bvecx;
-        saved_Bvecy(p.I) = pv.Bvecy;
-        saved_Bvecz(p.I) = pv.Bvecz;
-      });
+                                      dens(p.I) = cv.dens;
+                                      momx(p.I) = cv.momx;
+                                      momy(p.I) = cv.momy;
+                                      momz(p.I) = cv.momz;
+                                      tau(p.I) = cv.tau;
+                                      dBx(p.I) = cv.dBvecx;
+                                      dBy(p.I) = cv.dBvecy;
+                                      dBz(p.I) = cv.dBvecz;
 
-  /* Initialize Avec_x, Ex */
-  grid.loop_int_device<1, 0, 0>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Avec_x(p.I) = 0.0; // TODO fix this
-      });
-  /* Initialize Avec_y, Ey */
-  grid.loop_int_device<0, 1, 0>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Avec_y(p.I) = 0.0; // TODO fix this
-      });
-  /* Initialize Avec_z, Ez */
-  grid.loop_int_device<0, 0, 1>(
-      grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Avec_z(p.I) = 0.0; // TODO fix this
-      });
+                                      saved_rho(p.I) = pv.rho;
+                                      saved_velx(p.I) = pv.velx;
+                                      saved_vely(p.I) = pv.vely;
+                                      saved_velz(p.I) = pv.velz;
+                                      saved_eps(p.I) = pv.eps;
+                                      saved_Bvecx(p.I) = pv.Bvecx;
+                                      saved_Bvecy(p.I) = pv.Bvecy;
+                                      saved_Bvecz(p.I) = pv.Bvecz;
+                                    });
+
   /* Initilaize Psi */
   grid.loop_int_device<0, 0, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        Psi(p.I) = 0.0; // TODO fix this
+        const CCTK_REAL Ax_vert = calc_avg_e2v(Avec_x, p, 0);
+        const CCTK_REAL Ay_vert = calc_avg_e2v(Avec_y, p, 1);
+        const CCTK_REAL Az_vert = calc_avg_e2v(Avec_z, p, 2);
+        const CCTK_REAL beta_Avec =
+            betax(p.I) * Ax_vert + betay(p.I) * Ay_vert + betaz(p.I) * Az_vert;
+        Psi(p.I) = -beta_Avec / alp(p.I);
       });
 }
 

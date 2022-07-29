@@ -15,11 +15,12 @@ SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
   LANG: C
   READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
   READS: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior) HydroBase::Bvec(interior)
+  READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere)
   WRITES: dens(interior) tau(interior) mom(interior) dB(interior)
-  WRITES: Avec_x(interior) Avec_y(interior) Avec_z(interior) Psi(interior)
+  WRITES: Psi(interior)
   WRITES: saved_prims
   SYNC: dens tau mom dB
-  SYNC: Avec_x Avec_y Avec_z Psi
+  SYNC: Psi
   SYNC: saved_prims
 } "Compute conserved variables from primitive variables at initial"
 
