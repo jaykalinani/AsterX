@@ -26,7 +26,7 @@ ODESolvers::method = "constant"
 TestODESolvers::order = 0 + 1
 
 IO::out_dir = $parfile
-IO::out_fileinfo  = "axis labels"
+IO::out_fileinfo = "axis labels"
 IO::parfile_write = "no"
 
 IO::out_every = 1
