@@ -462,7 +462,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         calc_upperg(gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg, detg);
 
     // Array containing uxx, uyy, uzz components of the upper metric
-    const array<CCTK_REAL, 3> ugs_avg = {ug_avg[0], ug_avg[2], ug_avg[5]};
+    const array<CCTK_REAL, 3> ugs_avg = {ug_avg[0], ug_avg[3], ug_avg[5]};
     // Variable for either uxx, uyy or uzz depending on the direction
     const CCTK_REAL u_avg = ugs_avg[dir];
 
@@ -484,16 +484,16 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     // Computing the contravariant coordinate velocity
     // vtilde^i = alpha*v^i - beta^i using the reconstructed variables
     const array<CCTK_REAL, 2> vtildex_rc = {
-        alp_avg*velx_rc[0] - beta_avg,
-        alp_avg*velx_rc[1] - beta_avg};
+        alp_avg*velx_rc[0] - betax_avg,
+        alp_avg*velx_rc[1] - betax_avg};
 
     const array<CCTK_REAL, 2> vtildey_rc = {
-        alp_avg*vely_rc[0] - beta_avg,
-        alp_avg*vely_rc[1] - beta_avg};
+        alp_avg*vely_rc[0] - betay_avg,
+        alp_avg*vely_rc[1] - betay_avg};
 
     const array<CCTK_REAL, 2> vtildez_rc = {
-        alp_avg*velz_rc[0] - beta_avg,
-        alp_avg*velz_rc[1] - beta_avg};
+        alp_avg*velz_rc[0] - betaz_avg,
+        alp_avg*velz_rc[1] - betaz_avg};
 
     const array<array<CCTK_REAL, 2>, 3> vtildes_rc = {
         vtildex_rc, vtildey_rc, vtildez_rc};
@@ -558,51 +558,51 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         Blowz_rc[0]/w_lorentz_rc[0] + alpha_b0_rc[0]*vlowz_rc[0],
         Blowz_rc[1]/w_lorentz_rc[1] + alpha_b0_rc[1]*vlowz_rc[1]};
 
-    const array<CCTK_REAL, 2> bsq = {
-        (B2_rc[0] + alpha_b0_rc[0]) / w_lorentz_rc[0],
-        (B2_rc[1] + alpha_b0_rc[1]) / w_lorentz_rc[1]
+    const array<CCTK_REAL, 2> bsq_rc = {
+        (B2_rc[0] + pow2(alpha_b0_rc[0])) / pow2(w_lorentz_rc[0]),
+        (B2_rc[1] + pow2(alpha_b0_rc[1])) / pow2(w_lorentz_rc[1])
     };
 
 
     // Auxiliary variables to compute the conservative variables and their
     // fluxes
-    const array<CCTK_REAL, 2> sqrt_detg_press_plus_pmag_rc = {
-        sqrt_detg * (press_rc[0] + 0.5*(B2_rc[0] + pow2(alpha_b0_rc[0]))/pow2(w_lorentz_rc[0])),
-        sqrt_detg * (press_rc[1] + 0.5*(B2_rc[1] + pow2(alpha_b0_rc[1]))/pow2(w_lorentz_rc[1]))};
+    const array<CCTK_REAL, 2> sqrt_detg_press_plus_pmag_rc = { // sqrt(g)*(p_gas + p_mag)
+        sqrt_detg * (press_rc[0] + 0.5 * bsq_rc[0]),
+        sqrt_detg * (press_rc[1] + 0.5 * bsq_rc[1])};
 
-    const array<CCTK_REAL, 2> alp_sqrt_detg_press_plus_pmag_rc = {
+    const array<CCTK_REAL, 2> alp_sqrt_detg_press_plus_pmag_rc = { // alp*sqrt(g)*(p_gas + p_mag)
         alp_avg * sqrt_detg_press_plus_pmag_rc[0],
         alp_avg * sqrt_detg_press_plus_pmag_rc[1]};
 
-    const array<CCTK_REAL, 2> alp_sqrt_detg_B_over_w_lorentz_rc = {
+    const array<CCTK_REAL, 2> alp_sqrt_detg_B_over_w_lorentz_rc = { // alp*sqrt(g)*B^i / W
         alp_avg * sqrt_detg * B_rc[0] / w_lorentz_rc[0],
         alp_avg * sqrt_detg * B_rc[1] / w_lorentz_rc[1]};
 
 
     // Computing conservatives from primitives
-    const array<CCTK_REAL, 2> dens_rc = {
+    const array<CCTK_REAL, 2> dens_rc = { // sqrt(g)*rho*W
         sqrt_detg * rho_rc[0] * w_lorentz_rc[0],
         sqrt_detg * rho_rc[1] * w_lorentz_rc[1]};
 
-    const array<CCTK_REAL, 2> dens_h_W_rc = {
+    const array<CCTK_REAL, 2> dens_h_W_rc = { // D*h*W = sqrt(g)*rho*h*W^2
         dens_rc[0] * h_rc[0] * w_lorentz_rc[0],
         dens_rc[1] * h_rc[1] * w_lorentz_rc[1]};
 
-    const array<CCTK_REAL, 2> dens_h_W_plus_sqrt_detg_W2b2_rc = {
+    const array<CCTK_REAL, 2> dens_h_W_plus_sqrt_detg_W2b2_rc = { // sqrt(g)*( rho*h*W^2 + b^2*W^2 ) = sqrt(g)( rho*h*W^2 + (alp^2*b0^2) + B^2 )
         dens_h_W_rc[0] + sqrt_detg * (pow2(alpha_b0_rc[0]) + B2_rc[0]),
         dens_h_W_rc[1] + sqrt_detg * (pow2(alpha_b0_rc[1]) + B2_rc[1])};
 
     const array<CCTK_REAL, 2> momx_rc = {
-        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowx_rc[0] - alpha_b0_rc[0]*blowx_rc[0],
-        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowx_rc[1] - alpha_b0_rc[1]*blowx_rc[1]};
+        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowx_rc[0] - sqrt_detg*alpha_b0_rc[0]*blowx_rc[0],
+        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowx_rc[1] - sqrt_detg*alpha_b0_rc[1]*blowx_rc[1]};
 
     const array<CCTK_REAL, 2> momy_rc = {
-        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowy_rc[0] - alpha_b0_rc[0]*blowy_rc[0],
-        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowy_rc[1] - alpha_b0_rc[1]*blowy_rc[1]};
+        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowy_rc[0] - sqrt_detg*alpha_b0_rc[0]*blowy_rc[0],
+        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowy_rc[1] - sqrt_detg*alpha_b0_rc[1]*blowy_rc[1]};
 
     const array<CCTK_REAL, 2> momz_rc = {
-        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowz_rc[0] - alpha_b0_rc[0]*blowz_rc[0],
-        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowz_rc[1] - alpha_b0_rc[1]*blowz_rc[1]};
+        dens_h_W_plus_sqrt_detg_W2b2_rc[0] * vlowz_rc[0] - sqrt_detg*alpha_b0_rc[0]*blowz_rc[0],
+        dens_h_W_plus_sqrt_detg_W2b2_rc[1] * vlowz_rc[1] - sqrt_detg*alpha_b0_rc[1]*blowz_rc[1]};
 
     // FIXME: B^2 = W^2·b^2 - (alpha·b^0)^2, is that true?
     const array<CCTK_REAL, 2> tau_rc = {
@@ -655,7 +655,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         -(dir==0)*(Btildez_rc[1] * vtildex_rc[1] - Btildex_rc[1] * vtildez_rc[1]) + (dir==1)*(Btildey_rc[1] * vtildez_rc[1] - Btildez_rc[1] * vtildey_rc[1])};
 
     array<array<CCTK_REAL, 4>, 2> lambda = eigenvalues(
-        alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc, bsq);
+        alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc, bsq_rc);
 
 
     gf_fluxdens(p.I) = calcflux(lambda, dens_rc, flux_dens);

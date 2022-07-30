@@ -26,12 +26,12 @@ CCTK_DEVICE CCTK_HOST array<T, 6>
 calc_upperg(const T &gxx, const T &gxy, const T &gxz, const T &gyy,
             const T &gyz, const T &gzz, const T &detg) {
   return {
-      (-gyz * gyz + gyy * gzz) / detg, // uxx
-      (gxz * gyz - gxy * gzz) / detg,  // uxy
-      (-gxz * gxz + gxx * gzz) / detg, // uyy
-      (-gxz * gyy + gxy * gyz) / detg, // uxz
-      (gxy * gxz - gxx * gyz) / detg,  // uyz
-      (-gxy * gxy + gxx * gyy) / detg  // uzz
+      (gyy * gzz - gyz * gyz) / detg, // uxx
+      (gxz * gyz - gxy * gzz) / detg, // uxy
+      (gxy * gyz - gxz * gyy) / detg, // uxz
+      (gxx * gzz - gxz * gxz) / detg, // uyy
+      (gxy * gxz - gyz * gxx) / detg, // uyz
+      (gxx * gyy - gxy * gxy) / detg  // uzz
   };
 }
 
