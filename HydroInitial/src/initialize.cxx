@@ -85,6 +85,25 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           Bvecz(p.I) = 0.0;
         });
 
+    grid.loop_int_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+	      Avec_x(p.I) = 0.0;
+        });
+
+    grid.loop_int_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          Avec_y(p.I) = 0.0;
+        });
+
+    grid.loop_int_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          Avec_z(p.I) = 0.0;
+        });
+
+
   } else if (CCTK_EQUALS(initial_hydro, "Balsara1")) {
 
     grid.loop_all_device<1, 1, 1>(
