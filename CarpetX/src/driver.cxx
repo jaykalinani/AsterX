@@ -863,9 +863,7 @@ template <typename F>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE void
 loop_region(const F &f, const Arith::vect<int, dim> &imin,
             const Arith::vect<int, dim> &imax) {
-  using std::max;
-  const int npoints = prod(max(0, imax - imin));
-  if (npoints == 0)
+  if (any(imax <= imin))
     return;
 
 #ifndef __CUDACC__
@@ -883,12 +881,11 @@ loop_region(const F &f, const Arith::vect<int, dim> &imin,
   // GPU
   const amrex::Box box(amrex::IntVect(imin[0], imin[1], imin[2]),
                        amrex::IntVect(imax[0] - 1, imax[1] - 1, imax[2] - 1));
-  amrex::launch(
-      box, [=] CCTK_DEVICE(const amrex::Box &box) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const Arith::vect<int, dim> p{box.smallEnd(0), box.smallEnd(1),
-                                      box.smallEnd(2)};
-        f(p);
-      });
+  amrex::ParallelFor(box, [=] CCTK_DEVICE(const int i, const int j, const int k)
+                              CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                const Arith::vect<int, dim> p{i, j, k};
+                                f(p);
+                              });
 #endif
 }
 
@@ -936,124 +933,140 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
   const GF3D2layout layout(dmin, dmax);
   CCTK_REAL *restrict const destptr = dest.dataPtr();
 
-  for (int dir = 0; dir < dim; ++dir) {
-    for (int face = 0; face < 2; ++face) {
-      using std::max, std::min;
-      Arith::vect<int, dim> bmin, bmax;
-      for (int d = 0; d < dim; ++d) {
-        if (d < dir) {
-          // This direction have already been traversed; its boundaries can be
-          // filled
-          bmin[d] = amin[d];
-          bmax[d] = amax[d];
-        } else if (d == dir) {
-          // This is the direction we have to fill
-          if (face == 0) {
+  // Loop over all faces, edges, and corners
+  for (int nk = -1; nk <= +1; ++nk) {
+    for (int nj = -1; nj <= +1; ++nj) {
+      for (int ni = -1; ni <= +1; ++ni) {
+        const Arith::vect<int, dim> inormal{ni, nj, nk};
+        // Ignore the interior
+        if (all(inormal == 0))
+          continue;
+
+        using std::max, std::min;
+        Arith::vect<int, dim> bmin, bmax;
+        for (int d = 0; d < dim; ++d) {
+          if (inormal[d] < 0) {
+            // We have to fill the lower boundary
             bmin[d] = amin[d];
             bmax[d] = min(amax[d], imin[d]);
-          } else {
+          } else if (inormal[d] > 0) {
+            // We have to fill the upper boundary
             bmin[d] = max(amin[d], imax[d]);
             bmax[d] = amax[d];
+          } else {
+            // This direction is not a boundary
+            bmin[d] = max(amin[d], imin[d]);
+            bmax[d] = min(amax[d], imax[d]);
           }
+        }
+
+        // Do we actually own part of this boundary?
+        bool npoints_is_zero = false;
+        for (int d = 0; d < dim; ++d)
+          npoints_is_zero |= bmax[d] <= bmin[d];
+        if (npoints_is_zero)
+          continue;
+
+        Arith::vect<symmetry_t, dim> symmetries;
+        for (int d = 0; d < dim; ++d)
+          symmetries[d] = inormal[d] != 0 ? ghext->patchdata.at(groupdata.patch)
+                                                .symmetries.at(inormal[d] > 0)
+                                                .at(d)
+                                          : symmetry_t::none;
+
+        if (all(symmetries == symmetry_t::none)) {
+
+          // do nothing
+
+        } else if (any(symmetries == symmetry_t::dirichlet)) {
+
+          for (int comp = 0; comp < numcomp; ++comp) {
+            const CCTK_REAL dirichlet_value =
+                groupdata.dirichlet_values.at(comp);
+            GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
+#ifndef __CUDACC__
+#pragma omp task final(true) untied
+#endif
+            loop_region(
+                [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                      var.store(dst, dirichlet_value);
+                    },
+                bmin, bmax);
+          }
+
         } else {
-          // This direction has not yet been traversed; its boundaries cannot be
-          // filled yet
-          // TODO: This is only true of that direction also is a
-          // symmetry boundary
-          // bmin[d] = max(amin[d], imin[d]);
-          // bmax[d] = min(amax[d], imax[d]);
-          bmin[d] = amin[d];
-          bmax[d] = amax[d];
+
+          Arith::vect<int, dim> von_neumann_source;
+          for (int d = 0; d < dim; ++d) {
+            if (inormal[d] != 0) {
+              von_neumann_source[d] = inormal[d] < 0 ? imin[d] : imax[d] - 1;
+              if (inormal[d] < 0)
+                assert(von_neumann_source[d] < amax[d]);
+              else
+                assert(von_neumann_source[d] >= amin[d]);
+            }
+          }
+
+          Arith::vect<int, dim> reflection_offset;
+          for (int d = 0; d < dim; ++d) {
+            if (inormal[d] != 0) {
+              reflection_offset[d] =
+                  inormal[d] < 0
+                      ? 2 * imin[d] - groupdata.indextype.at(d)
+                      : 2 * (imax[d] - 1) + groupdata.indextype.at(d);
+              if (inormal[d] < 0)
+                assert(reflection_offset[d] - bmin[d] < amax[d]);
+              else
+                assert(reflection_offset[d] - (bmax[d] - 1) >= amin[d]);
+            }
+          }
+
+          for (int comp = 0; comp < numcomp; ++comp) {
+
+            Arith::vect<bool, dim> reflection_parity;
+            for (int d = 0; d < dim; ++d)
+              reflection_parity[d] = groupdata.parities.at(comp).at(d) < 0;
+
+            GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
+#ifndef __CUDACC__
+#pragma omp task final(true) untied
+#endif
+            loop_region(
+                [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+                    CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                      Arith::vect<int, dim> src;
+                      bool parity = false;
+                      for (int d = 0; d < dim; ++d) {
+                        switch (symmetries[d]) {
+                        case symmetry_t::von_neumann:
+                          src[d] = von_neumann_source[d];
+                          break;
+                        case symmetry_t::reflection:
+                          // src[d] = inormal[d] < 0
+                          //              ? dst[d] + 2 * (imin[d] - dst[d]) -
+                          //                    groupdata.indextype.at(d)
+                          //              : dst[d] -
+                          //                    2 * (dst[d] - (imax[d] - 1)) +
+                          //                    groupdata.indextype.at(d);
+                          src[d] = reflection_offset[d] - dst[d];
+                          parity ^= reflection_parity[d];
+                          break;
+                        case symmetry_t::none:
+                          src[d] = dst[d];
+                          break;
+                        default:
+                          assert(0);
+                        }
+                      }
+                      const CCTK_REAL val = var(src);
+                      var.store(dst, parity ? -val : val);
+                    },
+                bmin, bmax);
+          }
         }
-      }
-
-      int npoints = 1;
-      for (int d = 0; d < dim; ++d)
-        npoints *= max(0, bmax[d] - bmin[d]);
-      if (npoints == 0)
-        continue;
-
-      switch (
-          ghext->patchdata.at(groupdata.patch).symmetries.at(face).at(dir)) {
-        // The order in which the symmetry conditions are checked is important.
-        // We prefer "simpler" symmetry conditions on corners and edges where
-        // multiple conditions might apply.
-
-      case symmetry_t::dirichlet: {
-        for (int comp = 0; comp < numcomp; ++comp) {
-          GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
-          const CCTK_REAL dirichlet_value = groupdata.dirichlet_values.at(comp);
-          // #pragma omp task final(true) untied
-          loop_region(
-              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                    var.store(dst, dirichlet_value);
-                  },
-              bmin, bmax);
-        }
-        break;
-      }
-
-      case symmetry_t::von_neumann: {
-        const int source = face == 0 ? imin[dir] : imax[dir] - 1;
-        if (face == 0)
-          assert(source < amax[dir]);
-        else
-          assert(amin[dir] <= source);
-
-        for (int comp = 0; comp < numcomp; ++comp) {
-          GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
-          // #pragma omp task final(true) untied
-          loop_region(
-              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                    Arith::vect<int, dim> src = dst;
-                    src[dir] = source;
-                    var.store(dst, var(src));
-                  },
-              bmin, bmax);
-        }
-        break;
-      }
-
-      case symmetry_t::reflection: {
-        const int offset =
-            face == 0 ? 2 * imin[dir] - groupdata.indextype.at(dir)
-                      : 2 * (imax[dir] - 1) + groupdata.indextype.at(dir);
-        if (face == 0)
-          assert(offset - bmin[dir] < amax[dir]);
-        else
-          assert(amin[dir] <= offset - (bmax[dir] - 1));
-
-        for (int comp = 0; comp < numcomp; ++comp) {
-          GF3D2<CCTK_REAL> var(layout, destptr + comp * layout.np);
-          const int parity = groupdata.parities.at(comp).at(dir);
-          // #pragma omp task final(true) untied
-          loop_region(
-              [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
-                  CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                    Arith::vect<int, dim> src = dst;
-                    // if (face == 0)
-                    //   src[dir] = dst[dir] + 2 * (imin[dir] - dst[dir]) -
-                    //              groupdata.indextype.at(dir);
-                    // else
-                    //   src[dir] = dst[dir] -
-                    //              2 * (dst[dir] - (imax[dir] - 1)) +
-                    //              groupdata.indextype.at(dir);
-                    // assert(src[dir] >= amin[dir] && src[dir] < amax[dir]);
-                    src[dir] = offset - dst[dir];
-                    var.store(dst, parity * var(src));
-                  },
-              bmin, bmax);
-        }
-        break;
-      }
-
-      default:
-        // do nothing
-        break;
-      }
-      //
+        //
+      } // for ni, nj, nk
     }
   }
 }
