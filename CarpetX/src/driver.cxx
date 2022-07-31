@@ -75,6 +75,26 @@ void SetupGlobals();
 
 ////////////////////////////////////////////////////////////////////////////////
 
+std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry) {
+  switch (symmetry) {
+  case symmetry_t::none:
+    return os << "none";
+  case symmetry_t::periodic:
+    return os << "periodic";
+  case symmetry_t::reflection:
+    return os << "reflection";
+  case symmetry_t::dirichlet:
+    return os << "dirichlet";
+  case symmetry_t::von_neumann:
+    return os << "von_neumann";
+  case symmetry_t::interpatch:
+    return os << "interpatch";
+  default:
+    assert(0);
+  }
+  return os;
+}
+
 array<array<symmetry_t, dim>, 2> get_symmetries() {
   DECLARE_CCTK_PARAMETERS;
   const array<array<bool, 3>, 2> is_periodic{{
