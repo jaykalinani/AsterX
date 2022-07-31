@@ -654,7 +654,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       CCTK_VINFO("Calculating RHS #3 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
     // const auto k3 = rhs.copy();
-    statecomp_t::lincomb(kaccum, 1.0, make_array(2.0), make_array(&rhs));
+    statecomp_t::lincomb(kaccum, 1, make_array(2.0), make_array(&rhs));
 
     // Step 4
 
@@ -666,11 +666,11 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     if (verbose)
       CCTK_VINFO("Calculating RHS #4 at t=%g", double(cctkGH->cctk_time));
     CallScheduleGroup(cctkGH, "ODESolvers_RHS");
-    // const auto &k4 = rhs;
+    const auto &k4 = rhs;
 
     // Calculate new state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt / 6, dt / 6),
-                         make_array(&old, &kaccum, &rhs));
+                         make_array(&old, &kaccum, &k4));
 
   } else if (CCTK_EQUALS(method, "RKF78")) {
 
