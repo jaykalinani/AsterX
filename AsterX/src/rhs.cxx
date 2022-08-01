@@ -116,9 +116,8 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
           dFbeta += calc_fd2_v2v_oneside(Fbetaz, p, 2, 1);
         }
 
-        const CCTK_REAL lorentz_damp_fac = 0.0;
         /* rhs of Psi */
-        Psi_rhs(p.I) = -dF + dFbeta - lorentz_damp_fac * alp(p.I) * Psi(p.I);
+        Psi_rhs(p.I) = -dF + dFbeta - lorenz_damp_fac * alp(p.I) * Psi(p.I);
       });
 }
 
