@@ -338,19 +338,19 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
     const CCTK_REAL halfshiftdgx =
         0.5 * (betax_avg * betax_avg * dx_gxx + betay_avg * betay_avg * dx_gyy +
                betaz_avg * betaz_avg * dx_gzz) +
-        betax_avg * betay_avg * dx_gxy + betax_avg * betay_avg * dx_gxz +
+        betax_avg * betay_avg * dx_gxy + betax_avg * betaz_avg * dx_gxz +
         betay_avg * betaz_avg * dx_gyz;
 
     const CCTK_REAL halfshiftdgy =
         0.5 * (betax_avg * betax_avg * dy_gxx + betay_avg * betay_avg * dy_gyy +
                betaz_avg * betaz_avg * dy_gzz) +
-        betax_avg * betay_avg * dy_gxy + betax_avg * betay_avg * dy_gxz +
+        betax_avg * betay_avg * dy_gxy + betax_avg * betaz_avg * dy_gxz +
         betay_avg * betaz_avg * dy_gyz;
 
     const CCTK_REAL halfshiftdgz =
         0.5 * (betax_avg * betax_avg * dz_gxx + betay_avg * betay_avg * dz_gyy +
                betaz_avg * betaz_avg * dz_gzz) +
-        betax_avg * betay_avg * dz_gxy + betax_avg * betay_avg * dz_gxz +
+        betax_avg * betay_avg * dz_gxy + betax_avg * betaz_avg * dz_gxz +
         betay_avg * betaz_avg * dz_gyz;
 
     /* Contract the matter with derivatives of the metric */
