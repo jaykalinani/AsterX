@@ -45,6 +45,7 @@ enum class symmetry_t {
   von_neumann,
   interpatch
 };
+std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry);
 
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
