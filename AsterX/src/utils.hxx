@@ -42,7 +42,7 @@ CCTK_DEVICE CCTK_HOST T calc_fd2_v2v_oneside(const GF3D2<const T> &gf,
                                              const int sign) {
   constexpr auto DI = PointDesc::DI;
   return -sign *
-         (gf(p.I + 2.0 * sign * DI[dir]) - 4.0 * gf(p.I + sign * DI[dir]) +
+         (gf(p.I + 2 * sign * DI[dir]) - 4.0 * gf(p.I + sign * DI[dir]) +
           3.0 * gf(p.I)) *
          (0.5 / p.DX[dir]);
 }

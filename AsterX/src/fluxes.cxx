@@ -663,9 +663,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     gf_fluxmomy(p.I) = calcflux(lambda, momy_rc, flux_momy);
     gf_fluxmomz(p.I) = calcflux(lambda, momz_rc, flux_momz);
     gf_fluxtau(p.I) = calcflux(lambda, tau_rc, flux_tau);
-    gf_fluxBx(p.I) = calcflux(lambda, Btildex_rc, flux_Btildex);
-    gf_fluxBy(p.I) = calcflux(lambda, Btildey_rc, flux_Btildey);
-    gf_fluxBz(p.I) = calcflux(lambda, Btildez_rc, flux_Btildez);
+    gf_fluxBx(p.I) = (dir!=0)*calcflux(lambda, Btildex_rc, flux_Btildex);
+    gf_fluxBy(p.I) = (dir!=1)*calcflux(lambda, Btildey_rc, flux_Btildey);
+    gf_fluxBz(p.I) = (dir!=2)*calcflux(lambda, Btildez_rc, flux_Btildez);
   });
 }
 
