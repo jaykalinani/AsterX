@@ -544,7 +544,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     // fluid using the reconstructed variables
     const array<CCTK_REAL, 2> alpha_b0_rc = {
         w_lorentz_rc[0]*(Bx_rc[0]*vlowx_rc[0] + By_rc[0]*vlowy_rc[0] + Bz_rc[0]*vlowz_rc[0]),
-        w_lorentz_rc[1]*(Bx_rc[1]*vlowx_rc[1] + By_rc[0]*vlowy_rc[1] + Bz_rc[1]*vlowz_rc[1])};
+        w_lorentz_rc[1]*(Bx_rc[1]*vlowx_rc[1] + By_rc[1]*vlowy_rc[1] + Bz_rc[1]*vlowz_rc[1])};
 
     const array<CCTK_REAL, 2> blowx_rc = {
         Blowx_rc[0]/w_lorentz_rc[0] + alpha_b0_rc[0]*vlowx_rc[0],
