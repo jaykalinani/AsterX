@@ -8,6 +8,10 @@
 #include "utils.hxx"
 #include <array>
 
+struct metric {
+  CCTK_REAL gxx, gxy, gxz, gyy, gyz, gzz;
+};
+
 namespace AsterX
 {
   using namespace Loop;
@@ -15,7 +19,7 @@ namespace AsterX
   template <int dir>
   void ComputeStaggeredB(CCTK_ARGUMENTS)
   {
-    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBstagFromA;
+    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputedBstagFromA;
     DECLARE_CCTK_PARAMETERS;
 
     const std::array dx{CCTK_DELTA_SPACE(0), CCTK_DELTA_SPACE(1),
@@ -55,9 +59,9 @@ namespace AsterX
         });
   }
 
-  extern "C" void AsterX_ComputeBstagFromA(CCTK_ARGUMENTS)
+  extern "C" void AsterX_ComputedBstagFromA(CCTK_ARGUMENTS)
   {
-    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBstagFromA;
+    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputedBstagFromA;
     DECLARE_CCTK_PARAMETERS;
 
     ComputeStaggeredB<0>(cctkGH);
@@ -65,9 +69,9 @@ namespace AsterX
     ComputeStaggeredB<2>(cctkGH);
   }
 
-  extern "C" void AsterX_ComputeBFromBstag(CCTK_ARGUMENTS)
+  extern "C" void AsterX_ComputedBFromdBstag(CCTK_ARGUMENTS)
   {
-    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBFromBstag;
+    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputedBFromdBstag;
     DECLARE_CCTK_PARAMETERS;
 
     constexpr auto DI = PointDesc::DI;
@@ -84,6 +88,35 @@ namespace AsterX
           dBx(p.I) = 0.5 * (dBx_stag(p.I) + dBx_stag(ipjk));
           dBy(p.I) = 0.5 * (dBy_stag(p.I) + dBy_stag(ijpk));
           dBz(p.I) = 0.5 * (dBz_stag(p.I) + dBz_stag(ijkp));
+        });
+  }
+
+  extern "C" void AsterX_ComputeBFromdB(CCTK_ARGUMENTS)
+  {
+    DECLARE_CCTK_ARGUMENTSX_AsterX_ComputeBFromdB;
+    DECLARE_CCTK_PARAMETERS;
+
+    grid.loop_int_device<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE
+        {
+          /* Interpolate metric terms from vertices to center */
+          metric g;
+          g.gxx = calc_avg_v2c(gxx, p);
+          g.gxy = calc_avg_v2c(gxy, p);
+          g.gxz = calc_avg_v2c(gxz, p);
+          g.gyy = calc_avg_v2c(gyy, p);
+          g.gyz = calc_avg_v2c(gyz, p);
+          g.gzz = calc_avg_v2c(gzz, p);
+
+          /* Determinant of spatial metric */
+          const CCTK_REAL detg = calc_detg(g.gxx, g.gxy, g.gxz, g.gyy, g.gyz, g.gzz);
+          const CCTK_REAL sqrt_detg = sqrt(detg);
+
+          /* Second order interpolation of staggered B components to cell center */
+          Bvecx(p.I) = dBx(p.I)/sqrt_detg;
+          Bvecy(p.I) = dBy(p.I)/sqrt_detg;
+          Bvecz(p.I) = dBz(p.I)/sqrt_detg;
         });
   }
 

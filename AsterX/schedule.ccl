@@ -1,14 +1,39 @@
 # Schedule definitions for thorn AsterX
 
-STORAGE: dens mom tau
+STORAGE: dens mom tau dB Psi HydroBase::Bvec dBx_stag dBy_stag dBz_stag
 STORAGE: flux_x flux_y flux_z
-STORAGE: densrhs momrhs taurhs
+STORAGE: densrhs momrhs taurhs Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 STORAGE: Aux_in_RHSof_A_Psi
 
 
 
 # Initial conditions
+
+SCHEDULE AsterX_ComputedBstagFromA AT initial AFTER HydroBase_PostInitial BEFORE AsterX_ComputedBFromdBstag
+{
+  LANG: C
+  READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere)
+  WRITES: dBx_stag(interior) dBy_stag(interior) dBz_stag(interior)
+  SYNC: dBx_stag dBy_stag dBz_stag
+} "Calculate dBstag from curl of A"
+
+SCHEDULE AsterX_ComputedBFromdBstag AT initial BEFORE AsterX_ComputeBFromdB
+{
+  LANG: C
+  READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
+  WRITES: dB(interior)
+  SYNC: dB
+} "Calculate centered dB from dBstag"
+
+SCHEDULE AsterX_ComputeBFromdB AT initial BEFORE AsterX_Prim2Con_Initial
+{
+  LANG: C
+  READS: dB(interior) ADMBase::metric(interior)
+  WRITES: HydroBase::Bvec(interior)
+  SYNC: HydroBase::Bvec
+} "Calculate centered B from densitized B"
+
 
 SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
 {
@@ -54,22 +79,21 @@ SCHEDULE AsterX_EstimateError AT poststep
 
 # Time stepping
 
-SCHEDULE AsterX_ComputeBstagFromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
+SCHEDULE AsterX_ComputedBstagFromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
 {
   LANG: C
   READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere)
   WRITES: dBx_stag(interior) dBy_stag(interior) dBz_stag(interior)
   SYNC: dBx_stag dBy_stag dBz_stag
-} "Calculate Bstag from curl of A"
+} "Calculate dBstag from curl of A"
 
-SCHEDULE AsterX_ComputeBFromBstag IN ODESolvers_RHS AFTER AsterX_ComputeBstagFromA BEFORE AsterX_Con2Prim 
+SCHEDULE AsterX_ComputedBFromdBstag IN ODESolvers_RHS AFTER AsterX_ComputedBstagFromA BEFORE AsterX_Con2Prim 
 {
   LANG: C
   READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
   WRITES: dB(interior)
   SYNC: dB
-} "Calculate centered B from Bstag"
-
+} "Calculate centered dB from dBstag"
 
 
 SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
