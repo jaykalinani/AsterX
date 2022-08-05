@@ -1,0 +1,114 @@
+# Schedule definitions for thorn TOVSolver
+
+schedule TOV_C_ParamCheck AT PARAMCHECK
+{
+  LANG: C
+  OPTIONS: GLOBAL
+} "Check parameters"
+
+schedule TOV_C_AllocateMemory AT WRAGH
+{
+  LANG: C
+  OPTIONS: GLOBAL
+} "Allocate memory for TOVSolver_C"
+
+if (!TOV_fake_evolution)
+{
+  schedule TOV_C_FreeMemory AT POSTPOSTINITIAL
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Free memory from TOVSolver_C"
+}
+
+schedule GROUP TOV_Initial_Data IN HydroBase_Initial
+{
+#  STORAGE: TOV_Scalars
+#  STORAGE: TOV_Arrays
+  SYNC:ADMBase::metric,ADMBase::curv,ADMBase::lapse,ADMBase::shift
+  SYNC: rho
+  SYNC: press
+  SYNC: eps
+  SYNC: vel
+  SYNC: w_lorentz
+} "Group for the TOV initial data"
+
+schedule TOV_C_Integrate_RHS IN TOV_Initial_Data
+{
+  LANG: C
+  WRITES: StaticConformal::conformal_state(everywhere)
+  OPTIONS: GLOBAL
+} "Integrate the 1d equations for the TOV star"
+
+if (!CCTK_Equals(TOV_save_to_datafile,""))
+{
+  schedule TOV_write_1D_datafile IN TOV_Initial_Data AFTER TOV_C_Integrate_RHS BEFORE TOV_C_Exact
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Save data to file and exit"
+}
+
+if (TOV_ProperPosition)
+{
+  schedule TOV_Set_ProperPositions in TOV_Initial_Data after TOV_C_Integrate_RHS before TOV_C_Exact
+  {
+    LANG: C
+    Options: GLOBAL
+  } "Steer NS position parameters according to proper distance"
+}
+
+if (CCTK_Equals(initial_data, "tov") || CCTK_Equals(initial_hydro, "tov") ||
+    (TOV_Use_Old_Initial_Data > 0) || TOV_Enforce_Interpolation)
+{
+  schedule TOV_C_Exact IN TOV_Initial_Data AFTER TOV_C_Integrate_RHS
+  {
+    LANG: C
+    READS: StaticConformal::conformal_state
+    READS: ADMBase::shift_state
+    READS: GRID::coordinates
+    WRITES: ADMBASE::alp(everywhere)
+    WRITES: ADMBASE::curv(everywhere)
+    WRITES: ADMBASE::metric_p_p(everywhere)
+    WRITES: ADMBASE::metric_p(everywhere)
+    WRITES: ADMBASE::metric(everywhere)
+    WRITES: ADMBASE::shift(everywhere)
+    WRITES: HYDROBASE::eps_p_p(everywhere), HYDROBASE::rho_p_p(everywhere),
+            HYDROBASE::vel_p_p(everywhere), HYDROBASE::w_lorentz_p_p(everywhere)
+    WRITES: HYDROBASE::eps_p(everywhere), HYDROBASE::rho_p(everywhere),
+            HYDROBASE::vel_p(everywhere), HYDROBASE::w_lorentz_p(everywhere)
+    WRITES: HYDROBASE::eps(everywhere), HYDROBASE::rho(everywhere),
+            HYDROBASE::vel(everywhere), HYDROBASE::w_lorentz(everywhere)
+    WRITES: HYDROBASE::press(everywhere)
+    WRITES: StaticConformal::psi(everywhere)
+    WRITES: StaticConformal::confac_1derivs(everywhere)
+    WRITES: StaticConformal::confac_2derivs(everywhere)
+  } "Set up the 3d quantities for the TOV star"
+}
+
+if (TOV_fake_evolution)
+{
+  schedule TOV_Prepare_Fake_Evolution AFTER TOV_C_Exact
+  {
+    LANG: C
+  } "prepare for fake evolution"
+  schedule TOV_C_Exact IN MoL_PostStep AFTER HydroBase_PostStep
+  {
+    LANG: C
+    READS: StaticConformal::conformal_state
+    READS: ADMBase::shift_state
+    WRITES: ADMBASE::alp(everywhere)
+    WRITES: ADMBASE::curv(everywhere)
+    WRITES: ADMBASE::metric(everywhere)
+    WRITES: ADMBASE::shift(everywhere)
+    WRITES: HYDROBASE::eps(everywhere)
+    WRITES: HYDROBASE::press(everywhere)
+    WRITES: HYDROBASE::rho(everywhere)
+    WRITES: HYDROBASE::w_lorentz(everywhere)
+    WRITES: HYDROBASE::vel(everywhere)
+    WRITES: StaticConformal::psi(everywhere)
+    WRITES: StaticConformal::confac_1derivs(everywhere)
+    WRITES: StaticConformal::confac_2derivs(everywhere)
+  } "use fake evolution"
+}
+

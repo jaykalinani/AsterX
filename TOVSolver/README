@@ -1,0 +1,15 @@
+Cactus Code Thorn TOVSolver
+Author(s)    : Ian Hawke
+               Frank Löffler
+               Luca Baiotti
+               Christian David Ott
+               Erik Schnetter
+               Bruno Giacomazzo
+Maintainer(s): Einstein Toolkit
+Licence      : GPLv2+
+--------------------------------------------------------------------------
+
+1. Purpose
+
+This thorn provides initial data for TOV star(s) in isotropic coordinates.
+
