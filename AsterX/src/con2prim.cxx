@@ -342,15 +342,15 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
               (-g_lo[1][2] * g_lo[1][2] + g_lo[1][1] * g_lo[2][2]) / spatial_detg;
 
           g_up[0][0] = -1.0 / (lapse * lapse);
-          g_up[0][1] = g_lo[0][1] / (lapse * lapse);
-          g_up[0][2] = g_lo[0][2] / (lapse * lapse);
-          g_up[0][3] = g_lo[0][3] / (lapse * lapse);
-          g_up[1][1] = gamma11 - g_lo[0][1] * g_lo[0][1] / (lapse * lapse);
-          g_up[1][2] = gamma12 - g_lo[0][1] * g_lo[0][2] / (lapse * lapse);
-          g_up[1][3] = gamma13 - g_lo[0][1] * g_lo[0][3] / (lapse * lapse);
-          g_up[2][2] = gamma22 - g_lo[0][2] * g_lo[0][2] / (lapse * lapse);
-          g_up[2][3] = gamma23 - g_lo[0][2] * g_lo[0][3] / (lapse * lapse);
-          g_up[3][3] = gamma33 - g_lo[0][3] * g_lo[0][3] / (lapse * lapse);
+          g_up[0][1] = betax_up / (lapse * lapse);
+          g_up[0][2] = betay_up / (lapse * lapse);
+          g_up[0][3] = betaz_up / (lapse * lapse);
+          g_up[1][1] = gamma11 - betax_up * betax_up / (lapse * lapse);
+          g_up[1][2] = gamma12 - betax_up * betay_up / (lapse * lapse);
+          g_up[1][3] = gamma13 - betax_up * betaz_up / (lapse * lapse);
+          g_up[2][2] = gamma22 - betay_up * betay_up / (lapse * lapse);
+          g_up[2][3] = gamma23 - betay_up * betaz_up / (lapse * lapse);
+          g_up[3][3] = gamma33 - betaz_up * betaz_up / (lapse * lapse);
 
           g_up[1][0] = g_up[0][1];
           g_up[2][0] = g_up[0][2];
