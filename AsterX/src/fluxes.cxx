@@ -642,17 +642,17 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         tau_rc[0] * vtilde_rc[0] + alp_sqrt_detg_press_plus_pmag_rc[0] * vel_rc[0] - alpha_b0_rc[0] * alp_sqrt_detg_B_over_w_lorentz_rc[0],
         tau_rc[1] * vtilde_rc[1] + alp_sqrt_detg_press_plus_pmag_rc[1] * vel_rc[1] - alpha_b0_rc[1] * alp_sqrt_detg_B_over_w_lorentz_rc[1]};
 
-    const array<CCTK_REAL, 2> flux_Btildex = { // (0, -Ez, Ey)
-        -(dir==1)*(Btildex_rc[0] * vtildey_rc[0] - Btildey_rc[0] * vtildex_rc[0]) + (dir==2)*(Btildez_rc[0] * vtildex_rc[0] - Btildex_rc[0] * vtildez_rc[0]),
-        -(dir==1)*(Btildex_rc[1] * vtildey_rc[1] - Btildey_rc[1] * vtildex_rc[1]) + (dir==2)*(Btildez_rc[1] * vtildex_rc[1] - Btildex_rc[1] * vtildez_rc[1])};
+    const array<CCTK_REAL, 2> flux_Btildex = { // (0, Ez, -Ey)
+        (dir==1)*(Btildex_rc[0] * vtildey_rc[0] - Btildey_rc[0] * vtildex_rc[0]) - (dir==2)*(Btildez_rc[0] * vtildex_rc[0] - Btildex_rc[0] * vtildez_rc[0]),
+        (dir==1)*(Btildex_rc[1] * vtildey_rc[1] - Btildey_rc[1] * vtildex_rc[1]) - (dir==2)*(Btildez_rc[1] * vtildex_rc[1] - Btildex_rc[1] * vtildez_rc[1])};
 
-    const array<CCTK_REAL, 2> flux_Btildey = { // (Ez, 0, -Ex)
-        (dir==0)*(Btildex_rc[0] * vtildey_rc[0] - Btildey_rc[0] * vtildex_rc[0]) - (dir==2)*(Btildey_rc[0] * vtildez_rc[0] - Btildez_rc[0] * vtildey_rc[0]),
-        (dir==0)*(Btildex_rc[1] * vtildey_rc[1] - Btildey_rc[1] * vtildex_rc[1]) - (dir==2)*(Btildey_rc[1] * vtildez_rc[1] - Btildez_rc[1] * vtildey_rc[1])};
+    const array<CCTK_REAL, 2> flux_Btildey = { // (-Ez, 0, Ex)
+        -(dir==0)*(Btildex_rc[0] * vtildey_rc[0] - Btildey_rc[0] * vtildex_rc[0]) + (dir==2)*(Btildey_rc[0] * vtildez_rc[0] - Btildez_rc[0] * vtildey_rc[0]),
+        -(dir==0)*(Btildex_rc[1] * vtildey_rc[1] - Btildey_rc[1] * vtildex_rc[1]) + (dir==2)*(Btildey_rc[1] * vtildez_rc[1] - Btildez_rc[1] * vtildey_rc[1])};
 
-    const array<CCTK_REAL, 2> flux_Btildez = { // (-Ey, Ex, 0)
-        -(dir==0)*(Btildez_rc[0] * vtildex_rc[0] - Btildex_rc[0] * vtildez_rc[0]) + (dir==1)*(Btildey_rc[0] * vtildez_rc[0] - Btildez_rc[0] * vtildey_rc[0]),
-        -(dir==0)*(Btildez_rc[1] * vtildex_rc[1] - Btildex_rc[1] * vtildez_rc[1]) + (dir==1)*(Btildey_rc[1] * vtildez_rc[1] - Btildez_rc[1] * vtildey_rc[1])};
+    const array<CCTK_REAL, 2> flux_Btildez = { // (Ey, -Ex, 0)
+        (dir==0)*(Btildez_rc[0] * vtildex_rc[0] - Btildex_rc[0] * vtildez_rc[0]) - (dir==1)*(Btildey_rc[0] * vtildez_rc[0] - Btildez_rc[0] * vtildey_rc[0]),
+        (dir==0)*(Btildez_rc[1] * vtildex_rc[1] - Btildex_rc[1] * vtildez_rc[1]) - (dir==1)*(Btildey_rc[1] * vtildez_rc[1] - Btildez_rc[1] * vtildey_rc[1])};
 
     array<array<CCTK_REAL, 4>, 2> lambda = eigenvalues(
         alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc, bsq_rc);
