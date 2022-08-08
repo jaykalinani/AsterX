@@ -19,9 +19,6 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_HydroInitial_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
-  const std::array dx{CCTK_DELTA_SPACE(0), CCTK_DELTA_SPACE(1),
-                      CCTK_DELTA_SPACE(2)};
-
   if (CCTK_EQUALS(initial_hydro, "equilibrium")) {
 
     grid.loop_all_device<1, 1, 1>(
@@ -115,9 +112,6 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
             press(p.I) = 1.0;
-	    Avec_x(p.I) = 1.0 * (p.z-dx[2]/2.0) - 0.0 * (p.y-dx[1]/2.0);
-            Avec_y(p.I) = 0.0;
-            Avec_z(p.I) = 0.5 * (p.y-dx[1]/2.0);
             //Bvecx(p.I) = 0.5;
             //Bvecy(p.I) = 1.0;
             //Bvecz(p.I) = 0.0;
@@ -128,9 +122,6 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
             press(p.I) = 0.1;
-	    Avec_x(p.I) = -1.0 * (p.z-dx[2]/2.0) - 0.0 * (p.y-dx[1]/2.0);
-            Avec_y(p.I) = 0.0;
-            Avec_z(p.I) = 0.5 * (p.y-dx[1]/2.0);
             //Bvecx(p.I) = 0.5;
             //Bvecy(p.I) = -1.0;
             //Bvecz(p.I) = 0.0;
@@ -140,23 +131,27 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1));
         });
 
-//    grid.loop_int_device<1, 0, 0>(
-//        grid.nghostzones,
-//        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-//	  Avec_x(p.I) = Bvecy(p.I) * (p.z+dx[2]/2.0) - Bvecz(p.I) * (p.y+dx[1]/2.0);
-//        });
-//
-//    grid.loop_int_device<0, 1, 0>(
-//        grid.nghostzones,
-//        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-//          Avec_y(p.I) = 0.0;
-//        });
-//
-//    grid.loop_int_device<0, 0, 1>(
-//        grid.nghostzones,
-//        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-//          Avec_z(p.I) = Bvecx(p.I) * (p.y+dx[1]/2.0);
-//        });
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          if(p.x <= 0.0) {
+            Avec_x(p.I) = 1.0 * (p.z);
+          } else {
+            Avec_x(p.I) = -1.0 * (p.z);
+          }
+        });
+
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          Avec_y(p.I) = 0.0;
+        });
+
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          Avec_z(p.I) = 0.5 * (p.y);
+        });
 
   } else if (CCTK_EQUALS(initial_hydro, "spherical shock")) {
 
