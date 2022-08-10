@@ -26,7 +26,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
 template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS_AsterX_Fluxes;
+  DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
   static_assert(dir >= 0 && dir < 3, "");
@@ -36,65 +36,19 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   // const CCTK_REAL dV = dx[0] * dx[1] * dx[2]; // cell volume
   // const CCTK_REAL dA = dV / dx[dir];          // face area
 
-  // Cell centred grid functions
-  const GridDescBaseDevice grid(cctkGH);
-  constexpr array<int, dim> cell_centred = {1, 1, 1};
-  constexpr array<int, dim> vertex_centred = {0, 0, 0};
-  const GF3D2layout gf_layout_cell(cctkGH, cell_centred);
-  const GF3D2layout gf_layout_vertex(cctkGH, vertex_centred);
-
-  const GF3D2<const CCTK_REAL> gf_gxx(gf_layout_vertex, gxx);
-  const GF3D2<const CCTK_REAL> gf_gxy(gf_layout_vertex, gxy);
-  const GF3D2<const CCTK_REAL> gf_gxz(gf_layout_vertex, gxz);
-  const GF3D2<const CCTK_REAL> gf_gyy(gf_layout_vertex, gyy);
-  const GF3D2<const CCTK_REAL> gf_gyz(gf_layout_vertex, gyz);
-  const GF3D2<const CCTK_REAL> gf_gzz(gf_layout_vertex, gzz);
-
-  const GF3D2<const CCTK_REAL> gf_alp(gf_layout_vertex, alp);
-  const GF3D2<const CCTK_REAL> gf_betax(gf_layout_vertex, betax);
-  const GF3D2<const CCTK_REAL> gf_betay(gf_layout_vertex, betay);
-  const GF3D2<const CCTK_REAL> gf_betaz(gf_layout_vertex, betaz);
-
-  const GF3D2<const CCTK_REAL> gf_dens(gf_layout_cell, dens);
-  const GF3D2<const CCTK_REAL> gf_momx(gf_layout_cell, momx);
-  const GF3D2<const CCTK_REAL> gf_momy(gf_layout_cell, momy);
-  const GF3D2<const CCTK_REAL> gf_momz(gf_layout_cell, momz);
-  const GF3D2<const CCTK_REAL> gf_tau(gf_layout_cell, tau);
-
-  const GF3D2<const CCTK_REAL> gf_rho(gf_layout_cell, rho);
-  const GF3D2<const CCTK_REAL> gf_velx(gf_layout_cell, velx);
-  const GF3D2<const CCTK_REAL> gf_vely(gf_layout_cell, vely);
-  const GF3D2<const CCTK_REAL> gf_velz(gf_layout_cell, velz);
-  const GF3D2<const CCTK_REAL> gf_press(gf_layout_cell, press);
-  const GF3D2<const CCTK_REAL> gf_eps(gf_layout_cell, eps);
-
-  // FIXME: are Bvecx, Bvecy, Bvecz really GFs? I can't find where they are defined
-  const GF3D2<const CCTK_REAL> gf_Bx(gf_layout_cell, Bvecx);
-  const GF3D2<const CCTK_REAL> gf_By(gf_layout_cell, Bvecy);
-  const GF3D2<const CCTK_REAL> gf_Bz(gf_layout_cell, Bvecz);
-
   // Face-centred grid functions (in direction `dir`)
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
                                             !(dir == 2)};
-  const GF3D2layout gf_fluxlayout(cctkGH, face_centred);
 
   // Get the grid function pointers for fluxes in direction `dir`
-  const array<CCTK_REAL *, dim> fluxdenss = {fxdens, fydens, fzdens};
-  const array<CCTK_REAL *, dim> fluxmomxs = {fxmomx, fymomx, fzmomx};
-  const array<CCTK_REAL *, dim> fluxmomys = {fxmomy, fymomy, fzmomy};
-  const array<CCTK_REAL *, dim> fluxmomzs = {fxmomz, fymomz, fzmomz};
-  const array<CCTK_REAL *, dim> fluxtaus = {fxtau, fytau, fztau};
-  const array<CCTK_REAL *, dim> fluxBxs = {fxBx, fyBx, fzBx};
-  const array<CCTK_REAL *, dim> fluxBys = {fxBy, fyBy, fzBy};
-  const array<CCTK_REAL *, dim> fluxBzs = {fxBz, fyBz, fzBz};
-  const GF3D2<CCTK_REAL> gf_fluxdens(gf_fluxlayout, fluxdenss[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxmomx(gf_fluxlayout, fluxmomxs[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxmomy(gf_fluxlayout, fluxmomys[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxmomz(gf_fluxlayout, fluxmomzs[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxtau(gf_fluxlayout, fluxtaus[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxBx(gf_fluxlayout, fluxBxs[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxBy(gf_fluxlayout, fluxBys[dir]);
-  const GF3D2<CCTK_REAL> gf_fluxBz(gf_fluxlayout, fluxBzs[dir]);
+  const array<GF3D2<CCTK_REAL>, dim> fluxdenss = {fxdens, fydens, fzdens};
+  const array<GF3D2<CCTK_REAL>, dim> fluxmomxs = {fxmomx, fymomx, fzmomx};
+  const array<GF3D2<CCTK_REAL>, dim> fluxmomys = {fxmomy, fymomy, fzmomy};
+  const array<GF3D2<CCTK_REAL>, dim> fluxmomzs = {fxmomz, fymomz, fzmomz};
+  const array<GF3D2<CCTK_REAL>, dim> fluxtaus = {fxtau, fytau, fztau};
+  const array<GF3D2<CCTK_REAL>, dim> fluxBxs = {fxBx, fyBx, fzBx};
+  const array<GF3D2<CCTK_REAL>, dim> fluxBys = {fxBy, fyBy, fzBy};
+  const array<GF3D2<CCTK_REAL>, dim> fluxBzs = {fxBz, fyBz, fzBz};
 
   // fdens^i = rho vel^i
   // fmom^i_j = mom_j vel^i + delta^i_j press
@@ -128,9 +82,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   }
 
   const auto reconstruct_pt =
-      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &gf_var,
+      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var,
                       const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return reconstruct(gf_var, p, reconstruction, dir);
+        return reconstruct(var, p, reconstruction, dir);
       };
 
   const auto eigenvalues =
@@ -218,14 +172,14 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     // Reconstruct primitives from the cells on left (indice 0) and right
     // (indice 1) side of this face rc = reconstructed variables or computed
     // from reconstructed variables
-    const array<CCTK_REAL, 2> rho_rc   = reconstruct_pt(gf_rho,   p);
-    const array<CCTK_REAL, 2> velx_rc  = reconstruct_pt(gf_velx,  p);
-    const array<CCTK_REAL, 2> vely_rc  = reconstruct_pt(gf_vely,  p);
-    const array<CCTK_REAL, 2> velz_rc  = reconstruct_pt(gf_velz,  p);
-    const array<CCTK_REAL, 2> eps_rc   = reconstruct_pt(gf_eps,   p);
-    const array<CCTK_REAL, 2> Bx_rc = reconstruct_pt(gf_Bx, p);
-    const array<CCTK_REAL, 2> By_rc = reconstruct_pt(gf_By, p);
-    const array<CCTK_REAL, 2> Bz_rc = reconstruct_pt(gf_Bz, p);
+    const array<CCTK_REAL, 2> rho_rc   = reconstruct_pt(rho,   p);
+    const array<CCTK_REAL, 2> velx_rc  = reconstruct_pt(velx,  p);
+    const array<CCTK_REAL, 2> vely_rc  = reconstruct_pt(vely,  p);
+    const array<CCTK_REAL, 2> velz_rc  = reconstruct_pt(velz,  p);
+    const array<CCTK_REAL, 2> eps_rc   = reconstruct_pt(eps,   p);
+    const array<CCTK_REAL, 2> Bx_rc = reconstruct_pt(Bvecx, p);
+    const array<CCTK_REAL, 2> By_rc = reconstruct_pt(Bvecy, p);
+    const array<CCTK_REAL, 2> Bz_rc = reconstruct_pt(Bvecz, p);
 
     const array<array<CCTK_REAL, 2>, 3> vels_rc = {velx_rc, vely_rc, velz_rc};
     const array<CCTK_REAL, 2> vel_rc = vels_rc[dir];
@@ -254,18 +208,18 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
       for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
         for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-          alp_avg += gf_alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          alp_avg += alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
 
-          betax_avg += gf_betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          betay_avg += gf_betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          betaz_avg += gf_betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          betax_avg += betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          betay_avg += betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          betaz_avg += betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
 
-          gxx_avg += gf_gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gxy_avg += gf_gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gxz_avg += gf_gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gyy_avg += gf_gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gyz_avg += gf_gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gzz_avg += gf_gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          gxx_avg += gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          gxy_avg += gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          gxz_avg += gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          gyy_avg += gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          gyz_avg += gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+          gzz_avg += gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
         }
       }
     }
@@ -497,14 +451,14 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc, w_lorentz_rc, h_rc, bsq_rc);
 
 
-    gf_fluxdens(p.I) = calcflux(lambda, dens_rc, flux_dens);
-    gf_fluxmomx(p.I) = calcflux(lambda, momx_rc, flux_momx);
-    gf_fluxmomy(p.I) = calcflux(lambda, momy_rc, flux_momy);
-    gf_fluxmomz(p.I) = calcflux(lambda, momz_rc, flux_momz);
-    gf_fluxtau(p.I) = calcflux(lambda, tau_rc, flux_tau);
-    gf_fluxBx(p.I) = (dir!=0)*calcflux(lambda, Btildex_rc, flux_Btildex);
-    gf_fluxBy(p.I) = (dir!=1)*calcflux(lambda, Btildey_rc, flux_Btildey);
-    gf_fluxBz(p.I) = (dir!=2)*calcflux(lambda, Btildez_rc, flux_Btildez);
+    fluxdenss[dir](p.I) = calcflux(lambda, dens_rc, flux_dens);
+    fluxmomxs[dir](p.I) = calcflux(lambda, momx_rc, flux_momx);
+    fluxmomys[dir](p.I) = calcflux(lambda, momy_rc, flux_momy);
+    fluxmomzs[dir](p.I) = calcflux(lambda, momz_rc, flux_momz);
+    fluxtaus[dir](p.I) = calcflux(lambda, tau_rc, flux_tau);
+    fluxBxs[dir](p.I) = (dir!=0)*calcflux(lambda, Btildex_rc, flux_Btildex);
+    fluxBys[dir](p.I) = (dir!=1)*calcflux(lambda, Btildey_rc, flux_Btildey);
+    fluxBzs[dir](p.I) = (dir!=2)*calcflux(lambda, Btildez_rc, flux_Btildez);
   });
 }
 
