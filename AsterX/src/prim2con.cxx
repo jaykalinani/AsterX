@@ -70,16 +70,11 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
                                       saved_Bvecz(p.I) = pv.Bvecz;
                                     });
 
-  /* Initilaize Psi */
-  grid.loop_int_device<0, 0, 0>(
+  /* Initilaize Psi to 0.0 */
+  grid.loop_all_device<0, 0, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const CCTK_REAL Ax_vert = calc_avg_e2v(Avec_x, p, 0);
-        const CCTK_REAL Ay_vert = calc_avg_e2v(Avec_y, p, 1);
-        const CCTK_REAL Az_vert = calc_avg_e2v(Avec_z, p, 2);
-        const CCTK_REAL beta_Avec =
-            betax(p.I) * Ax_vert + betay(p.I) * Ay_vert + betaz(p.I) * Az_vert;
-        Psi(p.I) = -beta_Avec / alp(p.I);
+        Psi(p.I) = 0.0;
       });
 }
 
