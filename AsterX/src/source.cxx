@@ -15,13 +15,6 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
-namespace {
-template <typename T>
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
-  return x * x;
-}
-} // namespace
-
 extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_SourceTerms;
   DECLARE_CCTK_PARAMETERS;

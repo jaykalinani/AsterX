@@ -11,6 +11,11 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
+template <typename T>
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
+  return x * x;
+}
+
 // Computes the determinant of spatial metric
 template <typename T>
 CCTK_DEVICE CCTK_HOST const T calc_detg(const T &gxx, const T &gxy,
