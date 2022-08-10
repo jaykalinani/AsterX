@@ -42,11 +42,10 @@ monocentral(const T &x, const T &y) {
     return sgn(x) * min(2.0 * fabs(x), min(2.0 * fabs(y), fabs(x + y) / 2));
 }
 
-constexpr auto DI = PointDesc::DI;
-
 CCTK_DEVICE array<CCTK_REAL, 2>
 reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
             reconstruction_t reconstruction, int dir) {
+  constexpr auto DI = PointDesc::DI;
   // Neighbouring "plus" and "minus" cell indices
   const auto Immm = p.I - 3 * DI[dir];
   const auto Imm = p.I - 2 * DI[dir];
