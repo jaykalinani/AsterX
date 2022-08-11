@@ -1,5 +1,5 @@
-#ifndef CON2PRIM_H
-#define CON2PRIM_H
+#ifndef CON2PRIM_HXX
+#define CON2PRIM_HXX
 #include "AMReX_GpuQualifiers.H"
 #define CCTK_DEVICE AMREX_GPU_DEVICE
 #define CCTK_HOST AMREX_GPU_HOST
@@ -101,5 +101,5 @@ public:
     CCTK_HOST CCTK_DEVICE ~idealFluid();
 };
 }
-#endif // #ifndef CON2PRIM_H
+#endif // #ifndef CON2PRIM_HXX
 
