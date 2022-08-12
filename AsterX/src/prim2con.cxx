@@ -65,9 +65,6 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
                                       saved_vely(p.I) = pv.vely;
                                       saved_velz(p.I) = pv.velz;
                                       saved_eps(p.I) = pv.eps;
-                                      saved_Bvecx(p.I) = pv.Bvecx;
-                                      saved_Bvecy(p.I) = pv.Bvecy;
-                                      saved_Bvecz(p.I) = pv.Bvecz;
                                     });
 
   /* Initilaize Psi to 0.0 */

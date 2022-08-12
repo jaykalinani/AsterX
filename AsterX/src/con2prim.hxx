@@ -9,7 +9,7 @@ namespace AsterX
 {
 
 constexpr int NCONS = 8;
-constexpr int NPRIMS = 8;
+constexpr int NPRIMS = 5;
 
 constexpr int D = 0;
 constexpr int S1_COV = 1;

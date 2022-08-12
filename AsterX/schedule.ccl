@@ -98,12 +98,10 @@ SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
 {
   LANG: C
   READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
-  READS: dens(interior) tau(interior) mom(interior)
-  READS: dBx(interior) dBy(interior) dBz(interior)
+  READS: dens(interior) tau(interior) mom(interior) dB(interior)
   READS: saved_prims(interior)
-  WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior)
+  WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior) HydroBase::Bvec(interior)
   WRITES: saved_prims(interior)
-  WRITES: HydroBase::Bvec(interior)
   SYNC: HydroBase::rho HydroBase::vel HydroBase::eps HydroBase::press HydroBase::Bvec
   SYNC: saved_prims
 } "Calculate primitive variables from conservative variables"

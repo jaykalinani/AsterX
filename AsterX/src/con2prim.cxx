@@ -23,9 +23,6 @@ namespace AsterX
     PrimitiveVarsSeed[V2_CON] = prim[V2_CON];
     PrimitiveVarsSeed[V3_CON] = prim[V3_CON];
     PrimitiveVarsSeed[EPS] = prim[EPS];
-    PrimitiveVarsSeed[B1] = prim[B1];
-    PrimitiveVarsSeed[B2] = prim[B2];
-    PrimitiveVarsSeed[B3] = prim[B3];
 
     ConservedVars[D] = cons[D];
     ConservedVars[S1_COV] = cons[S1_COV];
@@ -61,7 +58,7 @@ namespace AsterX
     CCTK_REAL alp = sqrt(-1. / gcon[TT]);
 
     /* B^i S_i */
-    BiSi = prim[B1] * ConservedVars[S1_COV] + prim[B2] * ConservedVars[S2_COV] + prim[B3] * ConservedVars[S3_COV];
+    BiSi = ConservedVars[B1] * ConservedVars[S1_COV] + ConservedVars[B2] * ConservedVars[S2_COV] + ConservedVars[B3] * ConservedVars[S3_COV];
 
     /* Seed Lorentz factor */
     // covariant Valencia velocity:
@@ -82,19 +79,19 @@ namespace AsterX
     W_Seed = 1. / sqrt(1. - vsq);
 
     // Bsq and bsq:
-    CCTK_REAL B1_cov = gcov[XX] * prim[B1] + gcov[XY] * prim[B2] + gcov[XZ] * prim[B3];
-    CCTK_REAL B2_cov = gcov[XY] * prim[B1] + gcov[YY] * prim[B2] + gcov[YZ] * prim[B3];
-    CCTK_REAL B3_cov = gcov[XZ] * prim[B1] + gcov[YZ] * prim[B2] + gcov[ZZ] * prim[B3];
+    CCTK_REAL B1_cov = gcov[XX] * ConservedVars[B1] + gcov[XY] * ConservedVars[B2] + gcov[XZ] * ConservedVars[B3];
+    CCTK_REAL B2_cov = gcov[XY] * ConservedVars[B1] + gcov[YY] * ConservedVars[B2] + gcov[YZ] * ConservedVars[B3];
+    CCTK_REAL B3_cov = gcov[XZ] * ConservedVars[B1] + gcov[YZ] * ConservedVars[B2] + gcov[ZZ] * ConservedVars[B3];
 
-    Bsq = B1_cov * prim[B1] + B2_cov * prim[B2] + B3_cov * prim[B3];
+    Bsq = B1_cov * ConservedVars[B1] + B2_cov * ConservedVars[B2] + B3_cov * ConservedVars[B3];
 
-    CCTK_REAL bt = W_Seed / alp * (prim[B1] * v1_cov + prim[B2] * v2_cov + prim[B3] * v3_cov);
+    CCTK_REAL bt = W_Seed / alp * (ConservedVars[B1] * v1_cov + ConservedVars[B2] * v2_cov + ConservedVars[B3] * v3_cov);
 
     bsq = (Bsq + (alp * bt) * (alp * bt)) / (W_Seed * W_Seed);
 
     /* update rho seed from D and gamma */
     // rho consistent with con[D] should be better guess than rho from last timestep
-    PrimitiveVarsSeed[0] = ConservedVars[D] / W_Seed;
+    PrimitiveVarsSeed[RHO] = ConservedVars[D] / W_Seed;
   }
 
   /* Called by 2dNRNoble */
@@ -177,20 +174,16 @@ namespace AsterX
   {
     CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
-    PrimitiveVars[B1] = ConservedVars[B1];
-    PrimitiveVars[B2] = ConservedVars[B2];
-    PrimitiveVars[B3] = ConservedVars[B3];
-
     PrimitiveVars[RHO] = ConservedVars[D] / W_Sol;
 
     PrimitiveVars[V1_CON] = (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] + gcon[XZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
-    PrimitiveVars[V1_CON] += BiSi * PrimitiveVars[B1] / (Z_Sol * (Z_Sol + Bsq));
+    PrimitiveVars[V1_CON] += BiSi * ConservedVars[B1] / (Z_Sol * (Z_Sol + Bsq));
 
     PrimitiveVars[V2_CON] = (gcon[XY] * ConservedVars[S1_COV] + gcon[YY] * ConservedVars[S2_COV] + gcon[YZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
-    PrimitiveVars[V2_CON] += BiSi * PrimitiveVars[B2] / (Z_Sol * (Z_Sol + Bsq));
+    PrimitiveVars[V2_CON] += BiSi * ConservedVars[B2] / (Z_Sol * (Z_Sol + Bsq));
 
     PrimitiveVars[V3_CON] = (gcon[XZ] * ConservedVars[S1_COV] + gcon[YZ] * ConservedVars[S2_COV] + gcon[ZZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
-    PrimitiveVars[V3_CON] += BiSi * PrimitiveVars[B3] / (Z_Sol * (Z_Sol + Bsq));
+    PrimitiveVars[V3_CON] += BiSi * ConservedVars[B3] / (Z_Sol * (Z_Sol + Bsq));
 
     PrimitiveVars[EPS] = (Z_Sol * (1. - vsq_Sol) / PrimitiveVars[RHO] - 1.0) / GammaIdealFluid;
   }
@@ -377,9 +370,6 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           prims[V2_CON] = saved_vely(p.I);
           prims[V3_CON] = saved_velz(p.I);
           prims[EPS] = saved_eps(p.I);
-          prims[B1] = cons[B1];
-          prims[B2] = cons[B2];
-          prims[B3] = cons[B3];
 
           // Construct con2primFactory object:
           typeEoS plasma_0(gamma, cons, prims, g_lo, g_up);
@@ -395,9 +385,6 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             velz(p.I) = 0.0;
             eps(p.I) = prims[EPS];
             press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
-            Bvecx(p.I) = prims[B1];
-            Bvecy(p.I) = prims[B2];
-            Bvecz(p.I) = prims[B3];
 
             //assert(0); // Terminate?
           }
@@ -410,19 +397,16 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             velz(p.I) = plasma_0.PrimitiveVars[V3_CON];
             eps(p.I) = plasma_0.PrimitiveVars[EPS];
             press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
-            Bvecx(p.I) = prims[B1];
-            Bvecy(p.I) = prims[B2];
-            Bvecz(p.I) = prims[B3];
           }
 
+          Bvecx(p.I) = cons[B1];
+          Bvecy(p.I) = cons[B2];
+          Bvecz(p.I) = cons[B3];
           saved_rho(p.I) = rho(p.I);
           saved_velx(p.I) = velx(p.I);
           saved_vely(p.I) = vely(p.I);
           saved_velz(p.I) = velz(p.I);
           saved_eps(p.I) = eps(p.I);
-          saved_Bvecx(p.I) = prims[B1];
-          saved_Bvecy(p.I) = prims[B2];
-          saved_Bvecz(p.I) = prims[B3];
         }); // Loop
   }         // AsterX_Con2Prim_2DNRNoble
 
