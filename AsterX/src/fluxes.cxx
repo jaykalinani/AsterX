@@ -178,53 +178,19 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     const array<array<CCTK_REAL, 2>, 3> Bs_rc = {Bx_rc, By_rc, Bz_rc};
     const array<CCTK_REAL, 2> B_rc = Bs_rc[dir];
 
-    constexpr auto DI = PointDesc::DI;
-
     // TODO: to reconstruct w_lorentz*vel or 4-velocity u_i
 
     // Computing metric components
-    CCTK_REAL alp_avg = 0;
-
-    CCTK_REAL betax_avg = 0;
-    CCTK_REAL betay_avg = 0;
-    CCTK_REAL betaz_avg = 0;
-
-    CCTK_REAL gxx_avg = 0;
-    CCTK_REAL gxy_avg = 0;
-    CCTK_REAL gxz_avg = 0;
-    CCTK_REAL gyy_avg = 0;
-    CCTK_REAL gyz_avg = 0;
-    CCTK_REAL gzz_avg = 0;
-
-    for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
-      for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
-        for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-          alp_avg += alp(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-
-          betax_avg += betax(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          betay_avg += betay(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          betaz_avg += betaz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-
-          gxx_avg += gxx(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gxy_avg += gxy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gxz_avg += gxz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gyy_avg += gyy(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gyz_avg += gyz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-          gzz_avg += gzz(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
-        }
-      }
-    }
-
-    alp_avg /= 4;
-    betax_avg /= 4;
-    betay_avg /= 4;
-    betaz_avg /= 4;
-    gxx_avg /= 4;
-    gxy_avg /= 4;
-    gxz_avg /= 4;
-    gyy_avg /= 4;
-    gyz_avg /= 4;
-    gzz_avg /= 4;
+    CCTK_REAL alp_avg = calc_avg_v2f(alp, p, dir);
+    CCTK_REAL betax_avg = calc_avg_v2f(betax, p, dir);
+    CCTK_REAL betay_avg = calc_avg_v2f(betay, p, dir);
+    CCTK_REAL betaz_avg = calc_avg_v2f(betaz, p, dir);
+    CCTK_REAL gxx_avg = calc_avg_v2f(gxx, p, dir);
+    CCTK_REAL gxy_avg = calc_avg_v2f(gxy, p, dir);
+    CCTK_REAL gxz_avg = calc_avg_v2f(gxz, p, dir);
+    CCTK_REAL gyy_avg = calc_avg_v2f(gyy, p, dir);
+    CCTK_REAL gyz_avg = calc_avg_v2f(gyz, p, dir);
+    CCTK_REAL gzz_avg = calc_avg_v2f(gzz, p, dir);
 
     const array<CCTK_REAL, 3> betas_avg = {betax_avg, betay_avg, betaz_avg};
     const CCTK_REAL beta_avg = betas_avg[dir];
