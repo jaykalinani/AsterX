@@ -176,6 +176,11 @@ namespace AsterX
   CCTK_HOST CCTK_DEVICE void idealFluid::WZ2Prim()
   {
     CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
+
+    PrimitiveVars[B1] = ConservedVars[B1];
+    PrimitiveVars[B2] = ConservedVars[B2];
+    PrimitiveVars[B3] = ConservedVars[B3];
+
     PrimitiveVars[RHO] = ConservedVars[D] / W_Sol;
 
     PrimitiveVars[V1_CON] = (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] + gcon[XZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
@@ -188,9 +193,6 @@ namespace AsterX
     PrimitiveVars[V3_CON] += BiSi * PrimitiveVars[B3] / (Z_Sol * (Z_Sol + Bsq));
 
     PrimitiveVars[EPS] = (Z_Sol * (1. - vsq_Sol) / PrimitiveVars[RHO] - 1.0) / GammaIdealFluid;
-    PrimitiveVars[B1] = ConservedVars[B1];
-    PrimitiveVars[B2] = ConservedVars[B2];
-    PrimitiveVars[B3] = ConservedVars[B3];
   }
 
   /* Destructor */
