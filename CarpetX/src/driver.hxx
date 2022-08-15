@@ -43,7 +43,8 @@ enum class symmetry_t {
   reflection,
   dirichlet,
   von_neumann,
-  interpatch
+  linear_extrapolation,
+  interpatch,
 };
 std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry);
 

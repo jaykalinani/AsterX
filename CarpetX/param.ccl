@@ -151,6 +151,30 @@ BOOLEAN von_neumann_upper_z "Von Neumann condition at the upper z boundary"
 {
 } no
 
+BOOLEAN linear_extrapolation_x "Linear extrapolation boundary at the lower x boundary"
+{
+} no
+
+BOOLEAN linear_extrapolation_y "Linear extrapolation boundary at the lower y boundary"
+{
+} no
+
+BOOLEAN linear_extrapolation_z "Linear extrapolation boundary at the lower z boundary"
+{
+} no
+
+BOOLEAN linear_extrapolation_upper_x "Linear extrapolation boundary at the upper x boundary"
+{
+} no
+
+BOOLEAN linear_extrapolation_upper_y "Linear extrapolation boundary at the upper y boundary"
+{
+} no
+
+BOOLEAN linear_extrapolation_upper_z "Linear extrapolation boundary at the upper z boundary"
+{
+} no
+
 
 
 CCTK_INT blocking_factor_x "Blocking factor"

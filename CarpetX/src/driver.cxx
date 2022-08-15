@@ -87,6 +87,8 @@ std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry) {
     return os << "dirichlet";
   case symmetry_t::von_neumann:
     return os << "von_neumann";
+  case symmetry_t::linear_extrapolation:
+    return os << "linear_extrapolation";
   case symmetry_t::interpatch:
     return os << "interpatch";
   default:
@@ -116,9 +118,17 @@ array<array<symmetry_t, dim>, 2> get_symmetries() {
       {{bool(von_neumann_upper_x), bool(von_neumann_upper_y),
         bool(von_neumann_upper_z)}},
   }};
+  const array<array<bool, 3>, 2> is_linear_extrapolation{{
+      {{bool(linear_extrapolation_x), bool(linear_extrapolation_y),
+        bool(linear_extrapolation_z)}},
+      {{bool(linear_extrapolation_upper_x), bool(linear_extrapolation_upper_y),
+        bool(linear_extrapolation_upper_z)}},
+  }};
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
-      assert(is_periodic[f][d] + is_reflection[f][d] + is_dirichlet[f][d] <= 1);
+      assert(is_periodic[f][d] + is_reflection[f][d] + is_dirichlet[f][d] +
+                 is_von_neumann[f][d] + is_linear_extrapolation[f][d] <=
+             1);
   array<array<symmetry_t, dim>, 2> symmetries;
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
@@ -126,7 +136,9 @@ array<array<symmetry_t, dim>, 2> get_symmetries() {
                          : is_reflection[f][d]  ? symmetry_t::reflection
                          : is_dirichlet[f][d]   ? symmetry_t::dirichlet
                          : is_von_neumann[f][d] ? symmetry_t::von_neumann
-                                                : symmetry_t::none;
+                         : is_linear_extrapolation[f][d]
+                             ? symmetry_t::linear_extrapolation
+                             : symmetry_t::none;
   return symmetries;
 }
 
@@ -1008,6 +1020,21 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
             }
           }
 
+          Arith::vect<int, dim> linear_extrapolation_source;
+          for (int d = 0; d < dim; ++d) {
+            if (inormal[d] != 0) {
+              linear_extrapolation_source[d] =
+                  inormal[d] < 0 ? imin[d] : imax[d] - 1;
+              if (inormal[d] < 0) {
+                assert(linear_extrapolation_source[d] < amax[d]);
+                assert(linear_extrapolation_source[d] - inormal[d] < amax[d]);
+              } else {
+                assert(linear_extrapolation_source[d] >= amin[d]);
+                assert(linear_extrapolation_source[d] - inormal[d] >= amin[d]);
+              }
+            }
+          }
+
           Arith::vect<int, dim> reflection_offset;
           for (int d = 0; d < dim; ++d) {
             if (inormal[d] != 0) {
@@ -1035,12 +1062,17 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
             loop_region(
                 [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
                     CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                      Arith::vect<int, dim> src;
+                      Arith::vect<int, dim> src, delta;
                       bool parity = false;
                       for (int d = 0; d < dim; ++d) {
                         switch (symmetries[d]) {
                         case symmetry_t::von_neumann:
                           src[d] = von_neumann_source[d];
+                          delta[d] = 0;
+                          break;
+                        case symmetry_t::linear_extrapolation:
+                          src[d] = linear_extrapolation_source[d];
+                          delta[d] = -inormal[d];
                           break;
                         case symmetry_t::reflection:
                           // src[d] = inormal[d] < 0
@@ -1050,16 +1082,24 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                           //                    2 * (dst[d] - (imax[d] - 1)) +
                           //                    groupdata.indextype.at(d);
                           src[d] = reflection_offset[d] - dst[d];
+                          delta[d] = 0;
                           parity ^= reflection_parity[d];
                           break;
                         case symmetry_t::none:
                           src[d] = dst[d];
+                          delta[d] = 0;
                           break;
                         default:
                           assert(0);
                         }
                       }
-                      const CCTK_REAL val = var(src);
+                      CCTK_REAL val = var(src);
+                      if (any(delta != 0)) {
+                        // Calculate gradient
+                        const CCTK_REAL grad = val - var(src + delta);
+                        using std::sqrt;
+                        val += sqrt(sum(dst - src) / sum(delta)) * grad;
+                      }
                       var.store(dst, parity ? -val : val);
                     },
                 bmin, bmax);
@@ -2095,14 +2135,21 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
       {{bool(von_neumann_upper_x), bool(von_neumann_upper_y),
         bool(von_neumann_upper_z)}},
   }};
+  const array<array<bool, 3>, 2> is_linear_extrapolation{{
+      {{bool(linear_extrapolation_x), bool(linear_extrapolation_y),
+        bool(linear_extrapolation_z)}},
+      {{bool(linear_extrapolation_upper_x), bool(linear_extrapolation_upper_y),
+        bool(linear_extrapolation_upper_z)}},
+  }};
 
   for (int d = 0; d < dim; ++d) {
     for (int f = 0; f < 2; ++f) {
       bndsize[2 * d + f] = cctkGH->cctk_nghostzones[d];
       is_ghostbnd[2 * d + f] = cctkGH->cctk_bbox[2 * d + f];
-      is_symbnd[2 * d + f] = !is_ghostbnd[2 * d + f] &&
-                             (is_periodic[f][d] || is_reflection[f][d] ||
-                              is_dirichlet[f][d] || is_von_neumann[f][d]);
+      is_symbnd[2 * d + f] =
+          !is_ghostbnd[2 * d + f] &&
+          (is_periodic[f][d] || is_reflection[f][d] || is_dirichlet[f][d] ||
+           is_von_neumann[f][d] || is_linear_extrapolation[f][d]);
       is_physbnd[2 * d + f] = !is_ghostbnd[2 * d + f] && !is_symbnd[2 * d + f];
     }
   }
