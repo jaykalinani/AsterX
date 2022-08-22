@@ -25,8 +25,8 @@ MultiPatch::test_repetitions = 30
 
 MultiPatch::patch_system = "Cake"
                                                                         
-MultiPatch::cake_outer_boundary_radius = 4.0
-MultiPatch::cake_inner_boundary_radius = 2.0
+MultiPatch::cake_outer_boundary_radius = 5.0
+MultiPatch::cake_inner_boundary_radius = 1.0
 
 MultiPatch::cake_cartesian_ncells_i    = 10
 MultiPatch::cake_cartesian_ncells_j    = 10
@@ -39,10 +39,4 @@ IO::out_dir = $parfile
 IO::out_every = 1
 
 CarpetX::out_tsv = no
-CarpetX::out_tsv_vars = "
-    Coordinates::vertex_coords
-    Coordinates::cell_coords
-    Coordinates::cell_volume
-    MultiPatch::vertex_Jacobians
-    MultiPatch::vertex_dJacobians
-"
+CarpetX::out_tsv_vars = ""

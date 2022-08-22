@@ -321,9 +321,10 @@ extern "C" void MultiPatch_Check_Parameters(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_MultiPatch_Coordinates_Setup;
   DECLARE_CCTK_PARAMETERS;
 
-  if (cake_inner_boundary_radius > cake_outer_boundary_radius)
-    CCTK_PARAMWARN("Make sure that the cake inner boundary radius is smaller "
-                   "than and not equal to the outer boundary radius");
+  if (!(cake_outer_boundary_radius > 4 * cake_inner_boundary_radius))
+    CCTK_PARAMWARN(
+        "Make sure that outer boundary radius is larger than 4 times "
+        "the inner boudary radius.");
 }
 
 } // namespace MultiPatch
