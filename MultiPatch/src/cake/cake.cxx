@@ -1,13 +1,8 @@
 #include "multipatch.hxx"
 #include "tests.hxx"
-#include "cake_cartesian_jac.hxx"
-#include "cake_plus_x_jac.hxx"
-#include "cake_plus_y_jac.hxx"
-#include "cake_plus_z_jac.hxx"
-#include "cake_minus_x_jac.hxx"
-#include "cake_minus_y_jac.hxx"
-#include "cake_minus_z_jac.hxx"
 #include "cake.hxx"
+#include "cake_inverse_core_derivs.hxx"
+#include "cake_jacobians.hxx"
 
 #include <cassert>
 #include <cmath>
@@ -17,7 +12,45 @@ namespace MultiPatch {
 namespace Cake {
 
 /**
- * Core function of the cake local -> global coordinate transformations.
+ * @brief Equation (18) of https://arxiv.org/pdf/gr-qc/0512001v1.pdf
+ *
+ * @param pt The patch data
+ * @param c The local c coordinate
+ * @return The result of equation (18) of
+ * https://arxiv.org/pdf/gr-qc/0512001v1.pdf.
+ */
+CCTK_DEVICE CCTK_HOST inline CCTK_REAL paper_r(const PatchTransformations &pt,
+                                               CCTK_REAL c) {
+  const auto r0{pt.cake_inner_boundary_radius};
+  const auto r1{pt.cake_outer_boundary_radius};
+
+  return (r0 * (1 - c) + r1 * (1 + c)) / 2;
+}
+
+/**
+ * @brief Equation (19) of https://arxiv.org/pdf/gr-qc/0512001v1.pdf
+ *
+ * @param pt The patch data.
+ * @param a The local a coordinate
+ * @param b The local b coordinate
+ * @param c The local c coordinate
+ * @return The result of equation (19) of
+ * https://arxiv.org/pdf/gr-qc/0512001v1.pdf
+ */
+CCTK_DEVICE CCTK_HOST inline CCTK_REAL
+paper_F(const PatchTransformations &pt, CCTK_REAL a, CCTK_REAL b, CCTK_REAL c) {
+  using std::sqrt;
+
+  const auto r0{pt.cake_inner_boundary_radius};
+  const auto r1{pt.cake_outer_boundary_radius};
+  const auto E{1 + a * a + b * b};
+  const auto r{paper_r(pt, c)};
+
+  return sqrt(((r1 - r) + (r - r0) * E) / (r1 - r0));
+}
+
+/**
+ * @brief Core function of the cake local -> global coordinate transformations.
  *
  * @param pt The cake patch data.
  * @param a The a local coordinate, ranging from (-1, 1)
@@ -28,20 +61,40 @@ namespace Cake {
 CCTK_DEVICE CCTK_HOST inline CCTK_REAL
 local_to_global_cake_core(const PatchTransformations &pt, CCTK_REAL a,
                           CCTK_REAL b, CCTK_REAL c) {
-  using std::sqrt;
-
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
-  const auto numerator = r0 * (1 - c) + r1 * (1 + c);
-  const auto denominator =
-      sqrt(4 + 2 * Power(a, 2) * (1 + c) + 2 * Power(b, 2) * (1 + c));
-
-  return numerator / denominator;
+  const auto r{paper_r(pt, c)};
+  const auto F{paper_F(pt, a, b, c)};
+  return r / F;
 }
 
 /**
- * The local to global coordinate transformation implementation.
+ * @brief Core function of the cake global -> local coordinate transformations
+ *
+ * @param pt The patch data.
+ * @param a local a coordinate in terms of global variables
+ * @param b local b coordinate in terms of global variables
+ * @param var The signature variable of the patch (x for +-x, y for +-y, z for
+ * +- z)
+ * @return The value of the core.
+ */
+CCTK_DEVICE CCTK_HOST inline CCTK_REAL
+global_to_local_cake_core(const PatchTransformations &pt, CCTK_REAL a,
+                          CCTK_REAL b, CCTK_REAL var) {
+  using std::sqrt;
+
+  const auto r0{pt.cake_inner_boundary_radius};
+  const auto r1{pt.cake_outer_boundary_radius};
+  const auto E{1 + a * a + b * b};
+
+  const auto part1{r0 * r0 - r1 * r1 + (E - 1) * var * var};
+  const auto part2{4 * (r0 - r1) * (E * r0 - r1) * var * var +
+                   (E - 1) * (E - 1) * var * var * var * var};
+  const auto part3{(r0 - r1) * (r0 - r1)};
+
+  return (part1 + sqrt(part2)) / part3;
+}
+
+/**
+ * @brief The local to global coordinate transformation implementation.
  * This is where the actual coordinate transformations are performed but it is
  * also suitable for passing to CarpetX.
  *
@@ -59,31 +112,29 @@ CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
   const auto b = local_vars(1);
   const auto c = local_vars(2);
 
-  const auto base_x = local_to_global_cake_core(pt, a, b, c);
-  const auto base_y = b * base_x;
-  const auto base_z = a * base_x;
+  const auto core = local_to_global_cake_core(pt, a, b, c);
 
   switch (patch) {
   case static_cast<int>(patch_piece::cartesian):
     global_vars = local_vars;
     break;
   case static_cast<int>(patch_piece::plus_x):
-    global_vars = {base_x, base_y, base_z};
+    global_vars = {core, b * core, a * core};
     break;
   case static_cast<int>(patch_piece::minus_x):
-    global_vars = {-base_x, -base_y, base_z};
+    global_vars = {-core, -b * core, a * core};
     break;
   case static_cast<int>(patch_piece::plus_y):
-    global_vars = {-base_y, base_x, base_z};
+    global_vars = {-b * core, core, a * core};
     break;
   case static_cast<int>(patch_piece::minus_y):
-    global_vars = {base_y, -base_x, base_z};
+    global_vars = {b * core, -core, a * core};
     break;
   case static_cast<int>(patch_piece::plus_z):
-    global_vars = {-base_z, base_y, base_x};
+    global_vars = {-a * core, b * core, core};
     break;
   case static_cast<int>(patch_piece::minus_z):
-    global_vars = {base_z, base_y, -base_x};
+    global_vars = {a * core, b * core, -core};
     break;
   default:
 #ifndef __CUDACC__
@@ -99,7 +150,7 @@ CCTK_DEVICE CCTK_HOST svec_u local2global(const PatchTransformations &pt,
 }
 
 /**
- * The global to local coordinate transformation implementation.
+ * @brief The global to local coordinate transformation implementation.
  * This is where the actual coordinate transformations are performed but it is
  * also suitable to be passed to CarpetX without any wrappers.
  *
@@ -113,74 +164,49 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
   const auto y = global_vars(1);
   const auto z = global_vars(2);
 
-  const auto r0 = pt.cake_inner_boundary_radius;
-  const auto r1 = pt.cake_outer_boundary_radius;
-
   const auto piece = get_owner_patch(pt, global_vars);
-  svec_u local_vars = {0, 0, 0};
 
-  const auto x2 = x * x;
-  const auto y2 = y * y;
-  const auto z2 = z * z;
-  const auto r02 = r0 * r0;
-  const auto r12 = r1 * r1;
+  CCTK_REAL a{0}, b{0}, var{0};
 
   switch (static_cast<int>(piece)) {
 
   case static_cast<int>(patch_piece::cartesian):
-    local_vars = global_vars;
-    break;
+    return std_make_tuple(static_cast<int>(piece), global_vars);
 
   case static_cast<int>(patch_piece::plus_x):
-    local_vars = {
-        z / x, y / x,
-        (r02 - r12 + y2 + z2 +
-         sqrt(4 * r12 * x2 + Power(y2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
-              4 * r0 * r1 * (2 * x2 + y2 + z2))) /
-            Power(r0 - r1, 2)};
+    a = z / x;
+    b = y / x;
+    var = x;
     break;
 
   case static_cast<int>(patch_piece::minus_x):
-    local_vars = {
-        -z / x, y / x,
-        (r02 - r12 + y2 + z2 +
-         sqrt(4 * r12 * x2 + Power(y2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
-              4 * r0 * r1 * (2 * x2 + y2 + z2))) /
-            Power(r0 - r1, 2)};
+    a = -z / x;
+    b = y / x;
+    var = x;
     break;
 
   case static_cast<int>(patch_piece::plus_y):
-    local_vars = {
-        z / y, -x / y,
-        (r02 - r12 + x2 + z2 +
-         sqrt(4 * r12 * y2 + Power(x2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
-              4 * r0 * r1 * (x2 + 2 * y2 + z2))) /
-            Power(r0 - r1, 2)};
+    a = z / y;
+    b = -x / y;
+    var = y;
     break;
 
   case static_cast<int>(patch_piece::minus_y):
-    local_vars = {
-        -z / y, -x / y,
-        (r02 - r12 + x2 + z2 +
-         sqrt(4 * r12 * y2 + Power(x2 + z2, 2) + 4 * r02 * (x2 + y2 + z2) -
-              4 * r0 * r1 * (x2 + 2 * y2 + z2))) /
-            Power(r0 - r1, 2)};
+    a = -z / y;
+    b = -x / y;
+    var = y;
     break;
 
   case static_cast<int>(patch_piece::plus_z):
-    local_vars = {-x / z, y / z,
-                  (r02 - r12 + x2 + y2 +
-                   sqrt((x2 + y2) * (4 * r0 * (r0 - r1) + x2 + y2) +
-                        4 * Power(r0 - r1, 2) * z2)) /
-                      Power(r0 - r1, 2)};
+    a = -x / z;
+    b = y / z;
+    var = z;
     break;
 
   case static_cast<int>(patch_piece::minus_z):
-    local_vars = {-x / z, -y / z,
-                  (r02 - r12 + x2 + y2 +
-                   sqrt((x2 + y2) * (4 * r0 * (r0 - r1) + x2 + y2) +
-                        4 * Power(r0 - r1, 2) * z2)) /
-                      Power(r0 - r1, 2)};
+    a = -x / z;
+    b = -y / z;
+    var = z;
     break;
 
   default:
@@ -193,25 +219,21 @@ global2local(const PatchTransformations &pt, const svec_u &global_vars) {
     break;
   }
 
-  return std_make_tuple(static_cast<int>(piece), local_vars);
+  const CCTK_REAL c = global_to_local_cake_core(pt, a, b, var);
+
+  return std_make_tuple(static_cast<int>(piece), svec_u{a, b, c});
 }
 
 /**
- * This function computes the local to global coordinate
+ * @brief This function computes the local to global coordinate
  * transformation, the jacobian and it's derivative. It can be passed directly
  * to CarpetX.
  *
- * Note that:
+ * @note The Jacobians are defined as
  * J(i)(j) = $J^{i}_{j} = \frac{d a^i}{d x^j}$.
  * dJ(i)(j,k) = $dJ^{i}_{j k} = \frac{d^2 a^i}{d x^j d x^k}
  * \right)$.
  *
- * TODO: Erik says: "You have six files that contain very similar code.
- * presumably, they differ in their permutations of x, y, and z, and a few minus
- * signs. you could create just one file, and call the functions in that file
- * six times with different arguments. this might reduce the amount of code
- * generated, and might speed up things. or it might not. don’t worry about this
- * now. this is just a thought for the future."
  *
  * @param pt The patch data
  * @param patch The index of the patch to transform.
@@ -224,58 +246,17 @@ d2local_dglobal2(const PatchTransformations &pt, int patch,
                  const svec_u &local_vars) {
 
   auto local_to_global_result = pt.local2global(pt, patch, local_vars);
-
-  auto jacobian_results = cake_cartesian_jac(pt, local_vars);
-
-  switch (patch) {
-
-  case static_cast<int>(patch_piece::cartesian):
-    // No action is necessary
-    break;
-
-  case static_cast<int>(patch_piece::plus_x):
-    jacobian_results = cake_plus_x_jac(pt, local_vars);
-    break;
-
-  case static_cast<int>(patch_piece::minus_x):
-    jacobian_results = cake_minus_x_jac(pt, local_vars);
-    break;
-
-  case static_cast<int>(patch_piece::plus_y):
-    jacobian_results = cake_plus_y_jac(pt, local_vars);
-    break;
-
-  case static_cast<int>(patch_piece::minus_y):
-    jacobian_results = cake_minus_y_jac(pt, local_vars);
-    break;
-
-  case static_cast<int>(patch_piece::plus_z):
-    jacobian_results = cake_plus_z_jac(pt, local_vars);
-    break;
-
-  case static_cast<int>(patch_piece::minus_z):
-    jacobian_results = cake_minus_z_jac(pt, local_vars);
-    break;
-
-  default:
-#ifndef __CUDACC__
-    CCTK_VERROR("No jacobians available for patch %s",
-                piece_name(static_cast<patch_piece>(patch)).c_str());
-#else
-    assert(0);
-#endif
-    break;
-  }
+  auto jacobian_results = cake_jacs(pt, patch, local_to_global_result);
 
   return std_make_tuple(local_to_global_result, std::get<0>(jacobian_results),
                         std::get<1>(jacobian_results));
 } // namespace Cake
 
 /**
- * This function computes the local to global coordinate transformation and the
- * jacobian. It can be passed directly to CarpetX.
+ * @brief This function computes the local to global coordinate transformation
+ * and the jacobian. It can be passed directly to CarpetX.
  *
- * Note that:
+ * @note NThe Jacobians is defined as:
  * J(i)(j) = $J^{i}_{j} = \frac{d a^i}{d x^j}$.
  *
  * @param pt The patch data
