@@ -1430,10 +1430,7 @@ private:
   static amrex::FArrayBox make_fab(const GF3D5layout &layout, const int nvars) {
     const amrex::Box box(amrex::IntVect(0, 0, 0),
                          amrex::IntVect(layout.np - 1, 0, 0));
-    amrex::FArrayBox fab;
-#pragma omp critical(GF3D5vector_GF3D5vector)
-    fab = amrex::FArrayBox(box, nvars, amrex::The_Async_Arena());
-    return fab;
+    return amrex::FArrayBox(box, nvars, amrex::The_Async_Arena());
   }
 
 public:
