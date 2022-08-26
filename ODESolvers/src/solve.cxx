@@ -65,26 +65,21 @@ constexpr details::return_type<D, Types...> make_array(Types &&...t) {
 // A state vector component, with mfabs for each level, group, and variable
 struct statecomp_t {
 
-  statecomp_t() = delete;
+  statecomp_t() = default;
+
   statecomp_t(statecomp_t &&) = default;
   statecomp_t &operator=(statecomp_t &&) = default;
-
-  statecomp_t(const cGH *cctkGH) : cctkGH(cctkGH) {}
 
   // Don't allow copies because we might own stuff
   statecomp_t(const statecomp_t &) = delete;
   statecomp_t &operator=(const statecomp_t &) = delete;
 
-  const cGH *cctkGH; // this might be unused
-  vector<string> groupnames;
-  vector<int> groupids;
+  vector<const GHExt::PatchData::LevelData::GroupData *> groupdatas;
   vector<amrex::MultiFab *> mfabs;
 
-private:
-  // These will be automatically freed when this object is deallocated
-  vector<unique_ptr<amrex::MultiFab> > owned_stuff;
+  static void init_tmp_mfabs();
+  static void free_tmp_mfabs();
 
-public:
   void check_valid(const function<string()> &why) const;
   void check_valid(const string &why) const {
     check_valid([=]() { return why; });
@@ -113,19 +108,41 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Initialize the temporary mfab mechanism
+void statecomp_t::init_tmp_mfabs() {
+  assert(CarpetX::active_levels);
+  CarpetX::active_levels->loop([&](const auto &leveldata) {
+    for (const auto &groupdataptr : leveldata.groupdata) {
+      if (groupdataptr == nullptr)
+        continue;
+      const auto &groupdata = *groupdataptr;
+      groupdata.init_tmp_mfabs();
+    }
+  });
+}
+
+// Free all temporary mfabs that we might have allocated
+void statecomp_t::free_tmp_mfabs() {
+  assert(CarpetX::active_levels);
+  CarpetX::active_levels->loop([&](const auto &leveldata) {
+    for (const auto &groupdataptr : leveldata.groupdata) {
+      if (groupdataptr == nullptr)
+        continue;
+      const auto &groupdata = *groupdataptr;
+      groupdata.free_tmp_mfabs();
+    }
+  });
+}
+
 // Ensure a state vector has valid data everywhere
 void statecomp_t::check_valid(const function<string()> &why) const {
-  for (const int groupid : groupids) {
-    if (groupid >= 0) {
-      assert(CarpetX::active_levels);
-      CarpetX::active_levels->loop([&](const auto &leveldata) {
-        const auto &groupdata = *leveldata.groupdata.at(groupid);
-        for (int vi = 0; vi < groupdata.numvars; ++vi) {
-          const int tl = 0;
-          CarpetX::check_valid(leveldata, groupdata, vi, tl,
-                               nan_handling_t::forbid_nans, why);
-        }
-      });
+  for (const auto groupdata : groupdatas) {
+    const auto &leveldata = CarpetX::ghext->patchdata.at(groupdata->patch)
+                                .leveldata.at(groupdata->level);
+    for (int vi = 0; vi < groupdata->numvars; ++vi) {
+      const int tl = 0;
+      CarpetX::check_valid(leveldata, *groupdata, vi, tl,
+                           nan_handling_t::forbid_nans, why);
     }
   }
 }
@@ -134,30 +151,32 @@ void statecomp_t::check_valid(const function<string()> &why) const {
 statecomp_t statecomp_t::copy() const {
   check_valid("before copy");
   const size_t size = mfabs.size();
-  statecomp_t result(cctkGH);
-  result.groupnames = groupnames;
-  result.groupids.resize(size, -1);
+  statecomp_t result;
+  result.groupdatas.reserve(size);
   result.mfabs.reserve(size);
-  result.owned_stuff.reserve(size);
   for (size_t n = 0; n < size; ++n) {
-    const auto &x = mfabs.at(n);
+    const auto groupdata = groupdatas.at(n);
 #ifdef CCTK_DEBUG
+    const auto &x = mfabs.at(n);
     if (x->contains_nan())
       CCTK_VERROR("statecomp_t::copy.x: Group %s contains nans",
-                  groupnames.at(n).c_str());
+                  groupdata->groupname.c_str());
 #endif
-    auto y = make_unique<amrex::MultiFab>(x->boxArray(), x->DistributionMap(),
-                                          x->nComp(), x->nGrowVect());
-    amrex::MultiFab::Copy(*y, *x, 0, 0, y->nComp(), y->nGrowVect());
+    auto y = groupdata->alloc_tmp_mfab();
+    result.groupdatas.push_back(groupdata);
+    result.mfabs.push_back(y);
+  }
+  lincomb(result, 0, make_array(1.0), make_array(this));
+  result.check_valid("after copy");
 #ifdef CCTK_DEBUG
+  for (size_t n = 0; n < size; ++n) {
+    const auto groupdata = result.groupdatas.at(n);
+    const auto &y = result.mfabs.at(n);
     if (y->contains_nan())
       CCTK_VERROR("statecomp_t::copy.y: Group %s contains nans",
-                  result.groupnames.at(n).c_str());
-#endif
-    result.mfabs.push_back(y.get());
-    result.owned_stuff.push_back(move(y));
+                  groupdata->groupname.c_str());
   }
-  result.check_valid("after copy");
+#endif
   return result;
 }
 
@@ -431,7 +450,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   const CCTK_REAL dt = cctk_delta_time;
   const int tl = 0;
 
-  statecomp_t var(cctkGH), rhs(cctkGH);
+  statecomp_t var, rhs;
   int nvars = 0;
   assert(CarpetX::active_levels);
   CarpetX::active_levels->loop([&](const auto &leveldata) {
@@ -446,11 +465,9 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
         assert(rhs_gi != groupdata.groupindex);
         const auto &rhs_groupdata = *leveldata.groupdata.at(rhs_gi);
         assert(rhs_groupdata.numvars == groupdata.numvars);
-        var.groupnames.push_back(CCTK_GroupName(groupdata.groupindex));
-        var.groupids.push_back(groupdata.groupindex);
+        var.groupdatas.push_back(&groupdata);
         var.mfabs.push_back(groupdata.mfab.at(tl).get());
-        rhs.groupnames.push_back(CCTK_GroupName(rhs_groupdata.groupindex));
-        rhs.groupids.push_back(rhs_groupdata.groupindex);
+        rhs.groupdatas.push_back(&rhs_groupdata);
         rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
         if (leveldata.level == active_levels->min_level)
           nvars += groupdata.numvars;
@@ -461,6 +478,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CCTK_VINFO("  Integrating %d variables", nvars);
   if (nvars == 0)
     CCTK_VWARN(CCTK_WARN_ALERT, "Integrating %d variables", nvars);
+
+  statecomp_t::init_tmp_mfabs();
 
   const CCTK_REAL saved_time = cctkGH->cctk_time;
   const CCTK_REAL old_time = cctkGH->cctk_time - dt;
@@ -934,7 +953,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
     const auto y1 = var.copy();
 
-    statecomp_t kprime2(cctkGH);
+    statecomp_t kprime2;
     statecomp_t::lincomb(kprime2, 0, make_array(-1.0, +1.0, -dt / 2),
                          make_array(&y0, &y1, &k1));
 
@@ -950,6 +969,8 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   } else {
     assert(0);
   }
+
+  statecomp_t::free_tmp_mfabs();
 
   // Reset current time
   *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = saved_time;
