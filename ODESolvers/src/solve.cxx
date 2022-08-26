@@ -245,7 +245,17 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
         using std::min;
         const ptrdiff_t imax = min(npoints, imin + tile_size);
 
-        if (!read_dst) {
+        if (!read_dst && N == 1 && factors[0] == 1) {
+          // Copy
+
+          auto task = [=]() {
+            std::memcpy(&dstptr[imin], &srcptrs[0][imin],
+                        (imax - imin) * sizeof *dstptr);
+          };
+          tasks.push_back(std::move(task));
+
+        } else if (!read_dst) {
+          // Write
 
           auto task = [=]() {
 #pragma omp simd
@@ -259,6 +269,7 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
           tasks.push_back(std::move(task));
 
         } else {
+          // Update
 
           auto task = [=]() {
 #pragma omp simd
