@@ -288,8 +288,11 @@ struct GHExt {
         // regridding (and the shape of the multifab presumably
         // changes). This is used e.g. by ODESolvers for its
         // temporaries.
+      private:
         mutable std::vector<std::unique_ptr<amrex::MultiFab> > tmp_mfabs;
         mutable std::size_t next_tmp_mfab;
+
+      public:
         void init_tmp_mfabs() const;
         amrex::MultiFab *alloc_tmp_mfab() const;
         void free_tmp_mfabs() const;
