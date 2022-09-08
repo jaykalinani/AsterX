@@ -67,8 +67,8 @@ SCHEDULE ODESolvers_Solve AT evol
 #   EstimateError: Estimate discretization error (for regridding)
 #   If regridding:
 #     [regrid]
-#     BaseGrid: Set up constants (e.g. coordinates) everywhere on the grid
 #     [interpolate]
+#     BaseGrid: Set up constants (e.g. coordinates) everywhere on the grid
 #     PostStep: Apply boundary conditions to state vector, and project if necessary
 #   Time stepping loop:
 #     RHS: Evaluate RHS for of state vector everywhere on the grid
