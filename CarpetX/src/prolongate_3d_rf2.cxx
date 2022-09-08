@@ -5,7 +5,6 @@
 #include <cctk.h>
 #include <cctk_Parameters.h>
 
-#include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
 
 #ifdef _OPENMP
