@@ -39,14 +39,21 @@ using rat64 = rational<int64_t>;
 // `PolarB` boundary conditions. Make these available as well.
 enum class symmetry_t {
   none,
+  outer_boundary,
+  interpatch,
   periodic,
   reflection,
-  dirichlet,
-  von_neumann,
-  linear_extrapolation,
-  interpatch,
 };
 std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry);
+
+enum class boundary_t {
+  none,
+  symmetry_boundary,
+  dirichlet,
+  linear_extrapolation,
+  von_neumann,
+};
+std::ostream &operator<<(std::ostream &os, const boundary_t boundary);
 
 static_assert(AMREX_SPACEDIM == dim,
               "AMReX's AMREX_SPACEDIM must be the same as Cactus's cctk_dim");
@@ -115,6 +122,7 @@ struct GHExt {
   vector<cctkGHptr> level_cctkGHs; // [reflevel]
 
   struct CommonGroupData {
+    std::string groupname;
     int groupindex;
     int firstvarindex;
     int numvars;
@@ -242,6 +250,7 @@ struct GHExt {
         array<int, dim> indextype;
         array<int, dim> nghostzones;
 
+        array<array<boundary_t, dim>, 2> boundaries;
         vector<array<int, dim> > parities;
         vector<CCTK_REAL> dirichlet_values;
         amrex::Vector<amrex::BCRec> bcrecs;

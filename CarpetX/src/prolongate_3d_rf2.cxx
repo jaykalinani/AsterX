@@ -721,28 +721,7 @@ void prolongate_3d_rf2<CENTI, CENTJ, CENTK, CONSI, CONSJ, CONSK, ORDERI, ORDERJ,
 
   for (int d = 0; d < dim; ++d)
     assert(ratio.getVect()[d] == 2);
-  // ??? assert(gpu_or_cpu == RunOn::Cpu);
-
-  // Boundaries
-  // TODO: Use `symmetries` in GHExt
-  const array<array<bool, 3>, 2> is_symmetry{{
-      {{periodic_x || reflection_x || dirichlet_x || von_neumann_x,
-        periodic_y || reflection_y || dirichlet_y || von_neumann_y,
-        periodic_z || reflection_z || dirichlet_z || von_neumann_z}},
-      {{periodic_x || reflection_upper_x || dirichlet_upper_x ||
-            von_neumann_upper_x,
-        periodic_y || reflection_upper_y || dirichlet_upper_y ||
-            von_neumann_upper_y,
-        periodic_z || reflection_upper_z || dirichlet_upper_z ||
-            von_neumann_upper_z}},
-  }};
-
-  for (const auto &bc : bcr)
-    for (int f = 0; f < 2; ++f)
-      for (int d = 0; d < dim; ++d)
-        assert(bc.data()[f * dim + d] == amrex::BCType::int_dir ||
-               (bc.data()[f * dim + d] == amrex::BCType::ext_dir &&
-                is_symmetry[f][d]));
+    // ??? assert(gpu_or_cpu == RunOn::Cpu);
 
   assert(actual_comp == 0);  // ???
   assert(actual_state == 0); // ???

@@ -79,18 +79,32 @@ std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry) {
   switch (symmetry) {
   case symmetry_t::none:
     return os << "none";
+  case symmetry_t::outer_boundary:
+    return os << "outer_boundary";
+  case symmetry_t::interpatch:
+    return os << "interpatch";
   case symmetry_t::periodic:
     return os << "periodic";
   case symmetry_t::reflection:
     return os << "reflection";
-  case symmetry_t::dirichlet:
+  default:
+    assert(0);
+  }
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const boundary_t boundary) {
+  switch (boundary) {
+  case boundary_t::none:
+    return os << "none";
+  case boundary_t::symmetry_boundary:
+    return os << "symmetry_boundary";
+  case boundary_t::dirichlet:
     return os << "dirichlet";
-  case symmetry_t::von_neumann:
-    return os << "von_neumann";
-  case symmetry_t::linear_extrapolation:
+  case boundary_t::linear_extrapolation:
     return os << "linear_extrapolation";
-  case symmetry_t::interpatch:
-    return os << "interpatch";
+  case boundary_t::von_neumann:
+    return os << "von_neumann";
   default:
     assert(0);
   }
@@ -99,6 +113,19 @@ std::ostream &operator<<(std::ostream &os, const symmetry_t symmetry) {
 
 array<array<symmetry_t, dim>, 2> get_symmetries() {
   DECLARE_CCTK_PARAMETERS;
+
+  const array<array<bool, 3>, 2> is_outer_boundary{{
+      {{
+          bool(!CCTK_EQUALS(boundary_x, "none")),
+          bool(!CCTK_EQUALS(boundary_y, "none")),
+          bool(!CCTK_EQUALS(boundary_z, "none")),
+      }},
+      {{
+          bool(!CCTK_EQUALS(boundary_upper_x, "none")),
+          bool(!CCTK_EQUALS(boundary_upper_y, "none")),
+          bool(!CCTK_EQUALS(boundary_upper_z, "none")),
+      }},
+  }};
   const array<array<bool, 3>, 2> is_periodic{{
       {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
       {{bool(periodic_x), bool(periodic_y), bool(periodic_z)}},
@@ -108,38 +135,140 @@ array<array<symmetry_t, dim>, 2> get_symmetries() {
       {{bool(reflection_upper_x), bool(reflection_upper_y),
         bool(reflection_upper_z)}},
   }};
-  const array<array<bool, 3>, 2> is_dirichlet{{
-      {{bool(dirichlet_x), bool(dirichlet_y), bool(dirichlet_z)}},
-      {{bool(dirichlet_upper_x), bool(dirichlet_upper_y),
-        bool(dirichlet_upper_z)}},
-  }};
-  const array<array<bool, 3>, 2> is_von_neumann{{
-      {{bool(von_neumann_x), bool(von_neumann_y), bool(von_neumann_z)}},
-      {{bool(von_neumann_upper_x), bool(von_neumann_upper_y),
-        bool(von_neumann_upper_z)}},
-  }};
-  const array<array<bool, 3>, 2> is_linear_extrapolation{{
-      {{bool(linear_extrapolation_x), bool(linear_extrapolation_y),
-        bool(linear_extrapolation_z)}},
-      {{bool(linear_extrapolation_upper_x), bool(linear_extrapolation_upper_y),
-        bool(linear_extrapolation_upper_z)}},
-  }};
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
-      assert(is_periodic[f][d] + is_reflection[f][d] + is_dirichlet[f][d] +
-                 is_von_neumann[f][d] + is_linear_extrapolation[f][d] <=
+      assert(is_outer_boundary[f][d] + is_periodic[f][d] +
+                 is_reflection[f][d] <=
              1);
+
   array<array<symmetry_t, dim>, 2> symmetries;
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
-      symmetries[f][d] = is_periodic[f][d]      ? symmetry_t::periodic
-                         : is_reflection[f][d]  ? symmetry_t::reflection
-                         : is_dirichlet[f][d]   ? symmetry_t::dirichlet
-                         : is_von_neumann[f][d] ? symmetry_t::von_neumann
-                         : is_linear_extrapolation[f][d]
-                             ? symmetry_t::linear_extrapolation
-                             : symmetry_t::none;
+      symmetries[f][d] = is_outer_boundary[f][d] ? symmetry_t::outer_boundary
+                         : is_periodic[f][d]     ? symmetry_t::periodic
+                         : is_reflection[f][d]   ? symmetry_t::reflection
+                                                 : symmetry_t::outer_boundary;
+
   return symmetries;
+}
+
+array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+
+  const array<array<symmetry_t, dim>, 2> symmetries = get_symmetries();
+  array<array<bool, 3>, 2> is_symmetry;
+  for (int f = 0; f < 2; ++f)
+    for (int d = 0; d < dim; ++d)
+      is_symmetry[f][d] = symmetries[f][d] != symmetry_t::none &&
+                          symmetries[f][d] != symmetry_t::outer_boundary;
+
+  const array<array<bool, 3>, 2> is_dirichlet{{
+      {{
+          bool(CCTK_EQUALS(boundary_x, "dirichlet")),
+          bool(CCTK_EQUALS(boundary_y, "dirichlet")),
+          bool(CCTK_EQUALS(boundary_z, "dirichlet")),
+      }},
+      {{
+          bool(CCTK_EQUALS(boundary_upper_x, "dirichlet")),
+          bool(CCTK_EQUALS(boundary_upper_y, "dirichlet")),
+          bool(CCTK_EQUALS(boundary_upper_z, "dirichlet")),
+      }},
+  }};
+  const array<array<bool, 3>, 2> is_linear_extrapolation{{
+      {{
+          bool(CCTK_EQUALS(boundary_x, "linear extrapolation")),
+          bool(CCTK_EQUALS(boundary_y, "linear extrapolation")),
+          bool(CCTK_EQUALS(boundary_z, "linear extrapolation")),
+      }},
+      {{
+          bool(CCTK_EQUALS(boundary_upper_x, "linear extrapolation")),
+          bool(CCTK_EQUALS(boundary_upper_y, "linear extrapolation")),
+          bool(CCTK_EQUALS(boundary_upper_z, "linear extrapolation")),
+      }},
+  }};
+  const array<array<bool, 3>, 2> is_von_neumann{{
+      {{
+          bool(CCTK_EQUALS(boundary_x, "von neumann")),
+          bool(CCTK_EQUALS(boundary_y, "von neumann")),
+          bool(CCTK_EQUALS(boundary_z, "von neumann")),
+      }},
+      {{
+          bool(CCTK_EQUALS(boundary_upper_x, "von neumann")),
+          bool(CCTK_EQUALS(boundary_upper_y, "von neumann")),
+          bool(CCTK_EQUALS(boundary_upper_z, "von neumann")),
+      }},
+  }};
+  for (int f = 0; f < 2; ++f)
+    for (int d = 0; d < dim; ++d)
+      assert(is_symmetry[f][d] + is_dirichlet[f][d] +
+                 is_linear_extrapolation[f][d] + is_von_neumann[f][d] <=
+             1);
+
+  array<array<boundary_t, dim>, 2> boundaries;
+  for (int f = 0; f < 2; ++f)
+    for (int d = 0; d < dim; ++d)
+      boundaries[f][d] = is_symmetry[f][d]    ? boundary_t::symmetry_boundary
+                         : is_dirichlet[f][d] ? boundary_t::dirichlet
+                         : is_linear_extrapolation[f][d]
+                             ? boundary_t::linear_extrapolation
+                         : is_von_neumann[f][d] ? boundary_t::von_neumann
+                                                : boundary_t::none;
+
+  const auto override_group_boundary = [&](const char *const var_set_string,
+                                           const int dir, const int face,
+                                           const boundary_t boundary) {
+    // Arguments for the callback function
+    struct arg_t {
+      const int gi;
+      const array<array<bool, dim>, 2> &is_symmetry;
+      array<array<boundary_t, dim>, 2> &boundaries;
+      const int dir, face;
+      const boundary_t boundary;
+    } arg{gi, is_symmetry, boundaries, dir, face, boundary};
+    const int ierr = CCTK_TraverseString(
+        var_set_string,
+        [](const int vi, const char *const optstring, void *argptr) {
+          auto &arg = *static_cast<arg_t *>(argptr);
+          // Ignore any symmetry boundaries; we are never applying outer
+          // boundary conditions there
+          if (arg.is_symmetry[arg.face][arg.dir])
+            return;
+          // If the group index matches, override the respective boundary
+          if (CCTK_GroupIndexFromVarI(vi) == arg.gi)
+            arg.boundaries[arg.face][arg.dir] = arg.boundary;
+        },
+        &arg, CCTK_GROUP);
+    assert(!ierr);
+  };
+  override_group_boundary(dirichlet_x_vars, 0, 0, boundary_t::dirichlet);
+  override_group_boundary(dirichlet_y_vars, 1, 0, boundary_t::dirichlet);
+  override_group_boundary(dirichlet_z_vars, 2, 0, boundary_t::dirichlet);
+  override_group_boundary(dirichlet_upper_x_vars, 0, 1, boundary_t::dirichlet);
+  override_group_boundary(dirichlet_upper_y_vars, 1, 1, boundary_t::dirichlet);
+  override_group_boundary(dirichlet_upper_z_vars, 2, 1, boundary_t::dirichlet);
+  override_group_boundary(linear_extrapolation_x_vars, 0, 0,
+                          boundary_t::linear_extrapolation);
+  override_group_boundary(linear_extrapolation_y_vars, 1, 0,
+                          boundary_t::linear_extrapolation);
+  override_group_boundary(linear_extrapolation_z_vars, 2, 0,
+                          boundary_t::linear_extrapolation);
+  override_group_boundary(linear_extrapolation_upper_x_vars, 0, 1,
+                          boundary_t::linear_extrapolation);
+  override_group_boundary(linear_extrapolation_upper_y_vars, 1, 1,
+                          boundary_t::linear_extrapolation);
+  override_group_boundary(linear_extrapolation_upper_z_vars, 2, 1,
+                          boundary_t::linear_extrapolation);
+  override_group_boundary(von_neumann_x_vars, 0, 0, boundary_t::von_neumann);
+  override_group_boundary(von_neumann_y_vars, 1, 0, boundary_t::von_neumann);
+  override_group_boundary(von_neumann_z_vars, 2, 0, boundary_t::von_neumann);
+  override_group_boundary(von_neumann_upper_x_vars, 0, 1,
+                          boundary_t::von_neumann);
+  override_group_boundary(von_neumann_upper_y_vars, 1, 1,
+                          boundary_t::von_neumann);
+  override_group_boundary(von_neumann_upper_z_vars, 2, 1,
+                          boundary_t::von_neumann);
+
+  return boundaries;
 }
 
 bool get_group_checkpoint_flag(const int gi) {
@@ -790,6 +919,7 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
   assert(group.disttype == CCTK_DISTRIB_DEFAULT);
   assert(group.dim == dim);
 
+  groupname = CCTK_FullGroupName(gi);
   groupindex = gi;
   firstvarindex = CCTK_FirstVarIndexI(gi);
   numvars = group.numvars;
@@ -804,6 +934,7 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
     if (geom.isPeriodic(d))
       assert(geom.Domain().length(d) >= nghostzones[d]);
 
+  boundaries = get_group_boundaries(gi);
   parities = get_group_parities(gi);
   if (parities.empty()) {
     array<int, dim> parity;
@@ -999,18 +1130,26 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
         if (npoints_is_zero)
           continue;
 
+        // Find which symmetry or boundary conditions apply to us. (In
+        // edges or corners, multiple conditions might apply.)
         Arith::vect<symmetry_t, dim> symmetries;
-        for (int d = 0; d < dim; ++d)
+        Arith::vect<boundary_t, dim> boundaries;
+        for (int d = 0; d < dim; ++d) {
           symmetries[d] = inormal[d] != 0 ? ghext->patchdata.at(groupdata.patch)
                                                 .symmetries.at(inormal[d] > 0)
                                                 .at(d)
                                           : symmetry_t::none;
+          boundaries[d] = inormal[d] != 0
+                              ? groupdata.boundaries.at(inormal[d] > 0).at(d)
+                              : boundary_t::none;
+        }
 
-        if (all(symmetries == symmetry_t::none)) {
+        if (all(symmetries == symmetry_t::none &&
+                boundaries == boundary_t::none)) {
 
           // do nothing
 
-        } else if (any(symmetries == symmetry_t::dirichlet)) {
+        } else if (any(boundaries == boundary_t::dirichlet)) {
 
           for (int comp = 0; comp < numcomp; ++comp) {
             const CCTK_REAL dirichlet_value =
@@ -1085,16 +1224,14 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                       Arith::vect<int, dim> src, delta;
                       bool parity = false;
                       for (int d = 0; d < dim; ++d) {
-                        switch (symmetries[d]) {
-                        case symmetry_t::von_neumann:
+                        if (boundaries[d] == boundary_t::von_neumann) {
                           src[d] = von_neumann_source[d];
                           delta[d] = 0;
-                          break;
-                        case symmetry_t::linear_extrapolation:
+                        } else if (boundaries[d] ==
+                                   boundary_t::linear_extrapolation) {
                           src[d] = linear_extrapolation_source[d];
                           delta[d] = -inormal[d];
-                          break;
-                        case symmetry_t::reflection:
+                        } else if (symmetries[d] == symmetry_t::reflection) {
                           // src[d] = inormal[d] < 0
                           //              ? dst[d] + 2 * (imin[d] - dst[d]) -
                           //                    groupdata.indextype.at(d)
@@ -1104,12 +1241,11 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                           src[d] = reflection_offset[d] - dst[d];
                           delta[d] = 0;
                           parity ^= reflection_parity[d];
-                          break;
-                        case symmetry_t::none:
+                        } else if (symmetries[d] == symmetry_t::none &&
+                                   boundaries[d] == boundary_t::none) {
                           src[d] = dst[d];
                           delta[d] = 0;
-                          break;
-                        default:
+                        } else {
                           assert(0);
                         }
                       }
@@ -1118,7 +1254,8 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                         // Calculate gradient
                         const CCTK_REAL grad = val - var(src + delta);
                         using std::sqrt;
-                        val += sqrt(sum(dst - src) / sum(delta)) * grad;
+                        val += sqrt(sum(pow2(dst - src)) / sum(pow2(delta))) *
+                               grad;
                       }
                       var.store(dst, parity ? -val : val);
                     },
@@ -1254,6 +1391,7 @@ void SetupGlobals() {
         make_unique<GHExt::GlobalData::ArrayGroupData>();
     GHExt::GlobalData::ArrayGroupData &arraygroupdata =
         *globaldata.arraygroupdata.at(gi);
+    arraygroupdata.groupname = CCTK_FullGroupName(gi);
     arraygroupdata.groupindex = gi;
     arraygroupdata.firstvarindex = CCTK_FirstVarIndexI(gi);
     arraygroupdata.numvars = group.numvars;
@@ -2145,21 +2283,17 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
       {{bool(reflection_upper_x), bool(reflection_upper_y),
         bool(reflection_upper_z)}},
   }};
-  const array<array<bool, 3>, 2> is_dirichlet{{
-      {{bool(dirichlet_x), bool(dirichlet_y), bool(dirichlet_z)}},
-      {{bool(dirichlet_upper_x), bool(dirichlet_upper_y),
-        bool(dirichlet_upper_z)}},
-  }};
-  const array<array<bool, 3>, 2> is_von_neumann{{
-      {{bool(von_neumann_x), bool(von_neumann_y), bool(von_neumann_z)}},
-      {{bool(von_neumann_upper_x), bool(von_neumann_upper_y),
-        bool(von_neumann_upper_z)}},
-  }};
-  const array<array<bool, 3>, 2> is_linear_extrapolation{{
-      {{bool(linear_extrapolation_x), bool(linear_extrapolation_y),
-        bool(linear_extrapolation_z)}},
-      {{bool(linear_extrapolation_upper_x), bool(linear_extrapolation_upper_y),
-        bool(linear_extrapolation_upper_z)}},
+  const array<array<bool, 3>, 2> is_boundary{{
+      {{
+          bool(!CCTK_EQUALS(boundary_x, "none")),
+          bool(!CCTK_EQUALS(boundary_y, "none")),
+          bool(!CCTK_EQUALS(boundary_z, "none")),
+      }},
+      {{
+          bool(!CCTK_EQUALS(boundary_upper_x, "none")),
+          bool(!CCTK_EQUALS(boundary_upper_y, "none")),
+          bool(!CCTK_EQUALS(boundary_upper_z, "none")),
+      }},
   }};
 
   for (int d = 0; d < dim; ++d) {
@@ -2168,8 +2302,7 @@ CCTK_INT CarpetX_GetBoundarySizesAndTypes(
       is_ghostbnd[2 * d + f] = cctkGH->cctk_bbox[2 * d + f];
       is_symbnd[2 * d + f] =
           !is_ghostbnd[2 * d + f] &&
-          (is_periodic[f][d] || is_reflection[f][d] || is_dirichlet[f][d] ||
-           is_von_neumann[f][d] || is_linear_extrapolation[f][d]);
+          (is_periodic[f][d] || is_reflection[f][d] || is_boundary[f][d]);
       is_physbnd[2 * d + f] = !is_ghostbnd[2 * d + f] && !is_symbnd[2 * d + f];
     }
   }

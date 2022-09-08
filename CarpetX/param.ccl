@@ -103,77 +103,151 @@ BOOLEAN reflection_upper_z "Reflection symmetry at the upper z boundary"
 {
 } no
 
-BOOLEAN dirichlet_x "Dirichlet condition at the lower x boundary"
-{
-} no
 
-BOOLEAN dirichlet_y "Dirichlet condition at the lower y boundary"
-{
-} no
 
-BOOLEAN dirichlet_z "Dirichlet condition at the lower z boundary"
+KEYWORD boundary_x "Boundary condition at lower x boundary"
 {
-} no
+  "none" :: "don't apply any boundary"
+  "dirichlet" :: "Dirichlet"
+  "linear extrapolation" :: "Linear extrapolation"
+  "von neumann" :: "von Neumann"
+} "none"
 
-BOOLEAN dirichlet_upper_x "Dirichlet condition at the upper x boundary"
+KEYWORD boundary_y "Boundary condition at lower y boundary"
 {
-} no
+  "none" :: "don't apply any boundary"
+  "dirichlet" :: "Dirichlet"
+  "linear extrapolation" :: "Linear extrapolation"
+  "von neumann" :: "von Neumann"
+} "none"
 
-BOOLEAN dirichlet_upper_y "Dirichlet condition at the upper y boundary"
+KEYWORD boundary_z "Boundary condition at lower z boundary"
 {
-} no
+  "none" :: "don't apply any boundary"
+  "dirichlet" :: "Dirichlet"
+  "linear extrapolation" :: "Linear extrapolation"
+  "von neumann" :: "von Neumann"
+} "none"
 
-BOOLEAN dirichlet_upper_z "Dirichlet condition at the upper z boundary"
+KEYWORD boundary_upper_x "Boundary condition at upper x boundary"
 {
-} no
+  "none" :: "don't apply any boundary"
+  "dirichlet" :: "Dirichlet"
+  "linear extrapolation" :: "Linear extrapolation"
+  "von neumann" :: "von Neumann"
+} "none"
 
-BOOLEAN von_neumann_x "Von Neumann condition at the lower x boundary"
+KEYWORD boundary_upper_y "Boundary condition at upper y boundary"
 {
-} no
+  "none" :: "don't apply any boundary"
+  "dirichlet" :: "Dirichlet"
+  "linear extrapolation" :: "Linear extrapolation"
+  "von neumann" :: "von Neumann"
+} "none"
 
-BOOLEAN von_neumann_y "Von Neumann condition at the lower y boundary"
+KEYWORD boundary_upper_z "Boundary condition at upper z boundary"
 {
-} no
+  "none" :: "don't apply any boundary"
+  "dirichlet" :: "Dirichlet"
+  "linear extrapolation" :: "Linear extrapolation"
+  "von neumann" :: "von Neumann"
+} "none"
 
-BOOLEAN von_neumann_z "Von Neumann condition at the lower z boundary"
-{
-} no
 
-BOOLEAN von_neumann_upper_x "Von Neumann condition at the upper x boundary"
-{
-} no
 
-BOOLEAN von_neumann_upper_y "Von Neumann condition at the upper y boundary"
+STRING dirichlet_x_vars "Override boundary condition at lower x boundary"
 {
-} no
+  ".*" :: ""
+} ""
 
-BOOLEAN von_neumann_upper_z "Von Neumann condition at the upper z boundary"
+STRING dirichlet_y_vars "Override boundary condition at lower y boundary"
 {
-} no
+  ".*" :: ""
+} ""
 
-BOOLEAN linear_extrapolation_x "Linear extrapolation boundary at the lower x boundary"
+STRING dirichlet_z_vars "Override boundary condition at lower z boundary"
 {
-} no
+  ".*" :: ""
+} ""
 
-BOOLEAN linear_extrapolation_y "Linear extrapolation boundary at the lower y boundary"
+STRING dirichlet_upper_x_vars "Override boundary condition at upper x boundary"
 {
-} no
+  ".*" :: ""
+} ""
 
-BOOLEAN linear_extrapolation_z "Linear extrapolation boundary at the lower z boundary"
+STRING dirichlet_upper_y_vars "Override boundary condition at upper y boundary"
 {
-} no
+  ".*" :: ""
+} ""
 
-BOOLEAN linear_extrapolation_upper_x "Linear extrapolation boundary at the upper x boundary"
+STRING dirichlet_upper_z_vars "Override boundary condition at upper z boundary"
 {
-} no
+  ".*" :: ""
+} ""
 
-BOOLEAN linear_extrapolation_upper_y "Linear extrapolation boundary at the upper y boundary"
-{
-} no
 
-BOOLEAN linear_extrapolation_upper_z "Linear extrapolation boundary at the upper z boundary"
+
+STRING linear_extrapolation_x_vars "Override boundary condition at lower x boundary"
 {
-} no
+  ".*" :: ""
+} ""
+
+STRING linear_extrapolation_y_vars "Override boundary condition at lower y boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING linear_extrapolation_z_vars "Override boundary condition at lower z boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING linear_extrapolation_upper_x_vars "Override boundary condition at upper x boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING linear_extrapolation_upper_y_vars "Override boundary condition at upper y boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING linear_extrapolation_upper_z_vars "Override boundary condition at upper z boundary"
+{
+  ".*" :: ""
+} ""
+
+
+
+STRING von_neumann_x_vars "Override boundary condition at lower x boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING von_neumann_y_vars "Override boundary condition at lower y boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING von_neumann_z_vars "Override boundary condition at lower z boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING von_neumann_upper_x_vars "Override boundary condition at upper x boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING von_neumann_upper_y_vars "Override boundary condition at upper y boundary"
+{
+  ".*" :: ""
+} ""
+
+STRING von_neumann_upper_z_vars "Override boundary condition at upper z boundary"
+{
+  ".*" :: ""
+} ""
 
 
 
