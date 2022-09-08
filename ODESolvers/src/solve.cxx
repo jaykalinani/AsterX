@@ -20,6 +20,7 @@ static inline int omp_get_max_threads() { return 1; }
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cctype>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -418,7 +419,7 @@ int get_group_rhs(const int gi) {
   assert(gi >= 0);
   const int tags = CCTK_GroupTagsTableI(gi);
   assert(tags >= 0);
-  vector<char> rhs_buf(1000);
+  std::vector<char> rhs_buf(1000);
   const int iret =
       Util_TableGetString(tags, rhs_buf.size(), rhs_buf.data(), "rhs");
   if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
@@ -429,22 +430,75 @@ int get_group_rhs(const int gi) {
     assert(0);
   }
 
-  const string str(rhs_buf.data());
+  const std::string str(rhs_buf.data());
   if (str.empty())
     return -1; // No RHS specified
 
   auto str1 = str;
-  if (str1.find(':') == string::npos) {
+  if (str1.find(':') == std::string::npos) {
     const char *impl = CCTK_GroupImplementationI(gi);
     str1 = string(impl) + "::" + str1;
   }
   const int gi1 = CCTK_GroupIndex(str1.c_str());
   assert(gi1 >= 0); // Check RHSs are valid groups
-  const int flux = gi1;
+  const int rhs = gi1;
 
-  assert(flux != gi);
+  assert(rhs != gi);
 
-  return flux;
+  return rhs;
+}
+
+std::vector<int> get_group_dependents(const int gi) {
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  std::vector<char> dependents_buf(1000);
+  const int iret = Util_TableGetString(tags, dependents_buf.size(),
+                                       dependents_buf.data(), "dependents");
+  if (iret == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    dependents_buf[0] = '\0'; // default: empty (no DEPENDENTS)
+  } else if (iret >= 0) {
+    // do nothing
+  } else {
+    assert(0);
+  }
+
+  std::vector<int> dependents;
+  const std::string str(dependents_buf.data());
+  std::size_t pos = 0;
+  for (;;) {
+    // Skip white space
+    while (pos < str.size() && std::isspace(str[pos]))
+      ++pos;
+    if (pos == str.size())
+      break;
+    // Read group name
+    const std::size_t group_begin = pos;
+    while (pos < str.size() && !std::isspace(str[pos]))
+      ++pos;
+    const std::size_t group_end = pos;
+    const std::string groupname =
+        str.substr(group_begin, group_end - group_begin);
+    const int gi = CCTK_GroupIndex(groupname.c_str());
+    assert(gi >= 0); // Check dependents are valid groups
+    dependents.push_back(gi);
+  }
+
+  return dependents;
+}
+
+// Mark groups as invalid
+void mark_invalid(const std::vector<int> &groups) {
+  CarpetX::active_levels->loop([&](const auto &leveldata) {
+    for (const int gi : groups) {
+      auto &groupdata = *leveldata.groupdata.at(gi);
+      // Invalidate all variables of the current time level
+      const int tl = 0;
+      for (auto &why_valid : groupdata.valid.at(tl))
+        why_valid =
+            why_valid_t([] { return "ODESolvers updated the state vector"; });
+    }
+  });
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -462,6 +516,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   const int tl = 0;
 
   statecomp_t var, rhs;
+  std::vector<int> var_groups, rhs_groups, dep_groups;
   int nvars = 0;
   assert(CarpetX::active_levels);
   CarpetX::active_levels->loop([&](const auto &leveldata) {
@@ -482,6 +537,12 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
         rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
         if (leveldata.level == active_levels->min_level)
           nvars += groupdata.numvars;
+
+        var_groups.push_back(groupdata.groupindex);
+        rhs_groups.push_back(rhs_gi);
+        const auto &dependents = get_group_dependents(groupdata.groupindex);
+        dep_groups.insert(dep_groups.end(), dependents.begin(),
+                          dependents.end());
       }
     }
   });
@@ -489,6 +550,34 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     CCTK_VINFO("  Integrating %d variables", nvars);
   if (nvars == 0)
     CCTK_VWARN(CCTK_WARN_ALERT, "Integrating %d variables", nvars);
+
+  {
+    std::sort(var_groups.begin(), var_groups.end());
+    const auto last = std::unique(var_groups.begin(), var_groups.end());
+    assert(last == var_groups.end());
+  }
+
+  {
+    std::sort(rhs_groups.begin(), rhs_groups.end());
+    const auto last = std::unique(rhs_groups.begin(), rhs_groups.end());
+    assert(last == rhs_groups.end());
+  }
+
+  {
+    std::sort(dep_groups.begin(), dep_groups.end());
+    const auto last = std::unique(dep_groups.begin(), dep_groups.end());
+    dep_groups.erase(last, dep_groups.end());
+  }
+
+  for (const int gi : var_groups)
+    assert(std::find(dep_groups.begin(), dep_groups.end(), gi) ==
+           dep_groups.end());
+  for (const int gi : rhs_groups) {
+    assert(std::find(var_groups.begin(), var_groups.end(), gi) ==
+           var_groups.end());
+    assert(std::find(dep_groups.begin(), dep_groups.end(), gi) ==
+           dep_groups.end());
+  }
 
   statecomp_t::init_tmp_mfabs();
 
@@ -514,6 +603,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 1, make_array(dt), make_array(&rhs));
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "RK2")) {
 
@@ -534,6 +624,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // lincomb(dest, alpha, beta^i, src^i)
     // dest = alpha * dest + beta^i * src^i
     statecomp_t::lincomb(var, 1, make_array(dt / 2), make_array(&rhs));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     // var = poststep(var)
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
@@ -546,6 +637,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Calculate new state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt), make_array(&old, &rhs));
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "RK3")) {
 
@@ -567,6 +659,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 1, make_array(dt / 2), make_array(&k1));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -581,6 +674,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, -dt, 2 * dt),
                          make_array(&old, &k1, &k2));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -593,6 +687,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Calculate new state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt / 6, 2 * dt / 3, dt / 6),
                          make_array(&old, &k1, &k2, &k3));
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "SSPRK3")) {
 
@@ -614,6 +709,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 1, make_array(dt), make_array(&k1));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -628,6 +724,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt / 4, dt / 4),
                          make_array(&old, &k1, &k2));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -640,6 +737,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Calculate new state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt / 6, dt / 6, 2 * dt / 3),
                          make_array(&old, &k1, &k2, &k3));
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "RK4")) {
 
@@ -663,6 +761,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 1, make_array(dt / 2), make_array(&rhs));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -677,6 +776,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt / 2),
                          make_array(&old, &rhs));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -690,6 +790,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     // Add scaled RHS to state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt), make_array(&old, &rhs));
+    mark_invalid(dep_groups);
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt;
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
@@ -701,6 +802,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     // Calculate new state vector
     statecomp_t::lincomb(var, 0, make_array(1.0, dt / 6, dt / 6),
                          make_array(&old, &kaccum, &k4));
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "RKF78")) {
 
@@ -786,6 +888,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
         }
       }
       statecomp_t::lincomb(var, 0, factors, srcs);
+      mark_invalid(dep_groups);
       // TODO: Deallocate ks that are not needed any more
       CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
       if (verbose)
@@ -810,6 +913,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       }
     }
     statecomp_t::lincomb(var, 0, factors, srcs);
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "DP87")) {
 
@@ -899,6 +1003,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
         }
       }
       statecomp_t::lincomb(var, 0, factors, srcs);
+      mark_invalid(dep_groups);
       // TODO: Deallocate ks that are not needed any more
       CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
       if (verbose)
@@ -923,6 +1028,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
       }
     }
     statecomp_t::lincomb(var, 0, factors, srcs);
+    mark_invalid(dep_groups);
 
   } else if (CCTK_EQUALS(method, "Implicit Euler")) {
 
@@ -950,6 +1056,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
     statecomp_t::lincomb(var, 1, make_array(dt / 2), make_array(&rhs));
+    mark_invalid(dep_groups);
     CallScheduleGroup(cctkGH, "ODESolvers_PostStep");
 
     *const_cast<CCTK_REAL *>(&cctkGH->cctk_time) = old_time + dt / 2;
@@ -976,6 +1083,7 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
 
     statecomp_t::lincomb(var, 0, make_array(1.0, dt, dt),
                          make_array(&y0, &k2, &kprime2));
+    mark_invalid(dep_groups);
 
   } else {
     assert(0);
