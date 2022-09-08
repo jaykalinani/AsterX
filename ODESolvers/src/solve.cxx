@@ -535,14 +535,14 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
         var.mfabs.push_back(groupdata.mfab.at(tl).get());
         rhs.groupdatas.push_back(&rhs_groupdata);
         rhs.mfabs.push_back(rhs_groupdata.mfab.at(tl).get());
-        if (leveldata.level == active_levels->min_level)
+        if (leveldata.level == active_levels->min_level) {
           nvars += groupdata.numvars;
-
-        var_groups.push_back(groupdata.groupindex);
-        rhs_groups.push_back(rhs_gi);
-        const auto &dependents = get_group_dependents(groupdata.groupindex);
-        dep_groups.insert(dep_groups.end(), dependents.begin(),
-                          dependents.end());
+          var_groups.push_back(groupdata.groupindex);
+          rhs_groups.push_back(rhs_gi);
+          const auto &dependents = get_group_dependents(groupdata.groupindex);
+          dep_groups.insert(dep_groups.end(), dependents.begin(),
+                            dependents.end());
+        }
       }
     }
   });
