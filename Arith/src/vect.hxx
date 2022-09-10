@@ -75,7 +75,8 @@ array_from_tuple(const Tuple &t) {
 template <typename T, std::size_t N, typename Tuple>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST std::array<T, N>
 array_from_tuple(Tuple &&t) {
-  return detail::array_from_tuple<T>(move(t), std::make_index_sequence<N>());
+  return detail::array_from_tuple<T>(std::move(t),
+                                     std::make_index_sequence<N>());
 }
 
 template <class T, std::size_t N, typename U>
@@ -117,15 +118,15 @@ template <typename T, int D> struct vect {
 
   template <typename U>
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(vect<U, D> x)
-      : elts(construct_array<T, D>([&](int d) { return move(x[d]); })) {}
+      : elts(construct_array<T, D>([&](int d) { return std::move(x[d]); })) {}
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(array<T, D> arr)
-      : elts(move(arr)) {}
+      : elts(std::move(arr)) {}
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(const T (&arr)[D])
       : elts(construct_array<T, D>([&](int d) { return arr[d]; })) {}
 #if 0
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(ntuple_t<T, D> tup)
-      : elts(array_from_tuple<T, D>(move(tup))) {}
+      : elts(array_from_tuple<T, D>(std::move(tup))) {}
 #endif
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(initializer_list<T> lst)
       : elts(construct_array<T, D>([&](size_t d) {
@@ -147,9 +148,9 @@ template <typename T, int D> struct vect {
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect(vector<T> &&vec)
       : elts(construct_array<T, D>([&](size_t d) {
 #ifdef CCTK_DEBUG
-          return move(vec.at(d));
+          return std::move(vec.at(d));
 #else
-          return move(vec[d]);
+          return std::move(vec[d]);
 #endif
         })) {
   }

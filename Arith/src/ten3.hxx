@@ -118,17 +118,17 @@ public:
   template <typename U>
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
   gten3(gten3<U, D, dnup1, dnup2, dnup3, symm> x)
-      : elts(move(x.elts)) {}
+      : elts(std::move(x.elts)) {}
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gten3(initializer_list<T> x)
       : elts(x) {}
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gten3(vect<T, N> elts)
-      : elts(move(elts)) {}
+      : elts(std::move(elts)) {}
   explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gten3(array<T, N> x)
-      : elts(move(x)) {}
+      : elts(std::move(x)) {}
   // explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST gten3(const
   // vector<T> &x) : elts(x) {} explicit constexpr ARITH_INLINE ARITH_DEVICE
-  // ARITH_HOST gten3(vector<T> &&x) : elts(move(x)) {}
+  // ARITH_HOST gten3(vector<T> &&x) : elts(std::move(x)) {}
 
   explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
   operator vect<T, N>() const {

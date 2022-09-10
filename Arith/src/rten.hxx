@@ -100,17 +100,17 @@ public:
   template <typename U>
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
   rten(rten<U, D, dnup1, dnup2, dnup3, dnup4> x)
-      : elts(move(x.elts)) {}
+      : elts(std::move(x.elts)) {}
 
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST rten(initializer_list<T> x)
       : elts(x) {}
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST rten(vect<T, N> elts)
-      : elts(move(elts)) {}
+      : elts(std::move(elts)) {}
   explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST rten(array<T, N> x)
-      : elts(move(x)) {}
+      : elts(std::move(x)) {}
   // explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST rten(const
   // vector<T> &x) : elts(x) {} explicit constexpr ARITH_INLINE ARITH_DEVICE
-  // ARITH_HOST rten(vector<T> &&x) : elts(move(x)) {}
+  // ARITH_HOST rten(vector<T> &&x) : elts(std::move(x)) {}
 
   explicit constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST
   operator vect<T, N>() const {
