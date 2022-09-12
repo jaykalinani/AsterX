@@ -1439,10 +1439,7 @@ public:
   size_t size() const { return fab.nComp(); }
   GF3D5<T> operator()(const int n) const {
     assert(n >= 0 && n < int(size()));
-    // The layout might have an offset. Indexing will subtract that
-    // offset. To place the grid points [0,0,0] at the first allocated
-    // point, we need to add the offset here.
-    return GF3D5<T>(layout, (T *)fab.dataPtr(n) + layout.off);
+    return GF3D5<T>(layout, (T *)fab.dataPtr(n));
   }
 };
 
