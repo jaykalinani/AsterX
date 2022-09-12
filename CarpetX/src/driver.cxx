@@ -238,7 +238,7 @@ array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
             arg.boundaries[arg.face][arg.dir] = arg.boundary;
         },
         &arg, CCTK_GROUP);
-    assert(!ierr);
+    assert(ierr >= 0);
   };
   override_group_boundary(dirichlet_x_vars, 0, 0, boundary_t::dirichlet);
   override_group_boundary(dirichlet_y_vars, 1, 0, boundary_t::dirichlet);
