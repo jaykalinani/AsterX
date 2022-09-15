@@ -27,10 +27,12 @@ static inline int omp_in_parallel() { return 0; }
 
 #include <algorithm>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <optional>
+#include <tuple>
 #include <type_traits>
-#include <map>
+#include <utility>
 #include <vector>
 
 namespace CarpetX {
@@ -44,6 +46,41 @@ using namespace std;
 #error                                                                         \
     "The Cactus flesh does not support cctk_patch in the cGH structure. Update the flesh."
 #endif
+
+// // C++ SFINAE magic to see whether the new version of FillPatchSingleLevel is
+// // available. See
+// //
+// <https://stackoverflow.com/questions/257288/templated-check-for-the-existence-of-a-class-member-function>.
+// class has_combined_FillPatchSingleLevel {
+//   template <
+//       typename T = int,
+//       std::tuple<
+//           T, decltype(amrex::FillPatchSingleLevel(
+//                  // declval<const amrex::Vector<amrex::MultiFab *> &>()
+//                  /*vec_mf*/,
+//                  // declval<const amrex::Vector<amrex::Real> &>()
+//                  /*vec_time*/,
+//                  // declval<const amrex::Vector<amrex::Vector<amrex::MultiFab
+//                  *> >
+//                  //             &>() /*vec_vec_smf*/,
+//                  // declval<const amrex::Vector<amrex::Vector<amrex::Real> >
+//                  //             &>() /*vec_vec_stime*/,
+//                  declval<const amrex::Vector<int> &>() /*vec_scomp*/,
+//                  declval<const amrex::Vector<int> &>() /*vec_dcomp*/,
+//                  declval<const amrex::Vector<int> &>() /*vec_ncomp*/,
+//                  declval<const amrex::Vector<amrex::Geometry> &>()
+//                  /*vec_geom*/, declval<amrex::Vector<amrex::PhysBCFunct<
+//                      GHExt::PatchData::LevelData::GroupData::apply_physbcs_t>
+//                      >
+//                              &>() /*vec_physbcf*/,
+//                  declval<const amrex::Vector<int> &>() /*vec_bcfcomp*/))> * =
+//                  nullptr >
+//   static std::true_type test(int);
+//   template <typename = int> static std::false_type test(...);
+//
+// public:
+//   enum { value = decltype(test(0))::value };
+// };
 
 // Used to pass active levels from AMReX's regridding functions
 optional<active_levels_t> active_levels;
@@ -1995,25 +2032,20 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
   }
 
   active_levels->loop([&](auto &restrict leveldata) {
-    for (const int gi : groups) {
-      cGroup group;
-      int ierr = CCTK_GroupData(gi, &group);
-      assert(!ierr);
+    if (leveldata.level == 0) {
 
-      assert(group.grouptype == CCTK_GF);
+      for (const int gi : groups) {
+        auto &restrict groupdata = *leveldata.groupdata.at(gi);
+        const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
+        // We always sync all directions.
+        // If there is more than one time level, then we don't sync the
+        // oldest.
+        // TODO: during evolution, sync only one time level
+        const int ntls = groupdata.mfab.size();
+        const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
 
-      auto &restrict groupdata = *leveldata.groupdata.at(gi);
-      const nan_handling_t nan_handling = groupdata.do_checkpoint
-                                              ? nan_handling_t::forbid_nans
-                                              : nan_handling_t::allow_nans;
-      // We always sync all directions.
-      // If there is more than one time level, then we don't sync the
-      // oldest.
-      // TODO: during evolution, sync only one time level
-      const int ntls = groupdata.mfab.size();
-      const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
-
-      if (leveldata.level == 0) {
         // Coarsest level: Copy from adjacent boxes on same level
 
         for (int tl = 0; tl < sync_tl; ++tl) {
@@ -2030,7 +2062,21 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             check_valid(leveldata, groupdata, vi, tl, nan_handling,
                         []() { return "SyncGroupsByDirI before syncing"; });
           }
-          {
+        }
+      }
+
+      if (!combine_sync_calls) {
+
+        for (const int gi : groups) {
+          auto &restrict groupdata = *leveldata.groupdata.at(gi);
+          // We always sync all directions.
+          // If there is more than one time level, then we don't sync the
+          // oldest.
+          // TODO: during evolution, sync only one time level
+          const int ntls = groupdata.mfab.size();
+          const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+
+          for (int tl = 0; tl < sync_tl; ++tl) {
             static Timer timer("Sync::FillPatchSingleLevel");
             Interval interval(timer);
             FillPatchSingleLevel(*groupdata.mfab.at(tl), 0.0,
@@ -2040,6 +2086,68 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                                      .amrcore->Geom(leveldata.level),
                                  *groupdata.physbc, 0);
           }
+        }
+
+      } else { // if combine_sync_calls
+
+        static Timer timer("Sync::FillPatchSingleLevel");
+        Interval interval(timer);
+
+        amrex::Vector<amrex::MultiFab *> mfs;
+        amrex::Vector<amrex::Real> times;
+        amrex::Vector<amrex::Vector<amrex::MultiFab *> > smfs;
+        amrex::Vector<amrex::Vector<amrex::Real> > stimes;
+        amrex::Vector<int> scomps, dcomps, ncomps;
+        amrex::Vector<amrex::Geometry> geoms;
+        amrex::Vector<amrex::PhysBCFunct<
+            GHExt::PatchData::LevelData::GroupData::apply_physbcs_t> >
+            physbcfs;
+        amrex::Vector<int> bcfcomps;
+
+        for (const int gi : groups) {
+          auto &restrict groupdata = *leveldata.groupdata.at(gi);
+          // We always sync all directions.
+          // If there is more than one time level, then we don't sync the
+          // oldest.
+          // TODO: during evolution, sync only one time level
+          const int ntls = groupdata.mfab.size();
+          const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+
+          for (int tl = 0; tl < sync_tl; ++tl) {
+            mfs.push_back(&*groupdata.mfab.at(tl));
+            times.push_back(0.0);
+            amrex::Vector<amrex::MultiFab *> smf{&*groupdata.mfab.at(tl)};
+            smfs.push_back(std::move(smf));
+            amrex::Vector<amrex::Real> stime{0.0};
+            stimes.push_back(std::move(stime));
+            scomps.push_back(0);
+            dcomps.push_back(0);
+            ncomps.push_back(groupdata.numvars);
+            geoms.push_back(ghext->patchdata.at(leveldata.patch)
+                                .amrcore->Geom(leveldata.level));
+            physbcfs.push_back(*groupdata.physbc);
+            bcfcomps.push_back(0);
+          }
+        }
+
+        FillPatchSingleLevel(mfs, times, smfs, stimes, scomps, dcomps, ncomps,
+                             geoms, physbcfs, bcfcomps);
+
+      } // if combine_sync_calls
+
+      for (const int gi : groups) {
+        auto &restrict groupdata = *leveldata.groupdata.at(gi);
+        const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
+        // We always sync all directions.
+        // If there is more than one time level, then we don't sync the
+        // oldest.
+        // TODO: during evolution, sync only one time level
+        const int ntls = groupdata.mfab.size();
+        const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+
+        for (int tl = 0; tl < sync_tl; ++tl) {
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
               return "SyncGroupsByDirI after syncing: Mark ghost zones as "
@@ -2048,7 +2156,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             if (ghext->patchdata.at(leveldata.patch)
                     .all_faces_have_symmetries())
               groupdata.valid.at(tl).at(vi).set_outer(true, []() {
-                return "SyncGroupsByDirI after syncing: Mark outer boundaries "
+                return "SyncGroupsByDirI after syncing: Mark outer "
+                       "boundaries "
                        "as valid";
               });
             poison_invalid(leveldata, groupdata, vi, tl);
@@ -2056,8 +2165,22 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
                         []() { return "SyncGroupsByDirI after syncing"; });
           }
         }
+      } // for gi
 
-      } else {
+    } else { // if leveldata.level > 0
+
+      for (const int gi : groups) {
+        auto &restrict groupdata = *leveldata.groupdata.at(gi);
+        const nan_handling_t nan_handling = groupdata.do_checkpoint
+                                                ? nan_handling_t::forbid_nans
+                                                : nan_handling_t::allow_nans;
+        // We always sync all directions.
+        // If there is more than one time level, then we don't sync the
+        // oldest.
+        // TODO: during evolution, sync only one time level
+        const int ntls = groupdata.mfab.size();
+        const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+
         // Refined level: Prolongate boundaries from next coarser level, and
         // copy from adjacent boxes on same level
 
@@ -2081,10 +2204,11 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
               return "SyncGroupsByDirI on fine level before prolongation";
             });
             poison_invalid(leveldata, groupdata, vi, tl);
-            check_valid(
-                coarseleveldata, coarsegroupdata, vi, tl, nan_handling, []() {
-                  return "SyncGroupsByDirI on coarse level before prolongation";
-                });
+            check_valid(coarseleveldata, coarsegroupdata, vi, tl, nan_handling,
+                        []() {
+                          return "SyncGroupsByDirI on coarse level before "
+                                 "prolongation";
+                        });
             check_valid(leveldata, groupdata, vi, tl, nan_handling, []() {
               return "SyncGroupsByDirI on fine level before prolongation";
             });
@@ -2107,7 +2231,8 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           }
           for (int vi = 0; vi < groupdata.numvars; ++vi) {
             groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
-              return "SyncGroupsByDirI after prolongation: Mark ghost zones as "
+              return "SyncGroupsByDirI after prolongation: Mark ghost zones "
+                     "as "
                      "valid";
             });
             if (ghext->patchdata.at(leveldata.patch)
@@ -2120,9 +2245,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             check_valid(leveldata, groupdata, vi, tl, nan_handling,
                         []() { return "SyncGroupsByDirI after prolongation"; });
           }
-        } // if not all_invalid
-      }   // for tl
-    }
+        } // for tl
+      }   // for gi
+    }     //  leveldata.level > 0
   });
 
   assert(sync_active);

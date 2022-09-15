@@ -387,6 +387,12 @@ BOOLEAN restrict_during_sync "Restrict fine to coarse grid functions when syncin
 
 
 
+BOOLEAN combine_sync_calls "Combine AMReX calls to synchronize grid functions (EXPERIMENTAL)" STEERABLE=always
+{
+} no
+
+
+
 CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 {
   *:* :: ""
