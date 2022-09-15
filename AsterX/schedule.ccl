@@ -47,7 +47,23 @@ SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
   SYNC: saved_prims
 } "Compute conserved variables from primitive variables at initial"
 
-SCHEDULE AsterX_EstimateError AT postinitial
+SCHEDULE GROUP AsterX_RegridError AT postinitial
+{
+} "Group for setting regridding error"
+
+SCHEDULE AsterX_Con2Prim IN AsterX_RegridError BEFORE AsterX_EstimateError
+{
+  LANG: C
+  READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
+  READS: dens(interior) tau(interior) mom(interior) dB(interior)
+  READS: saved_prims(interior)
+  WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior) HydroBase::Bvec(interior)
+  WRITES: saved_prims(interior)
+  SYNC: HydroBase::rho HydroBase::vel HydroBase::eps HydroBase::press HydroBase::Bvec
+  SYNC: saved_prims
+} "Calculate primitive variables from conservative variables"
+
+SCHEDULE AsterX_EstimateError In AsterX_RegridError
 {
   LANG: C
   READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
@@ -66,12 +82,9 @@ SCHEDULE AsterX_Sync AT postregrid
   SYNC: saved_prims
 } "Synchronize"
 
-SCHEDULE AsterX_EstimateError AT poststep
+SCHEDULE GROUP AsterX_RegridError AT poststep
 {
-  LANG: C
-  READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
-  WRITES: CarpetX::regrid_error(interior)
-} "Estimate local error for regridding during evolution"
+} "Group for setting regridding error"
 
 
 
