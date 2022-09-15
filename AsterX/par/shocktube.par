@@ -22,7 +22,6 @@ Cactus::presync_mode = "mixed-error"
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 0.40
 
-ADMBase::set_adm_variables_during_evolution = "yes"
 ADMBase::initial_data            = "Cartesian Minkowski"
 ADMBase::initial_lapse           = "one"
 ADMBase::initial_shift           = "zero"
@@ -39,14 +38,13 @@ CarpetX::xmax = +0.5
 CarpetX::ymax = +0.5
 CarpetX::zmax = +0.5
 
-#flat bc
-CarpetX::von_neumann_x =  yes
-CarpetX::von_neumann_y =  yes
-CarpetX::von_neumann_z =  yes
-CarpetX::von_neumann_upper_x =  yes
-CarpetX::von_neumann_upper_y =  yes
-CarpetX::von_neumann_upper_z =  yes
+CarpetX::boundary_x = "linear extrapolation"
+CarpetX::boundary_y = "linear extrapolation"
+CarpetX::boundary_z = "linear extrapolation"
 
+CarpetX::boundary_upper_x = "linear extrapolation"
+CarpetX::boundary_upper_y = "linear extrapolation"
+CarpetX::boundary_upper_z = "linear extrapolation"
 
 CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = 4
