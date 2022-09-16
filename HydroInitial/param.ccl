@@ -8,6 +8,10 @@ EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
   "shock tube" :: ""
   "spherical shock" :: ""
   "Balsara1" :: ""
+  "Balsara2" :: ""
+  "Balsara3" :: ""
+  "Balsara4" :: ""
+  "Balsara5" :: ""
 } 
 
 private:
