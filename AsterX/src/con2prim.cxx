@@ -354,6 +354,26 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           g_up[3][1] = g_up[1][3];
           g_up[3][2] = g_up[2][3];
 
+          // Set atmosphere if dens below the threshold
+          if (dens(p.I)<=( sqrt(spatial_detg)*(rho_abs_min*(1.0+atmo_tol) )))
+          {
+            rho(p.I) = rho_abs_min;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+	    press(p.I) = poly_K*pow(rho(p.I),gamma);
+	    eps(p.I) = press(p.I)/( (gamma - 1.0) * rho(p.I) );
+
+            dens(p.I) = sqrt(spatial_detg)*rho(p.I);
+            momx(p.I) = 0.0;
+            momy(p.I) = 0.0;
+            momz(p.I) = 0.0;
+	    // need to compute bs2; setting here to 0.0
+	    CCTK_REAL bs2 = 0.0;
+            tau(p.I) = sqrt(spatial_detg) * ( (rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
+                        (press(p.I) + 0.5 * bs2)) - dens(p.I);
+          }
+
           CCTK_REAL cons[NCONS];
           cons[D] = dens(p.I) / sqrt(spatial_detg);
           cons[S1_COV] = momx(p.I) / sqrt(spatial_detg);
@@ -373,18 +393,28 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
 
           // Construct con2primFactory object:
           typeEoS plasma_0(gamma, cons, prims, g_lo, g_up);
+
           // 1) Try 2DNRNoble
           Con2Prim_2DNRNoble(max_iter, c2p_tol, plasma_0);
 
-          if (plasma_0.Failed_2DNRNoble)
+          if ( (plasma_0.Failed_2DNRNoble) || (dens(p.I)<=(sqrt(spatial_detg)*(rho_abs_min*(1.0+atmo_tol)))) )
           {
-            // If c2p fails, reset prims
-            rho(p.I) = prims[RHO];
+            // If c2p fails, reset prims to atmo
+            rho(p.I) = rho_abs_min;
             velx(p.I) = 0.0;
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
-            eps(p.I) = prims[EPS];
-            press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+            press(p.I) = poly_K*pow(rho(p.I),gamma);
+            eps(p.I) = press(p.I)/( (gamma - 1.0) * rho(p.I) );
+
+            dens(p.I) = sqrt(spatial_detg)*rho(p.I);
+            momx(p.I) = 0.0;
+            momy(p.I) = 0.0;
+            momz(p.I) = 0.0;
+            // need to compute bs2; setting here to 0.0
+            CCTK_REAL bs2 = 0.0;
+            tau(p.I) = sqrt(spatial_detg) * ( (rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
+                        (press(p.I) + 0.5 * bs2)) - dens(p.I);
 
             //assert(0); // Terminate?
           }

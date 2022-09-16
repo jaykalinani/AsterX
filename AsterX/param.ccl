@@ -5,12 +5,15 @@ CCTK_REAL gamma "EOS parameter" STEERABLE=always
   0.0:* :: ""
 } 1.6666666666666667
 
+CCTK_REAL poly_K "Polytropic EOS constant" STEERABLE=always
+{
+  0.0:* :: ""
+} 100.0
+
 CCTK_REAL lorenz_damp_fac "Damping factor used in the Lorenz Gauge (see Farris et al 2012)"
 {
  0:* :: "should be positive"
 } 0.0
-
-
 
 KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 {
@@ -19,6 +22,16 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
   "monocentral" :: ""
   "ppm" :: ""
 } "Godunov"
+
+CCTK_REAL rho_abs_min "atmosphere density" STEERABLE=never
+{
+  0:* :: "Larger than zero"
+} 1E-13
+
+CCTK_REAL atmo_tol "atmosphere density tolerance factor" STEERABLE=never
+{
+  0:* :: "Larger than zero"
+} 1E-3
 
 restricted:
 
