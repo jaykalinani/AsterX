@@ -3,6 +3,7 @@
 # Source files in this directory
 SRCS =						\
 	driver.cxx				\
+        fillpatch.cxx				\
 	interpolate.cxx				\
 	io.cxx					\
 	io_adios2.cxx				\
@@ -17,7 +18,7 @@ SRCS =						\
 	reduction.cxx				\
 	regrid_error.cxx			\
 	schedule.cxx				\
-	timer.cxx                               \
+	timer.cxx				\
 	valid.cxx
 
 # Subdirectories containing source files

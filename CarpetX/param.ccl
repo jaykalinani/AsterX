@@ -387,6 +387,15 @@ BOOLEAN restrict_during_sync "Restrict fine to coarse grid functions when syncin
 
 
 
+KEYWORD fillpatch "Which FillPatch implementation to use (EXPERIMENTAL)" STEERABLE=always
+{
+  "amrex" :: "Standard AMReX AmrCore"
+  "amrex-vector" :: "Vectorized AMReX AmrCore"
+  "carpetx" :: "CarpetX implementation calling AMReX Base"
+} "amrex"
+
+
+
 CCTK_REAL dtfac "The standard timestep condition dt = dtfac*min(delta_space)"
 {
   *:* :: ""
