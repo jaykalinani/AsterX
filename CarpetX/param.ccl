@@ -387,9 +387,12 @@ BOOLEAN restrict_during_sync "Restrict fine to coarse grid functions when syncin
 
 
 
-BOOLEAN combine_sync_calls "Combine AMReX calls to synchronize grid functions (EXPERIMENTAL)" STEERABLE=always
+KEYWORD fillpatch "Which FillPatch implementation to use (EXPERIMENTAL)" STEERABLE=always
 {
-} no
+  "amrex" :: "Standard AMReX AmrCore"
+  "amrex-vector" :: "Vectorized AMReX AmrCore"
+  "carpetx" :: "CarpetX implementation calling AMReX Base"
+} "amrex"
 
 
 
