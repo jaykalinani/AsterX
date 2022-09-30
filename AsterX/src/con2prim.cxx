@@ -76,6 +76,11 @@ namespace AsterX
       vsq = fabs(vsq);
     }
 
+    if (vsq < 0. || vsq > 1. ) 
+    {
+      CCTK_VWARN(CCTK_WARN_ALERT, "vsq is either less than 0.0 or greater than 1.0, having value = %f", vsq);
+    }
+
     W_Seed = 1. / sqrt(1. - vsq);
 
     // Bsq and bsq:
@@ -219,11 +224,17 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
 
     /* initialize unknowns for c2p, Z and vsq: */
     CCTK_REAL x[2];
+    CCTK_REAL x_old[2];
     x[0] = fabs(plasma.Z_Seed);
     x[1] = (-1.0 + W * W) / (W * W);
+   
+    /* initialize old values */
+    x_old[0] = x[0] ;
+    x_old[1] = x[1] ;
 
     /* Start Recovery with 2D NR Solver */
     const CCTK_INT n = 2;
+    const CCTK_REAL dv = (1.-1.e-15);
     CCTK_REAL fvec[n];
     CCTK_REAL dx[n];
     CCTK_REAL fjac[n][n];
@@ -254,12 +265,43 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
         plasma.Failed_2DNRNoble = 0;
         break;
       }
+
+      /* save old values before calculating the new */
+      x_old[0] = x[0] ;
+      x_old[1] = x[1] ;
+
       for (CCTK_INT i = 0; i < n; i++)
       {
         x[i] += dx[i];
       }
     }
     plasma.Nit_2DNRNoble = k;
+
+    /* make sure that the new x[] is physical */
+
+    if (x[0] < 0.0) 
+    { 
+      x[0] = fabs(x[0]); 
+    }
+    else 
+    {
+      if (x[0] > 1e20) 
+      { 
+        x[0] = x_old[0]; 
+      }
+    }
+
+    if (x[1] < 0.0) 
+    {
+      x[1] = 0.0; 
+    }
+    else 
+    {
+      if (x[1] >= 1.0) 
+      { 
+	x[1] = dv; 
+      }
+    }
 
     /* Calculate primitives from Z and W */
     plasma.Z_Sol = x[0];
@@ -354,15 +396,14 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           g_up[3][1] = g_up[1][3];
           g_up[3][2] = g_up[2][3];
 
-          // Set atmosphere if dens below the threshold
-          if (dens(p.I)<=( sqrt(spatial_detg)*(rho_abs_min*(1.0+atmo_tol) )))
+          // Set to atmosphere if dens below the threshold
+          if (dens(p.I) <= sqrt(spatial_detg)*(rho_abs_min*(1.0+atmo_tol)))
           {
-            rho(p.I) = rho_abs_min;
-            velx(p.I) = 0.0;
-            vely(p.I) = 0.0;
-            velz(p.I) = 0.0;
-	    press(p.I) = poly_K*pow(rho(p.I),gamma);
-	    eps(p.I) = press(p.I)/( (gamma - 1.0) * rho(p.I) );
+	    saved_rho(p.I) = rho_abs_min;
+            saved_velx(p.I) = 0.0;
+            saved_vely(p.I) = 0.0;
+            saved_velz(p.I) = 0.0;
+            saved_eps(p.I) = press(p.I)/( (gamma - 1.0) * rho(p.I) );
 
             dens(p.I) = sqrt(spatial_detg)*rho(p.I);
             momx(p.I) = 0.0;
@@ -378,7 +419,7 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           cons[D] = dens(p.I) / sqrt(spatial_detg);
           cons[S1_COV] = momx(p.I) / sqrt(spatial_detg);
           cons[S2_COV] = momy(p.I) / sqrt(spatial_detg);
-          cons[S3_COV] = momz(p.I / sqrt(spatial_detg));
+          cons[S3_COV] = momz(p.I) / sqrt(spatial_detg);
           cons[TAU] = tau(p.I) / sqrt(spatial_detg);
           cons[B1] = dBx(p.I) / sqrt(spatial_detg);
           cons[B2] = dBy(p.I) / sqrt(spatial_detg);
@@ -397,10 +438,33 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
           // 1) Try 2DNRNoble
           Con2Prim_2DNRNoble(max_iter, c2p_tol, plasma_0);
 
-          if ( (plasma_0.Failed_2DNRNoble) || (dens(p.I)<=(sqrt(spatial_detg)*(rho_abs_min*(1.0+atmo_tol)))) )
+          if (plasma_0.Failed_2DNRNoble)
           {
-            // If c2p fails, reset prims to atmo
-            rho(p.I) = rho_abs_min;
+	    if (debug_mode) 
+	    {	    
+	      CCTK_VWarn(1, __LINE__, __FILE__, CCTK_THORNSTRING, "2DNRNoble failed. Printing cons and saved prims before set to atmo: \n"
+                               "cctk_iteration = %i \n "
+                               "x, y, z = %26.16e, %26.16e, %26.16e \n "
+                               "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+                               "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+                               "dBy = %26.16e \n dBz = %26.16e \n "
+                               "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
+                               "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = %26.16e \n "
+                               "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+                               "Bvecz = %26.16e \n "
+                               "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+                                cctk_iteration, 
+                                p.x , p.y, p.z, 
+				dens(p.I), tau(p.I), momx(p.I),
+                                momy(p.I), momz(p.I), dBx(p.I), 
+				dBy(p.I), dBz(p.I),
+                                saved_rho(p.I), saved_eps(p.I), press(p.I), 
+				saved_velx(p.I), saved_vely(p.I), saved_velz(p.I),
+                                Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), 
+				Avec_x(p.I), Avec_y(p.I), Avec_z(p.I) );
+
+            }
+	    rho(p.I) = rho_abs_min;
             velx(p.I) = 0.0;
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
@@ -416,9 +480,32 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             tau(p.I) = sqrt(spatial_detg) * ( (rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
                         (press(p.I) + 0.5 * bs2)) - dens(p.I);
 
-            //assert(0); // Terminate?
-          }
-          else
+            if (debug_mode) {
+	      CCTK_VWarn(1, __LINE__, __FILE__, CCTK_THORNSTRING, "Printing cons and prims after c2p fail after set to atmo: \n"
+                               "cctk_iteration = %i \n "
+                               "x, y, z = %26.16e, %26.16e, %26.16e \n "
+                               "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+                               "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+                               "dBy = %26.16e \n dBz = %26.16e \n "
+                               "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
+                               "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
+                               "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+                               "Bvecz = %26.16e \n "
+                               "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+                                cctk_iteration,
+                                p.x , p.y, p.z,
+                                dens(p.I), tau(p.I), momx(p.I),
+                                momy(p.I), momz(p.I), dBx(p.I),
+                                dBy(p.I), dBz(p.I),
+                                rho(p.I), eps(p.I), press(p.I),
+                                velx(p.I), vely(p.I), velz(p.I),
+                                Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+                                Avec_x(p.I), Avec_y(p.I), Avec_z(p.I) );
+	    }
+            //CCTK_VWARN(CCTK_WARN_ALERT, "C2P failed, triggering assert(0)..");
+	    //assert(0);
+	  }
+	  else
           {
             plasma_0.WZ2Prim();
             rho(p.I) = plasma_0.PrimitiveVars[RHO];
@@ -427,6 +514,47 @@ NUMERICAL RECIPES IN C: THE ART OF SCIENTIFIC COMPUTING
             velz(p.I) = plasma_0.PrimitiveVars[V3_CON];
             eps(p.I) = plasma_0.PrimitiveVars[EPS];
             press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+          }
+
+          if (dens(p.I) <= (sqrt(spatial_detg)*(rho_abs_min*(1.0+atmo_tol))))
+          {
+            rho(p.I) = rho_abs_min;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = poly_K*pow(rho(p.I),gamma);
+            eps(p.I) = press(p.I)/( (gamma - 1.0) * rho(p.I) );
+
+            dens(p.I) = sqrt(spatial_detg)*rho(p.I);
+            momx(p.I) = 0.0;
+            momy(p.I) = 0.0;
+            momz(p.I) = 0.0;
+            // need to compute bs2; setting here to 0.0
+            CCTK_REAL bs2 = 0.0;
+            tau(p.I) = sqrt(spatial_detg) * ( (rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
+                        (press(p.I) + 0.5 * bs2)) - dens(p.I);
+            if (debug_mode) {             
+	      CCTK_VWarn(1, __LINE__, __FILE__, CCTK_THORNSTRING, "Printing cons and prims after set to atmo when dens below threshold: \n"
+                               "cctk_iteration = %i \n "
+                               "x, y, z = %26.16e, %26.16e, %26.16e \n "
+                               "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+                               "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+                               "dBy = %26.16e \n dBz = %26.16e \n "
+                               "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
+                               "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
+                               "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+                               "Bvecz = %26.16e \n "
+                               "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+                                cctk_iteration,
+                                p.x , p.y, p.z,
+                                dens(p.I), tau(p.I), momx(p.I),
+                                momy(p.I), momz(p.I), dBx(p.I),
+                                dBy(p.I), dBz(p.I),
+                                rho(p.I), eps(p.I), press(p.I),
+                                velx(p.I), vely(p.I), velz(p.I),
+                                Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+                                Avec_x(p.I), Avec_y(p.I), Avec_z(p.I) );
+             }
           }
 
           Bvecx(p.I) = cons[B1];

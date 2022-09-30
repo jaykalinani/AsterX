@@ -33,6 +33,11 @@ CCTK_REAL atmo_tol "atmosphere density tolerance factor" STEERABLE=never
   0:* :: "Larger than zero"
 } 1E-3
 
+BOOLEAN debug_mode "Print debug information if set to yes"
+{
+} no
+
+
 restricted:
 
 # Parameters for the recovery of primitive variables

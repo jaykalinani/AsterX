@@ -6,8 +6,6 @@ STORAGE: densrhs momrhs taurhs Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 STORAGE: Aux_in_RHSof_A_Psi
 
-
-
 # Initial conditions
 
 SCHEDULE AsterX_ComputedBstagFromA AT initial AFTER HydroBase_PostInitial BEFORE AsterX_ComputedBFromdBstag
@@ -34,7 +32,6 @@ SCHEDULE AsterX_ComputeBFromdB AT initial BEFORE AsterX_Prim2Con_Initial
   SYNC: HydroBase::Bvec
 } "Calculate centered B from densitized B"
 
-
 SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
 {
   LANG: C
@@ -47,26 +44,12 @@ SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBase_PostInitial
   SYNC: saved_prims
 } "Compute conserved variables from primitive variables at initial"
 
-SCHEDULE AsterX_Con2Prim IN ODESolvers_EstimateError BEFORE AsterX_EstimateError
-{
-  LANG: C
-  READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
-  READS: dens(interior) tau(interior) mom(interior) dB(interior)
-  READS: saved_prims(interior)
-  WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior) HydroBase::Bvec(interior)
-  WRITES: saved_prims(interior)
-  SYNC: HydroBase::rho HydroBase::vel HydroBase::eps HydroBase::press HydroBase::Bvec
-  SYNC: saved_prims
-} "Calculate primitive variables from conservative variables"
-
 SCHEDULE AsterX_EstimateError IN ODESolvers_EstimateError
 {
   LANG: C
   READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
   WRITES: CarpetX::regrid_error(interior)
 } "Estimate local error for regridding initial conditions"
-
-
 
 # Regridding
 
@@ -77,8 +60,6 @@ SCHEDULE AsterX_Sync AT postregrid
   SYNC: dens tau mom
   SYNC: saved_prims
 } "Synchronize"
-
-
 
 # Time stepping
 
@@ -99,12 +80,13 @@ SCHEDULE AsterX_ComputedBFromdBstag IN ODESolvers_RHS AFTER AsterX_ComputedBstag
 } "Calculate centered dB from dBstag"
 
 
-SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS
+SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS BEFORE AsterX_EstimateError
 {
   LANG: C
   READS: ADMBase::metric(interior) ADMBase::lapse(interior) ADMBase::shift(interior)
   READS: dens(interior) tau(interior) mom(interior) dB(interior)
   READS: saved_prims(interior)
+  READS: Avec_x(interior) Avec_y(interior) Avec_z(interior)
   WRITES: HydroBase::rho(interior) HydroBase::vel(interior) HydroBase::eps(interior) HydroBase::press(interior) HydroBase::Bvec(interior)
   WRITES: saved_prims(interior)
   WRITES: dens(interior) tau(interior) mom(interior)
