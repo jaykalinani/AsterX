@@ -58,14 +58,15 @@ CarpetX::blocking_factor_z = 1
 CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::ghost_size = 3
+CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.25
  
 HydroBase::initial_hydro = "balsara4"
 HydroInitial::gamma = 1.66666666666667
 AsterX::gamma = 1.66666666666667
-AsterX::reconstruction_method = "ppm"
-AsterX::max_iter = 100
+AsterX::reconstruction_method = "minmod"
+AsterX::max_iter = 500
+AsterX::c2p_tol = 1e-8
 
 ODESolvers::method = "RK4"
 

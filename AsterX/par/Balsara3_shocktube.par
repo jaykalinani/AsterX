@@ -65,7 +65,8 @@ HydroBase::initial_hydro = "balsara3"
 HydroInitial::gamma = 1.66666666666667
 AsterX::gamma = 1.66666666666667
 AsterX::reconstruction_method = "minmod"
-AsterX::max_iter = 100
+AsterX::max_iter = 500
+AsterX::c2p_tol = 1e-8
 
 ODESolvers::method = "RK4"
 
