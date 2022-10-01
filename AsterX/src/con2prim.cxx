@@ -258,17 +258,11 @@ CCTK_HOST CCTK_DEVICE void Con2Prim_2DNRNoble(
 
   /* initialize unknowns for c2p, Z and vsq: */
   CCTK_REAL x[2];
-  CCTK_REAL x_old[2];
   x[0] = fabs(plasma.Z_Seed);
   x[1] = (-1.0 + W * W) / (W * W);
 
-  /* initialize old values */
-  x_old[0] = x[0];
-  x_old[1] = x[1];
-
   /* Start Recovery with 2D NR Solver */
   const CCTK_INT n = 2;
-  const CCTK_REAL dv = (1. - 1.e-15);
   CCTK_REAL fvec[n];
   CCTK_REAL dx[n];
   CCTK_REAL fjac[n][n];
@@ -297,33 +291,11 @@ CCTK_HOST CCTK_DEVICE void Con2Prim_2DNRNoble(
       break;
     }
 
-    /* save old values before calculating the new */
-    x_old[0] = x[0];
-    x_old[1] = x[1];
-
     for (CCTK_INT i = 0; i < n; i++) {
       x[i] += dx[i];
     }
   }
   plasma.Nit_2DNRNoble = k;
-
-  /* make sure that the new x[] is physical */
-
-  if (x[0] < 0.0) {
-    x[0] = fabs(x[0]);
-  } else {
-    if (x[0] > 1e20) {
-      x[0] = x_old[0];
-    }
-  }
-
-  if (x[1] < 0.0) {
-    x[1] = 0.0;
-  } else {
-    if (x[1] >= 1.0) {
-      x[1] = dv;
-    }
-  }
 
   /* Calculate primitives from Z and W */
   plasma.Z_Sol = x[0];
@@ -458,6 +430,19 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
 
     // 1) Try 2DNRNoble
     Con2Prim_2DNRNoble(max_iter, c2p_tol, plasma_0);
+
+    /* make sure that the root found is physical */
+    if (plasma_0.Z_Sol < 0.0) {
+      plasma_0.Z_Sol = fabs(plasma_0.Z_Sol);
+    } else if (plasma_0.Z_Sol > 1e20) {
+      plasma_0.Z_Sol = fabs(plasma_0.Z_Seed);
+    }
+
+    if (plasma_0.vsq_Sol < 0.0) {
+      plasma_0.vsq_Sol = 0.0;
+    } else if (plasma_0.vsq_Sol >= 1.0) {
+      plasma_0.vsq_Sol = 1.0 - 1e-15;
+    }
 
     if (plasma_0.Failed_2DNRNoble) {
       if (debug_mode) {
