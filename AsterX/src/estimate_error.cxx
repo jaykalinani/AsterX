@@ -11,7 +11,7 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
-enum class regrid_t { first_deriv_all, second_deriv_rho };
+enum class regrid_t { first_deriv_all, first_deriv_rho, second_deriv_rho };
 
 /* calculate max of d(var)/(dx) * hx in all dirs */
 template <typename T>
@@ -23,7 +23,7 @@ CCTK_DEVICE CCTK_HOST const T calc_err_1st(const GF3D2<const T> &gf,
     auto varm = gf(p.I - DI[d]);
     auto var0 = gf(p.I);
     auto varp = gf(p.I + DI[d]);
-    err = max({err, fabs((var0 - varm) / 2.0), fabs((varp - var0) / 2.0)});
+    err = max({err, fabs(var0 - varm), fabs(varp - var0)});
   }
   return err;
 }
@@ -52,6 +52,8 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
   regrid_t regrid;
   if (CCTK_EQUALS(regrid_method, "1st deriv"))
     regrid = regrid_t::first_deriv_all;
+  else if (CCTK_EQUALS(regrid_method, "1st deriv of rho"))
+    regrid = regrid_t::first_deriv_rho;
   else if (CCTK_EQUALS(regrid_method, "2nd deriv of rho"))
     regrid = regrid_t::second_deriv_rho;
   else
@@ -67,6 +69,11 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
               max({calc_err_1st(rho, p), calc_err_1st(velx, p),
                    calc_err_1st(vely, p), calc_err_1st(velz, p),
                    calc_err_1st(eps, p), calc_err_1st(press, p)});
+          break;
+        }
+
+        case regrid_t::first_deriv_rho: {
+          regrid_error(p.I) = calc_err_1st(rho, p);
           break;
         }
 
