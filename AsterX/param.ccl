@@ -23,6 +23,12 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
   "ppm" :: ""
 } "Godunov"
 
+KEYWORD regrid_method "Regrid method" STEERABLE=never
+{
+  "1st deriv" :: ""
+  "2nd deriv of rho" :: ""
+} "1st deriv"
+
 CCTK_REAL rho_abs_min "atmosphere density" STEERABLE=never
 {
   0:* :: "Larger than zero"
