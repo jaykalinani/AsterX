@@ -28,6 +28,7 @@ KEYWORD regrid_method "Regrid method" STEERABLE=never
   "1st deriv" :: ""
   "1st deriv of rho" :: ""
   "2nd deriv of rho" :: ""
+  "1st grad of rho" :: ""
 } "1st deriv"
 
 CCTK_REAL rho_abs_min "atmosphere density" STEERABLE=never
