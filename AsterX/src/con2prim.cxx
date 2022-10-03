@@ -85,9 +85,9 @@ CCTK_HOST CCTK_DEVICE idealFluid::idealFluid(CCTK_REAL gamma,
   }
 
   if (vsq < 0. || vsq > 1.) {
-    CCTK_VWARN(
-        CCTK_WARN_ALERT,
-        "vsq is either less than 0.0 or greater than 1.0, having value = %f",
+    printf(
+        "WARNING: "
+        "vsq is either less than 0.0 or greater than 1.0, having value = %f\n",
         vsq);
   }
 
@@ -390,22 +390,18 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
 
     // Set to atmosphere if dens below the threshold
     if (dens(p.I) <= sqrt(spatial_detg) * (rho_abs_min * (1.0 + atmo_tol))) {
-      saved_rho(p.I) = rho_abs_min;
-      saved_velx(p.I) = 0.0;
-      saved_vely(p.I) = 0.0;
-      saved_velz(p.I) = 0.0;
-      saved_eps(p.I) = press(p.I) / ((gamma - 1.0) * rho(p.I));
+      CCTK_REAL rho_pt = rho_abs_min;
+      CCTK_REAL press_pt = poly_K * pow(rho_pt, gamma);
+      CCTK_REAL eps_pt = press_pt / ((gamma - 1.0) * rho_pt);
 
-      dens(p.I) = sqrt(spatial_detg) * rho(p.I);
+      dens(p.I) = sqrt(spatial_detg) * rho_pt;
       momx(p.I) = 0.0;
       momy(p.I) = 0.0;
       momz(p.I) = 0.0;
       // need to compute bs2; setting here to 0.0
       CCTK_REAL bs2 = 0.0;
       tau(p.I) =
-          sqrt(spatial_detg) * ((rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
-                                (press(p.I) + 0.5 * bs2)) -
-          dens(p.I);
+          sqrt(spatial_detg) * (rho_pt * (1 + eps_pt) + 0.5 * bs2) - dens(p.I);
     }
 
     CCTK_REAL cons[NCONS];
@@ -432,22 +428,24 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
     Con2Prim_2DNRNoble(max_iter, c2p_tol, plasma_0);
 
     /* make sure that the root found is physical */
-    if (plasma_0.Z_Sol < 0.0) {
-      plasma_0.Z_Sol = fabs(plasma_0.Z_Sol);
-    } else if (plasma_0.Z_Sol > 1e20) {
-      plasma_0.Z_Sol = fabs(plasma_0.Z_Seed);
-    }
+    // if (plasma_0.Z_Sol < 0.0) {
+    //   plasma_0.Z_Sol = fabs(plasma_0.Z_Sol);
+    // } else if (plasma_0.Z_Sol > 1e20) {
+    //   plasma_0.Z_Sol = fabs(plasma_0.Z_Seed);
+    // }
 
-    if (plasma_0.vsq_Sol < 0.0) {
-      plasma_0.vsq_Sol = 0.0;
-    } else if (plasma_0.vsq_Sol >= 1.0) {
-      plasma_0.vsq_Sol = 1.0 - 1e-15;
-    }
+    // if (plasma_0.vsq_Sol < 0.0) {
+    //   plasma_0.vsq_Sol = 0.0;
+    // } else if (plasma_0.vsq_Sol >= 1.0) {
+    //   plasma_0.vsq_Sol = 1.0 - 1e-15;
+    // }
+
+    CCTK_INT set_to_atmo = 0;
 
     if (plasma_0.Failed_2DNRNoble) {
       if (debug_mode) {
-        CCTK_VWarn(
-            1, __LINE__, __FILE__, CCTK_THORNSTRING,
+        printf(
+            "WARNING: "
             "2DNRNoble failed. Printing cons and saved prims before set to "
             "atmo: \n"
             "cctk_iteration = %i \n "
@@ -467,43 +465,8 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
             saved_velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Avec_x(p.I),
             Avec_y(p.I), Avec_z(p.I));
       }
-      rho(p.I) = rho_abs_min;
-      velx(p.I) = 0.0;
-      vely(p.I) = 0.0;
-      velz(p.I) = 0.0;
-      press(p.I) = poly_K * pow(rho(p.I), gamma);
-      eps(p.I) = press(p.I) / ((gamma - 1.0) * rho(p.I));
 
-      dens(p.I) = sqrt(spatial_detg) * rho(p.I);
-      momx(p.I) = 0.0;
-      momy(p.I) = 0.0;
-      momz(p.I) = 0.0;
-      // need to compute bs2; setting here to 0.0
-      CCTK_REAL bs2 = 0.0;
-      tau(p.I) =
-          sqrt(spatial_detg) * ((rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
-                                (press(p.I) + 0.5 * bs2)) -
-          dens(p.I);
-
-      if (debug_mode) {
-        CCTK_VWarn(
-            1, __LINE__, __FILE__, CCTK_THORNSTRING,
-            "Printing cons and prims after c2p fail after set to atmo: \n"
-            "cctk_iteration = %i \n "
-            "x, y, z = %26.16e, %26.16e, %26.16e \n "
-            "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
-            "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
-            "dBy = %26.16e \n dBz = %26.16e \n "
-            "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
-            "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
-            "Bvecx = %26.16e \n Bvecy = %26.16e \n "
-            "Bvecz = %26.16e \n "
-            "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
-            cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-            momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), rho(p.I),
-            eps(p.I), press(p.I), velx(p.I), vely(p.I), velz(p.I), Bvecx(p.I),
-            Bvecy(p.I), Bvecz(p.I), Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
-      }
+      set_to_atmo = 1;
       // CCTK_VWARN(CCTK_WARN_ALERT, "C2P failed, triggering assert(0)..");
       // assert(0);
     } else {
@@ -514,9 +477,13 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
       velz(p.I) = plasma_0.PrimitiveVars[V3_CON];
       eps(p.I) = plasma_0.PrimitiveVars[EPS];
       press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+
+      if (rho(p.I) <= rho_abs_min * (1 + atmo_tol)) {
+        set_to_atmo = 1;
+      }
     }
 
-    if (dens(p.I) <= (sqrt(spatial_detg) * (rho_abs_min * (1.0 + atmo_tol)))) {
+    if (set_to_atmo) {
       rho(p.I) = rho_abs_min;
       velx(p.I) = 0.0;
       vely(p.I) = 0.0;
@@ -530,29 +497,28 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
       momz(p.I) = 0.0;
       // need to compute bs2; setting here to 0.0
       CCTK_REAL bs2 = 0.0;
-      tau(p.I) =
-          sqrt(spatial_detg) * ((rho(p.I) * (1 + eps(p.I)) + press(p.I) + bs2) -
-                                (press(p.I) + 0.5 * bs2)) -
-          dens(p.I);
+      tau(p.I) = sqrt(spatial_detg) * (rho(p.I) * (1 + eps(p.I)) + 0.5 * bs2) -
+                 dens(p.I);
+
       if (debug_mode) {
-        CCTK_VWarn(
-            1, __LINE__, __FILE__, CCTK_THORNSTRING,
-            "Printing cons and prims after set to atmo when dens below "
-            "threshold: \n"
-            "cctk_iteration = %i \n "
-            "x, y, z = %26.16e, %26.16e, %26.16e \n "
-            "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
-            "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
-            "dBy = %26.16e \n dBz = %26.16e \n "
-            "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
-            "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
-            "Bvecx = %26.16e \n Bvecy = %26.16e \n "
-            "Bvecz = %26.16e \n "
-            "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
-            cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-            momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), rho(p.I),
-            eps(p.I), press(p.I), velx(p.I), vely(p.I), velz(p.I), Bvecx(p.I),
-            Bvecy(p.I), Bvecz(p.I), Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
+        printf("WARNING: "
+               "Printing cons and prims after set to atmo when dens below "
+               "threshold: \n"
+               "cctk_iteration = %i \n "
+               "x, y, z = %26.16e, %26.16e, %26.16e \n "
+               "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+               "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+               "dBy = %26.16e \n dBz = %26.16e \n "
+               "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
+               "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
+               "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+               "Bvecz = %26.16e \n "
+               "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+               cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
+               momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), rho(p.I),
+               eps(p.I), press(p.I), velx(p.I), vely(p.I), velz(p.I),
+               Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Avec_x(p.I), Avec_y(p.I),
+               Avec_z(p.I));
       }
     }
 
