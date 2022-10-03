@@ -48,6 +48,14 @@ using namespace std;
     "The Cactus flesh does not support cctk_patch in the cGH structure. Update the flesh."
 #endif
 
+namespace {
+double gettime() {
+  timeval tv;
+  gettimeofday(&tv, nullptr);
+  return tv.tv_sec + tv.tv_usec / 1.0e+6;
+}
+} // namespace
+
 // // C++ SFINAE magic to see whether the new version of FillPatchSingleLevel is
 // // available. See
 // //
@@ -1478,6 +1486,8 @@ int Evolve(tFleshConfig *config) {
 
   while (!EvolutionIsDone(cctkGH)) {
 
+    const double start_time = gettime();
+
     assert(!active_levels);
 
     // TODO: Move regridding into a function
@@ -1621,6 +1631,21 @@ int Evolve(tFleshConfig *config) {
 
       active_levels = optional<active_levels_t>();
     } // for min_level
+
+    double cells = 0;
+    for (const auto &patch : ghext->patchdata)
+      for (const auto &level : patch.leveldata)
+        cells += level.fab->boxArray().d_numPts();
+
+    const int updates = 1;                  // we processed one iteration
+    const int nodes = CCTK_nProcs(nullptr); // number of processes (or GPUs)
+    const double end_time = gettime();
+    const double cell_updates_per_second =
+        cells * updates / (nodes * (end_time - start_time));
+    // This is the same as H-AMR's "cell updates per second":
+    CCTK_VINFO(
+        "Grid cells: %g   Grid cell updates per second (per process): %g",
+        cells, cell_updates_per_second);
 
   } // main loop
 
