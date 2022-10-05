@@ -2093,6 +2093,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           }
         }
 
+        // TODO: Skip syncing (with a warning?) if the variable does not need
+        // synchronizing
+
         if (CCTK_EQUALS(fillpatch, "amrex")) {
 
           static Timer timer("Sync::FillPatchSingleLevel/amrex");
