@@ -107,13 +107,13 @@ SCHEDULE Z4c_Initial1 IN Z4c_InitialGroup
   WRITES: Theta(interior)
   WRITES: alphaG(interior)
   WRITES: betaG(interior)
-  SYNC: chi
+  # SYNC: chi
   SYNC: gamma_tilde
-  SYNC: K_hat
-  SYNC: A_tilde
-  SYNC: Theta
-  SYNC: alphaG
-  SYNC: betaG
+  # SYNC: K_hat
+  # SYNC: A_tilde
+  # SYNC: Theta
+  # SYNC: alphaG
+  # SYNC: betaG
 } "Convert ADM to Z4c variables, part 1"
 
 SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Initial1
@@ -121,7 +121,7 @@ SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Initial1
   LANG: C
   READS: gamma_tilde(everywhere)
   WRITES: Gam_tilde(interior)
-  SYNC: Gam_tilde
+  # SYNC: Gam_tilde
 } "Convert ADM to Z4c variables, part 2"
 
 
@@ -222,10 +222,10 @@ if (calc_constraints) {
     WRITES: HC(interior)
     WRITES: MtC(interior)
     WRITES: allC(interior)
-    SYNC: ZtC
-    SYNC: HC
-    SYNC: MtC
-    SYNC: allC
+    # SYNC: ZtC
+    # SYNC: HC
+    # SYNC: MtC
+    # SYNC: allC
   } "Calculate Z4c constraints"
 }
 
@@ -253,12 +253,12 @@ SCHEDULE Z4c_RHS IN Z4c_RHSGroup
   WRITES: Theta_rhs(interior)
   WRITES: alphaG_rhs(interior)
   WRITES: betaG_rhs(interior)
-  SYNC: chi_rhs
-  SYNC: gamma_tilde_rhs
-  SYNC: K_hat_rhs
-  SYNC: A_tilde_rhs
-  SYNC: Gam_tilde_rhs
-  SYNC: Theta_rhs
-  SYNC: alphaG_rhs
-  SYNC: betaG_rhs
+  # SYNC: chi_rhs
+  # SYNC: gamma_tilde_rhs
+  # SYNC: K_hat_rhs
+  # SYNC: A_tilde_rhs
+  # SYNC: Gam_tilde_rhs
+  # SYNC: Theta_rhs
+  # SYNC: alphaG_rhs
+  # SYNC: betaG_rhs
 } "Calculate Z4c RHS"
