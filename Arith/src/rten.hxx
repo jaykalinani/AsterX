@@ -356,6 +356,11 @@ public:
     return maxabs(x.elts);
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+  sumabs(const rten &x) {
+    return sumabs(x.elts);
+  }
+
   friend ostream &operator<<(ostream &os,
                              const rten<T, D, dnup1, dnup2, dnup3, dnup4> &x) {
     os << "(" << dnup1 << dnup2 << dnup3 << dnup4 << ")[\n";

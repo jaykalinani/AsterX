@@ -312,6 +312,10 @@ public:
     return maxabs(x.elts);
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T sumabs(const vec &x) {
+    return sumabs(x.elts);
+  }
+
   friend ostream &operator<<(ostream &os, const vec<T, D, dnup> &v) {
     os << "(" << dnup << ")[";
     for (int i = 0; i < D; ++i) {

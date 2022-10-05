@@ -351,6 +351,11 @@ public:
     return maxabs(x.elts);
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+  sumabs(const gmat &x) {
+    return sumabs(x.elts);
+  }
+
   friend ostream &operator<<(ostream &os,
                              const gmat<T, D, dnup1, dnup2, symm> &x) {
     os << "(" << dnup1 << dnup2 << symm << ")[";

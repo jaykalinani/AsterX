@@ -370,6 +370,11 @@ public:
     return maxabs(x.elts);
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T
+  sumabs(const gten3 &x) {
+    return sumabs(x.elts);
+  }
+
   friend ostream &operator<<(ostream &os, const gten3 &x) {
     os << "(" << dnup1 << dnup2 << dnup3 << symm << ")[";
     for (int k = 0; k < D; ++k) {
