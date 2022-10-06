@@ -6,6 +6,13 @@ STORAGE: densrhs momrhs taurhs Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 STORAGE: Aux_in_RHSof_A_Psi
 
+
+SCHEDULE AsterX_EstimateError_Setup AT wragh
+{
+  LANG: C
+  OPTIONS: GLOBAL
+} "set up for calculating regrid error"
+
 # Initial conditions
 
 SCHEDULE AsterX_ComputedBstagFromA AT initial AFTER HydroBase_PostInitial BEFORE AsterX_ComputedBFromdBstag

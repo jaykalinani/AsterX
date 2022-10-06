@@ -25,11 +25,15 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 
 KEYWORD regrid_method "Regrid method" STEERABLE=never
 {
-  "1st deriv" :: ""
-  "1st deriv of rho" :: ""
-  "2nd deriv of rho" :: ""
-  "1st grad of rho" :: ""
-} "1st deriv"
+  "first derivative" :: ""
+  "second derivative" :: ""
+  "first gradient" :: ""
+} "first gradient"
+
+CCTK_STRING regrid_groups "Groups used for calculating regrid error" STEERABLE=always
+{
+  .* :: "List of full group names"
+} "HydroBase::rho"
 
 CCTK_REAL rho_abs_min "atmosphere density" STEERABLE=never
 {
