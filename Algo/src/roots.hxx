@@ -160,14 +160,15 @@ newton_raphson_nd(F f, const Arith::vec<T, N, Arith::UP> &guess,
                   const Arith::vec<T, N, Arith::UP> &min,
                   const Arith::vec<T, N, Arith::UP> &max, int min_bits,
                   int max_iters, int &iters, bool &failed) {
-  using std::abs;
   using vec = Arith::vec<T, N, Arith::UP>;
   using mat = Arith::mat<T, N, Arith::UP, Arith::DN>;
   failed = false;
   auto tolfx = boost::math::tools::eps_tolerance<T>(min_bits);
   vec x = guess;
   for (iters = 1; iters <= max_iters; ++iters) {
-    const auto [fx, jac] = f(x);
+    const auto [fx0, jac0] = f(x);
+    const vec fx = fx0;
+    const mat jac = jac0;
     const T errfx = sumabs(fx);
     if (tolfx(1 + errfx, 1))
       return x;
