@@ -12,7 +12,6 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
-
 /***************************************************************************
 2DNRNoble C2P
 ------------------------------------
@@ -78,7 +77,7 @@ CCTK_HOST CCTK_DEVICE void Con2Prim_2DNRNoble(
       plasma.Failed_2DNRNoble = 0;
       break;
     }
-    
+
     /* save old values before calculating the new */
     x_old[0] = x[0];
     x_old[1] = x[1];
@@ -90,27 +89,19 @@ CCTK_HOST CCTK_DEVICE void Con2Prim_2DNRNoble(
   plasma.Nit_2DNRNoble = k;
 
   /* make sure that the new x[] is physical */
-  if (x[0] < 0.0) 
-  { 
-    x[0] = fabs(x[0]); 
-  }
-  else 
-  {
-    if (x[0] > 1e20) 
-    { 
-      x[0] = x_old[0]; 
+  if (x[0] < 0.0) {
+    x[0] = fabs(x[0]);
+  } else {
+    if (x[0] > 1e20) {
+      x[0] = x_old[0];
     }
   }
 
-  if (x[1] < 0.0) 
-  {
-    x[1] = 0.0; 
-  }
-  else 
-  {
-    if (x[1] >= 1.0) 
-    { 
-      x[1] = dv; 
+  if (x[1] < 0.0) {
+    x[1] = 0.0;
+  } else {
+    if (x[1] >= 1.0) {
+      x[1] = dv;
     }
   }
 
@@ -211,7 +202,8 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
       saved_velx(p.I) = 0.0;
       saved_vely(p.I) = 0.0;
       saved_velz(p.I) = 0.0;
-      saved_eps(p.I) = press(p.I) / ((gamma - 1.0) * rho(p.I));
+      press(p.I) = poly_K * pow(saved_rho(p.I), gamma);
+      saved_eps(p.I) = press(p.I) / ((gamma - 1.0) * saved_rho(p.I));
 
       dens(p.I) = sqrt(spatial_detg) * saved_rho(p.I);
       momx(p.I) = 0.0;
@@ -219,8 +211,9 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
       momz(p.I) = 0.0;
       // need to compute bs2; setting here to 0.0
       CCTK_REAL bs2 = 0.0;
-      tau(p.I) =
-          sqrt(spatial_detg) * (saved_rho(p.I) * (1 + saved_eps(p.I)) + 0.5 * bs2) - dens(p.I);
+      tau(p.I) = sqrt(spatial_detg) *
+                     (saved_rho(p.I) * (1 + saved_eps(p.I)) + 0.5 * bs2) -
+                 dens(p.I);
     }
 
     CCTK_REAL cons[NCONS];
