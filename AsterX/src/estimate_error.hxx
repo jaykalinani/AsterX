@@ -11,11 +11,6 @@
 namespace AsterX {
 using namespace std;
 
-enum class regrid_t { first_deriv, second_deriv, first_grad };
-static regrid_t regridMethod;
-static vector<int> regridVarsI;
-static vector<array<int, Loop::dim> > indextypeRegridVars;
-
 /* calculate max of d(var)/(dx) * hx in all dirs */
 template <typename T>
 CCTK_DEVICE inline const T calc_grad_1st(const Loop::GF3D2<const T> &gf,

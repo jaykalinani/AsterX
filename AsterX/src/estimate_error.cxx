@@ -13,6 +13,11 @@
 namespace AsterX {
 using namespace std;
 
+enum class regrid_t { first_deriv, second_deriv, first_grad };
+regrid_t regridMethod;
+vector<int> regridVarsI;
+vector<array<int, Loop::dim> > indextypeRegridVars;
+
 extern "C" void AsterX_EstimateError_Setup(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
