@@ -13,8 +13,8 @@ using namespace std;
 
 /* calculate max of d(var)/(dx) * hx in all dirs */
 template <typename T>
-CCTK_DEVICE inline const T calc_grad_1st(const Loop::GF3D2<const T> &gf,
-                                         const Loop::PointDesc &p) {
+CCTK_DEVICE inline T calc_grad_1st(const Loop::GF3D2<const T> &gf,
+                                   const Loop::PointDesc &p) {
   constexpr auto DI = Loop::PointDesc::DI;
   CCTK_REAL err{0}, errp{0}, errm{0};
   for (int d = 0; d < Loop::dim; ++d) {
@@ -30,8 +30,8 @@ CCTK_DEVICE inline const T calc_grad_1st(const Loop::GF3D2<const T> &gf,
 
 /* calculate max of d(var)/(dx) * hx in all dirs */
 template <typename T>
-CCTK_DEVICE inline const T calc_deriv_1st(const Loop::GF3D2<const T> &gf,
-                                          const Loop::PointDesc &p) {
+CCTK_DEVICE inline T calc_deriv_1st(const Loop::GF3D2<const T> &gf,
+                                    const Loop::PointDesc &p) {
   constexpr auto DI = Loop::PointDesc::DI;
   CCTK_REAL err{0};
   for (int d = 0; d < Loop::dim; ++d) {
@@ -45,8 +45,8 @@ CCTK_DEVICE inline const T calc_deriv_1st(const Loop::GF3D2<const T> &gf,
 
 /* calculate max of d^2(var)/(dx^2) * hx^2 in all dirs */
 template <typename T>
-CCTK_DEVICE inline const T calc_deriv_2nd(const Loop::GF3D2<const T> &gf,
-                                          const Loop::PointDesc &p) {
+CCTK_DEVICE inline T calc_deriv_2nd(const Loop::GF3D2<const T> &gf,
+                                    const Loop::PointDesc &p) {
   constexpr auto DI = Loop::PointDesc::DI;
   CCTK_REAL err{0};
   for (int d = 0; d < Loop::dim; ++d) {
