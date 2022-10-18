@@ -7,6 +7,12 @@ STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 STORAGE: Aux_in_RHSof_A_Psi
 
 
+SCHEDULE Test_utils AT wragh
+{
+  LANG: C
+  OPTIONS: meta
+} "Test utils functions"
+
 SCHEDULE AsterX_EstimateError_Setup AT wragh
 {
   LANG: C
