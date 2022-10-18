@@ -11,7 +11,7 @@ SRCS = \
   sync.cxx \
   source.cxx \
   reconstruct.cxx \
-  utils.cxx
+  test.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 
