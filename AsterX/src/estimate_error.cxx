@@ -65,10 +65,14 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_EstimateError;
   DECLARE_CCTK_PARAMETERS;
 
+  Loop::GF3D2<const CCTK_REAL> *regridVars =
+      (Loop::GF3D2<const CCTK_REAL> *)amrex::The_Arena()->alloc(
+          regridVarsI.size() * sizeof(Loop::GF3D2<const CCTK_REAL>));
+
   const int tl = 0;
   const int maxNregridVars = 10;
-  array<Loop::GF3D2<const CCTK_REAL>, maxNregridVars> regridVars = {
-      rho, rho, rho, rho, rho, rho, rho, rho, rho, rho};
+  //array<Loop::GF3D2<const CCTK_REAL>, maxNregridVars> regridVars = {
+  //    rho, rho, rho, rho, rho, rho, rho, rho, rho, rho};
   const int NregridVars = regridVarsI.size();
   assert(NregridVars < maxNregridVars);
   for (int i = 0; i < NregridVars; i++) {
@@ -116,6 +120,9 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
           assert(0);
         }
       });
+
+  amrex::Gpu::Device::streamSynchronize();
+  amrex::The_Arena()->free(regridVars);
 }
 
 } // namespace AsterX
