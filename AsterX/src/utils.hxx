@@ -11,11 +11,11 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
-template <typename T> CCTK_DEVICE CCTK_HOST inline T pow2(T x) { return x * x; }
+template <typename T> CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T pow2(T x) { return x * x; }
 
 // Computes the determinant of spatial metric
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_detg(const T &gxx, const T &gxy,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_detg(const T &gxx, const T &gxy,
                                          const T &gxz, const T &gyy,
                                          const T &gyz, const T &gzz) {
   return -gxz * gxz * gyy + 2.0 * gxy * gxz * gyz - gxx * gyz * gyz -
@@ -24,7 +24,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_detg(const T &gxx, const T &gxy,
 
 // Computes the upper spatial metric components
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline array<T, 6>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline array<T, 6>
 calc_upperg(const T &gxx, const T &gxy, const T &gxz, const T &gyy,
             const T &gyz, const T &gzz, const T &detg) {
   return {
@@ -39,7 +39,7 @@ calc_upperg(const T &gxx, const T &gxy, const T &gxz, const T &gyy,
 
 // FD2: vertex centered input, vertex centered output, oneside stencil
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd2_v2v_oneside(const GF3D2<const T> &gf, const PointDesc &p,
                      const int dir, const int sign) {
   constexpr auto DI = PointDesc::DI;
@@ -51,7 +51,7 @@ calc_fd2_v2v_oneside(const GF3D2<const T> &gf, const PointDesc &p,
 
 // FD2: cell centered input, cell centered output
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_fd2_c2c(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_fd2_c2c(const GF3D2<const T> &gf,
                                             const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   return (0.5 / p.DX[dir]) * (gf(p.I + DI[dir]) - gf(p.I - DI[dir]));
@@ -59,7 +59,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_fd2_c2c(const GF3D2<const T> &gf,
 
 // FD2: vertex centered input, edge centered output
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_fd2_v2e(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_fd2_v2e(const GF3D2<const T> &gf,
                                             const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   return (gf(p.I + DI[dir]) - gf(p.I)) / p.DX[dir];
@@ -67,7 +67,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_fd2_v2e(const GF3D2<const T> &gf,
 
 // FD2: vertex centered input, cell centered output
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_fd2_v2c(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_fd2_v2c(const GF3D2<const T> &gf,
                                             const PointDesc &p, int dir) {
   constexpr auto DI = PointDesc::DI;
   T dgf1, dgf2, dgf3, dgf4;
@@ -95,7 +95,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_fd2_v2c(const GF3D2<const T> &gf,
 
 // FD4: cell centered input, cell centered output
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_fd4_c2c(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_fd4_c2c(const GF3D2<const T> &gf,
                                             const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   return (1.0 / (12.0 * p.DX[dir])) *
@@ -105,7 +105,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_fd4_c2c(const GF3D2<const T> &gf,
 
 // FD4: vertex centered input, cell centered output
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_fd4_v2c(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_fd4_v2c(const GF3D2<const T> &gf,
                                             const PointDesc &p, int dir) {
   constexpr auto DI = PointDesc::DI;
   T dgf1, dgf2, dgf3, dgf4;
@@ -173,7 +173,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_fd4_v2c(const GF3D2<const T> &gf,
 
 // Computes the components of a lower indice quantity
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline array<T, 3>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline array<T, 3>
 calc_vlow(const array<T, 3> &v_up, const T &gxx, const T &gxy, const T &gxz,
           const T &gyy, const T &gyz, const T &gzz) {
   return {
@@ -185,7 +185,7 @@ calc_vlow(const array<T, 3> &v_up, const T &gxx, const T &gxy, const T &gxz,
 
 // Computes the Lorentz factor
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_wlor(const array<T, 3> &v_low,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_wlor(const array<T, 3> &v_low,
                                          const array<T, 3> &v_up) {
   return 1.0 / sqrt(1.0 - (v_low[0] * v_up[0] + v_low[1] * v_up[1] +
                            v_low[2] * v_up[2]));
@@ -193,7 +193,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_wlor(const array<T, 3> &v_low,
 
 // Second-order average of vertex-centered grid functions to cell center
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_avg_v2c(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_v2c(const GF3D2<const T> &gf,
                                             const PointDesc &p) {
   constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
@@ -210,7 +210,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_avg_v2c(const GF3D2<const T> &gf,
 
 // Second-order average of edge-centered grid functions to vertex-centered
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_avg_e2v(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_e2v(const GF3D2<const T> &gf,
                                             const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
@@ -224,7 +224,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_avg_e2v(const GF3D2<const T> &gf,
 // Second-order average of edge-centered grid functions (along dir) to cell
 // center
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_avg_e2c(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_e2c(const GF3D2<const T> &gf,
                                             const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
@@ -242,7 +242,7 @@ CCTK_DEVICE CCTK_HOST inline T calc_avg_e2c(const GF3D2<const T> &gf,
 // Second-order average of vertex-centered grid functionsto face
 // center (perp to dir)
 template <typename T>
-CCTK_DEVICE CCTK_HOST inline T calc_avg_v2f(const GF3D2<const T> &gf,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_v2f(const GF3D2<const T> &gf,
                                             const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
