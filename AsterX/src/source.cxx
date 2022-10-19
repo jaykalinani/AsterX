@@ -14,6 +14,7 @@
 namespace AsterX {
 using namespace std;
 using namespace Loop;
+using namespace Arith;
 
 extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_SourceTerms;
@@ -53,8 +54,9 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
     CCTK_REAL kzz_avg = calc_avg_v2c(kzz, p);
 
     /* Determinant of spatial metric */
-    const CCTK_REAL detg =
-        calc_detg(gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg);
+    const smat<CCTK_REAL, 3, DN, DN> g{gxx_avg, gxy_avg, gxz_avg,
+                                       gyy_avg, gyz_avg, gzz_avg};
+    const CCTK_REAL detg = calc_det(g);
 
     const CCTK_REAL sqrt_detg = sqrt(detg);
 

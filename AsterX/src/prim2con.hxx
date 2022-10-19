@@ -1,3 +1,6 @@
+#ifndef PRIM2CON_HXX
+#define PRIM2CON_HXX
+
 #include <fixmath.hxx>
 #include <loop_device.hxx>
 
@@ -13,6 +16,7 @@
 namespace AsterX {
 using namespace std;
 using namespace Loop;
+using namespace Arith;
 
 struct metric {
   CCTK_REAL gxx, gxy, gxz, gyy, gyz, gzz;
@@ -45,8 +49,9 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap,
                                     cons &cv) {
 
   // determinant of spatial metric
-  const CCTK_REAL detg = calc_detg(g.gxx, g.gxy, g.gxz, g.gyy, g.gyz, g.gzz);
-  const CCTK_REAL sqrt_detg = sqrt(detg);
+  const smat<CCTK_REAL, 3, DN, DN> gmat{g.gxx, g.gxy, g.gxz,
+                                        g.gyy, g.gyz, g.gzz};
+  const CCTK_REAL sqrt_detg = sqrt(calc_det(gmat));
 
   // TODO: compute specific internal energy based on user-specified EOS
   // currently, computing eps for classical ideal gas
@@ -125,3 +130,5 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap,
 }
 
 } // namespace AsterX
+
+#endif // #ifndef PRIM2CON_HXX

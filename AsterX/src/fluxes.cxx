@@ -16,6 +16,7 @@
 namespace AsterX {
 using namespace std;
 using namespace Loop;
+using namespace Arith;
 
 // Calculate the fluxes in direction `dir`. This function is more
 // complex because it has to handle any direction, but as reward,
@@ -203,8 +204,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                                           eps_rc[1] * rho_rc[1] * (gamma - 1)};
 
     // Determinant of spatial metric
-    const CCTK_REAL detg =
-        calc_detg(gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg);
+    const smat<CCTK_REAL, 3, DN, DN> g{gxx_avg, gxy_avg, gxz_avg,
+                                       gyy_avg, gyz_avg, gzz_avg};
+    const CCTK_REAL detg = calc_det(g);
     const CCTK_REAL sqrt_detg = sqrt(detg);
 
     // Upper metric
@@ -471,8 +473,9 @@ void CalcAuxForAvecPsi(CCTK_ARGUMENTS) {
         const CCTK_REAL Ay_vert = calc_avg_e2v(Avec_y, p, 1);
         const CCTK_REAL Az_vert = calc_avg_e2v(Avec_z, p, 2);
 
-        const CCTK_REAL detg = calc_detg(gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I),
-                                         gyz(p.I), gzz(p.I));
+        const smat<CCTK_REAL, 3, DN, DN> g{gxx(p.I), gxy(p.I), gxz(p.I),
+                                           gyy(p.I), gyz(p.I), gzz(p.I)};
+        const CCTK_REAL detg = calc_det(g);
         const array<CCTK_REAL, 6> ug = calc_upperg(
             gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I), gyz(p.I), gzz(p.I), detg);
 

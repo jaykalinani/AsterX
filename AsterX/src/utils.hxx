@@ -1,7 +1,14 @@
+#ifndef UTILS_HXX
+#define UTILS_HXX
+
 #include <fixmath.hxx>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
+
+#include <mat.hxx>
+#include <simd.hxx>
+#include <vec.hxx>
 
 #include <algorithm>
 #include <array>
@@ -12,15 +19,6 @@ using namespace std;
 using namespace Loop;
 
 template <typename T> CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T pow2(T x) { return x * x; }
-
-// Computes the determinant of spatial metric
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_detg(const T &gxx, const T &gxy,
-                                         const T &gxz, const T &gyy,
-                                         const T &gyz, const T &gzz) {
-  return -gxz * gxz * gyy + 2.0 * gxy * gxz * gyz - gxx * gyz * gyz -
-         gxy * gxy * gzz + gxx * gyy * gzz;
-}
 
 // Computes the upper spatial metric components
 template <typename T>
@@ -275,3 +273,5 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_c2e(const G
 }
 
 } // namespace AsterX
+
+#endif // #ifndef UTILS_HXX
