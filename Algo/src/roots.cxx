@@ -13,16 +13,15 @@
 
 namespace Algo {
 
-using Arith::mat, Arith::vec, Arith::DN, Arith::UP;
+using Arith::mat, Arith::vec;
 
 namespace {
-template <typename T> vec<T, 2, UP> gn(vec<T, 2, UP> x) {
-  return vec<T, 2, UP>{x(0) * x(0) - 2, x(0) * x(1) - 2};
+template <typename T> vec<T, 2> gn(vec<T, 2> x) {
+  return vec<T, 2>{x(0) * x(0) - 2, x(0) * x(1) - 2};
 }
-template <typename T>
-std::pair<vec<T, 2, UP>, mat<T, 2, UP, DN> > gnd(vec<T, 2, UP> x) {
-  return {vec<T, 2, UP>{x(0) * x(0) - 2, x(0) * x(1) - 2},
-          mat<T, 2, UP, DN>{2 * x(0), x(1), 0, x(0)}};
+template <typename T> std::pair<vec<T, 2>, mat<T, 2> > gnd(vec<T, 2> x) {
+  return {vec<T, 2>{x(0) * x(0) - 2, x(0) * x(1) - 2},
+          mat<T, 2>{2 * x(0), x(1), 0, x(0)}};
 }
 } // namespace
 
@@ -121,10 +120,10 @@ extern "C" void Test_roots(CCTK_ARGUMENTS) {
     const int maxiters = 100;
     int iters;
     bool failed;
-    auto x = newton_raphson_nd(gnd<CCTK_REAL>, vec<CCTK_REAL, 2, UP>{1.0, 1.0},
-                               vec<CCTK_REAL, 2, UP>{0.0, 0.0},
-                               vec<CCTK_REAL, 2, UP>{10.0, 10.0}, minbits,
-                               maxiters, iters, failed);
+    auto x = newton_raphson_nd(gnd<CCTK_REAL>, vec<CCTK_REAL, 2>{1.0, 1.0},
+                               vec<CCTK_REAL, 2>{0.0, 0.0},
+                               vec<CCTK_REAL, 2>{10.0, 10.0}, minbits, maxiters,
+                               iters, failed);
     // CCTK_VINFO("maxiters=%d iters=%d", maxiters, iters);
     // CCTK_VINFO("lo=%.17g hi=%.17g", double(lo), double(hi));
     assert(iters < maxiters);

@@ -155,13 +155,12 @@ T schroder(F f, T guess, T min, T max, int min_bits, int max_iters,
 }
 
 template <typename F, typename T, int N>
-Arith::vec<T, N, Arith::UP>
-newton_raphson_nd(F f, const Arith::vec<T, N, Arith::UP> &guess,
-                  const Arith::vec<T, N, Arith::UP> &min,
-                  const Arith::vec<T, N, Arith::UP> &max, int min_bits,
-                  int max_iters, int &iters, bool &failed) {
-  using vec = Arith::vec<T, N, Arith::UP>;
-  using mat = Arith::mat<T, N, Arith::UP, Arith::DN>;
+Arith::vec<T, N> newton_raphson_nd(F f, const Arith::vec<T, N> &guess,
+                                   const Arith::vec<T, N> &min,
+                                   const Arith::vec<T, N> &max, int min_bits,
+                                   int max_iters, int &iters, bool &failed) {
+  using vec = Arith::vec<T, N>;
+  using mat = Arith::mat<T, N>;
   failed = false;
   auto tolfx = boost::math::tools::eps_tolerance<T>(min_bits);
   vec x = guess;
