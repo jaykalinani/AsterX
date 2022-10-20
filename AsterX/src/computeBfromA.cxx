@@ -111,7 +111,7 @@ namespace AsterX
           g.gzz = calc_avg_v2c(gzz, p);
 
           /* Determinant of spatial metric */
-          const smat<CCTK_REAL, 3, DN, DN> gmat{g.gxx, g.gxy, g.gxz,
+          const smat<CCTK_REAL, 3> gmat{g.gxx, g.gxy, g.gxz,
                                                 g.gyy, g.gyz, g.gzz};
           const CCTK_REAL sqrt_detg = sqrt(calc_det(gmat));
 

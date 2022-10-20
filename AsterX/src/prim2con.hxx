@@ -49,8 +49,7 @@ CCTK_DEVICE CCTK_HOST void prim2con(const metric &g, const lapse &lap,
                                     cons &cv) {
 
   // determinant of spatial metric
-  const smat<CCTK_REAL, 3, DN, DN> gmat{g.gxx, g.gxy, g.gxz,
-                                        g.gyy, g.gyz, g.gzz};
+  const smat<CCTK_REAL, 3> gmat{g.gxx, g.gxy, g.gxz, g.gyy, g.gyz, g.gzz};
   const CCTK_REAL sqrt_detg = sqrt(calc_det(gmat));
 
   // TODO: compute specific internal energy based on user-specified EOS

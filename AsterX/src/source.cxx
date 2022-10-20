@@ -54,14 +54,14 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
     CCTK_REAL kzz_avg = calc_avg_v2c(kzz, p);
 
     /* Determinant of spatial metric */
-    const smat<CCTK_REAL, 3, DN, DN> g{gxx_avg, gxy_avg, gxz_avg,
+    const smat<CCTK_REAL, 3> g{gxx_avg, gxy_avg, gxz_avg,
                                        gyy_avg, gyz_avg, gzz_avg};
     const CCTK_REAL detg = calc_det(g);
 
     const CCTK_REAL sqrt_detg = sqrt(detg);
 
     /* Upper metric */
-    const smat<CCTK_REAL, 3, UP, UP> ug = calc_inv(g, detg);
+    const smat<CCTK_REAL, 3> ug = calc_inv(g, detg);
 
     /* Computing v_j */
     const array<CCTK_REAL, 3> v_up = {velx(p.I), vely(p.I), velz(p.I)};

@@ -204,13 +204,13 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                                           eps_rc[1] * rho_rc[1] * (gamma - 1)};
 
     // Determinant of spatial metric
-    const smat<CCTK_REAL, 3, DN, DN> g_avg{gxx_avg, gxy_avg, gxz_avg,
+    const smat<CCTK_REAL, 3> g_avg{gxx_avg, gxy_avg, gxz_avg,
                                            gyy_avg, gyz_avg, gzz_avg};
     const CCTK_REAL detg_avg = calc_det(g_avg);
     const CCTK_REAL sqrt_detg = sqrt(detg_avg);
 
     // Upper metric
-    const smat<CCTK_REAL, 3, UP, UP> ug_avg = calc_inv(g_avg, detg_avg);
+    const smat<CCTK_REAL, 3> ug_avg = calc_inv(g_avg, detg_avg);
 
     // Variable for either uxx, uyy or uzz depending on the direction
     const CCTK_REAL u_avg = ug_avg(dir, dir);
@@ -470,10 +470,10 @@ void CalcAuxForAvecPsi(CCTK_ARGUMENTS) {
         const CCTK_REAL Ay_vert = calc_avg_e2v(Avec_y, p, 1);
         const CCTK_REAL Az_vert = calc_avg_e2v(Avec_z, p, 2);
 
-        const smat<CCTK_REAL, 3, DN, DN> g{gxx(p.I), gxy(p.I), gxz(p.I),
+        const smat<CCTK_REAL, 3> g{gxx(p.I), gxy(p.I), gxz(p.I),
                                            gyy(p.I), gyz(p.I), gzz(p.I)};
         const CCTK_REAL detg = calc_det(g);
-        const smat<CCTK_REAL, 3, UP, UP> ug = calc_inv(g, detg);
+        const smat<CCTK_REAL, 3> ug = calc_inv(g, detg);
 
         const CCTK_REAL Axup =
             ug(0,0) * Ax_vert + ug(0,1) * Ay_vert + ug(0,2) * Az_vert;
