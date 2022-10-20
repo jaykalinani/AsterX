@@ -20,21 +20,6 @@ using namespace Loop;
 
 template <typename T> CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T pow2(T x) { return x * x; }
 
-// Computes the upper spatial metric components
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline array<T, 6>
-calc_upperg(const T &gxx, const T &gxy, const T &gxz, const T &gyy,
-            const T &gyz, const T &gzz, const T &detg) {
-  return {
-      (gyy * gzz - gyz * gyz) / detg, // uxx
-      (gxz * gyz - gxy * gzz) / detg, // uxy
-      (gxy * gyz - gxz * gyy) / detg, // uxz
-      (gxx * gzz - gxz * gxz) / detg, // uyy
-      (gxy * gxz - gyz * gxx) / detg, // uyz
-      (gxx * gyy - gxy * gxy) / detg  // uzz
-  };
-}
-
 // FD2: vertex centered input, vertex centered output, oneside stencil
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T

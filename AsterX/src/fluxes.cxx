@@ -204,19 +204,16 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                                           eps_rc[1] * rho_rc[1] * (gamma - 1)};
 
     // Determinant of spatial metric
-    const smat<CCTK_REAL, 3, DN, DN> g{gxx_avg, gxy_avg, gxz_avg,
-                                       gyy_avg, gyz_avg, gzz_avg};
-    const CCTK_REAL detg = calc_det(g);
-    const CCTK_REAL sqrt_detg = sqrt(detg);
+    const smat<CCTK_REAL, 3, DN, DN> g_avg{gxx_avg, gxy_avg, gxz_avg,
+                                           gyy_avg, gyz_avg, gzz_avg};
+    const CCTK_REAL detg_avg = calc_det(g_avg);
+    const CCTK_REAL sqrt_detg = sqrt(detg_avg);
 
     // Upper metric
-    const array<CCTK_REAL, 6> ug_avg =
-        calc_upperg(gxx_avg, gxy_avg, gxz_avg, gyy_avg, gyz_avg, gzz_avg, detg);
+    const smat<CCTK_REAL, 3, UP, UP> ug_avg = calc_inv(g_avg, detg_avg);
 
-    // Array containing uxx, uyy, uzz components of the upper metric
-    const array<CCTK_REAL, 3> ugs_avg = {ug_avg[0], ug_avg[3], ug_avg[5]};
     // Variable for either uxx, uyy or uzz depending on the direction
-    const CCTK_REAL u_avg = ugs_avg[dir];
+    const CCTK_REAL u_avg = ug_avg(dir, dir);
 
     // v_j
     const array<CCTK_REAL, 2> vlowx_rc = {
@@ -476,15 +473,14 @@ void CalcAuxForAvecPsi(CCTK_ARGUMENTS) {
         const smat<CCTK_REAL, 3, DN, DN> g{gxx(p.I), gxy(p.I), gxz(p.I),
                                            gyy(p.I), gyz(p.I), gzz(p.I)};
         const CCTK_REAL detg = calc_det(g);
-        const array<CCTK_REAL, 6> ug = calc_upperg(
-            gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I), gyz(p.I), gzz(p.I), detg);
+        const smat<CCTK_REAL, 3, UP, UP> ug = calc_inv(g, detg);
 
         const CCTK_REAL Axup =
-            ug[0] * Ax_vert + ug[1] * Ay_vert + ug[2] * Az_vert;
+            ug(0,0) * Ax_vert + ug(0,1) * Ay_vert + ug(0,2) * Az_vert;
         const CCTK_REAL Ayup =
-            ug[1] * Ax_vert + ug[3] * Ay_vert + ug[4] * Az_vert;
+            ug(0,1) * Ax_vert + ug(1,1) * Ay_vert + ug(1,2) * Az_vert;
         const CCTK_REAL Azup =
-            ug[2] * Ax_vert + ug[4] * Ay_vert + ug[5] * Az_vert;
+            ug(0,2) * Ax_vert + ug(1,2) * Ay_vert + ug(2,2) * Az_vert;
 
         const CCTK_REAL beta_Avec =
             betax(p.I) * Ax_vert + betay(p.I) * Ay_vert + betaz(p.I) * Az_vert;
