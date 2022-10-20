@@ -114,6 +114,7 @@ MultiPatch1_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
                         CCTK_VarDataPtr(cctkGH, 0, "Coordinates::vcoordz")))};
 
     SourcePoints source_points;
+    // Note: This includes symmetry points
     grid.loop_bnd<0, 0, 0>(grid.nghostzones, [&](const Loop::PointDesc &p) {
       for (int d = 0; d < dim; ++d)
         source_points[d].push_back(vcoords[d](p.I));
@@ -181,6 +182,7 @@ MultiPatch1_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
           layout,
           static_cast<CCTK_REAL *>(CCTK_VarDataPtrI(cctkGH, 0, varinds.at(n))));
       std::size_t pos = 0;
+      // Note: This includes symmetry points
       grid.loop_bnd<0, 0, 0>(grid.nghostzones, [&](const Loop::PointDesc &p) {
         var(p.I) = result_values_n[pos++];
       });

@@ -4,7 +4,7 @@
 
 CCTK_DEVICE CCTK_HOST MultiPatch::Cake::patch_piece
 MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
-                                  const svec_u &global_vars) {
+                                  const svec &global_vars) {
   using MultiPatchTests::at_boundary;
   using MultiPatchTests::isapprox;
   using MultiPatchTests::within;
