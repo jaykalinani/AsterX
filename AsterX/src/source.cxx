@@ -94,99 +94,64 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
     CCTK_REAL dx_gyz, dy_gyz, dz_gyz;
     CCTK_REAL dx_gzz, dy_gzz, dz_gzz;
 
+    // raw function pointer types for FD
+    CCTK_REAL (*calc_fd_v2c)
+    (const GF3D2<const CCTK_REAL> &, const PointDesc &, int) = nullptr;
+
     if (local_spatial_order == 2) {
       /* calc_fd2_v2c takes vertex center input, computes edge-center
        * derivatives along either dir=0, 1 or 2 using 2nd finite difference,
        * i.e, at the four edges of the cube with p.I as starting point. The four
        * edge-centered values are then interpolated to the cell-center
        * using 2nd order interpolation */
-
-      dx_alp = calc_fd2_v2c(alp, p, 0);
-      dy_alp = calc_fd2_v2c(alp, p, 1);
-      dz_alp = calc_fd2_v2c(alp, p, 2);
-
-      dx_betax = calc_fd2_v2c(betax, p, 0);
-      dy_betax = calc_fd2_v2c(betax, p, 1);
-      dz_betax = calc_fd2_v2c(betax, p, 2);
-
-      dx_betay = calc_fd2_v2c(betay, p, 0);
-      dy_betay = calc_fd2_v2c(betay, p, 1);
-      dz_betay = calc_fd2_v2c(betay, p, 2);
-
-      dx_betaz = calc_fd2_v2c(betaz, p, 0);
-      dy_betaz = calc_fd2_v2c(betaz, p, 1);
-      dz_betaz = calc_fd2_v2c(betaz, p, 2);
-
-      dx_gxx = calc_fd2_v2c(gxx, p, 0);
-      dy_gxx = calc_fd2_v2c(gxx, p, 1);
-      dz_gxx = calc_fd2_v2c(gxx, p, 2);
-
-      dx_gxy = calc_fd2_v2c(gxy, p, 0);
-      dy_gxy = calc_fd2_v2c(gxy, p, 1);
-      dz_gxy = calc_fd2_v2c(gxy, p, 2);
-
-      dx_gxz = calc_fd2_v2c(gxz, p, 0);
-      dy_gxz = calc_fd2_v2c(gxz, p, 1);
-      dz_gxz = calc_fd2_v2c(gxz, p, 2);
-
-      dx_gyy = calc_fd2_v2c(gyy, p, 0);
-      dy_gyy = calc_fd2_v2c(gyy, p, 1);
-      dz_gyy = calc_fd2_v2c(gyy, p, 2);
-
-      dx_gyz = calc_fd2_v2c(gyz, p, 0);
-      dy_gyz = calc_fd2_v2c(gyz, p, 1);
-      dz_gyz = calc_fd2_v2c(gyz, p, 2);
-
-      dx_gzz = calc_fd2_v2c(gzz, p, 0);
-      dy_gzz = calc_fd2_v2c(gzz, p, 1);
-      dz_gzz = calc_fd2_v2c(gzz, p, 2);
-
+      calc_fd_v2c = calc_fd2_v2c;
     } else if (local_spatial_order == 4) {
       /* calc_fd4_v2c takes vertex center input, computes edge-center
        * derivatives along either dir=0, 1 or 2 using 4th order finite
        * difference/ The eight edge-centered values are then interpolated to the
        * center using 4th order interpolation */
-
-      dx_alp = calc_fd4_v2c(alp, p, 0);
-      dy_alp = calc_fd4_v2c(alp, p, 1);
-      dz_alp = calc_fd4_v2c(alp, p, 2);
-
-      dx_betax = calc_fd4_v2c(betax, p, 0);
-      dy_betax = calc_fd4_v2c(betax, p, 1);
-      dz_betax = calc_fd4_v2c(betax, p, 2);
-
-      dx_betay = calc_fd4_v2c(betay, p, 0);
-      dy_betay = calc_fd4_v2c(betay, p, 1);
-      dz_betay = calc_fd4_v2c(betay, p, 2);
-
-      dx_betaz = calc_fd4_v2c(betaz, p, 0);
-      dy_betaz = calc_fd4_v2c(betaz, p, 1);
-      dz_betaz = calc_fd4_v2c(betaz, p, 2);
-
-      dx_gxx = calc_fd4_v2c(gxx, p, 0);
-      dy_gxx = calc_fd4_v2c(gxx, p, 1);
-      dz_gxx = calc_fd4_v2c(gxx, p, 2);
-
-      dx_gxy = calc_fd4_v2c(gxy, p, 0);
-      dy_gxy = calc_fd4_v2c(gxy, p, 1);
-      dz_gxy = calc_fd4_v2c(gxy, p, 2);
-
-      dx_gxz = calc_fd4_v2c(gxz, p, 0);
-      dy_gxz = calc_fd4_v2c(gxz, p, 1);
-      dz_gxz = calc_fd4_v2c(gxz, p, 2);
-
-      dx_gyy = calc_fd4_v2c(gyy, p, 0);
-      dy_gyy = calc_fd4_v2c(gyy, p, 1);
-      dz_gyy = calc_fd4_v2c(gyy, p, 2);
-
-      dx_gyz = calc_fd4_v2c(gyz, p, 0);
-      dy_gyz = calc_fd4_v2c(gyz, p, 1);
-      dz_gyz = calc_fd4_v2c(gyz, p, 2);
-
-      dx_gzz = calc_fd4_v2c(gzz, p, 0);
-      dy_gzz = calc_fd4_v2c(gzz, p, 1);
-      dz_gzz = calc_fd4_v2c(gzz, p, 2);
+      calc_fd_v2c = calc_fd4_v2c;
     }
+
+    dx_alp = calc_fd_v2c(alp, p, 0);
+    dy_alp = calc_fd_v2c(alp, p, 1);
+    dz_alp = calc_fd_v2c(alp, p, 2);
+
+    dx_betax = calc_fd_v2c(betax, p, 0);
+    dy_betax = calc_fd_v2c(betax, p, 1);
+    dz_betax = calc_fd_v2c(betax, p, 2);
+
+    dx_betay = calc_fd_v2c(betay, p, 0);
+    dy_betay = calc_fd_v2c(betay, p, 1);
+    dz_betay = calc_fd_v2c(betay, p, 2);
+
+    dx_betaz = calc_fd_v2c(betaz, p, 0);
+    dy_betaz = calc_fd_v2c(betaz, p, 1);
+    dz_betaz = calc_fd_v2c(betaz, p, 2);
+
+    dx_gxx = calc_fd_v2c(gxx, p, 0);
+    dy_gxx = calc_fd_v2c(gxx, p, 1);
+    dz_gxx = calc_fd_v2c(gxx, p, 2);
+
+    dx_gxy = calc_fd_v2c(gxy, p, 0);
+    dy_gxy = calc_fd_v2c(gxy, p, 1);
+    dz_gxy = calc_fd_v2c(gxy, p, 2);
+
+    dx_gxz = calc_fd_v2c(gxz, p, 0);
+    dy_gxz = calc_fd_v2c(gxz, p, 1);
+    dz_gxz = calc_fd_v2c(gxz, p, 2);
+
+    dx_gyy = calc_fd_v2c(gyy, p, 0);
+    dy_gyy = calc_fd_v2c(gyy, p, 1);
+    dz_gyy = calc_fd_v2c(gyy, p, 2);
+
+    dx_gyz = calc_fd_v2c(gyz, p, 0);
+    dy_gyz = calc_fd_v2c(gyz, p, 1);
+    dz_gyz = calc_fd_v2c(gyz, p, 2);
+
+    dx_gzz = calc_fd_v2c(gzz, p, 0);
+    dy_gzz = calc_fd_v2c(gzz, p, 1);
+    dz_gzz = calc_fd_v2c(gzz, p, 2);
 
     const CCTK_REAL velxshift = v_up(0) - betax_avg / alp_avg;
     const CCTK_REAL velyshift = v_up(1) - betay_avg / alp_avg;
@@ -281,7 +246,7 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
              pow2(bsz);
 
       /* beta_i */
-      const vec<CCTK_REAL, 3> beta_up {betax_avg, betay_avg, betaz_avg};
+      const vec<CCTK_REAL, 3> beta_up{betax_avg, betay_avg, betaz_avg};
       const vec<CCTK_REAL, 3> beta_low = calc_contraction(g, beta_up);
       /* b_i */
       const CCTK_REAL bsx_low =
