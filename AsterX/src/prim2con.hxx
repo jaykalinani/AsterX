@@ -20,16 +20,16 @@ using namespace Arith;
 
 struct prim {
   CCTK_REAL rho;
-  CCTK_REAL velx, vely, velz;
+  vec<CCTK_REAL, 3> vel;
   CCTK_REAL eps, press;
-  CCTK_REAL Bvecx, Bvecy, Bvecz;
+  vec<CCTK_REAL, 3> Bvec;
 };
 
 struct cons {
   CCTK_REAL dens;
-  CCTK_REAL momx, momy, momz;
+  vec<CCTK_REAL, 3> mom;
   CCTK_REAL tau;
-  CCTK_REAL dBvecx, dBvecy, dBvecz;
+  vec<CCTK_REAL, 3> dBvec;
 };
 
 CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
@@ -44,7 +44,7 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
   // currently, computing eps for classical ideal gas
 
   /* Computing v_j */
-  const vec<CCTK_REAL, 3> v_up{pv.velx, pv.vely, pv.velz};
+  const vec<CCTK_REAL, 3> &v_up = pv.vel;
   const vec<CCTK_REAL, 3> v_low = calc_contraction(g, v_up);
 
   const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
@@ -53,22 +53,19 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
   const vec<CCTK_REAL, 3> beta_low = calc_contraction(g, beta_up);
 
   /* Computing B_j */
-  const vec<CCTK_REAL, 3> B_up{pv.Bvecx, pv.Bvecy, pv.Bvecz};
+  const vec<CCTK_REAL, 3> &B_up = pv.Bvec;
   const vec<CCTK_REAL, 3> B_low = calc_contraction(g, B_up);
 
   /* Computing b^t : this is b^0 * alp */
   const CCTK_REAL bst = w_lorentz * calc_contraction(B_up, v_low);
 
   /* Computing b^j */
-  const vec<CCTK_REAL, 3> b_up([&](int i) ARITH_INLINE {
-    return (B_up(i) / w_lorentz + bst * (v_up(i) - beta_up(i) / lapse));
-  });
+  const vec<CCTK_REAL, 3> b_up =
+      B_up / w_lorentz + bst * (v_up - beta_up / lapse);
 
   /* Computing b_j */
-  const vec<CCTK_REAL, 3> gb = calc_contraction(g, b_up);
-  const vec<CCTK_REAL, 3> b_low([&](int i) ARITH_INLINE {
-    return gb(i) + beta_low(i) * bst / lapse;
-  });
+  const vec<CCTK_REAL, 3> b_low =
+      calc_contraction(g, b_up) + beta_low * bst / lapse;
 
   /* Computing b^mu b_mu */
   const CCTK_REAL bs2 =
@@ -77,29 +74,16 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
   // computing conserved from primitives
   cv.dens = sqrt_detg * pv.rho * w_lorentz;
 
-  cv.momx =
-      sqrt_detg * (w_lorentz * w_lorentz *
-                       (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(0) -
-                   bst * b_low(0));
-
-  cv.momy =
-      sqrt_detg * (w_lorentz * w_lorentz *
-                       (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(1) -
-                   bst * b_low(1));
-
-  cv.momz =
-      sqrt_detg * (w_lorentz * w_lorentz *
-                       (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(2) -
-                   bst * b_low(2));
+  cv.mom = sqrt_detg * (w_lorentz * w_lorentz *
+                            (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low -
+                        bst * b_low);
 
   cv.tau = sqrt_detg * (w_lorentz * w_lorentz *
                             (pv.rho * (1.0 + pv.eps) + pv.press + bs2) -
                         (pv.press + 0.5 * bs2) - bst * bst) -
            cv.dens;
 
-  cv.dBvecx = sqrt_detg * pv.Bvecx;
-  cv.dBvecy = sqrt_detg * pv.Bvecy;
-  cv.dBvecz = sqrt_detg * pv.Bvecz;
+  cv.dBvec = sqrt_detg * pv.Bvec;
 }
 
 } // namespace AsterX

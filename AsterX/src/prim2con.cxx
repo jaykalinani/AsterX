@@ -31,31 +31,31 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
 
         prim pv;
         pv.rho = rho(p.I);
-        pv.velx = velx(p.I);
-        pv.vely = vely(p.I);
-        pv.velz = velz(p.I);
+        pv.vel(0) = velx(p.I);
+        pv.vel(1) = vely(p.I);
+        pv.vel(2) = velz(p.I);
         pv.eps = eps(p.I);
         pv.press = press(p.I);
-        pv.Bvecx = Bvecx(p.I);
-        pv.Bvecy = Bvecy(p.I);
-        pv.Bvecz = Bvecz(p.I);
+        pv.Bvec(0) = Bvecx(p.I);
+        pv.Bvec(1) = Bvecy(p.I);
+        pv.Bvec(2) = Bvecz(p.I);
 
         cons cv;
         prim2con(g, lapse, shift, pv, cv);
 
         dens(p.I) = cv.dens;
-        momx(p.I) = cv.momx;
-        momy(p.I) = cv.momy;
-        momz(p.I) = cv.momz;
+        momx(p.I) = cv.mom(0);
+        momy(p.I) = cv.mom(1);
+        momz(p.I) = cv.mom(2);
         tau(p.I) = cv.tau;
-        dBx(p.I) = cv.dBvecx;
-        dBy(p.I) = cv.dBvecy;
-        dBz(p.I) = cv.dBvecz;
+        dBx(p.I) = cv.dBvec(0);
+        dBy(p.I) = cv.dBvec(1);
+        dBz(p.I) = cv.dBvec(2);
 
         saved_rho(p.I) = pv.rho;
-        saved_velx(p.I) = pv.velx;
-        saved_vely(p.I) = pv.vely;
-        saved_velz(p.I) = pv.velz;
+        saved_velx(p.I) = pv.vel(0);
+        saved_vely(p.I) = pv.vel(1);
+        saved_velz(p.I) = pv.vel(2);
         saved_eps(p.I) = pv.eps;
       });
 

@@ -61,6 +61,13 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
     const CCTK_REAL wlorentz = calc_wlorentz(v_up, v_dn);
     assert(wlorentz - 1.0 / sqrt(1.0 - v2) < tiny);
     CCTK_VINFO("Test calc_wlorentz of vec and vec succeeded");
+
+    const CCTK_REAL two = 2.0;
+    const vec<CCTK_REAL, 3> v_sum = v_dn * two + v_up / two;
+    assert(v_sum(0) - 1.035 < tiny);
+    assert(v_sum(1) - 1.86 < tiny);
+    assert(v_sum(2) - 2.345 < tiny);
+    CCTK_VINFO("Test sum/divide by scalar of vecs succeeded");
   }
 }
 
