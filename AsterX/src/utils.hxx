@@ -7,8 +7,9 @@
 #include <cctk_Parameters.h>
 
 #include <mat.hxx>
-#include <simd.hxx>
 #include <vec.hxx>
+#include <sum.hxx>
+#include <simd.hxx>
 
 #include <algorithm>
 #include <array>
@@ -17,6 +18,30 @@
 namespace AsterX {
 using namespace std;
 using namespace Loop;
+using namespace Arith;
+
+// Computes the contraction of smat and vec
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, D>
+calc_contraction(const smat<T, D> &g, const vec<T, D> &v) {
+  return vec<T, D>([&](int i) ARITH_INLINE {
+    return sum<D>([&](int j) ARITH_INLINE { return g(i, j) * v(j); });
+  });
+}
+
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+calc_contraction(const vec<T, D> &v_up, const vec<T, D> &v_dn) {
+  return CCTK_REAL(
+      sum<D>([&](int i) ARITH_INLINE { return v_up(i) * v_dn(i);}));
+}
+
+// Computes the Lorentz factor
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
+calc_wlorentz(const vec<T, D> &v_up, const vec<T, D> &v_dn) {
+  return 1.0 / sqrt(1.0 - calc_contraction(v_up, v_dn));
+}
 
 template <typename T> CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T pow2(T x) { return x * x; }
 
@@ -152,26 +177,6 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_fd4_v2c(const G
 
   return (27.0 / 14.0) * (dgf1 + dgf2 + dgf3 + dgf4) -
          (10.0 / 7.0) * (dgf5 + dgf6 + dgf7 + dgf8);
-}
-
-// Computes the components of a lower indice quantity
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline array<T, 3>
-calc_vlow(const array<T, 3> &v_up, const T &gxx, const T &gxy, const T &gxz,
-          const T &gyy, const T &gyz, const T &gzz) {
-  return {
-      gxx * v_up[0] + gxy * v_up[1] + gxz * v_up[2], // vlowx
-      gxy * v_up[0] + gyy * v_up[1] + gyz * v_up[2], // vlowy
-      gxz * v_up[0] + gyz * v_up[1] + gzz * v_up[2]  // vlowz
-  };
-}
-
-// Computes the Lorentz factor
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_wlor(const array<T, 3> &v_low,
-                                         const array<T, 3> &v_up) {
-  return 1.0 / sqrt(1.0 - (v_low[0] * v_up[0] + v_low[1] * v_up[1] +
-                           v_low[2] * v_up[2]));
 }
 
 // Second-order average of vertex-centered grid functions to cell center
