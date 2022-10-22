@@ -57,28 +57,9 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
         /* Upper metric */
         const smat<CCTK_REAL, 3> ug_avg = calc_inv(g_avg, detg);
 
-        /* Computing v_j */
-        const vec<CCTK_REAL, 3> v_up{velx(p.I), vely(p.I), velz(p.I)};
-        const vec<CCTK_REAL, 3> v_low = calc_contraction(g_avg, v_up);
-        const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
-        /* Computing [ \rho(1+\epsilon) + Pgas ]*W^2 */
-        const CCTK_REAL rhoenthalpyW2 =
-            (rho(p.I) * (1.0 + eps(p.I)) + press(p.I)) * w_lorentz * w_lorentz;
-
-        /* TODO: define shift_state: storage for shift alloted if shift_state =
-         * 1 */
-        /* For now, we assume shift has storage */
-
-        // if (shift_state != 0){
-
-        //    CCTK_REAL shiftx = betax(i,j,k)
-        //    shifty = betay(i,j,k)
-        //    shiftz = betaz(i,j,k)
-
         // raw function pointer types for FD
         CCTK_REAL(*calc_fd_v2c)
         (const GF3D2<const CCTK_REAL> &, const PointDesc &, int) = nullptr;
-
         if (local_spatial_order == 2) {
           /* calc_fd2_v2c takes vertex center input, computes edge-center
            * derivatives along either dir=0, 1 or 2 using 2nd finite difference,
@@ -93,7 +74,6 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
            * the center using 4th order interpolation */
           calc_fd_v2c = calc_fd4_v2c;
         }
-
         /* Derivatives of the lapse, shift and metric */
         const vec<CCTK_REAL, 3> d_alp(
             [&](int k) ARITH_INLINE { return calc_fd_v2c(alp, p, k); });
@@ -108,82 +88,74 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
           });
         });
 
+        /* Computing v_j */
+        const vec<CCTK_REAL, 3> v_up{velx(p.I), vely(p.I), velz(p.I)};
+        const vec<CCTK_REAL, 3> v_low = calc_contraction(g_avg, v_up);
+        const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
+        /* Computing [ \rho(1+\epsilon) + Pgas ]*W^2 = \rho * h * W^2 */
+        const CCTK_REAL rhoenthalpyW2 =
+            (rho(p.I) * (1.0 + eps(p.I)) + press(p.I)) * w_lorentz * w_lorentz;
+        /* v^i - beta^i / alpha */
         const vec<CCTK_REAL, 3> velshift = v_up - beta_avg / alp_avg;
 
-        /* Computing T_munu */
-        CCTK_REAL t00 = (rhoenthalpyW2 - press(p.I)) / pow2(alp_avg);
-        vec<CCTK_REAL, 3> t0 = rhoenthalpyW2 * velshift / alp_avg +
-                               press(p.I) * beta_avg / pow2(alp_avg);
-        smat<CCTK_REAL, 3> t([&](int i, int j) ARITH_INLINE {
-          return rhoenthalpyW2 * velshift(i) * velshift(j) +
-                 press(p.I) *
-                     (ug_avg(i, j) - beta_avg(i) * beta_avg(j) / pow2(alp_avg));
+        /* cell-centered B^i and B_i */
+        const vec<CCTK_REAL, 3> B_up{Bvecx(p.I), Bvecy(p.I), Bvecz(p.I)};
+        const vec<CCTK_REAL, 3> B_low = calc_contraction(g_avg, B_up);
+        /* b^mu: b^0 and b^i */
+        const CCTK_REAL bs0 =
+            w_lorentz * calc_contraction(B_up, v_low) / alp_avg;
+        const vec<CCTK_REAL, 3> bs =
+            (B_up / w_lorentz + alp_avg * bs0 * velshift);
+        /* b^2 */
+        const CCTK_REAL bs2 =
+            (calc_contraction(B_up, B_low) + pow2(alp_avg * bs0)) /
+            pow2(w_lorentz);
+        /* b_i = g_{ia} * b^a = g_{i0} * b^0 + g_{ik} * b^k */
+        const vec<CCTK_REAL, 3> bs_low =
+            calc_contraction(g_avg, beta_avg) * bs0 +
+            calc_contraction(g_avg, bs);
+
+        /* Computing T^{\mu\nu} */
+        const CCTK_REAL t00 = ((rhoenthalpyW2 + bs2 * pow2(w_lorentz)) -
+                               (press(p.I) + 0.5 * bs2)) /
+                                  pow2(alp_avg) -
+                              pow2(bs0);
+
+        const vec<CCTK_REAL, 3> t0 =
+            (rhoenthalpyW2 + bs2 * pow2(w_lorentz)) * velshift / alp_avg +
+            (press(p.I) + 0.5 * bs2) * beta_avg / pow2(alp_avg) - bs0 * bs;
+
+        const smat<CCTK_REAL, 3> t([&](int i, int j) ARITH_INLINE {
+          return (rhoenthalpyW2 + bs2 * pow2(w_lorentz)) * velshift(i) *
+                     velshift(j) +
+                 (press(p.I) + 0.5 * bs2) *
+                     (ug_avg(i, j) -
+                      beta_avg(i) * beta_avg(j) / pow2(alp_avg)) -
+                 bs(i) * bs(j);
         });
 
-        vec<CCTK_REAL, 3> t0low = rhoenthalpyW2 * v_low / alp_avg;
-
-        /* consider magnetic field */
-        {
-          /* cell-centered B^i and B_i */
-          const vec<CCTK_REAL, 3> B_up{Bvecx(p.I), Bvecy(p.I), Bvecz(p.I)};
-          const vec<CCTK_REAL, 3> B_low = calc_contraction(g_avg, B_up);
-          /* b^mu */
-          const CCTK_REAL bst =
-              w_lorentz * calc_contraction(B_up, v_low) / alp_avg;
-          const vec<CCTK_REAL, 3> bs =
-              (B_up / w_lorentz + alp_avg * bst * velshift);
-          /* b^2 */
-          const CCTK_REAL bs2 =
-              (calc_contraction(B_up, B_low) + pow2(alp_avg * bst)) /
-              pow2(w_lorentz);
-
-          t00 += (pow2(w_lorentz / alp_avg) - 0.5 / pow2(alp_avg)) * bs2 -
-                 pow2(bst);
-          t0 += (pow2(w_lorentz) * velshift / alp_avg +
-                 0.5 * beta_avg / pow2(alp_avg)) *
-                    bs2 -
-                bst * bs;
-          t += smat<CCTK_REAL, 3>([&](int i, int j) ARITH_INLINE {
-            return (pow2(w_lorentz) * velshift(i) * velshift(j) +
-                    0.5 * (ug_avg(i, j) -
-                           beta_avg(i) * beta_avg(j) / pow2(alp_avg))) *
-                       bs2 -
-                   bs(i) * bs(j);
-          });
-
-          /* beta_i */
-          const vec<CCTK_REAL, 3> beta_low = calc_contraction(g_avg, beta_avg);
-          /* b_i */
-          const vec<CCTK_REAL, 3> bs_low =
-              beta_low * bst + calc_contraction(g_avg, bs);
-          /* T^0_i */
-          t0low += bs2 * pow2(w_lorentz) * v_low / alp_avg - bs_low * bst;
-        }
+        /* Computing T^0_i = (\rho * h + b^2) * u^0 * u_i -b^0 * b_i */
+        const vec<CCTK_REAL, 3> t0low =
+            (rhoenthalpyW2 + bs2 * pow2(w_lorentz)) * v_low / alp_avg -
+            bs_low * bs0;
 
         /* Contract the shift with the extrinsic curvature */
         const vec<CCTK_REAL, 3> shiftk = calc_contraction(k_avg, beta_avg);
         const CCTK_REAL shiftshiftk = calc_contraction(shiftk, beta_avg);
+
         /* Update term for tau */
         const CCTK_REAL tau_source =
             t00 * (shiftshiftk - calc_contraction(beta_avg, d_alp)) +
             calc_contraction(t0, -d_alp + 2.0 * shiftk) +
             calc_contraction(k_avg, t);
 
-        /* Contract the shift with derivatives of the metric */
-        const vec<CCTK_REAL, 3> halfshiftdg([&](int k) ARITH_INLINE {
-          return 0.5 * sum_symm<3>([&](int i, int j) ARITH_INLINE {
-                   return d_g(k)(i, j) * beta_avg(i) * beta_avg(j);
-                 });
-        });
-        /* Contract the matter with derivatives of the metric */
-        const vec<CCTK_REAL, 3> halfTdg([&](int k) ARITH_INLINE {
-          return 0.5 * calc_contraction(t, d_g(k));
-        });
-
+        /* Update term for mom */
         const vec<CCTK_REAL, 3> mom_source([&](int k) ARITH_INLINE {
-          return t00 * (halfshiftdg(k) - alp_avg * d_alp(k)) +
-                 calc_contraction(t0, calc_contraction(d_g(k), beta_avg)) +
-                 halfTdg(k) + calc_contraction(t0low, d_beta(k));
+          return t00 *
+                     (0.5 * calc_norm(beta_avg, d_g(k)) - alp_avg * d_alp(k)) +
+                 calc_contraction(d_g(k), t0, beta_avg) +
+                 calc_contraction(t0low, d_beta(k)) +
+                 0.5 * calc_contraction(t, d_g(k));
         });
 
         densrhs(p.I) = 0.0;

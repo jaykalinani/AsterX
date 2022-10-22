@@ -42,6 +42,23 @@ calc_contraction(const smat<T, D> &g_dn, const smat<T, D> &T_up) {
                          ARITH_INLINE { return g_dn(i, j) * T_up(i, j); });
 }
 
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+calc_contraction(const smat<T, D> &g, const vec<T, D> &v1,
+                 const vec<T, D> &v2) {
+  // return calc_contraction(v2, calc_contraction(g, v1));
+  return sum_symm<D>([&](int i, int j)
+                         ARITH_INLINE { return g(i, j) * v1(i) * v2(j); });
+}
+
+// Computes the norm of vec, measured with smat
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+calc_norm(const vec<T, D> &v, const smat<T, D> &g) {
+  return sum_symm<D>([&](int i, int j)
+                         ARITH_INLINE { return g(i, j) * v(i) * v(j); });
+}
+
 // Computes the Lorentz factor
 template <typename T, int D>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
