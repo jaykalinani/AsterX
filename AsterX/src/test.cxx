@@ -68,6 +68,80 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
     assert(v_sum(1) - 1.86 < tiny);
     assert(v_sum(2) - 2.345 < tiny);
     CCTK_VINFO("Test sum/divide by scalar of vecs succeeded");
+
+    const smat<CCTK_REAL, 3> vs3(
+        [&](int i, int j) ARITH_INLINE { return v_dn(i) * v_dn(j); });
+    assert(vs3(0, 0) - 0.5 * 0.5 < tiny);
+    assert(vs3(0, 1) - 0.5 * 0.91 < tiny);
+    assert(vs3(0, 2) - 0.5 * 1.15 < tiny);
+    assert(vs3(1, 1) - 0.91 * 0.91 < tiny);
+    assert(vs3(1, 2) - 0.91 * 1.15 < tiny);
+    assert(vs3(2, 2) - 1.15 * 1.15 < tiny);
+    CCTK_VINFO("Test tensor product of vec -> smat succeeded");
+  }
+
+  {
+    const vec<vec<CCTK_REAL, 3>, 3> vv{
+        {1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 9.0}};
+    assert(vv(0)(0) == 1.0);
+    assert(vv(0)(1) == 2.0);
+    assert(vv(0)(2) == 3.0);
+    assert(vv(1)(0) == 4.0);
+    assert(vv(1)(1) == 5.0);
+    assert(vv(1)(2) == 6.0);
+    assert(vv(2)(0) == 7.0);
+    assert(vv(2)(1) == 8.0);
+    assert(vv(2)(2) == 9.0);
+
+    const vec<vec<CCTK_REAL, 3>, 3> vv2([&](int i) ARITH_INLINE {
+      return vec<CCTK_REAL, 3>([&](int j) ARITH_INLINE { return vv(i)(j); });
+    });
+    assert(vv2(0)(0) == 1.0);
+    assert(vv2(0)(1) == 2.0);
+    assert(vv2(0)(2) == 3.0);
+    assert(vv2(1)(0) == 4.0);
+    assert(vv2(1)(1) == 5.0);
+    assert(vv2(1)(2) == 6.0);
+    assert(vv2(2)(0) == 7.0);
+    assert(vv2(2)(1) == 8.0);
+    assert(vv2(2)(2) == 9.0);
+
+    CCTK_VINFO("Test vec of vecs succeeded");
+  }
+
+  {
+    const vec<smat<CCTK_REAL, 3>, 2> vs{g, invg};
+    assert(vs(0)(0, 0) == 1.0);
+    assert(vs(0)(0, 1) == 2.0);
+    assert(vs(0)(0, 2) == 3.0);
+    assert(vs(0)(1, 1) == 4.0);
+    assert(vs(0)(1, 2) == 5.0);
+    assert(vs(0)(2, 2) == 6.0);
+    assert(vs(1)(0, 0) == 1.0);
+    assert(vs(1)(0, 1) == -3.0);
+    assert(vs(1)(0, 2) == 2.0);
+    assert(vs(1)(1, 1) == 3.0);
+    assert(vs(1)(1, 2) == -1.0);
+    assert(vs(1)(2, 2) == 0.0);
+
+    const vec<smat<CCTK_REAL, 3>, 2> vs2([&](int k) ARITH_INLINE {
+      return smat<CCTK_REAL, 3>([&](int i, int j)
+                                    ARITH_INLINE { return vs(k)(i, j); });
+    });
+    assert(vs2(0)(0, 0) == 1.0);
+    assert(vs2(0)(0, 1) == 2.0);
+    assert(vs2(0)(0, 2) == 3.0);
+    assert(vs2(0)(1, 1) == 4.0);
+    assert(vs2(0)(1, 2) == 5.0);
+    assert(vs2(0)(2, 2) == 6.0);
+    assert(vs2(1)(0, 0) == 1.0);
+    assert(vs2(1)(0, 1) == -3.0);
+    assert(vs2(1)(0, 2) == 2.0);
+    assert(vs2(1)(1, 1) == 3.0);
+    assert(vs2(1)(1, 2) == -1.0);
+    assert(vs2(1)(2, 2) == 0.0);
+
+    CCTK_VINFO("Test vec of smats succeeded");
   }
 }
 

@@ -24,16 +24,22 @@ using namespace Arith;
 template <typename T, int D>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, D>
 calc_contraction(const smat<T, D> &g, const vec<T, D> &v) {
-  return vec<T, D>([&](int i) ARITH_INLINE {
+  return [&](int i) ARITH_INLINE {
     return sum<D>([&](int j) ARITH_INLINE { return g(i, j) * v(j); });
-  });
+  };
 }
 
 template <typename T, int D>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 calc_contraction(const vec<T, D> &v_up, const vec<T, D> &v_dn) {
-  return CCTK_REAL(
-      sum<D>([&](int i) ARITH_INLINE { return v_up(i) * v_dn(i); }));
+  return sum<D>([&](int i) ARITH_INLINE { return v_up(i) * v_dn(i); });
+}
+
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+calc_contraction(const smat<T, D> &g_dn, const smat<T, D> &T_up) {
+  return sum_symm<D>([&](int i, int j)
+                         ARITH_INLINE { return g_dn(i, j) * T_up(i, j); });
 }
 
 // Computes the Lorentz factor
