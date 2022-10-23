@@ -30,20 +30,20 @@ calc_contraction(const smat<T, D> &g, const vec<T, D> &v) {
 }
 
 template <typename T, int D>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_contraction(const vec<T, D> &v_up, const vec<T, D> &v_dn) {
   return sum<D>([&](int i) ARITH_INLINE { return v_up(i) * v_dn(i); });
 }
 
 template <typename T, int D>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_contraction(const smat<T, D> &g_dn, const smat<T, D> &T_up) {
   return sum_symm<D>([&](int i, int j)
                          ARITH_INLINE { return g_dn(i, j) * T_up(i, j); });
 }
 
 template <typename T, int D>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_contraction(const smat<T, D> &g, const vec<T, D> &v1,
                  const vec<T, D> &v2) {
   // return calc_contraction(v2, calc_contraction(g, v1));
@@ -51,12 +51,72 @@ calc_contraction(const smat<T, D> &g, const vec<T, D> &v1,
                          ARITH_INLINE { return g(i, j) * v1(i) * v2(j); });
 }
 
+template <typename T>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 3>
+calc_cross_product(const vec<T, 3> &B, const vec<T, 3> &v) {
+  return {B(1) * v(2) - B(2) * v(1), B(2) * v(0) - B(0) * v(2),
+          B(0) * v(1) - B(1) * v(0)};
+}
+
+// Contraction for rc case: consider both sides of the face
+template <typename T, int D, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, D>
+calc_contraction(const smat<T, D> &g, const vec<vec<T, F>, D> &v_rc) {
+  return ([&](int i) ARITH_INLINE {
+    return vec<T, F>([&](int f) ARITH_INLINE {
+      return sum<D>([&](int j) ARITH_INLINE { return g(i, j) * v_rc(j)(f); });
+    });
+  });
+}
+
+template <typename T, int D, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, F>
+calc_contraction(const vec<vec<T, F>, D> &vup_rc,
+                 const vec<vec<T, F>, D> &vdn_rc) {
+  return ([&](int f) ARITH_INLINE {
+    return sum<D>([&](int i)
+                      ARITH_INLINE { return vup_rc(i)(f) * vdn_rc(i)(f); });
+  });
+}
+
+template <typename T, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
+calc_cross_product(const vec<vec<T, F>, 3> &B_rc,
+                   const vec<vec<T, F>, 3> &v_rc) {
+  return {{B_rc(1)(0) * v_rc(2)(0) - B_rc(2)(0) * v_rc(1)(0),
+           B_rc(1)(1) * v_rc(2)(1) - B_rc(2)(1) * v_rc(1)(1)},
+          {B_rc(2)(0) * v_rc(0)(0) - B_rc(0)(0) * v_rc(2)(0),
+           B_rc(2)(1) * v_rc(0)(1) - B_rc(0)(1) * v_rc(2)(1)},
+          {B_rc(0)(0) * v_rc(1)(0) - B_rc(1)(0) * v_rc(0)(0),
+           B_rc(0)(1) * v_rc(1)(1) - B_rc(1)(1) * v_rc(0)(1)}};
+}
+
+template <typename T, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
+calc_cross_product(const vec<T, 3> &B, const vec<vec<T, F>, 3> &v_rc) {
+  return {{B(1) * v_rc(2)(0) - B(2) * v_rc(1)(0),
+           B(1) * v_rc(2)(1) - B(2) * v_rc(1)(1)},
+          {B(2) * v_rc(0)(0) - B(0) * v_rc(2)(0),
+           B(2) * v_rc(0)(1) - B(0) * v_rc(2)(1)},
+          {B(0) * v_rc(1)(0) - B(1) * v_rc(0)(0),
+           B(0) * v_rc(1)(1) - B(1) * v_rc(0)(1)}};
+}
+
 // Computes the norm of vec, measured with smat
 template <typename T, int D>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_norm(const vec<T, D> &v, const smat<T, D> &g) {
   return sum_symm<D>([&](int i, int j)
                          ARITH_INLINE { return g(i, j) * v(i) * v(j); });
+}
+
+// Computes the transpose of vec<vec>
+template <typename T, int D, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, D>, F>
+calc_transpose(const vec<vec<T, F>, D> &vv) {
+  return ([&](int f) ARITH_INLINE {
+    return vec<T, D>([&](int d) ARITH_INLINE { return vv(d)(f); });
+  });
 }
 
 // Computes the Lorentz factor

@@ -58,6 +58,12 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
     assert(v2 - 0.2113 < tiny);
     CCTK_VINFO("Test calc_contraction of vec and vec succeeded");
 
+    const vec<CCTK_REAL, 3> vcv = calc_cross_product(v_dn, v_up);
+    assert(vcv(0) - (-0.0101) < tiny);
+    assert(vcv(1) - 0.0355 < tiny);
+    assert(vcv(2) - (-0.0237) < tiny);
+    CCTK_VINFO("Test calc_cross_product of vec and vec succeeded");
+
     const CCTK_REAL wlorentz = calc_wlorentz(v_up, v_dn);
     assert(wlorentz - 1.0 / sqrt(1.0 - v2) < tiny);
     CCTK_VINFO("Test calc_wlorentz of vec and vec succeeded");
@@ -81,8 +87,10 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
   }
 
   {
-    const vec<vec<CCTK_REAL, 3>, 3> vv{
-        {1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 9.0}};
+    const vec<CCTK_REAL, 3> v0{1.0, 2.0, 3.0};
+    const array<CCTK_REAL, 3> v1_array = {4.0, 5.0, 6.0};
+    const vec<CCTK_REAL, 3> v1{v1_array};
+    const vec<vec<CCTK_REAL, 3>, 3> vv{v0, v1, {7.0, 8.0, 9.0}};
     assert(vv(0)(0) == 1.0);
     assert(vv(0)(1) == 2.0);
     assert(vv(0)(2) == 3.0);
@@ -94,17 +102,40 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
     assert(vv(2)(2) == 9.0);
 
     const vec<vec<CCTK_REAL, 3>, 3> vv2([&](int i) ARITH_INLINE {
-      return vec<CCTK_REAL, 3>([&](int j) ARITH_INLINE { return vv(i)(j); });
+      return vec<CCTK_REAL, 3>([&](int j)
+                                   ARITH_INLINE { return vv(i)(j) + 1.0; });
     });
-    assert(vv2(0)(0) == 1.0);
-    assert(vv2(0)(1) == 2.0);
-    assert(vv2(0)(2) == 3.0);
-    assert(vv2(1)(0) == 4.0);
-    assert(vv2(1)(1) == 5.0);
-    assert(vv2(1)(2) == 6.0);
-    assert(vv2(2)(0) == 7.0);
-    assert(vv2(2)(1) == 8.0);
-    assert(vv2(2)(2) == 9.0);
+    assert(vv2(0)(0) == 2.0);
+    assert(vv2(0)(1) == 3.0);
+    assert(vv2(0)(2) == 4.0);
+    assert(vv2(1)(0) == 5.0);
+    assert(vv2(1)(1) == 6.0);
+    assert(vv2(1)(2) == 7.0);
+    assert(vv2(2)(0) == 8.0);
+    assert(vv2(2)(1) == 9.0);
+    assert(vv2(2)(2) == 10.0);
+
+    const vec<vec<CCTK_REAL, 3>, 3> vv3 = vv + vv2;
+    assert(vv3(0)(0) == 3.0);
+    assert(vv3(0)(1) == 5.0);
+    assert(vv3(0)(2) == 7.0);
+    assert(vv3(1)(0) == 9.0);
+    assert(vv3(1)(1) == 11.0);
+    assert(vv3(1)(2) == 13.0);
+    assert(vv3(2)(0) == 15.0);
+    assert(vv3(2)(1) == 17.0);
+    assert(vv3(2)(2) == 19.0);
+
+    const vec<vec<CCTK_REAL, 3>, 3> vv3_trans = calc_transpose(vv3);
+    assert(vv3_trans(0)(0) == 3.0);
+    assert(vv3_trans(1)(0) == 5.0);
+    assert(vv3_trans(2)(0) == 7.0);
+    assert(vv3_trans(0)(1) == 9.0);
+    assert(vv3_trans(1)(1) == 11.0);
+    assert(vv3_trans(2)(1) == 13.0);
+    assert(vv3_trans(0)(2) == 15.0);
+    assert(vv3_trans(1)(2) == 17.0);
+    assert(vv3_trans(2)(2) == 19.0);
 
     CCTK_VINFO("Test vec of vecs succeeded");
   }
@@ -142,6 +173,16 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
     assert(vs2(1)(2, 2) == 0.0);
 
     CCTK_VINFO("Test vec of smats succeeded");
+  }
+
+  {
+    const vect<CCTK_REAL, 3> v0{1.0, 2.0, 3.0};
+    const vect<CCTK_REAL, 3> v1{4.0, 5.0, 6.0};
+    const vect<CCTK_REAL, 3> v2 = v0 + v1;
+    assert(v2[0] == 5.0);
+    assert(v2[1] == 7.0);
+    assert(v2[2] == 9.0);
+    CCTK_VINFO("Test vect succeeded");
   }
 }
 
