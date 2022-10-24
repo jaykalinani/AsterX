@@ -104,6 +104,12 @@ calc_cross_product(const vec<T, 3> &B, const vec<vec<T, F>, 3> &v_rc) {
   });
 }
 
+template <typename T, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, F>
+pow2(vec<T, F> x) {
+  return ([&](int f) { return x(f) * x(f); });
+}
+
 // Computes the norm of vec, measured with smat
 template <typename T, int D>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T

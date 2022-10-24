@@ -157,17 +157,16 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        /* vec of grid functions */
+        /* grid functions */
         const vec<GF3D2<const CCTK_REAL>, 3> gf_vels{velx, vely, velz};
         const vec<GF3D2<const CCTK_REAL>, 3> gf_Bvecs{Bvecx, Bvecy, Bvecz};
         const vec<GF3D2<const CCTK_REAL>, 3> gf_beta{betax, betay, betaz};
         const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz,
                                                    gyy, gyz, gzz};
 
-        // Reconstruct primitives from the cells on left (indice 0) and right
-        // (indice 1) side of this face rc = reconstructed variables or computed
-        // from reconstructed variables
-
+        /* Reconstruct primitives from the cells on left (indice 0) and right
+         * (indice 1) side of this face rc = reconstructed variables or
+         * computed from reconstructed variables */
         const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p)};
         const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
           return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p)};
@@ -177,7 +176,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
           return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p)};
         });
 
-        // Computing metric components
+        /* Interpolate metric components from vertices to faces */
         const CCTK_REAL alp_avg = calc_avg_v2f(alp, p, dir);
         const vec<CCTK_REAL, 3> betas_avg([&](int i) ARITH_INLINE {
           return calc_avg_v2f(gf_beta(i), p, dir);
@@ -185,150 +184,154 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         const smat<CCTK_REAL, 3> g_avg([&](int i, int j) ARITH_INLINE {
           return calc_avg_v2f(gf_g(i, j), p, dir);
         });
-        // Determinant of spatial metric
+
+        /* determinant of spatial metric */
         const CCTK_REAL detg_avg = calc_det(g_avg);
-        const CCTK_REAL sqrt_detg = sqrt(detg_avg);
-        // Upper metric
-        const smat<CCTK_REAL, 3> ug_avg = calc_inv(g_avg, detg_avg);
-        // Variable for either uxx, uyy or uzz depending on the direction
-        const CCTK_REAL u_avg = ug_avg(dir, dir);
-
-        // TODO: Compute pressure based on user-specified EOS.
-        // Currently, computing press for classical ideal gas from reconstructed
-        // vars
-        const vec<CCTK_REAL, 2> press_rc([&](int f) ARITH_INLINE {
-          return eps_rc(f) * rho_rc(f) * (gamma - 1);
-        });
-
-        // v_j
+        const CCTK_REAL sqrtg = sqrt(detg_avg);
+        /* co-velocity measured by Euleian observer: v_j */
         const vec<vec<CCTK_REAL, 2>, 3> vlows_rc =
             calc_contraction(g_avg, vels_rc);
-        // Computing the contravariant coordinate velocity
-        // vtilde^i = alpha*v^i - beta^i using the reconstructed variables
-        // const vec<vec<CCTK_REAL, 3>, 2> vtilde_rc = alp_avg * vel_c -
-        // beta_avg;
+        /* vtilde^i = alpha * v^i - beta^i */
         const vec<vec<CCTK_REAL, 2>, 3> vtildes_rc([&](int i) ARITH_INLINE {
           return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
             return alp_avg * vels_rc(i)(f) - betas_avg(i);
           });
         });
-
-        // Computing w_lorentz using reconstructed variables
+        /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
         const vec<CCTK_REAL, 2> w_lorentz_rc([&](int f) ARITH_INLINE {
           return 1.0 / sqrt(1.0 - calc_contraction(vlows_rc, vels_rc)(f));
         });
 
-        // Computing cs2 for ideal gas EOS using reconstructed variables
-        const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-          return (gamma - 1.0) * eps_rc(f) / (eps_rc(f) + 1.0 / gamma);
-        });
-
-        // Computing enthalpy h for ideal gas EOS using reconstructed variables
-        const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
-          return 1.0 + eps_rc(f) + press_rc(f) / rho_rc(f);
-        });
-
-        // Computing the covariant magnetic field measured by the Eulerian
-        // observer using the reconstructed variables
-        const vec<vec<CCTK_REAL, 2>, 3> Blows_rc =
-            calc_contraction(g_avg, Bs_rc);
-        const vec<CCTK_REAL, 2> B2_rc = calc_contraction(Bs_rc, Blows_rc);
-
-        // Computing the magnetic field measured by the observer comoving with
-        // the fluid using the reconstructed variables
-        const vec<CCTK_REAL, 2> alpha_b0_rc([&](int f) ARITH_INLINE {
+        /* alpha * b0 = W * B^i * v_i */
+        const vec<CCTK_REAL, 2> alp_b0_rc([&](int f) ARITH_INLINE {
           return w_lorentz_rc(f) * calc_contraction(Bs_rc, vlows_rc)(f);
         });
-
+        /* covariant magnetic field measured by the Eulerian observer */
+        const vec<vec<CCTK_REAL, 2>, 3> Blows_rc =
+            calc_contraction(g_avg, Bs_rc);
+        /* B^2 = B^i * B_i */
+        const vec<CCTK_REAL, 2> B2_rc = calc_contraction(Bs_rc, Blows_rc);
+        /* covariant magnetic field measured by the comoving observer:
+         *  b_i = B_i/W + alpha*b^0*v_i */
         const vec<vec<CCTK_REAL, 2>, 3> blows_rc([&](int i) ARITH_INLINE {
           return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
             return Blows_rc(i)(f) / w_lorentz_rc(f) +
-                   alpha_b0_rc(f) * vlows_rc(i)(f);
+                   alp_b0_rc(f) * vlows_rc(i)(f);
           });
         });
-
+        /* b^2 = b^{\mu} * b_{\mu} */
         const vec<CCTK_REAL, 2> bsq_rc([&](int f) ARITH_INLINE {
-          return (B2_rc(f) + pow2(alpha_b0_rc(f))) / pow2(w_lorentz_rc(f));
+          return (B2_rc(f) + pow2(alp_b0_rc(f))) / pow2(w_lorentz_rc(f));
         });
 
-        /* Componets correspond to the dir we are considering */
+        /* componets correspond to the dir we are considering */
         const CCTK_REAL beta_avg = betas_avg(dir);
         const vec<CCTK_REAL, 2> vel_rc{vels_rc(dir)};
         const vec<CCTK_REAL, 2> B_rc{Bs_rc(dir)};
         const vec<CCTK_REAL, 2> vtilde_rc{vtildes_rc(dir)};
 
-        // Auxiliary variables to compute the conservative variables and their
-        // fluxes
-        const vec<CCTK_REAL, 2> sqrt_detg_press_plus_pmag_rc =
-            sqrt_detg * (press_rc + 0.5 * bsq_rc);
-        const vec<CCTK_REAL, 2> alp_sqrt_detg_press_plus_pmag_rc =
-            alp_avg * sqrt_detg_press_plus_pmag_rc;
+        // TODO: Compute pressure based on user-specified EOS.
+        // Currently, computing press for classical ideal gas from reconstructed
+        // vars
 
-        const vec<CCTK_REAL, 2> alp_sqrt_detg_B_over_w_lorentz_rc(
-            [&](int f) ARITH_INLINE {
-              return alp_avg * sqrt_detg * B_rc(f) / w_lorentz_rc(f);
-            });
+        // Ideal gas case {
+        /* pressure for ideal gas EOS */
+        const vec<CCTK_REAL, 2> press_rc([&](int f) ARITH_INLINE {
+          return eps_rc(f) * rho_rc(f) * (gamma - 1);
+        });
+        /* cs2 for ideal gas EOS */
+        const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
+          return (gamma - 1.0) * eps_rc(f) / (eps_rc(f) + 1.0 / gamma);
+        });
+        /* enthalpy h for ideal gas EOS */
+        const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
+          return 1.0 + eps_rc(f) + press_rc(f) / rho_rc(f);
+        });
+        // } Ideal gas case
 
-        // Computing conservatives from primitives
+        /* Computing conservatives from primitives: */
+
+        /* dens = sqrt(g) * D = sqrt(g) * (rho * W) */
         const vec<CCTK_REAL, 2> dens_rc([&](int f) ARITH_INLINE {
-          return sqrt_detg * rho_rc(f) * w_lorentz_rc(f);
+          return sqrtg * rho_rc(f) * w_lorentz_rc(f);
         });
 
+        /* auxiliary: dens * h * W = sqrt(g) * rho * h * W^2 */
         const vec<CCTK_REAL, 2> dens_h_W_rc([&](int f) ARITH_INLINE {
           return dens_rc(f) * h_rc(f) * w_lorentz_rc(f);
         });
+        /* auxiliary: sqrt(g) * (rho*h + b^2)*W^2 */
+        const vec<CCTK_REAL, 2> dens_h_W_plus_sqrtg_W2b2_rc =
+            dens_h_W_rc + sqrtg * (pow2(alp_b0_rc) + B2_rc);
+        /* auxiliary: (pgas + pmag) */
+        const vec<CCTK_REAL, 2> press_plus_pmag_rc = press_rc + 0.5 * bsq_rc;
 
-        // sqrt(g)*( rho*h*W^2 + b^2*W^2 ) = sqrt(g)( rho*h*W^2 + (alp^2*b0^2) +
-        // B^2 )
-        const vec<CCTK_REAL, 2> dens_h_W_plus_sqrt_detg_W2b2_rc(
-            [&](int f) ARITH_INLINE {
-              return dens_h_W_rc(f) +
-                     sqrt_detg * (pow2(alpha_b0_rc(f)) + B2_rc(f));
-            });
-
+        /* mom_i = sqrt(g)*S_i = sqrt(g)((rho*h+b^2)*W^2*v_i - alpha*b^0*b_i) */
         const vec<vec<CCTK_REAL, 2>, 3> moms_rc([&](int i) ARITH_INLINE {
           return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
-            return dens_h_W_plus_sqrt_detg_W2b2_rc(f) * vlows_rc(i)(f) -
-                   sqrt_detg * alpha_b0_rc(f) * blows_rc(i)(f);
+            return dens_h_W_plus_sqrtg_W2b2_rc(f) * vlows_rc(i)(f) -
+                   sqrtg * alp_b0_rc(f) * blows_rc(i)(f);
           });
         });
 
-        const vec<CCTK_REAL, 2> tau_rc = dens_h_W_rc - dens_rc -
-                                         sqrt_detg_press_plus_pmag_rc +
-                                         sqrt_detg * B2_rc;
+        /* tau = sqrt(g)*t =
+         *  sqrt(g)((rho*h + b^2)*W^2 - (pgas+pmag) - (alpha*b^0)^2 - D) */
+        const vec<CCTK_REAL, 2> tau_rc =
+            dens_h_W_rc - dens_rc + sqrtg * (B2_rc - press_plus_pmag_rc);
 
+        /* Btildes^i = sqrt(g) * B^i */
         const vec<vec<CCTK_REAL, 2>, 3> Btildes_rc(
-            [&](int i) ARITH_INLINE { return sqrt_detg * Bs_rc(i); });
+            [&](int i) ARITH_INLINE { return sqrtg * Bs_rc(i); });
 
-        // Computing fluxes of conserved variables
+        /* Computing fluxes of conserved variables: */
+
+        /* auxiliary: unit in 'dir' */
+        const vec<CCTK_REAL, 3> unit_dir{vec<int, 3>::unit(dir)};
+        /* auxiliary: alpha * sqrt(g) */
+        const CCTK_REAL alp_sqrtg = alp_avg * sqrtg;
+        /* auxiliary: B^i / W */
+        const vec<CCTK_REAL, 2> B_over_w_lorentz_rc(
+            [&](int f) ARITH_INLINE { return B_rc(f) / w_lorentz_rc(f); });
+
+        /* flux(dens) = sqrt(g) * D * vtilde^i = sqrt(g) * rho * W * vtilde^i */
         const vec<CCTK_REAL, 2> flux_dens(
             [&](int f) ARITH_INLINE { return dens_rc(f) * vtilde_rc(f); });
 
-        const vec<CCTK_REAL, 3> vdirs{(dir == 0), (dir == 1), (dir == 2)};
-        const vec<vec<CCTK_REAL, 2>, 3> flux_moms([&](int i) ARITH_INLINE {
+        /* flux(mom_j)^i = sqrt(g)*(
+         *  S_j*vtilde^i + alpha*((pgas+pmag)*delta^i_j - b_jB^i/W) ) */
+        const vec<vec<CCTK_REAL, 2>, 3> flux_moms([&](int j) ARITH_INLINE {
           return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
-            return moms_rc(i)(f) * vtilde_rc(f) +
-                   vdirs(i) * alp_sqrt_detg_press_plus_pmag_rc(f) -
-                   alp_sqrt_detg_B_over_w_lorentz_rc(f) * blows_rc(i)(f);
+            return moms_rc(j)(f) * vtilde_rc(f) +
+                   alp_sqrtg * (press_plus_pmag_rc(f) * unit_dir(j) -
+                                blows_rc(j)(f) * B_over_w_lorentz_rc(f));
           });
         });
 
+        /* flux(tau) = sqrt(g)*(
+         *  t*vtilde^i + alpha*((pgas+pmag)*v^i-alpha*b0*B^i/W) ) */
         const vec<CCTK_REAL, 2> flux_tau([&](int f) ARITH_INLINE {
           return tau_rc(f) * vtilde_rc(f) +
-                 alp_sqrt_detg_press_plus_pmag_rc(f) * vel_rc(f) -
-                 alpha_b0_rc(f) * alp_sqrt_detg_B_over_w_lorentz_rc(f);
+                 alp_sqrtg * (press_plus_pmag_rc(f) * vel_rc(f) -
+                              alp_b0_rc(f) * B_over_w_lorentz_rc(f));
         });
 
-        // (0, Ez, -Ey), (-Ez, 0, Ex), (Ey, -Ex, 0)
+        /* electric field E_i = \tilde\epsilon_{ijk} Btilde_j * vtilde_k */
         const vec<vec<CCTK_REAL, 2>, 3> Es_rc =
             calc_cross_product(Btildes_rc, vtildes_rc);
+        /* flux(Btildes) = {{0, Ez, -Ey}, {-Ez, 0, Ex}, {Ey, -Ex, 0}} */
         const vec<vec<CCTK_REAL, 2>, 3> flux_Btildes =
-            calc_cross_product(vdirs, Es_rc);
+            calc_cross_product(unit_dir, Es_rc);
 
+        /* Calculate eigenvalues: */
+
+        /* variable for either g^xx, g^yy or g^zz depending on the direction */
+        const CCTK_REAL u_avg = calc_inv(g_avg, detg_avg)(dir, dir);
+        /* eigenvalues */
         array<array<CCTK_REAL, 4>, 2> lambda =
             eigenvalues(alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc,
                         w_lorentz_rc, h_rc, bsq_rc);
 
+        /* Calculate numerical fluxes */
         fluxdenss[dir](p.I) = calcflux(lambda, dens_rc, flux_dens);
         fluxmomxs[dir](p.I) = calcflux(lambda, moms_rc(0), flux_moms(0));
         fluxmomys[dir](p.I) = calcflux(lambda, moms_rc(1), flux_moms(1));
