@@ -54,8 +54,10 @@ calc_contraction(const smat<T, D> &g, const vec<T, D> &v1,
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 3>
 calc_cross_product(const vec<T, 3> &B, const vec<T, 3> &v) {
-  return {B(1) * v(2) - B(2) * v(1), B(2) * v(0) - B(0) * v(2),
-          B(0) * v(1) - B(1) * v(0)};
+  return ([&](int i) ARITH_INLINE {
+    int j = (i + 1) % 3, k = (i + 2) % 3;
+    return B(j) * v(k) - B(k) * v(j);
+  });
 }
 
 // Contraction for rc case: consider both sides of the face
@@ -83,23 +85,23 @@ template <typename T, int F>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
 calc_cross_product(const vec<vec<T, F>, 3> &B_rc,
                    const vec<vec<T, F>, 3> &v_rc) {
-  return {{B_rc(1)(0) * v_rc(2)(0) - B_rc(2)(0) * v_rc(1)(0),
-           B_rc(1)(1) * v_rc(2)(1) - B_rc(2)(1) * v_rc(1)(1)},
-          {B_rc(2)(0) * v_rc(0)(0) - B_rc(0)(0) * v_rc(2)(0),
-           B_rc(2)(1) * v_rc(0)(1) - B_rc(0)(1) * v_rc(2)(1)},
-          {B_rc(0)(0) * v_rc(1)(0) - B_rc(1)(0) * v_rc(0)(0),
-           B_rc(0)(1) * v_rc(1)(1) - B_rc(1)(1) * v_rc(0)(1)}};
+  return ([&](int i) ARITH_INLINE {
+    int j = (i + 1) % 3, k = (i + 2) % 3;
+    return vec<T, F>([&](int f) ARITH_INLINE {
+      return B_rc(j)(f) * v_rc(k)(f) - B_rc(k)(f) * v_rc(j)(f);
+    });
+  });
 }
 
 template <typename T, int F>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
 calc_cross_product(const vec<T, 3> &B, const vec<vec<T, F>, 3> &v_rc) {
-  return {{B(1) * v_rc(2)(0) - B(2) * v_rc(1)(0),
-           B(1) * v_rc(2)(1) - B(2) * v_rc(1)(1)},
-          {B(2) * v_rc(0)(0) - B(0) * v_rc(2)(0),
-           B(2) * v_rc(0)(1) - B(0) * v_rc(2)(1)},
-          {B(0) * v_rc(1)(0) - B(1) * v_rc(0)(0),
-           B(0) * v_rc(1)(1) - B(1) * v_rc(0)(1)}};
+  return ([&](int i) ARITH_INLINE {
+    int j = (i + 1) % 3, k = (i + 2) % 3;
+    return vec<T, F>([&](int f) ARITH_INLINE {
+      return B(j) * v_rc(k)(f) - B(k) * v_rc(j)(f);
+    });
+  });
 }
 
 // Computes the norm of vec, measured with smat
