@@ -15,6 +15,7 @@ struct metric {
 namespace AsterX
 {
   using namespace Loop;
+  using namespace Arith;
 
   template <int dir>
   void ComputeStaggeredB(CCTK_ARGUMENTS)
@@ -110,8 +111,9 @@ namespace AsterX
           g.gzz = calc_avg_v2c(gzz, p);
 
           /* Determinant of spatial metric */
-          const CCTK_REAL detg = calc_detg(g.gxx, g.gxy, g.gxz, g.gyy, g.gyz, g.gzz);
-          const CCTK_REAL sqrt_detg = sqrt(detg);
+          const smat<CCTK_REAL, 3> gmat{g.gxx, g.gxy, g.gxz,
+                                                g.gyy, g.gyz, g.gzz};
+          const CCTK_REAL sqrt_detg = sqrt(calc_det(gmat));
 
           /* Second order interpolation of staggered B components to cell center */
           Bvecx(p.I) = dBx(p.I)/sqrt_detg;
