@@ -363,36 +363,29 @@ void CalcAuxForAvecPsi(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_Avecs{Avec_x, Avec_y, Avec_z};
   grid.loop_int_device<0, 0, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         /* interpolate A to vertices */
-        const CCTK_REAL Ax_vert = calc_avg_e2v(Avec_x, p, 0);
-        const CCTK_REAL Ay_vert = calc_avg_e2v(Avec_y, p, 1);
-        const CCTK_REAL Az_vert = calc_avg_e2v(Avec_z, p, 2);
-
+        const vec<CCTK_REAL, 3> A_vert([&](int i) ARITH_INLINE {
+          return calc_avg_e2v(gf_Avecs(i), p, i);
+        });
         const smat<CCTK_REAL, 3> g{gxx(p.I), gxy(p.I), gxz(p.I),
                                    gyy(p.I), gyz(p.I), gzz(p.I)};
+        const vec<CCTK_REAL, 3> betas{betax(p.I), betay(p.I), betaz(p.I)};
         const CCTK_REAL detg = calc_det(g);
+        const CCTK_REAL sqrtg = sqrt(detg);
         const smat<CCTK_REAL, 3> ug = calc_inv(g, detg);
+        const vec<CCTK_REAL, 3> Aup = calc_contraction(ug, A_vert);
 
-        const CCTK_REAL Axup =
-            ug(0, 0) * Ax_vert + ug(0, 1) * Ay_vert + ug(0, 2) * Az_vert;
-        const CCTK_REAL Ayup =
-            ug(0, 1) * Ax_vert + ug(1, 1) * Ay_vert + ug(1, 2) * Az_vert;
-        const CCTK_REAL Azup =
-            ug(0, 2) * Ax_vert + ug(1, 2) * Ay_vert + ug(2, 2) * Az_vert;
-
-        const CCTK_REAL beta_Avec =
-            betax(p.I) * Ax_vert + betay(p.I) * Ay_vert + betaz(p.I) * Az_vert;
-
-        Fx(p.I) = alp(p.I) * sqrt(detg) * Axup;
-        Fy(p.I) = alp(p.I) * sqrt(detg) * Ayup;
-        Fz(p.I) = alp(p.I) * sqrt(detg) * Azup;
-        Fbetax(p.I) = betax(p.I) * Psi(p.I);
-        Fbetay(p.I) = betay(p.I) * Psi(p.I);
-        Fbetaz(p.I) = betaz(p.I) * Psi(p.I);
-        G(p.I) = alp(p.I) * Psi(p.I) / sqrt(detg) - beta_Avec;
+        Fx(p.I) = alp(p.I) * sqrtg * Aup(0);
+        Fy(p.I) = alp(p.I) * sqrtg * Aup(1);
+        Fz(p.I) = alp(p.I) * sqrtg * Aup(2);
+        Fbetax(p.I) = betas(0) * Psi(p.I);
+        Fbetay(p.I) = betas(1) * Psi(p.I);
+        Fbetaz(p.I) = betas(2) * Psi(p.I);
+        G(p.I) = alp(p.I) * Psi(p.I) / sqrtg - calc_contraction(betas, A_vert);
       });
 }
 
