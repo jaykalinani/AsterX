@@ -23,6 +23,13 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
   "ppm" :: ""
 } "Godunov"
 
+KEYWORD flux_type "Flux solver" STEERABLE=never
+{
+  "LxF" :: ""
+  "HLLE" :: ""
+} "LxF"
+
+
 KEYWORD regrid_method "Regrid method" STEERABLE=never
 {
   "first derivative" :: ""
