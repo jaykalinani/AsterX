@@ -80,4 +80,4 @@ CCTK_INT local_spatial_order "Order of spatial finite differencing" STEERABLE=ne
 {
   2 :: "Second order finite difference"
   4 :: "Fourth order finite difference"
-} 4
+} 2

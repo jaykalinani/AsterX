@@ -20,25 +20,20 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_SourceTerms;
   DECLARE_CCTK_PARAMETERS;
 
+  /* order of finite differencing */
   if ((local_spatial_order != 2) && (local_spatial_order != 4)) {
     CCTK_VERROR("local_spatial_order must be set to 2 or 4.");
   }
+
+  /* grid functions */
+  const vec<GF3D2<const CCTK_REAL>, 3> gf_beta{betax, betay, betaz};
+  const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
+  const smat<GF3D2<const CCTK_REAL>, 3> gf_k{kxx, kxy, kxz, kyy, kyz, kzz};
 
   /* Loop over the entire grid (0 to n-1 cells in each direction) */
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        /* TODO: local_spatial_order = spatial_order; //(taken from ADMMacros)
-         */
-        /* order of finite differencing */
-        const CCTK_INT local_spatial_order = 2;
-
-        /* grid functions */
-        const vec<GF3D2<const CCTK_REAL>, 3> gf_beta{betax, betay, betaz};
-        const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz,
-                                                   gyy, gyz, gzz};
-        const smat<GF3D2<const CCTK_REAL>, 3> gf_k{kxx, kxy, kxz,
-                                                   kyy, kyz, kzz};
 
         /* Computing metric components at cell centers */
         const CCTK_REAL alp_avg = calc_avg_v2c(alp, p);

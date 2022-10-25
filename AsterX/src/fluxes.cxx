@@ -27,24 +27,6 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
   static_assert(dir >= 0 && dir < 3, "");
 
-  // Face-centred grid functions (in direction `dir`)
-  constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
-                                            !(dir == 2)};
-
-  // Get the grid function pointers for fluxes in direction `dir`
-  const array<GF3D2<CCTK_REAL>, dim> fluxdenss = {fxdens, fydens, fzdens};
-  const array<GF3D2<CCTK_REAL>, dim> fluxmomxs = {fxmomx, fymomx, fzmomx};
-  const array<GF3D2<CCTK_REAL>, dim> fluxmomys = {fxmomy, fymomy, fzmomy};
-  const array<GF3D2<CCTK_REAL>, dim> fluxmomzs = {fxmomz, fymomz, fzmomz};
-  const array<GF3D2<CCTK_REAL>, dim> fluxtaus = {fxtau, fytau, fztau};
-  const array<GF3D2<CCTK_REAL>, dim> fluxBxs = {fxBx, fyBx, fzBx};
-  const array<GF3D2<CCTK_REAL>, dim> fluxBys = {fxBy, fyBy, fzBy};
-  const array<GF3D2<CCTK_REAL>, dim> fluxBzs = {fxBz, fyBz, fzBz};
-
-  // fdens^i = rho vel^i
-  // fmom^i_j = mom_j vel^i + delta^i_j press
-  // ftau^i = (tau + press) vel^i
-
   reconstruction_t reconstruction;
   if (CCTK_EQUALS(reconstruction_method, "Godunov"))
     reconstruction = reconstruction_t::Godunov;
@@ -86,7 +68,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
                       vec<CCTK_REAL, 2> bsq) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // computing characteristics for the minus side
         // See Eq. (28) of Giacomazzo & Rezzolla (2007) with b^i=0
-        array<CCTK_REAL, 3> a_m = {
+        vec<CCTK_REAL, 3> a_m{
             (bsq(0) + cs2(0) * h(0) * rho(0)) *
                     (pow2(beta_avg) - pow2(alp_avg) * u_avg) -
                 (-1 + cs2(0)) * h(0) * rho(0) *
@@ -99,19 +81,19 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
             bsq(0) + h(0) * rho(0) *
                          (cs2(0) + pow2(w_lor(0)) - cs2(0) * pow2(w_lor(0)))};
 
-        CCTK_REAL det_m = pow2(a_m[1]) - 4.0 * a_m[2] * a_m[0];
+        CCTK_REAL det_m = pow2(a_m(1)) - 4.0 * a_m(2) * a_m(0);
         if (det_m < 0.0)
           det_m = 0.0;
 
-        array<CCTK_REAL, 4> lambda_m = {
-            ((-a_m[1] + sqrt(det_m)) / (2.0 * a_m[2])) / alp_avg,
-            ((-a_m[1] + sqrt(det_m)) / (2.0 * a_m[2])) / alp_avg,
-            ((-a_m[1] - sqrt(det_m)) / (2.0 * a_m[2])) / alp_avg,
-            ((-a_m[1] - sqrt(det_m)) / (2.0 * a_m[2])) / alp_avg};
+        vec<CCTK_REAL, 4> lambda_m{
+            ((-a_m(1) + sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg,
+            ((-a_m(1) + sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg,
+            ((-a_m(1) - sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg,
+            ((-a_m(1) - sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg};
 
         // computing characteristics for the plus side
 
-        array<CCTK_REAL, 3> a_p = {
+        vec<CCTK_REAL, 3> a_p{
             (bsq(1) + cs2(1) * h(1) * rho(1)) *
                     (pow2(beta_avg) - pow2(alp_avg) * u_avg) -
                 (-1 + cs2(1)) * h(1) * rho(1) *
@@ -124,41 +106,41 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
             bsq(1) + h(1) * rho(1) *
                          (cs2(1) + pow2(w_lor(1)) - cs2(1) * pow2(w_lor(1)))};
 
-        CCTK_REAL det_p = pow2(a_p[1]) - 4.0 * a_p[2] * a_p[0];
+        CCTK_REAL det_p = pow2(a_p(1)) - 4.0 * a_p(2) * a_p(0);
         if (det_p < 0.0)
           det_p = 0.0;
 
-        array<CCTK_REAL, 4> lambda_p = {
-            ((-a_p[1] + sqrt(det_p)) / (2.0 * a_p[2])) / alp_avg,
-            ((-a_p[1] + sqrt(det_p)) / (2.0 * a_p[2])) / alp_avg,
-            ((-a_p[1] - sqrt(det_p)) / (2.0 * a_p[2])) / alp_avg,
-            ((-a_p[1] - sqrt(det_p)) / (2.0 * a_p[2])) / alp_avg};
+        vec<CCTK_REAL, 4> lambda_p{
+            ((-a_p(1) + sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg,
+            ((-a_p(1) + sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg,
+            ((-a_p(1) - sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg,
+            ((-a_p(1) - sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg};
 
         // 2D array containing characteristics for left (minus) and right (plus)
         // sides
-        array<array<CCTK_REAL, 4>, 2> lambda = {lambda_m, lambda_p};
+        vec<vec<CCTK_REAL, 4>, 2> lambda{lambda_m, lambda_p};
         return lambda;
       };
 
   const auto calcflux =
-      [=] CCTK_DEVICE(array<array<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
+      [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
                       vec<CCTK_REAL, 2> flux) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         CCTK_REAL flx;
         if (CCTK_EQUALS(flux_type, "LxF")) {
           const CCTK_REAL charmax =
-              max({0.0, fabs(lam[0][0]), fabs(lam[0][1]), fabs(lam[0][2]),
-                   fabs(lam[0][3]), fabs(lam[1][0]), fabs(lam[1][1]),
-                   fabs(lam[1][2]), fabs(lam[1][3])});
+              max({0.0, fabs(lam(0)(0)), fabs(lam(0)(1)), fabs(lam(0)(2)),
+                   fabs(lam(0)(3)), fabs(lam(1)(0)), fabs(lam(1)(1)),
+                   fabs(lam(1)(2)), fabs(lam(1)(3))});
 
           flx = 0.5 * ((flux(0) + flux(1)) - charmax * (var(1) - var(0)));
         } else if (CCTK_EQUALS(flux_type, "HLLE")) {
           const CCTK_REAL charmax =
-              max({0.0, lam[0][0], lam[0][1], lam[0][2], lam[0][3], lam[1][0],
-                   lam[1][1], lam[1][2], lam[1][3]});
+              max({0.0, lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
+                   lam(1)(1), lam(1)(2), lam(1)(3)});
 
           const CCTK_REAL charmin =
-              min({0.0, lam[0][0], lam[0][1], lam[0][2], lam[0][3], lam[1][0],
-                   lam[1][1], lam[1][2], lam[1][3]});
+              min({0.0, lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
+                   lam(1)(1), lam(1)(2), lam(1)(3)});
 
           const CCTK_REAL charpm = charmax - charmin;
 
@@ -173,16 +155,28 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         return flx;
       };
 
+  /* grid functions for fluxes */
+  const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxmomxs{fxmomx, fymomx, fzmomx};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxmomys{fxmomy, fymomy, fzmomy};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxmomzs{fxmomz, fymomz, fzmomz};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxtaus{fxtau, fytau, fztau};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxBxs{fxBx, fyBx, fzBx};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxBys{fxBy, fyBy, fzBy};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxBzs{fxBz, fyBz, fzBz};
+  /* grid functions */
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_vels{velx, vely, velz};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_Bvecs{Bvecx, Bvecy, Bvecz};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
+  const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
+
+  // Face-centred grid functions (in direction `dir`)
+  constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
+                                            !(dir == 2)};
+
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        /* grid functions */
-        const vec<GF3D2<const CCTK_REAL>, 3> gf_vels{velx, vely, velz};
-        const vec<GF3D2<const CCTK_REAL>, 3> gf_Bvecs{Bvecx, Bvecy, Bvecz};
-        const vec<GF3D2<const CCTK_REAL>, 3> gf_beta{betax, betay, betaz};
-        const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz,
-                                                   gyy, gyz, gzz};
-
         /* Reconstruct primitives from the cells on left (indice 0) and right
          * (indice 1) side of this face rc = reconstructed variables or
          * computed from reconstructed variables */
@@ -346,21 +340,21 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         /* variable for either g^xx, g^yy or g^zz depending on the direction */
         const CCTK_REAL u_avg = calc_inv(g_avg, detg_avg)(dir, dir);
         /* eigenvalues */
-        array<array<CCTK_REAL, 4>, 2> lambda =
+        vec<vec<CCTK_REAL, 4>, 2> lambda =
             eigenvalues(alp_avg, beta_avg, u_avg, vel_rc, rho_rc, cs2_rc,
                         w_lorentz_rc, h_rc, bsq_rc);
 
         /* Calculate numerical fluxes */
-        fluxdenss[dir](p.I) = calcflux(lambda, dens_rc, flux_dens);
-        fluxmomxs[dir](p.I) = calcflux(lambda, moms_rc(0), flux_moms(0));
-        fluxmomys[dir](p.I) = calcflux(lambda, moms_rc(1), flux_moms(1));
-        fluxmomzs[dir](p.I) = calcflux(lambda, moms_rc(2), flux_moms(2));
-        fluxtaus[dir](p.I) = calcflux(lambda, tau_rc, flux_tau);
-        fluxBxs[dir](p.I) =
+        fluxdenss(dir)(p.I) = calcflux(lambda, dens_rc, flux_dens);
+        fluxmomxs(dir)(p.I) = calcflux(lambda, moms_rc(0), flux_moms(0));
+        fluxmomys(dir)(p.I) = calcflux(lambda, moms_rc(1), flux_moms(1));
+        fluxmomzs(dir)(p.I) = calcflux(lambda, moms_rc(2), flux_moms(2));
+        fluxtaus(dir)(p.I) = calcflux(lambda, tau_rc, flux_tau);
+        fluxBxs(dir)(p.I) =
             (dir != 0) * calcflux(lambda, Btildes_rc(0), flux_Btildes(0));
-        fluxBys[dir](p.I) =
+        fluxBys(dir)(p.I) =
             (dir != 1) * calcflux(lambda, Btildes_rc(1), flux_Btildes(1));
-        fluxBzs[dir](p.I) =
+        fluxBzs(dir)(p.I) =
             (dir != 2) * calcflux(lambda, Btildes_rc(2), flux_Btildes(2));
       });
 }
