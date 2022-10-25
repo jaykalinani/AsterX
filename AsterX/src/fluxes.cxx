@@ -141,42 +141,37 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
       };
 
   const auto calcflux =
-      [=] CCTK_DEVICE(array<array<CCTK_REAL, 4>, 2> lam,
-                      array<CCTK_REAL, 2> var, array<CCTK_REAL, 2> flux)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      [=] CCTK_DEVICE(array<array<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
+                      vec<CCTK_REAL, 2> flux) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        CCTK_REAL flx;
+        if (CCTK_EQUALS(flux_type, "LxF")) {
+          const CCTK_REAL charmax =
+              max({0.0, fabs(lam[0][0]), fabs(lam[0][1]), fabs(lam[0][2]),
+                   fabs(lam[0][3]), fabs(lam[1][0]), fabs(lam[1][1]),
+                   fabs(lam[1][2]), fabs(lam[1][3])});
 
-	    CCTK_REAL flx;
-            if (CCTK_EQUALS(flux_type,"LxF"))
-	    {
-	       const CCTK_REAL charmax =
-                  max({0.0, fabs(lam[0][0]), fabs(lam[0][1]), fabs(lam[0][2]),
-                     fabs(lam[0][3]), fabs(lam[1][0]), fabs(lam[1][1]),
-                     fabs(lam[1][2]), fabs(lam[1][3])});
+          flx = 0.5 * ((flux(0) + flux(1)) - charmax * (var(1) - var(0)));
+        } else if (CCTK_EQUALS(flux_type, "HLLE")) {
+          const CCTK_REAL charmax =
+              max({0.0, lam[0][0], lam[0][1], lam[0][2], lam[0][3], lam[1][0],
+                   lam[1][1], lam[1][2], lam[1][3]});
 
-               flx = 0.5 * ((flux[0] + flux[1]) - charmax * (var[1] - var[0]));
-	    }
-	    else if (CCTK_EQUALS(flux_type,"HLLE"))
-	    {
-               const CCTK_REAL charmax =
-		 max({0.0, lam[0][0], lam[0][1], lam[0][2], lam[0][3], 
-	              lam[1][0], lam[1][1], lam[1][2], lam[1][3]});
+          const CCTK_REAL charmin =
+              min({0.0, lam[0][0], lam[0][1], lam[0][2], lam[0][3], lam[1][0],
+                   lam[1][1], lam[1][2], lam[1][3]});
 
-	       const CCTK_REAL charmin =
-                 min({0.0, lam[0][0], lam[0][1], lam[0][2], lam[0][3], 
-                      lam[1][0], lam[1][1], lam[1][2], lam[1][3]});
+          const CCTK_REAL charpm = charmax - charmin;
 
-	       const CCTK_REAL charpm = charmax - charmin;
+          flx = (charmax * flux(1) - charmin * flux(0) +
+                 charmax * charmin * (var(1) - var(0))) /
+                charpm;
+        } else {
+          printf("flux_type not recognized");
+          flx = 0.0;
+        }
 
-	       flx = (charmax*flux[1] - charmin*flux[0] + charmax*charmin*(var[1] - var[0])) / charpm;
-	    }   
-	    else 
-	    {
-               printf("flux_type not recognized");
-	       flx = 0.0;
-            }
-
-            return flx;
-          };
+        return flx;
+      };
 
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
       grid.nghostzones,
