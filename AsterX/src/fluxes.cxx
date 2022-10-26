@@ -18,6 +18,8 @@ using namespace std;
 using namespace Loop;
 using namespace Arith;
 
+enum class flux_t { LxF, HLLE };
+
 // Calculate the fluxes in direction `dir`. This function is more
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
@@ -38,6 +40,15 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
     reconstruction = reconstruction_t::ppm;
   else
     CCTK_ERROR("Unknown value for parameter \"reconstruction_method\"");
+
+  flux_t fluxtype;
+  if (CCTK_EQUALS(flux_type, "LxF")) {
+    fluxtype = flux_t::LxF;
+  } else if (CCTK_EQUALS(flux_type, "HLLE")) {
+    fluxtype = flux_t::HLLE;
+  } else {
+    CCTK_ERROR("Unknown value for parameter \"flux_type\"");
+  }
 
   switch (reconstruction) {
   case reconstruction_t::Godunov:
@@ -126,14 +137,18 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
       [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
                       vec<CCTK_REAL, 2> flux) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         CCTK_REAL flx;
-        if (CCTK_EQUALS(flux_type, "LxF")) {
+        switch (fluxtype) {
+        case flux_t::LxF: {
           const CCTK_REAL charmax =
               max({0.0, fabs(lam(0)(0)), fabs(lam(0)(1)), fabs(lam(0)(2)),
                    fabs(lam(0)(3)), fabs(lam(1)(0)), fabs(lam(1)(1)),
                    fabs(lam(1)(2)), fabs(lam(1)(3))});
 
           flx = 0.5 * ((flux(0) + flux(1)) - charmax * (var(1) - var(0)));
-        } else if (CCTK_EQUALS(flux_type, "HLLE")) {
+          break;
+        }
+
+        case flux_t::HLLE: {
           const CCTK_REAL charmax =
               max({0.0, lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
                    lam(1)(1), lam(1)(2), lam(1)(3)});
@@ -147,9 +162,11 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
           flx = (charmax * flux(1) - charmin * flux(0) +
                  charmax * charmin * (var(1) - var(0))) /
                 charpm;
-        } else {
-          printf("flux_type not recognized");
-          flx = 0.0;
+          break;
+        }
+
+        default:
+          assert(0);
         }
 
         return flx;
