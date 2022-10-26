@@ -55,7 +55,7 @@ template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 3>
 calc_cross_product(const vec<T, 3> &B, const vec<T, 3> &v) {
   return ([&](int i) ARITH_INLINE {
-    int j = (i + 1) % 3, k = (i + 2) % 3;
+    const int j = (i + 1) % 3, k = (i + 2) % 3;
     return B(j) * v(k) - B(k) * v(j);
   });
 }
@@ -86,7 +86,7 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
 calc_cross_product(const vec<vec<T, F>, 3> &B_rc,
                    const vec<vec<T, F>, 3> &v_rc) {
   return ([&](int i) ARITH_INLINE {
-    int j = (i + 1) % 3, k = (i + 2) % 3;
+    const int j = (i + 1) % 3, k = (i + 2) % 3;
     return vec<T, F>([&](int f) ARITH_INLINE {
       return B_rc(j)(f) * v_rc(k)(f) - B_rc(k)(f) * v_rc(j)(f);
     });
@@ -97,7 +97,7 @@ template <typename T, int F>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
 calc_cross_product(const vec<T, 3> &B, const vec<vec<T, F>, 3> &v_rc) {
   return ([&](int i) ARITH_INLINE {
-    int j = (i + 1) % 3, k = (i + 2) % 3;
+    const int j = (i + 1) % 3, k = (i + 2) % 3;
     return vec<T, F>([&](int f) ARITH_INLINE {
       return B(j) * v_rc(k)(f) - B(k) * v_rc(j)(f);
     });
