@@ -17,9 +17,19 @@ namespace AsterX {
 using namespace Loop;
 using namespace Arith;
 
+enum class vector_potential_gauge_t { algebraic, generalized_lorentz };
+
 extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_RHS;
   DECLARE_CCTK_PARAMETERS;
+
+  vector_potential_gauge_t gauge;
+  if (CCTK_EQUALS(vector_potential_gauge, "algebraic"))
+    gauge = vector_potential_gauge_t::algebraic;
+  else if (CCTK_EQUALS(vector_potential_gauge, "generalized Lorentz"))
+    gauge = vector_potential_gauge_t::generalized_lorentz;
+  else
+    CCTK_ERROR("Unknown value for parameter \"vector_potential_gauge\"");
 
   const vec<CCTK_REAL, dim> idx{1 / CCTK_DELTA_SPACE(0),
                                 1 / CCTK_DELTA_SPACE(1),
@@ -52,7 +62,19 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         const CCTK_REAL E =
             0.25 * ((gf_fBs(j)(k)(p.I) + gf_fBs(j)(k)(p.I - DI[j])) -
                     (gf_fBs(k)(j)(p.I) + gf_fBs(k)(j)(p.I - DI[k])));
-        return -E - calc_fd2_v2e(G, p, i);
+
+        switch (gauge) {
+        case vector_potential_gauge_t::algebraic: {
+          return -E;
+          break;
+        }
+        case vector_potential_gauge_t::generalized_lorentz: {
+          return -E - calc_fd2_v2e(G, p, i);
+          break;
+        }
+        default:
+          assert(0);
+        }
       };
 
   grid.loop_all_device<1, 1, 1>(
@@ -86,15 +108,27 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
   grid.loop_int_device<0, 0, 0>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        CCTK_REAL dF = 0.0;
-        for (int i = 0; i < dim; i++) {
-          /* diFi on vertices (should be v2v but c2c works too) */
-          dF += calc_fd2_c2c(gf_F(i), p, i) - (gf_beta(i)(p.I) < 0)
-                    ? calc_fd2_v2v_oneside(gf_Fbeta(i), p, i, -1)
-                    : calc_fd2_v2v_oneside(gf_Fbeta(i), p, i, 1);
+        switch (gauge) {
+        case vector_potential_gauge_t::algebraic: {
+          Psi_rhs(p.I) = 0.0;
+          break;
         }
 
-        Psi_rhs(p.I) = -dF - lorenz_damp_fac * alp(p.I) * Psi(p.I);
+        case vector_potential_gauge_t::generalized_lorentz: {
+          CCTK_REAL dF = 0.0;
+          for (int i = 0; i < dim; i++) {
+            /* diFi on vertices (should be v2v but c2c works too) */
+            dF += calc_fd2_c2c(gf_F(i), p, i) - (gf_beta(i)(p.I) < 0)
+                      ? calc_fd2_v2v_oneside(gf_Fbeta(i), p, i, -1)
+                      : calc_fd2_v2v_oneside(gf_Fbeta(i), p, i, 1);
+          }
+          Psi_rhs(p.I) = -dF - lorenz_damp_fac * alp(p.I) * Psi(p.I);
+          break;
+        }
+
+        default:
+          assert(0);
+        }
       });
 }
 
