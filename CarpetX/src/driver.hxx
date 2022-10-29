@@ -11,7 +11,7 @@
 
 #include <AMReX.H>
 #include <AMReX_AmrCore.H>
-#include <AMReX_FillPatchUtil.H>
+// #include <AMReX_FillPatchUtil.H>
 #include <AMReX_FluxRegister.H>
 #include <AMReX_Interpolater.H>
 #include <AMReX_MultiFab.H>
@@ -61,6 +61,9 @@ static_assert(AMREX_SPACEDIM == dim,
 static_assert(is_same<amrex::Real, CCTK_REAL>::value,
               "AMReX's Real type must be the same as Cactus's CCTK_REAL");
 
+////////////////////////////////////////////////////////////////////////////////
+
+// AMR driver
 class CactusAmrCore final : public amrex::AmrCore {
   int patch;
 
@@ -264,13 +267,35 @@ struct GHExt {
           apply_physbcs_t(const GroupData &groupdata) : groupdata(groupdata) {}
 
           const GroupData &groupdata;
-          void operator()(const amrex::Box &box, amrex::FArrayBox &dest,
-                          int dcomp, int numcomp, const amrex::Geometry &geom,
-                          CCTK_REAL time,
+          void operator()(const GroupData &groupdata, const amrex::Box &box,
+                          amrex::FArrayBox &dest, int dcomp, int numcomp,
+                          const amrex::Geometry &geom, CCTK_REAL time,
                           const amrex::Vector<amrex::BCRec> &bcr, int bcomp,
                           int orig_comp) const;
         };
-        std::unique_ptr<amrex::PhysBCFunct<apply_physbcs_t> > physbc;
+
+#warning                                                                       \
+    "TODO: Remove CactusPhysBCFunct and apply_physbcs_t; implement operator() for GroupData instead"
+        // Boundary condition driver
+        // Adapted from amrex::PhysBCFunct
+        template <typename F> struct CactusPhysBCFunct {
+          amrex::Geometry geom;
+          amrex::Vector<amrex::BCRec> bcrecs;
+          F fun;
+
+          CactusPhysBCFunct() = delete;
+
+          CactusPhysBCFunct(amrex::Geometry geom,
+                            amrex::Vector<amrex::BCRec> bcrecs, F fun)
+              : geom(std::move(geom)), bcrecs(std::move(bcrecs)),
+                fun(std::move(fun)) {}
+
+          void operator()(const GroupData &groupdata, amrex::MultiFab &mfab,
+                          int icomp, int ncomps, const amrex::IntVect &nghost,
+                          amrex::Real time, int bccomp);
+        };
+
+        std::unique_ptr<CactusPhysBCFunct<apply_physbcs_t> > physbc;
 
         // each amrex::MultiFab has numvars components
         vector<unique_ptr<amrex::MultiFab> > mfab; // [time level]

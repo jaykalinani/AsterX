@@ -1,5 +1,6 @@
 #include "driver.hxx"
 
+#include "fillpatch.hxx"
 #include "interp.hxx"
 #include "io.hxx"
 #include "logo.hxx"
@@ -15,9 +16,9 @@
 
 #include <AMReX.H>
 #include <AMReX_BCRec.H>
-#include <AMReX_FillPatchUtil.H>
+// #include <AMReX_FillPatchUtil.H>
 #include <AMReX_ParmParse.H>
-#include <AMReX_PhysBCFunct.H>
+// #include <AMReX_PhysBCFunct.H>
 
 #include <omp.h>
 #include <mpi.h>
@@ -966,7 +967,7 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
     }
   }
   bcrecs.resize(numvars, bcrec);
-  physbc = std::make_unique<amrex::PhysBCFunct<apply_physbcs_t> >(
+  physbc = std::make_unique<CactusPhysBCFunct<apply_physbcs_t> >(
       geom, bcrecs, apply_physbcs_t(*this));
 
   // Allocate grid hierarchies
@@ -1000,6 +1001,49 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename F>
+void GHExt::PatchData::LevelData::GroupData::CactusPhysBCFunct<F>::operator()(
+    const GroupData &groupdata, amrex::MultiFab &mfab, int icomp, int ncomps,
+    const amrex::IntVect &nghost, amrex::Real time, int bccomp) {
+  if (geom.isAllPeriodic())
+    return;
+
+  // create a grown domain box containing valid + periodic cells
+  const amrex::Box &domain = geom.Domain();
+  amrex::Box gdomain = amrex::convert(domain, mfab.boxArray().ixType());
+  for (int d = 0; d < dim; ++d)
+    if (geom.isPeriodic(d))
+      gdomain.grow(d, nghost[d]);
+
+#pragma omp parallel if (amrex::Gpu::notInLaunchRegion())
+  {
+    amrex::Vector<amrex::BCRec> bcrecs1(ncomps);
+    for (amrex::MFIter mfiter(mfab); mfiter.isValid(); ++mfiter) {
+      amrex::FArrayBox &dest = mfab[mfiter];
+      const amrex::Box &bx = mfiter.fabbox();
+
+      // if there are cells not in the valid + periodic grown box,
+      // then we need to fill them here
+      if (!gdomain.contains(bx)) {
+        // Based on BCRec for the domain, we need to make BCRec for this Box
+        amrex::setBC(bx, domain, bccomp, 0, ncomps, bcrecs, bcrecs1);
+
+        // Note that we pass 0 as starting component of bcrecs1.
+        fun(groupdata, bx, dest, icomp, ncomps, geom, time, bcrecs1, 0, bccomp);
+      }
+    }
+  }
+
+#warning "TODO: Apply multi-patch boundary conditions here"
+}
+
+template struct GHExt::PatchData::LevelData::GroupData::CactusPhysBCFunct<
+    GHExt::PatchData::LevelData::GroupData::apply_physbcs_t>;
+
+////////////////////////////////////////////////////////////////////////////////
 
 void GHExt::PatchData::LevelData::GroupData::init_tmp_mfabs() const {
   assert(next_tmp_mfab == 0);
@@ -1053,10 +1097,10 @@ loop_region(const F &f, const Arith::vect<int, dim> &imin,
 }
 
 void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
-    const amrex::Box &box, amrex::FArrayBox &dest, const int dcomp,
-    const int numcomp, const amrex::Geometry &geom, const CCTK_REAL time,
-    const amrex::Vector<amrex::BCRec> &bcr, const int bcomp,
-    const int orig_comp) const {
+    const GroupData &groupdata, const amrex::Box &box, amrex::FArrayBox &dest,
+    const int dcomp, const int numcomp, const amrex::Geometry &geom,
+    const CCTK_REAL time, const amrex::Vector<amrex::BCRec> &bcr,
+    const int bcomp, const int orig_comp) const {
   // Check centering
   assert(box.ixType() == dest.box().ixType());
   for (int d = 0; d < dim; ++d)
@@ -1161,6 +1205,9 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
             loop_region(
                 [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
                     CCTK_ATTRIBUTE_ALWAYS_INLINE {
+#warning "TODO"
+                      for (int d = 0; d < dim; ++d)
+                        assert(dst[d] >= amin[d] && dst[d] < amax[d]);
                       var.store(dst, dirichlet_value);
                     },
                 bmin, bmax);
@@ -1249,6 +1296,9 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                           assert(0);
                         }
                       }
+#warning "TODO"
+                      for (int d = 0; d < dim; ++d)
+                        assert(src[d] >= dmin[d] && src[d] < dmax[d]);
                       CCTK_REAL val = var(src);
                       if (any(delta != 0)) {
                         // Calculate gradient
@@ -1257,6 +1307,9 @@ void GHExt::PatchData::LevelData::GroupData::apply_physbcs_t::operator()(
                         val += sqrt(sum(pow2(dst - src)) / sum(pow2(delta))) *
                                grad;
                       }
+#warning "TODO"
+                      for (int d = 0; d < dim; ++d)
+                        assert(dst[d] >= amin[d] && dst[d] < amax[d]);
                       var.store(dst, parity ? -val : val);
                     },
                 bmin, bmax);
@@ -1571,11 +1624,17 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
               coarseleveldata, coarsegroupdata, vi, tl, nan_handling,
               []() { return "MakeNewLevelFromCoarse before prolongation"; });
         }
-        InterpFromCoarseLevel(
-            *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
-            groupdata.numvars, patchdata.amrcore->Geom(level - 1),
-            patchdata.amrcore->Geom(level), *coarsegroupdata.physbc, 0,
-            *groupdata.physbc, 0, reffact, interpolator, groupdata.bcrecs, 0);
+        // InterpFromCoarseLevel(
+        //     *groupdata.mfab.at(tl), 0.0, *coarsegroupdata.mfab.at(tl), 0, 0,
+        //     groupdata.numvars, patchdata.amrcore->Geom(level - 1),
+        //     patchdata.amrcore->Geom(level), *coarsegroupdata.physbc, 0,
+        //     *groupdata.physbc, 0, reffact, interpolator, groupdata.bcrecs,
+        //     0);
+        FillPatch_NewLevel(
+            groupdata, *groupdata.mfab.at(tl), *coarsegroupdata.mfab.at(tl),
+            patchdata.amrcore->Geom(level - 1), patchdata.amrcore->Geom(level),
+            *coarsegroupdata.physbc, *groupdata.physbc, interpolator,
+            groupdata.bcrecs);
         const auto outer_valid = patchdata.all_faces_have_symmetries()
                                      ? make_valid_outer()
                                      : valid_t();
@@ -1717,12 +1776,20 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
     for (int tl = 0; tl < ntls; ++tl) {
       if (tl < prolongate_tl) {
         // Copy from same level and/or prolongate from next coarser level
-        FillPatchTwoLevels(
-            *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)}, {0.0},
-            {&*oldgroupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
-            patchdata.amrcore->Geom(level - 1), patchdata.amrcore->Geom(level),
-            *coarsegroupdata.physbc, 0, *groupdata.physbc, 0, reffact,
-            interpolator, groupdata.bcrecs, 0);
+        // FillPatchTwoLevels(
+        //     *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
+        //     {0.0},
+        //     {&*oldgroupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
+        //     patchdata.amrcore->Geom(level - 1),
+        //     patchdata.amrcore->Geom(level), *coarsegroupdata.physbc, 0,
+        //     *groupdata.physbc, 0, reffact, interpolator, groupdata.bcrecs,
+        //     0);
+        FillPatch_RemakeLevel(
+            groupdata, *groupdata.mfab.at(tl), *coarsegroupdata.mfab.at(tl),
+            *oldgroupdata.mfab.at(tl), patchdata.amrcore->Geom(level - 1),
+            patchdata.amrcore->Geom(level), *coarsegroupdata.physbc,
+            *groupdata.physbc, interpolator, groupdata.bcrecs);
+
         for (int vi = 0; vi < groupdata.numvars; ++vi)
           groupdata.valid.at(tl).at(vi) =
               why_valid_t(make_valid_int() | make_valid_ghosts() | outer_valid,

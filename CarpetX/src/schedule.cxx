@@ -78,7 +78,7 @@ double gettime() {
 //                  declval<const amrex::Vector<int> &>() /*vec_dcomp*/,
 //                  declval<const amrex::Vector<int> &>() /*vec_ncomp*/,
 //                  declval<const amrex::Vector<amrex::Geometry> &>()
-//                  /*vec_geom*/, declval<amrex::Vector<amrex::PhysBCFunct<
+//                  /*vec_geom*/, declval<amrex::Vector<CactusPhysBCFunct<
 //                      GHExt::PatchData::LevelData::GroupData::apply_physbcs_t>
 //                      >
 //                              &>() /*vec_physbcf*/,
@@ -2113,12 +2113,14 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             for (int tl = 0; tl < sync_tl; ++tl) {
               static Timer timer("Sync::FillPatchSingleLevel");
               Interval interval(timer);
-              FillPatchSingleLevel(*groupdata.mfab.at(tl), 0.0,
-                                   {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                                   groupdata.numvars,
-                                   ghext->patchdata.at(leveldata.patch)
-                                       .amrcore->Geom(leveldata.level),
-                                   *groupdata.physbc, 0);
+#warning "TODO"
+              // FillPatchSingleLevel(*groupdata.mfab.at(tl), 0.0,
+              //                      {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
+              //                      groupdata.numvars,
+              //                      ghext->patchdata.at(leveldata.patch)
+              //                          .amrcore->Geom(leveldata.level),
+              //                      *groupdata.physbc, 0);
+              assert(0);
             }
           }
 
@@ -2133,8 +2135,9 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
           amrex::Vector<amrex::Vector<amrex::Real> > stimes;
           amrex::Vector<int> scomps, dcomps, ncomps;
           amrex::Vector<amrex::Geometry> geoms;
-          amrex::Vector<amrex::PhysBCFunct<
-              GHExt::PatchData::LevelData::GroupData::apply_physbcs_t> >
+          amrex::Vector<
+              GHExt::PatchData::LevelData::GroupData::CactusPhysBCFunct<
+                  GHExt::PatchData::LevelData::GroupData::apply_physbcs_t> >
               physbcfs;
           amrex::Vector<int> bcfcomps;
 
@@ -2261,14 +2264,17 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             {
               static Timer timer("Sync::FillPatchTwoLevels");
               Interval interval(timer);
-              FillPatchTwoLevels(
-                  *groupdata.mfab.at(tl), 0.0, {&*coarsegroupdata.mfab.at(tl)},
-                  {0.0}, {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0,
-                  groupdata.numvars,
-                  ghext->patchdata.at(leveldata.patch).amrcore->Geom(level - 1),
-                  ghext->patchdata.at(leveldata.patch).amrcore->Geom(level),
-                  *coarsegroupdata.physbc, 0, *groupdata.physbc, 0, reffact,
-                  interpolator, groupdata.bcrecs, 0);
+#warning "TODO"
+              // FillPatchTwoLevels(
+              //     *groupdata.mfab.at(tl), 0.0,
+              //     {&*coarsegroupdata.mfab.at(tl)}, {0.0},
+              //     {&*groupdata.mfab.at(tl)}, {0.0}, 0, 0, groupdata.numvars,
+              //     ghext->patchdata.at(leveldata.patch).amrcore->Geom(level -
+              //     1),
+              //     ghext->patchdata.at(leveldata.patch).amrcore->Geom(level),
+              //     *coarsegroupdata.physbc, 0, *groupdata.physbc, 0, reffact,
+              //     interpolator, groupdata.bcrecs, 0);
+              assert(0);
             }
             for (int vi = 0; vi < groupdata.numvars; ++vi) {
               groupdata.valid.at(tl).at(vi).set_ghosts(true, []() {
@@ -2330,7 +2336,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             // Copy from adjacent boxes on same level
 
             auto fillpatch_continue =
-                FillPatch_Sync(*groupdata.mfab.at(tl),
+                FillPatch_Sync(groupdata, *groupdata.mfab.at(tl),
                                ghext->patchdata.at(leveldata.patch)
                                    .amrcore->Geom(leveldata.level),
                                *groupdata.physbc);
@@ -2404,7 +2410,7 @@ int SyncGroupsByDirI(const cGH *restrict cctkGH, int numgroups,
             // coarser level
 
             auto fillpatch_continue = FillPatch_ProlongateGhosts(
-                *groupdata.mfab.at(tl), *coarsegroupdata.mfab.at(tl),
+                groupdata, *groupdata.mfab.at(tl), *coarsegroupdata.mfab.at(tl),
                 ghext->patchdata.at(leveldata.patch).amrcore->Geom(level - 1),
                 ghext->patchdata.at(leveldata.patch).amrcore->Geom(level),
                 *coarsegroupdata.physbc, *groupdata.physbc, interpolator,
