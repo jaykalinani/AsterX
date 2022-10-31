@@ -1,5 +1,5 @@
-#ifndef CON2PRIM_HXX
-#define CON2PRIM_HXX
+#ifndef CON2PRIMFACTORY_HXX
+#define CON2PRIMFACTORY_HXX
 #include "AMReX_GpuQualifiers.H"
 #define CCTK_DEVICE AMREX_GPU_DEVICE
 #define CCTK_HOST AMREX_GPU_HOST
@@ -22,6 +22,7 @@ constexpr int V1_COV = 1;
 constexpr int V2_COV = 2;
 constexpr int V3_COV = 3;
 constexpr int EPS = 4;
+constexpr int PRESS = 5;
 
 constexpr int TT = 0;
 constexpr int TX = 1;
@@ -79,9 +80,33 @@ public:
                                                         CCTK_REAL Vsq);
   CCTK_HOST CCTK_DEVICE void WZ2Prim();
 };
-} // namespace AsterX
-#endif // #ifndef CON2PRIM_HXX
 
 template <typename typeEoS>
 CCTK_HOST CCTK_DEVICE void Con2Prim_2DNRNoble(CCTK_INT max_iter, CCTK_REAL tolf,
                                               typeEoS &plasma);
+
+template <typename T>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+set_to_atmosphere(const T &rho_abs_min, const T &poly_K, const T &gamma,
+                  const T sqrtg, const T Bsq, const vec<GF3D2<T>, 6> &prims,
+                  const vec<GF3D2<T>, 5> &cons, const PointDesc &p) {
+
+  prims(RHO)(p.I) = rho_abs_min;
+  prims(V1_CON)(p.I) = 0.0;
+  prims(V2_CON)(p.I) = 0.0;
+  prims(V3_CON)(p.I) = 0.0;
+  prims(PRESS)(p.I) = poly_K * pow(prims(RHO)(p.I), gamma);
+  prims(EPS)(p.I) = prims(PRESS)(p.I) / ((gamma - 1.0) * prims(RHO)(p.I));
+
+  cons(D)(p.I) = sqrtg * prims(RHO)(p.I);
+  cons(S1_COV)(p.I) = 0.0;
+  cons(S2_COV)(p.I) = 0.0;
+  cons(S3_COV)(p.I) = 0.0;
+  cons(TAU)(p.I) =
+      sqrtg * ((prims(RHO)(p.I) * (1 + prims(EPS)(p.I)) + prims(PRESS)(p.I)) +
+               Bsq - (prims(PRESS)(p.I) + 0.5 * Bsq)) -
+      cons(D)(p.I);
+}
+
+} // namespace AsterX
+#endif // #ifndef CON2PRIMFACTORY_HXX

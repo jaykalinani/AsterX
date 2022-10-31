@@ -31,10 +31,9 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
   const smat<GF3D2<const CCTK_REAL>, 3> gf_k{kxx, kxy, kxz, kyy, kyz, kzz};
 
   /* Loop over the entire grid (0 to n-1 cells in each direction) */
-  grid.loop_all_device<1, 1, 1>(
+  grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-
         /* Computing metric components at cell centers */
         const CCTK_REAL alp_avg = calc_avg_v2c(alp, p);
         const vec<CCTK_REAL, 3> beta_avg(

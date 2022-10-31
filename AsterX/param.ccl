@@ -81,6 +81,9 @@ CCTK_REAL c2p_tol "c2p torelance for root finding" STEERABLE=never
   0:* :: "Larger than zero"
 } 1E-10
 
+BOOLEAN interpolate_failed_c2p "Interpolate those grid points where c2p failed."
+{
+} no
 
 CCTK_INT local_spatial_order "Order of spatial finite differencing" STEERABLE=never
 {

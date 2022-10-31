@@ -356,6 +356,24 @@ calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   return gf_avg / 4.0;
 }
 
+template <typename T>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 6>
+get_neighbors(const GF3D2<T> &gf, const PointDesc &p) {
+  constexpr auto DI = PointDesc::DI;
+  return {gf(p.I - DI[0]), gf(p.I + DI[0]), gf(p.I - DI[1]),
+          gf(p.I + DI[1]), gf(p.I - DI[2]), gf(p.I + DI[2])};
+}
+
+template <typename T, int D>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
+calc_avg_neighbors(const vec<T, D> flag, const vec<T, D> u_nbs,
+                   const vec<T, D> u_saved_nbs) {
+  return sum<D>([&](int i) ARITH_INLINE {
+           return (flag(i) * u_nbs(i) + (1.0 - flag(i)) * u_saved_nbs(i));
+         }) /
+         CCTK_REAL(D);
+}
+
 } // namespace AsterX
 
 #endif // #ifndef UTILS_HXX

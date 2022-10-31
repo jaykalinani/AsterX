@@ -7,6 +7,7 @@
 
 #include <cmath>
 
+#include "utils.hxx"
 #include "con2primIdealFluid.hxx"
 namespace AsterX {
 using namespace std;
@@ -118,6 +119,12 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
+  const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
+  const vec<GF3D2<CCTK_REAL>, 6> gf_saved_prims{
+    saved_rho, saved_velx, saved_vely, saved_velz, saved_eps, press};
+  const vec<GF3D2<CCTK_REAL>, 6> gf_prims{rho, velx, vely, velz, eps, press};
+  const vec<GF3D2<CCTK_REAL>, 5> gf_cons{dens, momx, momy, momz, tau};
+
   // Loop over the interior of the grid
   cctk_grid.loop_int_device<
       1, 1, 1>(grid.nghostzones, [=] CCTK_DEVICE(
@@ -127,12 +134,14 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
     CCTK_REAL g_lo[4][4];
 
     /* Get covariant metric */
-    g_lo[1][1] = calc_avg_v2c(gxx, p);
-    g_lo[1][2] = calc_avg_v2c(gxy, p);
-    g_lo[1][3] = calc_avg_v2c(gxz, p);
-    g_lo[2][2] = calc_avg_v2c(gyy, p);
-    g_lo[2][3] = calc_avg_v2c(gyz, p);
-    g_lo[3][3] = calc_avg_v2c(gzz, p);
+    const smat<CCTK_REAL, 3> g3_avg([&](int i, int j) ARITH_INLINE {
+      return calc_avg_v2c(gf_g(i, j), p); });
+    g_lo[1][1] = g3_avg(0, 0);
+    g_lo[1][2] = g3_avg(0, 1);
+    g_lo[1][3] = g3_avg(0, 2);
+    g_lo[2][2] = g3_avg(1, 1);
+    g_lo[2][3] = g3_avg(1, 2);
+    g_lo[3][3] = g3_avg(2, 2);
     CCTK_REAL lapse = calc_avg_v2c(alp, p);
     CCTK_REAL betax_up = calc_avg_v2c(betax, p);
     CCTK_REAL betay_up = calc_avg_v2c(betay, p);
@@ -158,38 +167,19 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
     g_lo[3][2] = g_lo[2][3];
 
     /* Calculate inverse of 4-dim metric */
-    CCTK_REAL gamma11, gamma12, gamma13, gamma22, gamma23,
-        gamma33; // Inverse components of spatial metric
-
-    CCTK_REAL spatial_detg = -g_lo[1][3] * g_lo[1][3] * g_lo[2][2] +
-                             2 * g_lo[1][2] * g_lo[1][3] * g_lo[2][3] -
-                             g_lo[1][1] * g_lo[2][3] * g_lo[2][3] -
-                             g_lo[1][2] * g_lo[1][2] * g_lo[3][3] +
-                             g_lo[1][1] * g_lo[2][2] * g_lo[3][3];
-
-    gamma11 =
-        (-g_lo[2][3] * g_lo[2][3] + g_lo[2][2] * g_lo[3][3]) / spatial_detg;
-    gamma12 =
-        (g_lo[1][3] * g_lo[2][3] - g_lo[1][2] * g_lo[3][3]) / spatial_detg;
-    gamma13 =
-        (-g_lo[1][3] * g_lo[2][2] + g_lo[1][2] * g_lo[2][3]) / spatial_detg;
-    gamma22 =
-        (-g_lo[1][3] * g_lo[1][3] + g_lo[1][1] * g_lo[3][3]) / spatial_detg;
-    gamma23 =
-        (g_lo[1][2] * g_lo[1][3] - g_lo[1][1] * g_lo[2][3]) / spatial_detg;
-    gamma33 =
-        (-g_lo[1][2] * g_lo[1][2] + g_lo[1][1] * g_lo[2][2]) / spatial_detg;
-
+    const CCTK_REAL spatial_detg = calc_det(g3_avg);
+    const CCTK_REAL sqrtg = sqrt(spatial_detg);
+    const smat<CCTK_REAL, 3> g3inv_avg = calc_inv(g3_avg, spatial_detg);
     g_up[0][0] = -1.0 / (lapse * lapse);
     g_up[0][1] = betax_up / (lapse * lapse);
     g_up[0][2] = betay_up / (lapse * lapse);
     g_up[0][3] = betaz_up / (lapse * lapse);
-    g_up[1][1] = gamma11 - betax_up * betax_up / (lapse * lapse);
-    g_up[1][2] = gamma12 - betax_up * betay_up / (lapse * lapse);
-    g_up[1][3] = gamma13 - betax_up * betaz_up / (lapse * lapse);
-    g_up[2][2] = gamma22 - betay_up * betay_up / (lapse * lapse);
-    g_up[2][3] = gamma23 - betay_up * betaz_up / (lapse * lapse);
-    g_up[3][3] = gamma33 - betaz_up * betaz_up / (lapse * lapse);
+    g_up[1][1] = g3inv_avg(0, 0) - betax_up * betax_up / (lapse * lapse);
+    g_up[1][2] = g3inv_avg(0, 1) - betax_up * betay_up / (lapse * lapse);
+    g_up[1][3] = g3inv_avg(0, 2) - betax_up * betaz_up / (lapse * lapse);
+    g_up[2][2] = g3inv_avg(1, 1) - betay_up * betay_up / (lapse * lapse);
+    g_up[2][3] = g3inv_avg(1, 2) - betay_up * betaz_up / (lapse * lapse);
+    g_up[3][3] = g3inv_avg(2, 2) - betaz_up * betaz_up / (lapse * lapse);
 
     g_up[1][0] = g_up[0][1];
     g_up[2][0] = g_up[0][2];
@@ -198,35 +188,26 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
     g_up[3][1] = g_up[1][3];
     g_up[3][2] = g_up[2][3];
 
-    // Set to atmosphere if dens below the threshold
-    if (dens(p.I) <= sqrt(spatial_detg) * (rho_abs_min * (1.0 + atmo_tol))) {
-      saved_rho(p.I) = rho_abs_min;
-      saved_velx(p.I) = 0.0;
-      saved_vely(p.I) = 0.0;
-      saved_velz(p.I) = 0.0;
-      press(p.I) = poly_K * pow(saved_rho(p.I), gamma);
-      saved_eps(p.I) = press(p.I) / ((gamma - 1.0) * saved_rho(p.I));
+    const vec<CCTK_REAL, 3> Bup{
+      dBx(p.I) / sqrtg, dBy(p.I) / sqrtg, dBz(p.I) / sqrtg};
 
-      dens(p.I) = sqrt(spatial_detg) * saved_rho(p.I);
-      momx(p.I) = 0.0;
-      momy(p.I) = 0.0;
-      momz(p.I) = 0.0;
-      // need to compute bs2; setting here to 0.0
-      CCTK_REAL bs2 = 0.0;
-      tau(p.I) = sqrt(spatial_detg) *
-                     (saved_rho(p.I) * (1 + saved_eps(p.I)) + 0.5 * bs2) -
-                 dens(p.I);
+    // Set to atmosphere if dens below the threshold
+    if (dens(p.I) <= sqrtg * (rho_abs_min * (1.0 + atmo_tol))) {
+      const vec<CCTK_REAL, 3> Blow = calc_contraction(g3_avg, Bup);
+      const CCTK_REAL Bsq = calc_contraction(Bup, Blow);
+      set_to_atmosphere(rho_abs_min, poly_K, gamma, sqrtg, Bsq,
+                        gf_saved_prims, gf_cons, p);
     }
 
     CCTK_REAL cons[NCONS];
-    cons[D] = dens(p.I) / sqrt(spatial_detg);
-    cons[S1_COV] = momx(p.I) / sqrt(spatial_detg);
-    cons[S2_COV] = momy(p.I) / sqrt(spatial_detg);
-    cons[S3_COV] = momz(p.I) / sqrt(spatial_detg);
-    cons[TAU] = tau(p.I) / sqrt(spatial_detg);
-    cons[B1] = dBx(p.I) / sqrt(spatial_detg);
-    cons[B2] = dBy(p.I) / sqrt(spatial_detg);
-    cons[B3] = dBz(p.I) / sqrt(spatial_detg);
+    cons[D] = dens(p.I) / sqrtg;
+    cons[S1_COV] = momx(p.I) / sqrtg;
+    cons[S2_COV] = momy(p.I) / sqrtg;
+    cons[S3_COV] = momz(p.I) / sqrtg;
+    cons[TAU] = tau(p.I) / sqrtg;
+    cons[B1] = Bup(0);
+    cons[B2] = Bup(1);
+    cons[B3] = Bup(2);
 
     CCTK_REAL prims[NPRIMS];
     prims[RHO] = saved_rho(p.I);
@@ -245,9 +226,10 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
     // 1) Try 2DNRNoble
     Con2Prim_2DNRNoble(max_iter, c2p_tol, plasma_0);
 
-    CCTK_INT set_to_atmo = 0;
-
     if (plasma_0.Failed_2DNRNoble) {
+      /* set flag to failure */
+      con2prim_flag(p.I) = 0.0;
+
       if (debug_mode) {
         printf(
             "WARNING: "
@@ -271,10 +253,18 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
             Avec_y(p.I), Avec_z(p.I));
       }
 
-      set_to_atmo = 1;
-      // CCTK_VWARN(CCTK_WARN_ALERT, "C2P failed, triggering assert(0)..");
+      rho(p.I) = saved_rho(p.I);
+      velx(p.I) = saved_velx(p.I);
+      vely(p.I) = saved_vely(p.I);
+      velz(p.I) = saved_velz(p.I);
+      eps(p.I) = saved_eps(p.I);
+      press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+
       // assert(0);
     } else {
+      /* set flag to success */
+      con2prim_flag(p.I) = 1.0;
+
       plasma_0.WZ2Prim();
       rho(p.I) = plasma_0.PrimitiveVars[RHO];
       velx(p.I) = plasma_0.PrimitiveVars[V1_CON];
@@ -284,46 +274,31 @@ template <typename typeEoS> void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS) {
       press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
 
       if (rho(p.I) <= rho_abs_min * (1 + atmo_tol)) {
-        set_to_atmo = 1;
-      }
-    }
+        const vec<CCTK_REAL, 3> Blow = calc_contraction(g3_avg, Bup);
+        const CCTK_REAL Bsq = calc_contraction(Bup, Blow);
+        set_to_atmosphere(rho_abs_min, poly_K, gamma, sqrtg, Bsq,
+                          gf_prims, gf_cons, p);
 
-    if (set_to_atmo) {
-      rho(p.I) = rho_abs_min;
-      velx(p.I) = 0.0;
-      vely(p.I) = 0.0;
-      velz(p.I) = 0.0;
-      press(p.I) = poly_K * pow(rho(p.I), gamma);
-      eps(p.I) = press(p.I) / ((gamma - 1.0) * rho(p.I));
-
-      dens(p.I) = sqrt(spatial_detg) * rho(p.I);
-      momx(p.I) = 0.0;
-      momy(p.I) = 0.0;
-      momz(p.I) = 0.0;
-      // need to compute bs2; setting here to 0.0
-      CCTK_REAL bs2 = 0.0;
-      tau(p.I) = sqrt(spatial_detg) * (rho(p.I) * (1 + eps(p.I)) + 0.5 * bs2) -
-                 dens(p.I);
-
-      if (debug_mode) {
-        printf("WARNING: "
-               "Printing cons and prims after set to atmo when dens below "
-               "threshold: \n"
-               "cctk_iteration = %i \n "
-               "x, y, z = %26.16e, %26.16e, %26.16e \n "
-               "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
-               "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
-               "dBy = %26.16e \n dBz = %26.16e \n "
-               "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
-               "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
-               "Bvecx = %26.16e \n Bvecy = %26.16e \n "
-               "Bvecz = %26.16e \n "
-               "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
-               cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-               momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), rho(p.I),
-               eps(p.I), press(p.I), velx(p.I), vely(p.I), velz(p.I),
-               Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Avec_x(p.I), Avec_y(p.I),
-               Avec_z(p.I));
+        if (debug_mode) {
+          printf("WARNING: "
+                 "Printing cons and prims after set to atmo when dens below "
+                 "threshold: \n"
+                 "cctk_iteration = %i \n "
+                 "x, y, z = %26.16e, %26.16e, %26.16e \n "
+                 "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+                 "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+                 "dBy = %26.16e \n dBz = %26.16e \n "
+                 "rho = %26.16e \n eps = %26.16e \n press= %26.16e \n "
+                 "velx = %26.16e \n vely = %26.16e \n velz = %26.16e \n "
+                 "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+                 "Bvecz = %26.16e \n "
+                 "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+                 cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
+                 momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), rho(p.I),
+                 eps(p.I), press(p.I), velx(p.I), vely(p.I), velz(p.I),
+                 Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Avec_x(p.I), Avec_y(p.I),
+                 Avec_z(p.I));
+        }
       }
     }
 
@@ -351,6 +326,66 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     AsterX_Con2Prim_typeEoS<idealFluid>(CCTK_PASS_CTOC);
     // CCTK_PASS_CTOC == cctkGH, and more. Preferred over just cctkGH.
   }
+}
+
+extern "C" void AsterX_Con2Prim_Interpolate_Failed(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim_Interpolate_Failed;
+  DECLARE_CCTK_PARAMETERS;
+
+  const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
+  const vec<GF3D2<CCTK_REAL>, 6> gf_prims{rho, velx, vely, velz, eps, press};
+  const vec<GF3D2<CCTK_REAL>, 5> gf_cons{dens, momx, momy, momz, tau};
+
+  grid.loop_int_device<1, 1, 1>(grid.nghostzones,
+      [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+    if(con2prim_flag(p.I) == 0.0) {
+
+      const vec<CCTK_REAL, 6> flag_nbs = get_neighbors(con2prim_flag, p);
+      const vec<CCTK_REAL, 6> rho_nbs = get_neighbors(rho, p);
+      const vec<CCTK_REAL, 6> velx_nbs = get_neighbors(velx, p);
+      const vec<CCTK_REAL, 6> vely_nbs = get_neighbors(vely, p);
+      const vec<CCTK_REAL, 6> velz_nbs = get_neighbors(velz, p);
+      const vec<CCTK_REAL, 6> eps_nbs = get_neighbors(eps, p);
+      const vec<CCTK_REAL, 6> saved_rho_nbs = get_neighbors(saved_rho, p);
+      const vec<CCTK_REAL, 6> saved_velx_nbs = get_neighbors(saved_velx, p);
+      const vec<CCTK_REAL, 6> saved_vely_nbs = get_neighbors(saved_vely, p);
+      const vec<CCTK_REAL, 6> saved_velz_nbs = get_neighbors(saved_velz, p);
+      const vec<CCTK_REAL, 6> saved_eps_nbs = get_neighbors(saved_eps, p);
+
+      CCTK_REAL sum_nbs = sum<6>(
+          [&](int i) ARITH_INLINE { return flag_nbs(i); });
+      assert(sum_nbs > 0);
+      rho(p.I)  = calc_avg_neighbors(flag_nbs, rho_nbs, saved_rho_nbs);
+      velx(p.I) = calc_avg_neighbors(flag_nbs, velx_nbs, saved_velx_nbs);
+      vely(p.I) = calc_avg_neighbors(flag_nbs, vely_nbs, saved_vely_nbs);
+      velz(p.I) = calc_avg_neighbors(flag_nbs, velz_nbs, saved_velz_nbs);
+      eps(p.I)  = calc_avg_neighbors(flag_nbs, eps_nbs, saved_eps_nbs);
+      press(p.I) = (gamma - 1.0) * eps(p.I) * rho(p.I);
+
+      /* reset flag */
+      con2prim_flag(p.I) = 1.0;
+
+      // set to atmos
+      if (rho(p.I) <= rho_abs_min * (1 + atmo_tol)) {
+        const smat<CCTK_REAL, 3> g3_avg([&](int i, int j) ARITH_INLINE {
+          return calc_avg_v2c(gf_g(i, j), p); });
+        const CCTK_REAL sqrtg = sqrt(calc_det(g3_avg));
+        const vec<CCTK_REAL, 3> Bup{Bvecx(p.I), Bvecy(p.I), Bvecz(p.I)};
+        const vec<CCTK_REAL, 3> Blow = calc_contraction(g3_avg, Bup);
+        const CCTK_REAL Bsq = calc_contraction(Bup, Blow);
+
+        set_to_atmosphere(rho_abs_min, poly_K, gamma, sqrtg, Bsq,
+                          gf_prims, gf_cons, p);
+      };
+
+      saved_rho(p.I) = rho(p.I);
+      saved_velx(p.I) = velx(p.I);
+      saved_vely(p.I) = vely(p.I);
+      saved_velz(p.I) = velz(p.I);
+      saved_eps(p.I) = eps(p.I);
+    }
+  });
 }
 
 } // namespace AsterX
