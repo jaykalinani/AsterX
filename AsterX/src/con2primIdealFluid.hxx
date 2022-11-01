@@ -30,6 +30,12 @@ namespace AsterX
         CCTK_HOST CCTK_DEVICE CCTK_REAL get_2DNRNoble_df1dVsq(CCTK_REAL Z, CCTK_REAL Vsq);
         CCTK_HOST CCTK_DEVICE void WZ2Prim();
 
+        /* Called by 1DBrentPalenzuela */
+        CCTK_INT Failed_1DBrentPalenzuela;
+        CCTK_REAL xPalenzuela_Sol;
+        CCTK_HOST CCTK_DEVICE CCTK_REAL get_Press_funcRhoEps(CCTK_REAL &rho_loc, CCTK_REAL &eps_loc);
+        CCTK_HOST CCTK_DEVICE void xPalenzuelaToPrim();
+
         /* Destructor */
         CCTK_HOST CCTK_DEVICE ~idealFluid();
     };
@@ -53,7 +59,7 @@ namespace AsterX
         PrimitiveVarsSeed[B2] = prim[B2];
         PrimitiveVarsSeed[B3] = prim[B3];
 
-        ConservedVars[D] = cons[D];
+        ConservedVars[CONS_D] = cons[CONS_D];
         ConservedVars[S1_COV] = cons[S1_COV];
         ConservedVars[S2_COV] = cons[S2_COV];
         ConservedVars[S3_COV] = cons[S3_COV];
@@ -89,10 +95,10 @@ namespace AsterX
         get_BiSi_Exact();
         get_WLorentz_bsq_Seeds();
 
-        /* update rho seed from D and gamma */
-        // rho consistent with con[D] should be better guess than rho from last
+        /* update rho seed from CONS_D and gamma */
+        // rho consistent with con[CONS_D] should be better guess than rho from last
         // timestep
-        PrimitiveVarsSeed[RHO] = ConservedVars[D] / WLorentz_Seed;
+        PrimitiveVarsSeed[RHO] = ConservedVars[CONS_D] / WLorentz_Seed;
     }
 
     CCTK_HOST CCTK_DEVICE inline void idealFluid::get_Ssq_Exact()
@@ -116,9 +122,9 @@ namespace AsterX
 
     CCTK_HOST CCTK_DEVICE inline void idealFluid::get_Bsq_Exact()
     {
-        double B1_cov = gcov[XX] * PrimitiveVarsSeed[B1] + gcov[XY] * PrimitiveVarsSeed[B2] + gcov[XZ] * PrimitiveVarsSeed[B3];
-        double B2_cov = gcov[XY] * PrimitiveVarsSeed[B1] + gcov[YY] * PrimitiveVarsSeed[B2] + gcov[YZ] * PrimitiveVarsSeed[B3];
-        double B3_cov = gcov[XZ] * PrimitiveVarsSeed[B1] + gcov[YZ] * PrimitiveVarsSeed[B2] + gcov[ZZ] * PrimitiveVarsSeed[B3];
+        CCTK_REAL B1_cov = gcov[XX] * PrimitiveVarsSeed[B1] + gcov[XY] * PrimitiveVarsSeed[B2] + gcov[XZ] * PrimitiveVarsSeed[B3];
+        CCTK_REAL B2_cov = gcov[XY] * PrimitiveVarsSeed[B1] + gcov[YY] * PrimitiveVarsSeed[B2] + gcov[YZ] * PrimitiveVarsSeed[B3];
+        CCTK_REAL B3_cov = gcov[XZ] * PrimitiveVarsSeed[B1] + gcov[YZ] * PrimitiveVarsSeed[B2] + gcov[ZZ] * PrimitiveVarsSeed[B3];
         Bsq = B1_cov * PrimitiveVarsSeed[B1] + B2_cov * PrimitiveVarsSeed[B2] + B3_cov * PrimitiveVarsSeed[B3];
     }
 
@@ -184,7 +190,7 @@ namespace AsterX
                                                                         CCTK_REAL Vsq)
     {
         CCTK_REAL Press = get_Press_funcZVsq(Z, Vsq);
-        return ConservedVars[TAU] + ConservedVars[D] - Bsq / 2.0 * (1 + Vsq) +
+        return ConservedVars[TAU] + ConservedVars[CONS_D] - Bsq / 2.0 * (1 + Vsq) +
                BiSi * BiSi / 2.0 / (Z * Z) - Z + Press;
     }
 
@@ -216,7 +222,7 @@ namespace AsterX
     CCTK_HOST CCTK_DEVICE inline CCTK_REAL idealFluid::get_Press_funcZVsq(CCTK_REAL Z,
                                                                           CCTK_REAL Vsq)
     {
-        return ((Z * (1.0 - Vsq) - ConservedVars[D] * sqrt(1.0 - Vsq)) *
+        return ((Z * (1.0 - Vsq) - ConservedVars[CONS_D] * sqrt(1.0 - Vsq)) *
                 (GammaIdealFluid - 1.0) / (GammaIdealFluid));
     }
 
@@ -229,7 +235,7 @@ namespace AsterX
     CCTK_HOST CCTK_DEVICE inline CCTK_REAL idealFluid::get_dPdVsq_funcZVsq(CCTK_REAL Z,
                                                                            CCTK_REAL Vsq)
     {
-        return ((-Z + ConservedVars[D] / (2.0 * sqrt(1.0 - Vsq))) *
+        return ((-Z + ConservedVars[CONS_D] / (2.0 * sqrt(1.0 - Vsq))) *
                 (GammaIdealFluid - 1.0) / GammaIdealFluid);
     }
 
@@ -237,7 +243,7 @@ namespace AsterX
     {
         CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
-        PrimitiveVars[RHO] = ConservedVars[D] / W_Sol;
+        PrimitiveVars[RHO] = ConservedVars[CONS_D] / W_Sol;
 
         PrimitiveVars[V1_CON] =
             (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] +
@@ -259,6 +265,57 @@ namespace AsterX
 
         PrimitiveVars[EPS] =
             (Z_Sol * (1. - vsq_Sol) / PrimitiveVars[RHO] - 1.0) / GammaIdealFluid;
+    }
+
+    /* Called by 1DBrentPalenzuela */
+
+    CCTK_HOST CCTK_DEVICE inline CCTK_REAL idealFluid::get_Press_funcRhoEps(CCTK_REAL &rho_loc, CCTK_REAL &eps_loc)
+    {
+        return rho_loc * eps_loc * (GammaIdealFluid - 1.0);
+    }
+
+    CCTK_HOST CCTK_DEVICE inline void idealFluid::xPalenzuelaToPrim()
+    {
+
+        const CCTK_REAL qPalenzuela = ConservedVars[TAU] / ConservedVars[CONS_D];
+        const CCTK_REAL rPalenzuela = Ssq / pow(ConservedVars[CONS_D], 2);
+        const CCTK_REAL sPalenzuela = Bsq / ConservedVars[CONS_D];
+        const CCTK_REAL tPalenzuela = BiSi / pow(ConservedVars[CONS_D], 3. / 2.);
+
+        // (i)
+        CCTK_REAL Wminus2 = 1.0 - (xPalenzuela_Sol * xPalenzuela_Sol * rPalenzuela + (2.0 * xPalenzuela_Sol + sPalenzuela) * tPalenzuela * tPalenzuela) / (xPalenzuela_Sol * xPalenzuela_Sol * (xPalenzuela_Sol + sPalenzuela) * (xPalenzuela_Sol + sPalenzuela));
+        Wminus2 = fmin(fmax(Wminus2, 1e-10), 1 - 1e-10);
+        const CCTK_REAL W_loc = pow(Wminus2, -0.5);
+
+        // (ii)
+        PrimitiveVars[RHO] = ConservedVars[CONS_D] / W_loc;
+
+        // (iii)
+        PrimitiveVars[EPS] = W_loc - 1.0 + (1.0 - W_loc * W_loc) * xPalenzuela_Sol / W_loc + W_loc * (qPalenzuela - sPalenzuela + tPalenzuela * tPalenzuela / (2 * xPalenzuela_Sol * xPalenzuela_Sol) + sPalenzuela / (2.0 * W_loc * W_loc));
+
+        // (iv)
+        //CCTK_REAL P_loc = get_Press_funcRhoEps(rho_loc, eps_loc);
+
+        // Taken from WZ2Prim (2DNRNoble)
+        Z_Sol = xPalenzuela_Sol * PrimitiveVars[RHO] * W_loc;
+        CCTK_REAL alp = sqrt(-1. / gcon[TT]);
+
+        CCTK_REAL v1_Valencia = (gcon[XX] * ConservedVars[S1_COV] + gcon[XY] * ConservedVars[S2_COV] + gcon[XZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
+        v1_Valencia += BiSi * PrimitiveVars[B1] / (Z_Sol * (Z_Sol + Bsq));
+
+        CCTK_REAL v2_Valencia = (gcon[XY] * ConservedVars[S1_COV] + gcon[YY] * ConservedVars[S2_COV] + gcon[YZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
+        v2_Valencia += BiSi * PrimitiveVars[B2] / (Z_Sol * (Z_Sol + Bsq));
+
+        CCTK_REAL v3_Valencia = (gcon[XZ] * ConservedVars[S1_COV] + gcon[YZ] * ConservedVars[S2_COV] + gcon[ZZ] * ConservedVars[S3_COV]) / (Z_Sol + Bsq);
+        v3_Valencia += BiSi * PrimitiveVars[B3] / (Z_Sol * (Z_Sol + Bsq));
+
+        PrimitiveVars[V1_CON] = alp * v1_Valencia - alp * alp * gcon[TX];
+        PrimitiveVars[V2_CON] = alp * v2_Valencia - alp * alp * gcon[TY];
+        PrimitiveVars[V3_CON] = alp * v3_Valencia - alp * alp * gcon[TZ];
+
+        PrimitiveVars[B1] = ConservedVars[B1];
+        PrimitiveVars[B2] = ConservedVars[B2];
+        PrimitiveVars[B3] = ConservedVars[B3];
     }
 
     /* Destructor */
