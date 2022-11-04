@@ -3,15 +3,16 @@ SHARES: HydroBase
 
 EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
 {
-  "equilibrium" :: ""
-  "sound wave" :: ""
-  "shock tube" :: ""
+  "equilibrium"     :: ""
+  "sound wave"      :: ""
+  "shock tube"      :: ""
   "spherical shock" :: ""
-  "Balsara1" :: ""
-  "Balsara2" :: ""
-  "Balsara3" :: ""
-  "Balsara4" :: ""
-  "Balsara5" :: ""
+  "Balsara1"        :: ""
+  "Balsara2"        :: ""
+  "Balsara3"        :: ""
+  "Balsara4"        :: ""
+  "Balsara5"        :: ""
+  "magnetic rotor"  :: ""
 } 
 
 private:

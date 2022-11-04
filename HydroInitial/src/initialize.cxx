@@ -85,7 +85,7 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 0, 0>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-	      Avec_x(p.I) = 0.0;
+              Avec_x(p.I) = 0.0;
         });
 
     grid.loop_all_device<0, 1, 0>(
@@ -167,7 +167,6 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
             //Bvecx(p.I) = 5.0;
             //Bvecy(p.I) = 6.0;
             //Bvecz(p.I) = 6.0;
-
           } else {
             rho(p.I) = 1.0;
             velx(p.I) = 0.0;
@@ -389,9 +388,67 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
           //Bvecz(p.I) = 0.0;
         });
 
-  } else {
-    CCTK_ERROR("Internal error");
   }
+
+
+
+    // See GRHydro paper and Del Zanna, Bucciantini, Londrillo (2003)
+    else if (CCTK_EQUALS(initial_hydro, "magnetic rotor")) {
+        grid.loop_all_device<1, 1, 1>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                const CCTK_REAL r_cyl = sqrt(pow2(p.x) + pow2(p.y));
+
+                if (r_cyl < 0.1) {
+                    const CCTK_REAL omega = 9.95;
+                    rho(p.I)  =  10.;
+                    velx(p.I) = -omega*p.y;
+                    vely(p.I) =  omega*p.x;
+                    velz(p.I) =  0.;
+                }
+
+                else {
+                    rho(p.I)  = 1.;
+                    velx(p.I) = 0.;
+                    vely(p.I) = 0.;
+                    velz(p.I) = 0.;
+                }
+
+                press(p.I) = 1.;
+
+                // TODO: compute eps using EOS driver
+                // for now, using ideal gas EOS
+                eps(p.I) = press(p.I)/(rho(p.I)*(gamma - 1));
+            }
+        );
+
+
+        grid.loop_all_device<1, 0, 0>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_x(p.I) = 0.;
+            }
+        );
+
+        grid.loop_all_device<0, 1, 0>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_y(p.I) = 0.0;
+            }
+        );
+
+        grid.loop_all_device<0, 0, 1>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_z(p.I) = p.y;
+            }
+        );
+    }
+
+
+    else {
+        CCTK_ERROR("Internal error");
+    }
 }
 
 } // namespace HydroInitial
