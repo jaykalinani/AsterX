@@ -34,11 +34,11 @@ TimerReport::n_top_timers               = 50
 # -------------------- CarpetX -------------------------------------------------
 CarpetX::verbose = no
 
-CarpetX::xmin = -0.02
+CarpetX::xmin = -0.004
 CarpetX::ymin = -0.5
 CarpetX::zmin = -0.5
 
-CarpetX::xmax = +0.02
+CarpetX::xmax = +0.004
 CarpetX::ymax = +0.5
 CarpetX::zmax = +0.5
 
@@ -52,7 +52,7 @@ CarpetX::boundary_upper_z = "linear extrapolation"
 
 CarpetX::ncells_x = 250
 CarpetX::ncells_y = 250
-CarpetX::ncells_z = 10
+CarpetX::ncells_z = 2
 
 CarpetX::max_num_levels         = 1
 CarpetX::regrid_every           = 100000
