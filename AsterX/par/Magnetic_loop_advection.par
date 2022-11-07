@@ -1,6 +1,6 @@
 ActiveThorns = "
     CarpetX
-##    Formaline
+    Formaline
     IOUtil
     ODESolvers
     SystemTopology
