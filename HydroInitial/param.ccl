@@ -12,6 +12,7 @@ EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
   "Balsara3"                 :: ""
   "Balsara4"                 :: ""
   "Balsara5"                 :: ""
+  "cylindrical blast"           :: ""
   "magnetic rotor"           :: ""
   "magnetic loop advection"  :: ""
 } 

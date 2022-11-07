@@ -512,7 +512,72 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
         );
     }
 
+        // See Spritz paper
+    else if (CCTK_EQUALS(initial_hydro, "cylindrical blast")) {
+        grid.loop_all_device<1, 1, 1>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                const CCTK_REAL r_cyl = sqrt(pow2(p.x) + pow2(p.y));
+		const CCTK_REAL r_in = 0.8;
+		const CCTK_REAL r_out = 1.0;
+		const CCTK_REAL rho_in = 1e-2;
+		const CCTK_REAL rho_out = 1e-4;
+		const CCTK_REAL p_in = 1.0;
+                const CCTK_REAL p_out = 3.0e-5;
 
+                if (r_cyl < r_in) {
+                    rho(p.I)  = rho_in;
+		    press(p.I) = p_in;
+                    velx(p.I) = 0.0;
+                    vely(p.I) = 0.0;
+                    velz(p.I) = 0.0;
+                }
+
+                else if (r_cyl > r_out){
+                    rho(p.I)  = rho_out;
+		    press(p.I) = p_out;
+                    velx(p.I) = 0.0;
+                    vely(p.I) = 0.0;
+                    velz(p.I) = 0.0;
+                }
+		else {
+		    rho(p.I)  = exp( ((r_out - r_cyl)*log(rho_in) + (r_cyl - r_in)*log(rho_out)) 
+				    / (r_out - r_in) );
+                    press(p.I) = exp( ((r_out - r_cyl)*log(p_in) + (r_cyl - r_in)*log(p_out)) 
+                                    / (r_out - r_in) );
+                    velx(p.I) = 0.0;
+                    vely(p.I) = 0.0;
+                    velz(p.I) = 0.0;
+		}
+
+                // TODO: compute eps using EOS driver
+                // for now, using ideal gas EOS
+                eps(p.I) = press(p.I)/(rho(p.I)*(gamma - 1));
+            }
+        );
+
+
+        grid.loop_all_device<1, 0, 0>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_x(p.I) = 0.0;
+            }
+        );
+
+        grid.loop_all_device<0, 1, 0>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_y(p.I) = 0.0;
+            }
+        );
+
+        grid.loop_all_device<0, 0, 1>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_z(p.I) = 0.1*p.y;
+            }
+        );
+    }
 
     else {
         CCTK_ERROR("Internal error");
