@@ -449,6 +449,28 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
 
     // See GRHydro paper and Beckwith, Stone (2011)
     else if (CCTK_EQUALS(initial_hydro, "magnetic loop advection")) {
+        CCTK_REAL axial_vel;
+
+        if (CCTK_EQUALS(mag_loop_adv_type, "2D")) {
+            if (CCTK_EQUALS(mag_loop_adv_axial_vel, "zero"))
+                axial_vel = 0.;
+            else if (CCTK_EQUALS(mag_loop_adv_axial_vel, "non-zero"))
+                axial_vel = 1./24.;
+            else {
+                CCTK_VERROR("Invalid loop advection case");
+            }
+        }
+
+        // TODO: implement this (see GRHydro paper and code)
+        else if (CCTK_EQUALS(mag_loop_adv_type, "3D")) {
+            CCTK_VERROR("Sorry, 3D loop advection hasn't been implemented yet");
+        }
+
+        else {
+            CCTK_VERROR("Invalid loop advection type");
+        }
+
+
         grid.loop_all_device<1, 1, 1>(
             grid.nghostzones,
             [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -461,26 +483,9 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
 
                 velx(p.I) = 0.5;
                 vely(p.I) = 1./24.;
-
-		if (CCTK_EQUALS(mag_loop_adv_type, "2D")) {
-                    if (CCTK_EQUALS(mag_loop_adv_axial_vel, "zero"))
-                        velz(p.I) = 0.;
-                    else if (CCTK_EQUALS(mag_loop_adv_axial_vel, "non-zero"))
-                        velz(p.I) = 1./24.;
-                    else {
-                        CCTK_VERROR("Invalid loop advection case");
-                    }
-                }
-
-                // TODO: implement this (see GRHydro paper and code)
-		else if (CCTK_EQUALS(mag_loop_adv_type, "3D")) {
-                    CCTK_VERROR("Sorry, 3D loop advection hasn't been implemented yet");
-                }
-
-                else {
-                    CCTK_VERROR("Invalid loop advection type");
-                }
-            });
+                velz(p.I) = axial_vel;
+            }
+        );
 
 
         grid.loop_all_device<1, 0, 0>(
@@ -511,6 +516,8 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
             }
         );
     }
+
+
 
         // See Spritz paper
     else if (CCTK_EQUALS(initial_hydro, "cylindrical blast")) {
