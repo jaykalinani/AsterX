@@ -433,7 +433,7 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
         grid.loop_all_device<0, 1, 0>(
             grid.nghostzones,
             [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                Avec_y(p.I) = 0.0;
+                Avec_y(p.I) = 0.;
             }
         );
 
@@ -444,6 +444,74 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
             }
         );
     }
+
+
+
+    // See GRHydro paper and Beckwith, Stone (2011)
+    else if (CCTK_EQUALS(initial_hydro, "magnetic loop advection")) {
+        grid.loop_all_device<1, 1, 1>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                rho(p.I)   = 1.;
+                press(p.I) = 3.;
+
+                // TODO: compute eps using EOS driver
+                // for now, using ideal gas EOS
+                eps(p.I) = press(p.I)/(rho(p.I)*(gamma - 1));
+
+                velx(p.I) = 0.5;
+                vely(p.I) = 1./24.;
+
+		if (CCTK_EQUALS(mag_loop_adv_type, "2D")) {
+                    if (CCTK_EQUALS(mag_loop_adv_axial_vel, "zero"))
+                        velz(p.I) = 0.;
+                    else if (CCTK_EQUALS(mag_loop_adv_axial_vel, "non-zero"))
+                        velz(p.I) = 1./24.;
+                    else {
+                        CCTK_VERROR("Invalid loop advection case");
+                    }
+                }
+
+                // TODO: implement this (see GRHydro paper and code)
+		else if (CCTK_EQUALS(mag_loop_adv_type, "3D")) {
+                    CCTK_VERROR("Sorry, 3D loop advection hasn't been implemented yet");
+                }
+
+                else {
+                    CCTK_VERROR("Invalid loop advection type");
+                }
+            });
+
+
+        grid.loop_all_device<1, 0, 0>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_x(p.I) = 0.;
+            }
+        );
+
+
+        grid.loop_all_device<0, 1, 0>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                Avec_y(p.I) = 0.;
+            }
+        );
+
+
+        grid.loop_all_device<0, 0, 1>(
+            grid.nghostzones,
+            [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                const CCTK_REAL r_cyl  = sqrt(pow2(p.x) + pow2(p.y));
+                const CCTK_REAL R_loop = 0.3;
+                const CCTK_REAL A_loop = 0.001;
+
+                if (r_cyl < R_loop)  Avec_z(p.I) = A_loop*(R_loop - r_cyl); 
+                else                 Avec_z(p.I) = 0.;
+            }
+        );
+    }
+
 
 
     else {
