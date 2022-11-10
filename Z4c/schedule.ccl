@@ -126,10 +126,17 @@ SCHEDULE Z4c_Initial2 IN Z4c_InitialGroup AFTER Z4c_Initial1
 
 
 
-SCHEDULE Z4c_Sync IN Z4c_PostStepGroup
+SCHEDULE Z4c_Enforce IN Z4c_PostStepGroup
 {
   LANG: C
-  OPTIONS: global
+  READS: chi(interior)
+  READS: gamma_tilde(interior)
+  READS: A_tilde(interior)
+  READS: alphaG(interior)
+  WRITES: chi(interior)
+  WRITES: gamma_tilde(interior)
+  WRITES: A_tilde(interior)
+  WRITES: alphaG(interior)
   SYNC: chi
   SYNC: gamma_tilde
   SYNC: K_hat
@@ -138,19 +145,6 @@ SCHEDULE Z4c_Sync IN Z4c_PostStepGroup
   SYNC: Theta
   SYNC: alphaG
   SYNC: betaG
-} "Synchronize Z4c variables"
-
-SCHEDULE Z4c_Enforce IN Z4c_PostStepGroup AFTER Z4c_Sync
-{
-  LANG: C
-  READS: chi(everywhere)
-  READS: gamma_tilde(everywhere)
-  READS: A_tilde(everywhere)
-  READS: alphaG(everywhere)
-  WRITES: chi(everywhere)
-  WRITES: gamma_tilde(everywhere)
-  WRITES: A_tilde(everywhere)
-  WRITES: alphaG(everywhere)
 } "Enforce algebraic Z4c constraints"
 
 if (calc_ADM_vars) {
