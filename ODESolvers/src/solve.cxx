@@ -44,7 +44,9 @@ struct is_ref_wrapper<std::reference_wrapper<T> > : std::true_type {};
 template <class T>
 using not_ref_wrapper = std::negation<is_ref_wrapper<std::decay_t<T> > >;
 
-template <class D, class...> struct return_type_helper { using type = D; };
+template <class D, class...> struct return_type_helper {
+  using type = D;
+};
 template <class... Types>
 struct return_type_helper<void, Types...> : std::common_type<Types...> {
   static_assert(std::conjunction_v<not_ref_wrapper<Types>...>,
@@ -589,6 +591,9 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
     assert(last == rhs_groups.end());
   }
 
+  // Add RHS variables to dependent variables
+  dep_groups.insert(dep_groups.end(), rhs_groups.begin(), rhs_groups.end());
+
   {
     std::sort(dep_groups.begin(), dep_groups.end());
     const auto last = std::unique(dep_groups.begin(), dep_groups.end());
@@ -598,12 +603,9 @@ extern "C" void ODESolvers_Solve(CCTK_ARGUMENTS) {
   for (const int gi : var_groups)
     assert(std::find(dep_groups.begin(), dep_groups.end(), gi) ==
            dep_groups.end());
-  for (const int gi : rhs_groups) {
+  for (const int gi : rhs_groups)
     assert(std::find(var_groups.begin(), var_groups.end(), gi) ==
            var_groups.end());
-    assert(std::find(dep_groups.begin(), dep_groups.end(), gi) ==
-           dep_groups.end());
-  }
 
   statecomp_t::init_tmp_mfabs();
 
