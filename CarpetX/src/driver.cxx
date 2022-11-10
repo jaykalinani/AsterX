@@ -102,8 +102,8 @@ std::ostream &operator<<(std::ostream &os, const boundary_t boundary) {
     return os << "dirichlet";
   case boundary_t::linear_extrapolation:
     return os << "linear_extrapolation";
-  case boundary_t::von_neumann:
-    return os << "von_neumann";
+  case boundary_t::neumann:
+    return os << "neumann";
   default:
     assert(0);
   }
@@ -185,22 +185,22 @@ array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
           bool(CCTK_EQUALS(boundary_upper_z, "linear extrapolation")),
       }},
   }};
-  const array<array<bool, 3>, 2> is_von_neumann{{
+  const array<array<bool, 3>, 2> is_neumann{{
       {{
-          bool(CCTK_EQUALS(boundary_x, "von neumann")),
-          bool(CCTK_EQUALS(boundary_y, "von neumann")),
-          bool(CCTK_EQUALS(boundary_z, "von neumann")),
+          bool(CCTK_EQUALS(boundary_x, "neumann")),
+          bool(CCTK_EQUALS(boundary_y, "neumann")),
+          bool(CCTK_EQUALS(boundary_z, "neumann")),
       }},
       {{
-          bool(CCTK_EQUALS(boundary_upper_x, "von neumann")),
-          bool(CCTK_EQUALS(boundary_upper_y, "von neumann")),
-          bool(CCTK_EQUALS(boundary_upper_z, "von neumann")),
+          bool(CCTK_EQUALS(boundary_upper_x, "neumann")),
+          bool(CCTK_EQUALS(boundary_upper_y, "neumann")),
+          bool(CCTK_EQUALS(boundary_upper_z, "neumann")),
       }},
   }};
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
       assert(is_symmetry[f][d] + is_dirichlet[f][d] +
-                 is_linear_extrapolation[f][d] + is_von_neumann[f][d] <=
+                 is_linear_extrapolation[f][d] + is_neumann[f][d] <=
              1);
 
   array<array<boundary_t, dim>, 2> boundaries;
@@ -210,8 +210,8 @@ array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
                          : is_dirichlet[f][d] ? boundary_t::dirichlet
                          : is_linear_extrapolation[f][d]
                              ? boundary_t::linear_extrapolation
-                         : is_von_neumann[f][d] ? boundary_t::von_neumann
-                                                : boundary_t::none;
+                         : is_neumann[f][d] ? boundary_t::neumann
+                                            : boundary_t::none;
 
   const auto override_group_boundary = [&](const char *const var_set_string,
                                            const int dir, const int face,
@@ -257,15 +257,12 @@ array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
                           boundary_t::linear_extrapolation);
   override_group_boundary(linear_extrapolation_upper_z_vars, 2, 1,
                           boundary_t::linear_extrapolation);
-  override_group_boundary(von_neumann_x_vars, 0, 0, boundary_t::von_neumann);
-  override_group_boundary(von_neumann_y_vars, 1, 0, boundary_t::von_neumann);
-  override_group_boundary(von_neumann_z_vars, 2, 0, boundary_t::von_neumann);
-  override_group_boundary(von_neumann_upper_x_vars, 0, 1,
-                          boundary_t::von_neumann);
-  override_group_boundary(von_neumann_upper_y_vars, 1, 1,
-                          boundary_t::von_neumann);
-  override_group_boundary(von_neumann_upper_z_vars, 2, 1,
-                          boundary_t::von_neumann);
+  override_group_boundary(neumann_x_vars, 0, 0, boundary_t::neumann);
+  override_group_boundary(neumann_y_vars, 1, 0, boundary_t::neumann);
+  override_group_boundary(neumann_z_vars, 2, 0, boundary_t::neumann);
+  override_group_boundary(neumann_upper_x_vars, 0, 1, boundary_t::neumann);
+  override_group_boundary(neumann_upper_y_vars, 1, 1, boundary_t::neumann);
+  override_group_boundary(neumann_upper_z_vars, 2, 1, boundary_t::neumann);
 
   return boundaries;
 }
@@ -1338,18 +1335,18 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
           // This is the generic case for applyting boundary
           // conditions.
 
-          Arith::vect<int, dim> von_neumann_source;
+          Arith::vect<int, dim> neumann_source;
           for (int d = 0; d < dim; ++d) {
-            if (boundaries[d] == boundary_t::von_neumann) {
+            if (boundaries[d] == boundary_t::neumann) {
               if (inormal[d] != 0) {
-                von_neumann_source[d] = inormal[d] < 0 ? imin[d] : imax[d] - 1;
+                neumann_source[d] = inormal[d] < 0 ? imin[d] : imax[d] - 1;
                 if (inormal[d] < 0)
-                  assert(von_neumann_source[d] < amax[d]);
+                  assert(neumann_source[d] < amax[d]);
                 else
-                  assert(von_neumann_source[d] >= amin[d]);
+                  assert(neumann_source[d] >= amin[d]);
               }
             } else {
-              von_neumann_source[d] = 666666666; // go for a segfault
+              neumann_source[d] = 666666666; // go for a segfault
             }
           }
 
@@ -1406,8 +1403,8 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
                       Arith::vect<int, dim> src, delta;
                       bool parity = false;
                       for (int d = 0; d < dim; ++d) {
-                        if (boundaries[d] == boundary_t::von_neumann) {
-                          src[d] = von_neumann_source[d];
+                        if (boundaries[d] == boundary_t::neumann) {
+                          src[d] = neumann_source[d];
                           delta[d] = 0;
                         } else if (boundaries[d] ==
                                    boundary_t::linear_extrapolation) {

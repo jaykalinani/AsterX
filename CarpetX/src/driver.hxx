@@ -54,7 +54,7 @@ enum class boundary_t {
   symmetry_boundary,
   dirichlet,
   linear_extrapolation,
-  von_neumann,
+  neumann,
 };
 std::ostream &operator<<(std::ostream &os, const boundary_t boundary);
 

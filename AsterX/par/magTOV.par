@@ -40,12 +40,12 @@ CarpetX::ncells_x = $ncells
 CarpetX::ncells_y = $ncells
 CarpetX::ncells_z = $ncells
 
-CarpetX::boundary_x =  "von neumann"
-CarpetX::boundary_y =  "von neumann"
-CarpetX::boundary_z =  "von neumann"
-CarpetX::boundary_upper_x =  "von neumann"
-CarpetX::boundary_upper_y =  "von neumann"
-CarpetX::boundary_upper_z =  "von neumann"
+CarpetX::boundary_x =  "neumann"
+CarpetX::boundary_y =  "neumann"
+CarpetX::boundary_z =  "neumann"
+CarpetX::boundary_upper_x =  "neumann"
+CarpetX::boundary_upper_y =  "neumann"
+CarpetX::boundary_upper_z =  "neumann"
 
 CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 100000

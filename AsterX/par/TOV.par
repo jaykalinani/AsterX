@@ -43,12 +43,12 @@ CarpetX::ncells_z = $ncells
 #CarpetX::reflection_y  = yes
 #CarpetX::reflection_z  = yes
 
-CarpetX::boundary_x = "von neumann"
-CarpetX::boundary_y = "von neumann"
-CarpetX::boundary_z = "von neumann"
-CarpetX::boundary_upper_x = "von neumann"
-CarpetX::boundary_upper_y = "von neumann"
-CarpetX::boundary_upper_z = "von neumann"
+CarpetX::boundary_x = "neumann"
+CarpetX::boundary_y = "neumann"
+CarpetX::boundary_z = "neumann"
+CarpetX::boundary_upper_x = "neumann"
+CarpetX::boundary_upper_y = "nneumann"
+CarpetX::boundary_upper_z = "neumann"
 
 CarpetX::blocking_factor_x = 1
 CarpetX::blocking_factor_y = 1
