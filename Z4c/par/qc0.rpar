@@ -98,6 +98,13 @@ CarpetX::periodic_z = no
 # CarpetX::reflection_upper_y = yes
 # CarpetX::reflection_upper_z = yes
 
+CarpetX::boundary_x = "dirichlet"
+CarpetX::boundary_y = "dirichlet"
+CarpetX::boundary_z = "dirichlet"
+CarpetX::boundary_upper_x = "dirichlet"
+CarpetX::boundary_upper_y = "dirichlet"
+CarpetX::boundary_upper_z = "dirichlet"
+
 CarpetX::ghost_size = 3
 
 CarpetX::max_num_levels = $nlevels
