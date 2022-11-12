@@ -5,7 +5,6 @@
 #include <simd.hxx>
 #include <vec.hxx>
 
-#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 
