@@ -110,7 +110,7 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
           return chi * (K(a, b) - trK / 3 * g(a, b));
         });
 
-        const vreal alphaG = alp;
+        const vreal alphaG = alp - 1;
 
         const vec<vreal, 3> betaG([&](int a) ARITH_INLINE { return beta(a); });
 

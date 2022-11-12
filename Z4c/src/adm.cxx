@@ -103,7 +103,7 @@ extern "C" void Z4c_ADM(CCTK_ARGUMENTS) {
             gf_chi1(mask, index1, 1),
             gf_gammat1(mask, index1, one<smat<int, 3> >()()),
             gf_Kh1(mask, index1), gf_At1(mask, index1), gf_Gamt1(mask, index1),
-            gf_Theta1(mask, index1), gf_alphaG1(mask, index1, 1),
+            gf_Theta1(mask, index1), gf_alphaG1(mask, index1),
             gf_betaG1(mask, index1), //
             Arith::nan<vreal>()(), Arith::nan<vec<vreal, 3> >()(),
             Arith::nan<smat<vreal, 3> >()());

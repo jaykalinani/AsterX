@@ -55,7 +55,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 
         // Load
         const vreal chi_old = gf_chi(mask, index1, 1);
-        const vreal alphaG_old = gf_alphaG(mask, index1, 1);
+        const vreal alphaG_old = gf_alphaG(mask, index1);
 
         const smat<vreal, 3> gammat_old =
             gf_gammat(mask, index1, one<smat<int, 3> >()());
@@ -64,7 +64,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
         // Enforce floors
 
         const vreal chi = fmax(vreal(chi_floor), chi_old);
-        const vreal alphaG = fmax(vreal(alphaG_floor), alphaG_old);
+        const vreal alphaG = fmax(vreal(alphaG_floor - 1), alphaG_old);
 
         // Enforce algebraic constraints
         // See arXiv:1212.2901 [gr-qc].
