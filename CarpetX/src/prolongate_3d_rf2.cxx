@@ -1,7 +1,6 @@
 #include "prolongate_3d_rf2.hxx"
 #include "timer.hxx"
 
-#include <fixmath.hxx>
 #include <cctk.h>
 #include <cctk_Parameters.h>
 
