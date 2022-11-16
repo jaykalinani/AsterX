@@ -21,6 +21,7 @@ RUN apt-get update && \
         hdf5-tools \
         libboost-all-dev \
         libfftw3-dev \
+        libgit2-dev \
         libgsl-dev \
         libhdf5-dev \
         libhwloc-dev \
@@ -48,7 +49,7 @@ RUN pip install jinja2==3.0.3 && \
     pip install bokeh==2.0.1 && \
     pip install matplotlib && \
     pip install requests && \
-    pip install pygit2
+    pip install pygit2==1.6.0
 
 # Install cmake
 # We need a modern cmake to build AMReX
