@@ -49,7 +49,7 @@ RUN pip install jinja2==3.0.3 && \
     pip install bokeh==2.0.1 && \
     pip install matplotlib && \
     pip install requests && \
-    pip install pygit2==1.6.0
+    pip install pygit2==1.0.3
 
 # Install cmake
 # We need a modern cmake to build AMReX
