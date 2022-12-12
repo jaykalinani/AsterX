@@ -132,7 +132,7 @@ namespace AsterX
   https://en.wikipedia.org/wiki/Brent%27s_method
   ****************************************************************************/
   template <typename F, typename typeEoS>
-  std::pair<CCTK_REAL, CCTK_REAL> brent(F f, int min_bits, int max_iters,
+  CCTK_HOST CCTK_DEVICE std::pair<CCTK_REAL, CCTK_REAL> brent(F f, int min_bits, int max_iters,
                                         int &iters, typeEoS &plasma)
   {
     using std::abs, std::min, std::max, std::swap;
