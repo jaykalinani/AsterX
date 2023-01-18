@@ -3,7 +3,7 @@
 
 #include <cctk.h>
 
-/* Scheduled functions */
+// Scheduled functions
 extern "C" int CarpetX_InterpGridArrays(
     cGH const *const cGH, int const N_dims, int const local_interp_handle,
     int const param_table_handle, int const coord_system_handle,
@@ -21,4 +21,5 @@ extern "C" CCTK_INT CarpetX_DriverInterpolate(
     CCTK_INT const input_array_variable_indices[],
     CCTK_INT const N_output_arrays, CCTK_INT const output_array_type_codes[],
     CCTK_POINTER const output_arrays[]);
-#endif /* !defined(INTERP_HXX) */
+
+#endif // #ifndef INTERP_HXX
