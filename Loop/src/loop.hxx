@@ -186,7 +186,8 @@ public:
         for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
           for (int i = imin[0]; i < imax[0]; i += VS) {
-            f(point_desc<CI, CJ, CK>(izero, izero, imin[0], imax[0], i, j, k));
+            const std::array<int, dim> I = {i, j, k};
+            f(point_desc<CI, CJ, CK>(izero, I, imin[0], imax[0], i, j, k));
           }
         }
       }
@@ -198,7 +199,6 @@ public:
         for (int j = imin[1]; j < imax[1]; ++j) {
 #pragma omp simd
           for (int i = imin[0]; i < imax[0]; i += VS) {
-
             const std::array<int, dim> I = {i, j, k};
             std::array<int, dim> I0;
             for (int d = 0; d < dim; ++d) {
