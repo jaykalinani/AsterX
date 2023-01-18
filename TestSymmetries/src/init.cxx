@@ -55,7 +55,7 @@ void map_centering_parity(const cGH *restrict const cctkGH,
             for (int d = 0; d < Loop::dim; ++d) {
               CCTK_REAL val;
               if (periodic[d]) {
-                val = cos(pi * (x[d] + 0.125));
+                val = cos(pi * (x[d] + CCTK_REAL(1) / 8));
               } else {
                 if (parity[d] > 0) {
                   // even parity (scalar): f(x) = f(-x)
@@ -90,7 +90,8 @@ void map_centering_parity(const cGH *restrict const cctkGH,
     for (int k = -3; k <= 3; ++k) {
       for (int j = -3; j <= 3; ++j) {
         for (int i = -3; i <= 3; ++i) {
-          const std::array<CCTK_REAL, 3> x{0.5 * i, 0.5 * j, 0.5 * k};
+          const std::array<CCTK_REAL, 3> x{
+              CCTK_REAL(0.5) * i, CCTK_REAL(0.5) * j, CCTK_REAL(0.5) * k};
           std::array<CCTK_REAL, 3> x0 = x;
           CCTK_REAL f = makevalue(x);
           // map f back into the domain
@@ -136,7 +137,8 @@ void map_centering_parity(const cGH *restrict const cctkGH,
       for (int j = -5; j <= 5; ++j) {
         for (int i = -5; i <= 5; ++i) {
           if (abs(i) >= 3 && abs(j) >= 3 && abs(k) >= 3) {
-            const std::array<CCTK_REAL, 3> x{0.25 * i, 0.25 * j, 0.25 * k};
+            const std::array<CCTK_REAL, 3> x{
+                CCTK_REAL(0.25) * i, CCTK_REAL(0.25) * j, CCTK_REAL(0.25) * k};
             const CCTK_REAL f = makevalue(x);
             const bool want_zero =
                 (parity[0] < 0 && reflection_lower[0] && i == -4) ||
