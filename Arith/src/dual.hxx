@@ -299,6 +299,24 @@ constexpr dual<simd<T>, U> if_else(const simdl<T> &cond,
            x.eps, y.eps));
 }
 
+template <typename T, typename U>
+constexpr dual<simd<T>, U> if_else(const simdl<T> &cond, const simd<T> &x,
+                                   const dual<simd<T>, U> &y) {
+  return dual<simd<T>, U>(
+      if_else(cond, x, y.val),
+      fmap([&](const auto &x, const auto &y) { return if_else(cond, x, y); },
+           zero<U>()(), y.eps));
+}
+
+template <typename T, typename U>
+constexpr dual<simd<T>, U>
+if_else(const simdl<T> &cond, const dual<simd<T>, U> &x, const simd<T> &y) {
+  return dual<simd<T>, U>(
+      if_else(cond, x.val, y),
+      fmap([&](const auto &x, const auto &y) { return if_else(cond, x, y); },
+           x.eps, zero<U>()()));
+}
+
 } // namespace Arith
 
 #endif // #ifndef DUAL_HXX
