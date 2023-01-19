@@ -263,7 +263,7 @@ struct GHExt {
 
         // Apply outer (physical) boundary conditions to a MultiFab
         void apply_boundary_conditions(amrex::MultiFab &mfab) const;
-        // Apply outer (physical) boundary conditions to a FArrayBox
+        // Apply outer (physical) boundary conditions to an FArrayBox
         void apply_boundary_conditions(int block, const amrex::Box &box,
                                        amrex::FArrayBox &dest) const;
 
