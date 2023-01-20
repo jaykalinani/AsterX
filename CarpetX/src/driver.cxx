@@ -104,6 +104,8 @@ std::ostream &operator<<(std::ostream &os, const boundary_t boundary) {
     return os << "linear_extrapolation";
   case boundary_t::neumann:
     return os << "neumann";
+  case boundary_t::robin:
+    return os << "robin";
   default:
     assert(0);
   }
@@ -197,10 +199,23 @@ array<array<boundary_t, dim>, 2> get_default_boundaries() {
           bool(CCTK_EQUALS(boundary_upper_z, "neumann")),
       }},
   }};
+  const array<array<bool, 3>, 2> is_robin{{
+      {{
+          bool(CCTK_EQUALS(boundary_x, "robin")),
+          bool(CCTK_EQUALS(boundary_y, "robin")),
+          bool(CCTK_EQUALS(boundary_z, "robin")),
+      }},
+      {{
+          bool(CCTK_EQUALS(boundary_upper_x, "robin")),
+          bool(CCTK_EQUALS(boundary_upper_y, "robin")),
+          bool(CCTK_EQUALS(boundary_upper_z, "robin")),
+      }},
+  }};
   for (int f = 0; f < 2; ++f)
     for (int d = 0; d < dim; ++d)
       assert(is_symmetry[f][d] + is_dirichlet[f][d] +
-                 is_linear_extrapolation[f][d] + is_neumann[f][d] <=
+                 is_linear_extrapolation[f][d] + is_neumann[f][d] +
+                 is_robin[f][d] <=
              1);
 
   array<array<boundary_t, dim>, 2> boundaries;
@@ -211,6 +226,7 @@ array<array<boundary_t, dim>, 2> get_default_boundaries() {
                          : is_linear_extrapolation[f][d]
                              ? boundary_t::linear_extrapolation
                          : is_neumann[f][d] ? boundary_t::neumann
+                         : is_robin[f][d]   ? boundary_t::robin
                                             : boundary_t::none;
 
   return boundaries;
@@ -278,6 +294,12 @@ array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
   override_group_boundary(neumann_upper_x_vars, 0, 1, boundary_t::neumann);
   override_group_boundary(neumann_upper_y_vars, 1, 1, boundary_t::neumann);
   override_group_boundary(neumann_upper_z_vars, 2, 1, boundary_t::neumann);
+  override_group_boundary(robin_x_vars, 0, 0, boundary_t::robin);
+  override_group_boundary(robin_y_vars, 1, 0, boundary_t::robin);
+  override_group_boundary(robin_z_vars, 2, 0, boundary_t::robin);
+  override_group_boundary(robin_upper_x_vars, 0, 1, boundary_t::robin);
+  override_group_boundary(robin_upper_y_vars, 1, 1, boundary_t::robin);
+  override_group_boundary(robin_upper_z_vars, 2, 1, boundary_t::robin);
 
   return boundaries;
 }
@@ -471,6 +493,27 @@ vector<CCTK_REAL> get_group_dirichlet_values(const int gi) {
                                           "dirichlet_values");
   assert(iret == nelems);
   return dirichlet_values;
+}
+
+vector<CCTK_REAL> get_group_robin_values(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+  assert(gi >= 0);
+  const int tags = CCTK_GroupTagsTableI(gi);
+  assert(tags >= 0);
+  const int nelems = Util_TableGetRealArray(tags, 0, nullptr, "robin_values");
+  if (nelems == UTIL_ERROR_TABLE_NO_SUCH_KEY) {
+    // unset (will use zero)
+    return {};
+  } else if (nelems >= 0) {
+    // do nothing
+  } else {
+    assert(0);
+  }
+  vector<CCTK_REAL> robin_values(nelems);
+  const int iret =
+      Util_TableGetRealArray(tags, nelems, robin_values.data(), "robin_values");
+  assert(iret == nelems);
+  return robin_values;
 }
 
 amrex::Interpolater *get_interpolator(const array<int, dim> indextype) {
@@ -974,6 +1017,9 @@ GHExt::PatchData::LevelData::GroupData::GroupData(
   dirichlet_values = get_group_dirichlet_values(gi);
   if (dirichlet_values.empty())
     dirichlet_values.resize(numvars, 0);
+  robin_values = get_group_robin_values(gi);
+  if (robin_values.empty())
+    robin_values.resize(numvars, 0);
 
   amrex::BCRec bcrec;
   for (int d = 0; d < dim; ++d) {
@@ -1219,6 +1265,17 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
   const Arith::vect<int, dim> imax{geom.Domain().bigEnd(0) + 1 + !indextype[0],
                                    geom.Domain().bigEnd(1) + 1 + !indextype[1],
                                    geom.Domain().bigEnd(2) + 1 + !indextype[2]};
+  Arith::vect<CCTK_REAL, dim> xmin{geom.ProbLo(0), geom.ProbLo(1),
+                                   geom.ProbLo(2)};
+  Arith::vect<CCTK_REAL, dim> xmax{geom.ProbHi(0), geom.ProbHi(1),
+                                   geom.ProbHi(2)};
+  const Arith::vect<CCTK_REAL, dim> dx{geom.CellSize(0), geom.CellSize(1),
+                                       geom.CellSize(2)};
+  // Vertices are shifted outwards by 1/2 grid spacing
+  for (int d = 0; d < dim; ++d) {
+    xmin[d] += CCTK_REAL(0.5) * indextype[d] - 1;
+    xmax[d] -= CCTK_REAL(0.5) * indextype[d] - 1;
+  }
 
   // Region to fill
   const Arith::vect<int, dim> amin{box.smallEnd(0), box.smallEnd(1),
@@ -1240,14 +1297,13 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
   const GF3D2layout layout(dmin, dmax);
   CCTK_REAL *restrict const destptr = dest.dataPtr();
 
-  // For interpatch boundaries
-
-  // Loop over all faces, edges, and corners
+  // Loop over all faces,  edges, and corners
   for (int nk = -1; nk <= +1; ++nk) {
     for (int nj = -1; nj <= +1; ++nj) {
       for (int ni = -1; ni <= +1; ++ni) {
         const Arith::vect<int, dim> inormal{ni, nj, nk};
-        // Ignore the interior
+
+        // Skip the interior
         if (all(inormal == 0))
           continue;
 
@@ -1276,8 +1332,8 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
         if (npoints_is_zero)
           continue;
 
-        // Find which symmetry or boundary conditions apply to us. On
-        // edges or in corners, multiple conditions will apply.
+        // Find which symmetry or boundary conditions apply to us. On edges or
+        // in corners, multiple conditions will apply.
         Arith::vect<symmetry_t, dim> symmetries;
         Arith::vect<boundary_t, dim> boundaries;
         for (int d = 0; d < dim; ++d) {
@@ -1364,8 +1420,7 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
           }
 
         } else {
-          // This is the generic case for applyting boundary
-          // conditions.
+          // This is the generic case for applying boundary conditions.
 
           Arith::vect<int, dim> neumann_source;
           for (int d = 0; d < dim; ++d) {
@@ -1379,6 +1434,21 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
               }
             } else {
               neumann_source[d] = 666666666; // go for a segfault
+            }
+          }
+
+          Arith::vect<int, dim> robin_source;
+          for (int d = 0; d < dim; ++d) {
+            if (boundaries[d] == boundary_t::robin) {
+              if (inormal[d] != 0) {
+                robin_source[d] = inormal[d] < 0 ? imin[d] : imax[d] - 1;
+                if (inormal[d] < 0)
+                  assert(robin_source[d] < amax[d]);
+                else
+                  assert(robin_source[d] >= amin[d]);
+              }
+            } else {
+              robin_source[d] = 666666666; // go for a segfault
             }
           }
 
@@ -1420,6 +1490,7 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
           }
 
           for (int comp = 0; comp < ncomps; ++comp) {
+            const CCTK_REAL robin_value = robin_values.at(comp);
 
             Arith::vect<bool, dim> reflection_parity;
             for (int d = 0; d < dim; ++d)
@@ -1432,36 +1503,81 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
             loop_region(
                 [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
                     CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                      Arith::vect<int, dim> src, delta;
+                      // `src` is the point at which we are looking to determine
+                      // the boundary value
+                      Arith::vect<int, dim> src = dst;
+                      // `delta` (if nonzero) describes a second point at which
+                      // we are looking, so that we can calculate a gradient for
+                      // the boundary value
+                      Arith::vect<int, dim> delta{0, 0, 0};
                       bool parity = false;
                       for (int d = 0; d < dim; ++d) {
                         if (boundaries[d] == boundary_t::neumann) {
+                          // Same value:
+                          //   f(0) = f(h)
+                          // f(0) is the boundary point
                           src[d] = neumann_source[d];
-                          delta[d] = 0;
+                        } else if (boundaries[d] == boundary_t::robin) {
+                          // Robin condition, specialized to 1/r fall-off:
+                          //   f(r) = finf + C/r
+                          // Determine fall-off constant `C`:
+                          //   C = r * (f(r) - finf)
+                          // Solve for value at boundary:
+                          //   f(r+h) = finf + C / (r + h)
+                          //          = finf + r / (r + h) * (f(r) - finf)
+                          // Rewrite using Cartesian coordinates:
+                          //   C = |x| * (f(x) - finf)
+                          //   f(x') = finf + C / |x'|
+                          //         = finf + |x| / |x'| * (f(x) - finf)
+                          // f(x') is the boundary point
+                          src[d] = robin_source[d];
                         } else if (boundaries[d] ==
                                    boundary_t::linear_extrapolation) {
+                          // Same slope:
+                          //   f'(0)       = f'(h)
+                          //   f(h) - f(0) = f(2h) - f(h)
+                          //          f(0) = 2 f(h) - f(2h)
+                          // f(0) is the boundary point
                           src[d] = linear_extrapolation_source[d];
                           delta[d] = -inormal[d];
                         } else if (symmetries[d] == symmetry_t::reflection) {
                           src[d] = reflection_offset[d] - dst[d];
-                          delta[d] = 0;
                           parity ^= reflection_parity[d];
-                        } else if ((symmetries[d] == symmetry_t::none &&
-                                    boundaries[d] == boundary_t::none) ||
-                                   (symmetries[d] == symmetry_t::periodic &&
-                                    boundaries[d] ==
-                                        boundary_t::symmetry_boundary)) {
-                          src[d] = dst[d];
-                          delta[d] = 0;
+                        } else if (symmetries[d] == symmetry_t::none &&
+                                   boundaries[d] == boundary_t::none) {
+                          // this direction is not a boundary; do nothing
+                        } else if (symmetries[d] == symmetry_t::periodic &&
+                                   boundaries[d] ==
+                                       boundary_t::symmetry_boundary) {
+                          // this direction is periodic and is handled by
+                          // AMReX; do nothing
                         } else {
+                          // std::cerr << " dst=" << dst << " d=" << d
+                          //           << " boundaries=" << boundaries
+                          //           << " symmetries=" << symmetries <<
+                          //           "\n";
                           assert(0);
                         }
                       }
 #ifdef CCTK_DEBUG
                       for (int d = 0; d < dim; ++d)
                         assert(src[d] >= dmin[d] && src[d] < dmax[d]);
+                      assert(!all(src == dst));
 #endif
                       CCTK_REAL val = var(src);
+                      for (int d = 0; d < dim; ++d) {
+                        if (boundaries[d] == boundary_t::robin) {
+                          using std::sqrt;
+                          // boundary point
+                          const auto xb = xmin + dst * dx;
+                          const auto rb = sqrt(sum(pow2(xb)));
+                          // interior point
+                          const auto xi = xmin + src * dx;
+                          const auto ri = sqrt(sum(pow2(xi)));
+                          const auto q = ri / rb;
+                          val = robin_value + q * (val - robin_value);
+                        }
+                      }
                       if (any(delta != 0)) {
                         // Calculate gradient
                         const CCTK_REAL grad = val - var(src + delta);

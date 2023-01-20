@@ -55,6 +55,7 @@ enum class boundary_t {
   dirichlet,
   linear_extrapolation,
   neumann,
+  robin,
 };
 std::ostream &operator<<(std::ostream &os, const boundary_t boundary);
 
@@ -259,6 +260,7 @@ struct GHExt {
         array<array<boundary_t, dim>, 2> boundaries;
         vector<array<int, dim> > parities;
         vector<CCTK_REAL> dirichlet_values;
+        vector<CCTK_REAL> robin_values;
         amrex::Vector<amrex::BCRec> bcrecs;
 
         // Apply outer (physical) boundary conditions to a MultiFab
