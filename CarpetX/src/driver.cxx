@@ -151,7 +151,7 @@ array<array<symmetry_t, dim>, 2> get_symmetries() {
   return symmetries;
 }
 
-array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
+array<array<boundary_t, dim>, 2> get_default_boundaries() {
   DECLARE_CCTK_PARAMETERS;
 
   const array<array<symmetry_t, dim>, 2> symmetries = get_symmetries();
@@ -212,6 +212,21 @@ array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
                              ? boundary_t::linear_extrapolation
                          : is_neumann[f][d] ? boundary_t::neumann
                                             : boundary_t::none;
+
+  return boundaries;
+}
+
+array<array<boundary_t, dim>, 2> get_group_boundaries(const int gi) {
+  DECLARE_CCTK_PARAMETERS;
+
+  const array<array<symmetry_t, dim>, 2> symmetries = get_symmetries();
+  array<array<bool, 3>, 2> is_symmetry;
+  for (int f = 0; f < 2; ++f)
+    for (int d = 0; d < dim; ++d)
+      is_symmetry[f][d] = symmetries[f][d] != symmetry_t::none &&
+                          symmetries[f][d] != symmetry_t::outer_boundary;
+
+  array<array<boundary_t, dim>, 2> boundaries = get_default_boundaries();
 
   const auto override_group_boundary = [&](const char *const var_set_string,
                                            const int dir, const int face,
@@ -761,10 +776,22 @@ GHExt::PatchData::PatchData(const int patch) : patch(patch) {
   } else {
     symmetries = get_symmetries();
   }
-  CCTK_VINFO("PatchData: symmetries=[[%d,%d,%d],[%d,%d,%d]]",
-             int(symmetries[0][0]), int(symmetries[0][1]),
-             int(symmetries[0][2]), int(symmetries[1][0]),
-             int(symmetries[1][1]), int(symmetries[1][2]));
+
+  {
+    const std::array faces{"lower", "upper"};
+    const std::array dirs{"x", "y", "z"};
+    const auto boundaries = get_default_boundaries();
+    std::ostringstream buf;
+    buf << "\nSymmetries:";
+    for (int f = 0; f < 2; ++f)
+      for (int d = 0; d < dim; ++d)
+        buf << "\n  " << faces[f] << " " << dirs[d] << ": " << symmetries[f][d];
+    buf << "\nDefault boundaries:";
+    for (int f = 0; f < 2; ++f)
+      for (int d = 0; d < dim; ++d)
+        buf << "\n  " << faces[f] << " " << dirs[d] << ": " << boundaries[f][d];
+    CCTK_INFO(buf.str().c_str());
+  }
   const amrex::Array<int, dim> is_periodic{
       symmetries[0][0] == symmetry_t::periodic,
       symmetries[0][1] == symmetry_t::periodic,
