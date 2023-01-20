@@ -1,5 +1,6 @@
 #include "driver.hxx"
 #include "interp.hxx"
+#include "mpi_types.hxx"
 #include "reduction.hxx"
 #include "schedule.hxx"
 
