@@ -288,7 +288,7 @@ void check_valid(const GHExt::PatchData::LevelData &leveldata,
       std::sort(infos.begin(), infos.end(),
                 [](const info_t &a, const info_t &b) {
                   const std::less<vect<int, dim> > lt;
-                  return lt(a.I, b.I);
+                  return lt(reversed(a.I), reversed(b.I));
                 });
 
       std::ostringstream buf;
