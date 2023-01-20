@@ -512,10 +512,20 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T dot(const vec<T, D> &vl,
   return sum<D>([&](int x) ARITH_INLINE { return vl(x) * v(x); });
 }
 
+// template <typename T, int D, symm_t symm>
+// constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D>
+// normalized(const gmat<T, D, symm> &g, const vec<T, D> &v) {
+//   const auto v_len2 = dot(lower(g, v), v);
+//   return v / sqrt(v_len2);
+// }
+
 template <typename T, int D, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, D>
-normalized(const gmat<T, D, symm> &g, const vec<T, D> &v) {
-  return v / sqrt(dot(lower(g, v), v));
+normalized(const gmat<T, D, symm> &g, const vec<T, D> &v, const vec<T, D> &v0) {
+  const T z = zero<T>();
+  const auto vlen2 = dot(lower(g, v), v);
+  const auto vnew = if_else(vlen2 != z, v / sqrt(vlen2), v0);
+  return vnew;
 }
 
 template <typename T, int D, symm_t symm>
@@ -561,10 +571,10 @@ template <typename T, symm_t symm>
 constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, 4>
 calc_ephi(const vec<T, 4> &x, const gmat<T, 4, symm> &g) {
   const T z = zero<T>();
+  const T o = one<T>();
+  const vec<T, 4> ephi_z_axis{z, -o, z, z};
   vec<T, 4> ephi{z, -x(2), x(1), z};
-  const auto ephil = lower(g, ephi);
-  const auto ephi_len2 = dot(ephil, ephi);
-  ephi /= sqrt(ephi_len2);
+  ephi = normalized(g, ephi, ephi_z_axis);
   return ephi;
 }
 
@@ -573,13 +583,13 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, 4>
 calc_etheta(const vec<T, 4> &x, const gmat<T, 4, symm> &g,
             const vec<T, 4> &ephi) {
   const T z = zero<T>();
+  const T o = one<T>();
+  const vec<T, 4> etheta_z_axis{z, x(3), z, o};
   const T rho2 = pow2(x(1)) + pow2(x(2));
   vec<T, 4> etheta{z, x(1) * x(3), x(2) * x(3), -rho2};
-  const auto ethetal = lower(g, etheta);
-  const auto etheta_len2 = dot(ethetal, etheta);
-  etheta /= sqrt(etheta_len2); // to improve accuracy
+  etheta = normalized(g, etheta, etheta_z_axis); // to improve accuracy
   etheta = rejected(g, etheta, ephi);
-  etheta = normalized(g, etheta);
+  etheta = normalized(g, etheta, etheta_z_axis);
   return etheta;
 }
 
@@ -588,13 +598,12 @@ constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vec<T, 4>
 calc_er(const vec<T, 4> &x, const gmat<T, 4, symm> &g, const vec<T, 4> &etheta,
         const vec<T, 4> &ephi) {
   const T z = zero<T>();
+  const T o = one<T>();
+  const vec<T, 4> er_origin{z, o, z, z};
   vec<T, 4> er{z, x(1), x(2), x(3)};
-  const auto erl = lower(g, er);
-  const auto er_len2 = dot(erl, er);
-  er /= sqrt(er_len2); // to improve accuracy
+  er = normalized(g, er, er_origin); // to improve accuracy
   er = rejected(g, er, etheta);
   er = rejected(g, er, ephi);
-  er = normalized(g, er);
   return er;
 }
 
