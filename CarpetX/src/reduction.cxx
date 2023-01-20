@@ -1,4 +1,5 @@
 #include "driver.hxx"
+#include "mpi_types.hxx"
 #include "reduction.hxx"
 #include "schedule.hxx"
 
@@ -15,11 +16,6 @@
 
 namespace CarpetX {
 using namespace std;
-
-const MPI_Datatype mpi_datatype<float>::value = MPI_FLOAT;
-const MPI_Datatype mpi_datatype<double>::value = MPI_DOUBLE;
-const MPI_Datatype mpi_datatype<long double>::value = MPI_LONG_DOUBLE;
-
 template <typename T, int D> MPI_Datatype reduction_mpi_datatype() {
   static MPI_Datatype datatype = MPI_DATATYPE_NULL;
   if (datatype == MPI_DATATYPE_NULL) {

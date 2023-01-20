@@ -2,6 +2,7 @@
 
 #include "driver.hxx"
 #include "io_meta.hxx"
+#include "mpi_types.hxx"
 #include "timer.hxx"
 
 #include <tuple.hxx>
@@ -42,6 +43,39 @@ using namespace std;
 namespace {
 
 constexpr bool io_verbose = true;
+
+// // Compile-time if-then-else expression
+// template <bool cond, typename T, typename F>
+// constexpr std::enable_if_t<cond, T> ifelse(T &&t, F &&f) {
+//   return std::forward<T>(t);
+// }
+// template <bool cond, typename T, typename F>
+// constexpr std::enable_if_t<!cond, F> ifelse(T &&t, F &&f) {
+//   return std::forward<F>(f);
+// }
+
+template <typename T> struct db_datatype;
+template <> struct db_datatype<char> {
+  static constexpr int value = DB_CHAR;
+};
+template <> struct db_datatype<short> {
+  static constexpr int value = DB_SHORT;
+};
+template <> struct db_datatype<int> {
+  static constexpr int value = DB_INT;
+};
+template <> struct db_datatype<long> {
+  static constexpr int value = DB_LONG;
+};
+template <> struct db_datatype<long long> {
+  static constexpr int value = DB_LONG_LONG;
+};
+template <> struct db_datatype<float> {
+  static constexpr int value = DB_FLOAT;
+};
+template <> struct db_datatype<double> {
+  static constexpr int value = DB_DOUBLE;
+};
 
 struct mesh_props_t {
   amrex::IntVect ngrow;
@@ -322,7 +356,6 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
 
   int nlevels;
   if (read_metafile) {
-
     // Read number of levels
     const string varname = dirname + "/" + DB::legalize_name("nlevels");
     const int vartype = DBGetVarType(metafile.get(), varname.c_str());
@@ -332,8 +365,8 @@ void InputSiloGridStructure(cGH *restrict const cctkGH,
     ierr = DBReadVar(metafile.get(), varname.c_str(), &nlevels);
     assert(!ierr);
   }
-  CCTK_VINFO("Found %d levels", nlevels);
   MPI_Bcast(&nlevels, 1, MPI_INT, metafile_ioproc, mpi_comm);
+  CCTK_VINFO("Found %d levels", nlevels);
   patchdata.amrcore->SetFinestLevel(nlevels - 1);
 
   // Read FabArrayBase (component positions and shapes)
@@ -523,17 +556,18 @@ void InputSilo(const cGH *restrict const cctkGH,
           static Timer timer_mpi("InputSilo.mpi");
           auto interval_mpi = make_unique<Interval>(timer_mpi);
           const int mpi_tag = 22901; // randomly chosen
-          vector<double> buffer;
+          vector<CCTK_REAL> buffer;
           MPI_Request mpi_req;
-          double *data = nullptr;
+          CCTK_REAL *data = nullptr;
           if (recv_this_fab && read_this_fab) {
             amrex::FArrayBox &fab = mfab[component];
             data = fab.dataPtr();
           } else if (recv_this_fab) {
             amrex::FArrayBox &fab = mfab[component];
             assert(numvars * zonecount <= INT_MAX);
-            MPI_Irecv(fab.dataPtr(), numvars * zonecount, MPI_DOUBLE, ioproc,
-                      mpi_tag, mpi_comm, &mpi_req);
+            MPI_Irecv(fab.dataPtr(), numvars * zonecount,
+                      mpi_datatype<CCTK_REAL>::value, ioproc, mpi_tag, mpi_comm,
+                      &mpi_req);
           } else {
             buffer.resize(numvars * zonecount);
             assert(numvars * zonecount <= INT_MAX);
@@ -588,7 +622,7 @@ void InputSilo(const cGH *restrict const cctkGH,
               assert(ndims <= 3);
               for (int d = 0; d < ndims; ++d)
                 assert(quadvar->dims[d] == dims[d]);
-              assert(quadvar->datatype == DB_DOUBLE);
+              assert(quadvar->datatype == db_datatype<CCTK_REAL>::value);
               assert(quadvar->centering == centering);
               assert(quadvar->nvals == 1);
 
@@ -599,7 +633,7 @@ void InputSilo(const cGH *restrict const cctkGH,
               const void *const read_ptr = quadvar->vals[0];
 
               void *const data_ptr = data + vi * zonecount;
-              memcpy(data_ptr, read_ptr, zonecount * sizeof(double));
+              memcpy(data_ptr, read_ptr, zonecount * sizeof(CCTK_REAL));
             } // for vi
           }   // if read_file
 
@@ -613,8 +647,8 @@ void InputSilo(const cGH *restrict const cctkGH,
           } else {
             buffer.resize(numvars * zonecount);
             assert(numvars * zonecount <= INT_MAX);
-            MPI_Send(buffer.data(), numvars * zonecount, MPI_DOUBLE, proc,
-                     mpi_tag, mpi_comm);
+            MPI_Send(buffer.data(), numvars * zonecount,
+                     mpi_datatype<CCTK_REAL>::value, proc, mpi_tag, mpi_comm);
           }
           if (recv_this_fab)
             for (int vi = 0; vi < numvars; ++vi)
@@ -803,9 +837,9 @@ void OutputSilo(const cGH *restrict const cctkGH,
 
             const amrex::Geometry &geom =
                 patchdata.amrcore->Geom(leveldata.level);
-            const double *const x0 = geom.ProbLo();
-            const double *const dx = geom.CellSize();
-            array<vector<double>, ndims> coords;
+            const amrex::Real *const x0 = geom.ProbLo();
+            const amrex::Real *const dx = geom.CellSize();
+            array<vector<CCTK_REAL>, ndims> coords;
             for (int d = 0; d < ndims; ++d) {
               coords[d].resize(dims_vc[d]);
               for (int i = 0; i < dims_vc[d]; ++i)
@@ -856,7 +890,8 @@ void OutputSilo(const cGH *restrict const cctkGH,
 
             ierr = DBPutQuadmesh(file.get(), meshname.c_str(), nullptr,
                                  coord_ptrs.data(), dims_vc.data(), ndims,
-                                 DB_DOUBLE, DB_COLLINEAR, optlist.get());
+                                 db_datatype<CCTK_REAL>::value, DB_COLLINEAR,
+                                 optlist.get());
             assert(!ierr);
           } // if write mesh
 
@@ -864,21 +899,22 @@ void OutputSilo(const cGH *restrict const cctkGH,
           static Timer timer_mpi("OutputSilo.mpi");
           auto interval_mpi = make_unique<Interval>(timer_mpi);
           const int mpi_tag = 22900; // randomly chosen
-          vector<double> buffer;
-          const double *data = nullptr;
+          vector<CCTK_REAL> buffer;
+          const CCTK_REAL *data = nullptr;
           if (send_this_fab && write_this_fab) {
             const amrex::FArrayBox &fab = mfab[component];
             data = fab.dataPtr();
           } else if (send_this_fab) {
             const amrex::FArrayBox &fab = mfab[component];
             assert(numvars * zonecount <= INT_MAX);
-            MPI_Send(fab.dataPtr(), numvars * zonecount, MPI_DOUBLE, ioproc,
-                     mpi_tag, mpi_comm);
+            MPI_Send(fab.dataPtr(), numvars * zonecount,
+                     mpi_datatype<CCTK_REAL>::value, ioproc, mpi_tag, mpi_comm);
           } else {
             buffer.resize(numvars * zonecount);
             assert(numvars * zonecount <= INT_MAX);
-            MPI_Recv(buffer.data(), numvars * zonecount, MPI_DOUBLE, proc,
-                     mpi_tag, mpi_comm, MPI_STATUS_IGNORE);
+            MPI_Recv(buffer.data(), numvars * zonecount,
+                     mpi_datatype<CCTK_REAL>::value, proc, mpi_tag, mpi_comm,
+                     MPI_STATUS_IGNORE);
             data = buffer.data();
           }
           interval_mpi = nullptr;
@@ -949,11 +985,10 @@ void OutputSilo(const cGH *restrict const cctkGH,
 
               const void *const data_ptr = data + vi * zonecount;
 
-              ierr =
-                  DBPutQuadvar1(file.get(), varname.c_str(), meshname.c_str(),
-                                data_ptr, dims.data(), ndims, nullptr, 0,
-                                DB_DOUBLE, centering, optlist.get());
-              assert(!ierr);
+              ierr = DBPutQuadvar1(
+                  file.get(), varname.c_str(), meshname.c_str(), data_ptr,
+                  dims.data(), ndims, nullptr, 0, db_datatype<CCTK_REAL>::value,
+                  centering, optlist.get());
             } // for vi
           }   // if write_file
 
@@ -1283,7 +1318,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
         }
 
         typedef array<array<int, ndims>, 2> iextent_t;
-        typedef array<array<double, ndims>, 2> extent_t;
+        typedef array<array<CCTK_REAL, ndims>, 2> extent_t;
         vector<iextent_t> iextents;
         vector<extent_t> extents;
         iextents.reserve(ncomps_total);
@@ -1294,8 +1329,8 @@ void OutputSilo(const cGH *restrict const cctkGH,
           const amrex::MultiFab &mfab = *groupdata.mfab[tl];
           const amrex::Geometry &geom =
               patchdata.amrcore->Geom(leveldata.level);
-          const double *const x0 = geom.ProbLo();
-          const double *const dx = geom.CellSize();
+          const amrex::Real *const x0 = geom.ProbLo();
+          const amrex::Real *const dx = geom.CellSize();
           const int nfabs = mfab.size();
           for (int c = 0; c < nfabs; ++c) {
             const amrex::Box &fabbox = mfab.fabbox(c); // exterior
@@ -1337,7 +1372,7 @@ void OutputSilo(const cGH *restrict const cctkGH,
             regionname_ptrs.push_back(name.c_str());
 
           array<array<vector<int>, 2>, ndims> idata;
-          array<array<vector<double>, 2>, ndims> data;
+          array<array<vector<CCTK_REAL>, 2>, ndims> data;
           for (int d = 0; d < ndims; ++d) {
             for (int f = 0; f < 2; ++f) {
               idata[d][f].reserve(ncomps_total);
@@ -1367,10 +1402,10 @@ void OutputSilo(const cGH *restrict const cctkGH,
                              nullptr);
           assert(!ierr);
 
-          ierr = DBPutMrgvar(metafile.get(), extentsname.c_str(), "mrgTree",
-                             2 * ndims, compname_ptrs.data(), ncomps_total,
-                             regionname_ptrs.data(), DB_DOUBLE,
-                             data_ptrs.data(), nullptr);
+          ierr = DBPutMrgvar(
+              metafile.get(), extentsname.c_str(), "mrgTree", 2 * ndims,
+              compname_ptrs.data(), ncomps_total, regionname_ptrs.data(),
+              db_datatype<CCTK_REAL>::value, data_ptrs.data(), nullptr);
           assert(!ierr);
 
           // Write rank
@@ -1424,30 +1459,26 @@ void OutputSilo(const cGH *restrict const cctkGH,
         assert(!ierr);
 
         int extents_size = 2 * ndims;
-        // typedef array<array<double, ndims>, 2> extent_t;
-        // vector<extent_t> extents;
-        // extents.reserve(meshnames.size());
-        // for (const auto &leveldata : ghext->leveldata) {
-        //   const auto &groupdata = *leveldata.groupdata.at(gi);
-        //   const int tl = 0;
-        //   const amrex::MultiFab &mfab = *groupdata.mfab[tl];
-        //   const amrex::Geometry &geom =
-        //   ghext->amrcore->Geom(leveldata.level); const double *const x0 =
-        //   geom.ProbLo(); const double *const dx = geom.CellSize(); const int
-        //   nfabs = mfab.size(); for (int c = 0; c < nfabs; ++c) {
-        //     const amrex::Box &fabbox = mfab.fabbox(c); // exterior
-        //     extent_t extent;
-        //     for (int d = 0; d < ndims; ++d) {
-        //       extent[0][d] = x0[d] + fabbox.smallEnd(d) * dx[d];
-        //       extent[1][d] = x0[d] + fabbox.bigEnd(d) * dx[d];
-        //     }
-        //     extents.push_back(extent);
-        //   }
-        // }
+        // This needs to have type `double`, even if everything else is `float`
+        typedef array<array<double, ndims>, 2> dextent_t;
+#ifdef CCTK_REAL_PRECISION_8
+        vector<dextent_t> &dextents = extents;
+#else
+        vector<dextent_t> dextents;
+        dextents.resize(extents.size());
+        for (size_t n = 0; n < dextents.size(); ++n) {
+          const auto &ext = extents[n];
+          dextent_t dext;
+          for (int f = 0; f < 2; ++f)
+            for (int d = 0; d < ndims; ++d)
+              dext[f][d] = ext[f][d];
+          dextents[n] = dext;
+        }
+#endif
         ierr = DBAddOption(optlist.get(), DBOPT_EXTENTS_SIZE, &extents_size);
         assert(!ierr);
         assert(extents.size() == meshname_ptrs.size());
-        ierr = DBAddOption(optlist.get(), DBOPT_EXTENTS, extents.data());
+        ierr = DBAddOption(optlist.get(), DBOPT_EXTENTS, dextents.data());
         assert(!ierr);
 
         vector<int> zonecounts;

@@ -14,6 +14,7 @@ SRCS =						\
 	io_tsv.cxx				\
 	linsolve.cxx				\
 	logo.cxx				\
+	mpi_types.cxx				\
 	prolongate_3d_rf2.cxx			\
 	reduction.cxx				\
 	regrid_error.cxx			\

@@ -1,6 +1,7 @@
 #include "io_tsv.hxx"
 
 #include "driver.hxx"
+#include "mpi_types.hxx"
 #include "timer.hxx"
 
 #include <cctk_Arguments.h>
@@ -267,8 +268,9 @@ void WriteTSVGFs(const cGH *restrict cctkGH, const string &filename, int gi,
   vector<CCTK_REAL> all_data;
   if (myproc == ioproc)
     all_data.resize(total_npoints);
-  MPI_Gatherv(data.data(), npoints, MPI_DOUBLE, all_data.data(),
-              all_npoints.data(), all_offsets.data(), MPI_DOUBLE, ioproc, comm);
+  MPI_Gatherv(data.data(), npoints, mpi_datatype<CCTK_REAL>::value,
+              all_data.data(), all_npoints.data(), all_offsets.data(),
+              mpi_datatype<CCTK_REAL>::value, ioproc, comm);
 
   if (myproc == ioproc) {
 

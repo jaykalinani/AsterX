@@ -14,20 +14,6 @@ namespace CarpetX {
 using namespace std;
 using namespace Arith;
 
-template <typename T> struct mpi_datatype;
-template <> struct mpi_datatype<float> {
-  // static constexpr MPI_Datatype value = MPI_FLOAT;
-  static const MPI_Datatype value;
-};
-template <> struct mpi_datatype<double> {
-  // static constexpr MPI_Datatype value = MPI_DOUBLE;
-  static const MPI_Datatype value;
-};
-template <> struct mpi_datatype<long double> {
-  // static constexpr MPI_Datatype value = MPI_LONG_DOUBLE;
-  static const MPI_Datatype value;
-};
-
 template <typename T> constexpr T pow21(T x) noexcept { return x * x; }
 
 template <typename T> constexpr T fmax1(T x, T y) noexcept {
