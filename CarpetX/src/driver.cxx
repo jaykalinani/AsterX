@@ -1872,8 +1872,6 @@ void CactusAmrCore::MakeNewLevelFromCoarse(
     amrex::Interpolater *const interpolator =
         get_interpolator(groupdata.indextype);
 
-    const amrex::IntVect reffact{2, 2, 2};
-
     const int ntls = groupdata.mfab.size();
     // We only prolongate the state vector. And if there is more than
     // one time level, then we don't prolongate the oldest.
@@ -2028,8 +2026,6 @@ void CactusAmrCore::RemakeLevel(const int level, const amrex::Real time,
     assert(coarsegroupdata.numvars == groupdata.numvars);
     amrex::Interpolater *const interpolator =
         get_interpolator(groupdata.indextype);
-
-    const amrex::IntVect reffact{2, 2, 2};
 
     const auto outer_valid =
         patchdata.all_faces_have_symmetries() ? make_valid_outer() : valid_t();
