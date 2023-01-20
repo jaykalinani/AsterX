@@ -1266,8 +1266,10 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
           }
         }
 
-        if (all(symmetries == symmetry_t::none &&
-                boundaries == boundary_t::none)) {
+        if (all((symmetries == symmetry_t::none &&
+                 boundaries == boundary_t::none) ||
+                (symmetries == symmetry_t::periodic &&
+                 boundaries == boundary_t::symmetry_boundary))) {
           // If there are no boundary conditions to apply, then do
           // nothing.
 
