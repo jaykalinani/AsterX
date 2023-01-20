@@ -153,12 +153,12 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
-  const smat<GF3D2<CCTK_REAL>, 4> gf_g41{
-      GF3D2<CCTK_REAL>(layout1, g4tt), GF3D2<CCTK_REAL>(layout1, g4tx),
-      GF3D2<CCTK_REAL>(layout1, g4ty), GF3D2<CCTK_REAL>(layout1, g4tz),
-      GF3D2<CCTK_REAL>(layout1, g4xx), GF3D2<CCTK_REAL>(layout1, g4xy),
-      GF3D2<CCTK_REAL>(layout1, g4xz), GF3D2<CCTK_REAL>(layout1, g4yy),
-      GF3D2<CCTK_REAL>(layout1, g4yz), GF3D2<CCTK_REAL>(layout1, g4zz)};
+  // const smat<GF3D2<CCTK_REAL>, 4> gf_g41{
+  //     GF3D2<CCTK_REAL>(layout1, g4tt), GF3D2<CCTK_REAL>(layout1, g4tx),
+  //     GF3D2<CCTK_REAL>(layout1, g4ty), GF3D2<CCTK_REAL>(layout1, g4tz),
+  //     GF3D2<CCTK_REAL>(layout1, g4xx), GF3D2<CCTK_REAL>(layout1, g4xy),
+  //     GF3D2<CCTK_REAL>(layout1, g4xz), GF3D2<CCTK_REAL>(layout1, g4yy),
+  //     GF3D2<CCTK_REAL>(layout1, g4yz), GF3D2<CCTK_REAL>(layout1, g4zz)};
 
   // const GF3D2<CCTK_REAL> gf_Gamma4ttt1(layout1, Gamma4ttt);
   // const GF3D2<CCTK_REAL> gf_Gamma4ttx1(layout1, Gamma4ttx);
@@ -276,15 +276,15 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
   // const vec<GF3D2<CCTK_REAL>, 4> gf_l1{
   //     GF3D2<CCTK_REAL>(layout1, lt), GF3D2<CCTK_REAL>(layout1, lx),
   //     GF3D2<CCTK_REAL>(layout1, ly), GF3D2<CCTK_REAL>(layout1, lz)};
-
+  // 
   // const vec<GF3D2<CCTK_REAL>, 4> gf_n1{
   //     GF3D2<CCTK_REAL>(layout1, nt), GF3D2<CCTK_REAL>(layout1, nx),
   //     GF3D2<CCTK_REAL>(layout1, ny), GF3D2<CCTK_REAL>(layout1, nz)};
-
+  // 
   // const vec<GF3D2<CCTK_REAL>, 4> gf_mre1{
   //     GF3D2<CCTK_REAL>(layout1, mret), GF3D2<CCTK_REAL>(layout1, mrex),
   //     GF3D2<CCTK_REAL>(layout1, mrey), GF3D2<CCTK_REAL>(layout1, mrez)};
-
+  // 
   // const vec<GF3D2<CCTK_REAL>, 4> gf_mim1{
   //     GF3D2<CCTK_REAL>(layout1, mimt), GF3D2<CCTK_REAL>(layout1, mimx),
   //     GF3D2<CCTK_REAL>(layout1, mimy), GF3D2<CCTK_REAL>(layout1, mimz)};
@@ -344,12 +344,12 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
   //
 
-  const smat<GF3D5<CCTK_REAL>, 4> gf_g45(std::array<GF3D5<CCTK_REAL>, 10>{
-      GF3D5<CCTK_REAL>(layout5, g4tt), GF3D5<CCTK_REAL>(layout5, g4tx),
-      GF3D5<CCTK_REAL>(layout5, g4ty), GF3D5<CCTK_REAL>(layout5, g4tz),
-      GF3D5<CCTK_REAL>(layout5, g4xx), GF3D5<CCTK_REAL>(layout5, g4xy),
-      GF3D5<CCTK_REAL>(layout5, g4xz), GF3D5<CCTK_REAL>(layout5, g4yy),
-      GF3D5<CCTK_REAL>(layout5, g4yz), GF3D5<CCTK_REAL>(layout5, g4zz)});
+  // const smat<GF3D5<CCTK_REAL>, 4> gf_g45(std::array<GF3D5<CCTK_REAL>, 10>{
+  //     GF3D5<CCTK_REAL>(layout5, g4tt), GF3D5<CCTK_REAL>(layout5, g4tx),
+  //     GF3D5<CCTK_REAL>(layout5, g4ty), GF3D5<CCTK_REAL>(layout5, g4tz),
+  //     GF3D5<CCTK_REAL>(layout5, g4xx), GF3D5<CCTK_REAL>(layout5, g4xy),
+  //     GF3D5<CCTK_REAL>(layout5, g4xz), GF3D5<CCTK_REAL>(layout5, g4yy),
+  //     GF3D5<CCTK_REAL>(layout5, g4yz), GF3D5<CCTK_REAL>(layout5, g4zz)});
 
   const GF3D5<CCTK_REAL> gf_Psi0re5(layout5, Psi0re);
   const GF3D5<CCTK_REAL> gf_Psi0im5(layout5, Psi0im);
@@ -403,7 +403,8 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
               gf_ddbeta0(mask, index0));
 
           // Store
-          gf_g45.store(mask, index5, vars.g);
+
+          // gf_g45.store(mask, index5, vars.g);
 
           // gf_Gamma4ttt1(p.I) = vars.Gamma(0)(0, 0);
           // gf_Gamma4ttx1(p.I) = vars.Gamma(0)(0, 1);
@@ -697,16 +698,16 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
 
         // gf_c4yzyz1(p.I) = vars.C(2, 3)(2, 3);
 
-        // vars.l.store(gf_lt1, gf_lx1, gf_ly1, gf_lz1, p.I);
-        // vars.n.store(gf_nt1, gf_nx1, gf_ny1, gf_nz1, p.I);
-        // gf_mret1(p.I) = real(vars.m(0));
-        // gf_mrex1(p.I) = real(vars.m(1));
-        // gf_mrey1(p.I) = real(vars.m(2));
-        // gf_mrez1(p.I) = real(vars.m(3));
-        // gf_mimt1(p.I) = imag(vars.m(0));
-        // gf_mimx1(p.I) = imag(vars.m(1));
-        // gf_mimy1(p.I) = imag(vars.m(2));
-        // gf_mimz1(p.I) = imag(vars.m(3));
+        vars.l.store(gf_lt1, gf_lx1, gf_ly1, gf_lz1, p.I);
+        vars.n.store(gf_nt1, gf_nx1, gf_ny1, gf_nz1, p.I);
+        gf_mret1(p.I) = real(vars.m(0));
+        gf_mrex1(p.I) = real(vars.m(1));
+        gf_mrey1(p.I) = real(vars.m(2));
+        gf_mrez1(p.I) = real(vars.m(3));
+        gf_mimt1(p.I) = imag(vars.m(0));
+        gf_mimx1(p.I) = imag(vars.m(1));
+        gf_mimy1(p.I) = imag(vars.m(2));
+        gf_mimz1(p.I) = imag(vars.m(3));
 
         // gf_Lambda1(p.I) = vars.Lambda;
         // gf_Phi00(p.I) = vars.Phi00;
@@ -826,8 +827,9 @@ extern "C" void Weyl_Weyl(CCTK_ARGUMENTS) {
             }));
 
         // Store
-        vars.g.store(gf_g4tt1, gf_g4tx1, gf_g4ty1, gf_g4tz1, gf_g4xx1, gf_g4xy1,
-                     gf_g4xz1, gf_g4yy1, gf_g4yz1, gf_g4zz1, p.I);
+
+        // vars.g.store(gf_g4tt1, gf_g4tx1, gf_g4ty1, gf_g4tz1, gf_g4xx1, gf_g4xy1,
+        //              gf_g4xz1, gf_g4yy1, gf_g4yz1, gf_g4zz1, p.I);
 
         // gf_Gamma4ttt1(p.I) = vars.Gamma(0)(0, 0);
         // gf_Gamma4ttx1(p.I) = vars.Gamma(0)(0, 1);

@@ -1,6 +1,6 @@
 # Schedule definitions for thorn Weyl
 
-STORAGE: metric4
+## STORAGE: metric4
 ## STORAGE: Gamma4
 ## STORAGE: riemann4
 ## STORAGE: ricci4
@@ -36,7 +36,7 @@ SCHEDULE Weyl_Weyl AT analysis
   READS: ADMBase::dtcurv(everywhere)
   READS: ADMBase::dt2lapse(everywhere)
   READS: ADMBase::dt2shift(everywhere)
-  WRITES: metric4(interior)   # We could write this everywhere
+  ## WRITES: metric4(interior)   # We could write this everywhere
   ## WRITES: Gamma4(interior)
   ## WRITES: riemann4(interior)
   ## WRITES: ricci4(interior)
@@ -49,6 +49,6 @@ SCHEDULE Weyl_Weyl AT analysis
   ## WRITES: ricci_scalars(interior)
   WRITES: weyl_scalars(interior)
   ## WRITES: spin_coefficients(interior)
-  SYNC: metric4
-  SYNC: weyl_scalars
+  ## SYNC: metric4
+  ## SYNC: weyl_scalars
 } "Calculate Weyl tensor"

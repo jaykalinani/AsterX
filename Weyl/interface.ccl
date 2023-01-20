@@ -25,10 +25,10 @@ REQUIRES FUNCTION GetCallFunctionCount
 
 # TODO: Declare these variables without ghost zones?
 
-CCTK_REAL metric4 TYPE=gf TAGS='parities={+1 +1 +1   -1 +1 +1   +1 -1 +1   +1 +1 -1   +1 +1 +1   -1 -1 +1   -1 +1 -1   +1 +1 +1   +1 -1 -1   +1 +1 +1} checkpoint="no"'
-{
-  g4tt g4tx g4ty g4tz g4xx g4xy g4xz g4yy g4yz g4zz
-} "4-metric g_ab"
+## CCTK_REAL metric4 TYPE=gf TAGS='parities={+1 +1 +1   -1 +1 +1   +1 -1 +1   +1 +1 -1   +1 +1 +1   -1 -1 +1   -1 +1 -1   +1 +1 +1   +1 -1 -1   +1 +1 +1} checkpoint="no"'
+## {
+##   g4tt g4tx g4ty g4tz g4xx g4xy g4xz g4yy g4yz g4zz
+## } "4-metric g_ab"
 
 ## CCTK_REAL Gamma4 TYPE=gf TAGS='checkpoint="no"'
 ## {
@@ -74,18 +74,18 @@ CCTK_REAL metric4 TYPE=gf TAGS='parities={+1 +1 +1   -1 +1 +1   +1 -1 +1   +1 +1
 ## {
 ##   lt lx ly lz
 ## } "Tetrad vector l^a"
-
+## 
 ## CCTK_REAL tetrad_n TYPE=gf TAGS='checkpoint="no"'
 ## {
 ##   nt nx ny nz
 ## } "Tetrad vector n^a"
-
+## 
 ## # TODO: Combine these, represent as complex number
 ## CCTK_REAL tetrad_mre TYPE=gf TAGS='checkpoint="no"'
 ## {
 ##   mret mrex mrey mrez
 ## } "Tetrad vector real(m^a)"
-
+## 
 ## CCTK_REAL tetrad_mim TYPE=gf TAGS='checkpoint="no"'
 ## {
 ##   mimt mimx mimy mimz
