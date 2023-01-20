@@ -320,6 +320,27 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     }
   }
 
+  // Apply symmetries to coordinates
+  std::vector<bool> symmetry_reflected_z;
+  assert(!reflection_x);
+  assert(!reflection_y);
+  assert(!reflection_upper_x);
+  assert(!reflection_upper_y);
+  assert(!reflection_upper_z);
+  if (reflection_z) {
+    symmetry_reflected_z.resize(npoints);
+    assert(ghext->num_patches() == 1);
+    constexpr int patch = 0;
+    const amrex::Geometry &geom = ghext->patchdata.at(patch).amrcore->Geom(0);
+    const CCTK_REAL *restrict const xmin = geom.ProbLo();
+    for (int n = 0; n < npoints; ++n) {
+      const bool refl = localsz[n] < xmin[2];
+      symmetry_reflected_z[n] = refl;
+      if (refl)
+        localsz[n] = 2 * xmin[2] - localsz[n];
+    }
+  }
+
   // Create particle containers
   using Container = amrex::AmrParticleContainer<0, 2>;
   using ParticleTile = Container::ParticleTileType;
@@ -567,6 +588,7 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
   //   CCTK_VINFO("[%d] recvdispl=%d recvcount=%d", p, recvdispls.at(p),
   //              recvcounts.at(p));
   // CCTK_VINFO("recvcount=%d", recvcount);
+  // If this fails then there might be particles out of bounds
   assert(recvcount == (nvars + 1) * npoints);
   vector<CCTK_REAL> sendbuf(sendcount);
   for (const auto &proc_result : results) {
@@ -599,6 +621,29 @@ extern "C" void CarpetX_Interpolate(const CCTK_POINTER_TO_CONST cctkGH_,
     const int idx = int(recvbuf.at(offset));
     for (int v = 0; v < nvars; ++v)
       resultptrs[v][idx] = recvbuf.at(offset + 1 + v);
+  }
+
+  // Apply symmetries to interpolated values
+  assert(!reflection_x);
+  assert(!reflection_y);
+  assert(!reflection_upper_x);
+  assert(!reflection_upper_y);
+  assert(!reflection_upper_z);
+  if (reflection_z) {
+    // The code below is only valid for Psi4
+    assert(nvars == 2);
+    assert(varinds[0] == CCTK_VarIndex("Weyl::Psi4re"));
+    assert(varinds[1] == CCTK_VarIndex("Weyl::Psi4im"));
+    // l^a = et^a + er^a
+    // n^a = et^a - er^a
+    // m^a = etheta^a + i ephi^a
+    // Psi4 = C_abcd m-bar^b n^b m-bar^c n^d
+    for (int n = 0; n < npoints; ++n) {
+      if (symmetry_reflected_z[n]) {
+        resultptrs[0][n] = -resultptrs[0][n];
+        resultptrs[1][n] = +resultptrs[1][n];
+      }
+    }
   }
 
 #endif
