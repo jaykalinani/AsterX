@@ -284,6 +284,20 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
           };
           tasks.push_back(std::move(task));
 
+        } else if (!read_dst && N >= 1 && factors[0] == 1) {
+          // Write without scaling
+
+          auto task = [=]() {
+#pragma omp simd
+            for (ptrdiff_t i = imin; i < imax; ++i) {
+              CCTK_REAL accum = srcptrs[0][i];
+              for (size_t n = 1; n < N; ++n)
+                accum += factors[n] * srcptrs[n][i];
+              dstptr[i] = accum;
+            }
+          };
+          tasks.push_back(std::move(task));
+
         } else if (!read_dst) {
           // Write
 
@@ -291,6 +305,20 @@ void statecomp_t::lincomb(const statecomp_t &dst, const CCTK_REAL scale,
 #pragma omp simd
             for (ptrdiff_t i = imin; i < imax; ++i) {
               CCTK_REAL accum = 0;
+              for (size_t n = 0; n < N; ++n)
+                accum += factors[n] * srcptrs[n][i];
+              dstptr[i] = accum;
+            }
+          };
+          tasks.push_back(std::move(task));
+
+        } else if (scale == 1) {
+          // Update without scaling
+
+          auto task = [=]() {
+#pragma omp simd
+            for (ptrdiff_t i = imin; i < imax; ++i) {
+              CCTK_REAL accum = dstptr[i];
               for (size_t n = 0; n < N; ++n)
                 accum += factors[n] * srcptrs[n][i];
               dstptr[i] = accum;
