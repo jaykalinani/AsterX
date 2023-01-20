@@ -8,6 +8,20 @@ namespace CarpetX {
 
 using namespace amrex;
 
+// The code in this file is written in a "coroutine style"
+// <https://en.wikipedia.org/wiki/Coroutine>. That is, each function
+// returns another function that describes what to do next. This
+// allows the caller to interleave many function calls, for example to
+// schedule many calls to `MPI_Irecv` and `MPI_Isend` simultaneously.
+//
+// This programming style is obviously quite tedious. C++20 will have
+// special support for this via `co_yield` etc.
+// <https://en.cppreference.com/w/cpp/coroutine>, and the functions in
+// this file will then look like normal functions.
+//
+// Coroutines were popularized in the "Modula" language in the 1980s. Welcome to
+// the future, C++, you're only 40 years behind.
+
 namespace {
 using task0 = void;
 using task1 = std::function<task0()>;
