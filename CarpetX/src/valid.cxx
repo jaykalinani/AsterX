@@ -78,7 +78,11 @@ void warn_if_invalid(const GHExt::GlobalData::ArrayGroupData &groupdata, int vi,
 
 // Poison values to catch uninitialized variables
 
+#if defined CCTK_REAL_PRECISION_4
+constexpr std::uint32_t ipoison = 0xffc00000UL + 0xdead;
+#elif defined CCTK_REAL_PRECISION_8
 constexpr std::uint64_t ipoison = 0xfff8000000000000ULL + 0xdeadbeef;
+#endif
 static_assert(sizeof ipoison == sizeof(CCTK_REAL), "");
 
 // Poison grid functions
