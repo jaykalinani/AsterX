@@ -1249,18 +1249,21 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
         if (npoints_is_zero)
           continue;
 
-        // Find which symmetry or boundary conditions apply to us. (In
-        // edges or corners, multiple conditions might apply.)
+        // Find which symmetry or boundary conditions apply to us. On
+        // edges or in corners, multiple conditions will apply.
         Arith::vect<symmetry_t, dim> symmetries;
         Arith::vect<boundary_t, dim> boundaries;
         for (int d = 0; d < dim; ++d) {
-          symmetries[d] = inormal[d] != 0 ? ghext->patchdata.at(patch)
-                                                .symmetries.at(inormal[d] > 0)
-                                                .at(d)
-                                          : symmetry_t::none;
-          boundaries[d] = inormal[d] != 0
-                              ? this->boundaries.at(inormal[d] > 0).at(d)
-                              : boundary_t::none;
+          if (inormal[d] == 0) {
+            // interior
+            symmetries[d] = symmetry_t::none;
+            boundaries[d] = boundary_t::none;
+          } else {
+            // face
+            const int f = inormal[d] > 0;
+            symmetries[d] = ghext->patchdata.at(patch).symmetries.at(f).at(d);
+            boundaries[d] = this->boundaries.at(f).at(d);
+          }
         }
 
         if (all(symmetries == symmetry_t::none &&
