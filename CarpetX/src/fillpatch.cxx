@@ -63,15 +63,23 @@ task2 FillPatch_ProlongateGhosts(
                            fgeom.periodicity());
 
   if (fpc.ba_crse_patch.empty()) {
+    // There is no coarser level for our boundaries, i.e. there is no
+    // prolongation. Apply the boundary conditions right away.
 
     return [&groupdata, &mfab]() -> task1 {
       // Finish synchronizing
       mfab.FillBoundary_finish();
+
+      // Apply symmetry and boundary conditions
       groupdata.apply_boundary_conditions(mfab);
+
       return do_nothing1;
     };
 
   } else {
+    // Prolongate from the next coarser level. Apply the boundary
+    // conditions after the prolongation is done (because symmetry
+    // boundary conditions might require prolongated points).
 
     // Copy parts of coarse grid into temporary buffer
     MultiFab *const mfab_crse_patch_ptr =
@@ -93,7 +101,6 @@ task2 FillPatch_ProlongateGhosts(
 
       // Finish synchronizing
       mfab.FillBoundary_finish();
-      groupdata.apply_boundary_conditions(mfab);
 
       // Finish copying parts of coarse grid into temporary buffer
       mfab_crse_patch.ParallelCopy_finish();
@@ -115,9 +122,12 @@ task2 FillPatch_ProlongateGhosts(
 
       delete mfab_crse_patch_ptr;
 
-      return [&mfab, mfab_fine_patch_ptr]() {
+      return [&groupdata, &mfab, mfab_fine_patch_ptr]() {
         // Finish copying fine buffer into destination
         mfab.ParallelCopy_finish();
+
+        // Apply symmetry and boundary conditions
+        groupdata.apply_boundary_conditions(mfab);
 
         delete mfab_fine_patch_ptr;
       };
