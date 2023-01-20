@@ -945,17 +945,8 @@ template <typename T> struct simdl {
 
   constexpr ARITH_DEVICE ARITH_HOST bool
   operator[](const std::ptrdiff_t n) const {
-#ifdef CCTK_DEBUG
-    assert(n >= 0 && n < int(storage_size));
-#endif
-    T xarr[storage_size];
-#ifndef SIMD_CPU
     // TOOD: Introduce `to_mask` for simd/simdl
-    storeu(xarr, nsimd::to_mask(elts));
-#else
-    *xarr = elts;
-#endif
-    return xarr[n];
+    return simd<T>(nsimd::to_mask(elts))[n];
   }
 
   template <std::size_t I>
