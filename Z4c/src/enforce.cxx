@@ -49,7 +49,7 @@ extern "C" void Z4c_Enforce(CCTK_ARGUMENTS) {
 #ifdef __CUDACC__
   const nvtxRangeId_t range = nvtxRangeStartA("Z4c_Enforce::enforce");
 #endif
-  grid.loop_all_device<0, 0, 0, vsize>(
+  grid.loop_int_device<0, 0, 0, vsize>(
       grid.nghostzones, [=] ARITH_DEVICE(const PointDesc &p) ARITH_INLINE {
         const vbool mask = mask_for_loop_tail<vbool>(p.i, p.imax);
         const GF3D2index index1(layout1, p.I);
