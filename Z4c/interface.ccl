@@ -21,8 +21,10 @@ REQUIRES FUNCTION GetCallFunctionCount
 
 
 
-CCTK_REAL chi TYPE=gf TAGS='dirichlet_values={1.0} rhs="chi_rhs" dependents="ADMBase::metric"' "chi"
-CCTK_REAL gamma_tilde TYPE=gf TAGS='dirichlet_values={1.0 0.0 0.0   1.0 0.0   1.0} parities={+1 +1 +1   -1 -1 +1   -1 +1 -1   +1 +1 +1   +1 -1 -1   +1 +1 +1} rhs="gamma_tilde_rhs" dependents="ADMBase::metric"' { gammatxx gammatxy gammatxz gammatyy gammatyz gammatzz } "gamma-tilde"
+# All variables have been shifted so that they tend to zero in flat space
+
+CCTK_REAL chi TYPE=gf TAGS='rhs="chi_rhs" dependents="ADMBase::metric"' "chi"
+CCTK_REAL gamma_tilde TYPE=gf TAGS='parities={+1 +1 +1   -1 -1 +1   -1 +1 -1   +1 +1 +1   +1 -1 -1   +1 +1 +1} rhs="gamma_tilde_rhs" dependents="ADMBase::metric"' { gammatxx gammatxy gammatxz gammatyy gammatyz gammatzz } "gamma-tilde"
 CCTK_REAL K_hat TYPE=gf TAGS='rhs="K_hat_rhs" dependents="ADMBase::curv"' { Kh } "K-hat"
 CCTK_REAL A_tilde TYPE=gf TAGS='parities={+1 +1 +1   -1 -1 +1   -1 +1 -1   +1 +1 +1   +1 -1 -1   +1 +1 +1} rhs="A_tilde_rhs" dependents="ADMBase::curv"' { Atxx Atxy Atxz Atyy Atyz Atzz } "A-tilde"
 CCTK_REAL Gam_tilde TYPE=gf TAGS='parities={-1 +1 +1   +1 -1 +1   +1 +1 -1} rhs="Gam_tilde_rhs"' { Gamtx Gamty Gamtz } "Gamma-tilde"

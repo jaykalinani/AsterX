@@ -197,9 +197,9 @@ extern "C" void Z4c_Constraints(CCTK_ARGUMENTS) {
 
         const z4c_vars<vreal> vars(
             set_Theta_zero, kappa1, kappa2, f_mu_L, f_mu_S, eta, //
-            gf_chi0(mask, index0, 1), gf_dchi0(mask, index0),
+            gf_chi0(mask, index0), gf_dchi0(mask, index0),
             gf_ddchi0(mask, index0), //
-            gf_gammat0(mask, index0, 1), gf_dgammat0(mask, index0),
+            gf_gammat0(mask, index0), gf_dgammat0(mask, index0),
             gf_ddgammat0(mask, index0),                        //
             gf_Kh0(mask, index0), gf_dKh0(mask, index0),       //
             gf_At0(mask, index0), gf_dAt0(mask, index0),       //

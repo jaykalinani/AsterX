@@ -26,6 +26,9 @@ template <typename T> struct z4c_vars_noderivs {
   const T f_mu_S;
   const T eta;
 
+  // Constants
+  const smat<T, 3> delta3;
+
   // Tensor densities: TD = (sqrt detg)^W T
   //                   W[sqrt detg] = +1
 
@@ -100,6 +103,8 @@ template <typename T> struct z4c_vars_noderivs {
       : set_Theta_zero(set_Theta_zero), kappa1(kappa1), kappa2(kappa2),
         f_mu_L(f_mu_L), f_mu_S(f_mu_S), eta(eta),
         //
+        delta3(one<smat<T, 3> >()()),
+        //
         chi(chi), gammat(gammat), Kh(Kh), At(At), Gamt(Gamt), Theta(Theta),
         alphaG(alphaG), betaG(betaG),
         //
@@ -125,9 +130,13 @@ template <typename T> struct z4c_vars_noderivs {
         // S_ij = p_i^a p_j^b T_ab
         Sij(eTij),
         // ADM variables
-        g([&](int a, int b) ARITH_INLINE { return 1 / chi * gammat(a, b); }), //
+        g([&](int a, int b) ARITH_INLINE {
+          return 1 / (1 + chi) * (delta3(a, b) + gammat(a, b));
+        }), //
         K([&](int a, int b) ARITH_INLINE {
-          return 1 / chi * (At(a, b) + (Kh + 2 * Theta) / 3 * gammat(a, b));
+          return 1 / (1 + chi) *
+                 (At(a, b) +
+                  (Kh + 2 * Theta) / 3 * (delta3(a, b) + gammat(a, b)));
         }), //
         alpha(1 + alphaG),
         // (11)
@@ -226,6 +235,9 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
   using z4c_vars_noderivs<T>::f_mu_L;
   using z4c_vars_noderivs<T>::f_mu_S;
   using z4c_vars_noderivs<T>::eta;
+
+  // Constants
+  using z4c_vars_noderivs<T>::delta3;
 
   // Z4c variables
   using z4c_vars_noderivs<T>::chi;
@@ -417,14 +429,14 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         dalphaG(dalphaG), ddalphaG(ddalphaG), //
         dbetaG(dbetaG), ddbetaG(ddbetaG),
         // Intermediate variables
-        gammatu(calc_inv(gammat, T(1))),          //
-        dgammatu(calc_dgu(gammatu, dgammat)),     //
-        Gammatl(calc_gammal(dgammat)),            //
-        Gammatlu(calc_gammalu(gammatu, Gammatl)), //
-        Gammat(calc_gamma(gammatu, Gammatl)),     //
+        gammatu(calc_inv(delta3 + gammat, T(1)) - delta3), //
+        dgammatu(calc_dgu(delta3 + gammatu, dgammat)),     //
+        Gammatl(calc_gammal(dgammat)),                     //
+        Gammatlu(calc_gammalu(delta3 + gammatu, Gammatl)), //
+        Gammat(calc_gamma(delta3 + gammatu, Gammatl)),     //
         Gamtd([&](int a) ARITH_INLINE {
           return sum_symm<3>([&](int x, int y) ARITH_INLINE {
-            return gammatu(x, y) * Gammat(a)(x, y);
+            return (delta3(x, y) + gammatu(x, y)) * Gammat(a)(x, y);
           });
         }), //
         DDchi([&](int a, int b) ARITH_INLINE {
@@ -432,12 +444,14 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                  - sum<3>([&](int x) ARITH_INLINE {
                      return Gammat(x)(a, b) * dchi(x);
                    });
-        }),                                                                 //
-        gu([&](int a, int b) ARITH_INLINE { return chi * gammatu(a, b); }), //
+        }), //
+        gu([&](int a, int b) ARITH_INLINE {
+          return (1 + chi) * (delta3(a, b) + gammatu(a, b));
+        }), //
         dg([&](int a, int b) ARITH_INLINE {
           return vec<T, 3>([&](int c) ARITH_INLINE {
-            return -dchi(c) / pow2(chi) * gammat(a, b) //
-                   + 1 / chi * dgammat(a, b)(c);
+            return -dchi(c) / pow2(1 + chi) * (delta3(a, b) + gammat(a, b)) //
+                   + 1 / (1 + chi) * dgammat(a, b)(c);
           });
         }),                            //
         Gammal(calc_gammal(dg)),       //
@@ -455,38 +469,40 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
           //        // oochipsipower = -1
           //        // df = oochipsipower dchi(a) / chi
           //        // ddf == oochipsipower ddchi / chi - (-4) df df
-          //        + 1 / (2 * chi) *
+          //        + 1 / (2 * (1 + chi)) *
           //              (dchi(a) * dalphaG(b)    //
           //               + dchi(b) * dalphaG(a)) //
-          //        + 1 / (4 * chi) * sum<3>([&](int x, int y) ARITH_INLINE {
+          //        + 1 / (4 * (1 + chi)) * sum<3>([&](int x, int y)
+          //        ARITH_INLINE {
           //            return gammat(a, b) * gammatu(x, y) * dchi(x) *
           //            dalphaG(y);
           //          });
         }),
         // (8)
         Rchi([&](int a, int b) ARITH_INLINE {
-          return 1 / (2 * chi) * DDchi(a, b) //
-                 + 1 / (2 * chi) * gammat(a, b) *
+          return 1 / (2 * (1 + chi)) * DDchi(a, b) //
+                 + 1 / (2 * (1 + chi)) * (delta3(a, b) + gammat(a, b)) *
                        sum_symm<3>([&](int x, int y) ARITH_INLINE {
-                         return gammatu(x, y) * DDchi(x, y);
-                       })                                  //
-                 - 1 / (4 * pow2(chi)) * dchi(a) * dchi(b) //
-                 - 3 / (4 * pow2(chi)) * gammat(a, b) *
-                       sum<3>([&](int x) ARITH_INLINE {
-                         return dchi(x) * sum<3>([&](int y) ARITH_INLINE {
-                                  return gammatu(x, y) * dchi(y);
-                                });
-                       });
+                         return (delta3(x, y) + gammatu(x, y)) * DDchi(x, y);
+                       })                                      //
+                 - 1 / (4 * pow2(1 + chi)) * dchi(a) * dchi(b) //
+                 -
+                 3 / (4 * pow2(1 + chi)) * (delta3(a, b) + gammat(a, b)) *
+                     sum<3>([&](int x) ARITH_INLINE {
+                       return dchi(x) * sum<3>([&](int y) ARITH_INLINE {
+                                return (delta3(x, y) + gammatu(x, y)) * dchi(y);
+                              });
+                     });
         }),
         // (9)
         Rt([&](int a, int b) ARITH_INLINE {
           return //
               -1 / T(2) * sum_symm<3>([&](int x, int y) ARITH_INLINE {
-                return gammatu(x, y) * ddgammat(a, b)(x, y);
+                return (delta3(x, y) + gammatu(x, y)) * ddgammat(a, b)(x, y);
               }) //
               + 1 / T(2) * sum<3>([&](int x) ARITH_INLINE {
-                  return (gammat(x, a) * dGamt(x)(b) //
-                          + gammat(x, b) * dGamt(x)(a));
+                  return ((delta3(x, a) + gammat(x, a)) * dGamt(x)(b) //
+                          + (delta3(x, b) + gammat(x, b)) * dGamt(x)(a));
                 }) //
               + 1 / T(2) * sum<3>([&](int x) ARITH_INLINE {
                   return (Gamtd(x) * Gammatl(a)(b, x) //
@@ -511,12 +527,13 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         Rsc(calc_trace(R, gu)),                                              //
         Atu([&](int a, int b) ARITH_INLINE {
           return sum<3>([&](int x) ARITH_INLINE {
-            return gammatu(a, x) * sum<3>([&](int y) ARITH_INLINE {
-                     return gammatu(b, y) * At(x, y);
+            return (delta3(a, x) + gammatu(a, x)) *
+                   sum<3>([&](int y) ARITH_INLINE {
+                     return (delta3(b, y) + gammatu(b, y)) * At(x, y);
                    });
           });
-        }),                                         //
-        dAtu(calc_dAu(gammatu, dgammatu, At, dAt)), //
+        }),                                                  //
+        dAtu(calc_dAu(delta3 + gammatu, dgammatu, At, dAt)), //
         traceSij(calc_trace(Sij, gu)),
         // Constraints
         // (13)
@@ -534,32 +551,34 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                      return Gammat(a)(x, y) * Atu(x, y);
                    }) //
                  - 2 / T(3) * sum<3>([&](int x) ARITH_INLINE {
-                     return gammatu(a, x) * (dKh(x) + 2 * dTheta(x));
+                     return (delta3(a, x) + gammatu(a, x)) *
+                            (dKh(x) + 2 * dTheta(x));
                    }) //
                  - 2 / T(3) * sum<3>([&](int x) ARITH_INLINE {
-                     return Atu(a, x) * dchi(x) / chi;
+                     return Atu(a, x) * dchi(x) / (1 + chi);
                    }) //
                  - 8 * T(M_PI) * sum<3>([&](int x) ARITH_INLINE {
-                     return gammatu(a, x) * Si(x);
+                     return (delta3(a, x) + gammatu(a, x)) * Si(x);
                    });
         }),
         // arXiv:1111.2177, (73)
         allC(sqrt(
-            fmax(T(0), pow2(HC) //
-                           + sum<3>([&](int x) ARITH_INLINE {
-                               return MtC(x) * sum<3>([&](int y) ARITH_INLINE {
-                                        return gammat(x, y) * MtC(y);
-                                      });
-                             })          //
-                           + pow2(Theta) //
-                           + 2 * sum<3>([&](int x) ARITH_INLINE {
-                               return ZtC(x) * sum<3>([&](int y) ARITH_INLINE {
-                                        return gammat(x, y) * ZtC(y);
-                                      });
-                             })))),
+            fmax(T(0),
+                 pow2(HC) //
+                     + sum<3>([&](int x) ARITH_INLINE {
+                         return MtC(x) * sum<3>([&](int y) ARITH_INLINE {
+                                  return (delta3(x, y) + gammat(x, y)) * MtC(y);
+                                });
+                       })          //
+                     + pow2(Theta) //
+                     + 2 * sum<3>([&](int x) ARITH_INLINE {
+                         return ZtC(x) * sum<3>([&](int y) ARITH_INLINE {
+                                  return (delta3(x, y) + gammat(x, y)) * ZtC(y);
+                                });
+                       })))),
         // RHS
         // (1)
-        chi_rhs(2 / T(3) * chi *
+        chi_rhs(2 / T(3) * (1 + chi) *
                 ((1 + alphaG) * (Kh + 2 * Theta)
                  // chi = detg^(-1/3)
                  // chi^(-3) = detg
@@ -574,11 +593,11 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         gammat_rhs([&](int a, int b) ARITH_INLINE {
           return -2 * (1 + alphaG) * At(a, b) //
                  + sum<3>([&](int x) ARITH_INLINE {
-                     return gammat(x, a) * dbetaG(x)(b) //
-                            + gammat(x, b) * dbetaG(x)(a);
+                     return (delta3(x, a) + gammat(x, a)) * dbetaG(x)(b) //
+                            + (delta3(x, b) + gammat(x, b)) * dbetaG(x)(a);
                    }) //
                  - 2 / T(3) * sum<3>([&](int x) ARITH_INLINE {
-                     return gammat(a, b) * dbetaG(x)(x);
+                     return (delta3(a, b) + gammat(a, b)) * dbetaG(x)(x);
                    });
         }),
         // (3)
@@ -593,24 +612,26 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                + (1 + alphaG) * kappa1 * (1 - kappa2) * Theta),
         // (4)
         At_rhs([&](int a, int b) ARITH_INLINE {
-          return chi * ((-DDalphaG(a, b)                               //
-                         + (1 + alphaG) * (R(a, b)                     //
-                                           - 8 * T(M_PI) * Sij(a, b))) //
-                        - 1 / T(3) * g(a, b) *
-                              sum_symm<3>([&](int x, int y) ARITH_INLINE {
-                                return gu(x, y) *
-                                       (-DDalphaG(x, y) //
-                                        + (1 + alphaG) *
-                                              (R(x, y) //
-                                               - 8 * T(M_PI) * Sij(x, y)));
-                              }))                              //
-                 + (1 + alphaG) * ((Kh + 2 * Theta) * At(a, b) //
-                                   - 2 * sum<3>([&](int x) ARITH_INLINE {
-                                       return At(x, a) *
-                                              sum<3>([&](int y) ARITH_INLINE {
-                                                return gammatu(x, y) * At(y, b);
-                                              });
-                                     })) //
+          return (1 + chi) *
+                     ((-DDalphaG(a, b)                               //
+                       + (1 + alphaG) * (R(a, b)                     //
+                                         - 8 * T(M_PI) * Sij(a, b))) //
+                      - 1 / T(3) * g(a, b) *
+                            sum_symm<3>([&](int x, int y) ARITH_INLINE {
+                              return gu(x, y) *
+                                     (-DDalphaG(x, y) //
+                                      + (1 + alphaG) *
+                                            (R(x, y) //
+                                             - 8 * T(M_PI) * Sij(x, y)));
+                            })) //
+                 + (1 + alphaG) *
+                       ((Kh + 2 * Theta) * At(a, b) //
+                        - 2 * sum<3>([&](int x) ARITH_INLINE {
+                            return At(x, a) * sum<3>([&](int y) ARITH_INLINE {
+                                     return (delta3(x, y) + gammatu(x, y)) *
+                                            At(y, b);
+                                   });
+                          })) //
                  + sum<3>([&](int x) ARITH_INLINE {
                      return At(x, a) * dbetaG(x)(b) //
                             + At(x, b) * dbetaG(x)(a);
@@ -629,22 +650,23 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
                     (sum_symm<3>([&](int x, int y) ARITH_INLINE {
                        return Gammat(a)(x, y) * Atu(x, y);
                      }) //
-                     - 3 / T(2) / chi * sum<3>([&](int x) ARITH_INLINE {
+                     - 3 / T(2) / (1 + chi) * sum<3>([&](int x) ARITH_INLINE {
                          return Atu(a, x) * dchi(x);
                        }) //
                      - 1 / T(3) * sum<3>([&](int x) ARITH_INLINE {
-                         return gammatu(a, x) * (2 * dKh(x) + dTheta(x));
+                         return (delta3(a, x) + gammatu(a, x)) *
+                                (2 * dKh(x) + dTheta(x));
                        }) //
                      - 8 * T(M_PI) * sum<3>([&](int x) ARITH_INLINE {
-                         return gammatu(a, x) * Si(x);
+                         return (delta3(a, x) + gammatu(a, x)) * Si(x);
                        })) //
               + sum_symm<3>([&](int x, int y) ARITH_INLINE {
-                  return gammatu(x, y) * ddbetaG(a)(x, y);
+                  return (delta3(x, y) + gammatu(x, y)) * ddbetaG(a)(x, y);
                 }) //
               + 1 / T(3) * sum<3>([&](int x) ARITH_INLINE {
-                  return gammatu(a, x) * sum<3>([&](int y) ARITH_INLINE {
-                           return ddbetaG(y)(x, y);
-                         });
+                  return (delta3(a, x) + gammatu(a, x)) *
+                         sum<3>([&](int y)
+                                    ARITH_INLINE { return ddbetaG(y)(x, y); });
                 }) //
               - sum<3>([&](int x)
                            ARITH_INLINE { return Gamtd(x) * dbetaG(a)(x); }) //
@@ -669,12 +691,14 @@ template <typename T> struct z4c_vars : z4c_vars_noderivs<T> {
         betaG_rhs(dtbeta),
         //
         K_rhs([&](int a, int b) ARITH_INLINE {
-          return -1 / pow2(chi) * chi_rhs *
-                     (At(a, b) + (Kh + 2 * Theta) / 3 * gammat(a, b)) +
-                 1 / chi *
-                     (At_rhs(a, b) +
-                      (Kh_rhs + 2 * Theta_rhs) / 3 * gammat(a, b)) +
-                 1 / chi * (At(a, b) + (Kh + 2 * Theta) / 3 * gammat_rhs(a, b));
+          return -1 / pow2(1 + chi) * chi_rhs *
+                     (At(a, b) +
+                      (Kh + 2 * Theta) / 3 * (delta3(a, b) + gammat(a, b))) +
+                 1 / (1 + chi) *
+                     (At_rhs(a, b) + (Kh_rhs + 2 * Theta_rhs) / 3 *
+                                         (delta3(a, b) + gammat(a, b))) +
+                 1 / (1 + chi) *
+                     (At(a, b) + (Kh + 2 * Theta) / 3 * gammat_rhs(a, b));
         }),
         //
         dtalpha_rhs([&]() ARITH_INLINE {

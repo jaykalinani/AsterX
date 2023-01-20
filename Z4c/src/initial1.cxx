@@ -74,6 +74,8 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
   typedef simdl<CCTK_REAL> vbool;
   constexpr size_t vsize = tuple_size_v<vreal>;
 
+  const auto delta3 = one<smat<vreal, 3> >()();
+
   const Loop::GridDescBaseDevice grid(cctkGH);
 #ifdef __CUDACC__
   const nvtxRangeId_t range = nvtxRangeStartA("Z4c_Initial1::initial1");
@@ -93,10 +95,11 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
         const vreal detg = calc_det(g);
         const smat<vreal, 3> gu = calc_inv(g, detg);
 
-        const vreal chi = 1 / cbrt(detg);
+        const vreal chi = 1 / cbrt(detg) - 1;
 
-        const smat<vreal, 3> gammat([&](int a, int b)
-                                        ARITH_INLINE { return chi * g(a, b); });
+        const smat<vreal, 3> gammat([&](int a, int b) ARITH_INLINE {
+          return (1 + chi) * g(a, b) - delta3(a, b);
+        });
 
         const vreal trK = sum_symm<3>(
             [&](int x, int y) ARITH_INLINE { return gu(x, y) * K(x, y); });
@@ -106,7 +109,7 @@ extern "C" void Z4c_Initial1(CCTK_ARGUMENTS) {
         const vreal Kh = trK - 2 * Theta;
 
         const smat<vreal, 3> At([&](int a, int b) ARITH_INLINE {
-          return chi * (K(a, b) - trK / 3 * g(a, b));
+          return (1 + chi) * (K(a, b) - trK / 3 * g(a, b));
         });
 
         const vreal alphaG = alp - 1;
