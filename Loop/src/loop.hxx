@@ -62,21 +62,14 @@ struct PointDesc {
   friend std::ostream &operator<<(std::ostream &os, const PointDesc &p) {
     os << "PointDesc{"
        << "imin,imax:{" << p.imin << "," << p.imax << "}, "
-       << "ijk:"
-       << "{" << p.i << "," << p.j << "," << p.k << "}, "
-       << "xyz:"
-       << "{" << p.x << "," << p.y << "," << p.z << "}, "
-       << "dxyz:"
-       << "{" << p.dx << "," << p.dy << "," << p.dz << "}, "
+       << "ijk:[" << p.i << "," << p.j << "," << p.k << "], "
+       << "xyz:[" << p.x << "," << p.y << "," << p.z << "], "
+       << "dxyz:[" << p.dx << "," << p.dy << "," << p.dz << "], "
        << "idx:" << p.idx << ", "
-       << "dijk:"
-       << "{" << p.di << "," << p.dj << "," << p.dk << "},"
-       << "np:" << p.np << ","
-       << "nijk:"
-       << "{" << p.NI[0] << "," << p.NI[1] << "," << p.NI[2] << "}"
-       << "i0ijk:"
-       << "{" << p.I0[0] << "," << p.I0[1] << "," << p.I0[2] << "}"
-       << "}";
+       << "dijk:[" << p.di << "," << p.dj << "," << p.dk << "], "
+       << "np:" << p.np << ", "
+       << "NI:" << p.NI << ", "
+       << "I0:" << p.I0 << "}";
     return os;
   }
 };
