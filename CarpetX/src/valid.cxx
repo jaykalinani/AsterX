@@ -297,8 +297,8 @@ void check_valid(const GHExt::PatchData::LevelData &leveldata,
       std::ostringstream buf;
       buf << setprecision(std::numeric_limits<CCTK_REAL>::digits10 + 1);
       for (const auto &info : infos)
-        buf << info.where << " " << info.I << " " << info.X << " " << info.val
-            << "\n";
+        buf << "\n"
+            << info.where << " " << info.I << " " << info.X << " " << info.val;
       CCTK_VWARN(CCTK_WARN_ALERT, buf.str().c_str());
 
       CCTK_VERROR("%s: Grid function \"%s\" contains nans, infinities, or "
