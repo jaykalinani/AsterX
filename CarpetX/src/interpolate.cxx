@@ -4,6 +4,8 @@
 #include "reduction.hxx"
 #include "schedule.hxx"
 
+#include <defs.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Functions.h>
@@ -24,6 +26,8 @@
 
 namespace CarpetX {
 using namespace std;
+
+using Arith::pown;
 
 namespace {
 
@@ -90,14 +94,14 @@ template <typename T, int order> struct interpolator {
       const T y2 = interpolate<dir - 1>(i + 2 * DI, di);
       switch (derivs[dir]) {
       case 0:
-        return (-1 / T(2) * x + 1 / T(2) * pow(x, 2)) * y0 +
-               (1 - pow(x, 2)) * y1 +
-               (1 / T(2) * x + 1 / T(2) * pow(x, 2)) * y2;
+        return (-1 / T(2) * x + 1 / T(2) * pown(x, 2)) * y0 +
+               (1 - pown(x, 2)) * y1 +
+               (1 / T(2) * x + 1 / T(2) * pown(x, 2)) * y2;
       case 1:
         return ((-1 / T(2) + x) * y0 - 2 * x * y1 + (1 / T(2) + x) * y2) /
                dx[dir];
       case 2:
-        return (y0 - 2 * y1 + y2) / pow(dx[dir], 2);
+        return (y0 - 2 * y1 + y2) / pown(dx[dir], 2);
       }
     }
     case 3: {
@@ -111,28 +115,28 @@ template <typename T, int order> struct interpolator {
       const T y3 = interpolate<dir - 1>(i + 3 * DI, di);
       switch (derivs[dir]) {
       case 0:
-        return (-1 / T(16) + 1 / T(24) * x + 1 / T(4) * pow(x, 2) -
-                1 / T(6) * pow(x, 3)) *
+        return (-1 / T(16) + 1 / T(24) * x + 1 / T(4) * pown(x, 2) -
+                1 / T(6) * pown(x, 3)) *
                    y0 +
-               (9 / T(16) - 9 / T(8) * x - 1 / T(4) * pow(x, 2) +
-                1 / T(2) * pow(x, 3)) *
+               (9 / T(16) - 9 / T(8) * x - 1 / T(4) * pown(x, 2) +
+                1 / T(2) * pown(x, 3)) *
                    y1 +
-               (9 / T(16) + 9 / T(8) * x - 1 / T(4) * pow(x, 2) -
-                1 / T(2) * pow(x, 3)) *
+               (9 / T(16) + 9 / T(8) * x - 1 / T(4) * pown(x, 2) -
+                1 / T(2) * pown(x, 3)) *
                    y2 +
-               (-1 / T(16) - 1 / T(24) * x + 1 / T(4) * pow(x, 2) +
-                1 / T(6) * pow(x, 3)) *
+               (-1 / T(16) - 1 / T(24) * x + 1 / T(4) * pown(x, 2) +
+                1 / T(6) * pown(x, 3)) *
                    y3;
       case 1:
-        return ((1 / T(24) + 1 / T(2) * x - 1 / T(2) * pow(x, 2)) * y0 +
-                (-9 / T(8) - 1 / T(2) * x + 3 / T(2) * pow(x, 2)) * y1 +
-                (9 / T(8) - 1 / T(2) * x - 3 / T(2) * pow(x, 2)) * y2 +
-                (-1 / T(24) + 1 / T(2) * x + 1 / T(2) * pow(x, 2)) * y3) /
+        return ((1 / T(24) + 1 / T(2) * x - 1 / T(2) * pown(x, 2)) * y0 +
+                (-9 / T(8) - 1 / T(2) * x + 3 / T(2) * pown(x, 2)) * y1 +
+                (9 / T(8) - 1 / T(2) * x - 3 / T(2) * pown(x, 2)) * y2 +
+                (-1 / T(24) + 1 / T(2) * x + 1 / T(2) * pown(x, 2)) * y3) /
                dx[dir];
       case 2:
         return ((1 / T(2) - x) * y0 + (-1 / T(2) + 3 * x) * y1 +
                 (-1 / T(2) - 3 * x) * y2 + (1 / T(2) + x) * y3) /
-               pow(dx[dir], 2);
+               pown(dx[dir], 2);
       }
     }
     case 4: {
@@ -147,41 +151,41 @@ template <typename T, int order> struct interpolator {
       const T y4 = interpolate<dir - 1>(i + 4 * DI, di);
       switch (derivs[dir]) {
       case 0:
-        return (1 / T(12) * x - 1 / T(24) * pow(x, 2) - 1 / T(12) * pow(x, 3) +
-                1 / T(24) * pow(x, 4)) *
+        return (1 / T(12) * x - 1 / T(24) * pown(x, 2) -
+                1 / T(12) * pown(x, 3) + 1 / T(24) * pown(x, 4)) *
                    y0 +
-               (-2 / T(3) * x + 2 / T(3) * pow(x, 2) + 1 / T(6) * pow(x, 3) -
-                1 / T(6) * pow(x, 4)) *
+               (-2 / T(3) * x + 2 / T(3) * pown(x, 2) + 1 / T(6) * pown(x, 3) -
+                1 / T(6) * pown(x, 4)) *
                    y1 +
-               (1 - 5 / T(4) * pow(x, 2) + 1 / T(4) * pow(x, 4)) * y2 +
-               (2 / T(3) * x + 2 / T(3) * pow(x, 2) - 1 / T(6) * pow(x, 3) -
-                1 / T(6) * pow(x, 4)) *
+               (1 - 5 / T(4) * pown(x, 2) + 1 / T(4) * pown(x, 4)) * y2 +
+               (2 / T(3) * x + 2 / T(3) * pown(x, 2) - 1 / T(6) * pown(x, 3) -
+                1 / T(6) * pown(x, 4)) *
                    y3 +
-               (-1 / T(12) * x - 1 / T(24) * pow(x, 2) + 1 / T(12) * pow(x, 3) +
-                1 / T(24) * pow(x, 4)) *
+               (-1 / T(12) * x - 1 / T(24) * pown(x, 2) +
+                1 / T(12) * pown(x, 3) + 1 / T(24) * pown(x, 4)) *
                    y4;
       case 1:
-        return ((1 / T(12) - 1 / T(12) * x - 1 / T(4) * pow(x, 2) +
-                 1 / T(6) * pow(x, 3)) *
+        return ((1 / T(12) - 1 / T(12) * x - 1 / T(4) * pown(x, 2) +
+                 1 / T(6) * pown(x, 3)) *
                     y0 +
-                (-2 / T(3) + 4 / T(3) * x + 1 / T(2) * pow(x, 2) -
-                 2 / T(3) * pow(x, 3)) *
+                (-2 / T(3) + 4 / T(3) * x + 1 / T(2) * pown(x, 2) -
+                 2 / T(3) * pown(x, 3)) *
                     y1 +
-                (-5 / T(2) * x + pow(x, 3)) * y2 +
-                (2 / T(3) + 4 / T(3) * x - 1 / T(2) * pow(x, 2) -
-                 2 / T(3) * pow(x, 3)) *
+                (-5 / T(2) * x + pown(x, 3)) * y2 +
+                (2 / T(3) + 4 / T(3) * x - 1 / T(2) * pown(x, 2) -
+                 2 / T(3) * pown(x, 3)) *
                     y3 +
-                (-1 / T(12) - 1 / T(12) * x + 1 / T(4) * pow(x, 2) +
-                 1 / T(6) * pow(x, 3)) *
+                (-1 / T(12) - 1 / T(12) * x + 1 / T(4) * pown(x, 2) +
+                 1 / T(6) * pown(x, 3)) *
                     y4) /
                dx[dir];
       case 2:
-        return ((-1 / T(12) - 1 / T(2) * x + 1 / T(2) * pow(x, 2)) * y0 +
-                (4 / T(3) + x - 2 * pow(x, 2)) * y1 +
-                (-5 / T(2) + 3 * pow(x, 2)) * y2 +
-                (4 / T(3) - x - 2 * pow(x, 2)) * y3 +
-                (-1 / T(12) + 1 / T(2) * x + 1 / T(2) * pow(x, 2)) * y4) /
-               pow(dx[dir], 2);
+        return ((-1 / T(12) - 1 / T(2) * x + 1 / T(2) * pown(x, 2)) * y0 +
+                (4 / T(3) + x - 2 * pown(x, 2)) * y1 +
+                (-5 / T(2) + 3 * pown(x, 2)) * y2 +
+                (4 / T(3) - x - 2 * pown(x, 2)) * y3 +
+                (-1 / T(12) + 1 / T(2) * x + 1 / T(2) * pown(x, 2)) * y4) /
+               pown(dx[dir], 2);
       }
     }
     default:
