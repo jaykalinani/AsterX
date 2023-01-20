@@ -53,7 +53,7 @@ CCTK_DEVICE inline T calc_deriv_2nd(const Loop::GF3D2<const T> &gf,
     auto varm = gf(p.I - DI[d]);
     auto var0 = gf(p.I);
     auto varp = gf(p.I + DI[d]);
-    err = max({err, fabs(varp + varm - 2.0 * var0)});
+    err = max({err, fabs(varp + varm - 2 * var0)});
   }
   return err;
 }

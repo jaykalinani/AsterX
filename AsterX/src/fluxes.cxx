@@ -92,15 +92,15 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
             bsq(0) + h(0) * rho(0) *
                          (cs2(0) + pow2(w_lor(0)) - cs2(0) * pow2(w_lor(0)))};
 
-        CCTK_REAL det_m = pow2(a_m(1)) - 4.0 * a_m(2) * a_m(0);
-        if (det_m < 0.0)
-          det_m = 0.0;
+        CCTK_REAL det_m = pow2(a_m(1)) - 4 * a_m(2) * a_m(0);
+        if (det_m < 0)
+          det_m = 0;
 
         vec<CCTK_REAL, 4> lambda_m{
-            ((-a_m(1) + sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg,
-            ((-a_m(1) + sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg,
-            ((-a_m(1) - sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg,
-            ((-a_m(1) - sqrt(det_m)) / (2.0 * a_m(2))) / alp_avg};
+            ((-a_m(1) + sqrt(det_m)) / (2 * a_m(2))) / alp_avg,
+            ((-a_m(1) + sqrt(det_m)) / (2 * a_m(2))) / alp_avg,
+            ((-a_m(1) - sqrt(det_m)) / (2 * a_m(2))) / alp_avg,
+            ((-a_m(1) - sqrt(det_m)) / (2 * a_m(2))) / alp_avg};
 
         // computing characteristics for the plus side
 
@@ -117,15 +117,15 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
             bsq(1) + h(1) * rho(1) *
                          (cs2(1) + pow2(w_lor(1)) - cs2(1) * pow2(w_lor(1)))};
 
-        CCTK_REAL det_p = pow2(a_p(1)) - 4.0 * a_p(2) * a_p(0);
-        if (det_p < 0.0)
-          det_p = 0.0;
+        CCTK_REAL det_p = pow2(a_p(1)) - 4 * a_p(2) * a_p(0);
+        if (det_p < 0)
+          det_p = 0;
 
         vec<CCTK_REAL, 4> lambda_p{
-            ((-a_p(1) + sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg,
-            ((-a_p(1) + sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg,
-            ((-a_p(1) - sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg,
-            ((-a_p(1) - sqrt(det_p)) / (2.0 * a_p(2))) / alp_avg};
+            ((-a_p(1) + sqrt(det_p)) / (2 * a_p(2))) / alp_avg,
+            ((-a_p(1) + sqrt(det_p)) / (2 * a_p(2))) / alp_avg,
+            ((-a_p(1) - sqrt(det_p)) / (2 * a_p(2))) / alp_avg,
+            ((-a_p(1) - sqrt(det_p)) / (2 * a_p(2))) / alp_avg};
 
         // 2D array containing characteristics for left (minus) and right (plus)
         // sides
@@ -140,9 +140,9 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         switch (fluxtype) {
         case flux_t::LxF: {
           const CCTK_REAL charmax =
-              max({0.0, fabs(lam(0)(0)), fabs(lam(0)(1)), fabs(lam(0)(2)),
-                   fabs(lam(0)(3)), fabs(lam(1)(0)), fabs(lam(1)(1)),
-                   fabs(lam(1)(2)), fabs(lam(1)(3))});
+              max({CCTK_REAL(0), fabs(lam(0)(0)), fabs(lam(0)(1)),
+                   fabs(lam(0)(2)), fabs(lam(0)(3)), fabs(lam(1)(0)),
+                   fabs(lam(1)(1)), fabs(lam(1)(2)), fabs(lam(1)(3))});
 
           flx = 0.5 * ((flux(0) + flux(1)) - charmax * (var(1) - var(0)));
           break;
@@ -150,12 +150,12 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
 
         case flux_t::HLLE: {
           const CCTK_REAL charmax =
-              max({0.0, lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
-                   lam(1)(1), lam(1)(2), lam(1)(3)});
+              max({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3),
+                   lam(1)(0), lam(1)(1), lam(1)(2), lam(1)(3)});
 
           const CCTK_REAL charmin =
-              min({0.0, lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
-                   lam(1)(1), lam(1)(2), lam(1)(3)});
+              min({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3),
+                   lam(1)(0), lam(1)(1), lam(1)(2), lam(1)(3)});
 
           const CCTK_REAL charpm = charmax - charmin;
 
@@ -229,7 +229,7 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         });
         /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
         const vec<CCTK_REAL, 2> w_lorentz_rc([&](int f) ARITH_INLINE {
-          return 1.0 / sqrt(1.0 - calc_contraction(vlows_rc, vels_rc)(f));
+          return 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(f));
         });
 
         /* alpha * b0 = W * B^i * v_i */
@@ -271,11 +271,11 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         });
         /* cs2 for ideal gas EOS */
         const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-          return (gamma - 1.0) * eps_rc(f) / (eps_rc(f) + 1.0 / gamma);
+          return (gamma - 1) * eps_rc(f) / (eps_rc(f) + 1 / gamma);
         });
         /* enthalpy h for ideal gas EOS */
         const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
-          return 1.0 + eps_rc(f) + press_rc(f) / rho_rc(f);
+          return 1 + eps_rc(f) + press_rc(f) / rho_rc(f);
         });
         // } Ideal gas case
 

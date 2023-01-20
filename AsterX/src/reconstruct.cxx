@@ -39,7 +39,7 @@ monocentral(const T &x, const T &y) {
   if (sgn(x) != sgn(y))
     return 0;
   else
-    return sgn(x) * min(2.0 * fabs(x), min(2.0 * fabs(y), fabs(x + y) / 2));
+    return sgn(x) * min(2 * fabs(x), min(2 * fabs(y), fabs(x + y) / 2));
 }
 
 CCTK_DEVICE array<CCTK_REAL, 2>
