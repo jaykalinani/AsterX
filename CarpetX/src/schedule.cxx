@@ -1597,21 +1597,30 @@ int Evolve(tFleshConfig *config) {
       active_levels = optional<active_levels_t>();
     } // for min_level
 
-    double cells = 0;
+    double ncells = 0;
     for (const auto &patch : ghext->patchdata)
       for (const auto &level : patch.leveldata)
-        cells += level.fab->boxArray().d_numPts();
-
-    const int updates = 1;                  // we processed one iteration
-    const int nodes = CCTK_nProcs(nullptr); // number of processes (or GPUs)
+        ncells += level.fab->boxArray().d_numPts();
+    const int updates = 1; // we processed one iteration
+    // const int nprocs = CCTK_nProcs(nullptr); // number of processes (or GPUs)
     const double end_time = gettime();
-    const double cell_updates_per_second =
-        cells * updates / (nodes * (end_time - start_time));
-    // This is the same as H-AMR's "cell updates per second":
-    CCTK_VINFO(
-        "Grid cells: %g   Grid cell updates per second (per process): %g",
-        cells, cell_updates_per_second);
+    const double iteration_time = end_time - start_time;
+    const double iterations_per_second = updates / iteration_time;
+    const double cell_updates_per_second = ncells * iterations_per_second;
+    CCTK_VINFO("Simulation time: %g   "
+               "Iterations per second: %g   "
+               "Simulation time per second: %g",
+               double(cctkGH->cctk_time), iterations_per_second,
+               double(cctkGH->cctk_delta_time * iterations_per_second)
 
+    );
+    // This is the same as H-AMR's "cell updates per second":
+    CCTK_VINFO("Grid cells: %g   "
+               "Grid cell updates per second: %g",
+               // "Grid cell updates per second per process: %g"
+               ncells, cell_updates_per_second
+               // cell_updates_per_second / nprocs
+    );
   } // main loop
 
   return 0;
