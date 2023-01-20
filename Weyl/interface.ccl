@@ -102,6 +102,8 @@ CCTK_REAL metric4 TYPE=gf TAGS='parities={+1 +1 +1   -1 +1 +1   +1 -1 +1   +1 +1
 ##   Phi21re Phi21im
 ## } "Ricci scalars"
 
+PUBLIC:
+
 CCTK_REAL weyl_scalars TYPE=gf TAGS='checkpoint="no"'
 {
   Psi0re Psi0im
