@@ -227,10 +227,16 @@ void leave_local_mode(cGH *restrict cctkGH,
                       const GHExt::PatchData::LevelData &restrict leveldata,
                       const MFPointer &mfp);
 
+// Loop over all blocks of a single patch and level
+void loop_over_blocks(
+    amrex::FabArrayBase &fab,
+    const std::function<void(int index, int block)> &block_kernel);
+// Loop over all blocks of several patches and levels
 void loop_over_blocks(
     const active_levels_t &active_levels,
     const std::function<void(int patch, int level, int index, int block,
                              const cGH *cctkGH)> &block_kernel);
+void synchronize();
 
 // These functions are defined in valid.cxx. These prototypes should
 // be moved to valid.hxx. Unfortunately, they depend on GHExt, which is declared

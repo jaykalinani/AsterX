@@ -132,6 +132,7 @@ void poison_invalid(const GHExt::PatchData::LevelData &leveldata,
                 CCTK_ATTRIBUTE_ALWAYS_INLINE { gf(p.I) = poison; });
     }
   });
+  synchronize();
 }
 
 // Ensure grid functions are not poisoned
@@ -226,6 +227,7 @@ void check_valid(const GHExt::PatchData::LevelData &leveldata,
             [&](const Loop::PointDesc &p) { nan_count_update(grid, gf, p); });
     }
   });
+  synchronize();
 
   if (CCTK_BUILTIN_EXPECT(nan_count > 0, false)) {
 #pragma omp critical
@@ -284,6 +286,7 @@ void check_valid(const GHExt::PatchData::LevelData &leveldata,
                   infos.push_back(info_t{where_t::interior, p.I, p.X, gf(p.I)});
               });
       });
+      synchronize();
 
       std::sort(infos.begin(), infos.end(),
                 [](const info_t &a, const info_t &b) {

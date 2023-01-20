@@ -1137,109 +1137,19 @@ void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
     if (geom.isPeriodic(d))
       gdomain.grow(d, mfab.nGrow(d));
 
-  // This is similar to `loop_over_blocks`, but we are looping over a
-  // non-standard MultiFab
+  loop_over_blocks(mfab, [&](int index, int block) {
+    amrex::FArrayBox &dest = mfab[index];
+    // const amrex::Box &box = mfp.fabbox();
+    // const amrex::Box &box = dest.box();
+    const amrex::Box &box = mfab.fabbox(index);
+    assert(box == dest.box());
 
-  // Choose kernel launch method
-  enum class launch_method_t { serial, openmp, cuda };
-  launch_method_t launch_method;
-  if (CCTK_EQUALS(kernel_launch_method, "serial")) {
-    launch_method = launch_method_t::serial;
-  } else if (CCTK_EQUALS(kernel_launch_method, "openmp")) {
-    launch_method = launch_method_t::openmp;
-  } else if (CCTK_EQUALS(kernel_launch_method, "cuda")) {
-    launch_method = launch_method_t::cuda;
-  } else if (CCTK_EQUALS(kernel_launch_method, "default")) {
-#ifdef AMREX_USE_GPU
-    launch_method = launch_method_t::cuda;
-#else
-    launch_method = launch_method_t::openmp;
-#endif
-  } else {
-    CCTK_ERROR("internal error");
-  }
-
-  switch (launch_method) {
-
-  case launch_method_t::serial: {
-    // No parallelism
-
-    int block = 0;
-    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-    for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi, ++block) {
-      const MFPointer mfp(mfi);
-      amrex::FArrayBox &dest = mfab[mfp.index()];
-      const amrex::Box &box = mfp.fabbox();
-
-      // If there are cells not in the valid + periodic grown box,
-      // then we need to fill them here
-      if (!gdomain.contains(box))
-        apply_boundary_conditions(block, box, dest);
-    }
-    break;
-  }
-
-  case launch_method_t::openmp: {
-    // OpenMP
-
-    std::vector<std::function<void()> > tasks;
-
-    int block = 0;
-    const auto mfitinfo = amrex::MFItInfo().EnableTiling();
-    for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi, ++block) {
-      const MFPointer mfp(mfi);
-      amrex::FArrayBox &dest = mfab[mfp.index()];
-      const amrex::Box &box = mfp.fabbox();
-      // If there are cells not in the valid + periodic grown box,
-      // then we need to fill them here
-      if (!gdomain.contains(box)) {
-        auto task = [this, block, box, &dest]() {
-          apply_boundary_conditions(block, box, dest);
-        };
-        tasks.push_back(std::move(task));
-      }
-    }
-
-    // run all tasks
-#pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < tasks.size(); ++i)
-      tasks[i]();
-
-    // There is an implicit OpenMP barrier here.
-
-    break;
-  }
-
-  case launch_method_t::cuda: {
-    // CUDA
-
-    // No OpenMP parallelization when using GPUs
-    int block = 0;
-    const auto mfitinfo = amrex::MFItInfo().DisableDeviceSync().EnableTiling();
-    for (amrex::MFIter mfi(mfab, mfitinfo); mfi.isValid(); ++mfi, ++block) {
-      const MFPointer mfp(mfi);
-      amrex::FArrayBox &dest = mfab[mfp.index()];
-      const amrex::Box &box = mfp.fabbox();
-      // If there are cells not in the valid + periodic grown box,
-      // then we need to fill them here
-      if (!gdomain.contains(box))
-        apply_boundary_conditions(block, box, dest);
-    }
-
-    break;
-  }
-
-  default:
-    CCTK_ERROR("internal error");
-  }
-
-#ifdef AMREX_USE_GPU
-  // TODO: Synchronize only if GPU kernels were actually launched
-  // TODO: Switch to streamSynchronizeAll if AMReX is new enough
-  amrex::Gpu::synchronize();
-  // amrex::Gpu::streamSynchronizeAll();
-  AMREX_GPU_ERROR_CHECK();
-#endif
+    // If there are cells not in the valid + periodic grown box,
+    // then we need to fill them here
+    if (!gdomain.contains(box))
+      apply_boundary_conditions(block, box, dest);
+  });
+  synchronize();
 }
 
 void GHExt::PatchData::LevelData::GroupData::apply_boundary_conditions(
