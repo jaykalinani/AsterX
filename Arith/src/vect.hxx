@@ -220,6 +220,11 @@ template <typename T, int D> struct vect {
   }
 
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
+  reversed(const vect &x) {
+    return vect::make([&](int d) { return x.elts[D - 1 - d]; });
+  }
+
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   operator+(const vect &x) {
     return fmap([](const T &a) { return +a; }, x);
   }
