@@ -28,6 +28,7 @@ static inline int omp_in_parallel() { return 0; }
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -1439,6 +1440,11 @@ int Evolve(tFleshConfig *config) {
 #pragma omp critical
   CCTK_VINFO("Starting evolution...");
 
+  double total_evolution_time = 0;
+  double total_evolution_output_time = 0;
+  double total_cell_updates = 0;
+  int total_iterations = 0;
+
   while (!EvolutionIsDone(cctkGH)) {
 
     const double start_time = gettime();
@@ -1582,21 +1588,25 @@ int Evolve(tFleshConfig *config) {
       CCTK_Traverse(cctkGH, "CCTK_POSTSTEP");
       CCTK_Traverse(cctkGH, "CCTK_CHECKPOINT");
       CCTK_Traverse(cctkGH, "CCTK_ANALYSIS");
+      const double output_start_time = gettime();
       CCTK_OutputGH(cctkGH);
+      const double output_finish_time = gettime();
+      total_evolution_output_time += output_finish_time - output_start_time;
 
       active_levels = optional<active_levels_t>();
     } // for min_level
 
-    double ncells = 0;
+    const double finish_time = gettime();
+    double num_cells = 0;
     for (const auto &patch : ghext->patchdata)
       for (const auto &level : patch.leveldata)
-        ncells += level.fab->boxArray().d_numPts();
-    const int updates = 1; // we processed one iteration
-    // const int nprocs = CCTK_nProcs(nullptr); // number of processes (or GPUs)
-    const double end_time = gettime();
-    const double iteration_time = end_time - start_time;
-    const double iterations_per_second = updates / iteration_time;
-    const double cell_updates_per_second = ncells * iterations_per_second;
+        num_cells += level.fab->boxArray().d_numPts();
+    total_cell_updates += num_cells;
+    ++total_iterations;
+    const double iteration_time = finish_time - start_time;
+    total_evolution_time += iteration_time;
+    const double iterations_per_second = 1 / iteration_time;
+    const double cell_updates_per_second = num_cells * iterations_per_second;
     CCTK_VINFO("Simulation time: %g   "
                "Iterations per second: %g   "
                "Simulation time per second: %g",
@@ -1607,11 +1617,36 @@ int Evolve(tFleshConfig *config) {
     // This is the same as H-AMR's "cell updates per second":
     CCTK_VINFO("Grid cells: %g   "
                "Grid cell updates per second: %g",
-               // "Grid cell updates per second per process: %g"
-               ncells, cell_updates_per_second
-               // cell_updates_per_second / nprocs
-    );
+               num_cells, cell_updates_per_second);
   } // main loop
+
+  const double total_evolution_compute_time =
+      total_evolution_time - total_evolution_output_time;
+  CCTK_VINFO("Performance:");
+  CCTK_VINFO("  total evolution time:            %g sec", total_evolution_time);
+  CCTK_VINFO("  total evolution compute time:    %g sec",
+             total_evolution_compute_time);
+  CCTK_VINFO("  total evolution output time:     %g sec",
+             total_evolution_output_time);
+  CCTK_VINFO("  total cells updated:             %g", total_cell_updates);
+  CCTK_VINFO("  total iterations:                %d", total_iterations);
+  CCTK_VINFO("  average cell updates per second: %g",
+             total_cell_updates / total_evolution_time);
+  if (CCTK_MyProc(NULL) == 0) {
+    std::ostringstream buf;
+    buf << out_dir << "/performance.yaml";
+    const std::string filename = buf.str();
+    std::ofstream file(filename);
+    file << "performance:\n"
+         << "  evolution-seconds: " << total_evolution_time << "\n"
+         << "  evolution-compute-seconds: " << total_evolution_compute_time
+         << "\n"
+         << "  evolution-output-seconds: " << total_evolution_output_time
+         << "\n"
+         << "  evolution-cell-updates: " << total_cell_updates << "\n"
+         << "  evolution-iterations: " << total_iterations << "\n";
+    file.close();
+  }
 
   return 0;
 } // namespace CarpetX
