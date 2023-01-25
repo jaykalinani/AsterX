@@ -111,6 +111,12 @@ public:
 // Cactus grid hierarchy extension
 struct GHExt {
 
+  GHExt() = default;
+  GHExt(const GHExt &) = delete;
+  GHExt(GHExt &&) = delete;
+  GHExt &operator=(const GHExt &) = delete;
+  GHExt &operator=(GHExt &&) = delete;
+
   struct cctkGHptr {
     cGH *cctkGH;
     cctkGHptr(const cctkGHptr &) = delete;
