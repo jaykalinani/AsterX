@@ -6,7 +6,7 @@
 
 namespace CarpetX {
 
-class BoundaryCondition {
+struct BoundaryCondition {
 
   const GHExt::PatchData::LevelData::GroupData &groupdata;
   const GHExt::PatchData &patchdata;
@@ -25,7 +25,6 @@ class BoundaryCondition {
   Loop::GF3D2layout layout;
   CCTK_REAL *restrict destptr;
 
-public:
   BoundaryCondition(const GHExt::PatchData::LevelData::GroupData &groupdata,
                     const amrex::Box &box, amrex::FArrayBox &dest);
 
@@ -36,7 +35,6 @@ public:
 
   void apply() const;
 
-private:
   template <int NI, int NJ, int NK> void apply_on_face() const;
 
   template <int NI, int NJ, int NK, symmetry_t SCI, boundary_t BCI>

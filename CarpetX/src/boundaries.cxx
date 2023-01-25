@@ -325,7 +325,12 @@ void BoundaryCondition::apply_on_face_symbcxyz(
       // #pragma omp task final(true) untied
       // #endif
       loop_region(
-          [=] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
+          [
+#ifdef CCTK_DEBUG
+              amin = amin, amax = amax,
+#endif
+              dirichlet_value,
+              var] CCTK_DEVICE(const Arith::vect<int, dim> &dst)
               CCTK_ATTRIBUTE_ALWAYS_INLINE {
 #ifdef CCTK_DEBUG
                 for (int d = 0; d < dim; ++d)
@@ -416,8 +421,14 @@ void BoundaryCondition::apply_on_face_symbcxyz(
       // #pragma omp task final(true) untied
       // #endif
       loop_region(
-          [=] CCTK_DEVICE(
-              const Arith::vect<int, dim> &dst) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          [
+#ifdef CCTK_DEBUG
+              amin = amin, amax = amax, dmin = dmin, dmax = dmax,
+#endif
+              neumann_source, linear_extrapolation_source, robin_source,
+              robin_value, reflection_offset, reflection_parity, xmin = xmin,
+              dx = dx, var] CCTK_DEVICE(const Arith::vect<int, dim>
+                                            &dst) CCTK_ATTRIBUTE_ALWAYS_INLINE {
             constexpr Arith::vect<int, dim> inormal{NI, NJ, NK};
             constexpr Arith::vect<boundary_t, dim> boundaries{BCI, BCJ, BCK};
             constexpr Arith::vect<symmetry_t, dim> symmetries{SCI, SCJ, SCK};
@@ -430,7 +441,15 @@ void BoundaryCondition::apply_on_face_symbcxyz(
             // the boundary value
             Arith::vect<int, dim> delta{0, 0, 0};
             for (int d = 0; d < dim; ++d) {
-              if (boundaries[d] == boundary_t::neumann) {
+              if (boundaries[d] == boundary_t::linear_extrapolation) {
+                // Same slope:
+                //   f'(0)       = f'(h)
+                //   f(h) - f(0) = f(2h) - f(h)
+                //          f(0) = 2 f(h) - f(2h)
+                // f(0) is the boundary point
+                src[d] = linear_extrapolation_source[d];
+                delta[d] = -inormal[d];
+              } else if (boundaries[d] == boundary_t::neumann) {
                 // Same value:
                 //   f(0) = f(h)
                 // f(0) is the boundary point
@@ -449,14 +468,6 @@ void BoundaryCondition::apply_on_face_symbcxyz(
                 //         = finf + |x| / |x'| * (f(x) - finf)
                 // f(x') is the boundary point
                 src[d] = robin_source[d];
-              } else if (boundaries[d] == boundary_t::linear_extrapolation) {
-                // Same slope:
-                //   f'(0)       = f'(h)
-                //   f(h) - f(0) = f(2h) - f(h)
-                //          f(0) = 2 f(h) - f(2h)
-                // f(0) is the boundary point
-                src[d] = linear_extrapolation_source[d];
-                delta[d] = -inormal[d];
               } else if (symmetries[d] == symmetry_t::reflection) {
                 src[d] = reflection_offset[d] - dst[d];
               } else if (symmetries[d] == symmetry_t::none &&
