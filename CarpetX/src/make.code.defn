@@ -2,6 +2,7 @@
 
 # Source files in this directory
 SRCS =						\
+	boundaries.cxx				\
 	driver.cxx				\
         fillpatch.cxx				\
 	interpolate.cxx				\
