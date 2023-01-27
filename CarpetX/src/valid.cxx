@@ -303,7 +303,7 @@ void check_valid(const GHExt::PatchData::LevelData &leveldata,
       for (const auto &info : infos)
         buf << "\n"
             << info.where << " " << info.I << " " << info.X << " " << info.val;
-      CCTK_VWARN(CCTK_WARN_ALERT, buf.str().c_str());
+      CCTK_WARN(CCTK_WARN_ALERT, buf.str().c_str());
 
       CCTK_VERROR("%s: Grid function \"%s\" contains nans, infinities, or "
                   "poison on patch %d, "
