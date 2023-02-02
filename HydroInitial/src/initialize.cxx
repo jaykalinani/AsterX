@@ -481,7 +481,7 @@ extern "C" void HydroInitial_Initialize(CCTK_ARGUMENTS) {
                 // for now, using ideal gas EOS
                 eps(p.I) = press(p.I)/(rho(p.I)*(gamma - 1));
 
-                velx(p.I) = 0.5;
+                velx(p.I) = 1./12.0;
                 vely(p.I) = 1./24.;
                 velz(p.I) = axial_vel;
             }
