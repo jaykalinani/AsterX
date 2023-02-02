@@ -1,7 +1,7 @@
 Cactus Code Thorn RePrimAnd
 Author(s)    : Wolfgang Kastaun
 Maintainer(s): Wolfgang Kastaun
-Licence      : GPL
+Licence      : Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 --------------------------------------------------------------------------
 
 1. Purpose
@@ -20,3 +20,5 @@ https://github.com/wokast/RePrimAnd
 
 The article describing the algorithm is
 https://doi.org/10.1103/PhysRevD.103.023018
+
+Please cite the above article in publications making use of RePrimAnd.
