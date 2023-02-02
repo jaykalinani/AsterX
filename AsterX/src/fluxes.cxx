@@ -11,19 +11,25 @@
 #include <cmath>
 
 #include "utils.hxx"
+#include "fluxes.hxx"
 #include "reconstruct.hxx"
+#include <eos.hxx>
+#include <eos_idealgas.hxx>
 
 namespace AsterX {
 using namespace std;
 using namespace Loop;
 using namespace Arith;
+using namespace EOSX;
 
 enum class flux_t { LxF, HLLE };
+enum class eos_t { IdealGas, Hybrid, Tabulated };
 
 // Calculate the fluxes in direction `dir`. This function is more
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
-template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
+template <int dir, typename EOSType>
+void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
@@ -70,98 +76,19 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
             return reconstruct(var, p, reconstruction, dir);
           };
-
-  const auto eigenvalues =
-      [=] CCTK_DEVICE(CCTK_REAL alp_avg, CCTK_REAL beta_avg, CCTK_REAL u_avg,
-                      vec<CCTK_REAL, 2> vel, vec<CCTK_REAL, 2> rho,
-                      vec<CCTK_REAL, 2> cs2, vec<CCTK_REAL, 2> w_lor,
-                      vec<CCTK_REAL, 2> h,
-                      vec<CCTK_REAL, 2> bsq) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        // computing characteristics for the minus side
-        // See Eq. (28) of Giacomazzo & Rezzolla (2007) with b^i=0
-        vec<CCTK_REAL, 3> a_m{
-            (bsq(0) + cs2(0) * h(0) * rho(0)) *
-                    (pow2(beta_avg) - pow2(alp_avg) * u_avg) -
-                (-1 + cs2(0)) * h(0) * rho(0) *
-                    pow2(beta_avg - alp_avg * vel(0)) * pow2(w_lor(0)),
-
-            2 * beta_avg * (bsq(0) + cs2(0) * h(0) * rho(0)) -
-                2 * (-1 + cs2(0)) * h(0) * rho(0) *
-                    (beta_avg - alp_avg * vel(0)) * pow2(w_lor(0)),
-
-            bsq(0) + h(0) * rho(0) *
-                         (cs2(0) + pow2(w_lor(0)) - cs2(0) * pow2(w_lor(0)))};
-
-        CCTK_REAL det_m = pow2(a_m(1)) - 4 * a_m(2) * a_m(0);
-        if (det_m < 0)
-          det_m = 0;
-
-        vec<CCTK_REAL, 4> lambda_m{
-            ((-a_m(1) + sqrt(det_m)) / (2 * a_m(2))) / alp_avg,
-            ((-a_m(1) + sqrt(det_m)) / (2 * a_m(2))) / alp_avg,
-            ((-a_m(1) - sqrt(det_m)) / (2 * a_m(2))) / alp_avg,
-            ((-a_m(1) - sqrt(det_m)) / (2 * a_m(2))) / alp_avg};
-
-        // computing characteristics for the plus side
-
-        vec<CCTK_REAL, 3> a_p{
-            (bsq(1) + cs2(1) * h(1) * rho(1)) *
-                    (pow2(beta_avg) - pow2(alp_avg) * u_avg) -
-                (-1 + cs2(1)) * h(1) * rho(1) *
-                    pow2(beta_avg - alp_avg * vel(1)) * pow2(w_lor(1)),
-
-            2 * beta_avg * (bsq(1) + cs2(1) * h(1) * rho(1)) -
-                2 * (-1 + cs2(1)) * h(1) * rho(1) *
-                    (beta_avg - alp_avg * vel(1)) * pow2(w_lor(1)),
-
-            bsq(1) + h(1) * rho(1) *
-                         (cs2(1) + pow2(w_lor(1)) - cs2(1) * pow2(w_lor(1)))};
-
-        CCTK_REAL det_p = pow2(a_p(1)) - 4 * a_p(2) * a_p(0);
-        if (det_p < 0)
-          det_p = 0;
-
-        vec<CCTK_REAL, 4> lambda_p{
-            ((-a_p(1) + sqrt(det_p)) / (2 * a_p(2))) / alp_avg,
-            ((-a_p(1) + sqrt(det_p)) / (2 * a_p(2))) / alp_avg,
-            ((-a_p(1) - sqrt(det_p)) / (2 * a_p(2))) / alp_avg,
-            ((-a_p(1) - sqrt(det_p)) / (2 * a_p(2))) / alp_avg};
-
-        // 2D array containing characteristics for left (minus) and right (plus)
-        // sides
-        vec<vec<CCTK_REAL, 4>, 2> lambda{lambda_m, lambda_p};
-        return lambda;
-      };
-
   const auto calcflux =
       [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
                       vec<CCTK_REAL, 2> flux) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         CCTK_REAL flx;
         switch (fluxtype) {
-        case flux_t::LxF: {
-          const CCTK_REAL charmax =
-              max({CCTK_REAL(0), fabs(lam(0)(0)), fabs(lam(0)(1)),
-                   fabs(lam(0)(2)), fabs(lam(0)(3)), fabs(lam(1)(0)),
-                   fabs(lam(1)(1)), fabs(lam(1)(2)), fabs(lam(1)(3))});
 
-          flx = 0.5 * ((flux(0) + flux(1)) - charmax * (var(1) - var(0)));
+        case flux_t::LxF: {
+          flx = laxf(lam, var, flux);
           break;
         }
 
         case flux_t::HLLE: {
-          const CCTK_REAL charmax =
-              max({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3),
-                   lam(1)(0), lam(1)(1), lam(1)(2), lam(1)(3)});
-
-          const CCTK_REAL charmin =
-              min({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3),
-                   lam(1)(0), lam(1)(1), lam(1)(2), lam(1)(3)});
-
-          const CCTK_REAL charpm = charmax - charmin;
-
-          flx = (charmax * flux(1) - charmin * flux(0) +
-                 charmax * charmin * (var(1) - var(0))) /
-                charpm;
+          flx = hlle(lam, var, flux);
           break;
         }
 
@@ -264,14 +191,21 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
         // Currently, computing press for classical ideal gas from reconstructed
         // vars
 
+        // TODO: Correctly reconstruct Ye
+        const vec<CCTK_REAL, 2> ye_rc{ye_min, ye_max};
+
         // Ideal gas case {
         /* pressure for ideal gas EOS */
         const vec<CCTK_REAL, 2> press_rc([&](int f) ARITH_INLINE {
-          return eps_rc(f) * rho_rc(f) * (gamma - 1);
+          return eos_th.press_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
+                                                    ye_rc(f));
         });
         /* cs2 for ideal gas EOS */
         const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-          return (gamma - 1) * eps_rc(f) / (eps_rc(f) + 1 / gamma);
+          return eos_th.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
+                                                   ye_rc(f)) *
+                 eos_th.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
+                                                   ye_rc(f));
         });
         /* enthalpy h for ideal gas EOS */
         const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
@@ -373,6 +307,13 @@ template <int dir> void CalcFlux(CCTK_ARGUMENTS) {
             (dir != 1) * calcflux(lambda, Btildes_rc(1), flux_Btildes(1));
         fluxBzs(dir)(p.I) =
             (dir != 2) * calcflux(lambda, Btildes_rc(2), flux_Btildes(2));
+        if (isnan(flux_dens(0)) || isnan(flux_dens(1)) || isnan(dens_rc(0)) ||
+            isnan(dens_rc(1)) || isnan(fluxdenss(dir)(p.I)) ||
+            isnan(fluxdenss(dir)(p.I))) {
+          printf("dens_rc = %f, %f, vtilde_rc = %f, %f, flux_den = %f, %f",
+                 dens_rc(0), dens_rc(1), vtilde_rc(0), vtilde_rc(1),
+                 flux_dens(0), flux_dens(1));
+        }
       });
 }
 
@@ -410,9 +351,39 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
-  CalcFlux<0>(cctkGH);
-  CalcFlux<1>(cctkGH);
-  CalcFlux<2>(cctkGH);
+  eos_t eostype;
+  eos::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
+      rgye(ye_min, ye_max);
+
+  if (CCTK_EQUALS(evolution_eos, "IdealGas")) {
+    eostype = eos_t::IdealGas;
+  } else if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
+    eostype = eos_t::Hybrid;
+  } else if (CCTK_EQUALS(evolution_eos, "Tabulated")) {
+    eostype = eos_t::Tabulated;
+  } else {
+    CCTK_ERROR("Unknown value for parameter \"evolution_eos\"");
+  }
+
+  switch (eostype) {
+  case eos_t::IdealGas: {
+    eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
+    CalcFlux<0>(cctkGH, eos_th);
+    CalcFlux<1>(cctkGH, eos_th);
+    CalcFlux<2>(cctkGH, eos_th);
+    break;
+  }
+  case eos_t::Hybrid: {
+    CCTK_ERROR("Hybrid EOS is not yet supported");
+    break;
+  }
+  case eos_t::Tabulated: {
+    CCTK_ERROR("Tabulated EOS is not yet supported");
+    break;
+  }
+  default:
+    assert(0);
+  }
 
   /* Set auxiliary variables for the rhs of A and Psi  */
   CalcAuxForAvecPsi(cctkGH);

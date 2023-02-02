@@ -1,5 +1,12 @@
 # Parameter definitions for thorn AsterX
 
+KEYWORD evolution_eos "Equation of state employed during evolution" STEERABLE=never
+{
+  "IdealGas" :: ""
+  "Hybrid" :: ""
+  "Tabulated" :: ""
+} "IdealGas"
+
 CCTK_REAL gamma "EOS parameter" STEERABLE=always
 {
   0.0:* :: ""
@@ -90,3 +97,19 @@ CCTK_INT local_spatial_order "Order of spatial finite differencing" STEERABLE=ne
   2 :: "Second order finite difference"
   4 :: "Fourth order finite difference"
 } 2
+
+SHARES: EOSX
+USES CCTK_REAL gl_gamma
+USES CCTK_REAL eps_min
+USES CCTK_REAL eps_max
+USES CCTK_REAL rho_min
+USES CCTK_REAL rho_max
+USES CCTK_REAL ye_min
+USES CCTK_REAL ye_max
+USES CCTK_REAL particle_mass
+
+SHARES: Con2PrimFactory
+USES CCTK_REAL eps_atmo
+USES CCTK_REAL Ye_atmo
+USES CCTK_REAL p_atmo
+
