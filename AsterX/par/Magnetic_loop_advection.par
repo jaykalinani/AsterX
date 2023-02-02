@@ -18,7 +18,7 @@ Cactus::cctk_show_schedule = yes
 Cactus::presync_mode       = "mixed-error"
 
 Cactus::terminate       = "time"
-Cactus::cctk_final_time = 0.5  # TODO: set this to 24 for the loop to get back to its original position (if velz != 0)
+Cactus::cctk_final_time = 24  # TODO: set this to 24 for the loop to get back to its original position (if velz != 0)
 
 
 
@@ -66,8 +66,8 @@ CarpetX::blocking_factor_z      = 1
 CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::ghost_size        = 2
-CarpetX::dtfac             = 0.4
+CarpetX::ghost_size        = 3
+CarpetX::dtfac             = 0.25
 
 
 
@@ -99,13 +99,16 @@ HydroBase::initial_hydro = "magnetic loop advection"
 
 # -------------------- AsterX --------------------------------------------------
 AsterX::gamma                 = 1.66666666666667
-AsterX::reconstruction_method = "minmod"
+AsterX::reconstruction_method = "PPM"
+AsterX::flux_type = "HLLE"
 AsterX::max_iter              = 100
-AsterX::c2p_tol               = 1e-10
+AsterX::c2p_tol = 1e-8
+AsterX::debug_mode = "yes"
 
+Con2PrimFactory::unit_test = "yes"
 
-
-
+EOSX::evol_eos_name = "IdealGas"
+EOSX::gl_gamma = 1.66666666666667
 
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32

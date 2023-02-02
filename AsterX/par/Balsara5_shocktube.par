@@ -58,15 +58,23 @@ CarpetX::blocking_factor_z = 1
 CarpetX::regrid_error_threshold = 0.01
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::ghost_size = 2
+CarpetX::ghost_size = 3
 CarpetX::dtfac = 0.25
  
 HydroBase::initial_hydro = "balsara5"
 HydroInitial::gamma = 1.66666666666667
+
 AsterX::gamma = 1.66666666666667
-AsterX::reconstruction_method = "minmod"
+AsterX::reconstruction_method = "PPM"
+AsterX::flux_type = "HLLE"
 AsterX::max_iter = 100
-AsterX::c2p_tol = 1e-10
+AsterX::c2p_tol = 1e-8
+AsterX::debug_mode = "yes"
+
+Con2PrimFactory::unit_test = "yes"
+
+EOSX::evol_eos_name = "IdealGas"
+EOSX::gl_gamma = 1.66666666666667
 
 ODESolvers::method = "RK4"
 
@@ -77,6 +85,7 @@ CarpetX::out_silo_vars = "
     HydroBase::vel
     HydroBase::eps
     HydroBase::press
+    HydroBase::Bvec
     CarpetX::regrid_error
 "
 
@@ -85,6 +94,7 @@ CarpetX::out_tsv_vars = "
     HydroBase::vel
     HydroBase::eps
     HydroBase::press
+    HydroBase::Bvec
     CarpetX::regrid_error
 "
 
