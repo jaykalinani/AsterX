@@ -50,5 +50,5 @@ SCHEDULE Weyl_Weyl AT analysis
   WRITES: weyl_scalars(interior)
   ## WRITES: spin_coefficients(interior)
   ## SYNC: metric4
-  ## SYNC: weyl_scalars
+  SYNC: weyl_scalars
 } "Calculate Weyl tensor"
