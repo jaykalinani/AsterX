@@ -7,7 +7,6 @@ IMPLEMENTS: PDESolvers
 INCLUDES HEADER: pdesolvers.hxx IN pdesolvers.hxx
 
 USES INCLUDE HEADER: div.hxx
-USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: loop.hxx
 USES INCLUDE HEADER: spvect.hxx
 USES INCLUDE HEADER: vect.hxx

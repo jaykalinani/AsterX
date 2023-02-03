@@ -3,7 +3,6 @@
 
 #include <spvect.hxx>
 
-#include <fixmath.hxx>
 #include <cctk.h>
 
 #include <petsc.h>
