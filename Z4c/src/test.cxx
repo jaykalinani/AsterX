@@ -4,7 +4,6 @@
 #include <defs.hxx>
 #include <simd.hxx>
 
-#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 
 #include <algorithm>
