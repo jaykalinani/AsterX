@@ -1,4 +1,3 @@
-#include <fixmath.hxx>
 #include <cctk.h>
 
 #include "loop.hxx"
