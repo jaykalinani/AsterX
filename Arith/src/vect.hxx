@@ -523,6 +523,11 @@ template <typename T, int D> struct vect {
     return any(fmap([](const auto &a) ARITH_INLINE { return anyisnan(a); }, x));
   }
 
+  friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T dot(const vect &x,
+                                                              const vect &y) {
+    return sum(x * y);
+  }
+
   template <typename C>
   friend constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST vect
   if_else(const vect<C, D> &cond, const vect &x, const vect &y) {
