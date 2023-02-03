@@ -4,5 +4,4 @@ IMPLEMENTS: KHInitial
 
 INHERITS: CarpetX ADMBase HydroBase
 
-USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: loop_device.hxx
