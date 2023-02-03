@@ -3,6 +3,7 @@
 
 #include "defs.hxx"
 #include "simd.hxx"
+#include "sum.hxx"
 #include "vect.hxx"
 
 #include "vec.hxx" // for symm_t
@@ -409,6 +410,20 @@ constexpr gmat<simd<T>, D, symm> if_else(const simdl<T> &cond,
                                          const gmat<simd<T>, D, symm> &y) {
   return fmap([&](const auto &x, const auto &y) { return if_else(cond, x, y); },
               x, y);
+}
+
+template <typename T, int D>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_trace(const smat<T, D> &A, const smat<T, D> &gu) {
+  return sum_symm<D>([&](int x, int y)
+                         ARITH_INLINE { return gu(x, y) * A(x, y); });
+}
+
+template <typename T, int D>
+ARITH_INLINE ARITH_DEVICE ARITH_HOST constexpr T
+calc_trace(const mat<T, D> &A, const mat<T, D> &gu) {
+  return sum_symm<D>([&](int x, int y)
+                         ARITH_INLINE { return gu(x, y) * A(x, y); });
 }
 
 template <typename T>
