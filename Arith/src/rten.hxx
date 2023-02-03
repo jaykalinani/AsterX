@@ -222,6 +222,13 @@ public:
                                                               int l) const {
     return sign(i, j, k, l) * elts[ind(i, j, k, l)];
   }
+  constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST T get(int i, int j, int k,
+                                                       int l) const {
+#ifdef CCTK_DEBUG
+    assert(sign(i, j, k, l) == 1);
+#endif
+    return elts[ind(i, j, k, l)];
+  }
   constexpr ARITH_INLINE ARITH_DEVICE ARITH_HOST void set(int i, int j, int k,
                                                           int l, const T &x) {
 #ifdef CCTK_DEBUG
