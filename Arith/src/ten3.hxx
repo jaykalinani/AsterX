@@ -8,7 +8,6 @@
 
 #include "vec.hxx" // for symm_t
 
-#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 
 #include <algorithm>

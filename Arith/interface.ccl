@@ -19,5 +19,3 @@ INCLUDES HEADER: ten3.hxx IN ten3.hxx
 INCLUDES HEADER: tuple.hxx IN tuple.hxx
 INCLUDES HEADER: vec.hxx IN vec.hxx
 INCLUDES HEADER: vect.hxx IN vect.hxx
-
-USES INCLUDE HEADER: fixmath.hxx

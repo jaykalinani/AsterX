@@ -1,6 +1,5 @@
 #include "ten3.hxx"
 
-#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 
 #include <functional>

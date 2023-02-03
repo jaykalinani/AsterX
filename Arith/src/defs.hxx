@@ -1,7 +1,6 @@
 #ifndef DEFS_HXX
 #define DEFS_HXX
 
-#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 
 #include <cmath>
