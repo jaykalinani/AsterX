@@ -8,7 +8,6 @@ USES INCLUDE HEADER: pdesolvers.hxx
 
 USES INCLUDE HEADER: defs.hxx
 USES INCLUDE HEADER: dual.hxx
-USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: loop.hxx
 USES INCLUDE HEADER: smallvector.hxx
 USES INCLUDE HEADER: spvect.hxx
