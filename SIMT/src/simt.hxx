@@ -1,8 +1,6 @@
 #ifndef SIMT_HXX
 #define SIMT_HXX
 
-#include <fixmath.hxx>
-
 // We need this before including nsimd
 #include <cctk.h>
 
