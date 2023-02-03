@@ -4,7 +4,6 @@
 #include <vec.hxx>
 #include <arith.hxx>
 
-#include <fixmath.hxx>
 #include <cctk.h>
 
 #include <cctk_Arguments.h>
