@@ -5,7 +5,6 @@
 #include <sum.hxx>
 #include <vec.hxx>
 
-#include <fixmath.hxx> // include this before <cctk.h>
 #include <cctk.h>
 
 #include <boost/math/tools/roots.hpp>
