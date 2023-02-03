@@ -23,7 +23,7 @@ struct prim_vars {
   prim_vars() = default;
 
   /// Construct from single variables.
-  prim_vars(CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL ye_, CCTK_REAL press_,
+  CCTK_HOST CCTK_DEVICE prim_vars(CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL ye_, CCTK_REAL press_,
             vec<CCTK_REAL, 3> vel_, CCTK_REAL w_lor_, vec<CCTK_REAL, 3> Bvec_)
       : rho(rho_), eps(eps_), Ye(ye_), press(press_), vel(vel_), w_lor(w_lor_),
         Bvec(Bvec_){};

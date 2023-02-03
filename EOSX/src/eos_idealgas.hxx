@@ -106,7 +106,8 @@ CCTK_HOST CCTK_DEVICE eos_idealgas::eos_idealgas(CCTK_REAL gamma_,
                                                  const range &rgye_)
     : gamma(gamma_), gm1(gamma_ - 1.0), rgeps(rgeps_) {
   if (gamma < 1.0) {
-    throw runtime_error("EOS_IdealGas: initialized with gamma < 1");
+    assert(0);
+    runtime_error("EOS_IdealGas: initialized with gamma < 1");
   }
   if (gamma > 2.0) { // Ensure subluminal Soundspeed and P < E
     rgeps.max = min(rgeps.max, 1.0 / (gamma * (gamma - 2.0)));

@@ -21,7 +21,7 @@ struct cons_vars {
   cons_vars() = default;
 
   // Construct from single variables.
-  cons_vars(CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_,
+  CCTK_HOST CCTK_DEVICE cons_vars(CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_,
             CCTK_REAL dYe_, vec<CCTK_REAL, 3> dBvec_)
       : dens{dens_}, mom{mom_}, tau{tau_}, dYe{dYe_}, dBvec{dBvec_} {}
 
