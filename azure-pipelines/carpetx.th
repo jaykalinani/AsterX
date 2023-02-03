@@ -153,6 +153,9 @@ CarpetX/ErrorEstimator
 #CarpetX/Forms
 #CarpetX/GRHydroToyGPU
 CarpetX/AsterX
+CarpetX/AsterSeeds
+CarpetX/EOSX
+CarpetX/Con2PrimFactory
 CarpetX/Hydro
 CarpetX/HydroBase
 CarpetX/HydroInitial
