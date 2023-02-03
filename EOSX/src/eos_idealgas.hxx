@@ -104,15 +104,15 @@ CCTK_HOST CCTK_DEVICE eos_idealgas::eos_idealgas(CCTK_REAL gamma_,
                                                  const range &rgeps_,
                                                  const range &rgrho_,
                                                  const range &rgye_)
-    : gamma(gamma_), gm1(gamma_ - 1.0), rgeps(rgeps_) {
-  if (gamma < 1.0) {
+    : gamma(gamma_), gm1(gamma_ - 1), rgeps(rgeps_) {
+  if (gamma < 1) {
     assert(0);
-    runtime_error("EOS_IdealGas: initialized with gamma < 1");
+    // runtime_error("EOS_IdealGas: initialized with gamma < 1");
   }
-  if (gamma > 2.0) { // Ensure subluminal Soundspeed and P < E
-    rgeps.max = min(rgeps.max, 1.0 / (gamma * (gamma - 2.0)));
+  if (gamma > 2) { // Ensure subluminal Soundspeed and P < E
+    rgeps.max = min(rgeps.max, 1 / (gamma * (gamma - 2)));
   }
-  // set_range_h(range(1.0 + gamma * rgeps.min, 1.0 + gamma * rgeps.max));
+  // set_range_h(range(1 + gamma * rgeps.min, 1 + gamma * rgeps.max));
   set_range_rho(rgrho_);
   set_range_ye(rgye_);
   temp_over_eps = gm1 * umass_;
@@ -140,7 +140,7 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho,
                                          const CCTK_REAL eps,
                                          const CCTK_REAL ye) const {
-  return sqrt(gm1 * eps / (eps + 1.0 / gamma));
+  return sqrt(gm1 * eps / (eps + 1 / gamma));
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
