@@ -1,6 +1,7 @@
 #include "cake.hxx"
 
 #include <cassert>
+#include <cmath>
 
 CCTK_DEVICE CCTK_HOST MultiPatch::Cake::patch_piece
 MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
@@ -17,7 +18,7 @@ MultiPatch::Cake::get_owner_patch(const PatchTransformations &pt,
 
   const auto r0 = pt.cake_inner_boundary_radius;
   const auto r1 = pt.cake_outer_boundary_radius;
-  const auto r = sqrt(Power(x, 2) + Power(y, 2) + Power(z, 2));
+  const auto r = sqrt(pow2(x) + pow2(y) + pow2(z));
 
   // Are we on the exterior?
   if (r > r1) {
