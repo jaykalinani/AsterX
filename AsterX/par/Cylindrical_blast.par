@@ -93,7 +93,6 @@ HydroBase::initial_hydro = "cylindrical blast"
 
 
 # -------------------- AsterX --------------------------------------------------
-AsterX::gamma                 = 1.3333333333
 AsterX::reconstruction_method = "minmod"
 AsterX::flux_type = "LxF"
 AsterX::max_iter              = 100
@@ -102,7 +101,9 @@ AsterX::c2p_tol               = 1e-8
 Con2PrimFactory::unit_test = "yes"
 
 EOSX::evol_eos_name = "IdealGas"
-EOSX::gl_gamma = 1.66666666666667
+EOSX::gl_gamma = 1.3333333333
+EOSX::poly_gamma = 1.3333333333
+
 
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32

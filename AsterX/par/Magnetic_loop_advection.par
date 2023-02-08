@@ -98,7 +98,6 @@ HydroBase::initial_hydro = "magnetic loop advection"
 
 
 # -------------------- AsterX --------------------------------------------------
-AsterX::gamma                 = 1.66666666666667
 AsterX::reconstruction_method = "PPM"
 AsterX::flux_type = "HLLE"
 AsterX::max_iter              = 100
@@ -109,6 +108,7 @@ Con2PrimFactory::unit_test = "yes"
 
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 1.66666666666667
+EOSX::poly_gamma = 1.3333333333
 
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32

@@ -92,10 +92,9 @@ HydroBase::initial_hydro = "magnetic rotor"
 
 
 # -------------------- AsterX --------------------------------------------------
-AsterX::gamma                 = 1.66666666666667
 AsterX::reconstruction_method = "Minmod"
 AsterX::flux_type = "LxF"
-AsterX::max_iter              = 100
+AsterX::max_iter = 100
 AsterX::c2p_tol = 1e-8
 AsterX::debug_mode = "yes"
 
@@ -103,6 +102,7 @@ Con2PrimFactory::unit_test = "yes"
 
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 1.66666666666667
+EOSX::poly_gamma = 1.3333333333
 
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32

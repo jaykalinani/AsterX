@@ -64,7 +64,6 @@ CarpetX::dtfac = 0.25
 HydroBase::initial_hydro = "balsara5"
 HydroInitial::gamma = 1.66666666666667
 
-AsterX::gamma = 1.66666666666667
 AsterX::reconstruction_method = "PPM"
 AsterX::flux_type = "HLLE"
 AsterX::max_iter = 100
@@ -75,6 +74,7 @@ Con2PrimFactory::unit_test = "yes"
 
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 1.66666666666667
+EOSX::poly_gamma = 1.66666666666667
 
 ODESolvers::method = "RK4"
 
