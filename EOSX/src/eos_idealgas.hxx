@@ -5,9 +5,8 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace std;
-
 #include "eos.hxx"
+using namespace std;
 
 namespace EOSX {
 
@@ -92,18 +91,11 @@ public:
   ) const;
 };
 
-//  CCTK_HOST CCTK_DEVICE eos make_eos_idealgas(CCTK_REAL gamma, CCTK_REAL
-//  umass,
-//    const eos::range& rgeps,
-//    const eos::range& rgrho,
-//    const eos::range& rgye);
-
 // constructor
-CCTK_HOST CCTK_DEVICE eos_idealgas::eos_idealgas(CCTK_REAL gamma_,
-                                                 CCTK_REAL umass_,
-                                                 const range &rgeps_,
-                                                 const range &rgrho_,
-                                                 const range &rgye_)
+CCTK_HOST
+CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_idealgas::eos_idealgas(
+    CCTK_REAL gamma_, CCTK_REAL umass_, const range &rgeps_,
+    const range &rgrho_, const range &rgye_)
     : gamma(gamma_), gm1(gamma_ - 1), rgeps(rgeps_) {
   if (gamma < 1) {
     assert(0);
@@ -120,7 +112,8 @@ CCTK_HOST CCTK_DEVICE eos_idealgas::eos_idealgas(CCTK_REAL gamma_,
 }
 
 // destructor
-CCTK_HOST CCTK_DEVICE eos_idealgas::~eos_idealgas() {}
+CCTK_HOST CCTK_DEVICE
+    CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_idealgas::~eos_idealgas() {}
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_idealgas::press_from_valid_rho_eps_ye(const CCTK_REAL rho,

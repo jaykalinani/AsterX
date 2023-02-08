@@ -8,6 +8,18 @@ KEYWORD evol_eos_name "Name of active EOS for evolution"
   "none" :: "No EOS available"
 } "IdealGas"
 
+#parameters for Polytropic EOS
+
+CCTK_REAL poly_gamma "Adiabatic Index for poly EOS" STEERABLE=RECOVER
+{
+ (0:* :: "any positive number"
+} 2.0
+
+CCTK_REAL poly_k "Polytropic constant in c=G=Msun=1"  STEERABLE=RECOVER
+{
+ : :: ""
+} 100.0
+
 #parameters for Ideal Gas EOS
 
 CCTK_REAL gl_gamma "Adiabatic index for ideal gas EOS"

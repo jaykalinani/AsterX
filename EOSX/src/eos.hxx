@@ -12,39 +12,9 @@ and electron fraction.
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
-#include <string>
-#include <boost/shared_ptr.hpp>
-#include "AMReX_GpuQualifiers.H"
-#define CCTK_DEVICE AMREX_GPU_DEVICE
-#define CCTK_HOST AMREX_GPU_HOST
+#include "eos_utils.hxx"
 
 namespace EOSX {
-
-/// Class representing error conditions in EOS calls.
-struct eos_status {
-  bool failed; ///< Set to true if parameters are out of range/NAN/INF
-  std::string
-      err_msg; ///< Error description in case of failure, else undefined.
-  /// Default constructor: Set to no failure.
-  eos_status() : failed(false) {}
-  /// Set fail flag and error message.
-  void fail(std::string msg) {
-    failed = true;
-    err_msg = msg;
-  }
-};
-
-/// Class representing a range
-struct eos_range {
-  CCTK_REAL min; ///< Minimum
-  CCTK_REAL max; ///< Maximum
-  /// Default constructor: empty range.
-  eos_range() : min(0), max(0) {}
-  /// Construct from minimum and maximum
-  eos_range(CCTK_REAL min_, CCTK_REAL max_) : min(min_), max(max_) {}
-  /// Check if value is contained in [min,max]. False for NAN or INF.
-  bool contains(CCTK_REAL x) const { return (x >= min) && (x <= max); }
-};
 
 /// Abstract class eos
 
