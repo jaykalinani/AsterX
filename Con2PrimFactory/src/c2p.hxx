@@ -11,13 +11,8 @@ c2p is effectively an interface to be used by different c2p implementations.
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
-#include <string>
-#include <boost/shared_ptr.hpp>
 #include <boost/math/tools/roots.hpp>
-#include "AMReX_GpuQualifiers.H"
-#define CCTK_DEVICE AMREX_GPU_DEVICE
-#define CCTK_HOST AMREX_GPU_HOST
-#include "utils.hxx"
+#include "c2p_utils.hxx"
 #include "eos.hxx"
 #include "eos_idealgas.hxx"
 

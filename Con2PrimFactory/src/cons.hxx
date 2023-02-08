@@ -18,11 +18,12 @@ struct cons_vars {
   vec<CCTK_REAL, 3> dBvec;
 
   // Default constructor, no initialization.
-  cons_vars() = default;
+  CCTK_HOST CCTK_DEVICE cons_vars() = default;
 
   // Construct from single variables.
-  CCTK_HOST CCTK_DEVICE cons_vars(CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_,
-            CCTK_REAL dYe_, vec<CCTK_REAL, 3> dBvec_)
+  CCTK_HOST CCTK_DEVICE cons_vars(CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_,
+                                  CCTK_REAL tau_, CCTK_REAL dYe_,
+                                  vec<CCTK_REAL, 3> dBvec_)
       : dens{dens_}, mom{mom_}, tau{tau_}, dYe{dYe_}, dBvec{dBvec_} {}
 
   // Compute conserved variables from primitives and 3-metric
@@ -39,7 +40,7 @@ struct cons_vars {
                                      CCTK_REAL &dBvecz_) const;
 
   // Set all data to NAN
-  void set_to_nan();
+  CCTK_HOST CCTK_DEVICE void set_to_nan();
 };
 
 } // namespace Con2PrimFactory

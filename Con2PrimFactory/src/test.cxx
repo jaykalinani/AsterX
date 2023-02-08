@@ -1,10 +1,9 @@
-#include <fixmath.hxx>
 #include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
 
-#include "utils.hxx"
+#include "c2p_utils.hxx"
 #include "c2p.hxx"
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"

@@ -6,8 +6,9 @@
 
 namespace Con2PrimFactory {
 
-atmosphere::atmosphere(CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL Ye_,
-                       CCTK_REAL press_, CCTK_REAL rho_cut_)
+CCTK_DEVICE CCTK_HOST atmosphere::atmosphere(CCTK_REAL rho_, CCTK_REAL eps_,
+                                             CCTK_REAL Ye_, CCTK_REAL press_,
+                                             CCTK_REAL rho_cut_)
     : rho_atmo(rho_), eps_atmo(eps_), ye_atmo(Ye_), press_atmo(press_),
       rho_cut(rho_cut_) {}
 

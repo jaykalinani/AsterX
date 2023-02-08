@@ -1,7 +1,6 @@
-#ifndef UTILS_HXX
-#define UTILS_HXX
+#ifndef C2PUTILS_HXX
+#define C2PUTILS_HXX
 
-#include <fixmath.hxx>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -377,4 +376,4 @@ calc_avg_neighbors(const vec<T, D> flag, const vec<T, D> u_nbs,
 
 } // namespace Con2PrimFactory
 
-#endif // #ifndef UTILS_HXX
+#endif // #ifndef C2PUTILS_HXX

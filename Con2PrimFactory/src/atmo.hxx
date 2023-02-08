@@ -18,9 +18,10 @@ struct atmosphere {
   const CCTK_REAL press_atmo;
   const CCTK_REAL rho_cut;
 
-  atmosphere(const atmosphere &) = default;
-  atmosphere(CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL Ye_, CCTK_REAL press_,
-             CCTK_REAL rho_cut_);
+  CCTK_DEVICE CCTK_HOST atmosphere(const atmosphere &) = default;
+  CCTK_DEVICE CCTK_HOST atmosphere(CCTK_REAL rho_, CCTK_REAL eps_,
+                                   CCTK_REAL Ye_, CCTK_REAL press_,
+                                   CCTK_REAL rho_cut_);
 
   // Set prims to atmo
   CCTK_DEVICE CCTK_HOST void set(prim_vars &pv) const;
