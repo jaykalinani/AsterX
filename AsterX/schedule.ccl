@@ -5,7 +5,7 @@ STORAGE: flux_x flux_y flux_z
 STORAGE: densrhs momrhs taurhs Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 STORAGE: Aux_in_RHSof_A_Psi
-
+STORAGE: TmunuBase::eTtt TmunuBase::eTti TmunuBase::eTij
 
 if(unit_test)
 {
@@ -160,7 +160,10 @@ SCHEDULE AsterX_SourceTerms IN ODESolvers_RHS AFTER AsterX_Fluxes
   READS: ADMBase::curv(everywhere)
   READS: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::press(everywhere) HydroBase::eps(everywhere)
   READS: HydroBase::Bvec(everywhere)
+  READS: TmunuBase::eTtt(interior) TmunuBase::eTti(interior) TmunuBase::eTij(interior)
+  WRITES: TmunuBase::eTtt(interior) TmunuBase::eTti(interior) TmunuBase::eTij(interior)
   WRITES: densrhs(interior) taurhs(interior) momrhs(interior)
+  SYNC: TmunuBase::eTtt TmunuBase::eTti TmunuBase::eTij
   SYNC: densrhs taurhs momrhs
 } "Calculate the source terms and compute the RHS of the hydro equations"
 

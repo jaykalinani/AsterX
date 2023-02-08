@@ -1,6 +1,5 @@
 #include "prim2con.hxx"
 
-#include <fixmath.hxx>
 #include <loop_device.hxx>
 
 #include <cctk.h>

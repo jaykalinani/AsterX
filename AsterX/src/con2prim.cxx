@@ -1,4 +1,3 @@
-#include <fixmath.hxx>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -10,6 +9,10 @@
 #include "c2p.hxx"
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
+
+#include <eos_1p.hxx>
+#include <eos_polytropic.hxx>
+
 #include <eos.hxx>
 #include <eos_idealgas.hxx>
 
@@ -24,8 +27,9 @@ using namespace Con2PrimFactory;
 
 enum class eos_t { IdealGas, Hybrid, Tabulated };
 
-template <typename EOSType>
-void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSType &eos_th) {
+template <typename EOSIDType, typename EOSType>
+void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
+                             EOSType &eos_th) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
@@ -33,7 +37,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSType &eos_th) {
 
   // Setting up atmosphere
   const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
-  const atmosphere atmo(rho_abs_min, eps_atmo, Ye_atmo, p_atmo, rho_atmo_cut);
+  const CCTK_REAL gm1 = eos_cold.gm1_from_valid_rmd(rho_abs_min);
+  CCTK_REAL eps_atm = eos_cold.sed_from_valid_gm1(gm1);
+  eps_atm = std::min(std::max(eos_th.rgeps.min, eps_atm), eos_th.rgeps.max);
+  const CCTK_REAL p_atm =
+      eos_th.press_from_valid_rho_eps_ye(rho_abs_min, eps_atmo, Ye_atmo);
+  const atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 
   // Construct Noble c2p object:
   c2p_2DNoble c2p_Noble(eos_th, max_iter, c2p_tol);
@@ -212,8 +221,13 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
 
   switch (eostype) {
   case eos_t::IdealGas: {
+    CCTK_REAL n = 1 / (poly_gamma - 1); // Polytropic index
+    CCTK_REAL rmd_p = pow(poly_k, -n);  // Polytropic density scale
+
+    const eos_polytrope eos_cold(n, rmd_p, rho_max);
     const eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_th);
+
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_cold, eos_th);
     break;
   }
   case eos_t::Hybrid: {
@@ -262,7 +276,7 @@ extern "C" void AsterX_Con2Prim_Interpolate_Failed(CCTK_ARGUMENTS) {
           vely(p.I) = calc_avg_neighbors(flag_nbs, vely_nbs, saved_vely_nbs);
           velz(p.I) = calc_avg_neighbors(flag_nbs, velz_nbs, saved_velz_nbs);
           eps(p.I) = calc_avg_neighbors(flag_nbs, eps_nbs, saved_eps_nbs);
-          press(p.I) = (gamma - 1) * eps(p.I) * rho(p.I);
+          press(p.I) = (gl_gamma - 1) * eps(p.I) * rho(p.I);
 
           /* reset flag */
           con2prim_flag(p.I) = 1;

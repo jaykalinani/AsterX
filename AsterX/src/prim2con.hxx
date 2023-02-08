@@ -1,7 +1,6 @@
 #ifndef PRIM2CON_HXX
 #define PRIM2CON_HXX
 
-#include <fixmath.hxx>
 #include <loop_device.hxx>
 
 #include <cctk.h>

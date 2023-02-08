@@ -1,4 +1,3 @@
-#include <fixmath.hxx>
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -25,16 +24,21 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
 
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
+  // Setting up initial data EOS
+  const CCTK_REAL adiab_ind_id = 1.0 / (poly_gamma - 1);
+  const CCTK_REAL rmd_p = pow(poly_k, -n); //Polytropic density scale
+  const auto eos_id = make_eos_barotr_poly(adiab_ind_id, rmd_p, rho_max);
+
+  // Setting up evolution EOS
+  const CCTK_REAL adiab_ind_evol = 1.0 / (gl_gamma - 1);
+  const auto eos = make_eos_idealgas(adiab_ind_evol, eps_max, rho_max);
+
   // Setting up atmosphere
   const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
+  CCTK_REAL eps_atmo = eos_id.at_rho(rho_abs_min).eps();
+  eps_atmo  = eos.range_eps(rho_abs_min, Ye_max).limit_to(eps_atmo);
+  CCTK_REAL p_atmo  = eos.at_rho_eps_ye(rho_abs_min, eps_atmo, Ye_atmo).press();
   const atmosphere atmo(rho_abs_min, eps_atmo, Ye_atmo, p_atmo, rho_atmo_cut);
-
-  const CCTK_REAL adiab_ind = 1.0 / (gamma - 1);
-  const auto eos = make_eos_idealgas(adiab_ind, 1.e6, 1.e6);
-  // make_eos_idealgas(adiab_ind, max_eps, max_rho);
-  const CCTK_REAL atmo_p =
-      eos.at_rho_eps_ye(rho_abs_min, eps_atmo, Ye_atmo).press();
-  // atmosphere atmo{rho_abs_min, atmo_eps, atmo_ye, atmo_p, atmo_cut};
 
   CCTK_REAL dummy_Ye = 0.5;
   CCTK_REAL dummy_dYe = 0.5;
@@ -166,7 +170,7 @@ extern "C" void AsterX_Con2Prim_Interpolate_Failed(CCTK_ARGUMENTS) {
           vely(p.I) = calc_avg_neighbors(flag_nbs, vely_nbs, saved_vely_nbs);
           velz(p.I) = calc_avg_neighbors(flag_nbs, velz_nbs, saved_velz_nbs);
           eps(p.I) = calc_avg_neighbors(flag_nbs, eps_nbs, saved_eps_nbs);
-          press(p.I) = (gamma - 1) * eps(p.I) * rho(p.I);
+          press(p.I) = (gl_gamma - 1) * eps(p.I) * rho(p.I);
 
           /* reset flag */
           con2prim_flag(p.I) = 1;

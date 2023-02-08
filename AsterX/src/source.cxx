@@ -1,4 +1,3 @@
-#include <fixmath.hxx>
 #include <loop_device.hxx>
 
 #include <cctk.h>
@@ -152,6 +151,19 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
                  0.5 * calc_contraction(t, d_g(k));
         });
 
+        /* Update the Tmunu grid functions */
+        eTtt(p.I) = eTtt(p.I) + t00;
+        eTtx(p.I) = eTtx(p.I) + t0(0);
+        eTty(p.I) = eTty(p.I) + t0(1);
+        eTtz(p.I) = eTtz(p.I) + t0(2);
+        eTxx(p.I) = eTxx(p.I) + t(0, 0);
+        eTxy(p.I) = eTxy(p.I) + t(0, 1);
+        eTxz(p.I) = eTxz(p.I) + t(0, 2);
+        eTyy(p.I) = eTyy(p.I) + t(1, 1);
+        eTyz(p.I) = eTyz(p.I) + t(1, 2);
+        eTzz(p.I) = eTzz(p.I) + t(2, 2);
+
+        /* Update the RHS grid functions */
         densrhs(p.I) = 0.0;
         momxrhs(p.I) = alp_avg * sqrt_detg * mom_source(0);
         momyrhs(p.I) = alp_avg * sqrt_detg * mom_source(1);

@@ -7,16 +7,6 @@ KEYWORD evolution_eos "Equation of state employed during evolution" STEERABLE=ne
   "Tabulated" :: ""
 } "IdealGas"
 
-CCTK_REAL gamma "EOS parameter" STEERABLE=always
-{
-  0.0:* :: ""
-} 1.6666666666666667
-
-CCTK_REAL poly_K "Polytropic EOS constant" STEERABLE=always
-{
-  0.0:* :: ""
-} 100.0
-
 KEYWORD vector_potential_gauge "Gauge choice of four-vector potential A" STEERABLE=never
 {
   "algebraic" :: ""
@@ -99,6 +89,8 @@ CCTK_INT local_spatial_order "Order of spatial finite differencing" STEERABLE=ne
 } 2
 
 SHARES: EOSX
+USES CCTK_REAL poly_gamma
+USES CCTK_REAL poly_k
 USES CCTK_REAL gl_gamma
 USES CCTK_REAL eps_min
 USES CCTK_REAL eps_max
