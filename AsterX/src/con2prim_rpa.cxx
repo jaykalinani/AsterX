@@ -11,6 +11,8 @@
 
 #include "reprimand/eos_thermal.h" // The EOS framework
 #include "reprimand/eos_idealgas.h"
+#include "reprimand/eos_barotropic.h"
+#include "reprimand/eos_barotr_poly.h"
 #include "reprimand/con2prim_imhd.h" // The con2prim framework
 
 namespace AsterX {
@@ -25,6 +27,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
   // Setting up initial data EOS
+  const CCTK_REAL n = 1 / (poly_gamma - 1); // Polytropic index
   const CCTK_REAL adiab_ind_id = 1.0 / (poly_gamma - 1);
   const CCTK_REAL rmd_p = pow(poly_k, -n); //Polytropic density scale
   const auto eos_id = make_eos_barotr_poly(adiab_ind_id, rmd_p, rho_max);
@@ -35,10 +38,10 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
 
   // Setting up atmosphere
   const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
-  CCTK_REAL eps_atmo = eos_id.at_rho(rho_abs_min).eps();
-  eps_atmo  = eos.range_eps(rho_abs_min, Ye_max).limit_to(eps_atmo);
-  CCTK_REAL p_atmo  = eos.at_rho_eps_ye(rho_abs_min, eps_atmo, Ye_atmo).press();
-  const atmosphere atmo(rho_abs_min, eps_atmo, Ye_atmo, p_atmo, rho_atmo_cut);
+  CCTK_REAL eps_atm = eos_id.at_rho(rho_abs_min).eps();
+  eps_atm  = eos.range_eps(rho_abs_min, Ye_atmo).limit_to(eps_atmo);
+  CCTK_REAL p_atm  = eos.at_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo).press();
+  const atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 
   CCTK_REAL dummy_Ye = 0.5;
   CCTK_REAL dummy_dYe = 0.5;
