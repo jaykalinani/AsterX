@@ -113,10 +113,10 @@ ODESolvers::method = "RK4"
 IO::out_dir = $parfile
 IO::out_every = 128
 CarpetX::out_silo_vars = "
-    AsterX::Avec_x
-    AsterX::Avec_y
-    AsterX::Avec_z
-    AsterX::dB
+#    AsterX::Avec_x
+#    AsterX::Avec_y
+#    AsterX::Avec_z
+#    AsterX::dB
     HydroBase::Bvec
     HydroBase::rho
     HydroBase::vel
@@ -131,6 +131,7 @@ CarpetX::out_tsv_vars = "
     AsterX::dB
     HydroBase::Bvec
     HydroBase::rho
+    HydroBase::vel
     HydroBase::press
     CarpetX::regrid_error
 "
