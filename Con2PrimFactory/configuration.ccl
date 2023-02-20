@@ -1,4 +1,5 @@
 #Configuration definitions for thorn Con2PrimFactory
 
-REQUIRES Boost Loop EOSX PROVIDES Con2PrimFactory {}
-REQUIRES Con2PrimFactory
+REQUIRES Boost Loop EOSX Algo
+PROVIDES Con2PrimFactory {
+}

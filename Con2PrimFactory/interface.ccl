@@ -8,3 +8,4 @@ INCLUDES HEADER: c2p_2DNoble.hxx IN c2p_2DNoble.hxx
 INCLUDES HEADER: c2p_1DPalenzuela.hxx IN c2p_1DPalenzuela.hxx 
 USES INCLUDE HEADER: eos.hxx 
 USES INCLUDE HEADER: eos_idealgas.hxx
+USES INCLUDE HEADER: roots.hxx

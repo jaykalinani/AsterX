@@ -313,15 +313,6 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
       errf += fabs(fvec[i]);
       // printf("i, fabs(fvec[i]): %i, %f \n", i, fabs(fvec[i]));
     }
-
-    /* save old values before calculating the new */
-    x_old[0] = x[0];
-    x_old[1] = x[1];
-
-    for (CCTK_INT i = 0; i < n; i++) {
-      x[i] += dx[i];
-    }
-
     //	errf  = (x[0]==0.) ?  fabs(dx[0]) : fabs(dx[0]/x[0]);
     if (errf <= tolerance) {
       c2p_succeeded = true; // false
@@ -330,21 +321,29 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
       break;
     }
 
-    /* make sure that the new x[] is physical */
-    if (x[0] < 0.0) {
-      x[0] = fabs(x[0]);
-    } else {
-      if (x[0] > 1e20) {
-        x[0] = x_old[0];
-      }
-    }
+    /* save old values before calculating the new */
+    x_old[0] = x[0];
+    x_old[1] = x[1];
 
-    if (x[1] < 0.0) {
-      x[1] = 0.0;
-    } else {
-      if (x[1] >= 1.0) {
-        x[1] = dv;
-      }
+    for (CCTK_INT i = 0; i < n; i++) {
+      x[i] += dx[i];
+    }
+  }
+
+  /* make sure that the new x[] is physical */
+  if (x[0] < 0.0) {
+    x[0] = fabs(x[0]);
+  } else {
+    if (x[0] > 1e20) {
+      x[0] = x_old[0];
+    }
+  }
+
+  if (x[1] < 0.0) {
+    x[1] = 0.0;
+  } else {
+    if (x[1] >= 1.0) {
+      x[1] = dv;
     }
   }
 

@@ -2,6 +2,7 @@
 #define C2P_1DPALENZUELA_HXX
 
 #include "c2p.hxx"
+#include "roots.hxx"
 namespace Con2PrimFactory {
 
 class c2p_1DPalenzuela : public c2p {
@@ -31,13 +32,6 @@ public:
                     CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv,
                     cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
                     const smat<CCTK_REAL, 3> &glo) const;
-
-  template <typename EOSType>
-  CCTK_HOST CCTK_DEVICE
-      CCTK_ATTRIBUTE_ALWAYS_INLINE inline std::pair<CCTK_REAL, CCTK_REAL>
-      brent(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi, CCTK_INT min_bits,
-            CCTK_INT max_iters, CCTK_INT &iters, EOSType &eos_th,
-            cons_vars &cv) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -193,103 +187,6 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 }
 
 template <typename EOSType>
-CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline std::pair<CCTK_REAL, CCTK_REAL>
-c2p_1DPalenzuela::brent(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
-                        CCTK_INT min_bits, CCTK_INT max_iters, CCTK_INT &iters,
-                        EOSType &eos_th, cons_vars &cv) const {
-  using std::abs, std::min, std::max, std::swap;
-
-  CCTK_REAL qPalenzuela = cv.tau / cv.dens;
-  CCTK_REAL sPalenzuela = Bsq / cv.dens;
-
-  CCTK_REAL xPalenzuela_lowerBound = 1.0 + qPalenzuela - sPalenzuela;
-  CCTK_REAL xPalenzuela_upperBound = 2.0 + 2.0 * qPalenzuela - sPalenzuela;
-
-  CCTK_REAL a = xPalenzuela_lowerBound;
-  CCTK_REAL b = xPalenzuela_upperBound;
-
-  auto tol = boost::math::tools::eps_tolerance<CCTK_REAL>(min_bits);
-
-  iters = 0;
-  auto fa = funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, a, eos_th, cv);
-  auto fb = funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, b, eos_th, cv);
-  if (abs(fa) < abs(fb)) {
-    swap(a, b);
-    swap(fa, fb);
-  }
-  if (fb == 0)
-    return {b, b};
-  if (fa * fb >= 0) {
-    // Root is not bracketed
-    iters = max_iters;
-    return {min(a, b), max(a, b)};
-  }
-  CCTK_REAL c = a;
-  auto fc = fa;
-  bool mflag = true;
-  CCTK_REAL d{};
-  while (fb != 0 && !tol(a, b) && iters < max_iters) {
-    CCTK_REAL s;
-    if (fa != fc && fb != fc)
-      // inverse quadratic interpolation
-      s = (a * fb * fc) / ((fa - fb) * (fa - fc)) +
-          (b * fa * fc) / ((fb - fa) * (fb - fc)) +
-          (c * fa * fb) / ((fc - fa) * (fc - fb));
-    else
-      // secant method
-      s = (a + b) / 2 - (fa + fb) / 2 * (b - a) / (fb - fa);
-
-    CCTK_REAL u = (3 * a + b) / 4;
-    CCTK_REAL v = b;
-
-    if (u > v)
-      swap(u, v);
-
-    bool cond1 = !(u <= s && s <= v);
-    bool cond2 = mflag && abs(s - b) >= abs(b - c) / 2;
-    bool cond3 = !mflag && abs(s - b) >= abs(c - d) / 2;
-    bool cond4 = mflag && tol(c, b);
-    bool cond5 = !mflag && tol(c, d);
-    if (cond1 || cond2 || cond3 || cond4 || cond5) {
-      // bisection
-      s = (a + b) / 2;
-      mflag = true;
-    } else {
-      mflag = false;
-    }
-    auto fs = funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, s, eos_th, cv);
-    // `d` is assigned for the first time here; it won't be used above on the
-    // first iteration because `mflag` is set
-    d = c;
-    c = b;
-    fc = fb;
-    if (fa * fs < 0) {
-      b = s;
-      fb = fs;
-    } else {
-      a = s;
-      fa = fs;
-    }
-    // CCTK_VINFO("iters=%d mflag=%d   a=%.17g b=%.17g c=%.17g d=%.17g fa=%.17g"
-    //            "fb=%.17g fc=%.17g",
-    //            iters, int(mflag), double(a), double(b), double(c), double(d),
-    //            double(fa), double(fb), double(fc));
-    if (fa * fb >= 0) {
-      return {min(a, b), max(a, b)};
-    }
-    if (abs(fa) < abs(fb)) {
-      swap(a, b);
-      swap(fa, fb);
-    }
-    ++iters;
-  }
-
-  if (fb == 0)
-    return {b, b};
-  return {min(a, b), max(a, b)};
-}
-
-template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
                                         CCTK_REAL BiSi, CCTK_REAL x,
@@ -330,6 +227,7 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
                         cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
                         CCTK_INT &c2p_succeeded) const {
+
   /* Calculate inverse of 3-metric */
   const CCTK_REAL spatial_detg = calc_det(glo);
   const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
@@ -368,14 +266,20 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
   const CCTK_INT maxiters = maxIterations;
   CCTK_INT iters;
-  // CCTK_REAL froot = funcRoot_1DPalenzuela();
-  std::pair<CCTK_REAL, CCTK_REAL> result =
-      brent(Ssq, Bsq, BiSi, minbits, maxiters, iters, eos_th, cv);
+
+  CCTK_REAL qPalenzuela = cv.tau / cv.dens;
+  CCTK_REAL sPalenzuela = Bsq / cv.dens;
+  CCTK_REAL xPalenzuela_lowerBound = 1.0 + qPalenzuela - sPalenzuela;
+  CCTK_REAL xPalenzuela_upperBound = 2.0 + 2.0 * qPalenzuela - sPalenzuela;
+  CCTK_REAL a = xPalenzuela_lowerBound;
+  CCTK_REAL b = xPalenzuela_upperBound;
+  auto fn = [&](auto x) {
+    return funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, x, eos_th, cv); };
+  auto result = Algo::brent(fn, a, b, minbits, maxiters, iters);
 
   // Pick best solution
   CCTK_REAL xPalenzuela_Sol;
-  if (abs(funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, result.first, eos_th, cv)) <
-      abs(funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, result.second, eos_th, cv))) {
+  if (abs(fn(result.first)) < abs(fn(result.second))) {
     xPalenzuela_Sol = result.first;
   } else {
     xPalenzuela_Sol = result.second;
@@ -383,9 +287,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
   // Check solution and calculate primitives
   // TODO:check if to pass result.first or xPalenzuela_Sol
-  if (iters < maxiters &&
-      abs(funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, result.first, eos_th, cv)) <
-          tolerance) {
+  if (iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
     //        printf("Palenzuela C2P failed, c2p_succeeded set to 0. \n");
     c2p_succeeded = true; // true
   }
