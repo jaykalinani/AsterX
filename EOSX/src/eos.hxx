@@ -55,7 +55,7 @@ protected:
   }
 
 public:
-  eos() {
+  CCTK_DEVICE CCTK_HOST eos() {
     rho_atm = 1e-11;
     rho_threshold = 10.0;
     press_atm = 1e-11;
