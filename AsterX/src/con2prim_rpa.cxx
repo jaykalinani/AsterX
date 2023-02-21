@@ -39,7 +39,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   // Setting up atmosphere
   const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
   CCTK_REAL eps_atm = eos_id.at_rho(rho_abs_min).eps();
-  eps_atm  = eos.range_eps(rho_abs_min, Ye_atmo).limit_to(eps_atmo);
+  eps_atm  = eos.range_eps(rho_abs_min, Ye_atmo).limit_to(eps_atm);
   CCTK_REAL p_atm  = eos.at_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo).press();
   const atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 

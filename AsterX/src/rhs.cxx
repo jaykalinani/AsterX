@@ -57,7 +57,9 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
 
   const auto calcupdate_Avec =
       [=] CCTK_DEVICE(const PointDesc &p, int i) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const int j = (i + 1) % 3, k = (i + 2) % 3;
+        const int j = (i == 0) ? 1 : ((i == 1) ? 2 : 0);
+        const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
+
         const CCTK_REAL E =
             0.25 * ((gf_fBs(j)(k)(p.I) + gf_fBs(j)(k)(p.I - DI[j])) -
                     (gf_fBs(k)(j)(p.I) + gf_fBs(k)(j)(p.I - DI[k])));

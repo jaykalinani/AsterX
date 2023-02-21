@@ -19,6 +19,7 @@ using namespace std;
 using namespace Loop;
 using namespace Arith;
 
+// For contractions, make sure to use the correct indices of the vectors
 // Computes the contraction of smat and vec
 template <typename T, int D>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, D>
@@ -50,15 +51,6 @@ calc_contraction(const smat<T, D> &g, const vec<T, D> &v1,
                          ARITH_INLINE { return g(i, j) * v1(i) * v2(j); });
 }
 
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 3>
-calc_cross_product(const vec<T, 3> &B, const vec<T, 3> &v) {
-  return ([&](int i) ARITH_INLINE {
-    const int j = (i + 1) % 3, k = (i + 2) % 3;
-    return B(j) * v(k) - B(k) * v(j);
-  });
-}
-
 // Contraction for rc case: consider both sides of the face
 template <typename T, int D, int F>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, D>
@@ -80,12 +72,24 @@ calc_contraction(const vec<vec<T, F>, D> &vup_rc,
   });
 }
 
+// Cross products
+template <typename T>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 3>
+calc_cross_product(const vec<T, 3> &B, const vec<T, 3> &v) {
+  return ([&](int i) ARITH_INLINE {
+    const int j = (i == 0) ? 1 : ((i == 1) ? 2 : 0);
+    const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
+    return B(j) * v(k) - B(k) * v(j);
+  });
+}
+
 template <typename T, int F>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
 calc_cross_product(const vec<vec<T, F>, 3> &B_rc,
                    const vec<vec<T, F>, 3> &v_rc) {
   return ([&](int i) ARITH_INLINE {
-    const int j = (i + 1) % 3, k = (i + 2) % 3;
+    const int j = (i == 0) ? 1 : ((i == 1) ? 2 : 0);
+    const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
     return vec<T, F>([&](int f) ARITH_INLINE {
       return B_rc(j)(f) * v_rc(k)(f) - B_rc(k)(f) * v_rc(j)(f);
     });
@@ -96,17 +100,12 @@ template <typename T, int F>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<vec<T, F>, 3>
 calc_cross_product(const vec<T, 3> &B, const vec<vec<T, F>, 3> &v_rc) {
   return ([&](int i) ARITH_INLINE {
-    const int j = (i + 1) % 3, k = (i + 2) % 3;
+    const int j = (i == 0) ? 1 : ((i == 1) ? 2 : 0);
+    const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
     return vec<T, F>([&](int f) ARITH_INLINE {
       return B(j) * v_rc(k)(f) - B(k) * v_rc(j)(f);
     });
   });
-}
-
-template <typename T, int F>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, F>
-pow2(vec<T, F> x) {
-  return ([&](int f) { return x(f) * x(f); });
 }
 
 // Computes the norm of vec, measured with smat
@@ -136,6 +135,12 @@ calc_wlorentz(const vec<T, D> &v_up, const vec<T, D> &v_dn) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T pow2(T x) {
   return x * x;
+}
+
+template <typename T, int F>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, F>
+pow2(vec<T, F> x) {
+  return ([&](int f) { return x(f) * x(f); });
 }
 
 // FD2: vertex centered input, vertex centered output, oneside stencil
@@ -172,17 +177,8 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd2_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
   constexpr auto DI = PointDesc::DI;
   T dgf1, dgf2, dgf3, dgf4;
-  int dir1, dir2;
-  if (dir == 0) {
-    dir1 = 1;
-    dir2 = 2;
-  } else if (dir == 1) {
-    dir1 = 0;
-    dir2 = 2;
-  } else {
-    dir1 = 0;
-    dir2 = 1;
-  }
+  const int dir1 = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);
+  const int dir2 = (dir == 0) ? 2 : ((dir == 1) ? 0 : 1);
 
   dgf1 = (gf(p.I + DI[dir]) - gf(p.I)) / p.DX[dir];
   dgf2 = (gf(p.I + DI[dir1] + DI[dir]) - gf(p.I + DI[dir1])) / p.DX[dir];
