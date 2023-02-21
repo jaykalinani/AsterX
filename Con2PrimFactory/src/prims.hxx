@@ -20,7 +20,7 @@ struct prim_vars {
   vec<CCTK_REAL, 3> E;
 
   /// Default constructor. Leaves all members uninitialized.
-  CCTK_HOST CCTK_DEVICE prim_vars() = default;
+  prim_vars() = default;
 
   /// Construct from single variables.
   CCTK_HOST CCTK_DEVICE prim_vars(CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL ye_,

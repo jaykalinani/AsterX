@@ -18,7 +18,7 @@ struct cons_vars {
   vec<CCTK_REAL, 3> dBvec;
 
   // Default constructor, no initialization.
-  CCTK_HOST CCTK_DEVICE cons_vars() = default;
+  cons_vars() = default;
 
   // Construct from single variables.
   CCTK_HOST CCTK_DEVICE cons_vars(CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_,

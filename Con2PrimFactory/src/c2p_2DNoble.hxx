@@ -9,8 +9,6 @@ class c2p_2DNoble : public c2p {
 public:
   /* Some attributes */
   CCTK_REAL GammaIdealFluid;
-  CCTK_INT Failed_2DNoble;
-  CCTK_INT Nit_2DNoble;
 
   /* Constructor */
   template <typename EOSType>
