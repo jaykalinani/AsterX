@@ -175,8 +175,9 @@ SCHEDULE AsterX_RHS IN ODESolvers_RHS AFTER AsterX_SourceTerms
   READS: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
   READS: Psi(everywhere)
   READS: Aux_in_RHSof_A_Psi(everywhere)
-  WRITES: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
+  WRITES: densrhs(interior) taurhs(interior) momrhs(interior)
   WRITES: Avec_x_rhs(interior) Avec_y_rhs(interior) Avec_z_rhs(interior) Psi_rhs(interior)
+  SYNC: densrhs taurhs momrhs
   SYNC: Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 } "Update the RHS of the hydro equations with the flux contributions"
 

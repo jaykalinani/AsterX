@@ -78,7 +78,7 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         }
       };
 
-  grid.loop_all_device<1, 1, 1>(
+  grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         densrhs(p.I) += calcupdate_hydro(gf_fdens, p);
@@ -87,9 +87,11 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         momzrhs(p.I) += calcupdate_hydro(gf_fmomz, p);
         taurhs(p.I) += calcupdate_hydro(gf_ftau, p);
         if (isnan(densrhs(p.I))) {
-          printf("calcupdate = %f", calcupdate_hydro(gf_fdens, p));
-          printf("densrhs = %f, gf_fdens = %f, %f, %f", densrhs(p.I),
-                 gf_fdens(0)(p.I), gf_fdens(1)(p.I), gf_fdens(2)(p.I));
+          printf("calcupdate = %f, ", calcupdate_hydro(gf_fdens, p));
+          printf("densrhs = %f, gf_fdens = %f, %f, %f, %f, %f, %f \n",
+              densrhs(p.I),
+              gf_fdens(0)(p.I), gf_fdens(1)(p.I), gf_fdens(2)(p.I),
+              gf_fdens(0)(p.I + DI[0]), gf_fdens(1)(p.I + DI[1]), gf_fdens(2)(p.I + DI[2]));
         }
         assert(!isnan(densrhs(p.I)));
       });

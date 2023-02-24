@@ -306,12 +306,35 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
             (dir != 1) * calcflux(lambda, Btildes_rc(1), flux_Btildes(1));
         fluxBzs(dir)(p.I) =
             (dir != 2) * calcflux(lambda, Btildes_rc(2), flux_Btildes(2));
-        if (isnan(flux_dens(0)) || isnan(flux_dens(1)) || isnan(dens_rc(0)) ||
-            isnan(dens_rc(1)) || isnan(fluxdenss(dir)(p.I)) ||
-            isnan(fluxdenss(dir)(p.I))) {
-          printf("dens_rc = %f, %f, vtilde_rc = %f, %f, flux_den = %f, %f",
-                 dens_rc(0), dens_rc(1), vtilde_rc(0), vtilde_rc(1),
-                 flux_dens(0), flux_dens(1));
+        if (isnan(flux_dens(0)) || isnan(flux_dens(1)) || isnan(dens_rc(0)) || isnan(dens_rc(1)) || isnan(fluxdenss(dir)(p.I)) ||
+            isnan(flux_moms(0)(0)) || isnan(flux_moms(0)(1)) || isnan(moms_rc(0)(0)) || isnan(moms_rc(0)(1)) || isnan(fluxmomxs(dir)(p.I)) ||
+            isnan(flux_moms(1)(0)) || isnan(flux_moms(1)(1)) || isnan(moms_rc(1)(0)) || isnan(moms_rc(1)(1)) || isnan(fluxmomys(dir)(p.I)) ||
+            isnan(flux_moms(2)(0)) || isnan(flux_moms(2)(1)) || isnan(moms_rc(2)(0)) || isnan(moms_rc(2)(1)) || isnan(fluxmomzs(dir)(p.I)) ||
+            isnan(flux_tau(0)) || isnan(flux_tau(1)) || isnan(tau_rc(0)) || isnan(tau_rc(1)) || isnan(fluxtaus(dir)(p.I))) {
+          constexpr auto DI = PointDesc::DI;
+          printf("cctk_iteration, x, y, z, dir = %i, %f, %f, %f, %i, \n ", cctk_iteration, p.x, p.y, p.z, dir);
+          printf("dens_rc = %f, %f, flux_den = %f, %f \n",
+              dens_rc(0), dens_rc(1), flux_dens(0), flux_dens(1));
+          printf("momx_rc = %f, %f, flux_momx = %f, %f \n",
+              moms_rc(0)(0), moms_rc(0)(1), flux_moms(0)(0), flux_moms(0)(1));
+          printf("momy_rc = %f, %f, flux_momy = %f, %f \n",
+              moms_rc(1)(0), moms_rc(1)(1), flux_moms(1)(0), flux_moms(1)(1));
+          printf("momz_rc = %f, %f, flux_momz = %f, %f \n",
+              moms_rc(2)(0), moms_rc(2)(1), flux_moms(2)(0), flux_moms(2)(1));
+          printf("tau_rc = %f, %f, flux_den = %f, %f \n",
+              tau_rc(0), tau_rc(1), flux_tau(0), flux_tau(1));
+          printf("sqrtg = %f, rho_rc = %f, %f, w_lorentz_rc = %f, %f \n",
+                 sqrtg, rho_rc(0), rho_rc(1), w_lorentz_rc(0), w_lorentz_rc(1));
+          printf("g_avg = %f, %f, %f, %f, %f, %f \n",
+                 g_avg(0, 0), g_avg(0, 1), g_avg(0, 2), g_avg(1, 1), g_avg(1, 2), g_avg(2, 2));
+          printf("g_gf = %f, %f, %f, %f, %f, %f;  %f, %f, %f, %f, %f, %f \n",
+                 gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I), gyz(p.I), gzz(p.I),
+                 gxx(p.I + DI[dir]), gxy(p.I + DI[dir]), gxz(p.I + DI[dir]),
+                 gyy(p.I + DI[dir]), gyz(p.I + DI[dir]), gzz(p.I + DI[dir]));
+          printf("vxlows_rc = %f, %f, vylows_rc = %f, %f, vzlows_rc = %f, %f \n",
+                 vlows_rc(0)(0), vlows_rc(0)(1), vlows_rc(1)(0), vlows_rc(1)(1), vlows_rc(2)(0), vlows_rc(2)(1));
+          printf("vel_rc = %f, %f, vtilde_rc = %f, %f \n",
+                 vel_rc(0), vel_rc(1), vtilde_rc(0), vtilde_rc(1));
         }
       });
 }
