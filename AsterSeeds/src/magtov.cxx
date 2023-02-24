@@ -56,19 +56,19 @@ extern "C" void AsterSeeds_InitializeStagAvec(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterSeeds_InitializeStagAvec;
   DECLARE_CCTK_PARAMETERS;
   
-  grid.loop_all_device<1, 0, 0>(
+  grid.loop_int_device<1, 0, 0>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           Avec_x(p.I) = calc_avg_c2e(Avec_x_cent, p, 0);
   });
 
-  grid.loop_all_device<0, 1, 0>(
+  grid.loop_int_device<0, 1, 0>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           Avec_y(p.I) = calc_avg_c2e(Avec_y_cent, p, 1);
   });
 
-  grid.loop_all_device<0, 0, 1>(
+  grid.loop_int_device<0, 0, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
             Avec_z(p.I) = calc_avg_c2e(Avec_z_cent, p, 2);

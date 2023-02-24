@@ -13,7 +13,7 @@ SCHEDULE AsterSeeds_InitializeStagAvec AT initial AFTER AsterSeeds_InitializeCen
 {
   LANG: C
   READS: Avec_x_cent(everywhere) Avec_y_cent(everywhere) Avec_z_cent(everywhere)
-  WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
-  SYNC: Avec_cent
+  WRITES: AsterX::Avec_x(interior) AsterX::Avec_y(interior) AsterX::Avec_z(interior)
+  SYNC: AsterX::Avec_x AsterX::Avec_y AsterX::Avec_z
 } "Set up initial conditions for the vector potential"
 
