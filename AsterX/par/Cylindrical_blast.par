@@ -1,15 +1,15 @@
 ActiveThorns = "
     CarpetX
-##    Formaline
     IOUtil
     ODESolvers
     SystemTopology
     TimerReport
     ADMBase
     HydroBase
-    HydroInitial
     TmunuBase
+    AsterSeeds
     AsterX
+    EOSX
 "
 
 
@@ -82,14 +82,9 @@ ADMBase::initial_dtshift = "none"
 
 
 
-# -------------------- HydroInitial --------------------------------------------
-HydroInitial::gamma = 1.3333333333
-
-
-
-# -------------------- HydroBase -----------------------------------------------
-HydroBase::initial_hydro = "cylindrical blast"
-
+# -------------------- AsterSeeds ----------------------------------------------
+AsterSeeds::test_type = "2DTest"
+AsterSeeds::test_case = "cylindrical blast"
 
 
 # -------------------- AsterX --------------------------------------------------

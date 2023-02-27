@@ -1,15 +1,15 @@
 ActiveThorns = "
     CarpetX
-##    Formaline
     IOUtil
     ODESolvers
     SystemTopology
     TimerReport
     ADMBase
     HydroBase
-    HydroInitial
     TmunuBase
+    AsterSeeds
     AsterX
+    EOSX
 "
 
 
@@ -80,16 +80,9 @@ ADMBase::initial_dtlapse = "none"
 ADMBase::initial_dtshift = "none"
 
 
-
-# -------------------- HydroInitial --------------------------------------------
-HydroInitial::gamma = 1.66666666666667
-
-
-
-# -------------------- HydroBase -----------------------------------------------
-HydroBase::initial_hydro = "magnetic rotor"
-
-
+# -------------------- AsterSeeds ----------------------------------------------
+AsterSeeds::test_type = "2DTest"
+AsterSeeds::test_case = "magnetic rotor"
 
 # -------------------- AsterX --------------------------------------------------
 AsterX::reconstruction_method = "Minmod"
@@ -102,7 +95,7 @@ Con2PrimFactory::unit_test = "yes"
 
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 1.66666666666667
-EOSX::poly_gamma = 1.3333333333
+EOSX::poly_gamma = 1.66666666666667
 
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32

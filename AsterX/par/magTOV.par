@@ -70,8 +70,6 @@ ADMBase::initial_shift      = "tov"
 ADMBase::initial_dtlapse    = "zero"
 ADMBase::initial_dtshift    = "zero"
 
-HydroBase::initial_hydro = "tov"
-
 ActiveThorns = "TOVSolver"
 TOVSolver::TOV_Rho_Central[0] = 1.28e-3
 TOVSolver::TOV_Gamma          = 2.0
@@ -86,7 +84,8 @@ Z4c::chi_floor = 1.0e-6
 Z4c::alphaG_floor = 1.0e-8
 Z4c::epsdiss = 0.32
 
-
+AsterSeeds::test_type = "3DTest"
+AsterSeeds::test_case = "magTOV"
 AsterSeeds::Afield_config = "internal dipole"
 AsterSeeds::Ab = 100.0
 AsterSeeds::press_cut = 0.04

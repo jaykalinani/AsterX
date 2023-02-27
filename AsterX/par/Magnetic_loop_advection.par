@@ -7,9 +7,10 @@ ActiveThorns = "
     TimerReport
     ADMBase
     HydroBase
-    HydroInitial
     TmunuBase
+    AsterSeeds
     AsterX
+    EOSX
 "
 
 
@@ -84,22 +85,16 @@ ADMBase::initial_dtlapse = "none"
 ADMBase::initial_dtshift = "none"
 
 
-
-# -------------------- HydroInitial --------------------------------------------
-HydroInitial::gamma                  = 1.66666666666667
-HydroInitial::mag_loop_adv_type      = "2D"
-HydroInitial::mag_loop_adv_axial_vel = "non-zero"
-
-
-
-# -------------------- HydroBase -----------------------------------------------
-HydroBase::initial_hydro = "magnetic loop advection"
-
+# -------------------- AsterSeeds ----------------------------------------------
+AsterSeeds::test_type = "2DTest"
+AsterSeeds::test_case = "magnetic loop advection"
+AsterSeeds::mag_loop_adv_type      = "2D"
+AsterSeeds::mag_loop_adv_axial_vel = "non-zero"
 
 
 # -------------------- AsterX --------------------------------------------------
 AsterX::reconstruction_method = "PPM"
-AsterX::flux_type = "HLLE"
+AsterX::flux_type = "LxF"
 AsterX::max_iter              = 100
 AsterX::c2p_tol = 1e-8
 AsterX::debug_mode = "yes"
@@ -108,7 +103,7 @@ Con2PrimFactory::unit_test = "yes"
 
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 1.66666666666667
-EOSX::poly_gamma = 1.3333333333
+EOSX::poly_gamma = 1.66666666666667
 
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32

@@ -1,14 +1,13 @@
 ActiveThorns = "
     CarpetX
-    Formaline
     IOUtil
     ODESolvers
     SystemTopology
     TimerReport
     ADMBase
     HydroBase
-    HydroInitial
     TmunuBase
+    AsterSeeds
     AsterX
     EOSX
 "
@@ -62,8 +61,8 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.25
  
-HydroBase::initial_hydro = "balsara3"
-HydroInitial::gamma = 1.66666666666667
+AsterSeeds::test_type = "1DTest"
+AsterSeeds::test_case = "Balsara3"
 
 AsterX::reconstruction_method = "minmod"
 AsterX::flux_type = "LxF"
