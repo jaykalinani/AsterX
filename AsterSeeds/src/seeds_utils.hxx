@@ -11,10 +11,15 @@ namespace AsterSeeds {
 using namespace std;
 using namespace Loop;
 
+template <typename T>
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
+  return x * x;
+}
+
 // Second-order average of cell-centered grid functions to edge center
 template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_c2e(const GF3D2<const T> &gf,
-                                     const PointDesc &p, const int dir) {
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
+calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
@@ -28,4 +33,4 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T calc_avg_c2e(const G
   return gf_avg / 4.0;
 }
 
-} //namespace AsterSeeds
+} // namespace AsterSeeds

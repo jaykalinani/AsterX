@@ -5,7 +5,7 @@
 #include <cctk_Parameters.h>
 
 #include <cmath>
-#include "utils.hxx"
+#include "seeds_utils.hxx"
 
 namespace AsterSeeds {
 using namespace std;
@@ -48,7 +48,7 @@ extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
      });
 
   } else {
-    CCTK_ERROR("Internal error");
+    CCTK_ERROR("Vector potential configuration not defined");
   }
 } 
 
