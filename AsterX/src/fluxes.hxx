@@ -93,13 +93,14 @@ hlle(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
       max({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
            lam(1)(1), lam(1)(2), lam(1)(3)});
 
+  //Note that charmin is just the minimum, not with the minus sign
   const CCTK_REAL charmin =
       min({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
            lam(1)(1), lam(1)(2), lam(1)(3)});
 
   const CCTK_REAL charpm = charmax - charmin;
 
-  return (charmax * flux(1) - charmin * flux(0) +
+  return (charmax * flux(0) - charmin * flux(1) +
           charmax * charmin * (var(1) - var(0))) /
          charpm;
 }
