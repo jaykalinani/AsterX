@@ -65,7 +65,7 @@ AsterSeeds::test_type = "1DTest"
 AsterSeeds::test_case = "Balsara4"
 
 AsterX::reconstruction_method = "PPM"
-AsterX::flux_type = "LxF"
+AsterX::flux_type = "HLLE"
 AsterX::max_iter = 100
 AsterX::c2p_tol = 1e-8
 AsterX::debug_mode = "yes"
@@ -75,6 +75,8 @@ Con2PrimFactory::unit_test = "yes"
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 1.66666666666667
 EOSX::poly_gamma = 1.66666666666667
+EOSX::rho_max = 10000
+EOSX::eps_max = 10000
 
 ODESolvers::method = "RK4"
 

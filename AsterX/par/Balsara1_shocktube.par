@@ -75,6 +75,8 @@ Con2PrimFactory::unit_test = "yes"
 EOSX::evol_eos_name = "IdealGas"
 EOSX::gl_gamma = 2.0
 EOSX::poly_gamma = 2.0
+EOSX::rho_max = 10000
+EOSX::eps_max = 10000
 
 ODESolvers::method = "RK4"
 
@@ -93,6 +95,7 @@ CarpetX::out_tsv_vars = "
     HydroBase::rho
     HydroBase::vel
     HydroBase::eps
+    HydroBase::press
     HydroBase::Bvec
     CarpetX::regrid_error
 "

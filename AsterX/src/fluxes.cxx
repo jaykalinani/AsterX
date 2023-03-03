@@ -306,28 +306,54 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
             (dir != 1) * calcflux(lambda, Btildes_rc(1), flux_Btildes(1));
         fluxBzs(dir)(p.I) =
             (dir != 2) * calcflux(lambda, Btildes_rc(2), flux_Btildes(2));
-        if (isnan(flux_dens(0)) || isnan(flux_dens(1)) || isnan(dens_rc(0)) || isnan(dens_rc(1)) || isnan(fluxdenss(dir)(p.I)) ||
-            isnan(flux_moms(0)(0)) || isnan(flux_moms(0)(1)) || isnan(moms_rc(0)(0)) || isnan(moms_rc(0)(1)) || isnan(fluxmomxs(dir)(p.I)) ||
-            isnan(flux_moms(1)(0)) || isnan(flux_moms(1)(1)) || isnan(moms_rc(1)(0)) || isnan(moms_rc(1)(1)) || isnan(fluxmomys(dir)(p.I)) ||
-            isnan(flux_moms(2)(0)) || isnan(flux_moms(2)(1)) || isnan(moms_rc(2)(0)) || isnan(moms_rc(2)(1)) || isnan(fluxmomzs(dir)(p.I)) ||
-            isnan(flux_tau(0)) || isnan(flux_tau(1)) || isnan(tau_rc(0)) || isnan(tau_rc(1)) || isnan(fluxtaus(dir)(p.I))) {
+        if (isnan(flux_dens(0)) || isnan(flux_dens(1)) || isnan(dens_rc(0)) ||
+            isnan(dens_rc(1)) || isnan(fluxdenss(dir)(p.I)) ||
+            isnan(flux_moms(0)(0)) || isnan(flux_moms(0)(1)) ||
+            isnan(moms_rc(0)(0)) || isnan(moms_rc(0)(1)) ||
+            isnan(fluxmomxs(dir)(p.I)) || isnan(flux_moms(1)(0)) ||
+            isnan(flux_moms(1)(1)) || isnan(moms_rc(1)(0)) ||
+            isnan(moms_rc(1)(1)) || isnan(fluxmomys(dir)(p.I)) ||
+            isnan(flux_moms(2)(0)) || isnan(flux_moms(2)(1)) ||
+            isnan(moms_rc(2)(0)) || isnan(moms_rc(2)(1)) ||
+            isnan(fluxmomzs(dir)(p.I)) || isnan(flux_tau(0)) ||
+            isnan(flux_tau(1)) || isnan(tau_rc(0)) || isnan(tau_rc(1)) ||
+            isnan(fluxtaus(dir)(p.I))) {
           constexpr auto DI = PointDesc::DI;
-          printf("cctk_iteration = %i,  dir = %i,  ijk = %i, %i, %i. \n", cctk_iteration, dir, p.i, p.j, p.k);
+          printf("cctk_iteration = %i,  dir = %i,  ijk = %i, %i, %i. \n",
+                 cctk_iteration, dir, p.i, p.j, p.k);
           printf("  x, y, z = %16.8e, %16.8e, %16.8e.\n", p.x, p.y, p.z);
-          printf("  dens_rc = %16.8e, %16.8e,  flux_dens = %16.8e, %16.8e.\n", dens_rc(0), dens_rc(1), flux_dens(0), flux_dens(1));
-          printf("  momx_rc = %16.8e, %16.8e,  flux_momx = %16.8e, %16.8e.\n", moms_rc(0)(0), moms_rc(0)(1), flux_moms(0)(0), flux_moms(0)(1));
-          printf("  momy_rc = %16.8e, %16.8e,  flux_momy = %16.8e, %16.8e.\n", moms_rc(1)(0), moms_rc(1)(1), flux_moms(1)(0), flux_moms(1)(1));
-          printf("  momz_rc = %16.8e, %16.8e,  flux_momz = %16.8e, %16.8e.\n", moms_rc(2)(0), moms_rc(2)(1), flux_moms(2)(0), flux_moms(2)(1));
-          printf("  tau_rc  = %16.8e, %16.8e,  flux_den  = %16.8e, %16.8e.\n", tau_rc(0), tau_rc(1), flux_tau(0), flux_tau(1));
-          printf("  sqrtg  = %16.8e,  rho_rc = %16.8e, %16.8e,  w_lorentz_rc = %16.8e, %16.8e \n", sqrtg, rho_rc(0), rho_rc(1), w_lorentz_rc(0), w_lorentz_rc(1));
-          printf("  g_avg  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n", g_avg(0, 0), g_avg(0, 1), g_avg(0, 2), g_avg(1, 1), g_avg(1, 2), g_avg(2, 2));
-          printf("  g_gf   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n", gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I), gyz(p.I), gzz(p.I));
-          printf("  g_gf+1 = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n", gxx(p.I + DI[dir]), gxy(p.I + DI[dir]), gxz(p.I + DI[dir]),
-                                                                                 gyy(p.I + DI[dir]), gyz(p.I + DI[dir]), gzz(p.I + DI[dir]));
-          printf("  vlows_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
-              vlows_rc(0)(0), vlows_rc(0)(1), vlows_rc(1)(0), vlows_rc(1)(1), vlows_rc(2)(0), vlows_rc(2)(1));
-          printf("  vups_rc   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
-              vels_rc(0)(0), vels_rc(0)(1), vels_rc(1)(0), vels_rc(1)(1), vels_rc(2)(0), vels_rc(2)(1));
+          printf("  dens_rc = %16.8e, %16.8e,  flux_dens = %16.8e, %16.8e.\n",
+                 dens_rc(0), dens_rc(1), flux_dens(0), flux_dens(1));
+          printf("  momx_rc = %16.8e, %16.8e,  flux_momx = %16.8e, %16.8e.\n",
+                 moms_rc(0)(0), moms_rc(0)(1), flux_moms(0)(0),
+                 flux_moms(0)(1));
+          printf("  momy_rc = %16.8e, %16.8e,  flux_momy = %16.8e, %16.8e.\n",
+                 moms_rc(1)(0), moms_rc(1)(1), flux_moms(1)(0),
+                 flux_moms(1)(1));
+          printf("  momz_rc = %16.8e, %16.8e,  flux_momz = %16.8e, %16.8e.\n",
+                 moms_rc(2)(0), moms_rc(2)(1), flux_moms(2)(0),
+                 flux_moms(2)(1));
+          printf("  tau_rc  = %16.8e, %16.8e,  flux_den  = %16.8e, %16.8e.\n",
+                 tau_rc(0), tau_rc(1), flux_tau(0), flux_tau(1));
+          printf("  sqrtg  = %16.8e,  rho_rc = %16.8e, %16.8e,  w_lorentz_rc = "
+                 "%16.8e, %16.8e \n",
+                 sqrtg, rho_rc(0), rho_rc(1), w_lorentz_rc(0), w_lorentz_rc(1));
+          printf("  g_avg  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
+                 g_avg(0, 0), g_avg(0, 1), g_avg(0, 2), g_avg(1, 1),
+                 g_avg(1, 2), g_avg(2, 2));
+          printf("  g_gf   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
+                 gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I), gyz(p.I), gzz(p.I));
+          printf("  g_gf+1 = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
+                 gxx(p.I + DI[dir]), gxy(p.I + DI[dir]), gxz(p.I + DI[dir]),
+                 gyy(p.I + DI[dir]), gyz(p.I + DI[dir]), gzz(p.I + DI[dir]));
+          printf(
+              "  vlows_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
+              vlows_rc(0)(0), vlows_rc(0)(1), vlows_rc(1)(0), vlows_rc(1)(1),
+              vlows_rc(2)(0), vlows_rc(2)(1));
+          printf(
+              "  vups_rc   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
+              vels_rc(0)(0), vels_rc(0)(1), vels_rc(1)(0), vels_rc(1)(1),
+              vels_rc(2)(0), vels_rc(2)(1));
           printf("  vtilde_rc = %16.8e, %16.8e.\n", vtilde_rc(0), vtilde_rc(1));
           printf("\n");
         }

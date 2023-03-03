@@ -59,7 +59,7 @@ CarpetX::blocking_factor_z = 1
 CarpetX::regrid_error_threshold = 5.0e-5
 
 CarpetX::prolongation_type = "ddf"
-CarpetX::ghost_size = 2
+CarpetX::ghost_size = 3
 CarpetX::dtfac = 0.25
 
 #ADMBase::set_adm_variables_during_evolution = "yes"
@@ -136,6 +136,9 @@ CarpetX::out_tsv_vars = "
     HydroBase::vel
     HydroBase::press
     CarpetX::regrid_error
+    ADMBase::lapse
+    ADMBase::shift
+    ADMBase::metric
 "
 TimerReport::out_every = 100
 TimerReport::out_filename = "TimerReport"
