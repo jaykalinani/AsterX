@@ -335,7 +335,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 2.0 * (p.y); });
 
   } else {
-    CCTK_ERROR("Test name not defined");
+    CCTK_ERROR("Test case not defined");
   }
 }
 

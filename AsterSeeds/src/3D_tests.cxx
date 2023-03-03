@@ -46,14 +46,17 @@ extern "C" void Tests3D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = 0.0;
             press(p.I) = 1.0;
           }
-	  eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I), dummy_ye);
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
           // Bvecx(p.I) = 0.0;
           // Bvecy(p.I) = 0.0;
           // Bvecz(p.I) = 0.0;
         });
 
+  } else if (CCTK_EQUALS(test_case, "magTOV")) {
+    // Do nothing. Initial data should be set by TOVSOlver.
   } else {
-    CCTK_ERROR("Test name not defined");
+    CCTK_ERROR("Test case not defined");
   }
 }
 

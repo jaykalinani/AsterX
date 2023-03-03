@@ -186,7 +186,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
   }
 
   else {
-    CCTK_ERROR("Test name not defined");
+    CCTK_ERROR("Test case not defined");
   }
 }
 
