@@ -1,0 +1,9 @@
+Cactus Code Thorn WaveToyCPU
+Author(s)    : Erik Schnetter <schnetter@gmail.com>
+Maintainer(s): Erik Schnetter <schnetter@gmail.com>
+Licence      : LGPL
+--------------------------------------------------------------------------
+
+1. Purpose
+
+A wave toy using the CarpetX driver, using CPU kernels.

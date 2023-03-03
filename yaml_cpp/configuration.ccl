@@ -1,0 +1,8 @@
+# Configuration definitions for thorn yaml-cpp
+
+PROVIDES yaml_cpp
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS YAML_CPP_DIR
+}

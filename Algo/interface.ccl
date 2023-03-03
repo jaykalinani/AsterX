@@ -1,0 +1,9 @@
+# Interface definition for thorn Algo
+
+IMPLEMENTS: Algo
+
+INCLUDES HEADER: roots.hxx IN roots.hxx
+
+USES INCLUDE HEADER: vec.hxx
+USES INCLUDE HEADER: mat.hxx
+USES INCLUDE HEADER: sum.hxx

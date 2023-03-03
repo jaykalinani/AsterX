@@ -1,0 +1,10 @@
+# Configuration definitions for thorn Kokkos
+
+PROVIDES Kokkos
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS KOKKOS_DIR
+}
+
+REQUIRES Kokkos

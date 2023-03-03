@@ -1,0 +1,10 @@
+# Configuration definitions for thorn ssht
+
+REQUIRES FFTW3 MPI
+
+PROVIDES ssht
+{
+  SCRIPT configure.sh
+  LANG bash
+  OPTIONS SSHT SSHT_DIR SSHT_INC_DIRS SSHT_LIB_DIRS SSHT_LIBS
+}

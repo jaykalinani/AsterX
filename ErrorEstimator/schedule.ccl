@@ -1,0 +1,15 @@
+# Schedule definitions for thorn ErrorEstimator
+
+
+
+SCHEDULE ErrorEstimator_Estimate AS EstimateError AT postinitial
+{
+  LANG: C
+  WRITES: CarpetX::regrid_error(interior)
+} "Estimate error"
+
+SCHEDULE ErrorEstimator_Estimate AS EstimateError AT poststep
+{
+  LANG: C
+  WRITES: CarpetX::regrid_error(interior)
+} "Estimate error"

@@ -1,0 +1,9 @@
+# Configuration definitions for thorn googletest
+
+PROVIDES googletest
+{
+  SCRIPT configure.sh
+  LANG bash
+}
+
+REQUIRES googletest
