@@ -18,3 +18,7 @@ Instructions for downloading and building the Einstein Toolkit including
 CarpetX can be found [here]((https://github.com/eschnett/CarpetX)).
 
 Details for building and running AsterX along with CarpetX will be added soon..
+
+* [![GitHub
+  CI](https://github.com/jaykalinani/AsterX/workflows/ci/badge.svg)](https://github.com/jaykalinani/AsterX/actions)
+  
