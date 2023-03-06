@@ -1,6 +1,9 @@
 **AsterX** is a GPU-accelerated GRMHD code for dynamical spacetimes, which is built upon the [CarpetX](https://github.com/eschnett/CarpetX) driver.
 **CarpetX** is based on [AMReX](https://amrex-codes.github.io), a software framework for block-structured AMR (adaptive mesh refinement), which is intended for the [Einstein Toolkit](https://einsteintoolkit.org/).
 
+* [![GitHub
+  CI](https://github.com/jaykalinani/AsterX/workflows/ci/badge.svg)](https://github.com/jaykalinani/AsterX/actions)
+
 ## Overview
 
 Most algorithms in AsterX are heavily derived from the GRMHD code [Spritz](https://zenodo.org/record/4350072). Like Spritz, AsterX solves the GRMHD equations in 3D Cartesian coordinates and on a dynamical spacetime using high-resolution shock capturing (HRSC) schemes. AsterX is based on the flux-conservative Valencia formulation, and directly evolves the vector potential with the generalised Lorenz gauge to guarantee that the divergence-free constraint of the magnetic field is always satisfied with very high accuracy (thus avoiding magnetic monopoles). Moreover, the vector potential is defined in a staggered way (like in Spritz and differently from WhiskyMHD).
@@ -19,6 +22,5 @@ CarpetX can be found [here]((https://github.com/eschnett/CarpetX)).
 
 Details for building and running AsterX along with CarpetX will be added soon..
 
-* [![GitHub
-  CI](https://github.com/jaykalinani/AsterX/workflows/ci/badge.svg)](https://github.com/jaykalinani/AsterX/actions)
+
   
