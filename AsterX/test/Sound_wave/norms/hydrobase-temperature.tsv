@@ -1,0 +1,2 @@
+# 1:iteration	2:time	3:hydrobase::temperature.min	4:hydrobase::temperature.max	5:hydrobase::temperature.sum	6:hydrobase::temperature.avg	7:hydrobase::temperature.stddev	8:hydrobase::temperature.volume	9:hydrobase::temperature.L1norm	10:hydrobase::temperature.L2norm	11:hydrobase::temperature.maxabs
+0	0.0000000000000000e+00	0.0000000000000000e+00	0.0000000000000000e+00	0.0000000000000000e+00	0.0000000000000000e+00	0.0000000000000000e+00	1.0000000000000007e+00	0.0000000000000000e+00	0.0000000000000000e+00	0.0000000000000000e+00
