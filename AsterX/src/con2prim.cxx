@@ -89,6 +89,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       cv.dBvec(2) = dBz(p.I);
       pv.Bvec = cv.dBvec / sqrt_detg;
       atmo.set(pv, cv, glo);
+      atmo.set(pv_seeds);
     }
 
     CCTK_INT c2p_succeeded_Noble = 0; // false for now
