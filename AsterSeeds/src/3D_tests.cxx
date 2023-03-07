@@ -48,13 +48,23 @@ extern "C" void Tests3D_Initialize(CCTK_ARGUMENTS) {
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
-          // Bvecx(p.I) = 0.0;
-          // Bvecy(p.I) = 0.0;
-          // Bvecz(p.I) = 0.0;
         });
 
-  } else if (CCTK_EQUALS(test_case, "magTOV")) {
-    // Do nothing. Initial data should be set by TOVSOlver.
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
+
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
+
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
+
   } else {
     CCTK_ERROR("Test case not defined");
   }

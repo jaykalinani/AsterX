@@ -27,12 +27,14 @@ if (CCTK_Equals(test_type, "2DTest")) {
 
 if (CCTK_Equals(test_type, "3DTest")) {
 
-  SCHEDULE Tests3D_Initialize IN HydroBase_InitialData AFTER HydroBase_initial_data {
-  LANG: C 
-  WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
-  WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
+  if (CCTK_Equals(test_case, "spherical shock")) {
+    SCHEDULE Tests3D_Initialize IN HydroBase_InitialData AFTER HydroBase_initial_data {
+    LANG: C 
+    WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+    WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
+    }
+    "Set up initial conditions for 3D tests"
   }
-  "Set up initial conditions for 3D tests"
 
   #Initial conditions for magnetic field for TOV test
 

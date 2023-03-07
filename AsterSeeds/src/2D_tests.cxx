@@ -19,7 +19,6 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_Tests2D_Initialize;
   DECLARE_CCTK_PARAMETERS;
 
-
   // For all the tests, the initial data EOS is ideal gas
   // Constructing the IG EOS object
   eos::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
@@ -51,8 +50,9 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
           }
 
           press(p.I) = 1.;
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I), dummy_ye);
-	});
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
+        });
 
     grid.loop_all_device<1, 0, 0>(
         grid.nghostzones,
@@ -98,7 +98,8 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           rho(p.I) = 1.;
           press(p.I) = 3.;
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I), dummy_ye);
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
           velx(p.I) = 1. / 12.0;
           vely(p.I) = 1. / 24.;
           velz(p.I) = axial_vel;
@@ -166,7 +167,8 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
           }
-	  eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I), dummy_ye);
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
         });
 
     grid.loop_all_device<1, 0, 0>(
