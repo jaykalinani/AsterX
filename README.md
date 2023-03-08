@@ -1,7 +1,7 @@
 **AsterX** is a GPU-accelerated GRMHD code for dynamical spacetimes, which is built upon the [CarpetX](https://github.com/eschnett/CarpetX) driver.
 **CarpetX** is based on [AMReX](https://amrex-codes.github.io), a software framework for block-structured AMR (adaptive mesh refinement), which is intended for the [Einstein Toolkit](https://einsteintoolkit.org/).
 
-* [![GitHub CI](https://github.com/jaykalinani/AsterX/workflows/ci/badge.svg)](https://github.com/jaykalinani/AsterX/actions)
+* [![GitHub CI](https://github.com/jaykalinani/AsterX/workflows/CI/badge.svg)](https://github.com/jaykalinani/AsterX/actions)
 
 ## Overview
 
