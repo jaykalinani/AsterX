@@ -1,0 +1,100 @@
+# Schedule definitions for thorn TOVSolver
+
+# Initial conditions for TOV neutron stars
+#
+
+schedule TOV_C_AllocateMemory AT WRAGH
+{
+  LANG: C
+  OPTIONS: GLOBAL
+} "Allocate memory for 1D TOV variables"
+
+schedule TOV_C_Integrate_RHS AT WRAGH AFTER TOV_C_AllocateMemory
+{
+  LANG: C
+  OPTIONS: GLOBAL
+} "Integrate the 1D variables for the TOV star"
+
+if (!CCTK_Equals(TOV_save_to_datafile,""))
+{
+  schedule TOV_write_1D_datafile AT WRAGH AFTER TOV_C_Integrate_RHS
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Save data to file and exit"
+}
+
+if(TOV_Cowling) {
+  schedule TOV_C_FreeMemory AT TERMINATE
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Free memory from TOVSolver_C at the end of the simulation"
+} else {
+  schedule TOV_C_FreeMemory AT POSTPOSTINITIAL
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Free memory from TOVSolver_C at the end of initialization"
+}
+
+#schedule TOVSolver_Sync AT postregrid
+#{
+#  LANG: C
+#  OPTIONS: GLOBAL
+#  SYNC: ADMBase::metric ADMBase::curv ADMBase::lapse ADMBase::shift
+#  SYNC: rho
+#  SYNC: press
+#  SYNC: eps
+#  SYNC: vel
+#} "Synchronize"
+
+if (TOV_Cowling) {
+  schedule TOV_C_Exact_ADM IN CCTK_POSTREGRID
+  {
+    LANG: C
+    WRITES: metric_cell(everywhere)
+    WRITES: lapse_cell(everywhere)
+    WRITES: shift_cell(everywhere)
+    WRITES: curv_cell(everywhere)
+    WRITES: ADMBase::metric(interior)
+    WRITES: ADMBase::lapse(interior)
+    WRITES: ADMBase::shift(interior)
+    WRITES: ADMBase::curv(interior)
+
+    WRITES: dtlapse_cell(everywhere)
+    WRITES: dtshift_cell(everywhere)
+    WRITES: ADMBase::dtlapse(interior)
+    WRITES: ADMBase::dtshift(interior)
+
+    SYNC: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
+    SYNC: ADMBase::dtlapse ADMBase::dtshift
+  } "Set values for ADM variables of TOV"
+}
+
+schedule TOV_C_Exact IN HydroBase_InitialData
+{
+  LANG: C
+  WRITES: HydroBase::rho(everywhere)
+  WRITES: HydroBase::vel(everywhere)
+  WRITES: HydroBase::eps(everywhere)
+  WRITES: HydroBase::press(everywhere)
+  WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
+
+  WRITES: metric_cell(everywhere)
+  WRITES: lapse_cell(everywhere)
+  WRITES: shift_cell(everywhere)
+  WRITES: curv_cell(everywhere)
+  WRITES: ADMBase::metric(interior)
+  WRITES: ADMBase::lapse(interior)
+  WRITES: ADMBase::shift(interior)
+  WRITES: ADMBase::curv(interior)
+
+  WRITES: dtlapse_cell(everywhere)
+  WRITES: dtshift_cell(everywhere)
+  WRITES: ADMBase::dtlapse(interior)
+  WRITES: ADMBase::dtshift(interior)
+
+  SYNC: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
+  SYNC: ADMBase::dtlapse ADMBase::dtshift
+} "Set values for all variables of TOV"
