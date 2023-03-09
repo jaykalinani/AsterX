@@ -53,11 +53,11 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
-          EOSType &eos_th, prim_vars &pv, cons_vars &cv,
+          EOSType &eos_th, prim_vars &pv, cons_vars cv,
           const smat<CCTK_REAL, 3> &gup) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars &cv,
+  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
         const smat<CCTK_REAL, 3> &glo, CCTK_INT &c2p_succeeded) const;
 
   /* Destructor */
@@ -195,7 +195,7 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
                      CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv,
-                     cons_vars &cv, const smat<CCTK_REAL, 3> &gup) const {
+                     cons_vars cv, const smat<CCTK_REAL, 3> &gup) const {
   CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
   pv.rho = cv.dens / W_Sol;
@@ -232,7 +232,7 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
-                   cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
+                   cons_vars cv, const smat<CCTK_REAL, 3> &glo,
                    CCTK_INT &c2p_succeeded) const {
 
   /* Calculate inverse of 3-metric */

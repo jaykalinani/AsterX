@@ -30,7 +30,7 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq, CCTK_REAL Bsq,
                     CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv,
-                    cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
+                    cons_vars cv, const smat<CCTK_REAL, 3> &gup,
                     const smat<CCTK_REAL, 3> &glo) const;
 
   template <typename EOSType>
@@ -40,7 +40,7 @@ public:
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars &cv,
+  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
         const smat<CCTK_REAL, 3> &glo, CCTK_INT &c2p_succeeded) const;
 
   /* Destructor */
@@ -120,7 +120,7 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
                                     CCTK_REAL Bsq, CCTK_REAL BiSi,
                                     EOSType &eos_th, prim_vars &pv,
-                                    cons_vars &cv,
+                                    cons_vars cv,
                                     const smat<CCTK_REAL, 3> &gup,
                                     const smat<CCTK_REAL, 3> &glo) const {
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
@@ -225,7 +225,7 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
-                        cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
+                        cons_vars cv, const smat<CCTK_REAL, 3> &glo,
                         CCTK_INT &c2p_succeeded) const {
 
   /* Calculate inverse of 3-metric */
