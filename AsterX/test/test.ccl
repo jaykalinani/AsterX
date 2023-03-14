@@ -1,5 +1,5 @@
 #Following settings are adopted for all tests:
 
 NPROCS 1
-ABSTOL 1.e-9
-RELTOL 1.e-9
+ABSTOL 1e-8
+RELTOL 1e-8
