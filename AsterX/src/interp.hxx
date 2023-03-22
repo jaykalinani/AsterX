@@ -102,6 +102,22 @@ calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   return gf_avg / 4.0;
 }
 
+template <typename T>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
+calc_avg_c2v(const GF3D2<const T> &gf, const PointDesc &p) {
+  constexpr auto DI = PointDesc::DI;
+  T gf_avg = 0.0;
+
+  for (int dk = 0; dk < 2; ++dk) {
+    for (int dj = 0; dj < 2; ++dj) {
+      for (int di = 0; di < 2; ++di) {
+        gf_avg += gf(p.I - DI[0] * di - DI[1] * dj - DI[2] * dk);
+      }
+    }
+  }
+  return gf_avg / 8.0;
+}
+
 } // namespace AsterX
 
 #endif // #ifndef INTERP_HXX

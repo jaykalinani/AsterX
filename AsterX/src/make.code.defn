@@ -11,6 +11,7 @@ SRCS = \
   sync.cxx \
   source.cxx \
   reconstruct.cxx \
+  tmunu.cxx \
   test.cxx
 
 # Subdirectories containing source files
