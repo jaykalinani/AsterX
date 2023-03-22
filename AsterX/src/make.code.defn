@@ -10,7 +10,6 @@ SRCS = \
   rhs.cxx \
   sync.cxx \
   source.cxx \
-  reconstruct.cxx \
   tmunu.cxx \
   test.cxx
 
