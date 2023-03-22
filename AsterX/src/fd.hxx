@@ -82,17 +82,32 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
   constexpr auto DI = PointDesc::DI;
   T dgf1, dgf2, dgf3, dgf4;
-  
+
   const int dir1 = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);
   const int dir2 = (dir == 0) ? 2 : ((dir == 1) ? 0 : 1);
 
-  dgf1 = ((1.0/24.0) * gf(p.I - DI[dir]) - (27.0/24.0) * gf(p.I) + (27.0/24.0) * gf(p.I + DI[dir]) - (1.0/24.0) * gf(p.I + 2*DI[dir]) ) / p.DX[dir];
+  dgf1 = ((1.0 / 24.0) * gf(p.I - DI[dir]) - (27.0 / 24.0) * gf(p.I) +
+          (27.0 / 24.0) * gf(p.I + DI[dir]) -
+          (1.0 / 24.0) * gf(p.I + 2 * DI[dir])) /
+         p.DX[dir];
 
-  dgf2 = ((1.0/24.0) * gf(p.I + DI[dir1] - DI[dir]) - (27.0/24.0) * gf(p.I + DI[dir1]) + (27.0/24.0) * gf(p.I + DI[dir1] + DI[dir]) - (1.0/24.0) * gf(p.I + DI[dir1] + 2*DI[dir]) ) / p.DX[dir];
-  
-  dgf3 = ((1.0/24.0) * gf(p.I + DI[dir2] - DI[dir]) - (27.0/24.0) * gf(p.I + DI[dir2]) + (27.0/24.0) * gf(p.I + DI[dir2] + DI[dir]) - (1.0/24.0) * gf(p.I + DI[dir2] + 2*DI[dir]) ) / p.DX[dir]; 
- 
-  dgf4 = ((1.0/24.0) * gf(p.I + DI[dir1] + DI[dir2] - DI[dir]) - (27.0/24.0) * gf(p.I + DI[dir1] + DI[dir2]) + (27.0/24.0) * gf(p.I + DI[dir1] + DI[dir2] + DI[dir]) - (1.0/24.0) * gf(p.I + DI[dir1] + DI[dir2] + 2*DI[dir]) ) / p.DX[dir];
+  dgf2 = ((1.0 / 24.0) * gf(p.I + DI[dir1] - DI[dir]) -
+          (27.0 / 24.0) * gf(p.I + DI[dir1]) +
+          (27.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir]) -
+          (1.0 / 24.0) * gf(p.I + DI[dir1] + 2 * DI[dir])) /
+         p.DX[dir];
+
+  dgf3 = ((1.0 / 24.0) * gf(p.I + DI[dir2] - DI[dir]) -
+          (27.0 / 24.0) * gf(p.I + DI[dir2]) +
+          (27.0 / 24.0) * gf(p.I + DI[dir2] + DI[dir]) -
+          (1.0 / 24.0) * gf(p.I + DI[dir2] + 2 * DI[dir])) /
+         p.DX[dir];
+
+  dgf4 = ((1.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir2] - DI[dir]) -
+          (27.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir2]) +
+          (27.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir2] + DI[dir]) -
+          (1.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir2] + 2 * DI[dir])) /
+         p.DX[dir];
 
   return 0.25 * (dgf1 + dgf2 + dgf3 + dgf4);
 }
