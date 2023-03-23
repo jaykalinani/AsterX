@@ -66,14 +66,22 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     assert(cctk_nghostzones[dir] >= 2);
     break;
   case reconstruction_t::ppm:
-    assert(cctk_nghostzones[dir] >= 3);
+    assert(cctk_nghostzones[dir] >= 4);
     break;
   }
 
+  // TODO: pass in an array with all PPM parameters
   const auto reconstruct_pt =
-      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var, const PointDesc &p)
+      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var,
+                      const PointDesc &p,
+                      const bool &gf_is_rho,
+                      const GF3D2<const CCTK_REAL> &gf_press,
+                      const GF3D2<const CCTK_REAL> &gf_vel_dir,
+                      const ppm_params_t &ppm_params)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            return reconstruct(var, p, reconstruction, dir);
+            // TODO: pass in an array with all PPM parameters
+            return reconstruct(var, p, reconstruction, dir,
+                               gf_is_rho, gf_press, gf_vel_dir, ppm_params);
           };
   const auto calcflux =
       [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
@@ -116,6 +124,16 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   // Face-centred grid functions (in direction `dir`)
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
                                             !(dir == 2)};
+  // PPM parameters struct
+  ppm_params_t ppm_params;
+  ppm_params.poly_k = poly_k;
+  ppm_params.poly_gamma = poly_gamma;
+  ppm_params.ppm_eta1   = ppm_eta1;
+  ppm_params.ppm_eta2   = ppm_eta2;
+  ppm_params.ppm_eps    = ppm_eps;
+  ppm_params.ppm_omega1 = ppm_omega1;
+  ppm_params.ppm_omega2 = ppm_omega2;
+
 
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
       grid.nghostzones,
@@ -123,13 +141,13 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         /* Reconstruct primitives from the cells on left (indice 0) and right
          * (indice 1) side of this face rc = reconstructed variables or
          * computed from reconstructed variables */
-        const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p)};
+        const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, press, gf_vels(dir), ppm_params)};
         const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
-          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p)};
+          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false, press, gf_vels(dir), ppm_params)};
         });
-        const vec<CCTK_REAL, 2> eps_rc{reconstruct_pt(eps, p)};
+        const vec<CCTK_REAL, 2> eps_rc{reconstruct_pt(eps, p, false, press, gf_vels(dir), ppm_params)};
         const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
-          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p)};
+          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, press, gf_vels(dir), ppm_params)};
         });
 
         /* Interpolate metric components from vertices to faces */

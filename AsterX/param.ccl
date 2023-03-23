@@ -18,6 +18,7 @@ CCTK_REAL lorenz_damp_fac "Damping factor used in the Lorenz Gauge (see Farris e
  0:* :: "should be positive"
 } 0.0
 
+
 KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 {
   "Godunov" :: ""
@@ -25,6 +26,32 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
   "monocentral" :: ""
   "ppm" :: ""
 } "Godunov"
+
+CCTK_REAL ppm_eta1 "eta1 parameter in the PPM shock detection algorithm (see Colella & Woodward 1984 eq. 1.16)"
+{
+  *:* :: "Any real number, default from Colella & Woodward 1984"
+} 20.
+
+CCTK_REAL ppm_eta2 "eta2 parameter in the PPM shock detection algorithm (see Colella & Woodward 1984 eq. 1.16)"
+{
+  *:* :: "Any real number, default from Colella & Woodward 1984"
+} 0.05
+
+CCTK_REAL ppm_eps "epsilon parameter in the PPM zone flattening algorithm (see Colella & Woodward 1984 eq. 1.16)"
+{
+  *:* :: "Any real number, default from Colella & Woodward 1984"
+} 0.33
+
+CCTK_REAL ppm_omega1 "omega1 parameter in the PPM zone flattening algorithm (see Colella & Woodward 1984 eq. 1.16)"
+{
+  *:* :: "Any real number, default from Colella & Woodward 1984"
+} 0.75
+
+CCTK_REAL ppm_omega2 "omega2 parameter in the PPM zone flattening algorithm (see Colella & Woodward 1984 eq. 1.16)"
+{
+  *:* :: "Any real number, default from Colella & Woodward 1984"
+} 10.
+
 
 KEYWORD flux_type "Flux solver" STEERABLE=never
 {

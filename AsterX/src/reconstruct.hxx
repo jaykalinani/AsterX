@@ -16,6 +16,14 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
+// Struct used to pass parameters to the PPM routine
+typedef struct {
+  CCTK_REAL poly_k, poly_gamma;
+  CCTK_REAL ppm_eta1, ppm_eta2;
+  CCTK_REAL ppm_eps;
+  CCTK_REAL ppm_omega1, ppm_omega2;
+} ppm_params_t;
+
 template <typename T>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST int sgn(T val) {
   return (T(0) < val) - (val < T(0));
@@ -41,19 +49,184 @@ monocentral(const T &x, const T &y) {
     return sgn(x) * min(2 * fabs(x), min(2 * fabs(y), fabs(x + y) / 2));
 }
 
+
+
+/* PPM reconstruction scheme. See Colella & Woodward (1984) (e.g. at
+ * https://crd.lbl.gov/assets/pubs_presos/AMCS/ANAG/A141984.pdf)                */
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
+array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
+                        const array<const vect<int, dim>, 7> &cells,
+                        const CCTK_INT &dir,
+                        const bool &gf_is_rho,
+                        const GF3D2<const CCTK_REAL> &gf_press,
+                        const GF3D2<const CCTK_REAL> &gf_vel_dir,
+                        const ppm_params_t &ppm_params) {
+  // Unpack all cells in the stencil
+  const auto &Immm = cells.at(0);
+  const auto &Imm  = cells.at(1);
+  const auto &Im   = cells.at(2);
+  const auto &I    = cells.at(3);
+  const auto &Ip   = cells.at(4);
+  const auto &Ipp  = cells.at(5);
+  const auto &Ippp = cells.at(6);
+
+  // Unpack all PPM parameters
+  const CCTK_REAL &poly_k     = ppm_params.poly_k;
+  const CCTK_REAL &poly_gamma = ppm_params.poly_gamma;
+  const CCTK_REAL &ppm_eta1   = ppm_params.ppm_eta1;
+  const CCTK_REAL &ppm_eta2   = ppm_params.ppm_eta2;
+  const CCTK_REAL &ppm_eps    = ppm_params.ppm_eps;
+  const CCTK_REAL &ppm_omega1 = ppm_params.ppm_omega1;
+  const CCTK_REAL &ppm_omega2 = ppm_params.ppm_omega2;
+
+  // Grid function at neighboring cells
+  const CCTK_REAL &gf_Imm = gf_var(Imm);
+  const CCTK_REAL &gf_Im  = gf_var(Im);
+  const CCTK_REAL &gf_I   = gf_var(I);
+  const CCTK_REAL &gf_Ip  = gf_var(Ip);
+  const CCTK_REAL &gf_Ipp = gf_var(Ipp);
+
+
+  // Helpers
+  const CCTK_REAL diff_Im = gf_I   - gf_Imm;
+  const CCTK_REAL diff_I  = gf_Ip  - gf_Im;
+  const CCTK_REAL diff_Ip = gf_Ipp - gf_I;
+
+  const CCTK_REAL delta_Im = 0.5*diff_Im;
+  const CCTK_REAL delta_I  = 0.5*diff_I;
+  const CCTK_REAL delta_Ip = 0.5*diff_Ip;
+
+  const CCTK_REAL _2fabs_Im_Imm = 2*fabs(gf_Im  - gf_Imm);
+  const CCTK_REAL _2fabs_I_Im   = 2*fabs(gf_I   - gf_Im);
+  const CCTK_REAL _2fabs_Ip_I   = 2*fabs(gf_Ip  - gf_I);
+  const CCTK_REAL _2fabs_Ipp_Ip = 2*fabs(gf_Ipp - gf_Ip);
+
+  const CCTK_REAL deltamod_Im = sgn(delta_Im)*min(fabs(delta_Im), min(_2fabs_Im_Imm, _2fabs_I_Im));
+  const CCTK_REAL deltamod_I  = sgn(delta_I) *min(fabs(delta_I),  min(_2fabs_I_Im,   _2fabs_Ip_I));
+  const CCTK_REAL deltamod_Ip = sgn(delta_Ip)*min(fabs(delta_Ip), min(_2fabs_Ip_I,   _2fabs_Ipp_Ip));
+
+
+  /* Initial reconstructed states at the interfaces between cells Im/I ans I/Ip
+   * NOTE: not const because they may change later                              */
+  const CCTK_REAL gf_Im_I = 0.5*(gf_Im + gf_I)  + (1./6.)*(deltamod_I  - deltamod_Im);
+  const CCTK_REAL gf_I_Ip = 0.5*(gf_I  + gf_Ip) + (1./6.)*(deltamod_Ip - deltamod_I);
+
+  CCTK_REAL rc_low = gf_Im_I;
+  CCTK_REAL rc_up  = gf_I_Ip;
+
+
+  /* Shock detection (eqs. 1.15, 1.16, 1.17 with uniform grid spacing).
+   * This is only applied to rho and only if the shock is marked as a contact
+   * discontinuity (see eq. 3.2)                                                */
+  // FIXME: contact discontinuity check only valid for polytropic/ideal-fluid EOS
+  const CCTK_REAL &press_Immm = gf_press(Immm);
+  const CCTK_REAL &press_Imm  = gf_press(Imm);
+  const CCTK_REAL &press_Im   = gf_press(Im);
+  const CCTK_REAL &press_I    = gf_press(I);
+  const CCTK_REAL &press_Ip   = gf_press(Ip);
+  const CCTK_REAL &press_Ipp  = gf_press(Ipp);
+  const CCTK_REAL &press_Ippp = gf_press(Ippp);
+
+  const CCTK_REAL diff_press_I = press_Ip - press_Im;
+  const CCTK_REAL min_press_I  = min(press_Im, press_Ip);
+
+  if (gf_is_rho) {
+    const CCTK_REAL k_gamma = poly_k*poly_gamma;
+    const bool contact_disc = (k_gamma*fabs(diff_I)*min_press_I >=
+                               fabs(diff_press_I)*min(gf_Ip, gf_Im));
+    if (contact_disc) {
+      // This assumes gf_var is rho (gf_is_rho is true)
+      const CCTK_REAL d2rho_Im    = gf_I   - 2*gf_Im + gf_Imm;
+      const CCTK_REAL d2rho_Ip    = gf_Ipp - 2*gf_Ip + gf_I;
+      const CCTK_REAL d2_prod     = d2rho_Im*d2rho_Ip;
+      const CCTK_REAL eta_tilde_I = (d2_prod < 0) ? (-1./6.)*d2_prod/diff_I : 0;
+      const CCTK_REAL eta_I       = max(0., min(ppm_eta1*(eta_tilde_I - ppm_eta2), 1.));
+
+      rc_low = (1 - eta_I)*rc_low + eta_I*(gf_Im + 0.5*deltamod_Im);
+      rc_up  = (1 - eta_I)*rc_up  + eta_I*(gf_Ip - 0.5*deltamod_Ip);
+    }
+  }
+
+
+  // Zone flattening to reduce post-shock oscillations (see eq. 4.1 + appendix)
+  const CCTK_REAL w_I = (diff_press_I > ppm_eps*min_press_I and
+                         gf_vel_dir(Im) > gf_vel_dir(Ip)) ? 1 : 0;
+  const CCTK_REAL ftilde_I = 1 - max(0., w_I*ppm_omega2*(diff_press_I/(press_Ipp - press_Imm) - ppm_omega1));
+
+  if (diff_press_I < 0) {
+    const CCTK_REAL diff_press_Ip = press_Ipp - press_I;
+    const CCTK_REAL w_Ip          = (diff_press_Ip > ppm_eps*min(press_I, press_Ipp) and
+                                     gf_vel_dir(I) > gf_vel_dir(Ipp)) ? 1 : 0;
+    const CCTK_REAL ftilde_Ip     = 1 - max(0., w_Ip*ppm_omega2*(diff_press_Ip/(press_Ippp - press_Im) - ppm_omega1));
+    const CCTK_REAL f_I           = max(ftilde_I, ftilde_Ip);
+    const CCTK_REAL one_minus_fI  = 1 - f_I;
+    const CCTK_REAL fI_gfI        = f_I*gf_I;
+    rc_low = fI_gfI + one_minus_fI*rc_low;
+    rc_up  = fI_gfI + one_minus_fI*rc_up;
+  }
+
+  else {
+    const CCTK_REAL diff_press_Im = press_I - press_Imm;
+    const CCTK_REAL w_Im          = (diff_press_Im > ppm_eps*min(press_Imm, press_I) and
+                                     gf_vel_dir(Imm) > gf_vel_dir(I)) ? 1 : 0;
+    const CCTK_REAL ftilde_Im     = 1 - max(0., w_Im*ppm_omega2*(diff_press_Im/(press_Ip - press_Immm) - ppm_omega1));
+    const CCTK_REAL f_I           = max(ftilde_I, ftilde_Im);
+    const CCTK_REAL one_minus_fI  = 1 - f_I;
+    const CCTK_REAL fI_gfI        = f_I*gf_I;
+    rc_low = fI_gfI + one_minus_fI*rc_low;
+    rc_up  = fI_gfI + one_minus_fI*rc_up;
+  }
+
+
+  // Monotonization (see eq. 1.10)
+  if ((rc_up - gf_I)*(gf_I - rc_low) <= 0) {
+    rc_low = gf_I;
+    rc_up  = gf_I;
+  }
+
+  else {
+    const CCTK_REAL diff_rc    = rc_up - rc_low;
+    const CCTK_REAL diff_rc_sq = diff_rc*diff_rc;
+    const CCTK_REAL gf6_I      = 6*diff_rc*(gf_I - 0.5*(rc_low + rc_up));
+
+    if (gf6_I > diff_rc_sq) {
+      rc_low = 3*gf_I - 2*rc_up;
+    }
+
+    else if (gf6_I < -diff_rc_sq) {
+      rc_up = 3*gf_I - 2*rc_low;
+    }
+  }
+
+
+  // Return the lower and upper reconstructed states in cell I
+  const array<CCTK_REAL, 2> rc = {rc_low, rc_up};
+  return rc;
+}
+
+
+
 enum class reconstruction_t { Godunov, minmod, monocentral, ppm };
 
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE array<CCTK_REAL, 2>
-reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
-            reconstruction_t reconstruction, int dir) {
+reconstruct(const GF3D2<const CCTK_REAL> &gf_var,
+            const PointDesc &p,
+            const reconstruction_t &reconstruction,
+            const int &dir,
+            const bool &gf_is_rho,
+            const GF3D2<const CCTK_REAL> &gf_press,
+            const GF3D2<const CCTK_REAL> &gf_vel_dir,
+            const ppm_params_t &ppm_params) {
   constexpr auto DI = PointDesc::DI;
   // Neighbouring "plus" and "minus" cell indices
-  const auto Immm = p.I - 3 * DI[dir];
-  const auto Imm = p.I - 2 * DI[dir];
-  const auto Im = p.I - DI[dir];
-  const auto Ip = p.I;
-  const auto Ipp = p.I + DI[dir];
-  const auto Ippp = p.I + 2 * DI[dir];
+  const auto Immmm = p.I - 4 * DI[dir];
+  const auto Immm  = p.I - 3 * DI[dir];
+  const auto Imm   = p.I - 2 * DI[dir];
+  const auto Im    = p.I - DI[dir];
+  const auto Ip    = p.I;
+  const auto Ipp   = p.I + DI[dir];
+  const auto Ippp  = p.I + 2 * DI[dir];
+  const auto Ipppp = p.I + 3 * DI[dir];
 
   switch (reconstruction) {
 
@@ -89,88 +262,18 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     CCTK_REAL var_p = gf_var(Ip) - monocentral(var_slope_p, var_slope_m) / 2;
     return array<CCTK_REAL, 2>{var_m, var_p};
   }
+
+
   case reconstruction_t::ppm: {
-    // Usually recon methods return the left and right states of a given
-    // cell face, ie (i-1/2-eps) and (i-1/2+eps).
-    // But ppm return the states at the left and right
-    // faces of a given cell, ie (i-1/2) and (i+1/2).
-    // So, to get left and right states from (i-1/2),
-    // we first apply ppm to cell i and keep left face (i-1/2+eps)
-    // and then apply ppm to cell i-1 and keep right face (i-1/2-eps)
+    const array<const vect<int, dim>, 7> cells_Im = {Immmm, Immm, Imm, Im, Ip,  Ipp,  Ippp};
+    const array<const vect<int, dim>, 7> cells_Ip = {Immm,  Imm,  Im,  Ip, Ipp, Ippp, Ipppp};
 
-    // Start calculating left (i-1/2) and right (i+1/2) faces unique
-    // values: Eq. (A1) in https://arxiv.org/pdf/astro-ph/0503420.pdf with
-    // 1/8 --> 1/6 Equiv. to Eq. (1.6) in C&W (1984)
-    CCTK_REAL var_slope_p = gf_var(Ip) - gf_var(Im);
-    CCTK_REAL var_slope_m = gf_var(Im) - gf_var(Imm);
-    CCTK_REAL grad_m = monocentral(var_slope_p, var_slope_m);
-    var_slope_p = gf_var(Ipp) - gf_var(Ip);
-    var_slope_m = gf_var(Ip) - gf_var(Im);
-    CCTK_REAL grad_p = monocentral(var_slope_p, var_slope_m);
-    CCTK_REAL left_face =
-        (gf_var(Im) + gf_var(Ip)) / 2.0 + (grad_m - grad_p) / 6.0;
+    const array<CCTK_REAL, 2> rc_Im = ppm(gf_var, cells_Im, dir, gf_is_rho,
+                                          gf_press, gf_vel_dir, ppm_params);
+    const array<CCTK_REAL, 2> rc_Ip = ppm(gf_var, cells_Ip, dir, gf_is_rho,
+                                          gf_press, gf_vel_dir, ppm_params);
 
-    var_slope_p = gf_var(Ipp) - gf_var(Ip);
-    var_slope_m = gf_var(Ip) - gf_var(Im);
-    grad_m = monocentral(var_slope_p, var_slope_m);
-    var_slope_p = gf_var(Ippp) - gf_var(Ipp);
-    var_slope_m = gf_var(Ipp) - gf_var(Ip);
-    grad_p = monocentral(var_slope_p, var_slope_m);
-    CCTK_REAL right_face =
-        (gf_var(Ip) + gf_var(Ipp)) / 2.0 + (grad_m - grad_p) / 6.0;
-
-    // Now apply conditions in Eq. (1.11) of C&W (1984)
-    CCTK_REAL qa = (right_face - gf_var(Ip)) * (gf_var(Ip) - left_face);
-    CCTK_REAL qd = (right_face - left_face);
-    CCTK_REAL qe = 6.0 * (gf_var(Ip) - (left_face + right_face) / 2.0);
-    if (qa <= 0.) {
-      left_face = gf_var(Ip);
-      right_face = gf_var(Ip);
-    }
-    if (qd * (qd - qe) < 0.0)
-      left_face = 3.0 * gf_var(Ip) - 2.0 * right_face;
-    if (qd * (qd + qe) < 0.0)
-      right_face = 3.0 * gf_var(Ip) - 2.0 * left_face;
-
-    // Keep left value of cell i as i-1/2+eps
-    CCTK_REAL var_p = left_face;
-
-    // Start calculating left (i-1-1/2) and right (i-1+1/2) faces unique
-    // values: Eq. (A1) in https://arxiv.org/pdf/astro-ph/0503420.pdf with
-    // 1/8 --> 1/6 Equiv. to Eq. (1.6) in C&W (1984)
-    var_slope_p = gf_var(Im) - gf_var(Imm);
-    var_slope_m = gf_var(Imm) - gf_var(Immm);
-    grad_m = monocentral(var_slope_p, var_slope_m);
-    var_slope_p = gf_var(Ip) - gf_var(Im);
-    var_slope_m = gf_var(Im) - gf_var(Imm);
-    grad_p = monocentral(var_slope_p, var_slope_m);
-    left_face = (gf_var(Imm) + gf_var(Im)) / 2.0 + (grad_m - grad_p) / 6.0;
-
-    var_slope_p = gf_var(Ip) - gf_var(Im);
-    var_slope_m = gf_var(Im) - gf_var(Imm);
-    grad_m = monocentral(var_slope_p, var_slope_m);
-    var_slope_p = gf_var(Ipp) - gf_var(Ip);
-    var_slope_m = gf_var(Ip) - gf_var(Im);
-    grad_p = monocentral(var_slope_p, var_slope_m);
-    right_face = (gf_var(Im) + gf_var(Ip)) / 2.0 + (grad_m - grad_p) / 6.0;
-
-    // Now apply conditions in Eq. (1.11) of C&W (1984)
-    qa = (right_face - gf_var(Im)) * (gf_var(Im) - left_face);
-    qd = (right_face - left_face);
-    qe = 6.0 * (gf_var(Im) - (left_face + right_face) / 2.0);
-    if (qa <= 0.) {
-      left_face = gf_var(Im);
-      right_face = gf_var(Im);
-    }
-    if (qd * (qd - qe) < 0.0)
-      left_face = 3.0 * gf_var(Im) - 2.0 * right_face;
-    if (qd * (qd + qe) < 0.0)
-      right_face = 3.0 * gf_var(Im) - 2.0 * left_face;
-
-    // Keep right value of cell i-1 as i-1/2-eps
-    CCTK_REAL var_m = right_face;
-
-    return array<CCTK_REAL, 2>{var_m, var_p};
+    return array<CCTK_REAL, 2> {rc_Im.at(1), rc_Ip.at(0)};
   }
 
   default:
