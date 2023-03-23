@@ -7,6 +7,12 @@ STORAGE: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
 STORAGE: Aux_in_RHSof_A_Psi
 STORAGE: TmunuBase::eTtt TmunuBase::eTti TmunuBase::eTij
 
+# Initialization
+
+SCHEDULE GROUP AsterX_CalcPrim IN ODESolvers_PostStep BEFORE TmunuBase_SetTmunuVars AFTER HydroBase_SetHydroVars
+{
+} "Do C2P here"
+
 if(unit_test)
 {
   SCHEDULE AsterX_Test AT wragh
@@ -79,7 +85,7 @@ SCHEDULE AsterX_Sync AT postregrid
 
 # Time stepping
 
-SCHEDULE AsterX_ComputedBstagFromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
+SCHEDULE AsterX_ComputedBstagFromA IN AsterX_CalcPrim BEFORE AsterX_Con2Prim
 {
   LANG: C
   READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere)
@@ -87,7 +93,7 @@ SCHEDULE AsterX_ComputedBstagFromA IN ODESolvers_RHS BEFORE AsterX_Con2Prim
   SYNC: dBx_stag dBy_stag dBz_stag
 } "Calculate dBstag from curl of A"
 
-SCHEDULE AsterX_ComputedBFromdBstag IN ODESolvers_RHS AFTER AsterX_ComputedBstagFromA BEFORE AsterX_Con2Prim 
+SCHEDULE AsterX_ComputedBFromdBstag IN AsterX_CalcPrim AFTER AsterX_ComputedBstagFromA BEFORE AsterX_Con2Prim 
 {
   LANG: C
   READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
@@ -96,7 +102,7 @@ SCHEDULE AsterX_ComputedBFromdBstag IN ODESolvers_RHS AFTER AsterX_ComputedBstag
 } "Calculate centered dB from dBstag"
 
 
-SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS BEFORE AsterX_EstimateError
+SCHEDULE AsterX_Con2Prim IN AsterX_CalcPrim
 {
   LANG: C
   READS: ADMBase::metric(interior)
@@ -116,7 +122,6 @@ SCHEDULE AsterX_Con2Prim IN ODESolvers_RHS BEFORE AsterX_EstimateError
 if (interpolate_failed_c2p)
 {
   SCHEDULE AsterX_Con2Prim_Interpolate_Failed IN ODESolvers_RHS BEFORE AsterX_Fluxes
-  AFTER AsterX_Con2Prim
   {
     LANG: C
     READS: ADMBase::metric(interior)
@@ -135,7 +140,7 @@ if (interpolate_failed_c2p)
   } "Interpolate those grid points where con2prim failed"
 }
   
-SCHEDULE AsterX_Fluxes IN ODESolvers_RHS AFTER AsterX_Con2Prim
+SCHEDULE AsterX_Fluxes IN ODESolvers_RHS
 {
   LANG: C
   READS: ADMBase::metric(everywhere)
@@ -178,7 +183,7 @@ SCHEDULE AsterX_RHS IN ODESolvers_RHS AFTER AsterX_SourceTerms
   SYNC: Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 } "Update the RHS of the hydro equations with the flux contributions"
 
-SCHEDULE AsterX_Tmunu IN ODESolvers_RHS AFTER AsterX_RHS #IN TmunuBase_AddToTmunu
+SCHEDULE AsterX_Tmunu IN TmunuBase_AddToTmunu
 {
   LANG: C
   READS: ADMBase::metric(everywhere) ADMBase::lapse(everywhere) ADMBase::shift(everywhere)
