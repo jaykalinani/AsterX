@@ -70,13 +70,13 @@ extern "C" void AsterX_Tmunu(CCTK_ARGUMENTS) {
         const CCTK_REAL rhoenthalpyW2 =
             (rho_avg * (1.0 + eps_avg) + press_avg) * w_lor * w_lor;
 
-        /* Computing lower components of 4-velocity (without the Lorent factor)
+        /* Computing lower components of 4-velocity (without the Lorentz factor)
          */
         const CCTK_REAL ut_low =
             -alp(p.I) + calc_contraction(beta_low, vup_avg);
         const vec<CCTK_REAL, 3> ui_low = vlow_avg;
 
-        /* Computing upper components of 4-velocity */
+        /* Computing upper components of 4-velocity (without the Lorentz factor) */
         // utup = 1/alp(p.I); //not used
         const vec<CCTK_REAL, 3> ui_up = vup_avg - beta_up / alp(p.I);
 
