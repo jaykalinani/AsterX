@@ -9,9 +9,9 @@ STORAGE: TmunuBase::eTtt TmunuBase::eTti TmunuBase::eTij
 
 # Initialization
 
-SCHEDULE GROUP AsterX_CalcPrim IN ODESolvers_PostStep BEFORE TmunuBase_SetTmunuVars AFTER HydroBase_SetHydroVars
+SCHEDULE GROUP AsterX_CalcPrim IN ODESolvers_PostStep BEFORE TmunuBase_SetTmunuVars AFTER AsterX_Sync
 {
-} "Do C2P here"
+} "Compute primitive variables"
 
 if(unit_test)
 {
