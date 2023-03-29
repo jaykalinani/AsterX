@@ -29,7 +29,7 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
 
 CCTK_BOOLEAN ppm_shock_detection "Whether to activate the PPM shock detection mechanism to detect contact discontinuities"
 {
-} yes
+} no
 
 CCTK_BOOLEAN ppm_zone_flattening "[USE WITH CAUTION] Whether to activate the PPM zone flattening mechanism (using only 3 ghost cells, not 4). It introduces extra dissipation: good e.g. for avoiding post-shock oscillations, but may fail at correctly resolving sharp features."
 {
