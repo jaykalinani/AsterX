@@ -18,6 +18,7 @@ using namespace Loop;
 
 // Struct used to pass parameters to the PPM routine
 typedef struct {
+  bool      ppm_shock_detection, ppm_zone_flattening;
   CCTK_REAL poly_k, poly_gamma;
   CCTK_REAL ppm_eta1, ppm_eta2;
   CCTK_REAL ppm_eps;
@@ -55,29 +56,29 @@ monocentral(const T &x, const T &y) {
  * https://crd.lbl.gov/assets/pubs_presos/AMCS/ANAG/A141984.pdf)                */
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
 array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
-                        const array<const vect<int, dim>, 7> &cells,
+                        const array<const vect<int, dim>, 5> &cells,
                         const CCTK_INT &dir,
                         const bool &gf_is_rho,
                         const GF3D2<const CCTK_REAL> &gf_press,
                         const GF3D2<const CCTK_REAL> &gf_vel_dir,
                         const ppm_params_t &ppm_params) {
   // Unpack all cells in the stencil
-  const auto &Immm = cells.at(0);
-  const auto &Imm  = cells.at(1);
-  const auto &Im   = cells.at(2);
-  const auto &I    = cells.at(3);
-  const auto &Ip   = cells.at(4);
-  const auto &Ipp  = cells.at(5);
-  const auto &Ippp = cells.at(6);
+  const auto &Imm  = cells.at(0);
+  const auto &Im   = cells.at(1);
+  const auto &I    = cells.at(2);
+  const auto &Ip   = cells.at(3);
+  const auto &Ipp  = cells.at(4);
 
   // Unpack all PPM parameters
-  const CCTK_REAL &poly_k     = ppm_params.poly_k;
-  const CCTK_REAL &poly_gamma = ppm_params.poly_gamma;
-  const CCTK_REAL &ppm_eta1   = ppm_params.ppm_eta1;
-  const CCTK_REAL &ppm_eta2   = ppm_params.ppm_eta2;
-  const CCTK_REAL &ppm_eps    = ppm_params.ppm_eps;
-  const CCTK_REAL &ppm_omega1 = ppm_params.ppm_omega1;
-  const CCTK_REAL &ppm_omega2 = ppm_params.ppm_omega2;
+  const bool      &ppm_shock_detection = ppm_params.ppm_shock_detection;
+  const bool      &ppm_zone_flattening = ppm_params.ppm_zone_flattening;
+  const CCTK_REAL &poly_k              = ppm_params.poly_k;
+  const CCTK_REAL &poly_gamma          = ppm_params.poly_gamma;
+  const CCTK_REAL &ppm_eta1            = ppm_params.ppm_eta1;
+  const CCTK_REAL &ppm_eta2            = ppm_params.ppm_eta2;
+  const CCTK_REAL &ppm_eps             = ppm_params.ppm_eps;
+  const CCTK_REAL &ppm_omega1          = ppm_params.ppm_omega1;
+  const CCTK_REAL &ppm_omega2          = ppm_params.ppm_omega2;
 
   // Grid function at neighboring cells
   const CCTK_REAL &gf_Imm = gf_var(Imm);
@@ -115,22 +116,26 @@ array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
   CCTK_REAL rc_up  = gf_I_Ip;
 
 
-  /* Shock detection (eqs. 1.15, 1.16, 1.17 with uniform grid spacing).
-   * This is only applied to rho and only if the shock is marked as a contact
-   * discontinuity (see eq. 3.2)                                                */
-  // FIXME: contact discontinuity check only valid for polytropic/ideal-fluid EOS
-  const CCTK_REAL &press_Immm = gf_press(Immm);
+  /* Pressure may or may not be needed, or may not be needed at all points
+   * (depending on whether shock detection and zone flattening are activated or
+   * not)                                                                       */
+  //const CCTK_REAL &press_Immm = gf_press(Immm);  // Only used in the original zone flattening scheme
   const CCTK_REAL &press_Imm  = gf_press(Imm);
   const CCTK_REAL &press_Im   = gf_press(Im);
-  const CCTK_REAL &press_I    = gf_press(I);
+  //const CCTK_REAL &press_I    = gf_press(I);     // Only used in the original zone flattening scheme
   const CCTK_REAL &press_Ip   = gf_press(Ip);
   const CCTK_REAL &press_Ipp  = gf_press(Ipp);
-  const CCTK_REAL &press_Ippp = gf_press(Ippp);
+  //const CCTK_REAL &press_Ippp = gf_press(Ippp);  // Only used in the original zone flattening scheme
 
   const CCTK_REAL diff_press_I = press_Ip - press_Im;
   const CCTK_REAL min_press_I  = min(press_Im, press_Ip);
 
-  if (gf_is_rho) {
+
+  /* Shock detection (eqs. 1.15, 1.16, 1.17 with uniform grid spacing).
+   * This is only applied to rho and only if the shock is marked as a contact
+   * discontinuity (see eq. 3.2)                                                */
+  // FIXME: contact discontinuity check only valid for polytropic/ideal-fluid EOS
+  if (ppm_shock_detection and gf_is_rho) {
     const CCTK_REAL k_gamma = poly_k*poly_gamma;
     const bool contact_disc = (k_gamma*fabs(diff_I)*min_press_I >=
                                fabs(diff_press_I)*min(gf_Ip, gf_Im));
@@ -148,33 +153,47 @@ array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
   }
 
 
-  // Zone flattening to reduce post-shock oscillations (see eq. 4.1 + appendix)
-  const CCTK_REAL w_I = (diff_press_I > ppm_eps*min_press_I and
-                         gf_vel_dir(Im) > gf_vel_dir(Ip)) ? 1 : 0;
-  const CCTK_REAL ftilde_I = 1 - max(0., w_I*ppm_omega2*(diff_press_I/(press_Ipp - press_Imm) - ppm_omega1));
+  /* Zone flattening to reduce post-shock oscillations (see eq. 4.1 + appendix).
+   * The flattening parameter f_I is set to ftilde_I instead of
+   * max(ftilde_I, ftilde_{I+s_I}) (where s_I can be +1 or -1), thereby avoiding
+   * using four ghost cells at interprocess/domain boundaries. This should not
+   * be a major issue and is done in many GRMHD codes (e.g. WhiskyMHD, GRHydro,
+   * Spritz, IllinoisGRMHD).                                                    */
+  if (ppm_zone_flattening) {
+    const CCTK_REAL w_I = (diff_press_I > ppm_eps*min_press_I and
+                           gf_vel_dir(Im) > gf_vel_dir(Ip)) ? 1 : 0;
+    const CCTK_REAL ftilde_I = 1 - max(0., w_I*ppm_omega2*(diff_press_I/(press_Ipp - press_Imm) - ppm_omega1));
 
-  if (diff_press_I < 0) {
-    const CCTK_REAL diff_press_Ip = press_Ipp - press_I;
-    const CCTK_REAL w_Ip          = (diff_press_Ip > ppm_eps*min(press_I, press_Ipp) and
-                                     gf_vel_dir(I) > gf_vel_dir(Ipp)) ? 1 : 0;
-    const CCTK_REAL ftilde_Ip     = 1 - max(0., w_Ip*ppm_omega2*(diff_press_Ip/(press_Ippp - press_Im) - ppm_omega1));
-    const CCTK_REAL f_I           = max(ftilde_I, ftilde_Ip);
-    const CCTK_REAL one_minus_fI  = 1 - f_I;
-    const CCTK_REAL fI_gfI        = f_I*gf_I;
-    rc_low = fI_gfI + one_minus_fI*rc_low;
-    rc_up  = fI_gfI + one_minus_fI*rc_up;
-  }
+    const CCTK_REAL one_minus_ftilde_I = 1 - ftilde_I;
+    const CCTK_REAL ftildeI_gfI        = ftilde_I*gf_I;
 
-  else {
-    const CCTK_REAL diff_press_Im = press_I - press_Imm;
-    const CCTK_REAL w_Im          = (diff_press_Im > ppm_eps*min(press_Imm, press_I) and
-                                     gf_vel_dir(Imm) > gf_vel_dir(I)) ? 1 : 0;
-    const CCTK_REAL ftilde_Im     = 1 - max(0., w_Im*ppm_omega2*(diff_press_Im/(press_Ip - press_Immm) - ppm_omega1));
-    const CCTK_REAL f_I           = max(ftilde_I, ftilde_Im);
-    const CCTK_REAL one_minus_fI  = 1 - f_I;
-    const CCTK_REAL fI_gfI        = f_I*gf_I;
-    rc_low = fI_gfI + one_minus_fI*rc_low;
-    rc_up  = fI_gfI + one_minus_fI*rc_up;
+    rc_low = ftildeI_gfI + one_minus_ftilde_I*rc_low;
+    rc_up  = ftildeI_gfI + one_minus_ftilde_I*rc_up;
+
+    // This would require one more ghost cell and it's not worth it
+    /*if (diff_press_I < 0) {
+      const CCTK_REAL diff_press_Ip = press_Ipp - press_I;
+      const CCTK_REAL w_Ip          = (diff_press_Ip > ppm_eps*min(press_I, press_Ipp) and
+                                       gf_vel_dir(I) > gf_vel_dir(Ipp)) ? 1 : 0;
+      const CCTK_REAL ftilde_Ip     = 1 - max(0., w_Ip*ppm_omega2*(diff_press_Ip/(press_Ippp - press_Im) - ppm_omega1));
+      const CCTK_REAL f_I           = max(ftilde_I, ftilde_Ip);
+      const CCTK_REAL one_minus_fI  = 1 - f_I;
+      const CCTK_REAL fI_gfI        = f_I*gf_I;
+      rc_low = fI_gfI + one_minus_fI*rc_low;
+      rc_up  = fI_gfI + one_minus_fI*rc_up;
+    }
+
+    else {
+      const CCTK_REAL diff_press_Im = press_I - press_Imm;
+      const CCTK_REAL w_Im          = (diff_press_Im > ppm_eps*min(press_Imm, press_I) and
+                                       gf_vel_dir(Imm) > gf_vel_dir(I)) ? 1 : 0;
+      const CCTK_REAL ftilde_Im     = 1 - max(0., w_Im*ppm_omega2*(diff_press_Im/(press_Ip - press_Immm) - ppm_omega1));
+      const CCTK_REAL f_I           = max(ftilde_I, ftilde_Im);
+      const CCTK_REAL one_minus_fI  = 1 - f_I;
+      const CCTK_REAL fI_gfI        = f_I*gf_I;
+      rc_low = fI_gfI + one_minus_fI*rc_low;
+      rc_up  = fI_gfI + one_minus_fI*rc_up;
+    }*/
   }
 
 
@@ -219,14 +238,12 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var,
             const ppm_params_t &ppm_params) {
   constexpr auto DI = PointDesc::DI;
   // Neighbouring "plus" and "minus" cell indices
-  const auto Immmm = p.I - 4 * DI[dir];
   const auto Immm  = p.I - 3 * DI[dir];
   const auto Imm   = p.I - 2 * DI[dir];
   const auto Im    = p.I - DI[dir];
   const auto Ip    = p.I;
   const auto Ipp   = p.I + DI[dir];
   const auto Ippp  = p.I + 2 * DI[dir];
-  const auto Ipppp = p.I + 3 * DI[dir];
 
   switch (reconstruction) {
 
@@ -265,8 +282,8 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var,
 
 
   case reconstruction_t::ppm: {
-    const array<const vect<int, dim>, 7> cells_Im = {Immmm, Immm, Imm, Im, Ip,  Ipp,  Ippp};
-    const array<const vect<int, dim>, 7> cells_Ip = {Immm,  Imm,  Im,  Ip, Ipp, Ippp, Ipppp};
+    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip,  Ipp};
+    const array<const vect<int, dim>, 5> cells_Ip = {Imm,  Im,  Ip, Ipp, Ippp};
 
     const array<CCTK_REAL, 2> rc_Im = ppm(gf_var, cells_Im, dir, gf_is_rho,
                                           gf_press, gf_vel_dir, ppm_params);

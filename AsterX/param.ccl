@@ -27,6 +27,14 @@ KEYWORD reconstruction_method "Reconstruction method" STEERABLE=never
   "ppm" :: ""
 } "Godunov"
 
+CCTK_BOOLEAN ppm_shock_detection "Whether to activate the PPM shock detection mechanism to detect contact discontinuities"
+{
+} yes
+
+CCTK_BOOLEAN ppm_zone_flattening "[USE WITH CAUTION] Whether to activate the PPM zone flattening mechanism (using only 3 ghost cells, not 4). It introduces extra dissipation: good e.g. for avoiding post-shock oscillations, but may fail at correctly resolving sharp features."
+{
+} no
+
 CCTK_REAL ppm_eta1 "eta1 parameter in the PPM shock detection algorithm (see Colella & Woodward 1984 eq. 1.16)"
 {
   *:* :: "Any real number, default from Colella & Woodward 1984"

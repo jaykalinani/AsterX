@@ -66,11 +66,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     assert(cctk_nghostzones[dir] >= 2);
     break;
   case reconstruction_t::ppm:
-    assert(cctk_nghostzones[dir] >= 4);
+    assert(cctk_nghostzones[dir] >= 3);
     break;
   }
 
-  // TODO: pass in an array with all PPM parameters
   const auto reconstruct_pt =
       [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var,
                       const PointDesc &p,
@@ -79,7 +78,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
                       const GF3D2<const CCTK_REAL> &gf_vel_dir,
                       const ppm_params_t &ppm_params)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            // TODO: pass in an array with all PPM parameters
             return reconstruct(var, p, reconstruction, dir,
                                gf_is_rho, gf_press, gf_vel_dir, ppm_params);
           };
@@ -126,13 +124,15 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
                                             !(dir == 2)};
   // PPM parameters struct
   ppm_params_t ppm_params;
-  ppm_params.poly_k = poly_k;
-  ppm_params.poly_gamma = poly_gamma;
-  ppm_params.ppm_eta1   = ppm_eta1;
-  ppm_params.ppm_eta2   = ppm_eta2;
-  ppm_params.ppm_eps    = ppm_eps;
-  ppm_params.ppm_omega1 = ppm_omega1;
-  ppm_params.ppm_omega2 = ppm_omega2;
+  ppm_params.ppm_shock_detection = ppm_shock_detection;
+  ppm_params.ppm_zone_flattening = ppm_zone_flattening;
+  ppm_params.poly_k              = poly_k;
+  ppm_params.poly_gamma          = poly_gamma;
+  ppm_params.ppm_eta1            = ppm_eta1;
+  ppm_params.ppm_eta2            = ppm_eta2;
+  ppm_params.ppm_eps             = ppm_eps;
+  ppm_params.ppm_omega1          = ppm_omega1;
+  ppm_params.ppm_omega2          = ppm_omega2;
 
 
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
