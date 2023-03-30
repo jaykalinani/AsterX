@@ -89,22 +89,20 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   reconstruct_params_t reconstruct_params;
   reconstruct_params.ppm_shock_detection = ppm_shock_detection;
   reconstruct_params.ppm_zone_flattening = ppm_zone_flattening;
-  reconstruct_params.poly_k              = poly_k;
-  reconstruct_params.poly_gamma          = poly_gamma;
-  reconstruct_params.ppm_eta1            = ppm_eta1;
-  reconstruct_params.ppm_eta2            = ppm_eta2;
-  reconstruct_params.ppm_eps             = ppm_eps;
-  reconstruct_params.ppm_omega1          = ppm_omega1;
-  reconstruct_params.ppm_omega2          = ppm_omega2;
+  reconstruct_params.poly_k = poly_k;
+  reconstruct_params.poly_gamma = poly_gamma;
+  reconstruct_params.ppm_eta1 = ppm_eta1;
+  reconstruct_params.ppm_eta2 = ppm_eta2;
+  reconstruct_params.ppm_eps = ppm_eps;
+  reconstruct_params.ppm_omega1 = ppm_omega1;
+  reconstruct_params.ppm_omega2 = ppm_omega2;
 
   const auto reconstruct_pt =
-      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var,
-                      const PointDesc &p,
-                      const bool &gf_is_rho)
-          CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            return reconstruct(var, p, reconstruction, dir,
-                               gf_is_rho, press, gf_vels(dir), reconstruct_params);
-          };
+      [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var, const PointDesc &p,
+                      const bool &gf_is_rho) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return reconstruct(var, p, reconstruction, dir, gf_is_rho, press,
+                           gf_vels(dir), reconstruct_params);
+      };
   const auto calcflux =
       [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
                       vec<CCTK_REAL, 2> flux) CCTK_ATTRIBUTE_ALWAYS_INLINE {
