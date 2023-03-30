@@ -114,8 +114,8 @@ array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
 
   /* Initial reconstructed states at the interfaces between cells Im/I ans I/Ip
    * NOTE: not const because they may change later                              */
-  const CCTK_REAL gf_Im_I = 0.5*(gf_Im + gf_I)  + (1./6.)*(deltamod_I  - deltamod_Im);
-  const CCTK_REAL gf_I_Ip = 0.5*(gf_I  + gf_Ip) + (1./6.)*(deltamod_Ip - deltamod_I);
+  const CCTK_REAL gf_Im_I = 0.5*(gf_Im + gf_I)  + (1./6.)*(deltamod_Im - deltamod_I);
+  const CCTK_REAL gf_I_Ip = 0.5*(gf_I  + gf_Ip) + (1./6.)*(deltamod_I  - deltamod_Ip);
 
   CCTK_REAL rc_low = gf_Im_I;
   CCTK_REAL rc_up  = gf_I_Ip;
