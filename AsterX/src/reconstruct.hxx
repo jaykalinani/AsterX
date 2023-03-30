@@ -103,9 +103,13 @@ array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
   const CCTK_REAL _2fabs_Ip_I   = 2*fabs(gf_Ip  - gf_I);
   const CCTK_REAL _2fabs_Ipp_Ip = 2*fabs(gf_Ipp - gf_Ip);
 
-  const CCTK_REAL deltamod_Im = sgn(delta_Im)*min(fabs(delta_Im), min(_2fabs_Im_Imm, _2fabs_I_Im));
-  const CCTK_REAL deltamod_I  = sgn(delta_I) *min(fabs(delta_I),  min(_2fabs_I_Im,   _2fabs_Ip_I));
-  const CCTK_REAL deltamod_Ip = sgn(delta_Ip)*min(fabs(delta_Ip), min(_2fabs_Ip_I,   _2fabs_Ipp_Ip));
+  const bool same_sgn_Im = ((gf_I   - gf_Im)*(gf_Im - gf_Imm) > 0);
+  const bool same_sgn_I  = ((gf_Ip  - gf_I) *(gf_I  - gf_Im)  > 0);
+  const bool same_sgn_Ip = ((gf_Ipp - gf_Ip)*(gf_Ip - gf_I)   > 0);
+
+  const CCTK_REAL deltamod_Im = same_sgn_Im ? sgn(delta_Im)*min(fabs(delta_Im), min(_2fabs_Im_Imm, _2fabs_I_Im))   : 0;
+  const CCTK_REAL deltamod_I  = same_sgn_I  ? sgn(delta_I) *min(fabs(delta_I),  min(_2fabs_I_Im,   _2fabs_Ip_I))   : 0;
+  const CCTK_REAL deltamod_Ip = same_sgn_Ip ? sgn(delta_Ip)*min(fabs(delta_Ip), min(_2fabs_Ip_I,   _2fabs_Ipp_Ip)) : 0;
 
 
   /* Initial reconstructed states at the interfaces between cells Im/I ans I/Ip
