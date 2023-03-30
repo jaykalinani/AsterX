@@ -79,7 +79,7 @@ SCHEDULE AsterX_Sync AT postregrid
 {
   LANG: C
   OPTIONS: global
-  SYNC: dens tau mom
+  SYNC: dens tau mom Avec_x Avec_y Avec_z Psi
   SYNC: saved_prims
 } "Synchronize"
 

@@ -335,7 +335,21 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
           printf("cctk_iteration = %i,  dir = %i,  ijk = %i, %i, %i. \n",
                  cctk_iteration, dir, p.i, p.j, p.k);
           printf("  x, y, z = %16.8e, %16.8e, %16.8e.\n", p.x, p.y, p.z);
-          printf("  dens_rc = %16.8e, %16.8e,  flux_dens = %16.8e, %16.8e.\n",
+	  printf("  fluxdenss = %16.8e, %16.8e \n", fluxdenss(dir)(p.I), fluxdenss(dir)(p.I + DI[dir]));
+          printf("  lam = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e \n",
+                 lambda(0)(0), lambda(0)(1), lambda(0)(2), lambda(0)(3),
+                 lambda(1)(0), lambda(1)(1), lambda(1)(2), lambda(1)(3));
+          printf("  alp = %16.8e, beta = %16.8e, u = %16.8e \n", alp_avg, beta_avg, u_avg);
+          printf("  vel_rc = %16.8e, %16.8e \n", vel_rc(0), vel_rc(1));
+          printf("  rho_rc = %16.8e, %16.8e \n", rho_rc(0), rho_rc(1));
+          printf("  eps_rc = %16.8e, %16.8e \n", eps_rc(0), eps_rc(1));
+          printf("  eps = %16.8e \n", eps(p.I));
+          printf("  press_rc = %16.8e, %16.8e \n", press_rc(0), press_rc(1));
+          printf("  cs2_rc = %16.8e, %16.8e \n", cs2_rc(0), cs2_rc(1));
+          printf("  w_lorentz_rc = %16.8e, %16.8e \n", w_lorentz_rc(0), w_lorentz_rc(1));
+          printf("  h_rc = %16.8e, %16.8e \n", h_rc(0), h_rc(1));
+          printf("  bsq_rc = %16.8e, %16.8e \n", bsq_rc(0), bsq_rc(1));
+	  printf("  dens_rc = %16.8e, %16.8e,  flux_dens = %16.8e, %16.8e.\n",
                  dens_rc(0), dens_rc(1), flux_dens(0), flux_dens(1));
           printf("  momx_rc = %16.8e, %16.8e,  flux_momx = %16.8e, %16.8e.\n",
                  moms_rc(0)(0), moms_rc(0)(1), flux_moms(0)(0),
