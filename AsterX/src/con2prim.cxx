@@ -62,7 +62,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     /* Calculate inverse of 3-metric */
     const CCTK_REAL spatial_detg = calc_det(glo);
     const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
-    // const smat<CCTK_REAL, 3> gup = calc_inv(glo, spatial_detg);
 
     vec<CCTK_REAL, 3> v_up{saved_velx(p.I), saved_vely(p.I), saved_velz(p.I)};
     const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
@@ -97,20 +96,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Noble);
 
     if (!c2p_succeeded_Noble) {
-      //      printf("Noble C2P failed. Trying with Palenzuela.. \n"
-      //             "c2p_succeeded_Noble: %i \n",
-      //             c2p_succeeded_Noble);
       c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Pal);
-      //      printf("c2p_succeeded_Pal: %i \n", c2p_succeeded_Pal);
     }
 
     if (!c2p_succeeded_Noble && !c2p_succeeded_Pal) {
       con2prim_flag(p.I) = 0;
-      //      if (isnan(pv.rho)) {
-      //        printf("p.i, p.j, p.k: %i, %i, %i \n", p.i, p.j, p.k);
-      //        printf("pv.rho, rho(p.I): %f, %f \n", pv.rho, rho(p.I));
-      //      }
-
       if (debug_mode) {
         // need to fix pv to computed values like pv.rho instead of rho(p.I)
         printf(
@@ -151,7 +141,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     /* set flag to success */
     con2prim_flag(p.I) = 1;
 
-    if (rho(p.I) <= rho_atmo_cut) {
+    if (pv.rho <= rho_atmo_cut) {
       // set to atmo
       cv.dBvec(0) = dBx(p.I); // undensitized
       cv.dBvec(1) = dBy(p.I);
@@ -174,10 +164,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                "Bvecz = %26.16e \n "
                "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
                cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-               momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), rho(p.I),
-               eps(p.I), press(p.I), velx(p.I), vely(p.I), velz(p.I),
-               Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Avec_x(p.I), Avec_y(p.I),
-               Avec_z(p.I));
+               momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I),
+	       pv.rho, pv.eps, pv.press, pv.vel(0), pv.vel(1),
+               pv.vel(2), pv.Bvec(0), pv.Bvec(1), pv.Bvec(2),
+               Avec_x(p.I), Avec_y(p.I), Avec_z(p.I)); 
       }
     }
 
