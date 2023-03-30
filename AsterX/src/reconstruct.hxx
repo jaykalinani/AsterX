@@ -16,14 +16,15 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 
-// Struct used to pass parameters to the PPM routine
+// Struct used to pass parameters to the reconstruction routine
 typedef struct {
+  // PPM parameters 
   bool      ppm_shock_detection, ppm_zone_flattening;
   CCTK_REAL poly_k, poly_gamma;
   CCTK_REAL ppm_eta1, ppm_eta2;
   CCTK_REAL ppm_eps;
   CCTK_REAL ppm_omega1, ppm_omega2;
-} ppm_params_t;
+} reconstruct_params_t;
 
 template <typename T>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST int sgn(T val) {
@@ -61,7 +62,7 @@ array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
                         const bool &gf_is_rho,
                         const GF3D2<const CCTK_REAL> &gf_press,
                         const GF3D2<const CCTK_REAL> &gf_vel_dir,
-                        const ppm_params_t &ppm_params) {
+                        const reconstruct_params_t &reconstruct_params) {
   // Unpack all cells in the stencil
   const auto &Imm  = cells.at(0);
   const auto &Im   = cells.at(1);
@@ -70,15 +71,15 @@ array<CCTK_REAL, 2> ppm(const GF3D2<const CCTK_REAL> &gf_var,
   const auto &Ipp  = cells.at(4);
 
   // Unpack all PPM parameters
-  const bool      &ppm_shock_detection = ppm_params.ppm_shock_detection;
-  const bool      &ppm_zone_flattening = ppm_params.ppm_zone_flattening;
-  const CCTK_REAL &poly_k              = ppm_params.poly_k;
-  const CCTK_REAL &poly_gamma          = ppm_params.poly_gamma;
-  const CCTK_REAL &ppm_eta1            = ppm_params.ppm_eta1;
-  const CCTK_REAL &ppm_eta2            = ppm_params.ppm_eta2;
-  const CCTK_REAL &ppm_eps             = ppm_params.ppm_eps;
-  const CCTK_REAL &ppm_omega1          = ppm_params.ppm_omega1;
-  const CCTK_REAL &ppm_omega2          = ppm_params.ppm_omega2;
+  const bool      &ppm_shock_detection = reconstruct_params.ppm_shock_detection;
+  const bool      &ppm_zone_flattening = reconstruct_params.ppm_zone_flattening;
+  const CCTK_REAL &poly_k              = reconstruct_params.poly_k;
+  const CCTK_REAL &poly_gamma          = reconstruct_params.poly_gamma;
+  const CCTK_REAL &ppm_eta1            = reconstruct_params.ppm_eta1;
+  const CCTK_REAL &ppm_eta2            = reconstruct_params.ppm_eta2;
+  const CCTK_REAL &ppm_eps             = reconstruct_params.ppm_eps;
+  const CCTK_REAL &ppm_omega1          = reconstruct_params.ppm_omega1;
+  const CCTK_REAL &ppm_omega2          = reconstruct_params.ppm_omega2;
 
   // Grid function at neighboring cells
   const CCTK_REAL &gf_Imm = gf_var(Imm);
@@ -235,7 +236,7 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var,
             const bool &gf_is_rho,
             const GF3D2<const CCTK_REAL> &gf_press,
             const GF3D2<const CCTK_REAL> &gf_vel_dir,
-            const ppm_params_t &ppm_params) {
+            const reconstruct_params_t &reconstruct_params) {
   constexpr auto DI = PointDesc::DI;
   // Neighbouring "plus" and "minus" cell indices
   const auto Immm  = p.I - 3 * DI[dir];
@@ -286,9 +287,9 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var,
     const array<const vect<int, dim>, 5> cells_Ip = {Imm,  Im,  Ip, Ipp, Ippp};
 
     const array<CCTK_REAL, 2> rc_Im = ppm(gf_var, cells_Im, dir, gf_is_rho,
-                                          gf_press, gf_vel_dir, ppm_params);
+                                          gf_press, gf_vel_dir, reconstruct_params);
     const array<CCTK_REAL, 2> rc_Ip = ppm(gf_var, cells_Ip, dir, gf_is_rho,
-                                          gf_press, gf_vel_dir, ppm_params);
+                                          gf_press, gf_vel_dir, reconstruct_params);
 
     return array<CCTK_REAL, 2> {rc_Im.at(1), rc_Ip.at(0)};
   }

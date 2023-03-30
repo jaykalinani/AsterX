@@ -32,6 +32,21 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
+  /* grid functions for fluxes */
+  const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxmomxs{fxmomx, fymomx, fzmomx};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxmomys{fxmomy, fymomy, fzmomy};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxmomzs{fxmomz, fymomz, fzmomz};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxtaus{fxtau, fytau, fztau};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxBxs{fxBx, fyBx, fzBx};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxBys{fxBy, fyBy, fzBy};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxBzs{fxBz, fyBz, fzBz};
+  /* grid functions */
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_vels{velx, vely, velz};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_Bvecs{Bvecx, Bvecy, Bvecz};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
+  const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
+
   static_assert(dir >= 0 && dir < 3, "");
 
   reconstruction_t reconstruction;
@@ -70,16 +85,25 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     break;
   }
 
+  // reconstruction parameters struct
+  reconstruct_params_t reconstruct_params;
+  reconstruct_params.ppm_shock_detection = ppm_shock_detection;
+  reconstruct_params.ppm_zone_flattening = ppm_zone_flattening;
+  reconstruct_params.poly_k              = poly_k;
+  reconstruct_params.poly_gamma          = poly_gamma;
+  reconstruct_params.ppm_eta1            = ppm_eta1;
+  reconstruct_params.ppm_eta2            = ppm_eta2;
+  reconstruct_params.ppm_eps             = ppm_eps;
+  reconstruct_params.ppm_omega1          = ppm_omega1;
+  reconstruct_params.ppm_omega2          = ppm_omega2;
+
   const auto reconstruct_pt =
       [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var,
                       const PointDesc &p,
-                      const bool &gf_is_rho,
-                      const GF3D2<const CCTK_REAL> &gf_press,
-                      const GF3D2<const CCTK_REAL> &gf_vel_dir,
-                      const ppm_params_t &ppm_params)
+                      const bool &gf_is_rho)
           CCTK_ATTRIBUTE_ALWAYS_INLINE {
             return reconstruct(var, p, reconstruction, dir,
-                               gf_is_rho, gf_press, gf_vel_dir, ppm_params);
+                               gf_is_rho, press, gf_vels(dir), reconstruct_params);
           };
   const auto calcflux =
       [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
@@ -104,36 +128,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         return flx;
       };
 
-  /* grid functions for fluxes */
-  const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxmomxs{fxmomx, fymomx, fzmomx};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxmomys{fxmomy, fymomy, fzmomy};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxmomzs{fxmomz, fymomz, fzmomz};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxtaus{fxtau, fytau, fztau};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxBxs{fxBx, fyBx, fzBx};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxBys{fxBy, fyBy, fzBy};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxBzs{fxBz, fyBz, fzBz};
-  /* grid functions */
-  const vec<GF3D2<const CCTK_REAL>, dim> gf_vels{velx, vely, velz};
-  const vec<GF3D2<const CCTK_REAL>, dim> gf_Bvecs{Bvecx, Bvecy, Bvecz};
-  const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
-  const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
-
   // Face-centred grid functions (in direction `dir`)
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
                                             !(dir == 2)};
-  // PPM parameters struct
-  ppm_params_t ppm_params;
-  ppm_params.ppm_shock_detection = ppm_shock_detection;
-  ppm_params.ppm_zone_flattening = ppm_zone_flattening;
-  ppm_params.poly_k              = poly_k;
-  ppm_params.poly_gamma          = poly_gamma;
-  ppm_params.ppm_eta1            = ppm_eta1;
-  ppm_params.ppm_eta2            = ppm_eta2;
-  ppm_params.ppm_eps             = ppm_eps;
-  ppm_params.ppm_omega1          = ppm_omega1;
-  ppm_params.ppm_omega2          = ppm_omega2;
-
 
   grid.loop_int_device<face_centred[0], face_centred[1], face_centred[2]>(
       grid.nghostzones,
@@ -141,13 +138,13 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         /* Reconstruct primitives from the cells on left (indice 0) and right
          * (indice 1) side of this face rc = reconstructed variables or
          * computed from reconstructed variables */
-        const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, press, gf_vels(dir), ppm_params)};
+        const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true)};
         const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
-          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false, press, gf_vels(dir), ppm_params)};
+          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false)};
         });
-        const vec<CCTK_REAL, 2> eps_rc{reconstruct_pt(eps, p, false, press, gf_vels(dir), ppm_params)};
+        const vec<CCTK_REAL, 2> eps_rc{reconstruct_pt(eps, p, false)};
         const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
-          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, press, gf_vels(dir), ppm_params)};
+          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false)};
         });
 
         /* Interpolate metric components from vertices to faces */
