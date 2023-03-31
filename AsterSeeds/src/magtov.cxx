@@ -23,7 +23,7 @@ extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           CCTK_REAL Pcut = press_max * press_cut;
           CCTK_REAL Pdiff = std::max(press(p.I) - Pcut, 0.0);
-          CCTK_REAL Aphi_local = pow(Ab * Pdiff, Avec_kappa);
+          CCTK_REAL Aphi_local = Ab * pow(Pdiff, Avec_kappa);
           Avec_x_cent(p.I) = -p.y * Aphi_local;
           Avec_y_cent(p.I) = p.x * Aphi_local;
           Avec_z_cent(p.I) = 0.0;
