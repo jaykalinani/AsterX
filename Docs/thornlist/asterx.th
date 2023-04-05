@@ -154,7 +154,7 @@ ExternalLibraries/MPI
 #DISABLED ExternalLibraries/OpenBLAS
 #DISABLED ExternalLibraries/OpenCL
 ExternalLibraries/OpenSSL
-ExternalLibraries/PAPI
+#DISABLED ExternalLibraries/PAPI
 #DISABLED ExternalLibraries/pciutils
 #DISABLED ExternalLibraries/PETSc
 ExternalLibraries/pthreads
@@ -248,6 +248,22 @@ CarpetX/TestProlongate
 CarpetX/TestSymmetries
 CarpetX/TmunuBase
 CarpetX/WaveToyX
+
+# SpacetimeX thorns
+!TARGET   = $ARR
+!TYPE     = git
+!URL      = https://github.com/lwJi/SpacetimeX.git
+!REPO_PATH= $2
+!CHECKOUT =
+SpacetimeX/AHFinder
+SpacetimeX/BaikalX
+SpacetimeX/BrillLindquist
+SpacetimeX/Cowling
+SpacetimeX/Punctures
+SpacetimeX/StaticTrumpet
+SpacetimeX/TwoPunctures
+SpacetimeX/Weyl
+SpacetimeX/Z4c
 
 
 # AsterX thorns
