@@ -23,8 +23,6 @@ template <int dir> void ComputeStaggeredB(CCTK_ARGUMENTS) {
                       CCTK_DELTA_SPACE(2)};
   const std::array idx{1 / dx[0], 1 / dx[1], 1 / dx[2]};
 
-  constexpr auto DI = PointDesc::DI;
-
   static_assert(dir >= 0 && dir < 3, "");
 
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
@@ -33,9 +31,9 @@ template <int dir> void ComputeStaggeredB(CCTK_ARGUMENTS) {
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" cell indices
-        const auto ipjk = p.I + DI[0];
-        const auto ijpk = p.I + DI[1];
-        const auto ijkp = p.I + DI[2];
+        const auto ipjk = p.I + p.DI[0];
+        const auto ijpk = p.I + p.DI[1];
+        const auto ijkp = p.I + p.DI[2];
 
         if (dir == 0) {
           /* dBx is curl(A) at (i-1/2,j,k) */
@@ -68,14 +66,13 @@ extern "C" void AsterX_ComputedBFromdBstag(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_ComputedBFromdBstag;
   DECLARE_CCTK_PARAMETERS;
 
-  constexpr auto DI = PointDesc::DI;
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Neighbouring "plus" and "minus" cell indices
-        const auto ipjk = p.I + DI[0];
-        const auto ijpk = p.I + DI[1];
-        const auto ijkp = p.I + DI[2];
+        const auto ipjk = p.I + p.DI[0];
+        const auto ijpk = p.I + p.DI[1];
+        const auto ijkp = p.I + p.DI[2];
 
         /* Second order interpolation of staggered B components to cell center
          */

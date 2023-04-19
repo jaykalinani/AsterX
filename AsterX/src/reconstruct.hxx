@@ -244,14 +244,13 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
             const bool &gf_is_rho, const GF3D2<const CCTK_REAL> &gf_press,
             const GF3D2<const CCTK_REAL> &gf_vel_dir,
             const reconstruct_params_t &reconstruct_params) {
-  constexpr auto DI = PointDesc::DI;
   // Neighbouring "plus" and "minus" cell indices
-  const auto Immm = p.I - 3 * DI[dir];
-  const auto Imm = p.I - 2 * DI[dir];
-  const auto Im = p.I - DI[dir];
+  const auto Immm = p.I - 3 * p.DI[dir];
+  const auto Imm = p.I - 2 * p.DI[dir];
+  const auto Im = p.I - p.DI[dir];
   const auto Ip = p.I;
-  const auto Ipp = p.I + DI[dir];
-  const auto Ippp = p.I + 2 * DI[dir];
+  const auto Ipp = p.I + p.DI[dir];
+  const auto Ippp = p.I + 2 * p.DI[dir];
 
   switch (reconstruction) {
 

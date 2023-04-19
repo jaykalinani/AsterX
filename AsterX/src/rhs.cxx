@@ -34,7 +34,6 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
                                 1 / CCTK_DELTA_SPACE(1),
                                 1 / CCTK_DELTA_SPACE(2)};
 
-  constexpr auto DI = PointDesc::DI;
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fdens{fxdens, fydens, fzdens};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fmomx{fxmomx, fymomx, fzmomx};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fmomy{fxmomy, fymomy, fzmomy};
@@ -50,7 +49,7 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
       [=] CCTK_DEVICE(const vec<GF3D2<const CCTK_REAL>, dim> &gf_fluxes,
                       const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         vec<CCTK_REAL, 3> dfluxes([&](int i) ARITH_INLINE {
-          return gf_fluxes(i)(p.I + DI[i]) - gf_fluxes(i)(p.I);
+          return gf_fluxes(i)(p.I + p.DI[i]) - gf_fluxes(i)(p.I);
         });
         return -calc_contraction(idx, dfluxes);
       };
@@ -61,8 +60,8 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
 
         const CCTK_REAL E =
-            0.25 * ((gf_fBs(j)(k)(p.I) + gf_fBs(j)(k)(p.I - DI[j])) -
-                    (gf_fBs(k)(j)(p.I) + gf_fBs(k)(j)(p.I - DI[k])));
+            0.25 * ((gf_fBs(j)(k)(p.I) + gf_fBs(j)(k)(p.I - p.DI[j])) -
+                    (gf_fBs(k)(j)(p.I) + gf_fBs(k)(j)(p.I - p.DI[k])));
 
         switch (gauge) {
         case vector_potential_gauge_t::algebraic: {
@@ -91,7 +90,7 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
           printf("densrhs = %f, gf_fdens = %f, %f, %f, %f, %f, %f \n",
               densrhs(p.I),
               gf_fdens(0)(p.I), gf_fdens(1)(p.I), gf_fdens(2)(p.I),
-              gf_fdens(0)(p.I + DI[0]), gf_fdens(1)(p.I + DI[1]), gf_fdens(2)(p.I + DI[2]));
+              gf_fdens(0)(p.I + p.DI[0]), gf_fdens(1)(p.I + p.DI[1]), gf_fdens(2)(p.I + p.DI[2]));
         }
         assert(!isnan(densrhs(p.I)));
       });

@@ -149,9 +149,8 @@ pow2(vec<T, F> x) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 6>
 get_neighbors(const GF3D2<T> &gf, const PointDesc &p) {
-  constexpr auto DI = PointDesc::DI;
-  return {gf(p.I - DI[0]), gf(p.I + DI[0]), gf(p.I - DI[1]),
-          gf(p.I + DI[1]), gf(p.I - DI[2]), gf(p.I + DI[2])};
+  return {gf(p.I - p.DI[0]), gf(p.I + p.DI[0]), gf(p.I - p.DI[1]),
+          gf(p.I + p.DI[1]), gf(p.I - p.DI[2]), gf(p.I + p.DI[2])};
 }
 
 template <typename T, int D>

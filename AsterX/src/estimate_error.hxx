@@ -15,12 +15,11 @@ using namespace std;
 template <typename T>
 CCTK_DEVICE inline T calc_grad_1st(const Loop::GF3D2<const T> &gf,
                                    const Loop::PointDesc &p) {
-  constexpr auto DI = Loop::PointDesc::DI;
   CCTK_REAL err{0}, errp{0}, errm{0};
   for (int d = 0; d < Loop::dim; ++d) {
-    auto varm = gf(p.I - DI[d]);
+    auto varm = gf(p.I - p.DI[d]);
     auto var0 = gf(p.I);
-    auto varp = gf(p.I + DI[d]);
+    auto varp = gf(p.I + p.DI[d]);
     errp += (varp - var0) * (varp - var0);
     errm += (var0 - varm) * (var0 - varm);
   }
@@ -32,12 +31,11 @@ CCTK_DEVICE inline T calc_grad_1st(const Loop::GF3D2<const T> &gf,
 template <typename T>
 CCTK_DEVICE inline T calc_deriv_1st(const Loop::GF3D2<const T> &gf,
                                     const Loop::PointDesc &p) {
-  constexpr auto DI = Loop::PointDesc::DI;
   CCTK_REAL err{0};
   for (int d = 0; d < Loop::dim; ++d) {
-    auto varm = gf(p.I - DI[d]);
+    auto varm = gf(p.I - p.DI[d]);
     auto var0 = gf(p.I);
-    auto varp = gf(p.I + DI[d]);
+    auto varp = gf(p.I + p.DI[d]);
     err = max({err, fabs(var0 - varm), fabs(varp - var0)});
   }
   return err;
@@ -47,12 +45,11 @@ CCTK_DEVICE inline T calc_deriv_1st(const Loop::GF3D2<const T> &gf,
 template <typename T>
 CCTK_DEVICE inline T calc_deriv_2nd(const Loop::GF3D2<const T> &gf,
                                     const Loop::PointDesc &p) {
-  constexpr auto DI = Loop::PointDesc::DI;
   CCTK_REAL err{0};
   for (int d = 0; d < Loop::dim; ++d) {
-    auto varm = gf(p.I - DI[d]);
+    auto varm = gf(p.I - p.DI[d]);
     auto var0 = gf(p.I);
-    auto varp = gf(p.I + DI[d]);
+    auto varp = gf(p.I + p.DI[d]);
     err = max({err, fabs(varp + varm - 2 * var0)});
   }
   return err;

@@ -331,11 +331,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
             isnan(fluxmomzs(dir)(p.I)) || isnan(flux_tau(0)) ||
             isnan(flux_tau(1)) || isnan(tau_rc(0)) || isnan(tau_rc(1)) ||
             isnan(fluxtaus(dir)(p.I))) {
-          constexpr auto DI = PointDesc::DI;
           printf("cctk_iteration = %i,  dir = %i,  ijk = %i, %i, %i. \n",
                  cctk_iteration, dir, p.i, p.j, p.k);
           printf("  x, y, z = %16.8e, %16.8e, %16.8e.\n", p.x, p.y, p.z);
-	  printf("  fluxdenss = %16.8e, %16.8e \n", fluxdenss(dir)(p.I), fluxdenss(dir)(p.I + DI[dir]));
+	  printf("  fluxdenss = %16.8e, %16.8e \n", fluxdenss(dir)(p.I), fluxdenss(dir)(p.I + p.DI[dir]));
           printf("  lam = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e \n",
                  lambda(0)(0), lambda(0)(1), lambda(0)(2), lambda(0)(3),
                  lambda(1)(0), lambda(1)(1), lambda(1)(2), lambda(1)(3));
@@ -371,8 +370,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
           printf("  g_gf   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
                  gxx(p.I), gxy(p.I), gxz(p.I), gyy(p.I), gyz(p.I), gzz(p.I));
           printf("  g_gf+1 = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
-                 gxx(p.I + DI[dir]), gxy(p.I + DI[dir]), gxz(p.I + DI[dir]),
-                 gyy(p.I + DI[dir]), gyz(p.I + DI[dir]), gzz(p.I + DI[dir]));
+                 gxx(p.I + p.DI[dir]), gxy(p.I + p.DI[dir]), gxz(p.I + p.DI[dir]),
+                 gyy(p.I + p.DI[dir]), gyz(p.I + p.DI[dir]), gzz(p.I + p.DI[dir]));
           printf(
               "  vlows_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e.\n",
               vlows_rc(0)(0), vlows_rc(0)(1), vlows_rc(1)(0), vlows_rc(1)(1),

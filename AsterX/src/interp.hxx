@@ -23,13 +23,12 @@ using namespace Arith;
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_v2c(const GF3D2<const T> &gf, const PointDesc &p) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < 2; ++dk) {
     for (int dj = 0; dj < 2; ++dj) {
       for (int di = 0; di < 2; ++di) {
-        gf_avg += gf(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
       }
     }
   }
@@ -40,11 +39,10 @@ calc_avg_v2c(const GF3D2<const T> &gf, const PointDesc &p) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_e2v(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int di = 0; di < 2; ++di) {
-    gf_avg += gf(p.I - DI[dir] * di);
+    gf_avg += gf(p.I - p.DI[dir] * di);
   }
   return gf_avg / 2.0;
 }
@@ -54,13 +52,12 @@ calc_avg_e2v(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_e2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
     for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
       for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
       }
     }
   }
@@ -72,13 +69,12 @@ calc_avg_e2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_v2f(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
     for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
       for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
       }
     }
   }
@@ -89,13 +85,12 @@ calc_avg_v2f(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
     for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
       for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I - DI[0] * di - DI[1] * dj - DI[2] * dk);
+        gf_avg += gf(p.I - p.DI[0] * di - p.DI[1] * dj - p.DI[2] * dk);
       }
     }
   }
@@ -105,13 +100,12 @@ calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_c2v(const GF3D2<const T> &gf, const PointDesc &p) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < 2; ++dk) {
     for (int dj = 0; dj < 2; ++dj) {
       for (int di = 0; di < 2; ++di) {
-        gf_avg += gf(p.I - DI[0] * di - DI[1] * dj - DI[2] * dk);
+        gf_avg += gf(p.I - p.DI[0] * di - p.DI[1] * dj - p.DI[2] * dk);
       }
     }
   }
