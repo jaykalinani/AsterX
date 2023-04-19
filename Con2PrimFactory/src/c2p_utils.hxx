@@ -144,9 +144,8 @@ template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd2_v2v_oneside(const GF3D2<const T> &gf, const PointDesc &p,
                      const int dir, const int sign) {
-  constexpr auto DI = PointDesc::DI;
   return -sign *
-         (gf(p.I + 2 * sign * DI[dir]) - 4.0 * gf(p.I + sign * DI[dir]) +
+         (gf(p.I + 2 * sign * p.DI[dir]) - 4.0 * gf(p.I + sign * p.DI[dir]) +
           3.0 * gf(p.I)) *
          (0.5 / p.DX[dir]);
 }
@@ -155,23 +154,20 @@ calc_fd2_v2v_oneside(const GF3D2<const T> &gf, const PointDesc &p,
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd2_c2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
-  return (0.5 / p.DX[dir]) * (gf(p.I + DI[dir]) - gf(p.I - DI[dir]));
+  return (0.5 / p.DX[dir]) * (gf(p.I + p.DI[dir]) - gf(p.I - p.DI[dir]));
 }
 
 // FD2: vertex centered input, edge centered output
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd2_v2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
-  return (gf(p.I + DI[dir]) - gf(p.I)) / p.DX[dir];
+  return (gf(p.I + p.DI[dir]) - gf(p.I)) / p.DX[dir];
 }
 
 // FD2: vertex centered input, cell centered output
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd2_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
-  constexpr auto DI = PointDesc::DI;
   T dgf1, dgf2, dgf3, dgf4;
   int dir1, dir2;
   if (dir == 0) {
@@ -185,11 +181,11 @@ calc_fd2_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
     dir2 = 1;
   }
 
-  dgf1 = (gf(p.I + DI[dir]) - gf(p.I)) / p.DX[dir];
-  dgf2 = (gf(p.I + DI[dir1] + DI[dir]) - gf(p.I + DI[dir1])) / p.DX[dir];
-  dgf3 = (gf(p.I + DI[dir2] + DI[dir]) - gf(p.I + DI[dir2])) / p.DX[dir];
-  dgf4 = (gf(p.I + DI[dir1] + DI[dir2] + DI[dir]) -
-          gf(p.I + DI[dir1] + DI[dir2])) /
+  dgf1 = (gf(p.I + p.DI[dir]) - gf(p.I)) / p.DX[dir];
+  dgf2 = (gf(p.I + p.DI[dir1] + p.DI[dir]) - gf(p.I + p.DI[dir1])) / p.DX[dir];
+  dgf3 = (gf(p.I + p.DI[dir2] + p.DI[dir]) - gf(p.I + p.DI[dir2])) / p.DX[dir];
+  dgf4 = (gf(p.I + p.DI[dir1] + p.DI[dir2] + p.DI[dir]) -
+          gf(p.I + p.DI[dir1] + p.DI[dir2])) /
          p.DX[dir];
 
   return 0.25 * (dgf1 + dgf2 + dgf3 + dgf4);
@@ -199,17 +195,15 @@ calc_fd2_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd4_c2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   return (1.0 / (12.0 * p.DX[dir])) *
-         (-gf(p.I + 2 * DI[dir]) + 8.0 * gf(p.I + DI[dir]) -
-          8.0 * gf(p.I - DI[dir]) + gf(p.I - 2 * DI[dir]));
+         (-gf(p.I + 2 * p.DI[dir]) + 8.0 * gf(p.I + p.DI[dir]) -
+          8.0 * gf(p.I - p.DI[dir]) + gf(p.I - 2 * p.DI[dir]));
 }
 
 // FD4: vertex centered input, cell centered output
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
-  constexpr auto DI = PointDesc::DI;
   T dgf1, dgf2, dgf3, dgf4;
   T dgf5, dgf6, dgf7, dgf8;
   int dir1, dir2;
@@ -226,47 +220,47 @@ calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
   }
 
   dgf1 =
-      ((1.0 / 24.0) * gf(p.I + 2 * DI[dir]) - (9.0 / 8.0) * gf(p.I + DI[dir]) +
-       (9.0 / 8.0) * gf(p.I) - (1.0 / 24.0) * gf(p.I - DI[dir])) /
+      ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir]) - (9.0 / 8.0) * gf(p.I + p.DI[dir]) +
+       (9.0 / 8.0) * gf(p.I) - (1.0 / 24.0) * gf(p.I - p.DI[dir])) /
       p.DX[dir];
-  dgf2 = ((1.0 / 24.0) * gf(p.I + DI[dir1] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I + DI[dir1] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I + DI[dir1]) -
-          (1.0 / 24.0) * gf(p.I + DI[dir1] - DI[dir])) /
+  dgf2 = ((1.0 / 24.0) * gf(p.I + p.DI[dir1] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I + p.DI[dir1] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I + p.DI[dir1]) -
+          (1.0 / 24.0) * gf(p.I + p.DI[dir1] - p.DI[dir])) /
          p.DX[dir];
-  dgf3 = ((1.0 / 24.0) * gf(p.I + DI[dir2] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I + DI[dir2] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I + DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I + DI[dir2] - DI[dir])) /
+  dgf3 = ((1.0 / 24.0) * gf(p.I + p.DI[dir2] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I + p.DI[dir2] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I + p.DI[dir2]) -
+          (1.0 / 24.0) * gf(p.I + p.DI[dir2] - p.DI[dir])) /
          p.DX[dir];
-  dgf4 = ((1.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir2] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I + DI[dir1] + DI[dir2] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I + DI[dir1] + DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I + DI[dir1] + DI[dir2] - DI[dir])) /
-         p.DX[dir];
-
-  dgf5 = ((1.0 / 24.0) * gf(p.I + 2 * DI[dir1] + 2 * DI[dir2] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I + 2 * DI[dir1] + 2 * DI[dir2] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I + 2 * DI[dir1] + 2 * DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I + 2 * DI[dir1] + 2 * DI[dir2] - DI[dir])) /
+  dgf4 = ((1.0 / 24.0) * gf(p.I + p.DI[dir1] + p.DI[dir2] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I + p.DI[dir1] + p.DI[dir2] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I + p.DI[dir1] + p.DI[dir2]) -
+          (1.0 / 24.0) * gf(p.I + p.DI[dir1] + p.DI[dir2] - p.DI[dir])) /
          p.DX[dir];
 
-  dgf6 = ((1.0 / 24.0) * gf(p.I + 2 * DI[dir1] - DI[dir2] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I + 2 * DI[dir1] - DI[dir2] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I + 2 * DI[dir1] - DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I + 2 * DI[dir1] - DI[dir2] - DI[dir])) /
+  dgf5 = ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2]) -
+          (1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] - p.DI[dir])) /
          p.DX[dir];
 
-  dgf7 = ((1.0 / 24.0) * gf(p.I - DI[dir1] + 2 * DI[dir2] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I - DI[dir1] + 2 * DI[dir2] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I - DI[dir1] + 2 * DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I - DI[dir1] + 2 * DI[dir2] - DI[dir])) /
+  dgf6 = ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] - p.DI[dir2] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] - p.DI[dir2] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] - p.DI[dir2]) -
+          (1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] - p.DI[dir2] - p.DI[dir])) /
          p.DX[dir];
 
-  dgf8 = ((1.0 / 24.0) * gf(p.I - DI[dir1] - DI[dir2] + 2 * DI[dir]) -
-          (9.0 / 8.0) * gf(p.I - DI[dir1] - DI[dir2] + DI[dir]) +
-          (9.0 / 8.0) * gf(p.I - DI[dir1] - DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I - DI[dir1] - DI[dir2] - DI[dir])) /
+  dgf7 = ((1.0 / 24.0) * gf(p.I - p.DI[dir1] + 2 * p.DI[dir2] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I - p.DI[dir1] + 2 * p.DI[dir2] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I - p.DI[dir1] + 2 * p.DI[dir2]) -
+          (1.0 / 24.0) * gf(p.I - p.DI[dir1] + 2 * p.DI[dir2] - p.DI[dir])) /
+         p.DX[dir];
+
+  dgf8 = ((1.0 / 24.0) * gf(p.I - p.DI[dir1] - p.DI[dir2] + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I - p.DI[dir1] - p.DI[dir2] + p.DI[dir]) +
+          (9.0 / 8.0) * gf(p.I - p.DI[dir1] - p.DI[dir2]) -
+          (1.0 / 24.0) * gf(p.I - p.DI[dir1] - p.DI[dir2] - p.DI[dir])) /
          p.DX[dir];
 
   return (27.0 / 14.0) * (dgf1 + dgf2 + dgf3 + dgf4) -
@@ -277,13 +271,12 @@ calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_v2c(const GF3D2<const T> &gf, const PointDesc &p) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < 2; ++dk) {
     for (int dj = 0; dj < 2; ++dj) {
       for (int di = 0; di < 2; ++di) {
-        gf_avg += gf(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
       }
     }
   }
@@ -294,11 +287,10 @@ calc_avg_v2c(const GF3D2<const T> &gf, const PointDesc &p) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_e2v(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int di = 0; di < 2; ++di) {
-    gf_avg += gf(p.I - DI[dir] * di);
+    gf_avg += gf(p.I - p.DI[dir] * di);
   }
   return gf_avg / 2.0;
 }
@@ -308,13 +300,12 @@ calc_avg_e2v(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_e2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
     for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
       for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
       }
     }
   }
@@ -326,13 +317,12 @@ calc_avg_e2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_v2f(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
     for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
       for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I + DI[0] * di + DI[1] * dj + DI[2] * dk);
+        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
       }
     }
   }
@@ -343,13 +333,12 @@ calc_avg_v2f(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
-  constexpr auto DI = PointDesc::DI;
   T gf_avg = 0.0;
 
   for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
     for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
       for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I - DI[0] * di - DI[1] * dj - DI[2] * dk);
+        gf_avg += gf(p.I - p.DI[0] * di - p.DI[1] * dj - p.DI[2] * dk);
       }
     }
   }
@@ -359,9 +348,8 @@ calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 6>
 get_neighbors(const GF3D2<T> &gf, const PointDesc &p) {
-  constexpr auto DI = PointDesc::DI;
-  return {gf(p.I - DI[0]), gf(p.I + DI[0]), gf(p.I - DI[1]),
-          gf(p.I + DI[1]), gf(p.I - DI[2]), gf(p.I + DI[2])};
+  return {gf(p.I - p.DI[0]), gf(p.I + p.DI[0]), gf(p.I - p.DI[1]),
+          gf(p.I + p.DI[1]), gf(p.I - p.DI[2]), gf(p.I + p.DI[2])};
 }
 
 template <typename T, int D>
