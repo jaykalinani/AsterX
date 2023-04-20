@@ -27,3 +27,12 @@ Instructions for downloading and building the Einstein Toolkit including
 CarpetX can be found [here](https://github.com/eschnett/CarpetX).
 
 Details for building and running AsterX along with CarpetX will be added to [asterx.readthedocs.io](https://asterx.readthedocs.io/en/latest/#) soon..
+
+## Related talks and tutorials ##
+
+* "[Using CarpetX: A Guide for Early Adopters](http://einsteintoolkit.org/seminars/2021_03_18/index.html)". 
+Recorded seminar talk by Erik Schnetter, providing an overview of the current capabilities of CarpetX.
+* "[Tutorial: GPUs and the Einstein Toolkit](https://einsteintoolkit.github.io/et2022uidaho/lectures/38-Tutorial8/index.html)". 
+Recorded tutorial by Lorenzo Ennoggi, Jay Kalinani and Federico Lopez Armengol during the North American Einstein Toolkit workshop 2022, presenting a brief overview on AsterX, followed by a hands-on session.
+* "[AsterX: a new open-source GPU-accelerated GRMHD code for dynamical spacetimes](https://drive.google.com/file/d/1Z4i--W56mxeNIu598LQTpEEowX56FOoD/view?usp=sharing)". 
+Slides based on the talk by Jay Kalinani at the APS April Meeting 2023.
