@@ -13,7 +13,12 @@
 namespace AsterX {
 using namespace std;
 
-enum class regrid_t { first_deriv, second_deriv, first_grad };
+enum class regrid_t {
+  first_deriv,
+  second_deriv,
+  second_deriv_norm,
+  first_grad
+};
 regrid_t regridMethod;
 vector<int> regridVarsI;
 vector<array<int, Loop::dim> > indextypeRegridVars;
@@ -43,6 +48,8 @@ extern "C" void AsterX_EstimateError_Setup(CCTK_ARGUMENTS) {
     regridMethod = regrid_t::first_deriv;
   else if (CCTK_EQUALS(regrid_method, "second derivative"))
     regridMethod = regrid_t::second_deriv;
+  else if (CCTK_EQUALS(regrid_method, "second derivative norm"))
+    regridMethod = regrid_t::second_deriv_norm;
   else if (CCTK_EQUALS(regrid_method, "first gradient"))
     regridMethod = regrid_t::first_grad;
   else
@@ -71,7 +78,7 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
 
   const int tl = 0;
   const int maxNregridVars = 10;
-  //array<Loop::GF3D2<const CCTK_REAL>, maxNregridVars> regridVars = {
+  // array<Loop::GF3D2<const CCTK_REAL>, maxNregridVars> regridVars = {
   //    rho, rho, rho, rho, rho, rho, rho, rho, rho, rho};
   const int NregridVars = regridVarsI.size();
   assert(NregridVars < maxNregridVars);
@@ -103,6 +110,16 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
           for (int i = 0; i < NregridVars; i++) {
             regrid_error(p.I) =
                 max({regrid_error(p.I), calc_deriv_2nd(regridVars[i], p)});
+          }
+          break;
+        }
+
+        case regrid_t::second_deriv_norm: {
+          regrid_error(p.I) = 0.0;
+          for (int i = 0; i < NregridVars; i++) {
+            regrid_error(p.I) =
+                max({regrid_error(p.I),
+                     calc_deriv_2nd_norm(regridVars[i], p, epsilon_err)});
           }
           break;
         }
