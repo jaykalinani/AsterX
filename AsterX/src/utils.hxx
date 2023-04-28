@@ -1,5 +1,5 @@
-#ifndef UTILS_HXX
-#define UTILS_HXX
+#ifndef ASTERX_UTILS_HXX
+#define ASTERX_UTILS_HXX
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -165,4 +165,4 @@ calc_avg_neighbors(const vec<T, D> flag, const vec<T, D> u_nbs,
 
 } // namespace AsterX
 
-#endif // #ifndef UTILS_HXX
+#endif // ASTERX_UTILS_HXX

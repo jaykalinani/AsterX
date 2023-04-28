@@ -1,5 +1,5 @@
-#ifndef PRIM2CON_HXX
-#define PRIM2CON_HXX
+#ifndef ASTERX_PRIM2CON_HXX
+#define ASTERX_PRIM2CON_HXX
 
 #include <loop_device.hxx>
 
@@ -87,4 +87,4 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
 
 } // namespace AsterX
 
-#endif // #ifndef PRIM2CON_HXX
+#endif // ASTERX_PRIM2CON_HXX

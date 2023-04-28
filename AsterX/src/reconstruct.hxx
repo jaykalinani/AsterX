@@ -1,3 +1,6 @@
+#ifndef ASTERX_RECONSTRUCT_HXX
+#define ASTERX_RECONSTRUCT_HXX
+
 #include <loop_device.hxx>
 
 #include <cctk.h>
@@ -9,7 +12,7 @@
 #include <cassert>
 #include <cmath>
 
-#include "utils.hxx"
+#include "reconstruct.hxx"
 
 namespace AsterX {
 
@@ -307,3 +310,5 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
 }
 
 } // namespace AsterX
+
+#endif // ASTERX_RECONSTRUCT_HXX
