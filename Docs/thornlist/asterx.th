@@ -156,7 +156,7 @@ ExternalLibraries/MPI
 ExternalLibraries/OpenSSL
 #DISABLED ExternalLibraries/PAPI
 #DISABLED ExternalLibraries/pciutils
-#DISABLED ExternalLibraries/PETSc
+ExternalLibraries/PETSc
 ExternalLibraries/pthreads
 ExternalLibraries/zlib
 
