@@ -221,7 +221,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         });
         /* enthalpy h for ideal gas EOS */
         const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
-          return 1 + 2*press_rc(f) / rho_rc(f);
+          return 1 + eps_rc(f) + press_rc(f) / rho_rc(f);
         });
         // } Ideal gas case
 
