@@ -140,7 +140,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
           return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false)};
         });
-        const vec<CCTK_REAL, 2> eps_rc{reconstruct_pt(eps, p, false)};
+        const vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false)};
         const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
           return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false)};
         });
@@ -157,7 +157,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         /* determinant of spatial metric */
         const CCTK_REAL detg_avg = calc_det(g_avg);
         const CCTK_REAL sqrtg = sqrt(detg_avg);
-        /* co-velocity measured by Euleian observer: v_j */
+        /* co-velocity measured by Eulerian observer: v_j */
         const vec<vec<CCTK_REAL, 2>, 3> vlows_rc =
             calc_contraction(g_avg, vels_rc);
         /* vtilde^i = alpha * v^i - beta^i */
@@ -207,9 +207,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         const vec<CCTK_REAL, 2> ye_rc{ye_min, ye_max};
 
         // Ideal gas case {
-        /* pressure for ideal gas EOS */
-        const vec<CCTK_REAL, 2> press_rc([&](int f) ARITH_INLINE {
-          return eos_th.press_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
+        /* eps for ideal gas EOS */
+        const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
+          return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
                                                     ye_rc(f));
         });
         /* cs2 for ideal gas EOS */
@@ -221,7 +221,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         });
         /* enthalpy h for ideal gas EOS */
         const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
-          return 1 + eps_rc(f) + press_rc(f) / rho_rc(f);
+          return 1 + 2*press_rc(f) / rho_rc(f);
         });
         // } Ideal gas case
 
