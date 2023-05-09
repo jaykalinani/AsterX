@@ -121,52 +121,180 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
 
   } else if (CCTK_EQUALS(test_case, "Balsara1")) {
+   
+    CCTK_REAL rhol = 1.0;
+    CCTK_REAL vxl = 0.0;
+    CCTK_REAL vyl = 0.0;
+    CCTK_REAL vzl = 0.0;
+    CCTK_REAL pressl = 1.0;
+    CCTK_REAL Bxl = 0.5;
+    CCTK_REAL Byl = 1.0;
+    CCTK_REAL Bzl = 0.0;
+
+    CCTK_REAL rhor = 0.125;
+    CCTK_REAL vxr = 0.0;
+    CCTK_REAL vyr = 0.0;
+    CCTK_REAL vzr = 0.0;
+    CCTK_REAL pressr = 0.1;
+    CCTK_REAL Bxr = 0.5;
+    CCTK_REAL Byr = -1.0;
+    CCTK_REAL Bzr = 0.0;    
+	 
+    if (CCTK_EQUALS(shock_dir, "x")) {
+   
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.x <= 0.0) {
-            rho(p.I) = 1.0;
-            velx(p.I) = 0.0;
-            vely(p.I) = 0.0;
-            velz(p.I) = 0.0;
-            press(p.I) = 1.0;
-            // Bvecx(p.I) = 0.5;
-            // Bvecy(p.I) = 1.0;
-            // Bvecz(p.I) = 0.0;
+            rho(p.I) = rhol;
+            velx(p.I) = vxl;
+            vely(p.I) = vyl;
+            velz(p.I) = vzl;
+            press(p.I) = pressl;
 
           } else {
-            rho(p.I) = 0.125;
-            velx(p.I) = 0.0;
-            vely(p.I) = 0.0;
-            velz(p.I) = 0.0;
-            press(p.I) = 0.1;
-            // Bvecx(p.I) = 0.5;
-            // Bvecy(p.I) = -1.0;
-            // Bvecz(p.I) = 0.0;
+            rho(p.I) = rhor;
+            velx(p.I) = vxr;
+            vely(p.I) = vyr;
+            velz(p.I) = vzr;
+            press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
-    grid.loop_all_device<1, 0, 0>(grid.nghostzones,
-                                  [=] CCTK_DEVICE(const PointDesc &p)
-                                      CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                        if (p.x <= 0.0) {
-                                          Avec_x(p.I) = 1.0 * (p.z);
-                                        } else {
-                                          Avec_x(p.I) = -1.0 * (p.z);
-                                        }
-                                      });
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.x <= 0.0) { 
+	       Avec_x(p.I) = Byl * (p.z) - Bzl * (p.y);  
+	    } else { 
+	       Avec_x(p.I) = Byr * (p.z) - Bzr * (p.y); } });
 
     grid.loop_all_device<0, 1, 0>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.x <= 0.0) {
+               Avec_y(p.I) = Bzl * (p.x) - Bxl * (p.z);
+            } else {
+               Avec_y(p.I) = Bzr * (p.x) - Bxr * (p.z); } });
+	    
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.x <= 0.0) {
+               Avec_z(p.I) = Bxl * (p.y) - Byl * (p.x);
+            } else {
+               Avec_z(p.I) = Bxr * (p.y) - Byr * (p.x); } });
+    
+    } else if (CCTK_EQUALS(shock_dir, "y")) {
+
+    //x-->z, y-->x, z-->y
+    grid.loop_all_device<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          if (p.y <= 0.0) {
+            rho(p.I) = rhol;
+            velx(p.I) = vzl;
+            vely(p.I) = vxl;
+            velz(p.I) = vyl;
+            press(p.I) = pressl;
+
+          } else {
+            rho(p.I) = rhor;
+            velx(p.I) = vzr;
+            vely(p.I) = vxr;
+            velz(p.I) = vyr;
+            press(p.I) = pressr;
+          }
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
+        });
 
     grid.loop_all_device<0, 0, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.5 * (p.y); });
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.y <= 0.0) {
+               Avec_z(p.I) = Byl * (p.z) - Bzl * (p.y);
+            } else {
+               Avec_z(p.I) = Byr * (p.z) - Bzr * (p.y); } });
+
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.y <= 0.0) {
+               Avec_x(p.I) = Bzl * (p.x) - Bxl * (p.z);
+            } else {
+               Avec_x(p.I) = Bzr * (p.x) - Bxr * (p.z); } });
+            
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { 
+            if (p.y <= 0.0) {
+               Avec_y(p.I) = Bxl * (p.y) - Byl * (p.x);
+            } else {
+               Avec_y(p.I) = Bxr * (p.y) - Byr * (p.x); } });
+
+
+    } else if (CCTK_EQUALS(shock_dir, "z")) {
+    
+    //x-->y, y-->z, z-->x
+    grid.loop_all_device<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          if (p.z <= 0.0) {
+            rho(p.I) = rhol;
+            velx(p.I) = vyl;
+            vely(p.I) = vzl;
+            velz(p.I) = vxl;
+            press(p.I) = pressl;
+
+          } else {
+            rho(p.I) = rhor;
+            velx(p.I) = vyr;
+            vely(p.I) = vzr;
+            velz(p.I) = vxr;
+            press(p.I) = pressr;
+          }
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
+        });
+
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.z <= 0.0) {
+               Avec_y(p.I) = Byl * (p.z) - Bzl * (p.y);
+            } else {
+               Avec_y(p.I) = Byr * (p.z) - Bzr * (p.y); } });
+
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.z <= 0.0) {
+               Avec_z(p.I) = Bzl * (p.x) - Bxl * (p.z);
+            } else {
+               Avec_z(p.I) = Bzr * (p.x) - Bxr * (p.z); } });
+
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+            if (p.z <= 0.0) {
+               Avec_x(p.I) = Bxl * (p.y) - Byl * (p.x);
+            } else {
+               Avec_x(p.I) = Bxr * (p.y) - Byr * (p.x); } });
+    	    
+    } else { CCTK_ERROR("Shock direction case not defined"); }
+    
 
   } else if (CCTK_EQUALS(test_case, "Balsara2")) {
 

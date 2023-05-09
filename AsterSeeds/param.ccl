@@ -40,6 +40,13 @@ CCTK_REAL shock_radius "Shock radius" STEERABLE=never
   0.0:* :: ""
 } 0.1
 
+KEYWORD shock_dir "Shock direction" STEERABLE=never
+{
+  "x" :: "Parallel to x axis"
+  "y" :: "Parallel to y axis"
+  "z" :: "Parallel to z axis"
+} "x"
+
 # parameters for 2D tests
 
 CCTK_KEYWORD mag_loop_adv_type "2D or 3D magnetic loop advection" STEERABLE=NEVER
