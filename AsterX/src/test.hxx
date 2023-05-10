@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <limits>
+#include <random>
 
 namespace AsterXTests {
 
@@ -34,12 +35,14 @@ bool isapprox(fp_type x, fp_type y, fp_type atol = 0.0) {
   return abs(x - y) <= max(atol, rtol * max(abs(x), abs(y)));
 }
 
-void test_contraction_smat_upvec();
-void test_contraction_upvec_downvec();
+void test_contraction_smat_upvec(std::mt19937_64 &engine, int repetitions);
+void test_contraction_upvec_downvec(std::mt19937_64 &engine, int repetitions);
 
-void test_corss_product();
+void test_cross_product(std::mt19937_64 &engine, int repetitions);
 
-void test_minmod();
+void test_wlorentz(std::mt19937_64 &engine, int repetitions);
+
+void test_minmod(std::mt19937_64 &engine, int repetitions);
 
 } // namespace AsterXTests
 

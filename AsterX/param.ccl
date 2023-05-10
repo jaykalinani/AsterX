@@ -104,6 +104,10 @@ BOOLEAN unit_test "turn on all the unit tests if set to yes"
 {
 } no
 
+CCTK_INT unit_test_repetitions "Number of times each unit test should be repeated" STEERABLE=never
+{
+  0:* :: "Must be no smaller than 0"
+} 1
 
 restricted:
 

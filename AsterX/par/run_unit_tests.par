@@ -58,3 +58,4 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2
  
 AsterX::unit_test = yes
+AsterX::unit_test_repetitions = 10
