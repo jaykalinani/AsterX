@@ -3,9 +3,10 @@ name: CI
 # Control when the workflow will run
 on:
   push:
+  pull_request:
+    types: [opened, reopened, edited, review_requested, ready_for_review]
   # Allow running this workflow manually from the Actions tab
   workflow_dispatch:
-
 # concurrency:
 #   group: carpetx
 #   cancel-in-progress: false
