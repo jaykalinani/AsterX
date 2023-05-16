@@ -19,7 +19,7 @@ void AsterXTests::test_minmod(std::mt19937_64 &engine, int repetitions) {
 
   for (int i = 0; i < repetitions; i++) {
 
-    CCTK_VINFO("Testing minmod repetition %i", i);
+    CCTK_VINFO("Testing minmod repetition %i ", i);
     {
       bool success{true};
 
