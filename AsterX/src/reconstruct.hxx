@@ -12,8 +12,6 @@
 #include <cassert>
 #include <cmath>
 
-#include "reconstruct.hxx"
-
 namespace AsterX {
 
 using namespace std;
