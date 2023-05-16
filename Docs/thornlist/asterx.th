@@ -141,7 +141,7 @@ CactusUtils/WatchDog
 !TYPE     = git
 !URL      = https://github.com/EinsteinToolkit/$1-$2
 !REPO_PATH = ../$1-$2
-!CHECKOUT = ExternalLibraries/OpenBLAS ExternalLibraries/OpenCL ExternalLibraries/pciutils ExternalLibraries/PETSc
+!CHECKOUT = ExternalLibraries/OpenBLAS ExternalLibraries/OpenCL ExternalLibraries/pciutils 
 ExternalLibraries/BLAS
 ExternalLibraries/FFTW3
 ExternalLibraries/GSL
@@ -156,7 +156,7 @@ ExternalLibraries/MPI
 ExternalLibraries/OpenSSL
 #DISABLED ExternalLibraries/PAPI
 #DISABLED ExternalLibraries/pciutils
-#DISABLED ExternalLibraries/PETSc
+ExternalLibraries/PETSc
 ExternalLibraries/pthreads
 ExternalLibraries/zlib
 

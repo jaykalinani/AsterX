@@ -327,7 +327,7 @@ wenoz(const GF3D2<const CCTK_REAL> &gf_var,
       (omegaZ(2)(1) / 8.0) * (3.0 * gf_I + 6.0 * gf_Ip - 1.0 * gf_Ipp);
   */
 
-  // GRHydro Weights:
+  //GRHydro Weights:
   const CCTK_REAL var_m =
       (omegaZ(2)(0) / 6.0) * (2.0 * gf_Ipp - 7.0 * gf_Ip + 11.0 * gf_I) +
       (omegaZ(1)(0) / 6.0) * (-1.0 * gf_Ip + 5.0 * gf_I + 2.0 * gf_Im) +
