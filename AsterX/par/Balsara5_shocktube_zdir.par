@@ -20,7 +20,7 @@ Cactus::cctk_show_schedule = yes
 Cactus::presync_mode = "mixed-error"
 
 Cactus::terminate = "time"
-Cactus::cctk_final_time = 0.40
+Cactus::cctk_final_time = 0.55
 
 ADMBase::initial_data            = "Cartesian Minkowski"
 ADMBase::initial_lapse           = "one"
@@ -46,9 +46,9 @@ CarpetX::boundary_upper_x = "linear extrapolation"
 CarpetX::boundary_upper_y = "linear extrapolation"
 CarpetX::boundary_upper_z = "linear extrapolation"
 
-CarpetX::ncells_x = $ncells
+CarpetX::ncells_x = 2
 CarpetX::ncells_y = 2
-CarpetX::ncells_z = 2
+CarpetX::ncells_z = $ncells
 
 CarpetX::max_num_levels = $nlevels
 CarpetX::regrid_every = 100000
@@ -62,12 +62,13 @@ CarpetX::ghost_size = 3
 CarpetX::dtfac = 0.25
  
 AsterSeeds::test_type = "1DTest"
-AsterSeeds::test_case = "Balsara3"
+AsterSeeds::test_case = "Balsara5"
+AsterSeeds::shock_dir = "z"
 
-AsterX::reconstruction_method = "minmod"
+AsterX::reconstruction_method = "wenoz"
 AsterX::flux_type = "HLLE"
-AsterX::c2p_tol = 1e-8
 AsterX::max_iter = 100
+AsterX::c2p_tol = 1e-8
 AsterX::debug_mode = "yes"
 
 Con2PrimFactory::unit_test = "yes"

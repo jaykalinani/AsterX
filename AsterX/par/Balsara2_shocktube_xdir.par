@@ -63,8 +63,9 @@ CarpetX::dtfac = 0.25
  
 AsterSeeds::test_type = "1DTest"
 AsterSeeds::test_case = "Balsara2"
+AsterSeeds::shock_dir = "x"
 
-AsterX::reconstruction_method = "PPM"
+AsterX::reconstruction_method = "wenoz"
 AsterX::flux_type = "HLLE"
 AsterX::c2p_tol = 1e-8
 AsterX::max_iter = 100
