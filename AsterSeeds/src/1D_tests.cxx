@@ -199,16 +199,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.y <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vyl;
-            vely(p.I) = vzl;
-            velz(p.I) = vxl;
+            vely(p.I) = vxl;
+            velz(p.I) = vyl;
+            velx(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vyr;
-            vely(p.I) = vzr;
-            velz(p.I) = vxr;
+            vely(p.I) = vxr;
+            velz(p.I) = vyr;
+            velx(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -250,16 +250,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.z <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vzl;
-            vely(p.I) = vxl;
-            velz(p.I) = vyl;
+            velz(p.I) = vxl;
+            velx(p.I) = vyl;
+            vely(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vzr;
-            vely(p.I) = vxr;
-            velz(p.I) = vyr;
+            velz(p.I) = vxr;
+            velx(p.I) = vyr;
+            vely(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -368,16 +368,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.y <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vyl;
-            vely(p.I) = vzl;
-            velz(p.I) = vxl;
+            vely(p.I) = vxl;
+            velz(p.I) = vyl;
+            velx(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vyr;
-            vely(p.I) = vzr;
-            velz(p.I) = vxr;
+            vely(p.I) = vxr;
+            velz(p.I) = vyr;
+            velx(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -419,16 +419,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.z <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vzl;
-            vely(p.I) = vxl;
-            velz(p.I) = vyl;
+            velz(p.I) = vxl;
+            velx(p.I) = vyl;
+            vely(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vzr;
-            vely(p.I) = vxr;
-            velz(p.I) = vyr;
+            velz(p.I) = vxr;
+            velx(p.I) = vyr;
+            vely(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -537,16 +537,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.y <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vyl;
-            vely(p.I) = vzl;
-            velz(p.I) = vxl;
+            vely(p.I) = vxl;
+            velz(p.I) = vyl;
+            velx(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vyr;
-            vely(p.I) = vzr;
-            velz(p.I) = vxr;
+            vely(p.I) = vxr;
+            velz(p.I) = vyr;
+            velx(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -588,16 +588,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.z <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vzl;
-            vely(p.I) = vxl;
-            velz(p.I) = vyl;
+            velz(p.I) = vxl;
+            velx(p.I) = vyl;
+            vely(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vzr;
-            vely(p.I) = vxr;
-            velz(p.I) = vyr;
+            velz(p.I) = vxr;
+            velx(p.I) = vyr;
+            vely(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -706,16 +706,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.y <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vyl;
-            vely(p.I) = vzl;
-            velz(p.I) = vxl;
+            vely(p.I) = vxl;
+            velz(p.I) = vyl;
+            velx(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vyr;
-            vely(p.I) = vzr;
-            velz(p.I) = vxr;
+            vely(p.I) = vxr;
+            velz(p.I) = vyr;
+            velx(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -757,16 +757,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.z <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vzl;
-            vely(p.I) = vxl;
-            velz(p.I) = vyl;
+            velz(p.I) = vxl;
+            velx(p.I) = vyl;
+            vely(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vzr;
-            vely(p.I) = vxr;
-            velz(p.I) = vyr;
+            velz(p.I) = vxr;
+            velx(p.I) = vyr;
+            vely(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -875,16 +875,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.y <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vyl;
-            vely(p.I) = vzl;
-            velz(p.I) = vxl;
+            vely(p.I) = vxl;
+            velz(p.I) = vyl;
+            velx(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vyr;
-            vely(p.I) = vzr;
-            velz(p.I) = vxr;
+            vely(p.I) = vxr;
+            velz(p.I) = vyr;
+            velx(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
@@ -926,16 +926,16 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           if (p.z <= 0.0) {
             rho(p.I) = rhol;
-            velx(p.I) = vzl;
-            vely(p.I) = vxl;
-            velz(p.I) = vyl;
+            velz(p.I) = vxl;
+            velx(p.I) = vyl;
+            vely(p.I) = vzl;
             press(p.I) = pressl;
 
           } else {
             rho(p.I) = rhor;
-            velx(p.I) = vzr;
-            vely(p.I) = vxr;
-            velz(p.I) = vyr;
+            velz(p.I) = vxr;
+            velx(p.I) = vyr;
+            vely(p.I) = vzr;
             press(p.I) = pressr;
           }
           eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
