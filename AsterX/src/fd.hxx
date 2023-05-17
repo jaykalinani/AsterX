@@ -1,5 +1,5 @@
-#ifndef FD_HXX
-#define FD_HXX
+#ifndef ASTERX_FD_HXX
+#define ASTERX_FD_HXX
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -108,4 +108,4 @@ calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
 
 } // namespace AsterX
 
-#endif // #ifndef FD_HXX
+#endif // ASTERX_FD_HXX

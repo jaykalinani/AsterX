@@ -1,3 +1,6 @@
+#ifndef ASTERX_RECONSTRUCT_HXX
+#define ASTERX_RECONSTRUCT_HXX
+
 #include <loop_device.hxx>
 
 #include <cctk.h>
@@ -311,7 +314,7 @@ wenoz(const GF3D2<const CCTK_REAL> &gf_var,
 
   // Reconstruct cell-centered variable to left (minus) and right (plus) cell
   // interfaces
-  
+
   /* Spritz Weights:
   const CCTK_REAL var_m =
       (omegaZ(2)(0) / 8.0) * (3.0 * gf_Ipp - 10.0 * gf_Ip + 15.0 * gf_I) +
@@ -424,3 +427,5 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
 }
 
 } // namespace AsterX
+
+#endif // ASTERX_RECONSTRUCT_HXX

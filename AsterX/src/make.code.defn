@@ -14,4 +14,4 @@ SRCS = \
   test.cxx
 
 # Subdirectories containing source files
-SUBDIRS = 
+SUBDIRS = unit_tests

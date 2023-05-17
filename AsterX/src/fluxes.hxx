@@ -1,3 +1,6 @@
+#ifndef ASTERX_FLUXES_HXX
+#define ASTERX_FLUXES_HXX
+
 #include <loop_device.hxx>
 
 #include <cctk.h>
@@ -93,7 +96,7 @@ hlle(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
       max({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
            lam(1)(1), lam(1)(2), lam(1)(3)});
 
-  //Note that charmin is just the minimum, not with the minus sign
+  // Note that charmin is just the minimum, not with the minus sign
   const CCTK_REAL charmin =
       min({CCTK_REAL(0), lam(0)(0), lam(0)(1), lam(0)(2), lam(0)(3), lam(1)(0),
            lam(1)(1), lam(1)(2), lam(1)(3)});
@@ -106,3 +109,5 @@ hlle(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
 }
 
 } // namespace AsterX
+
+#endif // ASTERX_FLUXES_HXX

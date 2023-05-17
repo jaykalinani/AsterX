@@ -1,5 +1,5 @@
-#ifndef INTERP_HXX
-#define INTERP_HXX
+#ifndef ASTERX_INTERP_HXX
+#define ASTERX_INTERP_HXX
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -114,4 +114,4 @@ calc_avg_c2v(const GF3D2<const T> &gf, const PointDesc &p) {
 
 } // namespace AsterX
 
-#endif // #ifndef INTERP_HXX
+#endif // ASTERX_INTERP_HXX
