@@ -805,7 +805,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     CCTK_REAL pressl = 0.95;
     CCTK_REAL Bxl = 2.0;
     CCTK_REAL Byl = 0.3;
-    CCTK_REAL Bzl = 0.0;
+    CCTK_REAL Bzl = 0.3;
 
     CCTK_REAL rhor = 1.0;
     CCTK_REAL vxr = -0.45;
@@ -865,7 +865,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     //x-->y, y-->z, z-->x
     Byl = 2.0;
     Bzl = 0.3;
-    Bxl = 0.0;
+    Bxl = 0.3;
     Byr = 2.0;
     Bzr = -0.7;
     Bxr = 0.5;
@@ -916,7 +916,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     //x-->z, y-->x, z-->y
     Bzl = 2.0;
     Bxl = 0.3;
-    Byl = 0.0;
+    Byl = 0.3;
     Bzr = 2.0;
     Bxr = -0.7;
     Byr = 0.5;
