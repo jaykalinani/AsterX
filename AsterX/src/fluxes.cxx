@@ -303,7 +303,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         /* electric field E_i = \tilde\epsilon_{ijk} Btilde_j * vtilde_k */
         const vec<vec<CCTK_REAL, 2>, 3> Es_rc =
             calc_cross_product(Btildes_rc, vtildes_rc);
-        /* flux(Btildes) = {{0, Ez, -Ey}, {-Ez, 0, Ex}, {Ey, -Ex, 0}} */
+        /* flux(Btildes) = {{0, -Ez, Ey}, {Ez, 0, -Ex}, {-Ey, Ex, 0}} */
         const vec<vec<CCTK_REAL, 2>, 3> flux_Btildes =
             calc_cross_product(unit_dir, Es_rc);
 
