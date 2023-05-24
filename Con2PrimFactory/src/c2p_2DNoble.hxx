@@ -20,8 +20,8 @@ public:
   get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up, const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec, vec<CCTK_REAL, 3> &mom) const;
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 2>
-  get_WLorentz_bsq_Seeds(vec<CCTK_REAL, 3> &B_up, vec<CCTK_REAL, 3> &v_up,
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
+  get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up, vec<CCTK_REAL, 3> &v_up,
                          const smat<CCTK_REAL, 3> &glo) const;
 
   /* Called by 2DNoble */
@@ -99,8 +99,8 @@ c2p_2DNoble::get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec,
   return calc_contraction(mom, Bvec); // BiS^i
 }
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 2>
-c2p_2DNoble::get_WLorentz_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
+c2p_2DNoble::get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
                                     vec<CCTK_REAL, 3> &v_up,
                                     const smat<CCTK_REAL, 3> &glo) const {
   vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
@@ -115,9 +115,9 @@ c2p_2DNoble::get_WLorentz_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
 
   CCTK_REAL w_lor = 1. / sqrt(1. - vsq);
   CCTK_REAL bsq = ((Bsq) / (w_lor * w_lor)) + VdotBsq;
-  vec<CCTK_REAL, 2> w_bsq{w_lor, bsq};
+  vec<CCTK_REAL, 3> w_vsq_bsq{w_lor, vsq, bsq};
 
-  return w_bsq; //{w_lor, bsq}
+  return w_vsq_bsq; //{w_lor, vsq, bsq}
 }
 
 /* Called by 2dNRNoble */
@@ -254,10 +254,11 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const CCTK_REAL Ssq = get_Ssq_Exact(cv.mom, gup);
   const CCTK_REAL Bsq = get_Bsq_Exact(pv_seeds.Bvec, glo);
   const CCTK_REAL BiSi = get_BiSi_Exact(pv_seeds.Bvec, cv.mom);
-  const vec<CCTK_REAL, 2> w_bsq = get_WLorentz_bsq_Seeds(
+  const vec<CCTK_REAL, 3> w_vsq_bsq = get_WLorentz_vsq_bsq_Seeds(
       pv_seeds.Bvec, pv_seeds.vel, glo); // this also recomputes pv_seeds.w_lor
-  pv_seeds.w_lor = w_bsq(0);
-  // const CCTK_REAL bsq = w_bsq(1);
+  pv_seeds.w_lor = w_vsq_bsq(0);
+  CCTK_REAL vsq_seed = w_vsq_bsq(1);
+  // const CCTK_REAL bsq = w_vsq_bsq(2);
 
   /* update rho seed from cv and wlor */
   // rho consistent with cv.rho should be better guess than rho from last
@@ -276,8 +277,8 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL x[2];
   CCTK_REAL x_old[2];
   x[0] = fabs(Z_Seed);
-  x[1] = (-1.0 + pv_seeds.w_lor * pv_seeds.w_lor) /
-         (pv_seeds.w_lor * pv_seeds.w_lor);
+  x[1] = vsq_seed;
+  
   //      printf("x[0], x[1]: %f, %f \n", x[0], x[1]);
 
   /* initialize old values */
