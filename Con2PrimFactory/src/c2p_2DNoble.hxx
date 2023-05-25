@@ -5,6 +5,8 @@
 
 namespace Con2PrimFactory {
 
+using namespace std;
+
 class c2p_2DNoble : public c2p {
 public:
   /* Some attributes */
@@ -265,13 +267,16 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   // timestep
   pv_seeds.rho = cv.dens / pv_seeds.w_lor;
 
+  CCTK_REAL eps_min = eos_th.range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
+  CCTK_REAL eps_last = max({pv_seeds.eps, eps_min}); 
+
   /* get pressure seed from updated pv_seeds.rho */
   pv_seeds.press = eos_th.press_from_valid_rho_eps_ye(
-      pv_seeds.rho, pv_seeds.eps, pv_seeds.Ye);
+      pv_seeds.rho, eps_last, pv_seeds.Ye);
 
   /* get Z seed */
   CCTK_REAL Z_Seed =
-      get_Z_Seed(pv_seeds.rho, pv_seeds.eps, pv_seeds.press, pv_seeds.w_lor);
+      get_Z_Seed(pv_seeds.rho, eps_last, pv_seeds.press, pv_seeds.w_lor);
 
   /* initialize unknowns for c2p, Z and vsq: */
   CCTK_REAL x[2];
@@ -293,7 +298,8 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL fjac[n][n];
 
   CCTK_REAL detjac_inv;
-  CCTK_REAL errf;
+  //CCTK_REAL errf = 1;
+  CCTK_REAL errx = 1;
   c2p_succeeded = false; // false
   CCTK_INT k;
   for (k = 1; k <= maxIterations; k++) {
@@ -307,6 +313,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     dx[0] = -detjac_inv * (fjac[1][1] * fvec[0] - fjac[0][1] * fvec[1]);
     dx[1] = -detjac_inv * (-fjac[1][0] * fvec[0] + fjac[0][0] * fvec[1]);
 
+    /*
     errf = 0.0;
     for (CCTK_INT i = 0; i < n; i++) {
       errf += fabs(fvec[i]);
@@ -319,31 +326,44 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
       //     printf("errf, tolerance: %f, %f \n", errf, tolerance);
       break;
     }
-
+    */
+   
     /* save old values before calculating the new */
+    errx = 0.;
     x_old[0] = x[0];
     x_old[1] = x[1];
 
     for (CCTK_INT i = 0; i < n; i++) {
       x[i] += dx[i];
     }
-  }
 
-  /* make sure that the new x[] is physical */
-  if (x[0] < 0.0) {
-    x[0] = fabs(x[0]);
-  } else {
-    if (x[0] > 1e20) {
-      x[0] = x_old[0];
-    }
-  }
+    // calculate the convergence criterion
+    errx  = (x[0]==0.) ?  fabs(dx[0]) : fabs(dx[0]/x[0]);
 
-  if (x[1] < 0.0) {
-    x[1] = 0.0;
-  } else {
-    if (x[1] >= 1.0) {
-      x[1] = dv;
+    /* make sure that the new x[] is physical */
+    if (x[0] < 0.0) {
+      x[0] = fabs(x[0]);
+    } else {
+      if (x[0] > 1e20) {
+        x[0] = x_old[0];
+      }
     }
+
+    if (x[1] < 0.0) {
+      x[1] = 0.0;
+    } else {
+      if (x[1] >= 1.0) {
+        x[1] = dv;
+      }
+    }
+
+    if (fabs(errx) <= tolerance) {
+      c2p_succeeded = true; // false
+      //     printf("Noble c2p failed, c2p_succeeded set to 0. \n");
+      //     printf("errf, tolerance: %f, %f \n", errf, tolerance);
+      break;
+    }
+
   }
 
   /* Calculate primitives from Z and W */
