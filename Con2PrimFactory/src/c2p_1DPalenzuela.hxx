@@ -174,7 +174,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
   vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
   CCTK_REAL vsq_Sol = calc_contraction(v_low, pv.vel);
 
-  pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
+//  pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
 
   pv.Ye = cv.dYe / cv.dens;
 
