@@ -156,7 +156,7 @@ ExternalLibraries/MPI
 ExternalLibraries/OpenSSL
 #DISABLED ExternalLibraries/PAPI
 #DISABLED ExternalLibraries/pciutils
-ExternalLibraries/PETSc
+#ExternalLibraries/PETSc
 ExternalLibraries/pthreads
 ExternalLibraries/zlib
 
@@ -236,9 +236,9 @@ CarpetX/Derivs
 CarpetX/ErrorEstimator
 CarpetX/HydroBase
 CarpetX/Loop
-CarpetX/ODESolvers
+#CarpetX/ODESolvers
 CarpetX/PDESolvers
-CarpetX/Poisson2
+#CarpetX/Poisson2
 CarpetX/TestArrayGroup
 CarpetX/TestInterpolate
 CarpetX/TestNorms
