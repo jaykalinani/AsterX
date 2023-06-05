@@ -236,8 +236,8 @@ CarpetX/Derivs
 CarpetX/ErrorEstimator
 CarpetX/HydroBase
 CarpetX/Loop
-#CarpetX/ODESolvers
-CarpetX/PDESolvers
+CarpetX/ODESolvers
+#CarpetX/PDESolvers
 #CarpetX/Poisson2
 CarpetX/TestArrayGroup
 CarpetX/TestInterpolate
