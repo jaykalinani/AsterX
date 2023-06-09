@@ -53,12 +53,11 @@ template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_e2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   T gf_avg = 0.0;
-
-  for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
-    for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
-      for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
-      }
+  const int j = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);
+  const int k = (dir == 0) ? 2 : ((dir == 1) ? 0 : 1);
+  for (int dk = 0; dk < 2; ++dk) {
+    for (int dj = 0; dj < 2; ++dj) {
+      gf_avg += gf(p.I + p.DI[j] * dj + p.DI[k] * dk);
     }
   }
   return gf_avg / 4.0;
@@ -70,12 +69,11 @@ template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_v2f(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   T gf_avg = 0.0;
-
-  for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
-    for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
-      for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I + p.DI[0] * di + p.DI[1] * dj + p.DI[2] * dk);
-      }
+  const int j = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);
+  const int k = (dir == 0) ? 2 : ((dir == 1) ? 0 : 1);
+  for (int dk = 0; dk < 2; ++dk) {
+    for (int dj = 0; dj < 2; ++dj) {
+      gf_avg += gf(p.I + p.DI[j] * dj + p.DI[k] * dk);
     }
   }
   return gf_avg / 4.0;
@@ -86,12 +84,11 @@ template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   T gf_avg = 0.0;
-
-  for (int dk = 0; dk < (dir == 2 ? 1 : 2); ++dk) {
-    for (int dj = 0; dj < (dir == 1 ? 1 : 2); ++dj) {
-      for (int di = 0; di < (dir == 0 ? 1 : 2); ++di) {
-        gf_avg += gf(p.I - p.DI[0] * di - p.DI[1] * dj - p.DI[2] * dk);
-      }
+  const int j = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);
+  const int k = (dir == 0) ? 2 : ((dir == 1) ? 0 : 1);
+  for (int dk = 0; dk < 2; ++dk) {
+    for (int dj = 0; dj < 2; ++dj) {
+      gf_avg += gf(p.I - p.DI[j] * dj - p.DI[k] * dk);
     }
   }
   return gf_avg / 4.0;
