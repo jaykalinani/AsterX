@@ -25,7 +25,7 @@ typedef struct {
   bool ppm_shock_detection, ppm_zone_flattening;
   CCTK_REAL poly_k, poly_gamma;
   CCTK_REAL ppm_eta1, ppm_eta2;
-  CCTK_REAL ppm_eps;
+  CCTK_REAL ppm_eps, ppm_eps_shock, ppm_small;
   CCTK_REAL ppm_omega1, ppm_omega2;
   // WENOZ parameters
   CCTK_REAL weno_eps;
@@ -79,6 +79,8 @@ ppm(const GF3D2<const CCTK_REAL> &gf_var,
   const CCTK_REAL &ppm_eta1 = reconstruct_params.ppm_eta1;
   const CCTK_REAL &ppm_eta2 = reconstruct_params.ppm_eta2;
   const CCTK_REAL &ppm_eps = reconstruct_params.ppm_eps;
+  const CCTK_REAL &ppm_eps_shock = reconstruct_params.ppm_eps_shock;
+  const CCTK_REAL &ppm_small = reconstruct_params.ppm_small;
   const CCTK_REAL &ppm_omega1 = reconstruct_params.ppm_omega1;
   const CCTK_REAL &ppm_omega2 = reconstruct_params.ppm_omega2;
 
@@ -161,8 +163,10 @@ ppm(const GF3D2<const CCTK_REAL> &gf_var,
       const CCTK_REAL d2rho_Im = gf_I - 2 * gf_Im + gf_Imm;
       const CCTK_REAL d2rho_Ip = gf_Ipp - 2 * gf_Ip + gf_I;
       const CCTK_REAL d2_prod = d2rho_Im * d2rho_Ip;
+      const bool cond2 = (fabs(diff_I) - ppm_eps_shock*min(fabs(gf_Ip), fabs(gf_Im))) > 0.;
+      
       const CCTK_REAL eta_tilde_I =
-          (d2_prod < 0) ? (-1. / 6.) * d2_prod / diff_I : 0;
+          ((d2_prod < 0) and cond2) ? ((-1. / 6.) * (d2rho_Ip - d2rho_Im) / diff_I) : 0;
       const CCTK_REAL eta_I =
           max(0., min(ppm_eta1 * (eta_tilde_I - ppm_eta2), 1.));
 
@@ -178,19 +182,18 @@ ppm(const GF3D2<const CCTK_REAL> &gf_var,
    * be a major issue and is done in many GRMHD codes (e.g. WhiskyMHD, GRHydro,
    * Spritz, IllinoisGRMHD). */
   if (ppm_zone_flattening) {
-    const CCTK_REAL w_I = (diff_press_I > ppm_eps * min_press_I and
-                           gf_vel_dir(Im) > gf_vel_dir(Ip))
-                              ? 1
+    const CCTK_REAL w_I = ( (fabs(diff_press_I) > ppm_eps * min_press_I) and
+                           (gf_vel_dir(Im) > gf_vel_dir(Ip)))
+                              ? 1.
                               : 0;
-    const CCTK_REAL ftilde_I =
-        1 - max(0., w_I * ppm_omega2 *
-                        (diff_press_I / (press_Ipp - press_Imm) - ppm_omega1));
+    const CCTK_REAL ftilde_I = (fabs(press_Ipp - press_Imm) < ppm_small) ? 1.0 :
+         max(0., 1. - w_I * max(0., ppm_omega2 *
+                        ( (diff_press_I / (press_Ipp - press_Imm)) - ppm_omega1)));
 
-    const CCTK_REAL one_minus_ftilde_I = 1 - ftilde_I;
-    const CCTK_REAL ftildeI_gfI = ftilde_I * gf_I;
+    const CCTK_REAL one_minus_ftilde_I_gfI = (1 - ftilde_I)*gf_I;
 
-    rc_low = ftildeI_gfI + one_minus_ftilde_I * rc_low;
-    rc_up = ftildeI_gfI + one_minus_ftilde_I * rc_up;
+    rc_low = ftilde_I * rc_low + one_minus_ftilde_I_gfI;
+    rc_up = ftilde_I * rc_up + one_minus_ftilde_I_gfI;
 
     // This would require one more ghost cell and it's not worth it
     /*if (diff_press_I < 0) {

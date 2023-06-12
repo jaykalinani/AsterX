@@ -51,6 +51,16 @@ CCTK_REAL ppm_eps "epsilon parameter in the PPM zone flattening algorithm (see C
   *:* :: "Any real number, default from Colella & Woodward 1984"
 } 0.33
 
+CCTK_REAL ppm_eps_shock "Epsilon for PPM shock detection"
+{
+  *:* :: "Anything goes. Default is from Colella & Woodward"
+} 0.01
+
+CCTK_REAL ppm_small "A floor used by PPM shock detection"
+{
+  0.0:1.0       :: "In [0,1]"
+} 1.e-7
+
 CCTK_REAL ppm_omega1 "omega1 parameter in the PPM zone flattening algorithm (see Colella & Woodward 1984 eq. 1.16)"
 {
   *:* :: "Any real number, default from Colella & Woodward 1984"
