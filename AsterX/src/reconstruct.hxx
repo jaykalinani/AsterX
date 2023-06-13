@@ -190,10 +190,11 @@ ppm(const GF3D2<const CCTK_REAL> &gf_var,
          max(0., 1. - w_I * max(0., ppm_omega2 *
                         ( (diff_press_I / (press_Ipp - press_Imm)) - ppm_omega1)));
 
-    const CCTK_REAL one_minus_ftilde_I_gfI = (1 - ftilde_I)*gf_I;
+    const CCTK_REAL one_minus_ftilde_I = 1 - ftilde_I;
+    const CCTK_REAL ftildeI_gfI = ftilde_I * gf_I;
 
-    rc_low = ftilde_I * rc_low + one_minus_ftilde_I_gfI;
-    rc_up = ftilde_I * rc_up + one_minus_ftilde_I_gfI;
+    rc_low = ftildeI_gfI + one_minus_ftilde_I * rc_low;
+    rc_up = ftildeI_gfI + one_minus_ftilde_I * rc_up;
 
     // This would require one more ghost cell and it's not worth it
     /*if (diff_press_I < 0) {
