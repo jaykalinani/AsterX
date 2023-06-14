@@ -101,6 +101,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   reconstruct_params.ppm_eta1 = ppm_eta1;
   reconstruct_params.ppm_eta2 = ppm_eta2;
   reconstruct_params.ppm_eps = ppm_eps;
+  reconstruct_params.ppm_eps_shock = ppm_eps_shock;
+  reconstruct_params.ppm_small = ppm_small;
   reconstruct_params.ppm_omega1 = ppm_omega1;
   reconstruct_params.ppm_omega2 = ppm_omega2;
   // wenoz parameters
