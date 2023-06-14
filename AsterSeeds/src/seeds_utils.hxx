@@ -1,4 +1,6 @@
-#include <fixmath.hxx>
+#ifndef SEEDS_UTILS_HXX
+#define SEEDS_UTILS_HXX
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -33,3 +35,5 @@ calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 }
 
 } // namespace AsterSeeds
+
+#endif // SEEDS_UTILS_HXX
