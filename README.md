@@ -19,6 +19,7 @@ Full documentation will soon be available at [asterx.readthedocs.io](https://ast
 * `AsterSeeds` - initial data module
 * `Con2PrimFactory` - module providing different conservative-to-primitive variable recovery routines
 * `EOSX` - equation of state driver
+* `ReconX` - provider of different reconstruction schemes
 * `TOVSolver` - a modified version of the publicly available TOVSolver thorn used within the Einstein Toolkit
 
 ## Getting started ##
