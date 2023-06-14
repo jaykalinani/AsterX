@@ -66,10 +66,10 @@ wenoz(const GF3D2<const CCTK_REAL> &gf_var,
   aux_alphaZ(0) = 1.0 + tau5 / (betaZ(0) + weno_eps);
   aux_alphaZ(1) = 1.0 + tau5 / (betaZ(1) + weno_eps);
   aux_alphaZ(2) = 1.0 + tau5 / (betaZ(2) + weno_eps);
-  const vec<CCTK_REAL, 3> wt = {5.0 / 16.0, 10.0 / 16.0, 1.0 / 16.0};
+  // const vec<CCTK_REAL, 3> wt = {5.0 / 16.0, 10.0 / 16.0, 1.0 / 16.0};
   // Original weights as suggested in (Borges et al. 2008)
-  //  const vec<CCTK_REAL, 3> wt = {1.0/10.0, 3.0/5.0, 3.0/10.0};
-  
+  const vec<CCTK_REAL, 3> wt = {1.0 / 10.0, 3.0 / 5.0, 3.0 / 10.0};
+
   vec<vec<CCTK_REAL, 2>, 3> alphaZ;
 
   // for minus side
@@ -107,7 +107,7 @@ wenoz(const GF3D2<const CCTK_REAL> &gf_var,
       (omegaZ(2)(1) / 8.0) * (3.0 * gf_I + 6.0 * gf_Ip - 1.0 * gf_Ipp);
   */
 
-  //GRHydro Weights:
+  // GRHydro Weights:
   const CCTK_REAL var_m =
       (omegaZ(2)(0) / 6.0) * (2.0 * gf_Ipp - 7.0 * gf_Ip + 11.0 * gf_I) +
       (omegaZ(1)(0) / 6.0) * (-1.0 * gf_Ip + 5.0 * gf_I + 2.0 * gf_Im) +
@@ -120,7 +120,6 @@ wenoz(const GF3D2<const CCTK_REAL> &gf_var,
 
   const array<CCTK_REAL, 2> var_rc = {var_m, var_p};
   return var_rc;
-
 }
 
 } // namespace ReconX
