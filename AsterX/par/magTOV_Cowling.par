@@ -92,7 +92,7 @@ AsterSeeds::Avec_kappa = 2.0
 
 AsterX::rho_abs_min = 1e-13
 AsterX::atmo_tol = 1e-3
-AsterX::reconstruction_method = "minmod"
+ReconX::reconstruction_method = "minmod"
 AsterX::flux_type = "LxF"
 AsterX::max_iter = 100
 AsterX::c2p_tol = 1e-8

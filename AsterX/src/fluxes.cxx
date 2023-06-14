@@ -11,7 +11,7 @@
 
 #include "utils.hxx"
 #include "fluxes.hxx"
-#include "reconstruct.hxx"
+#include <reconstruct.hxx>
 #include <eos.hxx>
 #include <eos_idealgas.hxx>
 
@@ -20,6 +20,7 @@ using namespace std;
 using namespace Loop;
 using namespace Arith;
 using namespace EOSX;
+using namespace ReconX;
 
 enum class flux_t { LxF, HLLE };
 enum class eos_t { IdealGas, Hybrid, Tabulated };
@@ -60,6 +61,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     reconstruction = reconstruction_t::ppm;
   else if (CCTK_EQUALS(reconstruction_method, "wenoz"))
     reconstruction = reconstruction_t::wenoz;
+  else if (CCTK_EQUALS(reconstruction_method, "mp5"))
+    reconstruction = reconstruction_t::mp5;
   else
     CCTK_ERROR("Unknown value for parameter \"reconstruction_method\"");
 
@@ -87,6 +90,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     break;
   case reconstruction_t::wenoz:
     assert(cctk_nghostzones[dir] >= 3);
+  case reconstruction_t::mp5:
+    assert(cctk_nghostzones[dir] >= 3);
     break;
   }
 
@@ -107,6 +112,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   reconstruct_params.ppm_omega2 = ppm_omega2;
   // wenoz parameters
   reconstruct_params.weno_eps = weno_eps;
+  // mp5 parameters
+  reconstruct_params.mp5_alpha = mp5_alpha;
 
   const auto reconstruct_pt =
       [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var, const PointDesc &p,
