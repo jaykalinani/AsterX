@@ -68,7 +68,7 @@ wenoz(const GF3D2<const CCTK_REAL> &gf_var,
   aux_alphaZ(2) = 1.0 + tau5 / (betaZ(2) + weno_eps);
   // const vec<CCTK_REAL, 3> wt = {5.0 / 16.0, 10.0 / 16.0, 1.0 / 16.0};
   // Original weights as suggested in (Borges et al. 2008)
-  const vec<CCTK_REAL, 3> wt = {1.0 / 10.0, 3.0 / 5.0, 3.0 / 10.0};
+  const vec<CCTK_REAL, 3> wt = {3.0 / 10.0, 3.0 / 5.0, 1.0 / 10.0};
 
   vec<vec<CCTK_REAL, 2>, 3> alphaZ;
 
