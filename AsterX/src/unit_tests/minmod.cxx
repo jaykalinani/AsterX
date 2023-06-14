@@ -7,7 +7,7 @@
 #include <random>
 
 void AsterXTests::test_minmod(std::mt19937_64 &engine, int repetitions) {
-  using namespace AsterX;
+  using namespace ReconX;
   using std::abs;
   using std::max;
   using std::min;
