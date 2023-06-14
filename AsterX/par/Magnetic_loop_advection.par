@@ -93,7 +93,7 @@ AsterSeeds::mag_loop_adv_axial_vel = "non-zero"
 
 
 # -------------------- AsterX --------------------------------------------------
-AsterX::reconstruction_method = "PPM"
+ReconX::reconstruction_method = "PPM"
 AsterX::flux_type = "LxF"
 AsterX::max_iter              = 100
 AsterX::c2p_tol = 1e-8

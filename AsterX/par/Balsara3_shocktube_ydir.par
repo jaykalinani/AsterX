@@ -65,7 +65,7 @@ AsterSeeds::test_type = "1DTest"
 AsterSeeds::test_case = "Balsara3"
 AsterSeeds::shock_dir = "y"
 
-AsterX::reconstruction_method = "minmod"
+ReconX::reconstruction_method = "minmod"
 AsterX::flux_type = "HLLE"
 AsterX::c2p_tol = 1e-8
 AsterX::max_iter = 100
