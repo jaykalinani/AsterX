@@ -30,11 +30,11 @@ enum class interface_t { Minus = 0, Plus = 1 };
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST CCTK_REAL
 approx_at_cell_interface(const GF3D2<const CCTK_REAL> &gf,
                          const array<const vect<int, dim>, 5> &cells,
-                         interface_t &interface) {
-  const auto &Im = cells.at(CCTK_INT(interface));
-  const auto &I = cells.at(CCTK_INT(interface) + 1);
-  const auto &Ip = cells.at(CCTK_INT(interface) + 2);
-  const auto &Ipp = cells.at(CCTK_INT(interface) + 3);
+                         const CCTK_INT interface) {
+  const auto &Im = cells.at(interface);
+  const auto &I = cells.at(interface + 1);
+  const auto &Ip = cells.at(interface + 2);
+  const auto &Ipp = cells.at(interface + 3);
 
   return 7.0 / 12.0 * (gf(I) + gf(Ip)) - (1.0 / 12.0) * (gf(Im) + gf(Ipp));
 }
@@ -42,11 +42,11 @@ approx_at_cell_interface(const GF3D2<const CCTK_REAL> &gf,
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST CCTK_REAL
 limit(const GF3D2<const CCTK_REAL> &gf,
       const array<const vect<int, dim>, 5> &cells, const CCTK_REAL gf_rc,
-      interface_t &interface, const CCTK_REAL C) {
-  const auto &Im = cells.at(CCTK_INT(interface));
-  const auto &I = cells.at(CCTK_INT(interface) + 1);
-  const auto &Ip = cells.at(CCTK_INT(interface) + 2);
-  const auto &Ipp = cells.at(CCTK_INT(interface) + 3);
+      const CCTK_INT interface, const CCTK_REAL C) {
+  const auto &Im = cells.at(interface);
+  const auto &I = cells.at(interface + 1);
+  const auto &Ip = cells.at(interface + 2);
+  const auto &Ipp = cells.at(interface + 3);
 
   if ((MIN(gf(I), gf(Ip)) <= gf_rc) && (gf_rc <= MAX(gf(I), gf(Ip)))) {
     return gf_rc;
@@ -64,10 +64,11 @@ limit(const GF3D2<const CCTK_REAL> &gf,
   }
 }
 
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST array<CCTK_REAL, 2>
-monotonize(const GF3D2<const CCTK_REAL> &gf,
-           const array<const vect<int, dim>, 5> &cells,
-           const array<CCTK_REAL, 2> &gf_rc, const CCTK_REAL C) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE
+    CCTK_DEVICE CCTK_HOST std::pair<CCTK_REAL, CCTK_REAL>
+    monotonize(const GF3D2<const CCTK_REAL> &gf,
+               const array<const vect<int, dim>, 5> &cells,
+               const array<CCTK_REAL, 2> &gf_rc, const CCTK_REAL C) {
   const auto &Imm = cells.at(0);
   const auto &Im = cells.at(1);
   const auto &I = cells.at(2);
@@ -110,17 +111,24 @@ monotonize(const GF3D2<const CCTK_REAL> &gf,
       rc_minus = gf(I) - 2.0 * daplus;
   }
 
-  return array<CCTK_REAL, 2>{rc_minus, rc_plus};
+  return {rc_minus, rc_plus};
 }
 
 /* ePPM reconstruction scheme. (see Reisswig et al. 2013) based on McCorquodale
    & Colella (2011) */
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST array<CCTK_REAL, 2>
 eppm(const GF3D2<const CCTK_REAL> &gf_var,
-     const array<const vect<int, dim>, 5> &cells, const CCTK_INT &dir,
-     const bool &gf_is_rho, const GF3D2<const CCTK_REAL> &gf_press,
+     const array<const vect<int, dim>, 5> &cells,
+     const GF3D2<const CCTK_REAL> &gf_press,
      const GF3D2<const CCTK_REAL> &gf_vel_dir,
      const reconstruct_params_t &reconstruct_params) {
+  // Unpack all cells in the stencil
+  const auto &Imm = cells.at(0);
+  const auto &Im = cells.at(1);
+  const auto &I = cells.at(2);
+  const auto &Ip = cells.at(3);
+  const auto &Ipp = cells.at(4);
+
   // Unpack all PPM parameters
   const CCTK_REAL &ppm_eps = reconstruct_params.ppm_eps;
   const CCTK_REAL &ppm_small = reconstruct_params.ppm_small;
@@ -130,21 +138,23 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
 
   /* approx at cell interface */
   CCTK_REAL rc_minus =
-      approx_at_cell_interface(gf_var, cells, interface_t::Minus);
+      approx_at_cell_interface(gf_var, cells, CCTK_INT(interface_t::Minus));
   CCTK_REAL rc_plus =
-      approx_at_cell_interface(gf_var, cells, interface_t::Plus);
+      approx_at_cell_interface(gf_var, cells, CCTK_INT(interface_t::Plus));
 
   /* limit */
-  rc_minus = limit(gf_var, cells, rc_minus, interface_t::Minus, enhanced_ppm_C2);
-  rc_plus = limit(gf_var, cells, rc_plus, interface_t::Plus, enhanced_ppm_C2);
+  rc_minus = limit(gf_var, cells, rc_minus, CCTK_INT(interface_t::Minus),
+                   enhanced_ppm_C2);
+  rc_plus = limit(gf_var, cells, rc_plus, CCTK_INT(interface_t::Plus),
+                  enhanced_ppm_C2);
 
   /* monotonize */
-  {rc_minus, rc_plus} =
+  [rc_minus, rc_plus] =
       monotonize(gf_var, cells, {rc_minus, rc_plus}, enhanced_ppm_C2);
 
   /* apply flattening */
-  const CCTK_REAL dpress_I = press_Ip - press_Im;
-  const CCTK_REAL dpress2 = press_Ipp - press_Imm;
+  const CCTK_REAL dpress_I = gf_press(Ip) - gf_press(Im);
+  const CCTK_REAL dpress2 = gf_press(Ipp) - gf_press(Imm);
   const CCTK_REAL w_I = ((fabs(dpress_I) > ppm_eps * MIN(press_Im, press_Ip)) &&
                          (gf_vel_dir(Im) > gf_vel_dir(Ip)))
                             ? 1.0
