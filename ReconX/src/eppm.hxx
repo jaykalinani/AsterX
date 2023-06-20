@@ -190,10 +190,23 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
   {rc_minus, rc_plus} = monotonize(gf_var, cells, {rc_minus, rc_plus});
 
   /* apply flattening */
+  const CCTK_REAL dpress_I = press_Ip - press_Im;
+  const CCTK_REAL dpress2 = press_Ipp - press_Imm;
+  const CCTK_REAL w_I = ((fabs(dpress_I) > ppm_eps * MIN(press_Im, press_Ip)) &&
+                         (gf_vel_dir(Im) > gf_vel_dir(Ip)))
+                            ? 1.0
+                            : 0.0;
+  const CCTK_REAL ftilde_I =
+      (fabs(dpress2) < ppm_small)
+          ? 1.0
+          : MAX(0.0, 1.0. - w_I * MAX(0.0, ppm_omega2 * (dpress_I / dpress2 -
+                                                         ppm_omega1)));
+  const CCTK_REAL one_minus_ftilde_I_gfI = (1 - ftilde_I) * gf_I;
+  rc_minus = ftilde_I * rc_minus + one_minus_ftilde_I_gfI;
+  rc_plus = ftilde_I * rc_plus + one_minus_ftilde_I_gfI;
 
   // Return the lower and upper reconstructed states in cell I
-  const array<CCTK_REAL, 2> rc = {rc_minus, rc_plus};
-  return rc;
+  return array<CCTK_REAL, 2> {rc_minus, rc_plus};
 }
 
 } // namespace ReconX
