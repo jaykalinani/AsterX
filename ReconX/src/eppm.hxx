@@ -64,11 +64,10 @@ limit(const GF3D2<const CCTK_REAL> &gf,
   }
 }
 
-inline CCTK_ATTRIBUTE_ALWAYS_INLINE
-    CCTK_DEVICE CCTK_HOST std::pair<CCTK_REAL, CCTK_REAL>
-    monotonize(const GF3D2<const CCTK_REAL> &gf,
-               const array<const vect<int, dim>, 5> &cells,
-               const array<CCTK_REAL, 2> &gf_rc, const CCTK_REAL C) {
+inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST void
+monotonize(const GF3D2<const CCTK_REAL> &gf,
+           const array<const vect<int, dim>, 5> &cells, CCTK_REAL &rc_minus,
+           CCTK_REAL &rc_plus, const CCTK_REAL C) {
   const auto &Imm = cells.at(0);
   const auto &Im = cells.at(1);
   const auto &I = cells.at(2);
@@ -77,8 +76,6 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE
 
   CCTK_REAL D2aLim = 0;
   CCTK_REAL rhi = 0;
-  CCTK_REAL rc_minus = gf_rc[0];
-  CCTK_REAL rc_plus = gf_rc[1];
   const CCTK_REAL daplus = rc_plus - gf(I);
   const CCTK_REAL daminus = gf(I) - rc_minus;
   if (daplus * daminus <= 0 || (gf(Imm) - gf(I)) * (gf(I) - gf(Ipp)) <= 0) {
@@ -111,7 +108,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE
       rc_minus = gf(I) - 2.0 * daplus;
   }
 
-  return {rc_minus, rc_plus};
+  return;
 }
 
 /* ePPM reconstruction scheme. (see Reisswig et al. 2013) based on McCorquodale
@@ -149,16 +146,16 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
                   enhanced_ppm_C2);
 
   /* monotonize */
-  [rc_minus, rc_plus] =
-      monotonize(gf_var, cells, {rc_minus, rc_plus}, enhanced_ppm_C2);
+  monotonize(gf_var, cells, rc_minus, rc_plus, enhanced_ppm_C2);
 
   /* apply flattening */
   const CCTK_REAL dpress_I = gf_press(Ip) - gf_press(Im);
   const CCTK_REAL dpress2 = gf_press(Ipp) - gf_press(Imm);
-  const CCTK_REAL w_I = ((fabs(dpress_I) > ppm_eps * MIN(press_Im, press_Ip)) &&
-                         (gf_vel_dir(Im) > gf_vel_dir(Ip)))
-                            ? 1.0
-                            : 0.0;
+  const CCTK_REAL w_I =
+      ((fabs(dpress_I) > ppm_eps * MIN(gf_press(Im), gf_press(Ip))) &&
+       (gf_vel_dir(Im) > gf_vel_dir(Ip)))
+          ? 1.0
+          : 0.0;
   const CCTK_REAL ftilde_I =
       (fabs(dpress2) < ppm_small)
           ? 1.0

@@ -10,7 +10,7 @@
 #include "monocentral.hxx"
 #include "minmod.hxx"
 #include "ppm.hxx"
-// #include "eppm.hxx"
+#include "eppm.hxx"
 #include "wenoz.hxx"
 #include "mp5.hxx"
 
@@ -26,7 +26,7 @@ enum class reconstruction_t {
   minmod,
   monocentral,
   ppm,
-  // eppm,
+  eppm,
   wenoz,
   mp5
 };
@@ -94,20 +94,17 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
   }
 
-    // case reconstruction_t::eppm: {
-    //   const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip,
-    //   Ipp}; const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip,
-    //   Ipp, Ippp};
+  case reconstruction_t::eppm: {
+    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
+    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
 
-    //  const array<CCTK_REAL, 2> rc_Im =
-    //      eppm(gf_var, cells_Im, dir, gf_is_rho, gf_press, gf_vel_dir,
-    //           reconstruct_params);
-    //  const array<CCTK_REAL, 2> rc_Ip =
-    //      eppm(gf_var, cells_Ip, dir, gf_is_rho, gf_press, gf_vel_dir,
-    //           reconstruct_params);
+    const array<CCTK_REAL, 2> rc_Im =
+        eppm(gf_var, cells_Im, gf_press, gf_vel_dir, reconstruct_params);
+    const array<CCTK_REAL, 2> rc_Ip =
+        eppm(gf_var, cells_Ip, gf_press, gf_vel_dir, reconstruct_params);
 
-    //  return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
-    //}
+    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
+  }
 
   case reconstruction_t::wenoz: {
     const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
