@@ -6,13 +6,13 @@
 
 namespace Con2PrimFactory {
 
-CCTK_DEVICE CCTK_HOST atmosphere::atmosphere(CCTK_REAL rho_, CCTK_REAL eps_,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere::atmosphere(CCTK_REAL rho_, CCTK_REAL eps_,
                                              CCTK_REAL Ye_, CCTK_REAL press_,
                                              CCTK_REAL rho_cut_)
     : rho_atmo(rho_), eps_atmo(eps_), ye_atmo(Ye_), press_atmo(press_),
       rho_cut(rho_cut_) {}
 
-CCTK_DEVICE CCTK_HOST void atmosphere::set(prim_vars &pv) const {
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void atmosphere::set(prim_vars &pv) const {
 
   pv.rho = rho_atmo;
   pv.eps = eps_atmo;
@@ -27,7 +27,7 @@ CCTK_DEVICE CCTK_HOST void atmosphere::set(prim_vars &pv) const {
   pv.E(2) = 0.0;
 }
 
-CCTK_DEVICE CCTK_HOST void atmosphere::set(prim_vars &pv, cons_vars &cv,
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void atmosphere::set(prim_vars &pv, cons_vars &cv,
                                            const smat<CCTK_REAL, 3> &g) const {
 
   set(pv);
