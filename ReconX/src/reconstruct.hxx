@@ -10,6 +10,7 @@
 #include "monocentral.hxx"
 #include "minmod.hxx"
 #include "ppm.hxx"
+#include "eppm.hxx"
 #include "wenoz.hxx"
 #include "mp5.hxx"
 
@@ -20,7 +21,15 @@ using namespace Arith;
 
 // enum class for different reconstruction routines
 
-enum class reconstruction_t { Godunov, minmod, monocentral, ppm, wenoz, mp5 };
+enum class reconstruction_t {
+  Godunov,
+  minmod,
+  monocentral,
+  ppm,
+  eppm,
+  wenoz,
+  mp5
+};
 
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE array<CCTK_REAL, 2>
 reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
@@ -85,6 +94,18 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
   }
 
+  case reconstruction_t::eppm: {
+    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
+    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
+
+    const array<CCTK_REAL, 2> rc_Im =
+        eppm(gf_var, cells_Im, gf_press, gf_vel_dir, reconstruct_params);
+    const array<CCTK_REAL, 2> rc_Ip =
+        eppm(gf_var, cells_Ip, gf_press, gf_vel_dir, reconstruct_params);
+
+    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
+  }
+
   case reconstruction_t::wenoz: {
     const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
     const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
@@ -108,10 +129,10 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     // here, we need the minus side
 
     const array<const vect<int, dim>, 5> cells_Ip = {Ippp, Ipp, Ip, Im, Imm};
-    
+
     const CCTK_REAL rc_Im = mp5(gf_var, cells_Im, reconstruct_params);
     const CCTK_REAL rc_Ip = mp5(gf_var, cells_Ip, reconstruct_params);
-        
+
     return array<CCTK_REAL, 2>{rc_Im, rc_Ip};
   }
 

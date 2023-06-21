@@ -22,6 +22,7 @@ typedef struct {
   CCTK_REAL ppm_eta1, ppm_eta2;
   CCTK_REAL ppm_eps, ppm_eps_shock, ppm_small;
   CCTK_REAL ppm_omega1, ppm_omega2;
+  CCTK_REAL enhanced_ppm_C2;
   // WENOZ parameters
   CCTK_REAL weno_eps;
   // MP5 parameters

@@ -59,6 +59,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     reconstruction = reconstruction_t::monocentral;
   else if (CCTK_EQUALS(reconstruction_method, "ppm"))
     reconstruction = reconstruction_t::ppm;
+  else if (CCTK_EQUALS(reconstruction_method, "eppm"))
+    reconstruction = reconstruction_t::eppm;
   else if (CCTK_EQUALS(reconstruction_method, "wenoz"))
     reconstruction = reconstruction_t::wenoz;
   else if (CCTK_EQUALS(reconstruction_method, "mp5"))
@@ -88,6 +90,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   case reconstruction_t::ppm:
     assert(cctk_nghostzones[dir] >= 3);
     break;
+  case reconstruction_t::eppm:
+    assert(cctk_nghostzones[dir] >= 3);
+    break;
   case reconstruction_t::wenoz:
     assert(cctk_nghostzones[dir] >= 3);
   case reconstruction_t::mp5:
@@ -110,6 +115,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   reconstruct_params.ppm_small = ppm_small;
   reconstruct_params.ppm_omega1 = ppm_omega1;
   reconstruct_params.ppm_omega2 = ppm_omega2;
+  reconstruct_params.enhanced_ppm_C2 = enhanced_ppm_C2;
   // wenoz parameters
   reconstruct_params.weno_eps = weno_eps;
   // mp5 parameters

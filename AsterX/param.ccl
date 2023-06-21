@@ -116,6 +116,7 @@ USES CCTK_REAL ppm_eps_shock
 USES CCTK_REAL ppm_small
 USES CCTK_REAL ppm_omega1
 USES CCTK_REAL ppm_omega2 
+USES CCTK_REAL enhanced_ppm_C2
 USES CCTK_BOOLEAN ppm_shock_detection
 USES CCTK_BOOLEAN ppm_zone_flattening
 USES CCTK_REAL weno_eps
