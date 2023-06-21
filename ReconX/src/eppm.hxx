@@ -25,7 +25,7 @@ using namespace std;
 using namespace Arith;
 using namespace Loop;
 
-enum class interface_t { Minus = 0, Plus = 1 };
+enum InterfaceType { MINUS = 0, PLUS = 1 };
 
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST CCTK_REAL
 approx_at_cell_interface(const GF3D2<const CCTK_REAL> &gf,
@@ -134,16 +134,12 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
   const CCTK_REAL &enhanced_ppm_C2 = reconstruct_params.enhanced_ppm_C2;
 
   /* approx at cell interface */
-  CCTK_REAL rc_minus =
-      approx_at_cell_interface(gf_var, cells, CCTK_INT(interface_t::Minus));
-  CCTK_REAL rc_plus =
-      approx_at_cell_interface(gf_var, cells, CCTK_INT(interface_t::Plus));
+  CCTK_REAL rc_minus = approx_at_cell_interface(gf_var, cells, MINUS);
+  CCTK_REAL rc_plus = approx_at_cell_interface(gf_var, cells, PLUS);
 
   /* limit */
-  rc_minus = limit(gf_var, cells, rc_minus, CCTK_INT(interface_t::Minus),
-                   enhanced_ppm_C2);
-  rc_plus = limit(gf_var, cells, rc_plus, CCTK_INT(interface_t::Plus),
-                  enhanced_ppm_C2);
+  rc_minus = limit(gf_var, cells, rc_minus, MINUS, enhanced_ppm_C2);
+  rc_plus = limit(gf_var, cells, rc_plus, PLUS, enhanced_ppm_C2);
 
   /* monotonize */
   monotonize(gf_var, cells, rc_minus, rc_plus, enhanced_ppm_C2);
