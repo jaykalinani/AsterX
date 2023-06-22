@@ -2,11 +2,12 @@
 # Simple test of magnetised TOV neutron star
 # Same neutron star as the gallery example
 # K=100, rho_c = 1.28e-3 => M = 1.4, M_b = 1.506
-# evolve for t = 48.82 M
+# evolve for iterations = 10
 ##############################
 ActiveThorns = "
     ADMBase
     CarpetX
+    ErrorEstimator
     HydroBase
     IOUtil
     ODESolvers
@@ -17,10 +18,8 @@ ActiveThorns = "
     Z4c
 "
 
-$nlevels	= 1
-$ncells 	=  512
-#$max_p		=  100
-#$max_m 		=  0
+$nlevels	= 4
+$ncells 	= 256
 
 CarpetX::verbose = no
 
@@ -47,16 +46,19 @@ CarpetX::boundary_upper_y =  "neumann"
 CarpetX::boundary_upper_z =  "neumann"
 
 CarpetX::max_num_levels = $nlevels
-CarpetX::regrid_every = 100000
-CarpetX::blocking_factor_x = 1
-CarpetX::blocking_factor_y = 1
-CarpetX::blocking_factor_z = 1
+CarpetX::regrid_every = 16
+CarpetX::blocking_factor_x = 8
+CarpetX::blocking_factor_y = 8
+CarpetX::blocking_factor_z = 8
 
 
 # the regrid_error_threshold should be in the same units of the 
 # parameter in comparison, see AsterX/src/estimate_error.cxx 
 # for which parameter to use
-CarpetX::regrid_error_threshold = 5.0e-5
+CarpetX::regrid_error_threshold = 0.03125
+
+ErrorEstimator::region_shape = "cube"
+ErrorEstimator::scale_by_resolution = yes
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 3
@@ -98,11 +100,12 @@ AsterSeeds::Avec_kappa = 2.0
 
 AsterX::rho_abs_min = 1e-13
 AsterX::atmo_tol = 1e-3
-ReconX::reconstruction_method = "eppm"
+ReconX::reconstruction_method = "ppm"
 AsterX::flux_type = "HLLE"
 AsterX::max_iter = 100
 AsterX::c2p_tol = 1e-8
 AsterX::vector_potential_gauge = "algebraic"
+AsterX::local_estimate_error = no
 
 Con2PrimFactory::unit_test = "no"
 
@@ -118,10 +121,6 @@ ODESolvers::method = "RK4"
 IO::out_dir = $parfile
 IO::out_every = 10
 CarpetX::out_silo_vars = "
-#    AsterX::Avec_x
-#    AsterX::Avec_y
-#    AsterX::Avec_z
-#    AsterX::dB
     HydroBase::Bvec
     HydroBase::rho
     HydroBase::vel
