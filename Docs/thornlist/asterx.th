@@ -226,6 +226,7 @@ Numerical/AEILocalInterp
 !TYPE     = git
 !URL      = https://github.com/eschnett/CarpetX.git
 !REPO_PATH= $2
+!REPO_BRANCH = eschnett/crusher
 !CHECKOUT =
 CarpetX/ADMBase
 CarpetX/Algo
