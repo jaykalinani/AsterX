@@ -91,7 +91,7 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
         ppm(gf_var, cells_Ip, dir, gf_is_rho, gf_press, gf_vel_dir,
             reconstruct_params);
 
-    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
+    return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
   }
 
   case reconstruction_t::eppm: {
@@ -103,7 +103,7 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     const array<CCTK_REAL, 2> rc_Ip =
         eppm(gf_var, cells_Ip, gf_press, gf_vel_dir, reconstruct_params);
 
-    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
+    return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
   }
 
   case reconstruction_t::wenoz: {
@@ -115,7 +115,7 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     const array<CCTK_REAL, 2> rc_Ip =
         wenoz(gf_var, cells_Ip, reconstruct_params);
 
-    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
+    return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
   }
 
   case reconstruction_t::mp5: {

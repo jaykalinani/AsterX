@@ -21,7 +21,7 @@ using namespace Loop;
 
 
 // Compute the median of three numbers
-template<typename T>
+template<typename T> inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST
 T median(T &x, T &y, T &z) {
     return x + minmod(y-x, z-x);
 }
@@ -39,11 +39,11 @@ mp5(const GF3D2<const CCTK_REAL> &gf_var,
   const CCTK_REAL mp5_alpha = reconstruct_params.mp5_alpha;
 
   // Unpack all cells in the stencil
-  const auto &Imm = cells.at(0);
-  const auto &Im = cells.at(1);
-  const auto &I = cells.at(2);
-  const auto &Ip = cells.at(3);
-  const auto &Ipp = cells.at(4);
+  const auto &Imm = cells[0];
+  const auto &Im = cells[1];
+  const auto &I = cells[2];
+  const auto &Ip = cells[3];
+  const auto &Ipp = cells[4];
 
   // Grid function at neighboring cells
   const CCTK_REAL &gf_Imm = gf_var(Imm);

@@ -117,12 +117,12 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
      const GF3D2<const CCTK_REAL> &gf_vel_dir,
      const reconstruct_params_t &reconstruct_params) {
   // Unpack all cells in the stencil
-  const auto &Imm = cells.at(0);
-  const auto &Im = cells.at(1);
-  const auto &I = cells.at(2);
-  const auto &Ip = cells.at(3);
-  const auto &Ipp = cells.at(4);
-
+  const auto &Imm = cells[0];
+  const auto &Im = cells[1];
+  const auto &I = cells[2];
+  const auto &Ip = cells[3];
+  const auto &Ipp = cells[4];
+ 
   const array<const CCTK_REAL, 5> gf_stencil{gf_var(Imm), gf_var(Im), gf_var(I),
                                              gf_var(Ip), gf_var(Ipp)};
 
