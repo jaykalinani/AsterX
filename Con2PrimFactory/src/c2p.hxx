@@ -8,6 +8,7 @@ c2p is effectively an interface to be used by different c2p implementations.
 
 #ifndef C2P_HXX
 #define C2P_HXX
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -16,16 +17,16 @@ c2p is effectively an interface to be used by different c2p implementations.
 #include "eos.hxx"
 #include "eos_idealgas.hxx"
 
-constexpr CCTK_INT X = 0;
-constexpr CCTK_INT Y = 1;
-constexpr CCTK_INT Z = 2;
-
 #include <math.h>
 #include "prims.hxx"
 #include "cons.hxx"
 #include "atmo.hxx"
 
 namespace Con2PrimFactory {
+
+constexpr CCTK_INT X = 0;
+constexpr CCTK_INT Y = 1;
+constexpr CCTK_INT Z = 2;
 
 /* Abstract class c2p */
 class c2p {
