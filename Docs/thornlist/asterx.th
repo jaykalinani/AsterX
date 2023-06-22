@@ -53,7 +53,7 @@
 !URL      = https://bitbucket.org/cactuscode/cactus.git
 !NAME     = flesh
 !CHECKOUT = .clang-format CONTRIBUTORS COPYRIGHT doc lib Makefile README.md src
-
+!REPO_BRANCH = eschnett/crusher
 
 # Simulation Factory
 !TARGET   = $ROOT
