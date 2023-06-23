@@ -272,6 +272,7 @@ SpacetimeX/Z4c
 !TYPE     = git
 !URL      = https://github.com/jaykalinani/AsterX.git
 !REPO_PATH= $2
+!REPO_BRANCH = frontier
 !CHECKOUT =
 AsterX/AsterSeeds
 AsterX/AsterX

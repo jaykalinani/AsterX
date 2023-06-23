@@ -55,7 +55,7 @@ CarpetX::blocking_factor_z = 8
 # the regrid_error_threshold should be in the same units of the 
 # parameter in comparison, see AsterX/src/estimate_error.cxx 
 # for which parameter to use
-CarpetX::regrid_error_threshold = 0.03125
+CarpetX::regrid_error_threshold = 0.1 
 
 ErrorEstimator::region_shape = "cube"
 ErrorEstimator::scale_by_resolution = yes
