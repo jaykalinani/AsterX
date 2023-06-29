@@ -1,22 +1,16 @@
 #ifndef RECONX_PPM_HXX
 #define RECONX_PPM_HXX
 
-#include <loop_device.hxx>
-
 #include <cctk.h>
-#include <cctk_Arguments.h>
-#include <cctk_Parameters.h>
-
-#include <algorithm>
-#include <cassert>
 
 #include "reconx_utils.hxx"
 
+#include <array>
+#include <cmath>
+
 namespace ReconX {
 
-using namespace std;
-using namespace Arith;
-using namespace Loop;
+using std::array;
 
 /**
  * @brief PPM reconstruction scheme. See Colella & Woodward (1984) (e.g. at
@@ -29,6 +23,10 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST array<T, 2>
 ppm(T gf_Imm, T gf_Im, T gf_I, T gf_Ip, T gf_Ipp, T press_Imm, T press_Im,
     T press_Ip, T press_Ipp, T vel_dir_Im, T vel_dir_Ip, const bool &gf_is_rho,
     const reconstruct_params_t &reconstruct_params) {
+
+  using std::fabs;
+  using std::max;
+  using std::min;
 
   // Unpack all PPM parameters
   const bool &ppm_shock_detection = reconstruct_params.ppm_shock_detection;
