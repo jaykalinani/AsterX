@@ -28,33 +28,50 @@ mp5(T gf_Imm, T gf_Im, T gf_I, T gf_Ip, T gf_Ipp, T mp5_alpha) {
   using std::max;
   using std::min;
 
-  const T ul{(2 * gf_Imm - 13 * gf_Im + 47 * gf_I + 27 * gf_Ip - 3 * gf_Imm) /
+  // Eq. (2.1)
+  const T ul{(2 * gf_Imm - 13 * gf_Im + 47 * gf_I + 27 * gf_Ip - 3 * gf_Ipp) /
              60.0};
 
   const T deltam{gf_I - gf_Im};
   const T deltap{gf_Ip - gf_I};
 
+  // Eq. (2.12)
   const T ump{gf_I + minmod(deltap, mp5_alpha * deltam)};
 
-  if ((ul - gf_I) * (ul - ump) < 0) {
+  // Condition Eq. (2.30)
+  if ((ul - gf_I) * (ul - ump) <= 1.0e-10) {
     return ul;
   } else {
+
+    // Eq. (2.19)
     const T dm{gf_Imm + gf_I - 2 * gf_Im};
     const T d{gf_Im + gf_Ip - 2 * gf_I};
     const T dp{gf_I + gf_Ipp - 2 * gf_Ip};
 
+    // Eq. (2.27)
     const T dmp{minmod(minmod(4 * d - dp, 4 * dp - d), minmod(d, dp))};
     const T dmm{minmod(minmod(4 * dm - d, 4 * d - dm), minmod(dm, d))};
 
-    const T ulc{gf_I + 0.5 * deltam + 4.0 / 3.0 * dmm};
-    const T umd{0.5 * (gf_I + gf_Ip) - 0.5 * dmp};
-
+    // Eq. (2.8)
     const T uul{gf_I + mp5_alpha * deltam};
 
+    // Eq. (2.16)
+    const T uav{(gf_I + gf_Ip) / 2.0};
+
+    // Eq. (2.28)
+    const T umd{uav - dmp / 2.0};
+
+    // Eq. (2.29)
+    const T ulc{gf_I + deltam / 2.0 + 4.0 / 3.0 * dmm};
+
+    // Eq. (2.24 a)
     const T umin{max(min(gf_I, min(gf_Ip, umd)), min(gf_I, min(uul, ulc)))};
+
+    // Eq. (2.24 b)
     const T umax{min(max(gf_I, max(gf_Ip, umd)), max(gf_I, max(uul, ulc)))};
 
-    return median(umin, ul, umax);
+    // Eq. (2.26)
+    return median(ul, umin, umax);
   }
   return T{0};
 }
@@ -66,12 +83,12 @@ mp5_reconstruct(T gf_Immm, T gf_Imm, T gf_Im, T gf_Ip, T gf_Ipp, T gf_Ippp,
   // for the left cell, the plus side has sequence: Immm, Imm, Im, Ip, Ipp
   // for the left cell, the minus side has sequence: Ipp, Ip, Im, Im, Immm
   // here, we need the plus side
-  const T rc_Im{mp5(gf_Immm, gf_Imm, gf_Im, gf_Ip, gf_Ipp, mp5_alpha)};
+  const auto rc_Im{mp5(gf_Immm, gf_Imm, gf_Im, gf_Ip, gf_Ipp, mp5_alpha)};
 
   // for the right cell, the plus side has sequence: Imm, Im, Ip, Ipp, Ippp
   // for the right cell, the minus side has sequence: Ippp, Ipp, Ip, Im, Imm
   // here, we need the minus side
-  const T rc_Ip{mp5(gf_Ippp, gf_Ipp, gf_Ip, gf_Im, gf_Imm, mp5_alpha)};
+  const auto rc_Ip{mp5(gf_Ippp, gf_Ipp, gf_Ip, gf_Im, gf_Imm, mp5_alpha)};
 
   return {rc_Im, rc_Ip};
 }
