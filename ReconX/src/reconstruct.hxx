@@ -63,29 +63,11 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
   }
 
   case reconstruction_t::ppm: {
-    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
-    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
-
-    const array<CCTK_REAL, 2> rc_Im =
-        ppm(gf_var, cells_Im, dir, gf_is_rho, gf_press, gf_vel_dir,
-            reconstruct_params);
-    const array<CCTK_REAL, 2> rc_Ip =
-        ppm(gf_var, cells_Ip, dir, gf_is_rho, gf_press, gf_vel_dir,
-            reconstruct_params);
-
-    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
-  }
-
-  case reconstruction_t::eppm: {
-    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
-    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
-
-    const array<CCTK_REAL, 2> rc_Im =
-        eppm(gf_var, cells_Im, gf_press, gf_vel_dir, reconstruct_params);
-    const array<CCTK_REAL, 2> rc_Ip =
-        eppm(gf_var, cells_Ip, gf_press, gf_vel_dir, reconstruct_params);
-
-    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
+    return ppm_reconstruct(
+        gf_var(Immm), gf_var(Imm), gf_var(Im), gf_var(Ip), gf_var(Ipp),
+        gf_var(Ippp), gf_press(Immm), gf_press(Imm), gf_press(Im), gf_press(Ip),
+        gf_press(Ipp), gf_press(Ippp), gf_vel_dir(Imm), gf_vel_dir(Im),
+        gf_vel_dir(Ip), gf_vel_dir(Ipp), gf_is_rho, reconstruct_params);
   }
 
   case reconstruction_t::wenoz: {
@@ -98,6 +80,18 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     return mp5_reconstruct(gf_var(Immm), gf_var(Imm), gf_var(Im), gf_var(Ip),
                            gf_var(Ipp), gf_var(Ippp),
                            reconstruct_params.mp5_alpha);
+  }
+
+  case reconstruction_t::eppm: {
+    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
+    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
+
+    const array<CCTK_REAL, 2> rc_Im =
+        eppm(gf_var, cells_Im, gf_press, gf_vel_dir, reconstruct_params);
+    const array<CCTK_REAL, 2> rc_Ip =
+        eppm(gf_var, cells_Ip, gf_press, gf_vel_dir, reconstruct_params);
+
+    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
   }
 
   default:
