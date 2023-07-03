@@ -15,14 +15,9 @@ using namespace std;
 using namespace Loop;
 using namespace Arith;
 
-extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
+template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_SourceTerms;
   DECLARE_CCTK_PARAMETERS;
-
-  /* order of finite differencing */
-  if ((local_spatial_order != 2) && (local_spatial_order != 4)) {
-    CCTK_VERROR("local_spatial_order must be set to 2 or 4.");
-  }
 
   /* grid functions */
   const vec<GF3D2<const CCTK_REAL>, 3> gf_beta{betax, betay, betaz};
@@ -50,34 +45,23 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
         /* Upper metric */
         const smat<CCTK_REAL, 3> ug_avg = calc_inv(g_avg, detg);
 
-        // raw function pointer types for FD
-        CCTK_REAL(*calc_fd_v2c)
-        (const GF3D2<const CCTK_REAL> &, const PointDesc &, int) = nullptr;
-        if (local_spatial_order == 2) {
-          /* calc_fd2_v2c takes vertex center input, computes edge-center
-           * derivatives along either dir=0, 1 or 2 using 2nd finite difference,
-           * i.e, at the four edges of the cube with p.I as starting point. The
-           * four edge-centered values are then interpolated to the cell-center
-           * using 2nd order interpolation */
-          calc_fd_v2c = calc_fd2_v2c;
-        } else if (local_spatial_order == 4) {
-          /* calc_fd4_v2c takes vertex center input, computes edge-center
-           * derivatives along either dir=0, 1 or 2 using 4th order finite
-           * difference/ The eight edge-centered values are then interpolated to
-           * the center using 4th order interpolation */
-          calc_fd_v2c = calc_fd4_v2c;
-        }
         /* Derivatives of the lapse, shift and metric */
-        const vec<CCTK_REAL, 3> d_alp(
-            [&](int k) ARITH_INLINE { return calc_fd_v2c(alp, p, k); });
+        /* calc_fd_v2c takes vertex center input, computes edge-center
+         * derivatives along either dir=0, 1 or 2 using 2nd finite difference,
+         * i.e, at the four edges of the cube with p.I as starting point. The
+         * four edge-centered values are then interpolated to the cell-center
+         * using 2nd order interpolation */
+        const vec<CCTK_REAL, 3> d_alp([&](int k) ARITH_INLINE {
+          return calc_fd_v2c<FDORDER>(alp, p, k);
+        });
         const vec<vec<CCTK_REAL, 3>, 3> d_beta([&](int k) ARITH_INLINE {
           return vec<CCTK_REAL, 3>([&](int i) ARITH_INLINE {
-            return calc_fd_v2c(gf_beta(i), p, k);
+            return calc_fd_v2c<FDORDER>(gf_beta(i), p, k);
           });
         });
         const vec<smat<CCTK_REAL, 3>, 3> d_g([&](int k) ARITH_INLINE {
           return smat<CCTK_REAL, 3>([&](int i, int j) ARITH_INLINE {
-            return calc_fd_v2c(gf_g(i, j), p, k);
+            return calc_fd_v2c<FDORDER>(gf_g(i, j), p, k);
           });
         });
 
@@ -158,6 +142,23 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
         momzrhs(p.I) = alp_avg * sqrt_detg * mom_source(2);
         taurhs(p.I) = alp_avg * sqrt_detg * tau_source;
       }); // end of loop over grid
+}
+
+extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterX_SourceTerms;
+  DECLARE_CCTK_PARAMETERS;
+
+  /* order of finite differencing */
+  switch (local_spatial_order) {
+  case 2:
+    SourceTerms<2>(cctkGH);
+    break;
+  case 4:
+    SourceTerms<4>(cctkGH);
+    break;
+  default:
+    CCTK_VERROR("local_spatial_order must be set to 2 or 4.");
+  }
 }
 
 } // namespace AsterX

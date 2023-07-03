@@ -24,19 +24,11 @@ if (!CCTK_Equals(TOV_save_to_datafile,""))
   } "Save data to file and exit"
 }
 
-if(TOV_Cowling) {
-  schedule TOV_C_FreeMemory AT TERMINATE
-  {
+schedule TOV_C_FreeMemory AT TERMINATE
+{
     LANG: C
     OPTIONS: GLOBAL
-  } "Free memory from TOVSolver_C at the end of the simulation"
-} else {
-  schedule TOV_C_FreeMemory AT POSTPOSTINITIAL
-  {
-    LANG: C
-    OPTIONS: GLOBAL
-  } "Free memory from TOVSolver_C at the end of initialization"
-}
+} "Free memory from TOVSolver_C at the end of the simulation"
 
 #schedule TOVSolver_Sync AT postregrid
 #{

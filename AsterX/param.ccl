@@ -24,6 +24,9 @@ KEYWORD flux_type "Flux solver" STEERABLE=never
   "HLLE" :: ""
 } "LxF"
 
+BOOLEAN local_estimate_error "Use error estimation criteria of this thorn"
+{
+} yes
 
 KEYWORD regrid_method "Regrid method" STEERABLE=never
 {
