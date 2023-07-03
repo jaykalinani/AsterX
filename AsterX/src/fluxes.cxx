@@ -123,9 +123,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
   const auto reconstruct_pt =
       [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var, const PointDesc &p,
-                      const bool &gf_is_rho) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return reconstruct(var, p, reconstruction, dir, gf_is_rho, press,
-                           gf_vels(dir), reconstruct_params);
+                      const bool &gf_is_rho,
+                      const bool &gf_is_press) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        return reconstruct(var, p, reconstruction, dir, gf_is_rho, gf_is_press,
+                           press, gf_vels(dir), reconstruct_params);
       };
   const auto calcflux =
       [=] CCTK_DEVICE(vec<vec<CCTK_REAL, 4>, 2> lam, vec<CCTK_REAL, 2> var,
@@ -160,13 +161,14 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         /* Reconstruct primitives from the cells on left (indice 0) and right
          * (indice 1) side of this face rc = reconstructed variables or
          * computed from reconstructed variables */
-        const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true)};
+        const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, false)};
         const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
-          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false)};
+          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false, false)};
         });
-        const vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false)};
+        const vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
         const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
-          return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false)};
+          return vec<CCTK_REAL, 2>{
+              reconstruct_pt(gf_Bvecs(i), p, false, false)};
         });
 
         /* Interpolate metric components from vertices to faces */

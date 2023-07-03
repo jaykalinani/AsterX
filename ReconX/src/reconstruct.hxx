@@ -34,7 +34,8 @@ enum class reconstruction_t {
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_HOST CCTK_DEVICE array<CCTK_REAL, 2>
 reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
             const reconstruction_t &reconstruction, const int &dir,
-            const bool &gf_is_rho, const GF3D2<const CCTK_REAL> &gf_press,
+            const bool &gf_is_rho, const bool &gf_is_press,
+            const GF3D2<const CCTK_REAL> &gf_press,
             const GF3D2<const CCTK_REAL> &gf_vel_dir,
             const reconstruct_params_t &reconstruct_params) {
   // Neighbouring "plus" and "minus" cell indices
@@ -99,9 +100,11 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
     const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
 
     const array<CCTK_REAL, 2> rc_Im =
-        eppm(gf_var, cells_Im, gf_press, gf_vel_dir, reconstruct_params);
+        eppm(gf_var, cells_Im, gf_is_press, gf_press, gf_vel_dir,
+             reconstruct_params);
     const array<CCTK_REAL, 2> rc_Ip =
-        eppm(gf_var, cells_Ip, gf_press, gf_vel_dir, reconstruct_params);
+        eppm(gf_var, cells_Ip, gf_is_press, gf_press, gf_vel_dir,
+             reconstruct_params);
 
     return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
   }
