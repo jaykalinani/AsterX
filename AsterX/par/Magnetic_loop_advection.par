@@ -3,7 +3,6 @@ ActiveThorns = "
     Formaline
     IOUtil
     ODESolvers
-    SystemTopology
     TimerReport
     ADMBase
     HydroBase

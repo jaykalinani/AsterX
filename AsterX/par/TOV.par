@@ -12,7 +12,6 @@ ActiveThorns = "
     HydroBase
     IOUtil
     ODESolvers
-    SystemTopology
     TimerReport
     TmunuBase
 "
