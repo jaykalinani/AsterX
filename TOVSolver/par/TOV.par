@@ -6,14 +6,14 @@
 ##############################
 ActiveThorns = "
     ADIOS2
-    ADMBase
+    ADMBaseX
     CarpetX
-    HydroBase
+    HydroBaseX
     IOUtil
     ODESolvers
     SystemTopology
     TimerReport
-    TmunuBase
+    TmunuBaseX
 "
 
 $nlevels	= 1
@@ -60,13 +60,13 @@ CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2
 CarpetX::dtfac = 0.25
 
-ADMBase::initial_data       = "tov"
-ADMBase::initial_lapse      = "tov"
-ADMBase::initial_shift      = "tov"
-ADMBase::initial_dtlapse    = "zero"
-ADMBase::initial_dtshift    = "zero"
+ADMBaseX::initial_data       = "tov"
+ADMBaseX::initial_lapse      = "tov"
+ADMBaseX::initial_shift      = "tov"
+ADMBaseX::initial_dtlapse    = "zero"
+ADMBaseX::initial_dtshift    = "zero"
 
-HydroBase::initial_hydro = "tov"
+HydroBaseX::initial_hydro = "tov"
 
 ActiveThorns = "TOVSolver"
 TOVSolver::TOV_Rho_Central[0] = 1.28e-3
@@ -86,21 +86,21 @@ ODESolvers::method = "RK4"
 IO::out_dir = $parfile
 IO::out_every = 10
 CarpetX::out_silo_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
     CarpetX::regrid_error
-    ADMBase::lapse
-    ADMBase::shift
-    ADMBase::metric
+    ADMBaseX::lapse
+    ADMBaseX::shift
+    ADMBaseX::metric
 "
 
 CarpetX::out_openpmd_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
     CarpetX::regrid_error
 "
 
