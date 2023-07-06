@@ -2,9 +2,9 @@ ActiveThorns = "
     CarpetX
     IOUtil
     ODESolvers
-    ADMBase
-    HydroBase
-    TmunuBase
+    ADMBaseX
+    HydroBaseX
+    TmunuBaseX
     AsterSeeds
     AsterX
     EOSX
@@ -20,11 +20,11 @@ Cactus::presync_mode = "mixed-error"
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 0.0
 
-ADMBase::initial_data            = "Cartesian Minkowski"
-ADMBase::initial_lapse           = "one"
-ADMBase::initial_shift           = "zero"
-ADMBase::initial_dtlapse         = "none"
-ADMBase::initial_dtshift         = "none"
+ADMBaseX::initial_data            = "Cartesian Minkowski"
+ADMBaseX::initial_lapse           = "one"
+ADMBaseX::initial_shift           = "zero"
+ADMBaseX::initial_dtlapse         = "none"
+ADMBaseX::initial_dtshift         = "none"
 
 CarpetX::verbose = no
 

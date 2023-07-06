@@ -2,7 +2,7 @@
 
 IMPLEMENTS: AsterX
 
-INHERITS: CarpetX ADMBase HydroBase TmunuBase
+INHERITS: CarpetX ADMBaseX HydroBaseX TmunuBaseX
 
 USES INCLUDE HEADER: fixmath.hxx
 USES INCLUDE HEADER: loop_device.hxx
@@ -13,14 +13,14 @@ USES INCLUDE HEADER: reconstruct.hxx
 
 PUBLIC:
 
-CCTK_REAL dens TYPE=gf CENTERING={ccc} TAGS='rhs="densrhs" dependents="HydroBase::rho TmunuBase::eTtt AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Conserved rest mass density"
+CCTK_REAL dens TYPE=gf CENTERING={ccc} TAGS='rhs="densrhs" dependents="HydroBaseX::rho TmunuBaseX::eTtt AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Conserved rest mass density"
 
-CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs" dependents="HydroBase::vel TmunuBase::eTti"'
+CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs" dependents="HydroBaseX::vel TmunuBaseX::eTti"'
 {
   momx, momy, momz
 } "Conserved momentum density"
 
-CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" dependents="HydroBase::eps HydroBase::press HydroBase::temperature HydroBase::Ye HydroBase::Bvec TmunuBase::eTij"' "Conserved internal energy density"
+CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" dependents="HydroBaseX::eps HydroBaseX::press HydroBaseX::temperature HydroBaseX::Ye HydroBaseX::Bvec TmunuBaseX::eTij"' "Conserved internal energy density"
 
 CCTK_REAL flux_x TYPE=gf CENTERING={vcc} TAGS='checkpoint="no"'
 {
