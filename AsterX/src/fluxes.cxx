@@ -399,11 +399,11 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       printf("  bsq_rc  = %16.8e, %16.8e \n", bsq_rc(0), bsq_rc(1));
       printf("  press_rc = %16.8e, %16.8e \n", press_rc(0), press_rc(1));
       printf("  eps_rc   = %16.8e, %16.8e \n", eps_rc(0), eps_rc(1));
-      printf("press = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e;\n",
+      printf("  press = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e;\n",
              press(p.I - p.DI[dir] * 3), press(p.I - p.DI[dir] * 2),
              press(p.I - p.DI[dir]), press(p.I), press(p.I + p.DI[dir]),
              press(p.I + p.DI[dir] * 2));
-      printf("eps   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e;\n",
+      printf("  eps   = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e;\n",
              eps(p.I - p.DI[dir] * 3), eps(p.I - p.DI[dir] * 2),
              eps(p.I - p.DI[dir]), eps(p.I), eps(p.I + p.DI[dir]),
              eps(p.I + p.DI[dir] * 2));
@@ -420,7 +420,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
              vels_rc(0)(0), vels_rc(0)(1), vels_rc(1)(0), vels_rc(1)(1),
              vels_rc(2)(0), vels_rc(2)(1));
       printf("  vtilde_rc = %16.8e, %16.8e.\n", vtilde_rc(0), vtilde_rc(1));
-      printf("\n");
       assert(0);
     }
   });
