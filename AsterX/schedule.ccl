@@ -59,7 +59,7 @@ SCHEDULE AsterX_ComputeBFromdB AT initial BEFORE AsterX_Prim2Con_Initial
 SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBaseX_PostInitial
 {
   LANG: C
-  READS: ADMBaseX::metric(interior) ADMBaseX::lapse(interior) ADMBaseX::shift(interior)
+  READS: ADMBaseX::metric(interior)
   READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
   WRITES: dens(interior) tau(interior) mom(interior) dB(interior)
   WRITES: Psi(everywhere)
