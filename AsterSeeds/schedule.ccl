@@ -4,9 +4,9 @@
 
 if (CCTK_Equals(test_type, "1DTest")) {
 
-  SCHEDULE Tests1D_Initialize IN HydroBase_InitialData AFTER HydroBase_initial_data {
+  SCHEDULE Tests1D_Initialize IN HydroBaseX_InitialData AFTER HydroBaseX_initial_data {
   LANG: C 
-  WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+  WRITES: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::press(everywhere)
   WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
   }
   "Set up initial conditions for 1D tests"
@@ -16,9 +16,9 @@ if (CCTK_Equals(test_type, "1DTest")) {
 
 if (CCTK_Equals(test_type, "2DTest")) {
 
-  SCHEDULE Tests2D_Initialize IN HydroBase_InitialData AFTER HydroBase_initial_data {
+  SCHEDULE Tests2D_Initialize IN HydroBaseX_InitialData AFTER HydroBaseX_initial_data {
   LANG: C 
-  WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+  WRITES: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::press(everywhere)
   WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
   }
   "Set up initial conditions for 2D tests"
@@ -28,9 +28,9 @@ if (CCTK_Equals(test_type, "2DTest")) {
 if (CCTK_Equals(test_type, "3DTest")) {
 
   if (CCTK_Equals(test_case, "spherical shock")) {
-    SCHEDULE Tests3D_Initialize IN HydroBase_InitialData AFTER HydroBase_initial_data {
+    SCHEDULE Tests3D_Initialize IN HydroBaseX_InitialData AFTER HydroBaseX_initial_data {
     LANG: C 
-    WRITES: HydroBase::rho(everywhere) HydroBase::vel(everywhere) HydroBase::eps(everywhere) HydroBase::press(everywhere)
+    WRITES: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::press(everywhere)
     WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
     }
     "Set up initial conditions for 3D tests"
@@ -41,9 +41,9 @@ if (CCTK_Equals(test_type, "3DTest")) {
   if (CCTK_Equals(test_case, "magTOV")) {
 
     STORAGE: Avec_cent
-    SCHEDULE AsterSeeds_InitializeCenteredAvec AT initial AFTER HydroBase_PostInitial BEFORE AsterX_ComputedBstagFromA {
+    SCHEDULE AsterSeeds_InitializeCenteredAvec AT initial AFTER HydroBaseX_PostInitial BEFORE AsterX_ComputedBstagFromA {
     LANG: C 
-    READS: HydroBase::press(everywhere) 
+    READS: HydroBaseX::press(everywhere) 
     WRITES: Avec_x_cent(everywhere) Avec_y_cent(everywhere) Avec_z_cent(everywhere)
     }
     "Set up initial conditions for the cell-centered vector potential"
