@@ -32,8 +32,6 @@ struct cons {
 };
 
 CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
-                                    const CCTK_REAL &lapse,
-                                    const vec<CCTK_REAL, 3> &beta_up,
                                     const prim &pv, cons &cv) {
 
   // determinant of spatial metric
@@ -48,9 +46,6 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
 
   const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
 
-  /* Computing beta_j */
-  const vec<CCTK_REAL, 3> beta_low = calc_contraction(g, beta_up);
-
   /* Computing B_j */
   const vec<CCTK_REAL, 3> &B_up = pv.Bvec;
   const vec<CCTK_REAL, 3> B_low = calc_contraction(g, B_up);
@@ -58,13 +53,8 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
   /* Computing b^t : this is b^0 * alp */
   const CCTK_REAL bst = w_lorentz * calc_contraction(B_up, v_low);
 
-  /* Computing b^j */
-  const vec<CCTK_REAL, 3> b_up =
-      B_up / w_lorentz + bst * (v_up - beta_up / lapse);
-
   /* Computing b_j */
-  const vec<CCTK_REAL, 3> b_low =
-      calc_contraction(g, b_up) + beta_low * bst / lapse;
+  const vec<CCTK_REAL, 3> b_low = B_low / w_lorentz + bst * v_low;
 
   /* Computing b^mu b_mu */
   const CCTK_REAL bs2 =
