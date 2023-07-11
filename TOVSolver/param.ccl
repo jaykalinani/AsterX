@@ -1,12 +1,12 @@
 # Parameter definitions for thorn TOVSolver
-SHARES: HydroBase
+SHARES: HydroBaseX
 
 EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
 {
   "tov" :: "TOV neutron star setup"
 }
 
-shares:ADMBase
+shares:ADMBaseX
 
 EXTENDS KEYWORD initial_data
 {
@@ -63,7 +63,7 @@ CCTK_REAL TOV_Position_z[10] "Position of neutron star, z coordinate" STEERABLE=
 } 0.0
 
 # contravariant fluid three velocity as measured by the Eulerian observers: v^i = u^i / (alpha u^t) + beta^i / alpha
-# as used by HydroBase. Follows the Valencia formulation eg. eqs. 26 and 27 of Font et al's paper (gr-qc/9811015) or
+# as used by HydroBaseX. Follows the Valencia formulation eg. eqs. 26 and 27 of Font et al's paper (gr-qc/9811015) or
 # below Equ. 31 in http://relativity.livingreviews.org/Articles/lrr-2008-7/articlesu1.html#x6-30002.1
 CCTK_REAL TOV_Velocity_x[10] "(fixed) Velocity of neutron star, x coordinate (caution!)" STEERABLE=always
 {

@@ -3,9 +3,9 @@ ActiveThorns = "
     IOUtil
     ODESolvers
     SystemTopology
-    ADMBase
-    HydroBase
-    TmunuBase
+    ADMBaseX
+    HydroBaseX
+    TmunuBaseX
     AsterSeeds
     AsterX
     EOSX
@@ -21,11 +21,11 @@ Cactus::presync_mode = "mixed-error"
 Cactus::terminate = "iteration"
 Cactus::cctk_itlast = 10
 
-ADMBase::initial_data            = "Cartesian Minkowski"
-ADMBase::initial_lapse           = "one"
-ADMBase::initial_shift           = "zero"
-ADMBase::initial_dtlapse         = "none"
-ADMBase::initial_dtshift         = "none"
+ADMBaseX::initial_data            = "Cartesian Minkowski"
+ADMBaseX::initial_lapse           = "one"
+ADMBaseX::initial_shift           = "zero"
+ADMBaseX::initial_dtlapse         = "none"
+ADMBaseX::initial_dtshift         = "none"
 
 CarpetX::verbose = no
 
@@ -88,8 +88,8 @@ CarpetX::out_norm_vars = " "
 CarpetX::out_norm_omit_unstable = yes
 
 CarpetX::out_tsv_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
 "

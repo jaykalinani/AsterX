@@ -2,6 +2,6 @@
 
 IMPLEMENTS: KHInitial
 
-INHERITS: CarpetX ADMBase HydroBase
+INHERITS: CarpetX ADMBaseX HydroBaseX
 
 USES INCLUDE HEADER: loop_device.hxx
