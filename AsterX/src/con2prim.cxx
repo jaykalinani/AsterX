@@ -17,7 +17,6 @@
 #include <eos_idealgas.hxx>
 
 #include "utils.hxx"
-#include <boost/math/tools/roots.hpp>
 
 namespace AsterX {
 using namespace std;
@@ -95,7 +94,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     CCTK_INT c2p_succeeded_Pal = 0;   // false for now
     c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Noble);
 
-    if (!c2p_succeeded_Noble) {
+    if (!c2p_succeeded_Noble || pv.press < 0.0) {
       c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Pal);
     }
 
