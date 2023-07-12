@@ -94,7 +94,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     CCTK_INT c2p_succeeded_Pal = 0;   // false for now
     c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Noble);
 
-    if (!c2p_succeeded_Noble || pv.press < 0.0) {
+    if (!c2p_succeeded_Noble) {
       c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Pal);
     }
 
@@ -170,6 +170,16 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       }
     }
 */
+
+    if(pv.press < p_atm) {
+      // set to atmo
+      cv.dBvec(0) = dBx(p.I);
+      cv.dBvec(1) = dBy(p.I);
+      cv.dBvec(2) = dBz(p.I);
+      pv.Bvec = cv.dBvec / sqrt_detg;
+      atmo.set(pv, cv, glo);
+    }
+
     // dummy vars
     CCTK_REAL Ex, Ey, Ez;
 
