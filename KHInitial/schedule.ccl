@@ -2,11 +2,11 @@
 
 # Initial conditions for the Kelvin-Helmholtz instability test
 
-SCHEDULE KHInitial_Initialize IN HydroBase_InitialData
+SCHEDULE KHInitial_Initialize IN HydroBaseX_InitialData
 {
   LANG: C
-  WRITES: HydroBase::rho(everywhere)
-  WRITES: HydroBase::vel(everywhere)
-  WRITES: HydroBase::eps(everywhere)
-  WRITES: HydroBase::press(everywhere)
+  WRITES: HydroBaseX::rho(everywhere)
+  WRITES: HydroBaseX::vel(everywhere)
+  WRITES: HydroBaseX::eps(everywhere)
+  WRITES: HydroBaseX::press(everywhere)
 } "Set up KHI initial conditions"

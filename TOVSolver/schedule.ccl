@@ -34,7 +34,7 @@ schedule TOV_C_FreeMemory AT TERMINATE
 #{
 #  LANG: C
 #  OPTIONS: GLOBAL
-#  SYNC: ADMBase::metric ADMBase::curv ADMBase::lapse ADMBase::shift
+#  SYNC: ADMBaseX::metric ADMBaseX::curv ADMBaseX::lapse ADMBaseX::shift
 #  SYNC: rho
 #  SYNC: press
 #  SYNC: eps
@@ -49,44 +49,44 @@ if (TOV_Cowling) {
     WRITES: lapse_cell(everywhere)
     WRITES: shift_cell(everywhere)
     WRITES: curv_cell(everywhere)
-    WRITES: ADMBase::metric(interior)
-    WRITES: ADMBase::lapse(interior)
-    WRITES: ADMBase::shift(interior)
-    WRITES: ADMBase::curv(interior)
+    WRITES: ADMBaseX::metric(interior)
+    WRITES: ADMBaseX::lapse(interior)
+    WRITES: ADMBaseX::shift(interior)
+    WRITES: ADMBaseX::curv(interior)
 
     WRITES: dtlapse_cell(everywhere)
     WRITES: dtshift_cell(everywhere)
-    WRITES: ADMBase::dtlapse(interior)
-    WRITES: ADMBase::dtshift(interior)
+    WRITES: ADMBaseX::dtlapse(interior)
+    WRITES: ADMBaseX::dtshift(interior)
 
-    SYNC: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
-    SYNC: ADMBase::dtlapse ADMBase::dtshift
+    SYNC: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
+    SYNC: ADMBaseX::dtlapse ADMBaseX::dtshift
   } "Set values for ADM variables of TOV"
 }
 
-schedule TOV_C_Exact IN HydroBase_InitialData
+schedule TOV_C_Exact IN HydroBaseX_InitialData
 {
   LANG: C
-  WRITES: HydroBase::rho(everywhere)
-  WRITES: HydroBase::vel(everywhere)
-  WRITES: HydroBase::eps(everywhere)
-  WRITES: HydroBase::press(everywhere)
+  WRITES: HydroBaseX::rho(everywhere)
+  WRITES: HydroBaseX::vel(everywhere)
+  WRITES: HydroBaseX::eps(everywhere)
+  WRITES: HydroBaseX::press(everywhere)
   WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
 
   WRITES: metric_cell(everywhere)
   WRITES: lapse_cell(everywhere)
   WRITES: shift_cell(everywhere)
   WRITES: curv_cell(everywhere)
-  WRITES: ADMBase::metric(interior)
-  WRITES: ADMBase::lapse(interior)
-  WRITES: ADMBase::shift(interior)
-  WRITES: ADMBase::curv(interior)
+  WRITES: ADMBaseX::metric(interior)
+  WRITES: ADMBaseX::lapse(interior)
+  WRITES: ADMBaseX::shift(interior)
+  WRITES: ADMBaseX::curv(interior)
 
   WRITES: dtlapse_cell(everywhere)
   WRITES: dtshift_cell(everywhere)
-  WRITES: ADMBase::dtlapse(interior)
-  WRITES: ADMBase::dtshift(interior)
+  WRITES: ADMBaseX::dtlapse(interior)
+  WRITES: ADMBaseX::dtshift(interior)
 
-  SYNC: ADMBase::metric ADMBase::lapse ADMBase::shift ADMBase::curv
-  SYNC: ADMBase::dtlapse ADMBase::dtshift
+  SYNC: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
+  SYNC: ADMBaseX::dtlapse ADMBaseX::dtshift
 } "Set values for all variables of TOV"
