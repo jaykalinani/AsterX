@@ -17,7 +17,6 @@
 #include <eos_idealgas.hxx>
 
 #include "utils.hxx"
-#include <boost/math/tools/roots.hpp>
 
 namespace AsterX {
 using namespace std;
@@ -171,6 +170,16 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       }
     }
 */
+
+    if(pv.press < p_atm) {
+      // set to atmo
+      cv.dBvec(0) = dBx(p.I);
+      cv.dBvec(1) = dBy(p.I);
+      cv.dBvec(2) = dBz(p.I);
+      pv.Bvec = cv.dBvec / sqrt_detg;
+      atmo.set(pv, cv, glo);
+    }
+
     // dummy vars
     CCTK_REAL Ex, Ey, Ez;
 
