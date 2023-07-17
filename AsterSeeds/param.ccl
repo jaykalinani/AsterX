@@ -91,6 +91,18 @@ CCTK_REAL vxUp "initial x component of velocity" STEERABLE=always
   *:* :: ""
 } -0.5
 
+# Initial data for region below the slip surface
+
+CCTK_REAL rhoLow "initial density" STEERABLE=always
+{ 
+  0.0:* :: ""
+} 2.0
+
+CCTK_REAL vxLow "initial x component of velocity" STEERABLE=always
+{ 
+  *:* :: ""
+} 0.5
+
 # parameters for 3D tests
 
 # initial magnetic field configuration for magnetized TOV test
