@@ -6,6 +6,7 @@ STORAGE: densrhs momrhs taurhs Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
 STORAGE: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
 STORAGE: Aux_in_RHSof_A_Psi
 STORAGE: TmunuBaseX::eTtt TmunuBaseX::eTti TmunuBaseX::eTij
+STORAGE: analysis_quantities
 
 # Initialization
 
@@ -70,10 +71,20 @@ SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBaseX_PostInitial
 
 if(local_estimate_error)
 {
+  SCHEDULE AsterX_Analysis IN ODESolvers_EstimateError BEFORE AsterX_EstimateError
+  {
+    LANG: C
+    READS: ADMBaseX::metric(interior) ADMBaseX::lapse(interior) ADMBaseX::shift(interior)
+    READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::Bvec(interior)
+    WRITES: analysis_quantities(interior)
+    SYNC: analysis_quantities
+  } "Compute analysis quantities"
+
   SCHEDULE AsterX_EstimateError IN ODESolvers_EstimateError
   {
     LANG: C
     READS: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::press(everywhere)
+    READS: analysis_quantities(everywhere)
     WRITES: CarpetX::regrid_error(interior)
   } "Estimate local error for regridding initial conditions"
 }

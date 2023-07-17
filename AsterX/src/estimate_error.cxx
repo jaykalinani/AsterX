@@ -6,17 +6,22 @@
 #include <util_Table.h>
 
 #include <algorithm>
+#include <array>
+#include <cassert>
 #include <cmath>
-
+#include "utils.hxx"
 #include "estimate_error.hxx"
 
 namespace AsterX {
 using namespace std;
+using namespace Loop;
+using namespace Arith;
 
 enum class regrid_t {
   first_deriv,
   second_deriv,
   second_deriv_norm,
+  sdn_totenergy,
   first_grad
 };
 regrid_t regridMethod;
@@ -50,6 +55,8 @@ extern "C" void AsterX_EstimateError_Setup(CCTK_ARGUMENTS) {
     regridMethod = regrid_t::second_deriv;
   else if (CCTK_EQUALS(regrid_method, "second derivative norm"))
     regridMethod = regrid_t::second_deriv_norm;
+  else if (CCTK_EQUALS(regrid_method, "SDN total energy"))
+    regridMethod = regrid_t::sdn_totenergy;
   else if (CCTK_EQUALS(regrid_method, "first gradient"))
     regridMethod = regrid_t::first_grad;
   else
@@ -120,6 +127,17 @@ extern "C" void AsterX_EstimateError(CCTK_ARGUMENTS) {
                 max({regrid_error(p.I),
                      calc_deriv_2nd_norm(regridVars[i], p, epsilon_err)});
           }
+          break;
+        }
+
+        case regrid_t::sdn_totenergy: {
+          regrid_error(p.I) = 0.0;
+          const vec<CCTK_REAL, 3> err([&](int i) ARITH_INLINE {
+            return calc_deriv_2nd_norm_totenergy(
+                total_energy(p.I - p.DI[i]), total_energy(p.I),
+                total_energy(p.I + p.DI[i]), epsilon_err);
+          });
+          regrid_error(p.I) = max({regrid_error(p.I), err(0), err(1), err(2)});
           break;
         }
 

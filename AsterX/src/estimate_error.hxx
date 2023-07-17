@@ -82,6 +82,27 @@ CCTK_DEVICE inline T calc_deriv_2nd_norm(const Loop::GF3D2<const T> &gf,
   return err;
 }
 
+/* calculate max of second derivative error norm in all dirs
+ * based on eq. 50 of Mignone+2011 (https://arxiv.org/abs/1110.0740) */
+template <typename T>
+CCTK_DEVICE inline T calc_deriv_2nd_norm_totenergy(const T varm, const T var0,
+                                                   const T varp,
+
+                                                   CCTK_REAL epsilon_err) {
+  CCTK_REAL err{0};
+
+  auto diffp0 = varp - var0;
+  auto diff0m = var0 - varm;
+
+  auto varsigma = fabs(varp) + 2 * fabs(var0) + fabs(varm);
+  auto diffpm2 = fabs(diffp0 - diff0m) * fabs(diffp0 - diff0m);
+  auto diffpm_denom = (fabs(diffp0) + fabs(diff0m) + epsilon_err * varsigma) *
+                      (fabs(diffp0) + fabs(diff0m) + epsilon_err * varsigma);
+
+  auto chi = sqrt(diffpm2 / diffpm_denom);
+  return max({err, chi});
+}
+
 /* functions for interpreting pars */
 void read_stream(vector<string> &groups, istringstream &groupstream) {
   string delim = " \n", group;

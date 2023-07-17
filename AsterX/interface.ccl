@@ -98,3 +98,9 @@ CCTK_REAL saved_prims TYPE=gf CENTERING={ccc}
   saved_velx saved_vely saved_velz
   saved_eps
 } "Saved primitive variables as initial guesses for con2prim"
+
+CCTK_REAL analysis_quantities TYPE=gf CENTERING={ccc}
+{
+  b2small
+  total_energy
+} "Analysis quantities"
