@@ -38,7 +38,8 @@ approx_at_cell_interface(const array<const CCTK_REAL, 5> &gf,
 
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST CCTK_REAL
 limit(const array<const CCTK_REAL, 5> &gf, const CCTK_REAL gf_rc,
-      const CCTK_INT interface, const CCTK_REAL C, const bool &gf_is_press) {
+      const CCTK_INT interface, const CCTK_REAL C,
+      const bool &keep_var_positive) {
   const CCTK_INT Im = interface;
   const CCTK_INT I = interface + 1;
   const CCTK_INT Ip = interface + 2;
@@ -54,7 +55,8 @@ limit(const array<const CCTK_REAL, 5> &gf, const CCTK_REAL gf_rc,
                              MIN3(C * fabs(D2aL), C * fabs(D2aR), fabs(D2a)) *
                              1.0 / 3.0;
     const CCTK_REAL gf_avg = 0.5 * (gf[I] + gf[Ip]);
-    if (D2a * D2aR < 0 || D2a * D2aL < 0 || (gf_is_press && D2aLim > gf_avg))
+    if (D2a * D2aR < 0 || D2a * D2aL < 0 ||
+        (keep_var_positive && D2aLim > gf_avg))
       return gf_avg;
     else
       return gf_avg - D2aLim;
@@ -111,7 +113,7 @@ monotonize(const array<const CCTK_REAL, 5> &gf, CCTK_REAL &rc_minus,
    & Colella (2011) */
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST array<CCTK_REAL, 2>
 eppm(const GF3D2<const CCTK_REAL> &gf_var,
-     const array<const vect<int, dim>, 5> &cells, const bool &gf_is_press,
+     const array<const vect<int, dim>, 5> &cells, const bool &keep_var_positive,
      const GF3D2<const CCTK_REAL> &gf_press,
      const GF3D2<const CCTK_REAL> &gf_vel_dir,
      const reconstruct_params_t &reconstruct_params) {
@@ -139,8 +141,10 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
   CCTK_REAL rc_plus = approx_at_cell_interface(gf_stencil, iplus);
 
   /* limit */
-  rc_minus = limit(gf_stencil, rc_minus, iminus, enhanced_ppm_C2, gf_is_press);
-  rc_plus = limit(gf_stencil, rc_plus, iplus, enhanced_ppm_C2, gf_is_press);
+  rc_minus =
+      limit(gf_stencil, rc_minus, iminus, enhanced_ppm_C2, keep_var_positive);
+  rc_plus =
+      limit(gf_stencil, rc_plus, iplus, enhanced_ppm_C2, keep_var_positive);
 
   /* monotonize */
   monotonize(gf_stencil, rc_minus, rc_plus, enhanced_ppm_C2);

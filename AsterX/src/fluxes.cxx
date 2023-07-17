@@ -165,7 +165,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     /* Reconstruct primitives from the cells on left (indice 0) and right
      * (indice 1) side of this face rc = reconstructed variables or
      * computed from reconstructed variables */
-    const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, false)};
+    const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, true)};
     const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false, false)};
     });
@@ -360,7 +360,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         isnan(fluxmomxs(dir)(p.I)) || isnan(fluxmomys(dir)(p.I)) ||
         isnan(fluxmomzs(dir)(p.I)) || isnan(fluxtaus(dir)(p.I)) ||
         isnan(fluxBxs(dir)(p.I)) || isnan(fluxBys(dir)(p.I)) ||
-        isnan(fluxBzs(dir)(p.I))) {
+        isnan(fluxBzs(dir)(p.I)) || rho_rc(0) < 0.0 || rho_rc(1) < 0.0 ||
+        press_rc(0) < 0.0 || press_rc(1) < 0.0) {
       printf("cctk_iteration = %i,  dir = %i,  ijk = %i, %i, %i, "
              "x, y, z = %16.8e, %16.8e, %16.8e.\n",
              cctk_iteration, dir, p.i, p.j, p.k, p.x, p.y, p.z);
@@ -400,6 +401,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       printf("  bsq_rc  = %16.8e, %16.8e \n", bsq_rc(0), bsq_rc(1));
       printf("  press_rc = %16.8e, %16.8e \n", press_rc(0), press_rc(1));
       printf("  eps_rc   = %16.8e, %16.8e \n", eps_rc(0), eps_rc(1));
+      printf("  rho = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e;\n",
+             rho(p.I - p.DI[dir] * 3), rho(p.I - p.DI[dir] * 2),
+             rho(p.I - p.DI[dir]), rho(p.I), rho(p.I + p.DI[dir]),
+             rho(p.I + p.DI[dir] * 2));
       printf("  press = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e;\n",
              press(p.I - p.DI[dir] * 3), press(p.I - p.DI[dir] * 2),
              press(p.I - p.DI[dir]), press(p.I), press(p.I + p.DI[dir]),
