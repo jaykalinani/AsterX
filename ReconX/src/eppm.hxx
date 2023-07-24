@@ -25,8 +25,6 @@ using namespace std;
 using namespace Arith;
 using namespace Loop;
 
-enum InterfaceType { MINUS = 0, PLUS = 1 };
-
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST CCTK_REAL
 approx_at_cell_interface(const array<const CCTK_REAL, 5> &gf,
                          const CCTK_INT interface) {
@@ -40,7 +38,8 @@ approx_at_cell_interface(const array<const CCTK_REAL, 5> &gf,
 
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST CCTK_REAL
 limit(const array<const CCTK_REAL, 5> &gf, const CCTK_REAL gf_rc,
-      const CCTK_INT interface, const CCTK_REAL C) {
+      const CCTK_INT interface, const CCTK_REAL C,
+      const bool &keep_var_positive) {
   const CCTK_INT Im = interface;
   const CCTK_INT I = interface + 1;
   const CCTK_INT Ip = interface + 2;
@@ -55,10 +54,12 @@ limit(const array<const CCTK_REAL, 5> &gf, const CCTK_REAL gf_rc,
     const CCTK_REAL D2aLim = copysign(1.0, D2a) *
                              MIN3(C * fabs(D2aL), C * fabs(D2aR), fabs(D2a)) *
                              1.0 / 3.0;
-    if (D2a * D2aR >= 0 && D2a * D2aL >= 0)
-      return 0.5 * (gf[I] + gf[Ip]) - D2aLim;
+    const CCTK_REAL gf_avg = 0.5 * (gf[I] + gf[Ip]);
+    if (D2a * D2aR < 0 || D2a * D2aL < 0 ||
+        (keep_var_positive && D2aLim > gf_avg))
+      return gf_avg;
     else
-      return 0.5 * (gf[I] + gf[Ip]);
+      return gf_avg - D2aLim;
   }
 }
 
@@ -112,7 +113,7 @@ monotonize(const array<const CCTK_REAL, 5> &gf, CCTK_REAL &rc_minus,
    & Colella (2011) */
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST array<CCTK_REAL, 2>
 eppm(const GF3D2<const CCTK_REAL> &gf_var,
-     const array<const vect<int, dim>, 5> &cells,
+     const array<const vect<int, dim>, 5> &cells, const bool &keep_var_positive,
      const GF3D2<const CCTK_REAL> &gf_press,
      const GF3D2<const CCTK_REAL> &gf_vel_dir,
      const reconstruct_params_t &reconstruct_params) {
@@ -122,7 +123,7 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
   const auto &I = cells[2];
   const auto &Ip = cells[3];
   const auto &Ipp = cells[4];
- 
+
   const array<const CCTK_REAL, 5> gf_stencil{gf_var(Imm), gf_var(Im), gf_var(I),
                                              gf_var(Ip), gf_var(Ipp)};
 
@@ -133,13 +134,17 @@ eppm(const GF3D2<const CCTK_REAL> &gf_var,
   const CCTK_REAL &ppm_omega2 = reconstruct_params.ppm_omega2;
   const CCTK_REAL &enhanced_ppm_C2 = reconstruct_params.enhanced_ppm_C2;
 
+  const int iminus = 0, iplus = 1;
+
   /* approx at cell interface */
-  CCTK_REAL rc_minus = approx_at_cell_interface(gf_stencil, MINUS);
-  CCTK_REAL rc_plus = approx_at_cell_interface(gf_stencil, PLUS);
+  CCTK_REAL rc_minus = approx_at_cell_interface(gf_stencil, iminus);
+  CCTK_REAL rc_plus = approx_at_cell_interface(gf_stencil, iplus);
 
   /* limit */
-  rc_minus = limit(gf_stencil, rc_minus, MINUS, enhanced_ppm_C2);
-  rc_plus = limit(gf_stencil, rc_plus, PLUS, enhanced_ppm_C2);
+  rc_minus =
+      limit(gf_stencil, rc_minus, iminus, enhanced_ppm_C2, keep_var_positive);
+  rc_plus =
+      limit(gf_stencil, rc_plus, iplus, enhanced_ppm_C2, keep_var_positive);
 
   /* monotonize */
   monotonize(gf_stencil, rc_minus, rc_plus, enhanced_ppm_C2);

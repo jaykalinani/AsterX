@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <type_traits>
 
 namespace AsterX {
 using namespace std;
@@ -45,9 +46,10 @@ calc_fd2_v2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 }
 
 // FD2: vertex centered input, cell centered output
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
-calc_fd2_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
+template <int FDORDER, typename T>
+CCTK_DEVICE CCTK_HOST
+    CCTK_ATTRIBUTE_ALWAYS_INLINE inline std::enable_if_t<FDORDER == 2, T>
+    calc_fd_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
   T dgf1, dgf2, dgf3, dgf4;
   const int dir1 = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);
   const int dir2 = (dir == 0) ? 2 : ((dir == 1) ? 0 : 1);
@@ -72,9 +74,10 @@ calc_fd4_c2c(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
 
 // FD4: vertex centered input, cell centered output
 // Interpolation from edges to cell centers is 2nd order
-template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
-calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
+template <int FDORDER, typename T>
+CCTK_DEVICE CCTK_HOST
+    CCTK_ATTRIBUTE_ALWAYS_INLINE inline std::enable_if_t<FDORDER == 4, T>
+    calc_fd_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
   T dgf1, dgf2, dgf3, dgf4;
 
   const int dir1 = (dir == 0) ? 1 : ((dir == 1) ? 2 : 0);

@@ -53,6 +53,7 @@
 !URL      = https://bitbucket.org/cactuscode/cactus.git
 !NAME     = flesh
 !CHECKOUT = .clang-format CONTRIBUTORS COPYRIGHT doc lib Makefile README.md src
+!REPO_BRANCH = eschnett/crusher
 
 # Simulation Factory
 !TARGET   = $ROOT
@@ -225,19 +226,20 @@ Numerical/AEILocalInterp
 !TYPE     = git
 !URL      = https://github.com/eschnett/CarpetX.git
 !REPO_PATH= $2
+!REPO_BRANCH = eschnett/crusher
 !CHECKOUT =
-CarpetX/ADMBaseX
+CarpetX/ADMBase
 CarpetX/Algo
 CarpetX/Arith
 CarpetX/CarpetX
 CarpetX/Coordinates
 CarpetX/Derivs
 CarpetX/ErrorEstimator
-CarpetX/HydroBaseX
+CarpetX/HydroBase
 CarpetX/Loop
 CarpetX/ODESolvers
 #CarpetX/PDESolvers
-#CarpetX/Poisson
+#CarpetX/Poisson2
 CarpetX/TestArrayGroup
 CarpetX/TestInterpolate
 CarpetX/TestNorms
@@ -245,7 +247,7 @@ CarpetX/TestODESolvers
 CarpetX/TestODESolvers2
 CarpetX/TestProlongate
 CarpetX/TestSymmetries
-CarpetX/TmunuBaseX
+CarpetX/TmunuBase
 CarpetX/WaveToyX
 
 # SpacetimeX thorns
@@ -270,6 +272,7 @@ SpacetimeX/Z4c
 !TYPE     = git
 !URL      = https://github.com/jaykalinani/AsterX.git
 !REPO_PATH= $2
+!REPO_BRANCH = frontier
 !CHECKOUT =
 AsterX/AsterSeeds
 AsterX/AsterX

@@ -22,12 +22,6 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
                                    calc_avg_v2c(gxz, p), calc_avg_v2c(gyy, p),
                                    calc_avg_v2c(gyz, p), calc_avg_v2c(gzz, p)};
 
-        // Interpolate lapse and shift from vertice to center
-        const CCTK_REAL lapse = calc_avg_v2c(alp, p);
-        const vec<CCTK_REAL, 3> shift{calc_avg_v2c(betax, p),
-                                      calc_avg_v2c(betay, p),
-                                      calc_avg_v2c(betaz, p)};
-
         prim pv;
         pv.rho = rho(p.I);
         pv.vel(0) = velx(p.I);
@@ -40,7 +34,7 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         pv.Bvec(2) = Bvecz(p.I);
 
         cons cv;
-        prim2con(g, lapse, shift, pv, cv);
+        prim2con(g, pv, cv);
 
         dens(p.I) = cv.dens;
         momx(p.I) = cv.mom(0);

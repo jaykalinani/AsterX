@@ -1,5 +1,5 @@
 # Parameter definitions for thorn KHInitial
-SHARES: HydroBase
+SHARES: HydroBaseX
 
 EXTENDS KEYWORD initial_hydro "Initial setup" STEERABLE=never
 {

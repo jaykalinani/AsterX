@@ -2,11 +2,10 @@ ActiveThorns = "
     CarpetX
     IOUtil
     ODESolvers
-    SystemTopology
     TimerReport
-    ADMBase
-    HydroBase
-    TmunuBase
+    ADMBaseX
+    HydroBaseX
+    TmunuBaseX
     AsterSeeds
     AsterX
     EOSX
@@ -22,11 +21,11 @@ Cactus::presync_mode = "mixed-error"
 Cactus::terminate = "time"
 Cactus::cctk_final_time = 0.55
 
-ADMBase::initial_data            = "Cartesian Minkowski"
-ADMBase::initial_lapse           = "one"
-ADMBase::initial_shift           = "zero"
-ADMBase::initial_dtlapse         = "none"
-ADMBase::initial_dtshift         = "none"
+ADMBaseX::initial_data            = "Cartesian Minkowski"
+ADMBaseX::initial_lapse           = "one"
+ADMBaseX::initial_shift           = "zero"
+ADMBaseX::initial_dtlapse         = "none"
+ADMBaseX::initial_dtshift         = "none"
 
 CarpetX::verbose = no
 
@@ -84,20 +83,20 @@ ODESolvers::method = "RK4"
 IO::out_dir = $parfile
 IO::out_every = 10 #$ncells * 2 ** ($nlevels - 1) / 32
 CarpetX::out_silo_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
-    HydroBase::Bvec
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
+    HydroBaseX::Bvec
     CarpetX::regrid_error
 "
 
 CarpetX::out_tsv_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
-    HydroBase::Bvec
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
+    HydroBaseX::Bvec
     CarpetX::regrid_error
 "
 

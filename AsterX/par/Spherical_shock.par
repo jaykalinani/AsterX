@@ -1,16 +1,15 @@
 ActiveThorns = "
-  ADMBase
+  ADMBaseX
   AsterSeeds
   AsterX
   CarpetX
   EOSX
   Formaline
-  HydroBase
+  HydroBaseX
   IOUtil
   ODESolvers
-  SystemTopology
   TimerReport
-  TmunuBase
+  TmunuBaseX
 "
 
 # ***** User-defined parameters *****
@@ -69,12 +68,12 @@ ODESolvers::method = "RK4"
 
 
 
-# -------------------- ADMBase -------------------------------------------------
-ADMBase::initial_data    = "Cartesian Minkowski"
-ADMBase::initial_lapse   = "one"
-ADMBase::initial_shift   = "zero"
-ADMBase::initial_dtlapse = "none"
-ADMBase::initial_dtshift = "none"
+# -------------------- ADMBaseX -------------------------------------------------
+ADMBaseX::initial_data    = "Cartesian Minkowski"
+ADMBaseX::initial_lapse   = "one"
+ADMBaseX::initial_shift   = "zero"
+ADMBaseX::initial_dtlapse = "none"
+ADMBaseX::initial_dtshift = "none"
 
 
 
@@ -117,10 +116,10 @@ TimerReport::n_top_timers               = 50
 IO::out_dir   = $parfile
 IO::out_every = 1
 CarpetX::out_silo_vars = "
-  HydroBase::rho
-  HydroBase::eps
-  HydroBase::press
-  HydroBase::vel
-  HydroBase::Bvec
+  HydroBaseX::rho
+  HydroBaseX::eps
+  HydroBaseX::press
+  HydroBaseX::vel
+  HydroBaseX::Bvec
   CarpetX::regrid_error
 "

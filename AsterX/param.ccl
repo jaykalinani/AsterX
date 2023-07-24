@@ -24,6 +24,9 @@ KEYWORD flux_type "Flux solver" STEERABLE=never
   "HLLE" :: ""
 } "LxF"
 
+BOOLEAN local_estimate_error "Use error estimation criteria of this thorn"
+{
+} yes
 
 KEYWORD regrid_method "Regrid method" STEERABLE=never
 {
@@ -41,7 +44,7 @@ CCTK_REAL epsilon_err "epsilon parameter in second derivative norm criterion (se
 CCTK_STRING regrid_groups "Groups used for calculating regrid error" STEERABLE=always
 {
   .* :: "List of full group names"
-} "HydroBase::rho"
+} "HydroBaseX::rho"
 
 CCTK_REAL rho_abs_min "atmosphere density" STEERABLE=never
 {

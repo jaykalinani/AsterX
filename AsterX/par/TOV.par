@@ -6,15 +6,14 @@
 ##############################
 ActiveThorns = "
     ADIOS2
-    ADMBase
+    ADMBaseX
     CarpetX
     #Cowling
-    HydroBase
+    HydroBaseX
     IOUtil
     ODESolvers
-    SystemTopology
     TimerReport
-    TmunuBase
+    TmunuBaseX
 "
 
 $nlevels	= 5
@@ -59,20 +58,20 @@ CarpetX::regrid_every = 1
 CarpetX::regrid_error_threshold = 1.0e-4 #5.0e-5
 AsterX::regrid_method = "first gradient"
 AsterX::regrid_groups = "
-  HydroBase::rho
+  HydroBaseX::rho
 "
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 2 #3
 CarpetX::dtfac = 0.25
 
-ADMBase::initial_data       = "tov"
-ADMBase::initial_lapse      = "tov"
-ADMBase::initial_shift      = "tov"
-ADMBase::initial_dtlapse    = "zero"
-ADMBase::initial_dtshift    = "zero"
+ADMBaseX::initial_data       = "tov"
+ADMBaseX::initial_lapse      = "tov"
+ADMBaseX::initial_shift      = "tov"
+ADMBaseX::initial_dtlapse    = "zero"
+ADMBaseX::initial_dtshift    = "zero"
 
-HydroBase::initial_hydro = "tov"
+HydroBaseX::initial_hydro = "tov"
 
 ActiveThorns = "TOVSolver"
 TOVSolver::TOV_Rho_Central[0] = 1.28e-3
@@ -95,37 +94,37 @@ ODESolvers::method = "RK4"
 IO::out_dir = $parfile
 IO::out_every = 50
 CarpetX::out_silo_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
     CarpetX::regrid_error
-    #ADMBase::lapse
-    #ADMBase::shift
-    #ADMBase::metric
-    #ADMBase::curv
+    #ADMBaseX::lapse
+    #ADMBaseX::shift
+    #ADMBaseX::metric
+    #ADMBaseX::curv
     #AsterX::dens
     #AsterX::mom
     #AsterX::tau
 "
 
 CarpetX::out_tsv_vars = "
-    HydroBase::rho
-    HydroBase::vel
-    HydroBase::eps
-    HydroBase::press
+    HydroBaseX::rho
+    HydroBaseX::vel
+    HydroBaseX::eps
+    HydroBaseX::press
     CarpetX::regrid_error
-    #ADMBase::lapse
-    #ADMBase::shift
-    #ADMBase::metric
-    #ADMBase::curv
+    #ADMBaseX::lapse
+    #ADMBaseX::shift
+    #ADMBaseX::metric
+    #ADMBaseX::curv
 "
 
 #CarpetX::out_openpmd_vars = "
-#    HydroBase::rho
-#    HydroBase::vel
-#    HydroBase::eps
-#    HydroBase::press
+#    HydroBaseX::rho
+#    HydroBaseX::vel
+#    HydroBaseX::eps
+#    HydroBaseX::press
 #    CarpetX::regrid_error
 #"
 
