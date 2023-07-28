@@ -4,8 +4,8 @@
 #include <loop_device.hxx>
 
 #include <cctk.h>
-#include <cctk_Arguments.h>
-#include <cctk_Parameters.h>
+// #include <cctk_Arguments.h>
+// #include <cctk_Parameters.h>
 
 #include "monocentral.hxx"
 #include "minmod.hxx"
@@ -14,9 +14,11 @@
 #include "wenoz.hxx"
 #include "mp5.hxx"
 
+#include <array>
+
 namespace ReconX {
 
-using namespace std;
+using std::array;
 using namespace Arith;
 
 // enum class for different reconstruction routines
@@ -49,50 +51,36 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
   switch (reconstruction) {
 
   case reconstruction_t::Godunov: {
-    CCTK_REAL var_m = gf_var(Im);
-    CCTK_REAL var_p = gf_var(Ip);
-    return array<CCTK_REAL, 2>{var_m, var_p};
+    return {gf_var(Im), gf_var(Ip)};
   }
 
   case reconstruction_t::minmod: {
-    // reconstructs values of Im and Ip at the common face between these
-    // two cells
-    CCTK_REAL var_slope_p = gf_var(Ipp) - gf_var(Ip);
-    CCTK_REAL var_slope_c = gf_var(Ip) - gf_var(Im);
-    CCTK_REAL var_slope_m = gf_var(Im) - gf_var(Imm);
-    // reconstructed Im on its "plus/right" side
-    CCTK_REAL var_m = gf_var(Im) + minmod(var_slope_c, var_slope_m) / 2;
-    // reconstructed Ip on its "minus/left" side
-    CCTK_REAL var_p = gf_var(Ip) - minmod(var_slope_p, var_slope_c) / 2;
-    return array<CCTK_REAL, 2>{var_m, var_p};
+    return minmod_reconstruct(gf_var(Imm), gf_var(Im), gf_var(Ip), gf_var(Ipp));
   }
 
   case reconstruction_t::monocentral: {
-    // reconstructs values of Im and Ip at the common face between these
-    // two cells
-    // reconstructed Im on its "plus/right" side
-    CCTK_REAL var_slope_p = gf_var(Ip) - gf_var(Im);
-    CCTK_REAL var_slope_m = gf_var(Im) - gf_var(Imm);
-    CCTK_REAL var_m = gf_var(Im) + monocentral(var_slope_p, var_slope_m) / 2;
-    // reconstructed Ip on its "minus/left" side
-    var_slope_p = gf_var(Ipp) - gf_var(Ip);
-    var_slope_m = gf_var(Ip) - gf_var(Im);
-    CCTK_REAL var_p = gf_var(Ip) - monocentral(var_slope_p, var_slope_m) / 2;
-    return array<CCTK_REAL, 2>{var_m, var_p};
+    return monocentral_reconstruct(gf_var(Imm), gf_var(Im), gf_var(Ip),
+                                   gf_var(Ipp));
   }
 
   case reconstruction_t::ppm: {
-    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
-    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
+    return ppm_reconstruct(
+        gf_var(Immm), gf_var(Imm), gf_var(Im), gf_var(Ip), gf_var(Ipp),
+        gf_var(Ippp), gf_press(Immm), gf_press(Imm), gf_press(Im), gf_press(Ip),
+        gf_press(Ipp), gf_press(Ippp), gf_vel_dir(Imm), gf_vel_dir(Im),
+        gf_vel_dir(Ip), gf_vel_dir(Ipp), gf_is_rho, reconstruct_params);
+  }
 
-    const array<CCTK_REAL, 2> rc_Im =
-        ppm(gf_var, cells_Im, dir, gf_is_rho, gf_press, gf_vel_dir,
-            reconstruct_params);
-    const array<CCTK_REAL, 2> rc_Ip =
-        ppm(gf_var, cells_Ip, dir, gf_is_rho, gf_press, gf_vel_dir,
-            reconstruct_params);
+  case reconstruction_t::wenoz: {
+    return wenoz_reconstruct(gf_var(Immm), gf_var(Imm), gf_var(Im), gf_var(Ip),
+                             gf_var(Ipp), gf_var(Ippp),
+                             reconstruct_params.weno_eps);
+  }
 
-    return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
+  case reconstruction_t::mp5: {
+    return mp5_reconstruct(gf_var(Immm), gf_var(Imm), gf_var(Im), gf_var(Ip),
+                           gf_var(Ipp), gf_var(Ippp),
+                           reconstruct_params.mp5_alpha);
   }
 
   case reconstruction_t::eppm: {
@@ -106,37 +94,7 @@ reconstruct(const GF3D2<const CCTK_REAL> &gf_var, const PointDesc &p,
         eppm(gf_var, cells_Ip, gf_is_press, gf_press, gf_vel_dir,
              reconstruct_params);
 
-    return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
-  }
-
-  case reconstruction_t::wenoz: {
-    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
-    const array<const vect<int, dim>, 5> cells_Ip = {Imm, Im, Ip, Ipp, Ippp};
-
-    const array<CCTK_REAL, 2> rc_Im =
-        wenoz(gf_var, cells_Im, reconstruct_params);
-    const array<CCTK_REAL, 2> rc_Ip =
-        wenoz(gf_var, cells_Ip, reconstruct_params);
-
-    return array<CCTK_REAL, 2>{rc_Im[1], rc_Ip[0]};
-  }
-
-  case reconstruction_t::mp5: {
-    // for the left cell, the plus side has sequence: Immm, Imm, Im, Ip, Ipp
-    // for the left cell, the minus side has sequence: Ipp, Ip, Im, Im, Immm
-    // here, we need the plus side
-    const array<const vect<int, dim>, 5> cells_Im = {Immm, Imm, Im, Ip, Ipp};
-
-    // for the right cell, the plus side has sequence: Imm, Im, Ip, Ipp, Ippp
-    // for the right cell, the minus side has sequence: Ippp, Ipp, Ip, Im, Imm
-    // here, we need the minus side
-
-    const array<const vect<int, dim>, 5> cells_Ip = {Ippp, Ipp, Ip, Im, Imm};
-
-    const CCTK_REAL rc_Im = mp5(gf_var, cells_Im, reconstruct_params);
-    const CCTK_REAL rc_Ip = mp5(gf_var, cells_Ip, reconstruct_params);
-
-    return array<CCTK_REAL, 2>{rc_Im, rc_Ip};
+    return array<CCTK_REAL, 2>{rc_Im.at(1), rc_Ip.at(0)};
   }
 
   default:
