@@ -12,8 +12,8 @@ ActiveThorns = "
     EOSX
 "
 
-$nlevels = 3
-$ncells = 64
+$nlevels = 4
+$ncells = 32
 
 # -------------------- Cactus --------------------------------------------------
 Cactus::cctk_show_schedule = yes
@@ -66,7 +66,15 @@ CarpetX::regrid_every           = 10
 CarpetX::blocking_factor_x      = 8
 CarpetX::blocking_factor_y      = 8
 CarpetX::blocking_factor_z      = 2
-CarpetX::regrid_error_threshold = 0.01
+CarpetX::regrid_error_threshold = 0.4
+
+CarpetX::max_tile_size_x = 10240000
+CarpetX::max_tile_size_y = 10240000
+CarpetX::max_tile_size_z = 10240000
+
+CarpetX::max_grid_size_x = 256
+CarpetX::max_grid_size_y = 256
+CarpetX::max_grid_size_z = 256
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size        = 2
@@ -76,7 +84,6 @@ CarpetX::dtfac             = 0.5
 
 # -------------------- ODESolvers ----------------------------------------------
 ODESolvers::method = "RK4"
-
 
 
 # -------------------- ADMBaseX -------------------------------------------------
