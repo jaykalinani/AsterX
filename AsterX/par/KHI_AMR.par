@@ -104,8 +104,9 @@ ReconX::reconstruction_method = "minmod"
 AsterX::flux_type = "LxF"
 AsterX::max_iter              = 100
 AsterX::c2p_tol               = 1e-8
-AsterX::rho_abs_min               = 1e-1
+AsterX::rho_abs_min               = 1e-12
 AsterX::debug_mode = yes
+
 AsterX::regrid_method = "first derivative"
 AsterX::regrid_groups = "
   HydroBaseX::rho
