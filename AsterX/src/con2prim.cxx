@@ -71,6 +71,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
     CCTK_REAL dummy_Ye = 0.5;
     CCTK_REAL dummy_dYe = 0.5;
+    CCTK_INT c2p_succeeded_Noble = 0; // false for now
+    CCTK_INT c2p_succeeded_Pal = 0;   // false for now
     prim_vars pv;
     prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), dummy_Ye, press(p.I),
                        v_up,           wlor,           Bup};
@@ -80,8 +82,35 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                  tau(p.I),
                  dummy_dYe,
                  {dBx(p.I), dBy(p.I), dBz(p.I)}};
-
+    
     if (dens(p.I) <= sqrt_detg * rho_atmo_cut) {
+      if (debug_mode) {
+        // need to fix pv to computed values like pv.rho instead of rho(p.I)
+        printf(
+            "WARNING: "
+            "dens(p.I) <= sqrt_detg * rho_atmo_cut. Printing cons and saved prims before set to "
+            "atmo: \n"
+            "!c2p_succeeded_Noble, !c2p_succeeded_Pal = %i, %i \n"
+            "cctk_iteration = %i \n "
+            "x, y, z = %26.16e, %26.16e, %26.16e \n "
+            "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+            "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+            "dBy = %26.16e \n dBz = %26.16e \n "
+            "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
+            "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
+            "%26.16e \n "
+            "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+            "Bvecz = %26.16e \n "
+            "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+            !c2p_succeeded_Noble, !c2p_succeeded_Pal, cctk_iteration, p.x, p.y,
+            p.z, dens(p.I), tau(p.I), momx(p.I), momy(p.I), momz(p.I), dBx(p.I),
+            dBy(p.I), dBz(p.I), pv.rho, pv.eps, pv.press, pv.vel(0), pv.vel(1),
+            pv.vel(2), pv.Bvec(0), pv.Bvec(1), pv.Bvec(2),
+            // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
+            // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+            Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
+      }
+
       cv.dBvec(0) = dBx(p.I); // densitized
       cv.dBvec(1) = dBy(p.I);
       cv.dBvec(2) = dBz(p.I);
@@ -90,11 +119,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       atmo.set(pv_seeds);
     }
 
-    CCTK_INT c2p_succeeded_Noble = 0; // false for now
-    CCTK_INT c2p_succeeded_Pal = 0;   // false for now
     c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Noble);
 
-    if (!c2p_succeeded_Noble) {
+    if ((!c2p_succeeded_Noble) or (pv.press < p_atm)) {
+      printf("Using Palenzuela C2P! \n");
+      printf("Pressure value from Noble C2P: press = %26.16e \n", pv.press);
       c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Pal);
     }
 
@@ -171,7 +200,36 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     }
 */
 
+
     if(pv.press < p_atm) {
+      
+      if (debug_mode) {
+        // need to fix pv to computed values like pv.rho instead of rho(p.I)
+        printf(
+            "WARNING: "
+            "Pressure is less than p_atm. Printing cons and saved prims before set to "
+            "atmo: \n"
+            "!c2p_succeeded_Noble, !c2p_succeeded_Pal = %i, %i \n"
+            "cctk_iteration = %i \n "
+            "x, y, z = %26.16e, %26.16e, %26.16e \n "
+            "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+            "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+            "dBy = %26.16e \n dBz = %26.16e \n "
+            "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
+            "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
+            "%26.16e \n "
+            "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+            "Bvecz = %26.16e \n "
+            "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+            !c2p_succeeded_Noble, !c2p_succeeded_Pal, cctk_iteration, p.x, p.y,
+            p.z, dens(p.I), tau(p.I), momx(p.I), momy(p.I), momz(p.I), dBx(p.I),
+            dBy(p.I), dBz(p.I), pv.rho, pv.eps, pv.press, pv.vel(0), pv.vel(1),
+            pv.vel(2), pv.Bvec(0), pv.Bvec(1), pv.Bvec(2),
+            // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
+            // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+            Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
+      }
+
       // set to atmo
       cv.dBvec(0) = dBx(p.I);
       cv.dBvec(1) = dBy(p.I);
@@ -197,6 +255,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     saved_vely(p.I) = vely(p.I);
     saved_velz(p.I) = velz(p.I);
     saved_eps(p.I) = eps(p.I);
+
   }); // Loop
 }
 
