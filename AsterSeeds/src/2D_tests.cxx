@@ -201,19 +201,18 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
           using std::abs;
           if (abs(p.y) >= 0.25) {
             rho(p.I) = rhoUp;
-            velx(p.I) = -0.1; //vxUp;
+            velx(p.I) = vxUp;
           } else {
             rho(p.I) = rhoLow;
-            velx(p.I) = 0.1; //vxLow;
+            velx(p.I) = vxLow;
           }
         //  printf("  rho, p.y = %16.8e, %16.8e \n", rho(p.I), p.y); 
           // excite the instability by peturbing v^y
           using std::exp, std::pow, std::sin;
-//          vely(p.I) = w0 * sin(4 * M_PI * p.x) *
-//                      (exp(-pow(p.y - 0.25, 2) / (2 * pow(sigma, 2))) +
-//                       exp(-pow(p.y + 0.25, 2) / (2 * pow(sigma, 2))));
+          vely(p.I) = w0 * sin(4 * M_PI * p.x) *
+                      (exp(-pow(p.y - 0.25, 2) / (2 * pow(sigma, 2))) +
+                       exp(-pow(p.y + 0.25, 2) / (2 * pow(sigma, 2))));
           
-          vely(p.I) = 0.0;
           velz(p.I) = 0.0;
 
           // set constant initial pressure throughout the domain
@@ -221,7 +220,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
 
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -268,7 +267,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
           vely(p.I) = 0.5 * epsilon * (sin(kx) - sin(-kx) )*exp(-arg);
           velz(p.I) = 0.0;
 
-          eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
