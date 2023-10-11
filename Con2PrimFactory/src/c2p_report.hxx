@@ -80,11 +80,11 @@ struct c2p_mhd_report  {
   void set_invalid_detg(CCTK_REAL detg_);
   
   /// Set error negative B square. 
-  void set_neg_bsqr(CCTK_REAL bsqr_);
+  void set_neg_Bsq(CCTK_REAL Bsq_);
   
   /// Set error NANs in conserved variables. 
-  void set_nans_in_cons(CCTK_REAL dens_, CCTK_REAL qtot_, CCTK_REAL rsqr_,
-    CCTK_REAL rbsqr_, CCTK_REAL bsqr_, CCTK_REAL ye_);
+  void set_nans_in_cons(CCTK_REAL dens_, CCTK_REAL Ssq_,
+    CCTK_REAL Bsq_, CCTK_REAL BiSi_, CCTK_REAL ye_);
     
   /// Set error density out of range. 
   void set_range_rho(CCTK_REAL dens_, CCTK_REAL rho_);
@@ -95,8 +95,8 @@ struct c2p_mhd_report  {
   /// Set error speed limit exceeded. 
   void set_speed_limit(CCTK_REAL vel_);
 
-  /// Set error limit for b exceeded. 
-  void set_b_limit(CCTK_REAL bsqr_);
+  /// Set error limit for B exceeded. 
+  void set_B_limit(CCTK_REAL Bsq_);
   
   /// Set error energy out of range. 
   void set_range_ye(CCTK_REAL ye_);
@@ -118,17 +118,17 @@ struct c2p_mhd_report  {
   /// Conserved density \f$ D \f$.
   CCTK_REAL dens;
 
-  /// Specific conserved momentum \f$ r^2 = \frac{ S_i S^i}{D^2} \f$.
-  CCTK_REAL rsqr;               
+  /// Square of conserved momentum \f$ S^2 = { S_i S^i} \f$.
+  CCTK_REAL Ssq;               
 
-  /// Product \f$ (r^l b_l)^2 \f$.
-  CCTK_REAL rbsqr;              
+  /// Square of B \f$ B^2 = B^i B_i \f$.
+  CCTK_REAL Bsq;
 
-  /// Specific total energy density \f$ q = \frac{\tau}{D}  \f$.
-  CCTK_REAL qtot;               
+  /// Product \f$ (B^i S_i)^2 \f$.
+  CCTK_REAL BiSi;              
 
-  /// Ratio \f$ b^2 = \frac{B^2}{D} \f$.
-  CCTK_REAL bsqr;
+  // /// Specific total energy density \f$ q = \frac{\tau}{D}  \f$.
+  // CCTK_REAL qtot;               
 
   /// Electron fraction \f$ Y_e \f$.
   CCTK_REAL ye;
@@ -140,14 +140,13 @@ struct c2p_mhd_report  {
   CCTK_REAL eps;
   
   /// Velocity.
-  CCTK_REAL vel;
+  vec<CCTK_REAL, 3> vel;
   
   ///3-Metric determinant.
   CCTK_REAL detg; 
   
   
-//  friend class con2prim_mhd;
-//  friend class detail::froot;
+  friend class c2p;
 
 // CXX implementation
 
@@ -158,35 +157,36 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_atmo_set()
   adjust_cons = true;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_invalid_detg(real_t detg_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_invalid_detg(CCTK_REAL detg_)
 { 
   status      = INVALID_DETG;
   adjust_cons = true;
   detg        = detg_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_neg_bsqr(real_t bsqr_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_neg_Bsq(CCTK_REAL Bsq_)
 { 
   status      = NEG_BSQR;
   adjust_cons = true;
-  bsqr        = bsqr_;
+  Bsq        = Bsq_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_nans_in_cons(real_t dens_, real_t qtot_,
-  real_t rsqr_, real_t rbsqr_, real_t bsqr_, real_t ye_)
+void set_nans_in_cons(CCTK_REAL dens_, CCTK_REAL Ssq_,
+    CCTK_REAL Bsq_, CCTK_REAL BiSi_, CCTK_REAL ye_);
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_nans_in_cons(CCTK_REAL dens_, CCTK_REAL Ssq_,
+  CCTK_REAL Bsq_, CCTK_REAL BiSi_, CCTK_REAL ye_)
 { 
   status      = NANS_IN_CONS;
   set_atmo    = false;
   adjust_cons = true;
   dens        = dens_;
-  qtot        = qtot_;
-  rsqr        = rsqr_;
-  rbsqr       = rbsqr_;
-  bsqr        = bsqr_;
+  Ssq         = Ssq_;
+  Bsq         = Bsq_;
+  BiSi        = BiSi_;
   ye          = ye_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_rho(real_t dens_, real_t rho_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_rho(CCTK_REAL dens_, CCTK_REAL rho_)
 { 
   status      = RANGE_RHO;
   set_atmo    = false;
@@ -195,7 +195,7 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_rho(rea
   rho         = rho_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_eps(real_t eps_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_eps(CCTK_REAL eps_)
 {
   status      = RANGE_EPS;
   set_atmo    = false;
@@ -203,7 +203,7 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_eps(rea
   eps         = eps_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_speed_limit(real_t vel_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_speed_limit(vec<CCTK_REAL, 3> vel_)
 {
   status      = SPEED_LIMIT;
   set_atmo    = false;
@@ -211,15 +211,15 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_speed_limit(r
   vel         = vel_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_b_limit(real_t bsqr_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_B_limit(CCTK_REAL Bsq_)
 {
   status      = B_LIMIT;
   set_atmo    = false;
   adjust_cons = true;
-  bsqr        = bsqr_;
+  Bsq        = Bsq_;
 }
 
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_ye(real_t ye_)
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_range_ye(CCTK_REAL ye_)
 {
   status      = RANGE_YE;
   set_atmo    = false;
@@ -272,11 +272,12 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void debug_message() c
       printf("Invalid metric determinant: detg = %16.8e ",detg);
       break;
     case NEG_BSQR:
-      printf("3-metric not positive, negative B^2: bsq = %16.8e ", bsq);
+      printf("3-metric not positive, negative B^2: Bsq = %16.8e ", Bsq);
       break;
     case NANS_IN_CONS:
       printf( "NAN in conserved variables, 
-         dens = %16.8e, bsqr = %16.8e, ye = %16.8e", dens, bsqr, ye);
+         dens = %16.8e, Ssq = %16.8e, Bsq = %16.8e, BiSi = %16.8e, 
+         ye = %16.8e", dens, Ssq, Bsq, BiSi, ye);
       break;
     case RANGE_RHO:
       printf("Density out of range, dens = %16.8e, rho = %16.8e", dens, rho);
@@ -288,7 +289,7 @@ CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void debug_message() c
       printf("Speed limit exceeded, v = %16.8e", vel);
       break;
     case B_LIMIT:
-      printf("Limit for magnetic field exceeded, b = %16.8e", sqrt(bsqr));
+      printf("Limit for magnetic field exceeded, B = %16.8e", sqrt(Bsq));
       break;
     case RANGE_YE:
       printf("Electron fraction out of range, Y_e = %16.8e", ye);
