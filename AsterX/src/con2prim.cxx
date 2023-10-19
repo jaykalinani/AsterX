@@ -41,13 +41,13 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
   eps_atm = std::min(std::max(eos_th.rgeps.min, eps_atm), eos_th.rgeps.max);
   const CCTK_REAL p_atm =
       eos_th.press_from_valid_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo);
-  const atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
+  atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 
   // Construct Noble c2p object:
-  c2p_2DNoble c2p_Noble(eos_th, max_iter, c2p_tol);
+  c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim, B_lim, Ye_lenient);
 
   // Construct Palenzuela c2p object:
-  c2p_1DPalenzuela c2p_Pal(eos_th, max_iter, c2p_tol);
+  c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim, B_lim, Ye_lenient); 
 
   // Loop over the interior of the grid
   cctk_grid.loop_int_device<
@@ -89,16 +89,20 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       atmo.set(pv, cv, glo);
       atmo.set(pv_seeds);
     }
+    // Construct error report object:
+    c2p_report rep_Noble;
+    c2p_report rep_Pal;
+    c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, rep_Noble);
 
-    CCTK_INT c2p_succeeded_Noble = 0; // false for now
-    CCTK_INT c2p_succeeded_Pal = 0;   // false for now
-    c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Noble);
-
-    if (!c2p_succeeded_Noble) {
-      c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, c2p_succeeded_Pal);
+    if (rep_Noble.failed()) {
+      c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_Pal);
     }
 
-    if (!c2p_succeeded_Noble && !c2p_succeeded_Pal) {
+   // if (!c2p_succeeded_Noble && !c2p_succeeded_Pal) {
+    if (rep_Noble.failed() && rep_Pal.failed()) {
+      rep_Noble.debug_message();
+      rep_Pal.debug_message();
+
       con2prim_flag(p.I) = 0;
       if (debug_mode) {
         // need to fix pv to computed values like pv.rho instead of rho(p.I)
@@ -106,7 +110,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
             "WARNING: "
             "C2P failed. Printing cons and saved prims before set to "
             "atmo: \n"
-            "!c2p_succeeded_Noble, !c2p_succeeded_Pal = %i, %i \n"
             "cctk_iteration = %i \n "
             "x, y, z = %26.16e, %26.16e, %26.16e \n "
             "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
@@ -118,7 +121,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
             "Bvecx = %26.16e \n Bvecy = %26.16e \n "
             "Bvecz = %26.16e \n "
             "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
-            !c2p_succeeded_Noble, !c2p_succeeded_Pal, cctk_iteration, p.x, p.y,
+            cctk_iteration, p.x, p.y,
             p.z, dens(p.I), tau(p.I), momx(p.I), momy(p.I), momz(p.I), dBx(p.I),
             dBy(p.I), dBz(p.I), pv.rho, pv.eps, pv.press, pv.vel(0), pv.vel(1),
             pv.vel(2), pv.Bvec(0), pv.Bvec(1), pv.Bvec(2),

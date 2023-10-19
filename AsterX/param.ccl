@@ -109,6 +109,10 @@ SHARES: Con2PrimFactory
 USES CCTK_REAL eps_atmo
 USES CCTK_REAL Ye_atmo
 USES CCTK_REAL p_atmo
+USES CCTK_REAL B_lim
+USES CCTK_REAL vw_lim
+USES CCTK_REAL rho_strict
+USES BOOLEAN Ye_lenient
 
 SHARES: ReconX
 USES KEYWORD reconstruction_method
