@@ -51,7 +51,7 @@ public:
   /**
   @return If the input was invalid according to the error policy.
   **/
-  bool failed() const { return status != SUCCESS; }
+  CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool failed() const { return status != SUCCESS; }
 
   /// SUCCESS or reason for failure.
   err_code status{ERR_CODE_NOT_SET};
