@@ -70,12 +70,12 @@ ADMBaseX::initial_dtlapse    = "zero"
 ADMBaseX::initial_dtshift    = "zero"
 
 
-ActiveThorns = "TOVSolver"
-TOVSolver::TOV_Rho_Central[0] = 1.28e-3
-TOVSolver::TOV_Gamma          = 2.0
-TOVSolver::TOV_K              = 100.0
-#TOVSolver::TOV_save_to_datafile = "save.txt"
-TOVSolver::TOV_Cowling = yes
+ActiveThorns = "TOVSolverX"
+TOVSolverX::TOV_Rho_Central[0] = 1.28e-3
+TOVSolverX::TOV_Gamma          = 2.0
+TOVSolverX::TOV_K              = 100.0
+#TOVSolverX::TOV_save_to_datafile = "save.txt"
+TOVSolverX::TOV_Cowling = yes
 
 
 AsterSeeds::test_type = "3DTest"

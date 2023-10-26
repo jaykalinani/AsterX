@@ -78,12 +78,12 @@ Z4c::alphaG_floor = 1.0e-8
 Z4c::epsdiss = 0.32
 #Z4c::boundary_conditions = "radiative"
 
-ActiveThorns = "TOVSolver"
-TOVSolver::TOV_Rho_Central[0] = 1.28e-3
-TOVSolver::TOV_Gamma          = 2.0
-TOVSolver::TOV_K              = 100.0
-#TOVSolver::TOV_save_to_datafile = "save.txt"
-TOVSolver::TOV_Cowling = no
+ActiveThorns = "TOVSolverX"
+TOVSolverX::TOV_Rho_Central[0] = 1.28e-3
+TOVSolverX::TOV_Gamma          = 2.0
+TOVSolverX::TOV_K              = 100.0
+#TOVSolverX::TOV_save_to_datafile = "save.txt"
+TOVSolverX::TOV_Cowling = no
 
 
 AsterSeeds::test_type = "3DTest"
