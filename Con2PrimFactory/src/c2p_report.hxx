@@ -65,62 +65,6 @@ public:
   /// Number of calls to the EOS needed for the root finding.
   CCTK_INT iters;
 
-  /*
-    protected:
-
-    /// Set state artificial atmosphere enforced.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_atmo_set();
-
-    /// Set error invalid metric determinant.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_invalid_detg(CCTK_REAL detg_);
-
-    /// Set error negative B square.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_neg_Bsq(CCTK_REAL Bsq_);
-
-    /// Set error NANs in conserved variables.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_nans_in_cons(CCTK_REAL dens_, CCTK_REAL Ssq_, CCTK_REAL Bsq_, CCTK_REAL
-    BiSi_, CCTK_REAL Ye_);
-
-    /// Set error density out of range.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_range_rho(CCTK_REAL dens_, CCTK_REAL rho_);
-
-    /// Set error energy out of range.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_range_eps(CCTK_REAL eps_);
-
-    /// Set error speed limit exceeded.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_speed_limit(CCTK_REAL vel_);
-
-    /// Set error limit for B exceeded.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_B_limit(CCTK_REAL Bsq_);
-
-    /// Set error energy out of range.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_range_Ye(CCTK_REAL Ye_);
-
-    /// Set error root finding did not converge.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_root_conv();
-
-    /// Set error root bracketing faulty.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_root_bracket();
-
-    /// Set error preperatory root finding not converged.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_prep_root_conv();
-
-    /// Set error preperatory root bracketing faulty.
-    CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-    set_prep_root_bracket();
-  */
 private:
   /// Conserved density \f$ D \f$.
   CCTK_REAL dens;
