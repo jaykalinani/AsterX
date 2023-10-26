@@ -235,7 +235,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
                         cons_vars cv, const smat<CCTK_REAL, 3> &glo,
                         c2p_report &rep) const {
 
-  ROOTSTAT status;
+  ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
   rep.adjust_cons = false;
   rep.set_atmo = false;
@@ -369,7 +369,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL sol_v = sqrt(vsq_Sol);
   if (sol_v > v_lim) {
     printf("(sol_v > v_lim) is true!");
-    printf("sol_v, v_lim: %26.16e, %26.16e");
+    printf("sol_v, v_lim: %26.16e, %26.16e", sol_v, v_lim);
     pv.rho = cv.dens / w_lim;
     if (pv.rho >= rho_strict) {
       rep.set_speed_limit({sol_v, sol_v, sol_v});

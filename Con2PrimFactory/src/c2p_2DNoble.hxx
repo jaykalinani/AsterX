@@ -192,7 +192,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
                    cons_vars cv, const smat<CCTK_REAL, 3> &glo,
                    c2p_report &rep) const {
 
-  ROOTSTAT status;
+  ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
   rep.adjust_cons = false;
   rep.set_atmo = false;
@@ -285,7 +285,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
   /* Start Recovery with 2D NR Solver */
   const CCTK_INT n = 2;
-  const CCTK_REAL dv = (1. - 1.e-15);
+  //const CCTK_REAL dv = (1. - 1.e-15);
   CCTK_REAL dx[n];
   CCTK_REAL fjac[n][n];
   CCTK_REAL resid[n];
@@ -293,7 +293,6 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL errx = 1.;
   CCTK_REAL df = 1.;
   CCTK_REAL f = 1.;
-  status != ROOTSTAT::SUCCESS;
 
   CCTK_INT k;
   for (k = 1; k <= maxIterations; k++) {
@@ -420,7 +419,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL sol_v = sqrt(vsq_Sol);
   if (sol_v > v_lim) {
     printf("(sol_v > v_lim) is true!");
-    printf("sol_v, v_lim: %26.16e, %26.16e");
+    printf("sol_v, v_lim: %26.16e, %26.16e", sol_v, v_lim);
     pv.rho = cv.dens / w_lim;
     if (pv.rho >= rho_strict) {
       rep.set_speed_limit({sol_v, sol_v, sol_v});
