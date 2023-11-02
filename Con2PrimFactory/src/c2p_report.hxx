@@ -51,7 +51,10 @@ public:
   /**
   @return If the input was invalid according to the error policy.
   **/
-  CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool failed() const { return status != SUCCESS; }
+  CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
+  failed() const {
+    return status != SUCCESS;
+  }
 
   /// SUCCESS or reason for failure.
   err_code status{ERR_CODE_NOT_SET};
@@ -146,7 +149,7 @@ public:
   set_range_eps(CCTK_REAL eps_) {
     status = RANGE_EPS;
     set_atmo = false;
-    adjust_cons = false; //we do not adjust cons in this case!
+    adjust_cons = false; // we do not adjust cons in this case!
     eps = eps_;
   }
 
