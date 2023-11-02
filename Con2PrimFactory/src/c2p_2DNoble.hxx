@@ -285,7 +285,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
   /* Start Recovery with 2D NR Solver */
   const CCTK_INT n = 2;
-  //const CCTK_REAL dv = (1. - 1.e-15);
+  const CCTK_REAL dv = (1. - 1.e-15);
   CCTK_REAL dx[n];
   CCTK_REAL fjac[n][n];
   CCTK_REAL resid[n];
