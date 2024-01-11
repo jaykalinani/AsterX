@@ -29,6 +29,13 @@ KEYWORD test_case "Name of the testcase" STEERABLE=never
 
 private:
 
+# parameters for atmosphere
+
+REAL rho_atmosphere "floor density in the atmosphere"
+{
+  0.0:*   :: "Positive"
+} 1e-5
+
 # parameters for 1D tests
 
 CCTK_REAL amplitude "Wave amplitude" STEERABLE=never
