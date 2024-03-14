@@ -32,7 +32,8 @@ inline double GRHD_hm1()
   const double tmp_23 = -tmp_19*tmp_22*tmp_3 + ((tmp_16 + tmp_3)*(tmp_16 + tmp_3));
   const double tmp_24 = sqrt(tmp_13*tmp_19*((tmp_21)*(tmp_21))/(tmp_22*((tmp_23)*(tmp_23))) + 1);
   const double tmp_25 = a*tmp_11*sqrt(tmp_12)/tmp_10;
-  hm1 = -1 + sqrt(tmp_23*(tmp_24 + 1)/(tmp_19*tmp_21))*exp((1.0/2.0)*tmp_14 - tmp_17*tmp_25/tmp_23 + tmp_2*tmp_25/tmp_6 - 1.0/2.0*tmp_24)/sqrt(tmp_6*(tmp_14 + 1)/(((r_in)*(r_in))*tmp_5));
+
+  const double hm1 = -1 + sqrt(tmp_23*(tmp_24 + 1)/(tmp_19*tmp_21))*exp((1.0/2.0)*tmp_14 - tmp_17*tmp_25/tmp_23 + tmp_2*tmp_25/tmp_6 - 1.0/2.0*tmp_24)/sqrt(tmp_6*(tmp_14 + 1)/(((r_in)*(r_in))*tmp_5));
 
   return hm1;
 }
