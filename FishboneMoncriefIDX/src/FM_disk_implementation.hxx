@@ -38,19 +38,13 @@ inline double GRHD_hm1()
   return hm1;
 }
 
-void KerrSchild(const cGH* restrict const cctkGH,const CCTK_INT *cctk_lsh,
-                const CCTK_INT i0,const CCTK_INT i1,const CCTK_INT i2,
-                const CCTK_REAL *xcoordGF,const CCTK_REAL *ycoordGF,const CCTK_REAL *zcoordGF,
-                CCTK_REAL *alphaGF,CCTK_REAL *betaU0GF,CCTK_REAL *betaU1GF,CCTK_REAL *betaU2GF,
-                CCTK_REAL *gammaDD00GF,CCTK_REAL *gammaDD01GF,CCTK_REAL *gammaDD02GF,CCTK_REAL *gammaDD11GF,CCTK_REAL *gammaDD12GF,CCTK_REAL *gammaDD22GF,
-                CCTK_REAL     *KDD00GF,CCTK_REAL     *KDD01GF,CCTK_REAL     *KDD02GF,CCTK_REAL     *KDD11GF,CCTK_REAL     *KDD12GF,CCTK_REAL     *KDD22GF)
+void KerrSchild(CCTK_REAL const& xcoord, CCTK_REAL const& ycoord, CCTK_REAL const& zcoord,
+                CCTK_REAL& alpha, CCTK_REAL& betaU0, CCTK_REAL& betaU1 , CCTK_REAL& betaU2,
+                CCTK_REAL& gammaDD00, CCTK_REAL& gammaDD01, CCTK_REAL& gammaDD02, CCTK_REAL& gammaDD11, CCTK_REAL& gammaDD12, CCTK_REAL& gammaDD22,
+                CCTK_REAL& KDD00, CCTK_REAL& KDD01, CCTK_REAL& KDD02, CCTK_REAL& KDD11, CCTK_REAL& KDD12, CCTK_REAL& KDD22)
 {
 
   DECLARE_CCTK_PARAMETERS;
-
-  const double xcoord = xcoordGF[CCTK_GFINDEX3D(cctkGH, i0,i1,i2)];
-  const double ycoord = ycoordGF[CCTK_GFINDEX3D(cctkGH, i0,i1,i2)];
-  const double zcoord = zcoordGF[CCTK_GFINDEX3D(cctkGH, i0,i1,i2)];
 
   const double FDPart3_0 = ((a)*(a));
   const double FDPart3_1 = ((zcoord)*(zcoord));
@@ -140,24 +134,24 @@ void KerrSchild(const cGH* restrict const cctkGH,const CCTK_INT *cctk_lsh,
   const double FDPart3_112 = FDPart3_104*FDPart3_36*FDPart3_59*zcoord;
   const double FDPart3_113 = FDPart3_1*FDPart3_3*FDPart3_63;
 
-  alphaGF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = sqrt(FDPart3_15);
-  betaU0GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = 2*FDPart3_15*FDPart3_16*FDPart3_9;
-  betaU1GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_20*M*ycoord;
-  betaU2GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_20*M*zcoord;
+  alpha = sqrt(FDPart3_15);
+  betaU0 = 2*FDPart3_15*FDPart3_16*FDPart3_9;
+  betaU1 = FDPart3_20*M*ycoord;
+  betaU2 = FDPart3_20*M*zcoord;
 
-  gammaDD00GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_1*FDPart3_2*FDPart3_49 + FDPart3_2*FDPart3_33*FDPart3_6 + FDPart3_3*FDPart3_32*FDPart3_44 - FDPart3_41;
-  gammaDD01GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_1*FDPart3_34*FDPart3_49 + FDPart3_2*FDPart3_32*FDPart3_36*FDPart3_39 - FDPart3_3*FDPart3_32*FDPart3_36*FDPart3_39 - FDPart3_32*FDPart3_34*FDPart3_44 + FDPart3_34*FDPart3_50;
-  gammaDD02GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_14*FDPart3_29*FDPart3_30*FDPart3_31*FDPart3_6*FDPart3_8*xcoord*zcoord - FDPart3_56*ycoord - FDPart3_60*xcoord*zcoord;
-  gammaDD11GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_1*FDPart3_3*FDPart3_49 + FDPart3_2*FDPart3_32*FDPart3_44 + FDPart3_3*FDPart3_50 + FDPart3_41;
-  gammaDD12GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_50*ycoord*zcoord + FDPart3_56*xcoord - FDPart3_60*ycoord*zcoord;
-  gammaDD22GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_33*FDPart3_7 + FDPart3_47*FDPart3_62;
+  gammaDD00 = FDPart3_1*FDPart3_2*FDPart3_49 + FDPart3_2*FDPart3_33*FDPart3_6 + FDPart3_3*FDPart3_32*FDPart3_44 - FDPart3_41;
+  gammaDD01 = FDPart3_1*FDPart3_34*FDPart3_49 + FDPart3_2*FDPart3_32*FDPart3_36*FDPart3_39 - FDPart3_3*FDPart3_32*FDPart3_36*FDPart3_39 - FDPart3_32*FDPart3_34*FDPart3_44 + FDPart3_34*FDPart3_50;
+  gammaDD02 = FDPart3_14*FDPart3_29*FDPart3_30*FDPart3_31*FDPart3_6*FDPart3_8*xcoord*zcoord - FDPart3_56*ycoord - FDPart3_60*xcoord*zcoord;
+  gammaDD11 = FDPart3_1*FDPart3_3*FDPart3_49 + FDPart3_2*FDPart3_32*FDPart3_44 + FDPart3_3*FDPart3_50 + FDPart3_41;
+  gammaDD12 = FDPart3_50*ycoord*zcoord + FDPart3_56*xcoord - FDPart3_60*ycoord*zcoord;
+  gammaDD22 = FDPart3_33*FDPart3_7 + FDPart3_47*FDPart3_62;
 
-  KDD00GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_2*FDPart3_6*FDPart3_95 + FDPart3_64*FDPart3_78 + FDPart3_64*FDPart3_82 + FDPart3_71*FDPart3_99 + FDPart3_88 + FDPart3_92;
-  KDD01GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = 4*FDPart3_102*FDPart3_46 + FDPart3_102*FDPart3_81 - FDPart3_105*FDPart3_2*FDPart3_36 + FDPart3_105*FDPart3_3*FDPart3_36 + FDPart3_106*FDPart3_91 - FDPart3_12*FDPart3_34*FDPart3_75*FDPart3_98 - FDPart3_70*FDPart3_87*M + FDPart3_71*FDPart3_87*M;
-  KDD02GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = 8*FDPart3_0*FDPart3_107*FDPart3_63*FDPart3_65*FDPart3_74*FDPart3_79*M*xcoord - FDPart3_108*FDPart3_110*FDPart3_90 - FDPart3_109*FDPart3_90 - FDPart3_111*FDPart3_112 + 2*FDPart3_22*FDPart3_35*FDPart3_37*FDPart3_65*FDPart3_83*FDPart3_84*M*a*ycoord*zcoord + 4*FDPart3_6*FDPart3_65*FDPart3_74*FDPart3_83*FDPart3_84*M*xcoord*zcoord*(FDPart3_12 + FDPart3_73);
-  KDD11GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_113*FDPart3_78 + FDPart3_113*FDPart3_82 + FDPart3_3*FDPart3_6*FDPart3_95 + FDPart3_70*FDPart3_99 - FDPart3_88 - FDPart3_92;
-  KDD12GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_106*FDPart3_111*zcoord + FDPart3_107*FDPart3_110*FDPart3_111*FDPart3_63 - FDPart3_108*FDPart3_110*FDPart3_111 - FDPart3_109*FDPart3_111 + FDPart3_112*FDPart3_90 - 2*FDPart3_16*FDPart3_54*FDPart3_86*a;
-  KDD22GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = -FDPart3_1*FDPart3_37*FDPart3_59*FDPart3_82 + 4*FDPart3_5*FDPart3_62*FDPart3_76 + FDPart3_7*FDPart3_95;
+  KDD00 = FDPart3_2*FDPart3_6*FDPart3_95 + FDPart3_64*FDPart3_78 + FDPart3_64*FDPart3_82 + FDPart3_71*FDPart3_99 + FDPart3_88 + FDPart3_92;
+  KDD01 = 4*FDPart3_102*FDPart3_46 + FDPart3_102*FDPart3_81 - FDPart3_105*FDPart3_2*FDPart3_36 + FDPart3_105*FDPart3_3*FDPart3_36 + FDPart3_106*FDPart3_91 - FDPart3_12*FDPart3_34*FDPart3_75*FDPart3_98 - FDPart3_70*FDPart3_87*M + FDPart3_71*FDPart3_87*M;
+  KDD02 = 8*FDPart3_0*FDPart3_107*FDPart3_63*FDPart3_65*FDPart3_74*FDPart3_79*M*xcoord - FDPart3_108*FDPart3_110*FDPart3_90 - FDPart3_109*FDPart3_90 - FDPart3_111*FDPart3_112 + 2*FDPart3_22*FDPart3_35*FDPart3_37*FDPart3_65*FDPart3_83*FDPart3_84*M*a*ycoord*zcoord + 4*FDPart3_6*FDPart3_65*FDPart3_74*FDPart3_83*FDPart3_84*M*xcoord*zcoord*(FDPart3_12 + FDPart3_73);
+  KDD11 = FDPart3_113*FDPart3_78 + FDPart3_113*FDPart3_82 + FDPart3_3*FDPart3_6*FDPart3_95 + FDPart3_70*FDPart3_99 - FDPart3_88 - FDPart3_92;
+  KDD12 = FDPart3_106*FDPart3_111*zcoord + FDPart3_107*FDPart3_110*FDPart3_111*FDPart3_63 - FDPart3_108*FDPart3_110*FDPart3_111 - FDPart3_109*FDPart3_111 + FDPart3_112*FDPart3_90 - 2*FDPart3_16*FDPart3_54*FDPart3_86*a;
+  KDD22 = -FDPart3_1*FDPart3_37*FDPart3_59*FDPart3_82 + 4*FDPart3_5*FDPart3_62*FDPart3_76 + FDPart3_7*FDPart3_95;
 
 }
 

@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <cstdbool>
+#include <cmath> 
 
 #include "FM_disk_implementation.hxx"
 
@@ -14,26 +15,22 @@
 #define vely (&vel[1*cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2]])
 #define velz (&vel[2*cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2]])
 
-void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTS;
+extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
+{
+
+  DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_ET_GRHD_initial;
   DECLARE_CCTK_PARAMETERS;
 
-  CCTK_VINFO("Fishbone-Moncrief Disk Initial data.");
+  CCTK_VINFO("Fishbone-Moncrief Disk Initial data");
   CCTK_VINFO("Using input parameters of\n a = %e,\n M = %e,\nr_in = %e,\nr_at_max_density = %e\nkappa = %e\ngamma = %e",a,M,r_in,r_at_max_density,kappa,gamma);
 
   // First compute maximum pressure and density
-  CCTK_REAL P_max, rho_max;
-  {
-    CCTK_REAL hm1;
-    CCTK_REAL xcoord = r_at_max_density;
-    CCTK_REAL ycoord = 0.0;
-    CCTK_REAL zcoord = 0.0;
-    {
-#include "FMdisk_GRHD_hm1.h"
-    }
-    rho_max = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) );
-    P_max   = kappa * pow(rho_max, gamma);
-  }
+  CCTK_REAL hm1 = FMdisk::GRHD_hm1();
+  CCTK_REAL xcoord = r_at_max_density;
+  CCTK_REAL ycoord = 0.0;
+  CCTK_REAL zcoord = 0.0;
+  CCTK_REAL rho_max = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) );
+  CCTK_REAL P_max   = kappa * pow(rho_max, gamma);
 
   // We enforce units such that rho_max = 1.0; if these units are not obeyed, then
   //    we error out. If we did not error out, then the value of kappa used in all
@@ -49,29 +46,69 @@ void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS) {
     exit(1);
   }
 
-#pragma omp parallel for
-  for(CCTK_INT k=0;k<cctk_lsh[2];k++) for(CCTK_INT j=0;j<cctk_lsh[1];j++) for(CCTK_INT i=0;i<cctk_lsh[0];i++) {
-        CCTK_INT idx = CCTK_GFINDEX3D(cctkGH,i,j,k);
+  grid.loop_int<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        CCTK_REAL xcoord = x[idx];
-        CCTK_REAL ycoord = y[idx];
-        CCTK_REAL zcoord = z[idx];
-        CCTK_REAL rr = r[idx];
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
+        CCTK_REAL zcoord = p.z;
+        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
-        FishboneMoncrief_KerrSchild(cctkGH,cctk_lsh,
-                                    i,j,k,
-                                    x,y,z,
-                                    alp,betax,betay,betaz,
-                                    gxx,gxy,gxz,gyy,gyz,gzz,
-                                    kxx,kxy,kxz,kyy,kyz,kzz);
+        CCTK_REAL alp_L{0.};
+        CCTK_REAL betaU0_L{0.};
+        CCTK_REAL betaU1_L{0.};
+        CCTK_REAL betaU2_L{0.};
+        CCTK_REAL gDD00_L{0.};
+        CCTK_REAL gDD01_L{0.};
+        CCTK_REAL gDD02_L{0.};
+        CCTK_REAL gDD11_L{0.};
+        CCTK_REAL gDD12_L{0.};
+        CCTK_REAL gDD22_L{0.};
+        CCTK_REAL kDD00_L{0.};
+        CCTK_REAL kDD01_L{0.};
+        CCTK_REAL kDD02_L{0.};
+        CCTK_REAL kDD11_L{0.};
+        CCTK_REAL kDD12_L{0.};
+        CCTK_REAL kDD22_L{0.};
 
-        CCTK_REAL hm1;
+        FMdisk::KerrSchild(xcoord,ycoord,zcoord,
+                           alp_L,betaU0_L,betaU1_L,betaU2_L,
+                           gDD00_L,gDD01_L,gDD02_L,gDD11_L,gDD12_L,gDD22_L,
+                           kDD00_L,kDD01_L,kDD02_L,kDD11_L,kDD12_L,kDD22_L);
+
+        alp_cell(p.I) = alp_L;
+        betax_cell(p.I) = betaU0_L;
+        betay_cell(p.I) = betaU1_L;
+        betaz_cell(p.I) = betaU2_L;
+
+        dtalp_cell(p.I) = 0.0;
+        dtbetax_cell(p.I) = 0.0;
+        dtbetay_cell(p.I) = 0.0;
+        dtbetaz_cell(p.I) = 0.0;
+
+        gxx_cell(p.I) = gDD00_L;
+        gyy_cell(p.I) = gDD11_L;
+        gzz_cell(p.I) = gDD22_L;
+
+        gxy_cell(p.I) = gDD01_L;
+        gxz_cell(p.I) = gDD02_L;
+        gyz_cell(p.I) = gDD12_L;
+
+        kxx_cell(p.I) = kDD00_L;
+        kyy_cell(p.I) = kDD11_L;
+        kzz_cell(p.I) = kDD22_L;
+
+        kxy_cell(p.I) = kDD01_L;
+        kxz_cell(p.I) = kDD02_L;
+        kyz_cell(p.I) = kDD12_L;
+
+// HERE
+
         bool set_to_atmosphere=false;
         if(rr > r_in) {
-          {
-#include "FMdisk_GRHD_hm1.h"
-          }
           if(hm1 > 0) {
+
             rho[idx] = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) ) / rho_max;
             press[idx] = kappa*pow(rho[idx], gamma);
             // P = (\Gamma - 1) rho epsilon
