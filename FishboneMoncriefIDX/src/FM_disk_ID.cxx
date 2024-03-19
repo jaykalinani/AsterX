@@ -50,10 +50,10 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
         grid.nghostzones,
         [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        CCTK_REAL xcoord = p.x;
-        CCTK_REAL ycoord = p.y;
-        CCTK_REAL zcoord = p.z;
-        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+        const CCTK_REAL xcoord = p.x;
+        const CCTK_REAL ycoord = p.y;
+        const CCTK_REAL zcoord = p.z;
+        const CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
         CCTK_REAL alp_L{0.};
         CCTK_REAL betaU0_L{0.};
@@ -103,25 +103,38 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
         kxz_cell(p.I) = kDD02_L;
         kyz_cell(p.I) = kDD12_L;
 
-// HERE
-
         bool set_to_atmosphere=false;
+
         if(rr > r_in) {
+
           if(hm1 > 0) {
 
-            rho[idx] = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) ) / rho_max;
-            press[idx] = kappa*pow(rho[idx], gamma);
+            rho(p.I) = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) ) / rho_max;
+            press(p.I) = kappa*pow(rho(p.I), gamma);
             // P = (\Gamma - 1) rho epsilon
-            eps[idx] = press[idx] / (rho[idx] * (gamma - 1.0));
-            FishboneMoncrief_FMdisk_GRHD_velocities(cctkGH,cctk_lsh,
-                                                    i,j,k,
-                                                    x,y,z,
-                                                    velx,vely,velz);
+            eps(p.I) = press(p.I) / (rho(p.I) * (gamma - 1.0));
+
+            CCTK_REAL velU0_L{0.};
+            CCTK_REAL velU1_L{0.};
+            CCTK_REAL velU2_L{0.};
+
+            FMdisk::GRHD_velocities(xcoord,ycoord,zcoord,
+                                    velU0_L,velU1_L,velU2_L);
+
+            velx(p.I) = velU0_L;
+            vely(p.I) = velU1_L;
+            velz(p.I) = velU2_L;
+
           } else {
+
             set_to_atmosphere=true;
+
           }
+
         } else {
+
           set_to_atmosphere=true;
+
         }
         // Outside the disk? Set to atmosphere all hydrodynamic variables!
         if(set_to_atmosphere) {

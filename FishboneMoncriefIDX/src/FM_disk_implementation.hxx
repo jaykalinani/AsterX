@@ -155,17 +155,11 @@ void KerrSchild(CCTK_REAL const& xcoord, CCTK_REAL const& ycoord, CCTK_REAL cons
 
 }
 
-void GRHD_velocities(const cGH* restrict const cctkGH,const CCTK_INT *cctk_lsh,
-                     const CCTK_INT i0,const CCTK_INT i1,const CCTK_INT i2,
-                     const CCTK_REAL *xcoordGF,const CCTK_REAL *ycoordGF,const CCTK_REAL *zcoordGF,
-                     CCTK_REAL *Valencia3velocityU0GF, CCTK_REAL *Valencia3velocityU1GF, CCTK_REAL *Valencia3velocityU2GF)
+void GRHD_velocities(CCTK_REAL const& xcoord, CCTK_REAL const& ycoord, CCTK_REAL const& zcoord,
+                     CCTK_REAL &Valencia3velocityU0GF, CCTK_REAL &Valencia3velocityU1GF, CCTK_REAL &Valencia3velocityU2GF)
 {
 
   DECLARE_CCTK_PARAMETERS;
-
-  const double xcoord = xcoordGF[CCTK_GFINDEX3D(cctkGH, i0,i1,i2)];
-  const double ycoord = ycoordGF[CCTK_GFINDEX3D(cctkGH, i0,i1,i2)];
-  const double zcoord = zcoordGF[CCTK_GFINDEX3D(cctkGH, i0,i1,i2)];
 
   const double FDPart3_0 = ((a)*(a));
   const double FDPart3_2 = ((xcoord)*(xcoord)) + ((ycoord)*(ycoord)) + ((zcoord)*(zcoord));
@@ -194,9 +188,9 @@ void GRHD_velocities(const cGH* restrict const cctkGH,const CCTK_INT *cctk_lsh,
   const double FDPart3_31 = -FDPart3_27*FDPart3_30*FDPart3_7*a - sqrt(FDPart3_4)*sqrt(FDPart3_16*FDPart3_30)*sqrt(FDPart3_24 + 1.0/2.0);
   const double FDPart3_32 = (FDPart3_19*FDPart3_25*FDPart3_26*(-4*FDPart3_0*FDPart3_2*FDPart3_28*FDPart3_30*FDPart3_5*((M)*(M)) + FDPart3_23*FDPart3_30*FDPart3_4) - FDPart3_29*FDPart3_31)/(FDPart3_17*FDPart3_28*FDPart3_31*FDPart3_5 - FDPart3_27*FDPart3_29);
 
-  Valencia3velocityU0GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_10*FDPart3_12*xcoord - FDPart3_10*FDPart3_32*ycoord;
-  Valencia3velocityU1GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_10*FDPart3_12*ycoord + FDPart3_10*FDPart3_32*xcoord;
-  Valencia3velocityU2GF[CCTK_GFINDEX3D(cctkGH, i0, i1, i2)] = FDPart3_10*FDPart3_12*zcoord;
+  Valencia3velocityU0GF = FDPart3_10*FDPart3_12*xcoord - FDPart3_10*FDPart3_32*ycoord;
+  Valencia3velocityU1GF = FDPart3_10*FDPart3_12*ycoord + FDPart3_10*FDPart3_32*xcoord;
+  Valencia3velocityU2GF = FDPart3_10*FDPart3_12*zcoord;
 }
 
 void GRHD_perturb_pressure(double &press, double &eps, double const &rho) {
