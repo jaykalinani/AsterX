@@ -5,7 +5,7 @@
 namespace FMdisk
 {
 
-inline double GRHD_hm1()
+inline double GRHD_hm1(CCTK_REAL const& xcoord, CCTK_REAL const& ycoord, CCTK_REAL const& zcoord)
 {
 
   DECLARE_CCTK_PARAMETERS;

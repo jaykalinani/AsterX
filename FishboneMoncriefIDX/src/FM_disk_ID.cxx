@@ -24,13 +24,15 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
   CCTK_VINFO("Fishbone-Moncrief Disk Initial data");
   CCTK_VINFO("Using input parameters of\n a = %e,\n M = %e,\nr_in = %e,\nr_at_max_density = %e\nkappa = %e\ngamma = %e",a,M,r_in,r_at_max_density,kappa,gamma);
 
-  // First compute maximum pressure and density
-  CCTK_REAL hm1 = FMdisk::GRHD_hm1();
   CCTK_REAL xcoord = r_at_max_density;
   CCTK_REAL ycoord = 0.0;
   CCTK_REAL zcoord = 0.0;
-  CCTK_REAL rho_max = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) );
-  CCTK_REAL P_max   = kappa * pow(rho_max, gamma);
+  CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+
+  // First compute maximum pressure and density
+  CCTK_REAL hm1 = FMdisk::GRHD_hm1(xcoord,ycoord,zcoord);
+  const CCTK_REAL rho_max = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) );
+  const CCTK_REAL P_max   = kappa * pow(rho_max, gamma);
 
   // We enforce units such that rho_max = 1.0; if these units are not obeyed, then
   //    we error out. If we did not error out, then the value of kappa used in all
@@ -50,10 +52,10 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
         grid.nghostzones,
         [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        const CCTK_REAL xcoord = p.x;
-        const CCTK_REAL ycoord = p.y;
-        const CCTK_REAL zcoord = p.z;
-        const CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+        xcoord = p.x;
+        ycoord = p.y;
+        zcoord = p.z;
+        rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
         CCTK_REAL alp_L{0.};
         CCTK_REAL betaU0_L{0.};
@@ -105,12 +107,9 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
 
         bool set_to_atmosphere=false;
 
-        const CCTK_REAL xcoord = p.x;
-        const CCTK_REAL ycoord = p.y;
-        const CCTK_REAL zcoord = p.z;
-        const CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
-
         if(rr > r_in) {
+
+          hm1 = FMdisk::GRHD_hm1(xcoord,ycoord,zcoord);
 
           if(hm1 > 0) {
 
@@ -181,7 +180,16 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENT
         grid.nghostzones,
         [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
+    CCTK_REAL xcoord = p.x;
+    CCTK_REAL ycoord = p.y;
+    CCTK_REAL zcoord = p.z;
+    CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+
+    CCTK_REAL hm1 = 0.;
+
     if(rr > r_in) {
+
+	hm1 = FMdisk::GRHD_hm1(xcoord,ycoord,zcoord);
 
         if(hm1 > 0) {
 

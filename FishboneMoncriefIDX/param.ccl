@@ -1,12 +1,6 @@
 shares: HydroBaseX
 shares: ADMBaseX
 
-USES CCTK_INT lapse_timelevels
-USES CCTK_INT shift_timelevels
-USES CCTK_INT metric_timelevels
-
-USES KEYWORD metric_type
-
 EXTENDS KEYWORD initial_data
 {
   "FishboneMoncriefID" :: "Initial data from FishboneMoncriefID solution"
@@ -28,7 +22,6 @@ EXTENDS KEYWORD initial_dtshift
   "FishboneMoncriefID" :: "Initial dtshift from FishboneMoncriefID solution"
 }
 
-shares: HydroBase
 EXTENDS KEYWORD initial_hydro
 {
   "FishboneMoncriefID" :: "Initial GRHD data from FishboneMoncriefID solution"

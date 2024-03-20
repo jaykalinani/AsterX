@@ -21,7 +21,18 @@ schedule FishboneMoncrief_ET_GRHD_initial IN HydroBaseX_InitialData
 
 } "Set up general relativistic hydrodynamic (GRHD) fields for Fishbone-Moncrief disk"
 
-schedule FishboneMoncrief_ET_GRHD_initial__perturb_pressure IN CCTK_INITIAL AFTER Seed_Magnetic_Fields BEFORE IllinoisGRMHD_ID_Converter
+schedule FishboneMoncrief_ET_GRHD_initial__perturb_pressure IN HydroBaseX_InitialData AFTER FishboneMoncrief_ET_GRHD_initial
 {
     LANG: C
+
+    READS: HydroBaseX::rho(interior)
+    READS: HydroBaseX::eps(interior)
+    READS: HydroBaseX::press(interior)
+
+    WRITES: HydroBaseX::rho(interior)
+    WRITES: HydroBaseX::eps(interior)
+    WRITES: HydroBaseX::press(interior)
+
+    SYNC: HydroBaseX::rho HydroBaseX::eps HydroBaseX::press
+
 } "Add random perturbation to initial pressure, after seed magnetic fields have been set up (in case we'd like the seed magnetic fields to depend on the pristine pressures)"
