@@ -1,31 +1,24 @@
-STORAGE: ADMBase::metric[metric_timelevels], ADMBase::curv[metric_timelevels], ADMBase::lapse[lapse_timelevels], ADMBase::shift[shift_timelevels]
 
-schedule FishboneMoncrief_ET_GRHD_initial IN HydroBase_Initial
+schedule FishboneMoncrief_ET_GRHD_initial IN HydroBaseX_InitialData
 {
   LANG: C
-  READS: grid::x(Everywhere)
-  READS: grid::y(Everywhere)
-  READS: grid::z(Everywhere)
-  WRITES: admbase::alp(Everywhere)
-  WRITES: admbase::betax(Everywhere)
-  WRITES: admbase::betay(Everywhere)
-  WRITES: admbase::betaz(Everywhere)
-  WRITES: admbase::kxx(Everywhere)
-  WRITES: admbase::kxy(Everywhere)
-  WRITES: admbase::kxz(Everywhere)
-  WRITES: admbase::kyy(Everywhere)
-  WRITES: admbase::kyz(Everywhere)
-  WRITES: admbase::kzz(Everywhere)
-  WRITES: admbase::gxx(Everywhere)
-  WRITES: admbase::gxy(Everywhere)
-  WRITES: admbase::gxz(Everywhere)
-  WRITES: admbase::gyy(Everywhere)
-  WRITES: admbase::gyz(Everywhere)
-  WRITES: admbase::gzz(Everywhere)
-  WRITES: hydrobase::vel(Everywhere) # Note that vel is a vector gridfunction.
-  WRITES: hydrobase::rho(Everywhere)
-  WRITES: hydrobase::eps(Everywhere)
-  WRITES: hydrobase::press(Everywhere)
+
+  WRITES: HydroBaseX::rho(interior)
+  WRITES: HydroBaseX::vel(interior)
+  WRITES: HydroBaseX::eps(interior)
+  WRITES: HydroBaseX::press(interior)
+
+  WRITES: metric_cell(interior)
+  WRITES: lapse_cell(interior)
+  WRITES: shift_cell(interior)
+  WRITES: curv_cell(interior)
+  WRITES: dtlapse_cell(interior)
+  WRITES: dtshift_cell(interior)
+
+  SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press
+  SYNC: metric_cell lapse_cell shift_cell curv_cell
+  SYNC: dtlapse_cell dtshift_cell
+
 } "Set up general relativistic hydrodynamic (GRHD) fields for Fishbone-Moncrief disk"
 
 schedule FishboneMoncrief_ET_GRHD_initial__perturb_pressure IN CCTK_INITIAL AFTER Seed_Magnetic_Fields BEFORE IllinoisGRMHD_ID_Converter

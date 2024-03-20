@@ -105,6 +105,11 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
 
         bool set_to_atmosphere=false;
 
+        const CCTK_REAL xcoord = p.x;
+        const CCTK_REAL ycoord = p.y;
+        const CCTK_REAL zcoord = p.z;
+        const CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+
         if(rr > r_in) {
 
           if(hm1 > 0) {
@@ -142,18 +147,55 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
           //   rho =       1e-5 * r^(-3/2), and
           //   P   = k rho^gamma
           // Add 1e-100 or 1e-300 to rr or rho to avoid divisions by zero.
-          rho[idx] = 1e-5 * pow(rr + 1e-100,-3.0/2.0);
-          press[idx] = kappa*pow(rho[idx], gamma);
-          eps[idx] = press[idx] / ((rho[idx] + 1e-300) * (gamma - 1.0));
-          w_lorentz[idx] = 1.0;
-          velx[idx] = 0.0;
-          vely[idx] = 0.0;
-          velz[idx] = 0.0;
+          rho(p.I) = 1e-5 * pow(rr + 1e-100,-3.0/2.0);
+          press(p.I) = kappa*pow(rho(p.I), gamma);
+          eps(p.I) = press(p.I) / ((rho(p.I) + 1e-300) * (gamma - 1.0));
+          w_lorentz(p.I) = 1.0;
+          velx(p.I) = 0.0;
+          vely(p.I) = 0.0;
+          velz(p.I) = 0.0;
         }
       }
 
+  /*
   CCTK_INT final_idx = CCTK_GFINDEX3D(cctkGH,cctk_lsh[0]-1,cctk_lsh[1]-1,cctk_lsh[2]-1);
   CCTK_VINFO("=====   OUTPUTS   =====");
-  CCTK_VINFO("betai: %e %e %e \ngij: %e %e %e %e %e %e \nKij: %e %e %e %e %e %e\nalp: %e\n",betax[final_idx],betay[final_idx],betaz[final_idx],gxx[final_idx],gxy[final_idx],gxz[final_idx],gyy[final_idx],gyz[final_idx],gzz[final_idx],kxx[final_idx],kxy[final_idx],kxz[final_idx],kyy[final_idx],kyz[final_idx],kzz[final_idx],alp[final_idx]);
-  CCTK_VINFO("rho: %.15e\nPressure: %.15e\nvx: %.15e\nvy: %.15e\nvz: %.15e",rho[final_idx],press[final_idx],velx[final_idx],vely[final_idx],velz[final_idx]);
+  CCTK_VINFO("betai: %e %e %e \ngij: %e %e %e %e %e %e \nKij: %e %e %e %e %e %e\nalp: %e\n",
+              betax[final_idx],betay[final_idx],betaz[final_idx],
+              gxx[final_idx],gxy[final_idx],gxz[final_idx],gyy[final_idx],gyz[final_idx],gzz[final_idx],
+              kxx[final_idx],kxy[final_idx],kxz[final_idx],kyy[final_idx],kyz[final_idx],kzz[final_idx],
+              alp[final_idx]);
+  CCTK_VINFO("rho: %.15e\nPressure: %.15e\nvx: %.15e\nvy: %.15e\nvz: %.15e",
+              rho[final_idx],press[final_idx],
+              velx[final_idx],vely[final_idx],velz[final_idx]);
+  */
+}
+
+extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENTS)
+{
+
+  DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_ET_GRHD_initial__perturb_pressure;
+  DECLARE_CCTK_PARAMETERS;
+
+  grid.loop_int<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+    if(rr > r_in) {
+
+        if(hm1 > 0) {
+
+          press_L = press(p.I);
+          eps_L = eps(p.I);
+          rho_L = rho(p.I);
+
+          FMdisk::GRHD_perturb_pressure(press_L, eps_L, rho_L);
+
+          press(p.I) = press_L;
+          eps(p.I) = eps_L;
+          rho(p.I) = rho_L;
+
+        }
+    }
+  }
 }

@@ -80,6 +80,7 @@ CCTK_REAL gamma "Equation of state: P = kappa * rho^gamma"
 ##################################
 # PRESSURE PERTURBATION PARAMETERS
 private:
+
 CCTK_REAL random_min "Floor value of random perturbation to initial pressure, where perturbed pressure = pressure*(1.0 + (random_min + (random_max-random_min)*RAND[0,1)))"
 {
   *:*      :: "Any value"
