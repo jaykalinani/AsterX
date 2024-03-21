@@ -218,7 +218,7 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENT
 extern "C" void FishboneMoncrief_Set_Spacetime(CCTK_ARGUMENTS)
 {
 
-  DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_ET_GRHD_initial__perturb_pressure;
+  DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_Set_Spacetime;
   DECLARE_CCTK_PARAMETERS;
 
   // Setup metric, loop over vertices
