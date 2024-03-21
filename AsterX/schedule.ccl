@@ -180,6 +180,7 @@ SCHEDULE AsterX_RHS IN ODESolvers_RHS AFTER AsterX_SourceTerms
 {
   LANG: C
   READS: ADMBaseX::metric(everywhere) ADMBaseX::lapse(everywhere) ADMBaseX::shift(everywhere)
+  READS: HydroBaseX::vel(everywhere) HydroBaseX::press(everywhere)
   READS: flux_x(everywhere) flux_y(everywhere) flux_z(everywhere)
   READS: densrhs(everywhere) taurhs(everywhere) momrhs(everywhere)
   READS: Psi(everywhere)

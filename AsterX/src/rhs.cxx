@@ -4,6 +4,7 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <reconstruct.hxx>
 #include "utils.hxx"
 
 // #ifdef AMREX_USE_GPU
@@ -15,12 +16,52 @@
 namespace AsterX {
 using namespace Loop;
 using namespace Arith;
+using namespace ReconX;
 
 enum class vector_potential_gauge_t { algebraic, generalized_lorentz };
 
 extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_RHS;
   DECLARE_CCTK_PARAMETERS;
+
+  reconstruction_t reconstruction;
+  if (CCTK_EQUALS(reconstruction_method, "Godunov"))
+    reconstruction = reconstruction_t::Godunov;
+  else if (CCTK_EQUALS(reconstruction_method, "minmod"))
+    reconstruction = reconstruction_t::minmod;
+  else if (CCTK_EQUALS(reconstruction_method, "monocentral"))
+    reconstruction = reconstruction_t::monocentral;
+  else if (CCTK_EQUALS(reconstruction_method, "ppm"))
+    reconstruction = reconstruction_t::ppm;
+  else if (CCTK_EQUALS(reconstruction_method, "eppm"))
+    reconstruction = reconstruction_t::eppm;
+  else if (CCTK_EQUALS(reconstruction_method, "wenoz"))
+    reconstruction = reconstruction_t::wenoz;
+  else if (CCTK_EQUALS(reconstruction_method, "mp5"))
+    reconstruction = reconstruction_t::mp5;
+  else
+    CCTK_ERROR("Unknown value for parameter \"reconstruction_method\"");
+
+  // reconstruction parameters struct
+  reconstruct_params_t reconstruct_params;
+
+  // ppm parameters
+  reconstruct_params.ppm_shock_detection = ppm_shock_detection;
+  reconstruct_params.ppm_zone_flattening = ppm_zone_flattening;
+  reconstruct_params.poly_k = poly_k;
+  reconstruct_params.poly_gamma = poly_gamma;
+  reconstruct_params.ppm_eta1 = ppm_eta1;
+  reconstruct_params.ppm_eta2 = ppm_eta2;
+  reconstruct_params.ppm_eps = ppm_eps;
+  reconstruct_params.ppm_eps_shock = ppm_eps_shock;
+  reconstruct_params.ppm_small = ppm_small;
+  reconstruct_params.ppm_omega1 = ppm_omega1;
+  reconstruct_params.ppm_omega2 = ppm_omega2;
+  reconstruct_params.enhanced_ppm_C2 = enhanced_ppm_C2;
+  // wenoz parameters
+  reconstruct_params.weno_eps = weno_eps;
+  // mp5 parameters
+  reconstruct_params.mp5_alpha = mp5_alpha;
 
   vector_potential_gauge_t gauge;
   if (CCTK_EQUALS(vector_potential_gauge, "algebraic"))
