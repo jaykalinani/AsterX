@@ -10,11 +10,6 @@
 
 #include "FM_disk_implementation.hxx"
 
-// Alias for "vel" vector gridfunction:
-#define velx (&vel[0*cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2]])
-#define vely (&vel[1*cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2]])
-#define velz (&vel[2*cctk_lsh[0]*cctk_lsh[1]*cctk_lsh[2]])
-
 extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
 {
 
@@ -24,14 +19,14 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
   CCTK_VINFO("Fishbone-Moncrief Disk Initial data");
   CCTK_VINFO("Using input parameters of\n a = %e,\n M = %e,\nr_in = %e,\nr_at_max_density = %e\nkappa = %e\ngamma = %e",a,M,r_in,r_at_max_density,kappa,gamma);
 
-  CCTK_REAL xcoord = r_at_max_density;
-  CCTK_REAL ycoord = 0.0;
-  CCTK_REAL zcoord = 0.0;
-  CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+  const CCTK_REAL xcoord_init = r_at_max_density;
+  const CCTK_REAL ycoord_init = 0.0;
+  const CCTK_REAL zcoord_init = 0.0;
+  const CCTK_REAL rr_init = sqrt(xcoord_init*xcoord_init+ycoord_init*ycoord_init+zcoord_init*zcoord_init);
 
   // First compute maximum pressure and density
-  CCTK_REAL hm1 = FMdisk::GRHD_hm1(xcoord,ycoord,zcoord);
-  const CCTK_REAL rho_max = pow( hm1 * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) );
+  const CCTK_REAL hm1_init = FMdisk::GRHD_hm1(xcoord_init,ycoord_init,zcoord_init);
+  const CCTK_REAL rho_max = pow( hm1_init * (gamma-1.0) / (kappa*gamma), 1.0/(gamma-1.0) );
   const CCTK_REAL P_max   = kappa * pow(rho_max, gamma);
 
   // We enforce units such that rho_max = 1.0; if these units are not obeyed, then
@@ -48,14 +43,15 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
     exit(1);
   }
 
-  grid.loop_int<1, 1, 1>(
+  // Setup metric, loop over vertices
+  grid.loop_int<0, 0, 0>(
         grid.nghostzones,
         [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        xcoord = p.x;
-        ycoord = p.y;
-        zcoord = p.z;
-        rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
+        CCTK_REAL zcoord = p.z;
+        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
         CCTK_REAL alp_L{0.};
         CCTK_REAL betaU0_L{0.};
@@ -79,37 +75,49 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
                            gDD00_L,gDD01_L,gDD02_L,gDD11_L,gDD12_L,gDD22_L,
                            kDD00_L,kDD01_L,kDD02_L,kDD11_L,kDD12_L,kDD22_L);
 
-        alp_cell(p.I) = alp_L;
-        betax_cell(p.I) = betaU0_L;
-        betay_cell(p.I) = betaU1_L;
-        betaz_cell(p.I) = betaU2_L;
+        alp(p.I) = alp_L;
+        betax(p.I) = betaU0_L;
+        betay(p.I) = betaU1_L;
+        betaz(p.I) = betaU2_L;
 
-        dtalp_cell(p.I) = 0.0;
-        dtbetax_cell(p.I) = 0.0;
-        dtbetay_cell(p.I) = 0.0;
-        dtbetaz_cell(p.I) = 0.0;
+        dtalp(p.I) = 0.0;
+        dtbetax(p.I) = 0.0;
+        dtbetay(p.I) = 0.0;
+        dtbetaz(p.I) = 0.0;
 
-        gxx_cell(p.I) = gDD00_L;
-        gyy_cell(p.I) = gDD11_L;
-        gzz_cell(p.I) = gDD22_L;
+        gxx(p.I) = gDD00_L;
+        gyy(p.I) = gDD11_L;
+        gzz(p.I) = gDD22_L;
 
-        gxy_cell(p.I) = gDD01_L;
-        gxz_cell(p.I) = gDD02_L;
-        gyz_cell(p.I) = gDD12_L;
+        gxy(p.I) = gDD01_L;
+        gxz(p.I) = gDD02_L;
+        gyz(p.I) = gDD12_L;
 
-        kxx_cell(p.I) = kDD00_L;
-        kyy_cell(p.I) = kDD11_L;
-        kzz_cell(p.I) = kDD22_L;
+        kxx(p.I) = kDD00_L;
+        kyy(p.I) = kDD11_L;
+        kzz(p.I) = kDD22_L;
 
-        kxy_cell(p.I) = kDD01_L;
-        kxz_cell(p.I) = kDD02_L;
-        kyz_cell(p.I) = kDD12_L;
+        kxy(p.I) = kDD01_L;
+        kxz(p.I) = kDD02_L;
+        kyz(p.I) = kDD12_L;
+
+  });
+
+  // Setup hydro, loop over cell centers
+  grid.loop_int<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
+        CCTK_REAL zcoord = p.z;
+        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
         bool set_to_atmosphere=false;
 
         if(rr > r_in) {
 
-          hm1 = FMdisk::GRHD_hm1(xcoord,ycoord,zcoord);
+          CCTK_REAL hm1 = FMdisk::GRHD_hm1(xcoord,ycoord,zcoord);
 
           if(hm1 > 0) {
 
@@ -149,12 +157,11 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
           rho(p.I) = 1e-5 * pow(rr + 1e-100,-3.0/2.0);
           press(p.I) = kappa*pow(rho(p.I), gamma);
           eps(p.I) = press(p.I) / ((rho(p.I) + 1e-300) * (gamma - 1.0));
-          w_lorentz(p.I) = 1.0;
           velx(p.I) = 0.0;
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
         }
-      }
+      });
 
   /*
   CCTK_INT final_idx = CCTK_GFINDEX3D(cctkGH,cctk_lsh[0]-1,cctk_lsh[1]-1,cctk_lsh[2]-1);
@@ -193,9 +200,9 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENT
 
         if(hm1 > 0) {
 
-          press_L = press(p.I);
-          eps_L = eps(p.I);
-          rho_L = rho(p.I);
+          CCTK_REAL press_L = press(p.I);
+          CCTK_REAL eps_L = eps(p.I);
+          CCTK_REAL rho_L = rho(p.I);
 
           FMdisk::GRHD_perturb_pressure(press_L, eps_L, rho_L);
 
@@ -205,5 +212,72 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENT
 
         }
     }
-  }
+  });
+}
+
+extern "C" void FishboneMoncrief_Set_Spacetime(CCTK_ARGUMENTS)
+{
+
+  DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_ET_GRHD_initial__perturb_pressure;
+  DECLARE_CCTK_PARAMETERS;
+
+  // Setup metric, loop over vertices
+  grid.loop_int<0, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
+        CCTK_REAL zcoord = p.z;
+        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+
+        CCTK_REAL alp_L{0.};
+        CCTK_REAL betaU0_L{0.};
+        CCTK_REAL betaU1_L{0.};
+        CCTK_REAL betaU2_L{0.};
+        CCTK_REAL gDD00_L{0.};
+        CCTK_REAL gDD01_L{0.};
+        CCTK_REAL gDD02_L{0.};
+        CCTK_REAL gDD11_L{0.};
+        CCTK_REAL gDD12_L{0.};
+        CCTK_REAL gDD22_L{0.};
+        CCTK_REAL kDD00_L{0.};
+        CCTK_REAL kDD01_L{0.};
+        CCTK_REAL kDD02_L{0.};
+        CCTK_REAL kDD11_L{0.};
+        CCTK_REAL kDD12_L{0.};
+        CCTK_REAL kDD22_L{0.};
+
+        FMdisk::KerrSchild(xcoord,ycoord,zcoord,
+                           alp_L,betaU0_L,betaU1_L,betaU2_L,
+                           gDD00_L,gDD01_L,gDD02_L,gDD11_L,gDD12_L,gDD22_L,
+                           kDD00_L,kDD01_L,kDD02_L,kDD11_L,kDD12_L,kDD22_L);
+
+        alp(p.I) = alp_L;
+        betax(p.I) = betaU0_L;
+        betay(p.I) = betaU1_L;
+        betaz(p.I) = betaU2_L;
+
+        dtalp(p.I) = 0.0;
+        dtbetax(p.I) = 0.0;
+        dtbetay(p.I) = 0.0;
+        dtbetaz(p.I) = 0.0;
+
+        gxx(p.I) = gDD00_L;
+        gyy(p.I) = gDD11_L;
+        gzz(p.I) = gDD22_L;
+
+        gxy(p.I) = gDD01_L;
+        gxz(p.I) = gDD02_L;
+        gyz(p.I) = gDD12_L;
+
+        kxx(p.I) = kDD00_L;
+        kyy(p.I) = kDD11_L;
+        kzz(p.I) = kDD22_L;
+
+        kxy(p.I) = kDD01_L;
+        kxz(p.I) = kDD02_L;
+        kyz(p.I) = kDD12_L;
+
+  });
 }

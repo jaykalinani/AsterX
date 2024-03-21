@@ -8,16 +8,16 @@ schedule FishboneMoncrief_ET_GRHD_initial IN HydroBaseX_InitialData
   WRITES: HydroBaseX::eps(interior)
   WRITES: HydroBaseX::press(interior)
 
-  WRITES: metric_cell(interior)
-  WRITES: lapse_cell(interior)
-  WRITES: shift_cell(interior)
-  WRITES: curv_cell(interior)
-  WRITES: dtlapse_cell(interior)
-  WRITES: dtshift_cell(interior)
+  WRITES: ADMBaseX::metric(interior)
+  WRITES: ADMBaseX::lapse(interior)
+  WRITES: ADMBaseX::shift(interior)
+  WRITES: ADMBaseX::curv(interior)
+  WRITES: ADMBaseX::dtlapse(interior)
+  WRITES: ADMBaseX::dtshift(interior)
 
+  SYNC: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
+  SYNC: ADMBaseX::dtlapse ADMBaseX::dtshift
   SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press
-  SYNC: metric_cell lapse_cell shift_cell curv_cell
-  SYNC: dtlapse_cell dtshift_cell
 
 } "Set up general relativistic hydrodynamic (GRHD) fields for Fishbone-Moncrief disk"
 
@@ -25,9 +25,9 @@ schedule FishboneMoncrief_ET_GRHD_initial__perturb_pressure IN HydroBaseX_Initia
 {
     LANG: C
 
-    READS: HydroBaseX::rho(interior)
-    READS: HydroBaseX::eps(interior)
-    READS: HydroBaseX::press(interior)
+    READS: HydroBaseX::rho(everywhere)
+    READS: HydroBaseX::eps(everywhere)
+    READS: HydroBaseX::press(everywhere)
 
     WRITES: HydroBaseX::rho(interior)
     WRITES: HydroBaseX::eps(interior)
@@ -36,3 +36,20 @@ schedule FishboneMoncrief_ET_GRHD_initial__perturb_pressure IN HydroBaseX_Initia
     SYNC: HydroBaseX::rho HydroBaseX::eps HydroBaseX::press
 
 } "Add random perturbation to initial pressure, after seed magnetic fields have been set up (in case we'd like the seed magnetic fields to depend on the pristine pressures)"
+
+if (FM_Cowling) {
+  schedule FishboneMoncrief_Set_Spacetime IN CCTK_POSTREGRID
+  {
+    LANG: C
+    WRITES: ADMBaseX::metric(interior)
+    WRITES: ADMBaseX::lapse(interior)
+    WRITES: ADMBaseX::shift(interior)
+    WRITES: ADMBaseX::curv(interior)
+    WRITES: ADMBaseX::dtlapse(interior)
+    WRITES: ADMBaseX::dtshift(interior)
+
+    SYNC: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
+    SYNC: ADMBaseX::dtlapse ADMBaseX::dtshift
+
+  } "Set ADM variables for FM torus"
+}

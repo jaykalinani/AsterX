@@ -86,3 +86,7 @@ CCTK_REAL random_max "Ceiling value of random perturbation to initial pressure, 
   *:*      :: "Any value"
 } 0.02
 
+##################################
+BOOLEAN FM_Cowling "Do not evolve spacetime"
+{
+} "yes"
