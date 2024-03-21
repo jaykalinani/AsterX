@@ -44,6 +44,27 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
   const vec<GF3D2<const CCTK_REAL>, dim> gf_F{Fx, Fy, Fz};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_Fbeta{Fbetax, Fbetay, Fbetaz};
+  /* grid functions for Upwind CT */
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_vels{velx, vely, velz};
+  const vec<GF3D2<const CCTK_REAL>, dim> dBstag_one{dBy_stag, dBz_stag,
+                                                    dBx_stag};
+  const vec<GF3D2<const CCTK_REAL>, dim> dBstag_two{dBz_stag, dBx_stag,
+                                                    dBy_stag};
+
+  const vec<GF3D2<const CCTK_REAL>, dim> vtildes_one{
+      vtilde_z_yface, vtilde_x_zface, vtilde_y_xface};
+  const vec<GF3D2<const CCTK_REAL>, dim> vtildes_two{
+      vtilde_y_zface, vtilde_z_xface, vtilde_x_yface};
+
+  const vec<GF3D2<const CCTK_REAL>, dim> amax_one{amax_zface, amax_xface,
+                                                  amax_yface};
+  const vec<GF3D2<const CCTK_REAL>, dim> amax_two{amax_yface, amax_zface,
+                                                  amax_xface};
+
+  const vec<GF3D2<const CCTK_REAL>, dim> amin_one{amin_zface, amin_xface,
+                                                  amin_yface};
+  const vec<GF3D2<const CCTK_REAL>, dim> amin_two{amin_yface, amin_zface,
+                                                  amin_xface};
 
   const auto calcupdate_hydro =
       [=] CCTK_DEVICE(const vec<GF3D2<const CCTK_REAL>, dim> &gf_fluxes,
@@ -54,28 +75,77 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         return -calc_contraction(idx, dfluxes);
       };
 
-  const auto calcupdate_Avec =
-      [=] CCTK_DEVICE(const PointDesc &p, int i) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const int j = (i == 0) ? 1 : ((i == 1) ? 2 : 0);
-        const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
+  const auto calcupdate_Avec = [=] CCTK_DEVICE(
+                                   const PointDesc &p,
+                                   int i) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    const int j = (i == 0) ? 1 : ((i == 1) ? 2 : 0);
+    const int k = (i == 0) ? 2 : ((i == 1) ? 0 : 1);
 
-        const CCTK_REAL E =
-            0.25 * ((gf_fBs(j)(k)(p.I) + gf_fBs(j)(k)(p.I - p.DI[j])) -
-                    (gf_fBs(k)(j)(p.I) + gf_fBs(k)(j)(p.I - p.DI[k])));
+    CCTK_REAL E;
+    /* Begin code for upwindCT */
+    if (use_uct) {
 
-        switch (gauge) {
-        case vector_potential_gauge_t::algebraic: {
-          return -E;
-          break;
-        }
-        case vector_potential_gauge_t::generalized_lorentz: {
-          return -E - calc_fd2_v2e(G, p, i);
-          break;
-        }
-        default:
-          assert(0);
-        }
-      };
+      const vec<vec<CCTK_REAL, 2>, 3> dBstag_one_rc([&](int m) ARITH_INLINE {
+        return vec<CCTK_REAL, 2>{reconstruct(dBstag_one(m), p, reconstruction,
+                                             k, false, false, press, gf_vels(k),
+                                             reconstruct_params)};
+      });
+
+      const vec<vec<CCTK_REAL, 2>, 3> dBstag_two_rc([&](int m) ARITH_INLINE {
+        return vec<CCTK_REAL, 2>{reconstruct(dBstag_two(m), p, reconstruction,
+                                             j, false, false, press, gf_vels(j),
+                                             reconstruct_params)};
+      });
+
+      const vec<vec<CCTK_REAL, 2>, 3> vtildes_one_rc([&](int m) ARITH_INLINE {
+        return vec<CCTK_REAL, 2>{reconstruct(vtildes_one(m), p, reconstruction,
+                                             k, false, false, press, gf_vels(k),
+                                             reconstruct_params)};
+      });
+
+      const vec<vec<CCTK_REAL, 2>, 3> vtildes_two_rc([&](int m) ARITH_INLINE {
+        return vec<CCTK_REAL, 2>{reconstruct(vtildes_two(m), p, reconstruction,
+                                             j, false, false, press, gf_vels(j),
+                                             reconstruct_params)};
+      });
+
+      // i=dir, j=dir1, k=dir2
+
+      // first term
+      CCTK_REAL denom_one = amax_one(i)(p.I) + amin_one(i)(p.I);
+      E = (amax_one(i)(p.I) * vtildes_one_rc(i)(0) * dBstag_one_rc(i)(0) +
+           amin_one(i)(p.I) * vtildes_one_rc(i)(1) * dBstag_one_rc(i)(1) -
+           amax_one(i)(p.I) * amin_one(i)(p.I) *
+               (dBstag_one_rc(i)(1) - dBstag_one_rc(i)(0))) /
+          denom_one;
+
+      // second term
+      CCTK_REAL denom_two = amax_two(i)(p.I) + amin_two(i)(p.I);
+      E -= (amax_two(i)(p.I) * vtildes_two_rc(i)(0) * dBstag_two_rc(i)(0) +
+            amin_two(i)(p.I) * vtildes_two_rc(i)(1) * dBstag_two_rc(i)(1) -
+            amax_two(i)(p.I) * amin_two(i)(p.I) *
+                (dBstag_two_rc(i)(1) - dBstag_two_rc(i)(0))) /
+           denom_two;
+
+    }
+    /* End code for upwindCT */
+    else {
+      E = 0.25 * ((gf_fBs(j)(k)(p.I) + gf_fBs(j)(k)(p.I - p.DI[j])) -
+                  (gf_fBs(k)(j)(p.I) + gf_fBs(k)(j)(p.I - p.DI[k])));
+    }
+    switch (gauge) {
+    case vector_potential_gauge_t::algebraic: {
+      return -E;
+      break;
+    }
+    case vector_potential_gauge_t::generalized_lorentz: {
+      return -E - calc_fd2_v2e(G, p, i);
+      break;
+    }
+    default:
+      assert(0);
+    }
+  };
 
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
@@ -88,9 +158,9 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
         if (isnan(densrhs(p.I))) {
           printf("calcupdate = %f, ", calcupdate_hydro(gf_fdens, p));
           printf("densrhs = %f, gf_fdens = %f, %f, %f, %f, %f, %f \n",
-              densrhs(p.I),
-              gf_fdens(0)(p.I), gf_fdens(1)(p.I), gf_fdens(2)(p.I),
-              gf_fdens(0)(p.I + p.DI[0]), gf_fdens(1)(p.I + p.DI[1]), gf_fdens(2)(p.I + p.DI[2]));
+                 densrhs(p.I), gf_fdens(0)(p.I), gf_fdens(1)(p.I),
+                 gf_fdens(2)(p.I), gf_fdens(0)(p.I + p.DI[0]),
+                 gf_fdens(1)(p.I + p.DI[1]), gf_fdens(2)(p.I + p.DI[2]));
         }
         assert(!isnan(densrhs(p.I)));
       });
