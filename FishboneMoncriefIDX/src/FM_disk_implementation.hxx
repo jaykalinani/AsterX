@@ -53,6 +53,7 @@ void KerrSchild(CCTK_REAL const& xcoord, CCTK_REAL const& ycoord, CCTK_REAL cons
   const double FDPart3_4 = FDPart3_2 + FDPart3_3;
   const double FDPart3_5 = FDPart3_1 + FDPart3_4;
   const double FDPart3_6 = (1.0/(FDPart3_5));
+  // FDPart3_7 is one on the z axis
   const double FDPart3_7 = FDPart3_1*FDPart3_6;
   const double FDPart3_8 = FDPart3_0*FDPart3_7 + FDPart3_5;
   const double FDPart3_9 = (1.0/(FDPart3_8));
@@ -62,10 +63,13 @@ void KerrSchild(CCTK_REAL const& xcoord, CCTK_REAL const& ycoord, CCTK_REAL cons
   const double FDPart3_15 = (1.0/(FDPart3_14));
   const double FDPart3_16 = M*xcoord;
   const double FDPart3_20 = 2*FDPart3_15*FDPart3_9;
+  // FDPart3_22 is zero on the z axis
   const double FDPart3_22 = 1 - FDPart3_7;
+  // FDPart3_24 is zero on the z axis
   const double FDPart3_24 = FDPart3_0*((FDPart3_14)*(FDPart3_14))*((FDPart3_22)*(FDPart3_22));
   const double FDPart3_25 = ((FDPart3_8)*(FDPart3_8));
   const double FDPart3_26 = FDPart3_0*FDPart3_12*FDPart3_22*FDPart3_9 + FDPart3_0 + FDPart3_5;
+  // FDPart3_27 is zero on the z axis
   const double FDPart3_27 = FDPart3_14*FDPart3_22*FDPart3_26*FDPart3_8 - FDPart3_24*FDPart3_8;
   const double FDPart3_28 = (1.0/((FDPart3_27)*(FDPart3_27)*(FDPart3_27)));
   const double FDPart3_29 = FDPart3_14*FDPart3_22*FDPart3_26 - FDPart3_24;
