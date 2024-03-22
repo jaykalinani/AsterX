@@ -70,6 +70,10 @@ CCTK_INT tmunu_interp_order "Order of interpolation used when constructing tmunu
   4 :: "Fourth order interpolation"
 } 4
 
+BOOLEAN update_tmunu "Updates tmunu gridfunctions if set to yes" STEERABLE=always
+{ 
+} yes
+
 SHARES: EOSX
 USES KEYWORD evolution_eos
 USES CCTK_REAL poly_gamma
