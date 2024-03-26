@@ -162,19 +162,6 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
           velz(p.I) = 0.0;
         }
       });
-
-  /*
-  CCTK_INT final_idx = CCTK_GFINDEX3D(cctkGH,cctk_lsh[0]-1,cctk_lsh[1]-1,cctk_lsh[2]-1);
-  CCTK_VINFO("=====   OUTPUTS   =====");
-  CCTK_VINFO("betai: %e %e %e \ngij: %e %e %e %e %e %e \nKij: %e %e %e %e %e %e\nalp: %e\n",
-              betax[final_idx],betay[final_idx],betaz[final_idx],
-              gxx[final_idx],gxy[final_idx],gxz[final_idx],gyy[final_idx],gyz[final_idx],gzz[final_idx],
-              kxx[final_idx],kxy[final_idx],kxz[final_idx],kyy[final_idx],kyz[final_idx],kzz[final_idx],
-              alp[final_idx]);
-  CCTK_VINFO("rho: %.15e\nPressure: %.15e\nvx: %.15e\nvy: %.15e\nvz: %.15e",
-              rho[final_idx],press[final_idx],
-              velx[final_idx],vely[final_idx],velz[final_idx]);
-  */
 }
 
 extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENTS)
