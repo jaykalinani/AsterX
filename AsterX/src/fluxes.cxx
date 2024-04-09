@@ -45,6 +45,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   const vec<GF3D2<CCTK_REAL>, dim> fluxBzs{fxBz, fyBz, fzBz};
   /* grid functions */
   const vec<GF3D2<const CCTK_REAL>, dim> gf_vels{velx, vely, velz};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_zvec{zvec_x, zvec_y, zvec_z};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_Bvecs{Bvecx, Bvecy, Bvecz};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
   const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
@@ -169,6 +170,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false, false)};
     });
+    const vec<vec<CCTK_REAL, 2>, 3> zvec_rc([&](int i) ARITH_INLINE {
+      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_zvec(i), p, false, false)};
+    });
     const vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
     const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, false)};
@@ -193,9 +197,15 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
         return alp_avg * vels_rc(i)(f) - betas_avg(i);
       });
     });
+
     /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
+    //const vec<CCTK_REAL, 2> w_lorentz_rc([&](int f) ARITH_INLINE {
+    //  return 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(f));
+    //});
+    
+    const vec<vec<CCTK_REAL, 2>, 3> zveclow_rc = calc_contraction(g_avg, zvec_rc);
     const vec<CCTK_REAL, 2> w_lorentz_rc([&](int f) ARITH_INLINE {
-      return 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(f));
+      return sqrt(1 + calc_contraction(zveclow_rc, zvec_rc)(f));
     });
 
     /* alpha * b0 = W * B^i * v_i */
@@ -343,7 +353,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     fluxBzs(dir)(p.I) =
         (dir != 2) * calcflux(lambda, Btildes_rc(2), flux_Btildes(2));
 
-    /*
     if (isnan(dens_rc(0)) || isnan(dens_rc(1)) || isnan(moms_rc(0)(0)) ||
         isnan(moms_rc(0)(1)) || isnan(moms_rc(1)(0)) || isnan(moms_rc(1)(1)) ||
         isnan(moms_rc(2)(0)) || isnan(moms_rc(2)(1)) || isnan(tau_rc(0)) ||
@@ -428,7 +437,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
              vels_rc(2)(0), vels_rc(2)(1));
       printf("  vtilde_rc = %16.8e, %16.8e.\n", vtilde_rc(0), vtilde_rc(1));
       assert(0);
-    }*/
+    }
   });
 }
 

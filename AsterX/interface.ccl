@@ -98,3 +98,8 @@ CCTK_REAL saved_prims TYPE=gf CENTERING={ccc}
   saved_velx saved_vely saved_velz
   saved_eps
 } "Saved primitive variables as initial guesses for con2prim"
+
+CCTK_REAL zvec TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
+{
+  zvec_x, zvec_y, zvec_z
+} ""

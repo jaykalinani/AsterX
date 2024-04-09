@@ -64,8 +64,10 @@ SCHEDULE AsterX_Prim2Con_Initial AT initial AFTER HydroBaseX_PostInitial
   WRITES: dens(interior) tau(interior) mom(interior) dB(interior)
   WRITES: Psi(everywhere)
   WRITES: saved_prims
+  WRITES: zvec
   SYNC: dens tau mom dB
   SYNC: saved_prims
+  SYNC: zvec
 } "Compute conserved variables from primitive variables at initial"
 
 if(local_estimate_error)
@@ -85,6 +87,7 @@ SCHEDULE AsterX_Sync AT postregrid
   OPTIONS: global
   SYNC: dens tau mom Avec_x Avec_y Avec_z Psi
   SYNC: saved_prims
+  SYNC: zvec
 } "Synchronize"
 
 # Time stepping
@@ -116,10 +119,12 @@ SCHEDULE AsterX_Con2Prim IN AsterX_CalcPrim
   WRITES: con2prim_flag(interior)
   WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
   WRITES: saved_prims(interior)
+  WRITES: zvec(interior)
   WRITES: dens(interior) tau(interior) mom(interior) dB(interior)
   SYNC: con2prim_flag
   SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press HydroBaseX::Bvec
   SYNC: saved_prims
+  SYNC: zvec
   SYNC: dens tau mom dB
 } "Calculate primitive variables from conservative variables"
 
@@ -153,6 +158,7 @@ SCHEDULE AsterX_Fluxes IN ODESolvers_RHS
   READS: dens(everywhere) tau(everywhere) mom(everywhere)
   READS: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::press(everywhere) HydroBaseX::eps(everywhere)
   READS: HydroBaseX::Bvec(everywhere)
+  READS: zvec_x(everywhere) zvec_y(everywhere) zvec_z(everywhere)
   READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere) Psi(everywhere)
   WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
   WRITES: Aux_in_RHSof_A_Psi(interior)
