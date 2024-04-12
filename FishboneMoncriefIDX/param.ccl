@@ -53,11 +53,6 @@ CCTK_REAL M "Kerr-Schild BH mass. Probably should always set M=1."
  0.0:* :: "Must be positive"
 } 1.0
 
-restricted:
-CCTK_REAL A_b "Scaling factor for the vector potential"
-{
- *:* :: ""
-} 1.0
 
 restricted:
 CCTK_REAL kappa "Equation of state: P = kappa * rho^gamma"
@@ -90,3 +85,28 @@ CCTK_REAL random_max "Ceiling value of random perturbation to initial pressure, 
 BOOLEAN FM_Cowling "Do not evolve spacetime"
 {
 } "yes"
+
+##################################
+restricted:
+BOOLEAN seed_magnetic "Should we seed magnetic fields?"
+{
+} "no"
+
+
+restricted:
+CCTK_REAL A_b "Scaling factor for the vector potential"
+{
+ *:* :: ""
+} 1.0
+
+restricted:
+REAL press_cut "Cutoff based on pressure"
+{
+  0.0:*   :: "Positive"
+} 0.04
+
+restricted:
+REAL A_n "Exponent used in the definition of A"
+{
+  0:*     :: "Should be positive"
+} 2.0

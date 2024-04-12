@@ -202,6 +202,97 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENT
   });
 }
 
+extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
+{
+
+  DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_Set_A;
+  DECLARE_CCTK_PARAMETERS;
+
+  grid.loop_int_device<1, 0, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+        CCTK_REAL xcoord = fmax(p.x,1e-15);
+        CCTK_REAL ycoord = fmax(p.y,1e-15);
+        CCTK_REAL zcoord = fmax(p.z,1e-15);
+
+        CCTK_REAL rr   = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+        CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
+
+        CCTK_REAL cosphi = xcoord/rcyl;
+        CCTK_REAL sinphi = ycoord/rcyl;
+
+        CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
+        CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
+
+        CCTK_REAL pressL_stag = calc_avg_c2e(press,p,0);
+
+        CCTK_REAL AxL = 0.;
+        CCTK_REAL AyL = 0.;
+        CCTK_REAL AzL = 0.;
+
+        FMdisk::GRMHD_set_A(pressL_stag,xtilde,ytilde,AxL,AyL,AzL);
+
+        Avec_x(p.I) = AxL;
+      });
+
+  grid.loop_int_device<0, 1, 0>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+        CCTK_REAL xcoord = fmax(p.x,1e-15);
+        CCTK_REAL ycoord = fmax(p.y,1e-15);
+        CCTK_REAL zcoord = fmax(p.z,1e-15);
+
+        CCTK_REAL rr   = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+        CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
+
+        CCTK_REAL cosphi = xcoord/rcyl;
+        CCTK_REAL sinphi = ycoord/rcyl;
+
+        CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
+        CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
+
+        CCTK_REAL pressL_stag = calc_avg_c2e(press,p,1);
+
+        CCTK_REAL AxL = 0.;
+        CCTK_REAL AyL = 0.;
+        CCTK_REAL AzL = 0.;
+
+        FMdisk::GRMHD_set_A(pressL_stag,xtilde,ytilde,AxL,AyL,AzL);
+
+        Avec_y(p.I) = AyL;
+      });
+
+  grid.loop_int_device<0, 0, 1>(
+      grid.nghostzones,
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
+        CCTK_REAL xcoord = fmax(p.x,1e-15);
+        CCTK_REAL ycoord = fmax(p.y,1e-15);
+        CCTK_REAL zcoord = fmax(p.z,1e-15);
+
+        CCTK_REAL rr   = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
+        CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
+
+        CCTK_REAL cosphi = xcoord/rcyl;
+        CCTK_REAL sinphi = ycoord/rcyl;
+
+        CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
+        CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
+
+        CCTK_REAL pressL_stag = calc_avg_c2e(press,p,2);
+
+        CCTK_REAL AxL = 0.;
+        CCTK_REAL AyL = 0.;
+        CCTK_REAL AzL = 0.;
+
+        FMdisk::GRMHD_set_A(pressL_stag,xtilde,ytilde,AxL,AyL,AzL);
+
+        Avec_z(p.I) = AzL;
+      });
+}
+
 extern "C" void FishboneMoncrief_Set_Spacetime(CCTK_ARGUMENTS)
 {
 

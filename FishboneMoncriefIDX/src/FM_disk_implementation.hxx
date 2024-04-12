@@ -214,4 +214,13 @@ void GRHD_perturb_pressure(double &press, double &eps, double const &rho) {
 
 }
 
+void GRMHD_set_A(double const &press, double const &xtilde, double const &ytilde, double &Ax, double &Ay, double &Az) {
+
+  DECLARE_CCTK_PARAMETERS;
+
+  Ax = - A_b * pow(fmax(press-press_cut,0.),A_n) * ytilde;
+  Ay =   A_b * pow(fmax(press-press_cut,0.),A_n) * xtilde;
+  Az = 0.;
+}
+
 } // end namespace FMdisk

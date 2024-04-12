@@ -53,3 +53,18 @@ if (FM_Cowling) {
 
   } "Set ADM variables for FM torus"
 }
+
+if (seed_magnetic) {
+  schedule FishboneMoncrief_Set_A IN HydroBaseX_InitialData BEFORE FishboneMoncrief_ET_GRHD_initial__perturb_pressure
+  {
+    LANG: C
+
+    READS: HydroBaseX::press(everywhere)
+
+    WRITES: AsterX::Avec_x(interior)
+    WRITES: AsterX::Avec_y(interior)
+    WRITES: AsterX::Avec_z(interior)
+
+    SYNC: AsterX::Avec_x AsterX::Avec_y AsterX::Avec_z
+  } "Set up initial conditions for the vector potential"
+}
