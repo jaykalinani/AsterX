@@ -1,4 +1,5 @@
 #include <loop.hxx>
+#include <loop_device.hxx>
 
 #include <cctk.h>
 #include <cctk_Arguments.h>
@@ -9,6 +10,7 @@
 #include <cmath> 
 
 #include "FM_disk_implementation.hxx"
+#include "FM_disk_utils.hxx"
 
 extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
 {
@@ -22,7 +24,6 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
   const CCTK_REAL xcoord_init = r_at_max_density;
   const CCTK_REAL ycoord_init = 0.0;
   const CCTK_REAL zcoord_init = 0.0;
-  const CCTK_REAL rr_init = sqrt(xcoord_init*xcoord_init+ycoord_init*ycoord_init+zcoord_init*zcoord_init);
 
   // First compute maximum pressure and density
   const CCTK_REAL hm1_init = FMdisk::GRHD_hm1(xcoord_init,ycoord_init,zcoord_init);
@@ -51,7 +52,6 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
         CCTK_REAL zcoord = p.z;
-        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
         CCTK_REAL alp_L{0.};
         CCTK_REAL betaU0_L{0.};
@@ -214,9 +214,7 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
 
         CCTK_REAL xcoord = fmax(p.x,1e-15);
         CCTK_REAL ycoord = fmax(p.y,1e-15);
-        CCTK_REAL zcoord = fmax(p.z,1e-15);
 
-        CCTK_REAL rr   = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
         CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
 
         CCTK_REAL cosphi = xcoord/rcyl;
@@ -225,7 +223,7 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
         CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
 
-        CCTK_REAL pressL_stag = calc_avg_c2e(press,p,0);
+        CCTK_REAL pressL_stag = FM_Utils::calc_avg_c2e(press,p,0);
 
         CCTK_REAL AxL = 0.;
         CCTK_REAL AyL = 0.;
@@ -242,9 +240,7 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
 
         CCTK_REAL xcoord = fmax(p.x,1e-15);
         CCTK_REAL ycoord = fmax(p.y,1e-15);
-        CCTK_REAL zcoord = fmax(p.z,1e-15);
 
-        CCTK_REAL rr   = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
         CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
 
         CCTK_REAL cosphi = xcoord/rcyl;
@@ -253,7 +249,7 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
         CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
 
-        CCTK_REAL pressL_stag = calc_avg_c2e(press,p,1);
+        CCTK_REAL pressL_stag = FM_Utils::calc_avg_c2e(press,p,1);
 
         CCTK_REAL AxL = 0.;
         CCTK_REAL AyL = 0.;
@@ -270,9 +266,7 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
 
         CCTK_REAL xcoord = fmax(p.x,1e-15);
         CCTK_REAL ycoord = fmax(p.y,1e-15);
-        CCTK_REAL zcoord = fmax(p.z,1e-15);
 
-        CCTK_REAL rr   = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
         CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
 
         CCTK_REAL cosphi = xcoord/rcyl;
@@ -281,7 +275,7 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
         CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
 
-        CCTK_REAL pressL_stag = calc_avg_c2e(press,p,2);
+        CCTK_REAL pressL_stag = FM_Utils::calc_avg_c2e(press,p,2);
 
         CCTK_REAL AxL = 0.;
         CCTK_REAL AyL = 0.;
@@ -307,7 +301,6 @@ extern "C" void FishboneMoncrief_Set_Spacetime(CCTK_ARGUMENTS)
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
         CCTK_REAL zcoord = p.z;
-        CCTK_REAL rr = sqrt(xcoord*xcoord+ycoord*ycoord+zcoord*zcoord);
 
         CCTK_REAL alp_L{0.};
         CCTK_REAL betaU0_L{0.};

@@ -1,3 +1,6 @@
+#ifndef FM_IMPL_HXX
+#define FM_IMPL_HXX
+
 #include <cmath>
 #include <cstdlib> // Needed for rand()
 #include <cctk_Parameters.h>
@@ -224,3 +227,5 @@ void GRMHD_set_A(double const &press, double const &xtilde, double const &ytilde
 }
 
 } // end namespace FMdisk
+
+#endif // FM_IMPL_HXX
