@@ -212,10 +212,10 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
       grid.nghostzones,
       [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        CCTK_REAL xcoord = fmax(p.x,1e-15);
-        CCTK_REAL ycoord = fmax(p.y,1e-15);
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
 
-        CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
+        CCTK_REAL rcyl = fmax(sqrt(xcoord*xcoord+ycoord*ycoord),1e-15);
 
         CCTK_REAL cosphi = xcoord/rcyl;
         CCTK_REAL sinphi = ycoord/rcyl;
@@ -238,10 +238,10 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
       grid.nghostzones,
       [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        CCTK_REAL xcoord = fmax(p.x,1e-15);
-        CCTK_REAL ycoord = fmax(p.y,1e-15);
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
 
-        CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
+        CCTK_REAL rcyl = fmax(sqrt(xcoord*xcoord+ycoord*ycoord),1e-15);
 
         CCTK_REAL cosphi = xcoord/rcyl;
         CCTK_REAL sinphi = ycoord/rcyl;
@@ -264,10 +264,10 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
       grid.nghostzones,
       [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-        CCTK_REAL xcoord = fmax(p.x,1e-15);
-        CCTK_REAL ycoord = fmax(p.y,1e-15);
+        CCTK_REAL xcoord = p.x;
+        CCTK_REAL ycoord = p.y;
 
-        CCTK_REAL rcyl = sqrt(xcoord*xcoord+ycoord*ycoord);
+        CCTK_REAL rcyl = fmax(sqrt(xcoord*xcoord+ycoord*ycoord),1e-15);
 
         CCTK_REAL cosphi = xcoord/rcyl;
         CCTK_REAL sinphi = ycoord/rcyl;
