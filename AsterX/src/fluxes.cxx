@@ -166,7 +166,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
      * (indice 1) side of this face rc = reconstructed variables or
      * computed from reconstructed variables */
 
-    const vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, true)};
+    vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, true)};
 
     // set to atmo if reconstructed rho is less than atmo or is negative
     if (rho_rc(0) < rho_abs_min) {
@@ -179,7 +179,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>{reconstruct_pt(gf_vels(i), p, false, false)};
     });
-    const vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
+    vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
     // TODO: Correctly reconstruct Ye
     const vec<CCTK_REAL, 2> ye_rc{ye_min, ye_max};
 
