@@ -87,7 +87,6 @@ SCHEDULE AsterX_Sync AT postregrid
   OPTIONS: global
   SYNC: dens tau mom Avec_x Avec_y Avec_z Psi
   SYNC: saved_prims
-  SYNC: zvec
 } "Synchronize"
 
 # Time stepping
