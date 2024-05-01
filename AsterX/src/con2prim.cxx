@@ -201,6 +201,19 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     // Write back pv
 //    pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), velx(p.I), vely(p.I),
 //               velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
+
+//  Add some limits as security, ideally the EOS and C2P should
+//  take care of that
+
+    if (pv.rho < rho_abs_min) {
+      pv.rho = rho_abs_min;
+    }
+
+    if (pv.eps < 0.) {
+      pv.eps = eps_min;
+      pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho,pv.eps,pv.Ye);
+    }
+
     pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
     zvec_x(p.I) = wlor * pv.vel(0); 

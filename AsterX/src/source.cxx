@@ -66,9 +66,17 @@ template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
         });
 
         /* Computing v_j */
-        const vec<CCTK_REAL, 3> v_up{velx(p.I), vely(p.I), velz(p.I)};
-        const vec<CCTK_REAL, 3> v_low = calc_contraction(g_avg, v_up);
-        const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
+        //const vec<CCTK_REAL, 3> v_up{velx(p.I), vely(p.I), velz(p.I)};
+        //const vec<CCTK_REAL, 3> v_low = calc_contraction(g_avg, v_up);
+        //const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
+
+        /* Computing v_j */
+        const vec<CCTK_REAL, 3> z_up{zvec_x(p.I), zvec_y(p.I), zvec_z(p.I)};
+        const vec<CCTK_REAL, 3> z_low = calc_contraction(g_avg, z_up);
+        const CCTK_REAL w_lorentz = calc_wlorentz_zvec(z_low, z_up);
+        const vec<CCTK_REAL, 3> v_up{z_up/w_lorentz};
+        const vec<CCTK_REAL, 3> v_low{z_low/w_lorentz};
+
         /* Computing [ \rho(1+\epsilon) + Pgas ]*W^2 = \rho * h * W^2 */
         const CCTK_REAL rhoenthalpyW2 =
             (rho(p.I) * (1.0 + eps(p.I)) + press(p.I)) * w_lorentz * w_lorentz;
@@ -144,11 +152,11 @@ template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
 
         // Add some debugging lines
 
-        if (isnan(velx(p.I)) || isnan(vely(p.I)) || isnan(velz(p.I)) ||
+        if (isnan(v_up(0)) || isnan(v_up(1)) || isnan(v_up(2)) ||
             isnan(eps(p.I)) || isnan(rho(p.I)) || isnan(press(p.I)) ||
             isnan(Bvecx(p.I)) || isnan(Bvecy(p.I)) || isnan(Bvecz(p.I)) ||
-            rho(p.I) <= 0.0 || press(p.I) <= 0.0 ||
-            eps(p.I) <= 0.0 || isnan(momxrhs(p.I)) || isnan(momyrhs(p.I)) || isnan(momzrhs(p.I)) ||
+            rho(p.I) < 0.0 || press(p.I) < 0.0 ||
+            eps(p.I) < 0.0 || isnan(momxrhs(p.I)) || isnan(momyrhs(p.I)) || isnan(momzrhs(p.I)) ||
             isnan(taurhs(p.I)) || isnan(w_lorentz)) {
       printf("cctk_iteration = %i, ijk = %i, %i, %i, "
              "x, y, z = %16.16e, %16.16e, %16.16e.\n",
@@ -158,9 +166,9 @@ template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
       printf("  momzrhs  = %16.16e \n", momzrhs(p.I));
       printf("  taurhs  = %16.16e \n", taurhs(p.I));
       printf("  wlor  = %16.16e \n", w_lorentz);
-      printf("  velx  = %16.16e \n", velx(p.I));
-      printf("  vely  = %16.16e \n", vely(p.I));
-      printf("  velz  = %16.16e \n", velz(p.I));
+      printf("  vupx  = %16.16e \n", v_up(0));
+      printf("  vupy  = %16.16e \n", v_up(1));
+      printf("  vupz  = %16.16e \n", v_up(2));
       printf("  v_lowx  = %16.16e \n", v_low(0));
       printf("  v_lowy  = %16.16e \n", v_low(1));
       printf("  v_lowz  = %16.16e \n", v_low(2));
