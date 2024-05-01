@@ -125,6 +125,9 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     // Write back pv
     pv.scatter(rho(p.I), eps(p.I), dumye, press(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Ex, Ey, Ez, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I));
+    zvec_x(p.I) = wlor * pv.vel(0); 
+    zvec_y(p.I) = wlor * pv.vel(1);
+    zvec_z(p.I) = wlor * pv.vel(2);
 
     // Write back cv
     if (rep.adjust_cons) {
