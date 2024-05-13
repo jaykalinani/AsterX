@@ -47,7 +47,9 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   CCTK_REAL dummy_dYe = 0.5;
 
   // Get a recovery function
-  con2prim_mhd cv2pv(eos, 1e-5, 1, 100, 100, atmo, 1e-8, 100);
+  //con2prim_mhd cv2pv(eos, 1e-5, 1, 100, 100, atmo, 1e-8, 100);
+  con2prim_mhd cv2pv(eos,rho_strict,Ye_lenient,vw_lim,B_lim,atmo,c2p_tol,max_iter);
+
   //  con2prim_mhd cv2pv(eos, rho_strict, ye_lenient, max_z, max_b, atmo,
   //  c2p_acc,
   //                  max_iter);
