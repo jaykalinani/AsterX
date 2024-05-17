@@ -7,7 +7,6 @@
 #include <cmath>
 
 #include "utils.hxx"
-#include <boost/math/tools/roots.hpp>
 
 #include "reprimand/eos_thermal.h" // The EOS framework
 #include "reprimand/eos_idealgas.h"
