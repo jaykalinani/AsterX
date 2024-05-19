@@ -7,7 +7,6 @@
 #include <cmath>
 
 #include "utils.hxx"
-#include <boost/math/tools/roots.hpp>
 
 #include "reprimand/eos_thermal.h" // The EOS framework
 #include "reprimand/eos_idealgas.h"
@@ -122,7 +121,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
       cv.bcons(0) = dBx(p.I);
       cv.bcons(1) = dBy(p.I);
       cv.bcons(2) = dBz(p.I);
-      pv.Bv = cv.bcons / sqrt_detg;
+      pv.B = cv.bcons / sqrt_detg;
       atmo.set(pv, cv, g);
     }
 
