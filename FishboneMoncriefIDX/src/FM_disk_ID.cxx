@@ -150,16 +150,25 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
         }
         // Outside the disk? Set to atmosphere all hydrodynamic variables!
         if(set_to_atmosphere) {
+         if(atmo_isentropic) {
           // Choose an atmosphere such that
           //   rho =       1e-5 * r^(-3/2), and
           //   P   = k rho^gamma
           // Add 1e-100 or 1e-300 to rr or rho to avoid divisions by zero.
-          rho(p.I) = 1e-5 * pow(rr + 1e-100,-3.0/2.0);
+          rho(p.I) = rho_min * pow(rr + 1e-100,-nrho);
           press(p.I) = kappa*pow(rho(p.I), gamma);
           eps(p.I) = press(p.I) / ((rho(p.I) + 1e-300) * (gamma - 1.0));
           velx(p.I) = 0.0;
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
+         } else {
+          rho(p.I) = rho_min * pow(rr + 1e-100,-nrho);
+          press(p.I) = press_min*pow(rr + 1e-100,-npress);
+          eps(p.I) = press(p.I) / ((rho(p.I) + 1e-300) * (gamma - 1.0));
+          velx(p.I) = 0.0;
+          vely(p.I) = 0.0;
+          velz(p.I) = 0.0;
+         }
         }
       });
 }
@@ -220,16 +229,17 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         CCTK_REAL cosphi = xcoord/rcyl;
         CCTK_REAL sinphi = ycoord/rcyl;
 
-        CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
-        CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
+        CCTK_REAL xtilde = wrt_rho_max ? xcoord - r_at_max_density*cosphi : xcoord;
+        CCTK_REAL ytilde = wrt_rho_max ? ycoord - r_at_max_density*sinphi : ycoord;
 
         CCTK_REAL pressL_stag = FM_Utils::calc_avg_c2e(press,p,0);
+        CCTK_REAL rhoL_stag = FM_Utils::calc_avg_c2e(rho,p,0);
 
         CCTK_REAL AxL = 0.;
         CCTK_REAL AyL = 0.;
         CCTK_REAL AzL = 0.;
 
-        FMdisk::GRMHD_set_A(pressL_stag,xtilde,ytilde,AxL,AyL,AzL);
+        FMdisk::GRMHD_set_A(pressL_stag,rhoL_stag,xtilde,ytilde,AxL,AyL,AzL);
 
         Avec_x(p.I) = AxL;
       });
@@ -246,16 +256,17 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         CCTK_REAL cosphi = xcoord/rcyl;
         CCTK_REAL sinphi = ycoord/rcyl;
 
-        CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
-        CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
+        CCTK_REAL xtilde = wrt_rho_max ? xcoord - r_at_max_density*cosphi : xcoord;
+        CCTK_REAL ytilde = wrt_rho_max ? ycoord - r_at_max_density*sinphi : ycoord;
 
         CCTK_REAL pressL_stag = FM_Utils::calc_avg_c2e(press,p,1);
+        CCTK_REAL rhoL_stag = FM_Utils::calc_avg_c2e(rho,p,0);
 
         CCTK_REAL AxL = 0.;
         CCTK_REAL AyL = 0.;
         CCTK_REAL AzL = 0.;
 
-        FMdisk::GRMHD_set_A(pressL_stag,xtilde,ytilde,AxL,AyL,AzL);
+        FMdisk::GRMHD_set_A(pressL_stag,rhoL_stag,xtilde,ytilde,AxL,AyL,AzL);
 
         Avec_y(p.I) = AyL;
       });
@@ -272,16 +283,17 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         CCTK_REAL cosphi = xcoord/rcyl;
         CCTK_REAL sinphi = ycoord/rcyl;
 
-        CCTK_REAL xtilde = xcoord - r_at_max_density*cosphi;
-        CCTK_REAL ytilde = ycoord - r_at_max_density*sinphi;
+        CCTK_REAL xtilde = wrt_rho_max ? xcoord - r_at_max_density*cosphi : xcoord;
+        CCTK_REAL ytilde = wrt_rho_max ? ycoord - r_at_max_density*sinphi : ycoord;
 
         CCTK_REAL pressL_stag = FM_Utils::calc_avg_c2e(press,p,2);
+        CCTK_REAL rhoL_stag = FM_Utils::calc_avg_c2e(rho,p,0);
 
         CCTK_REAL AxL = 0.;
         CCTK_REAL AyL = 0.;
         CCTK_REAL AzL = 0.;
 
-        FMdisk::GRMHD_set_A(pressL_stag,xtilde,ytilde,AxL,AyL,AzL);
+        FMdisk::GRMHD_set_A(pressL_stag,rhoL_stag,xtilde,ytilde,AxL,AyL,AzL);
 
         Avec_z(p.I) = AzL;
       });

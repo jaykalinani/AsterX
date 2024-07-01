@@ -38,7 +38,22 @@ schedule FishboneMoncrief_ET_GRHD_initial__perturb_pressure IN HydroBaseX_Initia
 } "Add random perturbation to initial pressure, after seed magnetic fields have been set up (in case we'd like the seed magnetic fields to depend on the pristine pressures)"
 
 if (FM_Cowling) {
-  schedule FishboneMoncrief_Set_Spacetime IN CCTK_POSTREGRID
+  schedule FishboneMoncrief_Set_Spacetime IN CCTK_POSTREGRID BEFORE ODESolvers_PostStep
+  {
+    LANG: C
+    WRITES: ADMBaseX::metric(interior)
+    WRITES: ADMBaseX::lapse(interior)
+    WRITES: ADMBaseX::shift(interior)
+    WRITES: ADMBaseX::curv(interior)
+    WRITES: ADMBaseX::dtlapse(interior)
+    WRITES: ADMBaseX::dtshift(interior)
+
+    SYNC: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
+    SYNC: ADMBaseX::dtlapse ADMBaseX::dtshift
+
+  } "Set ADM variables for FM torus"
+
+  schedule FishboneMoncrief_Set_Spacetime IN CCTK_POST_RECOVER_VARIABLES
   {
     LANG: C
     WRITES: ADMBaseX::metric(interior)
@@ -59,7 +74,7 @@ if (seed_magnetic) {
   {
     LANG: C
 
-    READS: HydroBaseX::press(everywhere)
+    READS: HydroBaseX::press(everywhere) HydroBaseX::rho(everywhere)
 
     WRITES: AsterX::Avec_x(interior)
     WRITES: AsterX::Avec_y(interior)
