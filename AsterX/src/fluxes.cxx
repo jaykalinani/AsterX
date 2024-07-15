@@ -46,6 +46,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   /* grid functions */
   const vec<GF3D2<const CCTK_REAL>, dim> gf_vels{velx, vely, velz};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_zvec{zvec_x, zvec_y, zvec_z};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_svec{svec_x, svec_y, svec_z};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_Bvecs{Bvecx, Bvecy, Bvecz};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
   const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
@@ -196,6 +197,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const vec<vec<CCTK_REAL, 2>, 3> zveclow_rc = calc_contraction(g_avg, zvec_rc);
 
     /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
+    /*
     const vec<CCTK_REAL, 2> w_lorentz_rc([&](int i) ARITH_INLINE {
       return sqrt(1 + calc_contraction(zveclow_rc, zvec_rc)(i));
     });
@@ -205,6 +207,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
          return zvec_rc(j)(f)/w_lorentz_rc(f);
       }); 
     });
+    */
 
     vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
     // TODO: Correctly reconstruct Ye
@@ -224,6 +227,37 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, false)};
     });
+
+    // Try svec -----
+
+    const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
+      return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
+                                                ye_rc(f));
+    });
+
+    const vec<CCTK_REAL, 2> rhoh_rc([&](int f) ARITH_INLINE {
+      return rho_rc(f) + rho_rc(f)*eps_rc(f) + press_rc(f);
+    });
+
+    const vec<vec<CCTK_REAL, 2>, 3> svec_rc([&](int i) ARITH_INLINE {
+      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_svec(i), p, false, false)};
+    });
+
+    const vec<vec<CCTK_REAL, 2>, 3> sveclow_rc = calc_contraction(g_avg, svec_rc);
+
+    const vec<CCTK_REAL, 2> w_lorentz_rc([&](int i) ARITH_INLINE {
+      return sqrt(0.5+sqrt(0.25+calc_contraction(sveclow_rc, svec_rc)(i)/rhoh_rc(i)/rhoh_rc(i)));
+    });
+
+    //printf("  wlor = %16.8e, %16.8e\n", w_lorentz_rc(0), w_lorentz_rc(1));
+
+    const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int j) ARITH_INLINE {
+      return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
+         return svec_rc(j)(f)/w_lorentz_rc(f)/w_lorentz_rc(f)/rhoh_rc(f);
+      }); 
+    });
+
+    // -----
 
     /* co-velocity measured by Eulerian observer: v_j */
     const vec<vec<CCTK_REAL, 2>, 3> vlows_rc = calc_contraction(g_avg, vels_rc);
@@ -266,10 +300,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
     // Ideal gas case {
     /* eps for ideal gas EOS */
-    const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
-      return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
-                                                ye_rc(f));
-    });
+    //const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
+    //  return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
+    //                                            ye_rc(f));
+    //});
     /* cs2 for ideal gas EOS */
     const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
       return eos_th.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f)) *
