@@ -186,6 +186,7 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
          } else {
           CCTK_ERROR("Unknown value for parameter \"atmo_type\"");
          }
+        }
 
       });
 }
