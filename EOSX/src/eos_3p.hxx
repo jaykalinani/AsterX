@@ -7,7 +7,7 @@ and electron fraction.
 
 */
 
-#ifndef EOS_3P_XX
+#ifndef EOS_3P_HXX
 #define EOS_3P_HXX
 #include <cctk.h>
 #include <cctk_Arguments.h>

@@ -178,7 +178,7 @@ eps_from_valid_rho_temp_ye(const CCTK_REAL rho,
 }
 
 // edited
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos::range
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_3p::range
 range_eps_from_valid_rho_ye(const CCTK_REAL rho,
                                         const CCTK_REAL ye) const {
   return rgeps;

@@ -12,13 +12,13 @@
 #include <cctk_Parameters.h>
 
 #include <loop_device.hxx>
-
 #include <hdf5.h>
-
 
 namespace EOSX {
 
 using namespace std;
+using namespace Loop;
+using namespace Arith;
 
 // Macro checking for errors coming from routines returning error codes
 #define CHECK_ERROR(routine)                                \
