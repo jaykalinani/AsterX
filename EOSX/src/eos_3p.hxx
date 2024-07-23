@@ -1,4 +1,4 @@
-/*! \file eos.hxx
+/*! \file eos_3p.hxx
 \brief Defines an EOS
 
 EOS is effectively an interface that describes how to create an equation of
@@ -7,8 +7,8 @@ and electron fraction.
 
 */
 
-#ifndef EOS_HXX
-#define EOS_HXX
+#ifndef EOS_3P_XX
+#define EOS_3P_HXX
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -16,9 +16,9 @@ and electron fraction.
 
 namespace EOSX {
 
-/// Abstract class eos
+/// Abstract class eos_3p
 
-class eos {
+class eos_3p {
 public:
   typedef eos_status status;
   typedef eos_range range;
@@ -55,7 +55,7 @@ protected:
   }
 
 public:
-  CCTK_DEVICE CCTK_HOST eos() {
+  CCTK_DEVICE CCTK_HOST eos_3p() {
     rho_atm = 1e-11;
     rho_threshold = 10.0;
     press_atm = 1e-11;

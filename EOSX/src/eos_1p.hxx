@@ -1,5 +1,5 @@
-#ifndef EOS1P_HXX
-#define EOS1P_HXX
+#ifndef EOS_1P_HXX
+#define EOS_1P_HXX
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
@@ -10,7 +10,7 @@ namespace EOSX {
 /// Abstract EOS class for implementations of degenerate (cold) equations of
 /// state.
 // sed = specific energy density
-// rmd = rest mass density
+// rho = rest mass density
 
 /**
 \par
@@ -30,7 +30,7 @@ but the exact choice is left to the implementation and the code using it.
 <td> \f$ n_B \f$    </td><td>Baryon number density </td><td> </td>
 </tr><tr>
 <td> \f$ \rho = m_B n_B \f$ </td><td>Formal rest mass density
-</td><td><tt>rmd</tt></td>
+</td><td><tt>rho</tt></td>
 </tr><tr>
 <td> \f$ m_B \f$    </td><td>Formal baryon mass    </td><td></td>
 </tr><tr>
@@ -83,17 +83,17 @@ private:
   bool isentropic;  ///< Whether EOS is isentropic
   bool temp_avail;  ///< Whether EOS has temperature information
   bool efrac_avail; ///< Whether EOS has electron fraction information
-  range rg_rmd;     ///< Density range in which EOS is valid.
+  range rg_rho;     ///< Density range in which EOS is valid.
   range rg_gm1;     ///< Range of \f$ g-1 \f$ in which EOS is valid.
   range rg_p;       ///< Pressure range in which EOS is valid.
 
 public:
   /// Set valid density range. Has to be called by constructor of each
   /// implementation.
-  CCTK_DEVICE CCTK_HOST void set_ranges(const range &rg_rmd_);
+  CCTK_DEVICE CCTK_HOST void set_ranges(const range &rg_rho_);
   /// Check if density is in valid range, else throw exception.
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  check_rmd_valid(CCTK_REAL rmd) const;
+  check_rho_valid(CCTK_REAL rho) const;
   /// Check if \f$ g-1 \f$ is in valid range, else throw exception.
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   check_gm1_valid(CCTK_REAL gm1) const;
@@ -118,8 +118,8 @@ public:
   }
   /// Returns range of validity for density
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline const range &
-  range_rmd() const {
-    return rg_rmd;
+  range_rho() const {
+    return rg_rho;
   }
   /// Returns range of validity for \f$ g-1 \f$
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline const range &
@@ -133,8 +133,8 @@ public:
   }
   /// Whether given density is in the valid range of the EOS
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
-  is_rmd_valid(CCTK_REAL rmd) const {
-    return rg_rmd.contains(rmd);
+  is_rho_valid(CCTK_REAL rho) const {
+    return rg_rho.contains(rho);
   }
   /// Whether given \f$ g-1 \f$ is in the valid range of the EOS
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool

@@ -1,27 +1,21 @@
-#ifndef EOS_IDEALGAS_HXX
-#define EOS_IDEALGAS_HXX
+#ifndef EOS_3P_IDEALGAS_HXX
+#define EOS_3P_IDEALGAS_HXX
 
-#include <stdexcept>
-#include <algorithm>
 #include <cmath>
 
-#include "eos.hxx"
+#include "eos_3p.hxx"
 using namespace std;
 
 namespace EOSX {
 
-class eos_idealgas : public eos {
+class eos_3p_idealgas : public eos_3p {
 public:
   CCTK_REAL gamma, gm1, temp_over_eps;
   range rgeps;
 
-  // constructor
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_idealgas(
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void init(
       CCTK_REAL gamma_, CCTK_REAL umass_, const range &rgeps_,
       const range &rgrho_, const range &rgye_);
-
-  // destructor
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline ~eos_idealgas();
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_valid_rho_eps_ye(
@@ -91,12 +85,13 @@ public:
   ) const;
 };
 
-// constructor
 CCTK_HOST
-CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_idealgas::eos_idealgas(
+CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void eos_3p_idealgas::init(
     CCTK_REAL gamma_, CCTK_REAL umass_, const range &rgeps_,
-    const range &rgrho_, const range &rgye_)
-    : gamma(gamma_), gm1(gamma_ - 1), rgeps(rgeps_) {
+    const range &rgrho_, const range &rgye_) {
+  gamma = gamma_;
+  gm1 = gamma_ - 1;
+  rgeps = rgeps_; 
   if (gamma < 1) {
     assert(0);
     // runtime_error("EOS_IdealGas: initialized with gamma < 1");
@@ -111,40 +106,36 @@ CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_idealgas::eos_idealgas(
   set_range_temp(range(temp_over_eps * rgeps.min, temp_over_eps * rgeps.max));
 }
 
-// destructor
-CCTK_HOST CCTK_DEVICE
-    CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_idealgas::~eos_idealgas() {}
-
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::press_from_valid_rho_eps_ye(const CCTK_REAL rho,
+eos_3p_idealgas::press_from_valid_rho_eps_ye(const CCTK_REAL rho,
                                           const CCTK_REAL eps,
                                           const CCTK_REAL ye) const {
   return gm1 * rho * eps;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::eps_from_valid_rho_press_ye(const CCTK_REAL rho,
+eos_3p_idealgas::eps_from_valid_rho_press_ye(const CCTK_REAL rho,
                                           const CCTK_REAL press,
                                           const CCTK_REAL ye) const {
   return press / (rho * gm1);
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho,
+eos_3p_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho,
                                          const CCTK_REAL eps,
                                          const CCTK_REAL ye) const {
   return sqrt(gm1 * eps / (eps + 1 / gamma));
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::temp_from_valid_rho_eps_ye(const CCTK_REAL rho,
+eos_3p_idealgas::temp_from_valid_rho_eps_ye(const CCTK_REAL rho,
                                          const CCTK_REAL eps,
                                          const CCTK_REAL ye) const {
   return temp_over_eps * eps;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-eos_idealgas::press_derivs_from_valid_rho_eps_ye(
+eos_3p_idealgas::press_derivs_from_valid_rho_eps_ye(
     CCTK_REAL &press, CCTK_REAL &dpdrho, CCTK_REAL &dpdeps, const CCTK_REAL rho,
     const CCTK_REAL eps, const CCTK_REAL ye) const {
   press = gm1 * rho * eps;
@@ -153,28 +144,28 @@ eos_idealgas::press_derivs_from_valid_rho_eps_ye(
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::entropy_from_valid_rho_temp_ye(const CCTK_REAL rho,
+eos_3p_idealgas::entropy_from_valid_rho_temp_ye(const CCTK_REAL rho,
                                              const CCTK_REAL temp,
                                              const CCTK_REAL ye) const {
   return log(temp * pow(rho, -gm1) / temp_over_eps);
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::entropy_from_valid_rho_eps_ye(const CCTK_REAL rho,
+eos_3p_idealgas::entropy_from_valid_rho_eps_ye(const CCTK_REAL rho,
                                             const CCTK_REAL eps,
                                             const CCTK_REAL ye) const {
   return log(eps * pow(rho, -gm1));
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_idealgas::eps_from_valid_rho_temp_ye(const CCTK_REAL rho,
+eos_3p_idealgas::eps_from_valid_rho_temp_ye(const CCTK_REAL rho,
                                          const CCTK_REAL temp,
                                          const CCTK_REAL ye) const {
   return temp / temp_over_eps;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos::range
-eos_idealgas::range_eps_from_valid_rho_ye(const CCTK_REAL rho,
+eos_3p_idealgas::range_eps_from_valid_rho_ye(const CCTK_REAL rho,
                                           const CCTK_REAL ye) const {
   return rgeps;
 }
