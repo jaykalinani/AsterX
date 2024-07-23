@@ -25,6 +25,7 @@ using namespace ReconX;
 
 enum class flux_t { LxF, HLLE };
 enum class eos_t { IdealGas, Hybrid, Tabulated };
+enum class rec_var_t { v_vec, z_vec, s_vec };
 
 // Calculate the fluxes in direction `dir`. This function is more
 // complex because it has to handle any direction, but as reward,
@@ -52,6 +53,16 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
   static_assert(dir >= 0 && dir < 3, "");
+
+  rec_var_t rec_var;
+  if (CCTK_EQUALS(recon_type, "v_vec"))
+    rec_var = rec_var_t::v_vec;
+  else if (CCTK_EQUALS(recon_type, "z_vec"))
+    rec_var = rec_var_t::z_vec;
+  else if (CCTK_EQUALS(recon_type, "s_vec"))
+    rec_var = rec_var_t::s_vec;
+  else
+    CCTK_ERROR("Unknown value for parameter \"recon_type\"");
 
   reconstruction_t reconstruction;
   if (CCTK_EQUALS(reconstruction_method, "Godunov"))
@@ -191,24 +202,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       rho_rc(1) = rho_abs_min;
     }
 
-    const vec<vec<CCTK_REAL, 2>, 3> zvec_rc([&](int i) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_zvec(i), p, false, false)};
-    });
-    const vec<vec<CCTK_REAL, 2>, 3> zveclow_rc = calc_contraction(g_avg, zvec_rc);
-
-    /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
-    /*
-    const vec<CCTK_REAL, 2> w_lorentz_rc([&](int i) ARITH_INLINE {
-      return sqrt(1 + calc_contraction(zveclow_rc, zvec_rc)(i));
-    });
-
-    const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int j) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
-         return zvec_rc(j)(f)/w_lorentz_rc(f);
-      }); 
-    });
-    */
-
     vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
     // TODO: Correctly reconstruct Ye
     const vec<CCTK_REAL, 2> ye_rc{ye_min, ye_max};
@@ -224,12 +217,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
           eos_th.press_from_valid_rho_eps_ye(rho_rc(1), eps_min, ye_rc(1));
     }
 
-    const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, false)};
-    });
-
-    // Try svec -----
-
     const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
       return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
                                                 ye_rc(f));
@@ -239,28 +226,64 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       return rho_rc(f) + rho_rc(f)*eps_rc(f) + press_rc(f);
     });
 
-    const vec<vec<CCTK_REAL, 2>, 3> svec_rc([&](int i) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_svec(i), p, false, false)};
+    const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
+      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, false)};
     });
 
-    const vec<vec<CCTK_REAL, 2>, 3> sveclow_rc = calc_contraction(g_avg, svec_rc);
+    vec<vec<CCTK_REAL, 2>, 3> vels_rc;
+    vec<vec<CCTK_REAL, 2>, 3> vlows_rc;
+    vec<CCTK_REAL, 2> w_lorentz_rc;
+    switch (rec_var) {
+    case rec_var_t::v_vec: {
 
-    const vec<CCTK_REAL, 2> w_lorentz_rc([&](int i) ARITH_INLINE {
-      return sqrt(0.5+sqrt(0.25+calc_contraction(sveclow_rc, svec_rc)(i)/rhoh_rc(i)/rhoh_rc(i)));
-    });
+      /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
+      vels_rc(0) = reconstruct_pt(gf_vels(0), p, false, false);
+      vels_rc(1) = reconstruct_pt(gf_vels(1), p, false, false);
+      vels_rc(2) = reconstruct_pt(gf_vels(2), p, false, false);
 
-    //printf("  wlor = %16.8e, %16.8e\n", w_lorentz_rc(0), w_lorentz_rc(1));
+      /* co-velocity measured by Eulerian observer: v_j */
+      vlows_rc(0) = calc_contraction(g_avg, vels_rc(0));
+      vlows_rc(1) = calc_contraction(g_avg, vels_rc(1));
 
-    const vec<vec<CCTK_REAL, 2>, 3> vels_rc([&](int j) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
-         return svec_rc(j)(f)/w_lorentz_rc(f)/w_lorentz_rc(f)/rhoh_rc(f);
-      }); 
-    });
+      /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
+      w_lorentz_rc = 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc));
 
-    // -----
+      });
 
-    /* co-velocity measured by Eulerian observer: v_j */
-    const vec<vec<CCTK_REAL, 2>, 3> vlows_rc = calc_contraction(g_avg, vels_rc);
+    }
+    case rec_var_t::z_vec: {
+    
+      const vec<vec<CCTK_REAL, 2>, 3> zvec_rc([&](int i) ARITH_INLINE {
+         return vec<CCTK_REAL, 2>{reconstruct_pt(gf_zvec(i), p, false, false)};
+      });
+
+      const vec<vec<CCTK_REAL, 2>, 3> zveclow_rc = calc_contraction(g_avg, zvec_rc);
+
+      w_lorentz_rc = sqrt(1 + calc_contraction(zveclow_rc, zvec_rc));
+
+      vels_rc = zvec_rc/w_lorentz_rc;
+
+      vlows_rc = zveclow_rc/w_lorentz_rc;
+
+    }
+    case rec_var_t::s_vec: {
+
+      const vec<vec<CCTK_REAL, 2>, 3> svec_rc([&](int i) ARITH_INLINE {
+         return vec<CCTK_REAL, 2>{reconstruct_pt(gf_svec(i), p, false, false)};
+      });
+
+      const vec<vec<CCTK_REAL, 2>, 3> sveclow_rc = calc_contraction(g_avg, svec_rc);
+
+      w_lorentz_rc = sqrt(0.5+sqrt(0.25+calc_contraction(sveclow_rc, svec_rc)/rhoh_rc/rhoh_rc));
+
+      //printf("  wlor = %16.8e, %16.8e\n", w_lorentz_rc(0), w_lorentz_rc(1));
+
+      vels_rc = svec_rc/w_lorentz_rc/w_lorentz_rc/rhoh_rc;
+         
+      vlows_rc = sveclow_rc/w_lorentz_rc/w_lorentz_rc/rhoh_rc;
+
+    }
+
     /* vtilde^i = alpha * v^i - beta^i */
     const vec<vec<CCTK_REAL, 2>, 3> vtildes_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
