@@ -13,7 +13,7 @@ public:
   /* Constructor */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela(
-      EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+      EOSType &eos_3p, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
       CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -34,18 +34,18 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq, CCTK_REAL Bsq,
-                    CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv,
+                    CCTK_REAL BiSi, EOSType &eos_3p, prim_vars &pv,
                     cons_vars cv, const smat<CCTK_REAL, 3> &gup,
                     const smat<CCTK_REAL, 3> &glo) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
-                        CCTK_REAL x, EOSType &eos_th, cons_vars &cv) const;
+                        CCTK_REAL x, EOSType &eos_3p, cons_vars &cv) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
+  solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
 
   /* Destructor */
@@ -56,10 +56,10 @@ public:
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE
     CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela::c2p_1DPalenzuela(
-        EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+        EOSType &eos_3p, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
         CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len) {
 
-  GammaIdealFluid = eos_th.gamma;
+  GammaIdealFluid = eos_3p.gamma;
   maxIterations = maxIter;
   tolerance = tol;
   rho_strict = rho_str;
@@ -131,7 +131,7 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
                                     CCTK_REAL Bsq, CCTK_REAL BiSi,
-                                    EOSType &eos_th, prim_vars &pv,
+                                    EOSType &eos_3p, prim_vars &pv,
                                     cons_vars cv, const smat<CCTK_REAL, 3> &gup,
                                     const smat<CCTK_REAL, 3> &glo) const {
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
@@ -184,7 +184,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 
   pv.Ye = cv.dYe / cv.dens;
 
-  pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  pv.press = eos_3p.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
   pv.Bvec = cv.dBvec;
 
@@ -196,7 +196,7 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
                                         CCTK_REAL BiSi, CCTK_REAL x,
-                                        EOSType &eos_th, cons_vars &cv) const {
+                                        EOSType &eos_3p, cons_vars &cv) const {
   // computes f(x) from x and q,r,s,t
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
@@ -223,14 +223,14 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
 
   // (iv)
   CCTK_REAL P_loc =
-      eos_th.press_from_valid_rho_eps_ye(rho_loc, eps_loc, Ye_loc);
+      eos_3p.press_from_valid_rho_eps_ye(rho_loc, eps_loc, Ye_loc);
 
   return (x - (1.0 + eps_loc + P_loc / rho_loc) * W_loc);
 }
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
+c2p_1DPalenzuela::solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds,
                         cons_vars cv, const smat<CCTK_REAL, 3> &glo,
                         c2p_report &rep) const {
 
@@ -311,7 +311,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL a = xPalenzuela_lowerBound;
   CCTK_REAL b = xPalenzuela_upperBound;
   auto fn = [&](auto x) {
-    return funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, x, eos_th, cv);
+    return funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, x, eos_3p, cv);
   };
   auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
 
@@ -334,7 +334,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     status = ROOTSTAT::NOT_CONVERGED;
   }
 
-  xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+  xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
@@ -344,7 +344,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   }
 
   // check the validity of the computed eps
-  auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
+  auto rgeps = eos_3p.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
   if (pv.eps > rgeps.max) {
     //printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
     rep.adjust_cons = true;
@@ -383,8 +383,8 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     }
     pv.vel *= v_lim / sol_v;
     pv.w_lor = w_lim;
-    pv.eps = std::min(std::max(eos_th.rgeps.min, pv.eps), eos_th.rgeps.max);
-    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.eps = std::min(std::max(eos_3p.rgeps.min, pv.eps), eos_3p.rgeps.max);
+    pv.press = eos_3p.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
     rep.adjust_cons = true;
   }

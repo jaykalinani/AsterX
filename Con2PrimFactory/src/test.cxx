@@ -7,8 +7,8 @@
 #include "c2p.hxx"
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
-#include <eos.hxx>
-#include <eos_idealgas.hxx>
+
+#include "setup_eos.hxx"
 
 namespace Con2PrimFactory {
 
@@ -18,10 +18,6 @@ using namespace EOSX;
 extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
-  // Initializing the IG EOS
-  eos::range rgeps(0, 100), rgrho(1e-13, 20), rgye(0.5, 0.5);
-  const eos_idealgas eos_th(2.0, 938.985, rgeps, rgrho, rgye);
-
   // Setting up atmosphere
   atmosphere atmo(1e-10, 1e-8, 0.5, 1e-8, 0.001);
 
@@ -30,8 +26,8 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
                              1.0, 0.0, 1.0}; // xx, xy, xz, yy, yz, zz
 
   // Con2Prim objects
-  c2p_2DNoble c2p_Noble(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true);
-  c2p_1DPalenzuela c2p_Pal(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true);
+  c2p_2DNoble c2p_Noble(*eos_3p_ig, atmo, 100, 1e-8, 1e8, 1, 1, true);
+  c2p_1DPalenzuela c2p_Pal(*eos_3p_ig, atmo, 100, 1e-8, 1e8, 1, 1, true);
 
   // Construct error report object:
   c2p_report rep_Noble;
@@ -49,7 +45,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
 
   // Testing C2P Noble
   CCTK_VINFO("Testing C2P Noble...");
-  c2p_Noble.solve(eos_th, pv, pv_seeds, cv, g, rep_Noble);
+  c2p_Noble.solve(*eos_3p_ig, pv, pv_seeds, cv, g, rep_Noble);
 
   printf("pv_seeds, pv: \n"
          "rho: %f, %f \n"
@@ -90,7 +86,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
 
   // Testing C2P Palenzuela
   CCTK_VINFO("Testing C2P Palenzuela...");
-  c2p_Pal.solve(eos_th, pv, pv_seeds, cv, g, rep_Pal);
+  c2p_Pal.solve(*eos_3p_ig, pv, pv_seeds, cv, g, rep_Pal);
 
   printf("pv_seeds, pv: \n"
          "rho: %f, %f \n"
