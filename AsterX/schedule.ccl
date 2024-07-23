@@ -172,7 +172,7 @@ SCHEDULE AsterX_SourceTerms IN AsterX_RHSGroup AFTER AsterX_Fluxes
   READS: ADMBaseX::shift(everywhere)
   READS: ADMBaseX::curv(everywhere)
   READS: HydroBaseX::rho(everywhere) HydroBaseX::press(everywhere) HydroBaseX::eps(everywhere)
-#  READS: HydroBaseX::vel(everywhere)
+  READS: HydroBaseX::vel(everywhere)
   READS: zvec_x(everywhere), zvec_y(everywhere), zvec_z(everywhere)
   READS: svec_x(everywhere), svec_y(everywhere), svec_z(everywhere)
   READS: HydroBaseX::Bvec(everywhere)

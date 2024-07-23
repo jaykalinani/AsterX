@@ -266,6 +266,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     zvec_y(p.I) = wlor * pv.vel(1);
     zvec_z(p.I) = wlor * pv.vel(2);
 
+    svec_x(p.I) = (rho(p.I)+rho(p.I)*eps(p.I)+press(p.I))*wlor*wlor*pv.vel(0); 
+    svec_y(p.I) = (rho(p.I)+rho(p.I)*eps(p.I)+press(p.I))*wlor*wlor*pv.vel(1);
+    svec_z(p.I) = (rho(p.I)+rho(p.I)*eps(p.I)+press(p.I))*wlor*wlor*pv.vel(2);
+
     // For debugging, remove later
     if (isinf(wlor) || isinf(eps(p.I)) || isinf(press(p.I))) {
         printf("cctk_iteration = %i,  ijk = %i, %i, %i, "
