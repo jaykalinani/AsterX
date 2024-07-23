@@ -7,8 +7,7 @@
 #include <cmath>
 #include <seeds_utils.hxx>
 
-#include <eos.hxx>
-#include <eos_idealgas.hxx>
+#include <setup_eos.hxx>
 
 namespace AsterSeeds {
 using namespace std;
@@ -20,11 +19,9 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // For all the tests, the initial data EOS is ideal gas
-  // Constructing the IG EOS object
-  eos::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
-      rgye(ye_min, ye_max);
-
-  const eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
+  if (not CCTK_EQUALS(evolution_eos, "IdealGas")) {
+    CCTK_VERROR("Invalid evolution EOS type '%s'. Please, set EOSX::evolution_eos = \"IdealGas\" in your parameter file.", evolution_eos);
+  }
   const CCTK_REAL dummy_ye = 0.5;
 
   if (CCTK_EQUALS(test_case, "equilibrium")) {
@@ -37,7 +34,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
           press(p.I) = 1.0;
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -65,7 +62,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
           press(p.I) = 1.0; // should add kinetic energy here
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -97,7 +94,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
           vely(p.I) = -va * A0 * cos(k*p.x);
           velz(p.I) = -va * A0 * sin(k*p.x);
           press(p.I) = 0.5; // should add kinetic energy here
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -135,7 +132,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = 0.0;
             press(p.I) = 1.0;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -193,7 +190,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -245,7 +242,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velx(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -296,7 +293,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -362,7 +359,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -414,7 +411,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velx(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -465,7 +462,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -531,7 +528,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -583,7 +580,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velx(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -634,7 +631,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -700,7 +697,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -752,7 +749,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velx(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -803,7 +800,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -869,7 +866,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velz(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -921,7 +918,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             velx(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -972,7 +969,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = vzr;
             press(p.I) = pressr;
           }
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 

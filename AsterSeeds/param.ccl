@@ -30,12 +30,17 @@ KEYWORD test_case "Name of the testcase" STEERABLE=never
 
 private:
 
-# parameters for atmosphere
+# parameters for setting initializing atmosphere as initial data
 
-REAL rho_atmosphere "floor density in the atmosphere"
+CCTK_REAL rho_atmosphere "floor density in the atmosphere"
 {
   0.0:*   :: "Positive"
-} 1e-5
+} 1e-9
+
+CCTK_REAL press_atmosphere "floor pressure in the atmosphere"
+{
+  0.0:*   :: "Positive"
+} 1e-18
 
 # parameters for 1D tests
 
@@ -130,13 +135,5 @@ REAL dipole_z "z-coordinate of the dipole center" STEERABLE=ALWAYS
 } 0.0
 
 SHARES: EOSX
-USES CCTK_REAL poly_gamma
-USES CCTK_REAL poly_k
-USES CCTK_REAL gl_gamma
-USES CCTK_REAL eps_min
-USES CCTK_REAL eps_max
-USES CCTK_REAL rho_min
-USES CCTK_REAL rho_max
-USES CCTK_REAL ye_min
-USES CCTK_REAL ye_max
-USES CCTK_REAL particle_mass
+USES KEYWORD evolution_eos
+
