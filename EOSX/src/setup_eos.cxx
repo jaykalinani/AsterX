@@ -55,7 +55,7 @@ extern "C" void EOSX_Setup_EOSID(CCTK_ARGUMENTS) {
 extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
   eos_3p eos_3p_type;
-  eos::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
+  eos_3p::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
       rgye(ye_min, ye_max);
 
   if (CCTK_EQUALS(evolution_eos, "IdealGas")) {
@@ -71,27 +71,27 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
   switch (eos_3p_type) {
   case eos_3p::IdealGas: {
     CCTK_INFO("Setting evolution EOS to Ideal Gas");
-    eos_ig = (eos_idealgas*)The_Managed_Arena()->alloc(sizeof *eos_ig);
-    new (eos_ig) eos_idealgas;
-    assert(eos_ig);
-    eos_ig->init(gl_gamma, particle_mass, rgeps, rgrho, rgye);
+    eos_3p_ig = (eos_3p_idealgas*)The_Managed_Arena()->alloc(sizeof *eos_3p_ig);
+    new (eos_3p_ig) eos_3p_idealgas;
+    assert(eos_3p_ig);
+    eos_3p_ig->init(gl_gamma, particle_mass, rgeps, rgrho, rgye);
     break;
   }
   case eos_3p::Hybrid: {
     CCTK_INFO("Setting evolution EOS to Hybrid");
-    eos_hyb = (eos_hybrid*)The_Managed_Arena()->alloc(sizeof *eos_hyb);
-    new (eos_hyb) eos_hybrid(eos_poly, gamma_th, rgeps, rgrho, rgye);
-    assert(eos_hyb);
+    eos_3p_hyb = (eos_3p_hybrid*)The_Managed_Arena()->alloc(sizeof *eos_3p_hyb);
+    new (eos_3p_hyb) eos_3p_hybrid(eos_poly, gamma_th, rgeps, rgrho, rgye);
+    assert(eos_3p_hyb);
     break;
   }
   case eos_3p::Tabulated: {
     CCTK_INFO("Setting evolution EOS to Tabulated3D");
     const string eos_filename = EOSTable_filename;
-    eos_tab3d = (eos_tabulated3d*)The_Managed_Arena()->alloc(sizeof *eos_tab3d);
-    new (eos_tab3d) eos_tabulated3d;
-    assert(eos_tab3d);
-    eos_tab3d->init(rgeps, rgrho, rgye);
-    eos_tab3d->read_eos_table(eos_filename);
+    eos_3p_tab3d = (eos_3p_tabulated3d*)The_Managed_Arena()->alloc(sizeof *eos_3p_tab3d);
+    new (eos_3p_tab3d) eos_3p_tabulated3d;
+    assert(eos_3p_tab3d);
+    eos_3p_tab3d->init(rgeps, rgrho, rgye);
+    eos_3p_tab3d->read_eos_table(eos_filename);
     break;
   }
   default:
