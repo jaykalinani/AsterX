@@ -20,7 +20,7 @@ using namespace Loop;
 using namespace EOSX;
 using namespace Con2PrimFactory;
 
-enum class eos_t { IdealGas, Hybrid, Tabulated };
+enum class eos_3param { IdealGas, Hybrid, Tabulated };
 enum class c2p_first_t { Noble, Palenzuela };
 enum class c2p_second_t { Noble, Palenzuela };
 
@@ -216,28 +216,28 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // defining EOS objects
-  eos_3p eos_3p_type;
+  eos_3param eos_3p_type;
 
   if (CCTK_EQUALS(evolution_eos, "IdealGas")) {
-    eos_3p_type = eos_3p::IdealGas;
+    eos_3p_type = eos_3param::IdealGas;
   } else if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
-    eos_3p_type = eos_3p::Hybrid;
+    eos_3p_type = eos_3param::Hybrid;
   } else if (CCTK_EQUALS(evolution_eos, "Tabulated")) {
-    eos_3p_type = eos_3p::Tabulated;
+    eos_3p_type = eos_3param::Tabulated;
   } else {
     CCTK_ERROR("Unknown value for parameter \"evolution_eos\"");
   }
 
   switch (eos_3p_type) {
-  case eos_3p::IdealGas: {
+  case eos_3param::IdealGas: {
     AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_ig);
     break;
   }
-  case eos_3p::Hybrid: {
+  case eos_3param::Hybrid: {
     AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_hyb); 
     break;
   }
-  case eos_3p::Tabulated: {
+  case eos_3param::Tabulated: {
     AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_tab3d);
     break;
   }

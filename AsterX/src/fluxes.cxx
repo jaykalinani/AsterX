@@ -23,7 +23,7 @@ using namespace EOSX;
 using namespace ReconX;
 
 enum class flux_t { LxF, HLLE };
-enum class eos_t { IdealGas, Hybrid, Tabulated };
+enum class eos_3param { IdealGas, Hybrid, Tabulated };
 
 // Calculate the fluxes in direction `dir`. This function is more
 // complex because it has to handle any direction, but as reward,
@@ -485,32 +485,32 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
-  eos_3p eos_3p_type;
+  eos_3param eos_3p_type;
 
   if (CCTK_EQUALS(evolution_eos, "IdealGas")) {
-    eos_3p_type = eos_3p::IdealGas;
+    eos_3p_type = eos_3param::IdealGas;
   } else if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
-    eos_3p_type = eos_3p::Hybrid;
+    eos_3p_type = eos_3param::Hybrid;
   } else if (CCTK_EQUALS(evolution_eos, "Tabulated3d")) {
-    eos_3p_type = eos_3p::Tabulated;
+    eos_3p_type = eos_3param::Tabulated;
   } else {
     CCTK_ERROR("Unknown value for parameter \"evolution_eos\"");
   }
 
   switch (eos_3p_type) {
-  case eos_3p::IdealGas: {
+  case eos_3param::IdealGas: {
     CalcFlux<0>(cctkGH, *eos_3p_ig);
     CalcFlux<1>(cctkGH, *eos_3p_ig);
     CalcFlux<2>(cctkGH, *eos_3p_ig);
     break;
   }
-  case eos_3p::Hybrid: {
+  case eos_3param::Hybrid: {
     CalcFlux<0>(cctkGH, *eos_3p_hyb);
     CalcFlux<1>(cctkGH, *eos_3p_hyb);
     CalcFlux<2>(cctkGH, *eos_3p_hyb);
     break;
   }
-  case eos_3p::Tabulated: {
+  case eos_3param::Tabulated: {
     CalcFlux<0>(cctkGH, *eos_3p_tab3d);
     CalcFlux<1>(cctkGH, *eos_3p_tab3d);
     CalcFlux<2>(cctkGH, *eos_3p_tab3d);

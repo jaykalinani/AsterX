@@ -75,6 +75,9 @@ BOOLEAN update_tmunu "Updates tmunu gridfunctions if set to yes" STEERABLE=alway
 } yes
 
 SHARES: EOSX
+USES CCTK_REAL poly_gamma
+USES CCTK_REAL poly_k
+USES CCTK_REAL gl_gamma
 USES KEYWORD initial_data_eos
 USES KEYWORD evolution_eos
 USES CCTK_STRING EOSTable_filename
