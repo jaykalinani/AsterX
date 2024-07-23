@@ -13,8 +13,7 @@
 #include "eigenvalues.hxx"
 #include "fluxes.hxx"
 #include <reconstruct.hxx>
-#include <eos.hxx>
-#include <eos_idealgas.hxx>
+#include <setup_eos.hxx>
 
 namespace AsterX {
 using namespace std;
@@ -30,7 +29,7 @@ enum class eos_t { IdealGas, Hybrid, Tabulated };
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
 template <int dir, typename EOSType>
-void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
+void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_3p) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
@@ -181,17 +180,17 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     });
     vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
     // TODO: Correctly reconstruct Ye
-    const vec<CCTK_REAL, 2> ye_rc{ye_min, ye_max};
+    const vec<CCTK_REAL, 2> ye_rc{eos_3p.rgye.min, eos_3p.rgye.max};
 
     // TODO: currently sets negative reconstructed pressure to 0 since eps_min=0
     // for ideal gas
     if (press_rc(0) < 0) {
       press_rc(0) =
-          eos_th.press_from_valid_rho_eps_ye(rho_rc(0), eps_min, ye_rc(0));
+          eos_3p.press_from_valid_rho_eps_ye(rho_rc(0), eos_3p.rgeps.min, ye_rc(0));
     }
     if (press_rc(1) < 0) {
       press_rc(1) =
-          eos_th.press_from_valid_rho_eps_ye(rho_rc(1), eps_min, ye_rc(1));
+          eos_3p.press_from_valid_rho_eps_ye(rho_rc(1), eos_3p.rgeps.min, ye_rc(1));
     }
 
     const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
@@ -255,13 +254,13 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     // Ideal gas case {
     /* eps for ideal gas EOS */
     const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
-      return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
+      return eos_3p.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
                                                 ye_rc(f));
     });
     /* cs2 for ideal gas EOS */
     const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-      return eos_th.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f)) *
-             eos_th.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f));
+      return eos_3p.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f)) *
+             eos_3p.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f));
     });
     /* enthalpy h for ideal gas EOS */
     const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
@@ -486,34 +485,35 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
-  eos_t eostype;
-  eos::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
-      rgye(ye_min, ye_max);
+  eos_3p eos_3p_type;
 
   if (CCTK_EQUALS(evolution_eos, "IdealGas")) {
-    eostype = eos_t::IdealGas;
+    eos_3p_type = eos_3p::IdealGas;
   } else if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
-    eostype = eos_t::Hybrid;
-  } else if (CCTK_EQUALS(evolution_eos, "Tabulated")) {
-    eostype = eos_t::Tabulated;
+    eos_3p_type = eos_3p::Hybrid;
+  } else if (CCTK_EQUALS(evolution_eos, "Tabulated3d")) {
+    eos_3p_type = eos_3p::Tabulated;
   } else {
     CCTK_ERROR("Unknown value for parameter \"evolution_eos\"");
   }
 
-  switch (eostype) {
-  case eos_t::IdealGas: {
-    eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
-    CalcFlux<0>(cctkGH, eos_th);
-    CalcFlux<1>(cctkGH, eos_th);
-    CalcFlux<2>(cctkGH, eos_th);
+  switch (eos_3p_type) {
+  case eos_3p::IdealGas: {
+    CalcFlux<0>(cctkGH, *eos_3p_ig);
+    CalcFlux<1>(cctkGH, *eos_3p_ig);
+    CalcFlux<2>(cctkGH, *eos_3p_ig);
     break;
   }
-  case eos_t::Hybrid: {
-    CCTK_ERROR("Hybrid EOS is not yet supported");
+  case eos_3p::Hybrid: {
+    CalcFlux<0>(cctkGH, *eos_3p_hyb);
+    CalcFlux<1>(cctkGH, *eos_3p_hyb);
+    CalcFlux<2>(cctkGH, *eos_3p_hyb);
     break;
   }
-  case eos_t::Tabulated: {
-    CCTK_ERROR("Tabulated EOS is not yet supported");
+  case eos_3p::Tabulated: {
+    CalcFlux<0>(cctkGH, *eos_3p_tab3d);
+    CalcFlux<1>(cctkGH, *eos_3p_tab3d);
+    CalcFlux<2>(cctkGH, *eos_3p_tab3d);
     break;
   }
   default:

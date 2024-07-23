@@ -10,11 +10,7 @@
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
 
-#include <eos_1p.hxx>
-#include <eos_polytropic.hxx>
-
-#include <eos.hxx>
-#include <eos_idealgas.hxx>
+#include "setup_eos.hxx"
 
 #include "utils.hxx"
 
@@ -29,8 +25,8 @@ enum class c2p_first_t { Noble, Palenzuela };
 enum class c2p_second_t { Noble, Palenzuela };
 
 template <typename EOSIDType, typename EOSType>
-void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
-                             EOSType &eos_th) {
+void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_1p,
+                             EOSType &eos_3p) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
@@ -57,19 +53,19 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
   // Setting up atmosphere
   const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
-  const CCTK_REAL gm1 = eos_cold.gm1_from_valid_rmd(rho_abs_min);
-  CCTK_REAL eps_atm = eos_cold.sed_from_valid_gm1(gm1);
-  eps_atm = std::min(std::max(eos_th.rgeps.min, eps_atm), eos_th.rgeps.max);
+  const CCTK_REAL gm1 = eos_1p.gm1_from_valid_rho(rho_abs_min);
+  CCTK_REAL eps_atm = eos_1p.sed_from_valid_gm1(gm1);
+  eps_atm = std::min(std::max(eos_3p.rgeps.min, eps_atm), eos_3p.rgeps.max);
   const CCTK_REAL p_atm =
-      eos_th.press_from_valid_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo);
+      eos_3p.press_from_valid_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo);
   atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 
   // Construct Noble c2p object:
-  c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
+  c2p_2DNoble c2p_Noble(eos_3p, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
                         B_lim, Ye_lenient);
 
   // Construct Palenzuela c2p object:
-  c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
+  c2p_1DPalenzuela c2p_Pal(eos_3p, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
                            B_lim, Ye_lenient);
 
   // Loop over the interior of the grid
@@ -120,11 +116,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     // Calling the first C2P
     switch (c2p_fir) {
     case c2p_first_t::Noble: {
-      c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+      c2p_Noble.solve(eos_3p, pv, pv_seeds, cv, glo, rep_first);
       break;
     }
     case c2p_first_t::Palenzuela: {
-      c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+      c2p_Pal.solve(eos_3p, pv, pv_seeds, cv, glo, rep_first);
       break;
     }
     default:
@@ -138,11 +134,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       // Calling the second C2P
       switch (c2p_sec) {
       case c2p_second_t::Noble: {
-        c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
+        c2p_Noble.solve(eos_3p, pv, pv_seeds, cv, glo, rep_second);
         break;
       }
       case c2p_second_t::Palenzuela: {
-        c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
+        c2p_Pal.solve(eos_3p, pv, pv_seeds, cv, glo, rep_second);
         break;
       }
       default:
@@ -220,37 +216,29 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
 
   // defining EOS objects
-  eos_t eostype;
-  eos::range rgeps(eps_min, eps_max), rgrho(rho_min, rho_max),
-      rgye(ye_min, ye_max);
+  eos_3p eos_3p_type;
 
   if (CCTK_EQUALS(evolution_eos, "IdealGas")) {
-    eostype = eos_t::IdealGas;
+    eos_3p_type = eos_3p::IdealGas;
   } else if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
-    eostype = eos_t::Hybrid;
+    eos_3p_type = eos_3p::Hybrid;
   } else if (CCTK_EQUALS(evolution_eos, "Tabulated")) {
-    eostype = eos_t::Tabulated;
+    eos_3p_type = eos_3p::Tabulated;
   } else {
     CCTK_ERROR("Unknown value for parameter \"evolution_eos\"");
   }
 
-  switch (eostype) {
-  case eos_t::IdealGas: {
-    CCTK_REAL n = 1 / (poly_gamma - 1); // Polytropic index
-    CCTK_REAL rmd_p = pow(poly_k, -n);  // Polytropic density scale
-
-    const eos_polytrope eos_cold(n, rmd_p, rho_max);
-    const eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
-
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_cold, eos_th);
+  switch (eos_3p_type) {
+  case eos_3p::IdealGas: {
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_ig);
     break;
   }
-  case eos_t::Hybrid: {
-    CCTK_ERROR("Hybrid EOS is not yet supported");
+  case eos_3p::Hybrid: {
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_hyb); 
     break;
   }
-  case eos_t::Tabulated: {
-    CCTK_ERROR("Tabulated EOS is not yet supported");
+  case eos_3p::Tabulated: {
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_tab3d);
     break;
   }
   default:

@@ -28,8 +28,8 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   // Setting up initial data EOS
   const CCTK_REAL n = 1 / (poly_gamma - 1); // Polytropic index
   const CCTK_REAL adiab_ind_id = 1.0 / (poly_gamma - 1);
-  const CCTK_REAL rmd_p = pow(poly_k, -n); //Polytropic density scale
-  const auto eos_id = make_eos_barotr_poly(adiab_ind_id, rmd_p, rho_max);
+  const CCTK_REAL rho_p = pow(poly_k, -n); //Polytropic density scale
+  const auto eos_id = make_eos_barotr_poly(adiab_ind_id, rho_p, rho_max);
 
   // Setting up evolution EOS
   const CCTK_REAL adiab_ind_evol = 1.0 / (gl_gamma - 1);
