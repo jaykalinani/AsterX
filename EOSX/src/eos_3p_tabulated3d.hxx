@@ -32,17 +32,12 @@ public:
   range rgeps;
   
   CCTK_INT ntemp, nrho, nye;
-  // AMREX_GPU_MANAGED CCTK_REAL *logrho, *logtemp, *ye;
-  // AMREX_GPU_MANAGED CCTK_REAL * alltables;
 
-  CCTK_REAL *logrho, *logtemp, *yes;
+  CCTK_REAL *logrho, *logtemp, *yes; // FIXME: AMREX_GPU_MANAGED?
   CCTK_REAL *alltables;
   CCTK_REAL *epstable;
   CCTK_REAL energy_shift;
   
-  //amrex::FArrayBox logtemp, logrho, ye;
-  //amrex::Array4<CCTK_REAL> logpress, ...;
-
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void init(
     const range &rgeps_, const range &rgrho_, const range &rgye_)
   {
@@ -54,38 +49,21 @@ public:
   }
 
 
-  // Routine reading an HDF5 simple dataset consisting of one integer element
-  // FIXME: make this more general: any type (template), any number of elements (but still 1D-shaped)
-  template <typename T>
+  // Routine reading an HDF5 integer dataset
   CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline
-  void get_hdf5_dset(const hid_t  &file_id,
-                               const string &dset_name,
+  void get_hdf5_int_dset(const hid_t  &file_id,
+             const string &dset_name,
 			       const int npoints,
-			       T var) {
+			       int* var) {
 
     const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
     assert(dset_id >= 0);
-
-    // const auto dspace_id = H5Dget_space(dset_id);
-    // assert(dspace_id >= 0);
-
-    // const auto dspacetype_id = H5Sget_simple_extent_type(dspace_id);
-    // assert(dspacetype_id == H5S_SIMPLE);
-
-    // const auto ndims = H5Sget_simple_extent_ndims(dspace_id);
-    // assert(ndims == 1);
-
-    // hsize_t size;
-    // const auto ndims_again = H5Sget_simple_extent_dims(dspace_id, &size, nullptr);
-    // CHECK_ERROR(H5Sclose(dspace_id));
-    // assert(ndims_again == 1);
-    // assert(size        == 1);
 
     const auto dtype_id = H5Dget_type(dset_id);
     assert(dtype_id >= 0);
 
     const auto dtypeclass = H5Tget_class(dtype_id);
-    // assert(dtypeclass == H5T_INTEGER);
+    assert(dtypeclass == H5T_INTEGER);
     CHECK_ERROR(H5Tclose(dtype_id));
 
     auto dxpl_id = H5Pcreate(H5P_DATASET_XFER);
@@ -97,7 +75,7 @@ public:
     dxpl_id = H5P_DEFAULT;
     #endif
 
-    CHECK_ERROR(H5Dread(dset_id, dtypeclass, H5S_ALL, H5S_ALL, dxpl_id, var));
+    CHECK_ERROR(H5Dread(dset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, var));
     CHECK_ERROR(H5Dclose(dset_id));
 
     #ifdef H5_HAVE_PARALLEL
@@ -128,37 +106,15 @@ public:
     CHECK_ERROR(H5Pclose(dxpl_id));
   }
 
-
-
-  // Routine reading a 1D HDF5 simple dataset storing real numbers
+  // Routine reading an HDF5 real number dataset
   CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline
-  void get_hdf5_simple_1Darray(const hid_t      &file_id,
-                               const string     &dset_name,
-			       amrex::FArrayBox &var) {
+  void get_hdf5_real_dset(const hid_t  &file_id,
+             const string &dset_name,
+			       const int npoints,
+			       double* var) {
+
     const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
     assert(dset_id >= 0);
-
-    const auto dspace_id = H5Dget_space(dset_id);
-    assert(dspace_id >= 0);
-
-    const auto dspacetype_id = H5Sget_simple_extent_type(dspace_id);
-    assert(dspacetype_id == H5S_SIMPLE);
-
-    const auto ndims = H5Sget_simple_extent_ndims(dspace_id);
-    assert(ndims == 1);
-
-    hsize_t size;
-    const auto ndims_again = H5Sget_simple_extent_dims(dspace_id, &size, nullptr);
-    CHECK_ERROR(H5Sclose(dspace_id));
-    assert(ndims_again == 1);
-    assert(size > 0);
-
-    const auto dtype_id = H5Dget_type(dset_id);
-    assert(dtype_id >= 0);
-
-    const auto dtypeclass = H5Tget_class(dtype_id);
-    assert(dtypeclass == H5T_FLOAT);
-    CHECK_ERROR(H5Tclose(dtype_id));
 
     auto dxpl_id = H5Pcreate(H5P_DATASET_XFER);
     assert(dxpl_id >= 0);
@@ -169,9 +125,7 @@ public:
     dxpl_id = H5P_DEFAULT;
     #endif
 
-    CCTK_REAL buffer[size];
-    //CCTK_REAL *buffer = new CCTK_REAL[size];
-    CHECK_ERROR(H5Dread(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, dxpl_id, buffer));
+    CHECK_ERROR(H5Dread(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, dxpl_id, var));
     CHECK_ERROR(H5Dclose(dset_id));
 
     #ifdef H5_HAVE_PARALLEL
@@ -200,14 +154,7 @@ public:
     #endif  // H5_HAVE_PARALLEL
 
     CHECK_ERROR(H5Pclose(dxpl_id));
-
-    //amrex::Box box1d(amrex::IntVect{0, 0, 0}, amrex::IntVect{size - 1, 0, 0});
-    //var = amrex::FArrayBox(box1d, 1, amrex::The_Managed_Arena());
-    // TODO: fill var with buffer
-
-    return;
   }
-
 
 
   // Routine reading the EOS table and filling the corresponding object
@@ -234,11 +181,11 @@ public:
 
     assert(file_id >= 0);
 
-    // TODO: finish reading the EOS table and filling the EOS object
-    get_hdf5_dset<CCTK_INT*>(file_id, "pointstemp", 1, &ntemp);
-    get_hdf5_dset<CCTK_INT*>(file_id, "pointsrho", 1, &nrho);
-    get_hdf5_dset<CCTK_INT*>(file_id, "pointsye", 1, &nye);
-    
+		// Get number of points
+    get_hdf5_int_dset(file_id, "pointstemp", 1, &ntemp);
+    get_hdf5_int_dset(file_id, "pointsrho", 1, &nrho);
+    get_hdf5_int_dset(file_id, "pointsye", 1, &nye);
+ 
     const int npoints = ntemp * nrho * nye;
 
     CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp, nrho, nye);
@@ -264,43 +211,43 @@ public:
 
     // Prepare HDF5 to read hyperslabs into alltables_temp
     hsize_t table_dims[2] = {NTABLES, (hsize_t)npoints};
-    hsize_t var3[2]       = { 1, (hsize_t)nrho * ntemp * nye};
+    hsize_t var3[2]       = { 1, (hsize_t)npoints};
     hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
 
     // hydro (and munu)
-    get_hdf5_dset<CCTK_REAL*>(file_id, "logpress ", npoints, &alltables_temp[0  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "logenergy", npoints, &alltables_temp[1  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "entropy  ", npoints, &alltables_temp[2  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "munu     ", npoints, &alltables_temp[3  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "cs2      ", npoints, &alltables_temp[4  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "dedt     ", npoints, &alltables_temp[5  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "dpdrhoe  ", npoints, &alltables_temp[6  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "dpderho  ", npoints, &alltables_temp[7  * npoints]);
+    get_hdf5_real_dset(file_id, "logpress",  npoints, &alltables_temp[0  * npoints]);
+    get_hdf5_real_dset(file_id, "logenergy", npoints, &alltables_temp[1  * npoints]);
+    get_hdf5_real_dset(file_id, "entropy",   npoints, &alltables_temp[2  * npoints]);
+    get_hdf5_real_dset(file_id, "munu",      npoints, &alltables_temp[3  * npoints]);
+    get_hdf5_real_dset(file_id, "cs2",       npoints, &alltables_temp[4  * npoints]);
+    get_hdf5_real_dset(file_id, "dedt",      npoints, &alltables_temp[5  * npoints]);
+    get_hdf5_real_dset(file_id, "dpdrhoe",   npoints, &alltables_temp[6  * npoints]);
+    get_hdf5_real_dset(file_id, "dpderho",   npoints, &alltables_temp[7  * npoints]);
 
     // chemical potentials
-    get_hdf5_dset<CCTK_REAL*>(file_id, "muhat    ", npoints, &alltables_temp[8  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "mu_e     ", npoints, &alltables_temp[9  * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "mu_p     ", npoints, &alltables_temp[10 * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "mu_n     ", npoints, &alltables_temp[11 * npoints]);
+    get_hdf5_real_dset(file_id, "muhat",     npoints, &alltables_temp[8  * npoints]);
+    get_hdf5_real_dset(file_id, "mu_e",      npoints, &alltables_temp[9  * npoints]);
+    get_hdf5_real_dset(file_id, "mu_p",			 npoints, &alltables_temp[10 * npoints]);
+    get_hdf5_real_dset(file_id, "mu_n",			 npoints, &alltables_temp[11 * npoints]);
     
     // compositions
-    get_hdf5_dset<CCTK_REAL*>(file_id, "Xa       ", npoints, &alltables_temp[12 * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "Xh       ", npoints, &alltables_temp[13 * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "Xn       ", npoints, &alltables_temp[14 * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "Xp       ", npoints, &alltables_temp[15 * npoints]);
+    get_hdf5_real_dset(file_id, "Xa", 			 npoints, &alltables_temp[12 * npoints]);
+    get_hdf5_real_dset(file_id, "Xh", 			 npoints, &alltables_temp[13 * npoints]);
+    get_hdf5_real_dset(file_id, "Xn", 			 npoints, &alltables_temp[14 * npoints]);
+    get_hdf5_real_dset(file_id, "Xp", 			 npoints, &alltables_temp[15 * npoints]);
 
     // average nucleus
-    get_hdf5_dset<CCTK_REAL*>(file_id, "Abar     ", npoints, &alltables_temp[16 * npoints]);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "Zbar     ", npoints, &alltables_temp[17 * npoints]);
+    get_hdf5_real_dset(file_id, "Abar",      npoints, &alltables_temp[16 * npoints]);
+    get_hdf5_real_dset(file_id, "Zbar",      npoints, &alltables_temp[17 * npoints]);
 
     // Gamma
-    get_hdf5_dset<CCTK_REAL*>(file_id, "gamma    ", npoints, &alltables_temp[18 * npoints]);
+    get_hdf5_real_dset(file_id, "gamma",		 npoints, &alltables_temp[18 * npoints]);
 
     // Read additional tables and variables
-    get_hdf5_dset<CCTK_REAL*>(file_id, "logrho", nrho, logrho);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "logtemp", ntemp, logtemp);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "ye", nye, yes);
-    get_hdf5_dset<CCTK_REAL*>(file_id, "energy_shift", 1, &energy_shift);
+    get_hdf5_real_dset(file_id, "logrho",		  nrho, logrho);
+    get_hdf5_real_dset(file_id, "logtemp",	  ntemp, logtemp);
+    get_hdf5_real_dset(file_id, "ye",				  nye, yes);
+    get_hdf5_real_dset(file_id, "energy_shift", 1, &energy_shift);
 
     CHECK_ERROR(H5Pclose(fapl_id));
     CHECK_ERROR(H5Sclose(mem3));
