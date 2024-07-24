@@ -1,10 +1,10 @@
 # Schedule definitions for thorn EOSX
 
-SCHEDULE EOSX_Setup_EOSID AT CCTK_WRAGH
-{
-  LANG: C
-  OPTIONS: GLOBAL
-} "set up initial data EOS"
+# SCHEDULE EOSX_Setup_EOSID AT CCTK_WRAGH
+# {
+#   LANG: C
+#   OPTIONS: GLOBAL
+# } "set up initial data EOS"
 
 SCHEDULE EOSX_Setup_EOS AT CCTK_WRAGH AFTER EOSX_Setup_EOSID
 {

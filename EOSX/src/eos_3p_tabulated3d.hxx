@@ -19,8 +19,8 @@ public:
   range rgeps;
   
   CCTK_INT ntemp, nrho, nye;
-  AMREX_GPU_MANAGED CCTK_REAL *logrho, *logtemp, *ye;
-  AMREX_GPU_MANAGED CCTK_REAL * alltables;
+  // AMREX_GPU_MANAGED CCTK_REAL *logrho, *logtemp, *ye;
+  // AMREX_GPU_MANAGED CCTK_REAL * alltables;
 
   //amrex::FArrayBox logtemp, logrho, ye;
   //amrex::Array4<CCTK_REAL> logpress, ...;
@@ -40,9 +40,10 @@ public:
   // FIXME: make this more general: any type (template), any number of elements (but still 1D-shaped)
   template <typename T>
   CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline
-  T get_hdf5_dset(const hid_t  &file_id,
+  void get_hdf5_dset(const hid_t  &file_id,
                                const string &dset_name,
-			       const int npoints) {
+			       const int npoints,
+			       T var) {
 
     const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
     assert(dset_id >= 0);
@@ -78,14 +79,7 @@ public:
     dxpl_id = H5P_DEFAULT;
     #endif
 
-    T buffer;
-    // TODO: how to malloc in correct Arena?
-    if (!(buffer = (T)malloc(npoints * sizeof(T&)))) {
-	    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-			"Cannot allocate memory for EOS table");
-	  }
-
-    CHECK_ERROR(H5Dread(dset_id, dtypeclass, H5S_ALL, H5S_ALL, dxpl_id, buffer));
+    CHECK_ERROR(H5Dread(dset_id, dtypeclass, H5S_ALL, H5S_ALL, dxpl_id, var));
     CHECK_ERROR(H5Dclose(dset_id));
 
     #ifdef H5_HAVE_PARALLEL
@@ -114,7 +108,6 @@ public:
     #endif  // H5_HAVE_PARALLEL
 
     CHECK_ERROR(H5Pclose(dxpl_id));
-    return buffer;
   }
 
 
@@ -224,9 +217,9 @@ public:
     assert(file_id >= 0);
 
     // TODO: finish reading the EOS table and filling the EOS object
-    ntemp = *get_hdf5_dset<CCTK_INT*>(file_id, "pointstemp", 1);
-    nrho  = *get_hdf5_dset<CCTK_INT*>(file_id, "pointsrho", 1);
-    nye   = *get_hdf5_dset<CCTK_INT*>(file_id, "pointsye", 1);
+    get_hdf5_dset<CCTK_INT*>(file_id, "pointstemp", 1, &ntemp);
+    get_hdf5_dset<CCTK_INT*>(file_id, "pointsrho", 1, &nrho);
+    get_hdf5_dset<CCTK_INT*>(file_id, "pointsye", 1, &nye);
 
     CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp, nrho, nye);
 
