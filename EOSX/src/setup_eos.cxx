@@ -40,7 +40,6 @@ extern "C" void EOSX_Setup_EOSID(CCTK_ARGUMENTS) {
       eos_1p_poly = (eos_1p_polytrope*)The_Managed_Arena()->alloc(sizeof *eos_1p_poly);
       new (eos_1p_poly) eos_1p_polytrope;
       assert(eos_1p_poly);
-      CCTK_INFO("Done");
       eos_1p_poly->init(poly_gamma, poly_k, rho_max);
       break;
     }
@@ -89,14 +88,10 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
     CCTK_INFO("Setting evolution EOS to Tabulated3D");
     const string eos_filename = EOSTable_filename;
     eos_3p_tab3d = (eos_3p_tabulated3d*)The_Managed_Arena()->alloc(sizeof *eos_3p_tab3d);
-    CCTK_INFO("Allocated managed memory for eos");
     new (eos_3p_tab3d) eos_3p_tabulated3d;
-    CCTK_INFO("New Tab EOS");
     assert(eos_3p_tab3d);
     eos_3p_tab3d->init(rgeps, rgrho, rgye);
-    CCTK_INFO("Init ranges");
     eos_3p_tab3d->read_eos_table(eos_filename);
-    CCTK_INFO("Done");
     break;
   }
   default:
