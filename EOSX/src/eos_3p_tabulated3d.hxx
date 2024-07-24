@@ -1,6 +1,16 @@
 #ifndef EOS_3P_TABULATED3D_HXX
 #define EOS_3P_TABULATED3D_HXX
 
+#define NTABLES 19
+#define LENGTHGF 6.77269222552442e-06
+#define TIMEGF 2.03040204956746e05
+#define RHOGF 1.61887093132742e-18
+#define PRESSGF 1.80123683248503e-39
+#define EPSGF 1.11265005605362e-21
+#define INVRHOGF 6.17714470405638e17
+#define INVEPSGF 8.98755178736818e20
+#define INVPRESSGF 5.55174079257738e38
+
 #include <cctk.h>
 #include <cmath>
 #include <hdf5.h>
@@ -22,6 +32,10 @@ public:
   // AMREX_GPU_MANAGED CCTK_REAL *logrho, *logtemp, *ye;
   // AMREX_GPU_MANAGED CCTK_REAL * alltables;
 
+  CCTK_REAL *logrho, *logtemp, *yes;
+  CCTK_REAL *alltables;
+  CCTK_REAL energy_shift;
+  
   //amrex::FArrayBox logtemp, logrho, ye;
   //amrex::Array4<CCTK_REAL> logpress, ...;
 
@@ -220,10 +234,72 @@ public:
     get_hdf5_dset<CCTK_INT*>(file_id, "pointstemp", 1, &ntemp);
     get_hdf5_dset<CCTK_INT*>(file_id, "pointsrho", 1, &nrho);
     get_hdf5_dset<CCTK_INT*>(file_id, "pointsye", 1, &nye);
+    
+    const double npoints = ntemp * nrho * nye;
 
     CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp, nrho, nye);
 
+    // Allocate memory for tables
+    double* alltables_temp;
+    if (!(alltables_temp = (double*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(double)))) {
+    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+    	"Cannot allocate memory for EOS table");
+    }
+    if (!(logrho = (double*)The_Managed_Arena()->alloc(nrho * sizeof(double)))) {
+    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+    	"Cannot allocate memory for EOS table");
+    }
+    if (!(logtemp = (double*)The_Managed_Arena()->alloc(ntemp * sizeof(double)))) {
+    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+    	"Cannot allocate memory for EOS table");
+    }
+    if (!(yes = (double*)The_Managed_Arena()->alloc(nye * sizeof(double)))) {
+    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+    	"Cannot allocate memory for EOS table");
+    }
+
+    // Prepare HDF5 to read hyperslabs into alltables_temp
+    hsize_t table_dims[2] = {NTABLES, (hsize_t)npoints};
+    hsize_t var3[2]       = { 1, (hsize_t)nrho * ntemp * nye};
+    hid_t mem3 =  H5Screate_simple(2, table_dims, NULL);
+
+    // hydro (and munu)
+    get_hdf5_dset<CCTK_REAL*>(file_id, "logpress ", npoints, &alltables_temp[0  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "logenergy", npoints, &alltables_temp[1  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "entropy  ", npoints, &alltables_temp[2  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "munu     ", npoints, &alltables_temp[3  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "cs2      ", npoints, &alltables_temp[4  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "dedt     ", npoints, &alltables_temp[5  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "dpdrhoe  ", npoints, &alltables_temp[6  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "dpderho  ", npoints, &alltables_temp[7  * npoints]);
+
+    // chemical potentials
+    get_hdf5_dset<CCTK_REAL*>(file_id, "muhat    ", npoints, &alltables_temp[8  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "mu_e     ", npoints, &alltables_temp[9  * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "mu_p     ", npoints, &alltables_temp[10 * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "mu_n     ", npoints, &alltables_temp[11 * npoints]);
+    
+    // compositions
+    get_hdf5_dset<CCTK_REAL*>(file_id, "Xa       ", npoints, &alltables_temp[12 * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "Xh       ", npoints, &alltables_temp[13 * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "Xn       ", npoints, &alltables_temp[14 * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "Xp       ", npoints, &alltables_temp[15 * npoints]);
+
+    // average nucleus
+    get_hdf5_dset<CCTK_REAL*>(file_id, "Abar     ", npoints, &alltables_temp[16 * npoints]);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "Zbar     ", npoints, &alltables_temp[17 * npoints]);
+
+    // Gamma
+    get_hdf5_dset<CCTK_REAL*>(file_id, "gamma    ", npoints, &alltables_temp[18 * npoints]);
+
+    // Read additional tables and variables
+    get_hdf5_dset<CCTK_REAL*>(file_id, "logrho", nrho, logrho);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "logtemp", ntemp, logtemp);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "ye", nye, yes);
+    get_hdf5_dset<CCTK_REAL*>(file_id, "energy_shift", 1, &energy_shift);
+
     CHECK_ERROR(H5Pclose(fapl_id));
+    CHECK_ERROR(H5Sclose(mem3));
 
     #ifdef H5_HAVE_PARALLEL
     CHECK_ERROR(H5Fclose(file_id));
@@ -232,6 +308,80 @@ public:
       CHECK_ERROR(H5Fclose(file_id));
     }
     #endif
+
+    // Fill actual table
+    if (!(alltables = (double*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(double)))) {
+    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+    	"Cannot allocate memory for EOS table");
+    }
+    for(int iv = 0;iv<NTABLES;iv++)
+    	for(int k = 0; k<nye;k++)
+      	    for(int j = 0; j<ntemp; j++)
+  		for(int i = 0; i<nrho; i++) {
+	    int indold = i + nrho*(j + ntemp*(k + nye*iv));
+	    int indnew = iv + NTABLES*(i + nrho*(j + ntemp*k));
+
+	    // Maybe swap temp axis?
+	    // int indnew = iv + NTABLES*(j + ntemp*(i + nrho*k));
+	    alltables[indnew] = alltables_temp[indold];
+    }
+
+    // free memory of temporary array
+    free(alltables_temp);
+
+    // convert units, convert logs to natural log
+    // The latter is great, because exp() is way faster than pow()
+    // pressure
+    energy_shift = energy_shift * EPSGF;
+    for(int i=0;i<nrho;i++) {
+      // rewrite:
+      //logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
+      // by using log(a^b*c) = b*log(a)+log(c)
+      logrho[i] = logrho[i] * log(10.) + log(RHOGF);
+    }
+
+    for(int i=0;i<ntemp;i++) {
+      //logtemp[i] = log(pow(10.0,logtemp[i]));
+      logtemp[i] = logtemp[i]*log(10.0);
+    }
+
+      // convert units
+    for(int i=0;i<npoints;i++) {
+
+      { // pressure
+        int idx = 0 + NTABLES*i;
+        alltables[idx] = alltables[idx] * log(10.0) + log(PRESSGF);
+      }
+
+      { // eps
+        int idx = 1 + NTABLES*i;
+        alltables[idx] = alltables[idx] * log(10.0) + log(EPSGF);
+        epstable[i] = exp(alltables[idx]);
+      }
+
+      { // cs2
+        int idx = 4 + NTABLES*i;
+        alltables[idx] *= LENGTHGF*LENGTHGF/TIMEGF/TIMEGF;
+      }
+
+      { // dedT
+        int idx = 5 + NTABLES*i;
+        alltables[idx] *= EPSGF;
+      }
+
+      { // dpdrhoe
+        int idx = 6 + NTABLES*i;
+        alltables[idx] *= PRESSGF/RHOGF;
+      }
+
+      { // dpderho
+        int idx = 7 + NTABLES*i;
+        alltables[idx] *= PRESSGF/EPSGF;
+      }
+
+    }
+
+    // set up steps, mins, maxes here?
 
     return;
   }
