@@ -19,7 +19,8 @@ public:
   range rgeps;
   
   CCTK_INT ntemp, nrho, nye;
-  //AMREX_GPU_MANAGED CCTK_REAL *logrho, *logtemp, *ye;
+  AMREX_GPU_MANAGED CCTK_REAL *logrho, *logtemp, *ye;
+  AMREX_GPU_MANAGED CCTK_REAL * alltables;
 
   //amrex::FArrayBox logtemp, logrho, ye;
   //amrex::Array4<CCTK_REAL> logpress, ...;
@@ -37,32 +38,35 @@ public:
 
   // Routine reading an HDF5 simple dataset consisting of one integer element
   // FIXME: make this more general: any type (template), any number of elements (but still 1D-shaped)
+  template <typename T>
   CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline
-  CCTK_INT get_hdf5_simple_int(const hid_t  &file_id,
-                               const string &dset_name) {
+  T get_hdf5_dset(const hid_t  &file_id,
+                               const string &dset_name,
+			       const int npoints) {
+
     const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
     assert(dset_id >= 0);
 
-    const auto dspace_id = H5Dget_space(dset_id);
-    assert(dspace_id >= 0);
+    // const auto dspace_id = H5Dget_space(dset_id);
+    // assert(dspace_id >= 0);
 
-    const auto dspacetype_id = H5Sget_simple_extent_type(dspace_id);
-    assert(dspacetype_id == H5S_SIMPLE);
+    // const auto dspacetype_id = H5Sget_simple_extent_type(dspace_id);
+    // assert(dspacetype_id == H5S_SIMPLE);
 
-    const auto ndims = H5Sget_simple_extent_ndims(dspace_id);
-    assert(ndims == 1);
+    // const auto ndims = H5Sget_simple_extent_ndims(dspace_id);
+    // assert(ndims == 1);
 
-    hsize_t size;
-    const auto ndims_again = H5Sget_simple_extent_dims(dspace_id, &size, nullptr);
-    CHECK_ERROR(H5Sclose(dspace_id));
-    assert(ndims_again == 1);
-    assert(size        == 1);
+    // hsize_t size;
+    // const auto ndims_again = H5Sget_simple_extent_dims(dspace_id, &size, nullptr);
+    // CHECK_ERROR(H5Sclose(dspace_id));
+    // assert(ndims_again == 1);
+    // assert(size        == 1);
 
     const auto dtype_id = H5Dget_type(dset_id);
     assert(dtype_id >= 0);
 
     const auto dtypeclass = H5Tget_class(dtype_id);
-    assert(dtypeclass == H5T_INTEGER);
+    // assert(dtypeclass == H5T_INTEGER);
     CHECK_ERROR(H5Tclose(dtype_id));
 
     auto dxpl_id = H5Pcreate(H5P_DATASET_XFER);
@@ -74,8 +78,14 @@ public:
     dxpl_id = H5P_DEFAULT;
     #endif
 
-    CCTK_INT buffer;
-    CHECK_ERROR(H5Dread(dset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, &buffer));
+    T buffer;
+    // TODO: how to malloc in correct Arena?
+    if (!(buffer = (T)malloc(npoints * sizeof(T&)))) {
+	    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+			"Cannot allocate memory for EOS table");
+	  }
+
+    CHECK_ERROR(H5Dread(dset_id, dtypeclass, H5S_ALL, H5S_ALL, dxpl_id, buffer));
     CHECK_ERROR(H5Dclose(dset_id));
 
     #ifdef H5_HAVE_PARALLEL
@@ -214,9 +224,9 @@ public:
     assert(file_id >= 0);
 
     // TODO: finish reading the EOS table and filling the EOS object
-    ntemp = get_hdf5_simple_int(file_id, "pointstemp");
-    nrho  = get_hdf5_simple_int(file_id, "pointsrho");
-    nye   = get_hdf5_simple_int(file_id, "pointsye");
+    ntemp = *get_hdf5_dset<CCTK_INT*>(file_id, "pointstemp", 1);
+    nrho  = *get_hdf5_dset<CCTK_INT*>(file_id, "pointsrho", 1);
+    nye   = *get_hdf5_dset<CCTK_INT*>(file_id, "pointsye", 1);
 
     CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp, nrho, nye);
 
@@ -277,7 +287,7 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL entropy_from
     return 0.0; //tab3d_entropy_from_temp(rho, temp, ye);
 }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
  range_eps_from_valid_rho_ye(const CCTK_REAL rho,
                                           const CCTK_REAL ye) const {
   return rgeps;

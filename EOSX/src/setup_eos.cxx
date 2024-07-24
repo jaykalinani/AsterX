@@ -15,12 +15,12 @@ enum class eos_1param {Polytropic, PWPolytropic};
 enum class eos_3param { IdealGas, Hybrid, Tabulated };
 
 // initial data EOS
-AMREX_GPU_MANAGED eos_1p_polytrope *eos_1p_poly = nullptr;
+// AMREX_GPU_MANAGED eos_1p_polytrope *eos_1p_poly = nullptr;
 
 // evolution EOS
-AMREX_GPU_MANAGED eos_3p_idealgas    *eos_3p_ig    = nullptr;
-AMREX_GPU_MANAGED eos_3p_hybrid      *eos_3p_hyb    = nullptr;
-AMREX_GPU_MANAGED eos_3p_tabulated3d *eos_3p_tab3d = nullptr;
+// AMREX_GPU_MANAGED eos_3p_idealgas    *eos_3p_ig    = nullptr;
+// AMREX_GPU_MANAGED eos_3p_hybrid      *eos_3p_hyb    = nullptr;
+// AMREX_GPU_MANAGED eos_3p_tabulated3d *eos_3p_tab3d = nullptr;
 
 
 extern "C" void EOSX_Setup_EOSID(CCTK_ARGUMENTS) {
