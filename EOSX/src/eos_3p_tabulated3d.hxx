@@ -23,7 +23,10 @@ using namespace std;
 
 namespace EOSX {
 
+using namespace amrex;
+
 class eos_3p_tabulated3d : public eos_3p {
+
 public:
   CCTK_REAL gamma;  // FIXME: get rid of this
   range rgeps;
@@ -34,6 +37,7 @@ public:
 
   CCTK_REAL *logrho, *logtemp, *yes;
   CCTK_REAL *alltables;
+  CCTK_REAL *epstable;
   CCTK_REAL energy_shift;
   
   //amrex::FArrayBox logtemp, logrho, ye;
@@ -235,7 +239,7 @@ public:
     get_hdf5_dset<CCTK_INT*>(file_id, "pointsrho", 1, &nrho);
     get_hdf5_dset<CCTK_INT*>(file_id, "pointsye", 1, &nye);
     
-    const double npoints = ntemp * nrho * nye;
+    const int npoints = ntemp * nrho * nye;
 
     CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp, nrho, nye);
 
@@ -329,6 +333,13 @@ public:
     // free memory of temporary array
     free(alltables_temp);
 
+  	// allocate epstable; a linear-scale eps table
+    // that allows us to extrapolate to negative eps
+    if (!(epstable = (double*)The_Managed_Arena()->alloc(npoints * sizeof(double)))) {
+    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
+    	"Cannot allocate memory for EOS table");
+    }
+  
     // convert units, convert logs to natural log
     // The latter is great, because exp() is way faster than pow()
     // pressure
