@@ -19,7 +19,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
   // Get local eos object
-  auto eos_3p_ig = *global_eos_3p_ig;
+  auto eos_3p_ig = global_eos_3p_ig;
 
   // Setting up atmosphere
   atmosphere atmo(1e-10, 1e-8, 0.5, 1e-8, 0.001);
