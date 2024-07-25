@@ -1,0 +1,138 @@
+#---------------- HydroBase parameters ----------------
+# shares: HydroBaseX
+# 
+# EXTENDS KEYWORD initial_Y_e
+# {
+#   "ID_TabEOS_HydroQuantities" :: "Initial electron fraction"
+# }
+# 
+# EXTENDS KEYWORD initial_temperature
+# {
+#   "ID_TabEOS_HydroQuantities" :: "Initial temperature"
+# }
+# 
+# EXTENDS KEYWORD initial_entropy
+# {
+#   "ID_TabEOS_HydroQuantities" :: "Initial entropy"
+# }
+# 
+# EXTENDS KEYWORD initial_hydro
+# {
+#   "ID_TabEOS_HydroQuantities" :: "Initial hydro vars"
+# }
+
+#----------------- Initial data files -----------------
+restricted:
+CCTK_STRING Y_e_filename "Initial data file for electron fraction"
+{
+  ".+" :: "Any nonempty string"
+  ""   :: "Forbidden value"
+} ""
+
+restricted:
+CCTK_STRING temperature_filename "Initial data file for temperature"
+{
+  ".+" :: "Any nonempty string"
+  ""   :: "Forbidden value"
+} ""
+
+#----------------- Initial data type ------------------
+restricted:
+CCTK_STRING id_temperature_type "Type of initial temperature"
+{
+  "constant"  :: "Constant initial temperature"
+  "from file" :: "Read initial temperature from file (as a function of density)"
+} "constant"
+
+restricted:
+CCTK_STRING id_entropy_type "Type of initial entropy"
+{
+  "none"   :: "entropy not set"
+  "constant"   :: "Constant initial entropy"
+  "from table" :: "Set initial entropy from (rho,Ye,T) using the EOS table"
+} "from table"
+
+# restricted:
+# CCTK_STRING id_type "What type of simulation?"
+# {
+# 	"NS" :: "Some other ID thorn has filled in rho"
+# 	"Spherical Shock" :: "Specify inner and outer region"
+# 	"Shocktube" :: "1D test"
+# } "NS"
+# 
+# restricted:
+# CCTK_REAL r_shock "For Sph Shock: radius of inner region"
+# {
+# 	0.0:*	:: "Any positive value"	
+# } 30.0
+# 
+# restricted:
+# CCTK_REAL rho_in "For Sph Shock: rho inside inner region"
+# {
+# 	0.0:*	:: "Any positive value"	
+# } 1e-3
+# 
+# restricted:
+# CCTK_REAL temp_in "For Sph Shock: T inside inner region"
+# {
+# 	0.0:*	:: "Any positive value"	
+# } 1e-2
+# 
+# CCTK_REAL collision_w_lorentz "Lorentz factor for the shocktube ultrarelativistic collision"
+# {
+#     1:* :: "Any real number larger then 1"
+# } 100.0
+
+#------ Initial temperature (constant type only) ------
+# restricted:
+# CCTK_REAL id_temperature "Initial temperature (constant everywhere on the grid)"
+# {
+#   0:* :: "Should be positive"
+# } 0
+
+#----------------- Atmospheric values -----------------
+restricted:
+CCTK_BOOLEAN atmo_falloff "If true, rho_atmo(r) = rho_b_atm_max*r^r_power outside a radius 'r_atmo_min' (see below)" STEERABLE=ALWAYS
+{
+} false
+
+restricted:
+CCTK_BOOLEAN atmo_falloff_T "If true, T_atmo(r) = T_atm_max*r^r_power_T outside a radius 'r_atmo_min' (see below)" STEERABLE=ALWAYS
+{
+} false
+
+restricted:
+CCTK_REAL r_power "Exponent of atmospheric density falloff." STEERABLE=ALWAYS
+{
+  *:0.] :: "Any non-positive number"
+} 0.0
+
+restricted:
+CCTK_REAL r_power_T "Exponent of atmospheric temperature falloff." STEERABLE=ALWAYS
+{
+  *:0.] :: "Any non-positive number"
+} 0.0
+
+restricted:
+CCTK_REAL r_atmo_min "The falloff in the atmosphere is only applied outside a sphere of radius 'r_atmo_min'" STEERABLE=ALWAYS
+{
+  [0.:* :: "Any non-negative number"
+} 0.
+
+restricted:
+CCTK_REAL id_rho_atm_max "Atmospheric density"
+{
+  0:* :: "Should be positive"
+} 0
+
+restricted:
+CCTK_REAL id_Y_e_atm "Atmospheric electron fraction"
+{
+  0:1 :: "Should be something between 0 and 1"
+} 0
+
+restricted:
+CCTK_REAL id_T_atm_max "Atmospheric temperature"
+{
+  0:* :: "Should be positive"
+} 0
