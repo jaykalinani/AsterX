@@ -20,11 +20,7 @@ using namespace std;
 using namespace Loop;
 using namespace Arith;
 
-enum class ROOTSTAT {
-  SUCCESS,
-  NOT_CONVERGED,
-  NOT_BRACKETED
-};
+enum class ROOTSTAT { SUCCESS, NOT_CONVERGED, NOT_BRACKETED };
 
 // Computes the contraction of smat and vec
 template <typename T, int D>
@@ -225,10 +221,10 @@ calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
     dir2 = 1;
   }
 
-  dgf1 =
-      ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir]) - (9.0 / 8.0) * gf(p.I + p.DI[dir]) +
-       (9.0 / 8.0) * gf(p.I) - (1.0 / 24.0) * gf(p.I - p.DI[dir])) /
-      p.DX[dir];
+  dgf1 = ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir]) -
+          (9.0 / 8.0) * gf(p.I + p.DI[dir]) + (9.0 / 8.0) * gf(p.I) -
+          (1.0 / 24.0) * gf(p.I - p.DI[dir])) /
+         p.DX[dir];
   dgf2 = ((1.0 / 24.0) * gf(p.I + p.DI[dir1] + 2 * p.DI[dir]) -
           (9.0 / 8.0) * gf(p.I + p.DI[dir1] + p.DI[dir]) +
           (9.0 / 8.0) * gf(p.I + p.DI[dir1]) -
@@ -245,11 +241,13 @@ calc_fd4_v2c(const GF3D2<const T> &gf, const PointDesc &p, int dir) {
           (1.0 / 24.0) * gf(p.I + p.DI[dir1] + p.DI[dir2] - p.DI[dir])) /
          p.DX[dir];
 
-  dgf5 = ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] + 2 * p.DI[dir]) -
-          (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] + p.DI[dir]) +
-          (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2]) -
-          (1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] - p.DI[dir])) /
-         p.DX[dir];
+  dgf5 =
+      ((1.0 / 24.0) *
+           gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] + 2 * p.DI[dir]) -
+       (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] + p.DI[dir]) +
+       (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2]) -
+       (1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] + 2 * p.DI[dir2] - p.DI[dir])) /
+      p.DX[dir];
 
   dgf6 = ((1.0 / 24.0) * gf(p.I + 2 * p.DI[dir1] - p.DI[dir2] + 2 * p.DI[dir]) -
           (9.0 / 8.0) * gf(p.I + 2 * p.DI[dir1] - p.DI[dir2] + p.DI[dir]) +

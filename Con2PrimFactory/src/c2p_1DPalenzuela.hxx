@@ -346,7 +346,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   // check the validity of the computed eps
   auto rgeps = eos_3p.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
   if (pv.eps > rgeps.max) {
-    //printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
+    // printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
     rep.adjust_cons = true;
     if (pv.rho >= rho_strict) {
       rep.set_range_eps(pv.eps); // sets adjust_cons to false by default
