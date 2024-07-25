@@ -12,7 +12,7 @@ ActiveThorns = "
 "
  
 $nlevels = 1
-$ncells = 400
+$ncells = 100
 
 Cactus::cctk_show_schedule = yes
 
