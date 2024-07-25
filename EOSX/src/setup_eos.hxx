@@ -15,16 +15,15 @@
 #include "eos_3p_hybrid.hxx"
 #include "eos_3p_tabulated3d.hxx"
 
-
 namespace EOSX {
 
 // initial data EOS
-extern AMREX_GPU_MANAGED eos_1p_polytrope *eos_1p_poly;
+extern eos_1p_polytrope *global_eos_1p_poly;
 
 // evolution EOS
-extern AMREX_GPU_MANAGED eos_3p_idealgas    *eos_3p_ig;
-extern AMREX_GPU_MANAGED eos_3p_hybrid      *eos_3p_hyb;
-extern AMREX_GPU_MANAGED eos_3p_tabulated3d *eos_3p_tab3d;
+extern eos_3p_idealgas *global_eos_3p_ig;
+extern eos_3p_hybrid *global_eos_3p_hyb;
+extern eos_3p_tabulated3d *global_eos_3p_tab3d;
 
 } // namespace EOSX
 

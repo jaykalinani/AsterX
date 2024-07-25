@@ -29,7 +29,6 @@ class eos_1p_polytrope : public eos_1p {
   CCTK_REAL rho_p;      ///< Weird polytropic density scal \f$ rho_p \f$
 
 public:
-
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   init(CCTK_REAL poly_gamma_, ///< Adiabatic index \f$ n \f$
        CCTK_REAL poly_k_,     ///< Density scale \f$ K \f$
@@ -55,14 +54,14 @@ public:
 };
 
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-eos_1p_polytrope::init(
-    CCTK_REAL poly_gamma_, CCTK_REAL poly_k_, CCTK_REAL rho_max_) {
-  poly_k     = poly_k_;
+eos_1p_polytrope::init(CCTK_REAL poly_gamma_, CCTK_REAL poly_k_,
+                       CCTK_REAL rho_max_) {
+  poly_k = poly_k_;
   poly_gamma = poly_gamma_;
-  n          = 1.0/(poly_gamma-1.0);
-  np1        = n + 1;
-  invn       = 1.0 / n;
-  rho_p      = pow(poly_k, -n);
+  n = 1.0 / (poly_gamma - 1.0);
+  np1 = n + 1;
+  invn = 1.0 / n;
+  rho_p = pow(poly_k, -n);
   // set_ranges(range(0, rho_max_));
 }
 
@@ -84,7 +83,7 @@ eos_1p_polytrope::gm1_from_valid_p(const CCTK_REAL p) const {
 */
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_1p_polytrope::sed_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
-) const {
+                                     ) const {
   return gm1 / poly_gamma;
 }
 
@@ -94,7 +93,7 @@ eos_1p_polytrope::sed_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
 */
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_1p_polytrope::ied_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
-) const {
+                                     ) const {
   // return sed_from_gm1(gm1)*rho_from_gm1(gm1);
   return n * rho_p * pow(gm1 / np1, np1);
 }
@@ -104,7 +103,7 @@ eos_1p_polytrope::ied_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
 */
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_1p_polytrope::p_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
-) const {
+                                   ) const {
   return rho_p * pow(gm1 / np1, np1);
 }
 
@@ -113,7 +112,7 @@ eos_1p_polytrope::p_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
 */
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_1p_polytrope::rho_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
-) const {
+                                     ) const {
   return rho_p * pow(gm1 / np1, n);
 }
 
@@ -122,7 +121,7 @@ eos_1p_polytrope::rho_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
 */
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_1p_polytrope::hm1_from_valid_gm1(const CCTK_REAL gm1 ///< \f$ g-1 \f$
-) const {
+                                     ) const {
   return gm1;
 }
 
