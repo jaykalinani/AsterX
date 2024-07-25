@@ -230,15 +230,27 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
 
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_ig);
+    // Get local eos objects
+    auto eos_1p_poly = *global_eos_1p_poly;
+    auto eos_3p_ig = *global_eos_3p_ig;
+
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_ig);
     break;
   }
   case eos_3param::Hybrid: {
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_hyb); 
+    // Get local eos objects
+    auto eos_1p_poly = *global_eos_1p_poly;
+    auto eos_3p_hyb = *global_eos_3p_hyb;
+
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_hyb); 
     break;
   }
   case eos_3param::Tabulated: {
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, *eos_1p_poly, *eos_3p_tab3d);
+    // Get local eos objects
+    auto eos_1p_poly = *global_eos_1p_poly;
+    auto eos_3p_tab3d = *global_eos_3p_tab3d;
+
+    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_tab3d);
     break;
   }
   default:

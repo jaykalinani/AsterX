@@ -499,21 +499,30 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
 
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
-    CalcFlux<0>(cctkGH, *eos_3p_ig);
-    CalcFlux<1>(cctkGH, *eos_3p_ig);
-    CalcFlux<2>(cctkGH, *eos_3p_ig);
+    // Get local eos object
+    auto eos_3p_ig = *global_eos_3p_ig;
+
+    CalcFlux<0>(cctkGH, eos_3p_ig);
+    CalcFlux<1>(cctkGH, eos_3p_ig);
+    CalcFlux<2>(cctkGH, eos_3p_ig);
     break;
   }
   case eos_3param::Hybrid: {
-    CalcFlux<0>(cctkGH, *eos_3p_hyb);
-    CalcFlux<1>(cctkGH, *eos_3p_hyb);
-    CalcFlux<2>(cctkGH, *eos_3p_hyb);
+    // Get local eos object
+    auto eos_3p_hyb = *global_eos_3p_hyb;
+
+    CalcFlux<0>(cctkGH, eos_3p_hyb);
+    CalcFlux<1>(cctkGH, eos_3p_hyb);
+    CalcFlux<2>(cctkGH, eos_3p_hyb);
     break;
   }
   case eos_3param::Tabulated: {
-    CalcFlux<0>(cctkGH, *eos_3p_tab3d);
-    CalcFlux<1>(cctkGH, *eos_3p_tab3d);
-    CalcFlux<2>(cctkGH, *eos_3p_tab3d);
+    // Get local eos object
+    auto eos_3p_tab3d = *global_eos_3p_tab3d;
+
+    CalcFlux<0>(cctkGH, eos_3p_tab3d);
+    CalcFlux<1>(cctkGH, eos_3p_tab3d);
+    CalcFlux<2>(cctkGH, eos_3p_tab3d);
     break;
   }
   default:
