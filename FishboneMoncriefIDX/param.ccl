@@ -133,7 +133,7 @@ BOOLEAN use_pressure "Use pressure to set up vector potential, otherwise density
 
 ##################################
 restricted:
-BOOLEAN atmo_type "Matter distribution around torus - atmosphere"
+KEYWORD atmo_type "Matter distribution around torus - atmosphere"
 {
   "isentropic-graded" :: "Graded rho, pressure is set using polytropic EOS"
   "free-graded"       :: "Graded rho, pressure is using press_min below"
