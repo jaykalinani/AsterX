@@ -14,6 +14,11 @@ using namespace std;
 namespace EOSX {
 
 class eos_3p_tabulated3d : public eos_3p {
+
+//private:
+
+  //linear_interp_uniform_ND_t<double, 1, 1> alltable;
+
 public:
   CCTK_REAL gamma; // FIXME: get rid of this
   range rgeps;
@@ -251,6 +256,11 @@ public:
   press_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
                               const CCTK_REAL ye) const {
     CCTK_REAL press = 0.0; // tab3d_press(rho, eps, ye, &ierr);
+
+    //
+    //press = alltable.interpolate<PRESS_>(rho,T,ye)[0]
+    //
+
     return press;
   }
 
