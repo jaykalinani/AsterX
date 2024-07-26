@@ -242,7 +242,6 @@ public:
     CCTK_REAL *epstable;
     CCTK_REAL *alltables;
 
-    CCTK_VINFO("Allocating memory for tables");
     CCTK_REAL *alltables_temp;
     if (!(alltables_temp = (CCTK_REAL *)The_Managed_Arena()->alloc(
               npoints * NTABLES * sizeof(CCTK_REAL)))) {
@@ -270,7 +269,6 @@ public:
     hsize_t var3[2] = {1, (hsize_t)npoints};
     hid_t mem3 = H5Screate_simple(2, table_dims, NULL);
 
-    CCTK_VINFO("Reading tables");
     // hydro (and munu)
     get_hdf5_real_dset(file_id, "logpress", npoints,
                        &alltables_temp[0 * npoints]);
@@ -312,7 +310,6 @@ public:
     get_hdf5_real_dset(file_id, "ye", nye, yes);
     get_hdf5_real_dset(file_id, "energy_shift", 1, &energy_shift);
 
-    CCTK_VINFO("Closing H5 stuff");
     CHECK_ERROR(H5Pclose(fapl_id));
     CHECK_ERROR(H5Sclose(mem3));
 
@@ -324,7 +321,6 @@ public:
     }
 #endif
 
-    CCTK_VINFO("Filling table");
     // Fill actual table
     if (!(alltables = (CCTK_REAL *)The_Managed_Arena()->alloc(
               npoints * NTABLES * sizeof(CCTK_REAL)))) {
@@ -354,7 +350,6 @@ public:
                   "Cannot allocate memory for EOS table");
     }
 
-    CCTK_VINFO("Converting Units");
     // convert units, convert logs to natural log
     // The latter is great, because exp() is way faster than pow()
     // pressure
@@ -406,7 +401,6 @@ public:
       }
     }
 
-    CCTK_VINFO("Setting up interpolator");
     auto num_points =
         std::array<size_t, 3>{size_t(nrho), size_t(ntemp), size_t(nye)};
 
@@ -435,7 +429,6 @@ public:
         std::move(alltables_ptr), std::move(num_points), std::move(logrho_ptr),
         std::move(logtemp_ptr), std::move(ye_ptr));
 
-    CCTK_VINFO("DOne");
     // set up steps, mins, maxes here?
     return;
   }
