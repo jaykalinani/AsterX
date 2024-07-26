@@ -25,8 +25,8 @@ enum class c2p_first_t { Noble, Palenzuela };
 enum class c2p_second_t { Noble, Palenzuela };
 
 template <typename EOSIDType, typename EOSType>
-void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_1p,
-                             EOSType &eos_3p) {
+void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
+                             EOSType *eos_3p) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
@@ -53,11 +53,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_1p,
 
   // Setting up atmosphere
   const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
-  const CCTK_REAL gm1 = eos_1p.gm1_from_valid_rho(rho_abs_min);
-  CCTK_REAL eps_atm = eos_1p.sed_from_valid_gm1(gm1);
-  eps_atm = std::min(std::max(eos_3p.rgeps.min, eps_atm), eos_3p.rgeps.max);
+  const CCTK_REAL gm1 = eos_1p->gm1_from_valid_rho(rho_abs_min);
+  CCTK_REAL eps_atm = eos_1p->sed_from_valid_gm1(gm1);
+  eps_atm = std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
   const CCTK_REAL p_atm =
-      eos_3p.press_from_valid_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo);
+      eos_3p->press_from_valid_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo);
   atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 
   // Construct Noble c2p object:
@@ -231,24 +231,24 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
     // Get local eos objects
-    auto eos_1p_poly = *global_eos_1p_poly;
-    auto eos_3p_ig = *global_eos_3p_ig;
+    auto eos_1p_poly = global_eos_1p_poly;
+    auto eos_3p_ig = global_eos_3p_ig;
 
     AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_ig);
     break;
   }
   case eos_3param::Hybrid: {
     // Get local eos objects
-    auto eos_1p_poly = *global_eos_1p_poly;
-    auto eos_3p_hyb = *global_eos_3p_hyb;
+    auto eos_1p_poly = global_eos_1p_poly;
+    auto eos_3p_hyb = global_eos_3p_hyb;
 
     AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_hyb); 
     break;
   }
   case eos_3param::Tabulated: {
     // Get local eos objects
-    auto eos_1p_poly = *global_eos_1p_poly;
-    auto eos_3p_tab3d = *global_eos_3p_tab3d;
+    auto eos_1p_poly = global_eos_1p_poly;
+    auto eos_3p_tab3d = global_eos_3p_tab3d;
 
     AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_tab3d);
     break;

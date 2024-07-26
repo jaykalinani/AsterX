@@ -29,7 +29,7 @@ enum class eos_3param { IdealGas, Hybrid, Tabulated };
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
 template <int dir, typename EOSType>
-void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_3p) {
+void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
@@ -180,17 +180,17 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_3p) {
     });
     vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
     // TODO: Correctly reconstruct Ye
-    const vec<CCTK_REAL, 2> ye_rc{eos_3p.rgye.min, eos_3p.rgye.max};
+    const vec<CCTK_REAL, 2> ye_rc{eos_3p->rgye.min, eos_3p->rgye.max};
 
     // TODO: currently sets negative reconstructed pressure to 0 since eps_min=0
     // for ideal gas
     if (press_rc(0) < 0) {
       press_rc(0) =
-          eos_3p.press_from_valid_rho_eps_ye(rho_rc(0), eos_3p.rgeps.min, ye_rc(0));
+          eos_3p->press_from_valid_rho_eps_ye(rho_rc(0), eos_3p->rgeps.min, ye_rc(0));
     }
     if (press_rc(1) < 0) {
       press_rc(1) =
-          eos_3p.press_from_valid_rho_eps_ye(rho_rc(1), eos_3p.rgeps.min, ye_rc(1));
+          eos_3p->press_from_valid_rho_eps_ye(rho_rc(1), eos_3p->rgeps.min, ye_rc(1));
     }
 
     const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
@@ -254,13 +254,13 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_3p) {
     // Ideal gas case {
     /* eps for ideal gas EOS */
     const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
-      return eos_3p.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
+      return eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
                                                 ye_rc(f));
     });
     /* cs2 for ideal gas EOS */
     const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-      return eos_3p.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f)) *
-             eos_3p.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f));
+      return eos_3p->csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f)) *
+             eos_3p->csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f));
     });
     /* enthalpy h for ideal gas EOS */
     const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
@@ -500,7 +500,7 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
     // Get local eos object
-    auto eos_3p_ig = *global_eos_3p_ig;
+    auto eos_3p_ig = global_eos_3p_ig;
 
     CalcFlux<0>(cctkGH, eos_3p_ig);
     CalcFlux<1>(cctkGH, eos_3p_ig);
@@ -509,7 +509,7 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   }
   case eos_3param::Hybrid: {
     // Get local eos object
-    auto eos_3p_hyb = *global_eos_3p_hyb;
+    auto eos_3p_hyb = global_eos_3p_hyb;
 
     CalcFlux<0>(cctkGH, eos_3p_hyb);
     CalcFlux<1>(cctkGH, eos_3p_hyb);
@@ -518,7 +518,7 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   }
   case eos_3param::Tabulated: {
     // Get local eos object
-    auto eos_3p_tab3d = *global_eos_3p_tab3d;
+    auto eos_3p_tab3d = global_eos_3p_tab3d;
 
     CalcFlux<0>(cctkGH, eos_3p_tab3d);
     CalcFlux<1>(cctkGH, eos_3p_tab3d);

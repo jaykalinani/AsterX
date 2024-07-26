@@ -15,7 +15,7 @@ public:
   /* Constructor */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_2DNoble(
-      EOSType &eos_3p, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+      EOSType *eos_3p, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
       CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len);
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
       get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
@@ -45,11 +45,11 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
-          EOSType &eos_3p, prim_vars &pv, cons_vars cv,
+          EOSType *eos_3p, prim_vars &pv, cons_vars cv,
           const smat<CCTK_REAL, 3> &gup) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
+  solve(EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
 
   /* Destructor */
@@ -60,10 +60,10 @@ public:
 template <typename EOSType>
 CCTK_HOST
     CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_2DNoble::c2p_2DNoble(
-        EOSType &eos_3p, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+        EOSType *eos_3p, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
         CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len) {
 
-  GammaIdealFluid = eos_3p.gamma;
+  GammaIdealFluid = eos_3p->gamma;
   maxIterations = maxIter;
   tolerance = tol;
   rho_strict = rho_str;
@@ -151,7 +151,7 @@ c2p_2DNoble::get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
-                     CCTK_REAL BiSi, EOSType &eos_3p, prim_vars &pv,
+                     CCTK_REAL BiSi, EOSType *eos_3p, prim_vars &pv,
                      cons_vars cv, const smat<CCTK_REAL, 3> &gup) const {
   CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
@@ -178,7 +178,7 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
   pv.Ye = cv.dYe / cv.dens;
 
-  pv.press = eos_3p.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
   pv.Bvec = cv.dBvec;
 
@@ -188,7 +188,7 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_2DNoble::solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds,
+c2p_2DNoble::solve(EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
                    cons_vars cv, const smat<CCTK_REAL, 3> &glo,
                    c2p_report &rep) const {
 
@@ -260,12 +260,12 @@ c2p_2DNoble::solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   pv_seeds.rho = cv.dens / pv_seeds.w_lor;
 
   CCTK_REAL eps_min =
-      eos_3p.range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
+      eos_3p->range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
   CCTK_REAL eps_last = max({pv_seeds.eps, eps_min});
 
   /* get pressure seed from updated pv_seeds.rho */
   pv_seeds.press =
-      eos_3p.press_from_valid_rho_eps_ye(pv_seeds.rho, eps_last, pv_seeds.Ye);
+      eos_3p->press_from_valid_rho_eps_ye(pv_seeds.rho, eps_last, pv_seeds.Ye);
 
   /* get Z seed */
   CCTK_REAL Z_Seed =
@@ -397,7 +397,7 @@ c2p_2DNoble::solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   }
 
   // check the validity of the computed eps
-  auto rgeps = eos_3p.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
+  auto rgeps = eos_3p->range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
   if (pv.eps > rgeps.max) {
     // printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
     rep.adjust_cons = true;
@@ -434,8 +434,8 @@ c2p_2DNoble::solve(EOSType &eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     }
     pv.vel *= v_lim / sol_v;
     pv.w_lor = w_lim;
-    pv.eps = std::min(std::max(eos_3p.rgeps.min, pv.eps), eos_3p.rgeps.max);
-    pv.press = eos_3p.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.eps = std::min(std::max(eos_3p->rgeps.min, pv.eps), eos_3p->rgeps.max);
+    pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
     rep.adjust_cons = true;
   }

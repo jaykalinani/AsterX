@@ -20,7 +20,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
 
   // For all the tests, the initial data EOS is ideal gas
   // Get local eos object
-  auto eos_3p_ig = *global_eos_3p_ig;
+  auto eos_3p_ig = global_eos_3p_ig;
   if (not CCTK_EQUALS(evolution_eos, "IdealGas")) {
     CCTK_VERROR("Invalid evolution EOS type '%s'. Please, set "
                 "EOSX::evolution_eos = \"IdealGas\" in your parameter file.",
@@ -51,7 +51,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
           }
 
           press(p.I) = 1.;
-          eps(p.I) = eos_3p_ig.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                            dummy_ye);
         });
 
@@ -99,7 +99,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           rho(p.I) = 1.;
           press(p.I) = 3.;
-          eps(p.I) = eos_3p_ig.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                            dummy_ye);
           velx(p.I) = 1. / 12.0;
           vely(p.I) = 1. / 24.;
@@ -168,7 +168,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
             vely(p.I) = 0.0;
             velz(p.I) = 0.0;
           }
-          eps(p.I) = eos_3p_ig.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                            dummy_ye);
         });
 
