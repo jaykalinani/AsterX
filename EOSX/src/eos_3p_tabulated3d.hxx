@@ -370,7 +370,7 @@ public:
     free(epstable);
 
     interp = linear_interp_uniform_ND_t<double, 3, NTABLES>(
-      std::move(alltables), std::move(num_points), std::move(logrho_ptr),
+      std::move(alltables_ptr), std::move(num_points), std::move(logrho_ptr),
       std::move(logtemp_ptr), std::move(ye_ptr));
 
     // set up steps, mins, maxes here?
