@@ -26,16 +26,16 @@
 #include <memory>
 #include <algorithm>
 
-template <typename T, size_t dim, int num_vars, bool uniform>
+template <typename T, size_t dim, CCTK_INT num_vars, bool uniform>
 class lintp_ND_t {
  public:
   using vec_ptr_t = std::unique_ptr<T[]>;
 
-  template <int N>
+  template <CCTK_INT N>
   using vec_t = std::array<T, N>;
 
   std::array<T, dim> idx, dx;
-  int nvars = num_vars;
+  CCTK_INT nvars = num_vars;
   std::array<size_t, dim> num_points;
   std::array<vec_ptr_t, dim> x;
   vec_ptr_t y;
@@ -49,7 +49,7 @@ class lintp_ND_t {
   using all_true = std::is_same<bool_pack<bs..., true>, bool_pack<true, bs...>>;
 
   //! Get nearest table index of input value xin
-  inline __attribute__((always_inline)) size_t find_index(
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline size_t find_index(
       size_t const which_dim, T const &xin) const {
     if (uniform) {
       // shift xin by lowest value
@@ -57,18 +57,18 @@ class lintp_ND_t {
       
       if(xL <= 0) return 0;
 
-      auto index = static_cast<int>(xL * idx[which_dim]);
+      auto index = static_cast<CCTK_INT>(xL * idx[which_dim]);
 
      if(index > num_points[which_dim] - 2) return num_points[which_dim] - 2; 
 
       return index;
 
     } else {
-      int lower = 0;
-      int upper = num_points[which_dim] - 1;
+      CCTK_INT lower = 0;
+      CCTK_INT upper = num_points[which_dim] - 1;
       // simple bisection through the table range
       while (upper - lower > 1) {
-        int tmp = lower + (upper - lower) / 2;
+        CCTK_INT tmp = lower + (upper - lower) / 2;
         if (xin < x[which_dim][tmp])
           upper = tmp;
         else
@@ -98,7 +98,7 @@ class lintp_ND_t {
     }
   };
 
-  static inline __attribute__((always_inline)) T const linterp1D(
+  static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const linterp1D(
       T const &A, T const &B, T const &xA, T const &xB, T const &x) {
     const auto lambda = (x - xA) / (xB - xA);  // *ideltax;
     // return  A*(1.-lambda) + B*lambda;
@@ -109,7 +109,7 @@ class lintp_ND_t {
   template <typename F_t, size_t which_dim, size_t var, typename CI_t,
             typename X1, typename... Xt>
   struct recursive_interpolate_single {
-    static inline __attribute__((always_inline)) T const linterp(
+    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const linterp(
         F_t const &F, std::array<size_t, dim> const &index, Xt const &... xin,
         X1 const &x1) {
       auto const xA = F.x[which_dim][index[which_dim]];
@@ -131,7 +131,7 @@ class lintp_ND_t {
   // Unpack in dimension!
   template <typename F_t, size_t var, typename CI_t, typename X1>
   struct recursive_interpolate_single<F_t, 0, var, CI_t, X1> {
-    static inline __attribute__((always_inline)) T const linterp(
+    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const linterp(
         F_t const &F, std::array<size_t, dim> const &index, X1 const &x1) {
       constexpr size_t which_dim = 0;
 
@@ -148,28 +148,28 @@ class lintp_ND_t {
   };
 
  public:
-  inline T const &operator[](const int i) const { return y[i]; }
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const &operator[](const CCTK_INT i) const { return y[i]; }
 
-  inline int size(size_t const which_dim) { return num_points[which_dim]; }
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_INT size(size_t const which_dim) { return num_points[which_dim]; }
 
-  inline T const &xmin(size_t which_dim) const { return x[which_dim][0]; };
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const &xmin(size_t which_dim) const { return x[which_dim][0]; };
 
   template <size_t which_dim>
-  inline T const &xmin() const {
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const &xmin() const {
     return x[which_dim][0];
   };
 
-  inline T const &xmax (size_t which_dim) const {
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const &xmax (size_t which_dim) const {
     return x[which_dim][num_points[which_dim] - 1];
   };
 
   template <size_t which_dim>
-  inline T const &xmax() const {
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const &xmax() const {
     return x[which_dim][num_points[which_dim] - 1];
   };
 
   template <size_t... vars, typename... Xt>
-  inline vec_t<sizeof...(vars)> interpolate(Xt const &... xin) const {
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec_t<sizeof...(vars)> interpolate(Xt const &... xin) const {
     static_assert(
         all_true<(std::is_convertible<typename std::remove_cv<Xt>::type,
                                       T>::value)...>::value,
@@ -182,7 +182,7 @@ class lintp_ND_t {
                   "You are trying to interpolate more variables than this "
                   "container holds.");
 
-    int dir = -1;
+    CCTK_INT dir = -1;
     auto const index =
         std::array<size_t, dim>{(++dir, find_index(dir, xin))...};
 
@@ -197,21 +197,21 @@ class lintp_ND_t {
   template <typename Yt, typename... Xt>
   lintp_ND_t(Yt &&__y, std::array<size_t, dim> &&__num_points, Xt &&... __x)
       : num_points(std::move(__num_points)), y(std::move(__y)) {
-    int n = 0;
-    int tmp[] = {(x[n] = std::forward<Xt>(__x), ++n)...};
+    CCTK_INT n = 0;
+    CCTK_INT tmp[] = {(x[n] = std::forward<Xt>(__x), ++n)...};
     (void)tmp;
 
-    for (int i = 0; i < dim; ++i) {
+    for (CCTK_INT i = 0; i < dim; ++i) {
       dx[i] = x[i][1] - x[i][0];
       idx[i] = 1. / dx[i];
     };
   };
 };
 
-template <typename T, size_t dim, int num_vars>
+template <typename T, size_t dim, CCTK_INT num_vars>
 using linear_interp_uniform_ND_t = lintp_ND_t<T, dim, num_vars, true>;
 
-template <typename T, size_t dim, int num_vars>
+template <typename T, size_t dim, CCTK_INT num_vars>
 using linear_interp_ND_t = lintp_ND_t<T, dim, num_vars, false>;
 
-#endif /* ----- #ifndef linear_interp_ND_INC  ----- */
+#endif 
