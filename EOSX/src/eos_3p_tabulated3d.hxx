@@ -278,7 +278,7 @@ public:
     }
 
     // free memory of temporary array
-    free(alltables_temp);
+    The_Managed_Arena()->free(alltables_temp);
 
   	// allocate epstable; a linear-scale eps table
     // that allows us to extrapolate to negative eps
@@ -340,7 +340,6 @@ public:
     }
 
     // set up steps, mins, maxes here?
-
     return;
   }
 

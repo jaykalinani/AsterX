@@ -45,12 +45,12 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_Y_e(CCTK_ARGUMENTS) {
     fclose(Y_e_file);
 
     // Set interpolation stencil size
-    const CCTK_INT interp_stencil_size = 5;
+    const int interp_stencil_size = 5;
 
 		// Set Y_e
-		grid.loop_all<0, 0, 0>(
+		grid.loop_all_device<1, 1, 1>(
 			grid.nghostzones,
-			[=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+			[=] CCTK_DEVICE (const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 				if( rho(p.I) > id_rho_atm_max ) {
 					// Interpolate Y_e(rho_i) at gridpoint i
 					CCTK_REAL Y_eL;
@@ -63,7 +63,7 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_Y_e(CCTK_ARGUMENTS) {
 				}
 			});
 
-		free(id_ye_reader);
+		The_Managed_Arena()->free(id_ye_reader);
   }
 }
 
@@ -72,12 +72,12 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_temperature(CCTK_ARGUMENTS){
 	DECLARE_CCTK_ARGUMENTSX_ID_TabEOS_HydroQuantities__initial_temperature;
   DECLARE_CCTK_PARAMETERS;
 
-  CCTK_VInfo(CCTK_THORNSTRING,"temperature initialization is ENABLED!");
+  CCTK_VInfo(CCTK_THORNSTRING,"Temperature initialization is ENABLED!");
 
 	auto eos_3p_tab3d = global_eos_3p_tab3d;
 
   // Loop over the grid, initializing the temperature
-  grid.loop_all_device<0, 0, 0>(
+  grid.loop_all_device<1, 1, 1>(
     grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
@@ -111,7 +111,7 @@ extern "C" void ID_TabEOS_HydroQuantities__recompute_HydroBase_variables(CCTK_AR
 	auto eos_3p_tab3d = global_eos_3p_tab3d;
 
 	// Loop over the grid, recomputing the HydroBase quantities
-  grid.loop_all_device<0, 0, 0>(
+  grid.loop_all_device<1, 1, 1>(
     grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 

@@ -222,7 +222,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     eos_3p_type = eos_3param::IdealGas;
   } else if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
     eos_3p_type = eos_3param::Hybrid;
-  } else if (CCTK_EQUALS(evolution_eos, "Tabulated")) {
+  } else if (CCTK_EQUALS(evolution_eos, "Tabulated3d")) {
     eos_3p_type = eos_3param::Tabulated;
   } else {
     CCTK_ERROR("Unknown value for parameter \"evolution_eos\"");

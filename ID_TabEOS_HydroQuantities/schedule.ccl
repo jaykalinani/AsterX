@@ -22,14 +22,19 @@ schedule ID_TabEOS_HydroQuantities__initial_temperature IN ID_TabEOS_init AFTER 
 schedule ID_TabEOS_HydroQuantities__recompute_HydroBase_variables IN ID_TabEOS_init AFTER ID_TabEOS_HydroQuantities__initial_temperature 
 {
   LANG: C
+  READS: HydroBaseX::rho(Everywhere)
+  READS: HydroBaseX::temperature(Everywhere)
+  READS: HydroBaseX::Ye(Everywhere)
+  READS: HydroBaseX::velx(Everywhere)
+  READS: HydroBaseX::vely(Everywhere)
+  READS: HydroBaseX::velz(Everywhere)
+  WRITES: HydroBaseX::rho(Everywhere)
   WRITES: HydroBaseX::velx(Everywhere)
   WRITES: HydroBaseX::vely(Everywhere)
   WRITES: HydroBaseX::velz(Everywhere)
   WRITES: HydroBaseX::press(Everywhere)
-  WRITES: HydroBaseX::rho(Everywhere)
   WRITES: HydroBaseX::eps(Everywhere)
   WRITES: HydroBaseX::Ye(Everywhere)
-  WRITES: HydroBaseX::temperature(Everywhere)
   WRITES: HydroBaseX::entropy(Everywhere)
 } "Set up general relativistic hydrodynamic (GRHD) fields"
 

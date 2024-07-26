@@ -93,11 +93,14 @@ class Ye_reader {
 		// Now perform the Lagrange polynomial interpolation:
 
 		// First set the interpolation coefficients:
-		CCTK_REAL rho_sample[interp_stencil_size];
+		// CCTK_REAL rho_sample[interp_stencil_size];
+		CCTK_REAL* rho_sample;
+    rho_sample = (double*)The_Managed_Arena()->alloc(interp_stencil_size * sizeof(double));
 		for(int i=idxmin;i<idxmin+interp_stencil_size;i++) {
 			rho_sample[i-idxmin] = rho_arr[i];
 		}
-		CCTK_REAL l_i_of_r[interp_stencil_size];
+		CCTK_REAL* l_i_of_r;
+    l_i_of_r = (double*)The_Managed_Arena()->alloc(interp_stencil_size * sizeof(double));
 		for(int i=0;i<interp_stencil_size;i++) {
 			CCTK_REAL numer = 1.0;
 			CCTK_REAL denom = 1.0;
@@ -126,7 +129,8 @@ class Ye_reader {
 		CCTK_REAL y1 = rrbar-rbar_arr[x1];
 		CCTK_REAL y2 = rrbar-rbar_arr[x2];
 		if(y1*y2 >= 0) {
-			fprintf(stderr,"INTERPOLATION BRACKETING ERROR %e | %e %e\n",rrbar,y1,y2);
+			// Cannot print on GPU
+			// fprintf(stderr,"INTERPOLATION BRACKETING ERROR %e | %e %e\n",rrbar,y1,y2);
 			exit(1);
 		}
 		for(int i=0;i<numlines_in_file;i++) {
@@ -148,7 +152,8 @@ class Ye_reader {
 				return x1;
 			}
 		}
-		fprintf(stderr,"INTERPOLATION BRACKETING ERROR: DID NOT CONVERGE.\n");
+		// Cannot print on GPU
+		// fprintf(stderr,"INTERPOLATION BRACKETING ERROR: DID NOT CONVERGE.\n");
 		exit(1);
 	}
 
