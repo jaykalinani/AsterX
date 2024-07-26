@@ -19,6 +19,8 @@
 #include <string>
 #include <AMReX.H>
 
+#include "linear_interp_ND.hh"
+
 using namespace std;
 
 namespace EOSX {
@@ -28,14 +30,18 @@ using namespace amrex;
 class eos_3p_tabulated3d : public eos_3p {
 
 public:
+
+  linear_interp_uniform_ND_t<double, 3, NTABLES> interp;
+
   CCTK_REAL gamma;  // FIXME: get rid of this
   range rgeps;
   
   CCTK_INT ntemp, nrho, nye;
 
-  CCTK_REAL *logrho, *logtemp, *yes; // FIXME: AMREX_GPU_MANAGED?
-  CCTK_REAL *alltables;
-  CCTK_REAL *epstable;
+  //CCTK_REAL *logrho, *logtemp, *yes; // FIXME: AMREX_GPU_MANAGED?
+  //CCTK_REAL *alltables;
+  //CCTK_REAL *epstable;
+
   CCTK_REAL energy_shift;
   
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void init(
@@ -191,6 +197,11 @@ public:
     CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp, nrho, nye);
 
     // Allocate memory for tables
+
+    CCTK_REAL *logrho, *logtemp, *yes;
+    CCTK_REAL *epstable;
+    CCTK_REAL *alltables;
+
     double* alltables_temp;
     if (!(alltables_temp = (double*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(double)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
@@ -280,7 +291,7 @@ public:
     // free memory of temporary array
     free(alltables_temp);
 
-  	// allocate epstable; a linear-scale eps table
+    // allocate epstable; a linear-scale eps table
     // that allows us to extrapolate to negative eps
     if (!(epstable = (double*)The_Managed_Arena()->alloc(npoints * sizeof(double)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
@@ -293,7 +304,7 @@ public:
     energy_shift = energy_shift * EPSGF;
     for(int i=0;i<nrho;i++) {
       // rewrite:
-      //logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
+      // logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
       // by using log(a^b*c) = b*log(a)+log(c)
       logrho[i] = logrho[i] * log(10.) + log(RHOGF);
     }
@@ -338,6 +349,29 @@ public:
       }
 
     }
+
+    auto num_points =
+      std::array<size_t, 3>{size_t(nrho), size_t(ntemp), size_t(nye)};
+
+    auto logrho_ptr = std::unique_ptr<double[]>(new double[nrho]);
+    auto logtemp_ptr = std::unique_ptr<double[]>(new double[ntemp]);
+    auto ye_ptr = std::unique_ptr<double[]>(new double[nye]);
+    auto alltables_ptr = std::unique_ptr<double[]>(new double[npoints*NTABLES]);
+
+    for (int i = 0; i < nrho; ++i) logrho_ptr[i] = logrho[i];
+    for (int i = 0; i < ntemp; ++i) logtemp_ptr[i] = logtemp[i];
+    for (int i = 0; i < nye; ++i) ye_ptr[i] = yes[i];
+    for (int i = 0; i < npoints * NTABLES; ++i) alltables_ptr[i] = alltables[i];
+
+    free(logrho);
+    free(logtemp);
+    free(yes);
+    free(alltables);
+    free(epstable);
+
+    interp = linear_interp_uniform_ND_t<double, 3, NTABLES>(
+      std::move(alltables), std::move(num_points), std::move(logrho_ptr),
+      std::move(logtemp_ptr), std::move(ye_ptr));
 
     // set up steps, mins, maxes here?
 
