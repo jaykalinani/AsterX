@@ -18,8 +18,8 @@
 #include "eos_3p.hxx"
 #include <string>
 #include <AMReX.H>
-
-#include "linear_interp_ND.hh"
+#include "brent.hxx"
+#include "linear_interp_ND.hxx"
 
 using namespace std;
 
@@ -31,7 +31,35 @@ class eos_3p_tabulated3d : public eos_3p {
 
 public:
 
-  linear_interp_uniform_ND_t<double, 3, NTABLES> interp;
+  enum errors {
+    NO_ERRORS = 0,
+    RHO_TOO_HIGH,
+    RHO_TOO_LOW,
+    YE_TOO_HIGH,
+    YE_TOO_LOW,
+    TEMP_TOO_HIGH,
+    TEMP_TOO_LOW,
+    num_errors
+  };
+
+  enum EV {
+    PRESS = 0,
+    EPS,
+    S,
+    CS2,
+    MUE,
+    MUP,
+    MUN,
+    XA,
+    XH,
+    XN,
+    XP,
+    ABAR,
+    ZBAR,
+    NUM_VARS
+  };
+
+  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interptable;
 
   CCTK_REAL gamma;  // FIXME: get rid of this
   range rgeps;
@@ -45,10 +73,11 @@ public:
   CCTK_REAL energy_shift;
   
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void init(
-    const range &rgeps_, const range &rgrho_, const range &rgye_)
+    range &rgeps_, const range &rgrho_, const range &rgye_)
   {
     set_range_rho(rgrho_);
     set_range_ye(rgye_);
+    rgeps_ = range_eps_from_valid_rho_ye(rgrho_.min, rgye_.min);
     // TODO: first compute temp as a function of rho, ye, and eps, and then initialize its range
     // For now, as dummy, we pass range of eps as range of temp
     set_range_temp(rgeps_);
@@ -117,7 +146,7 @@ public:
   void get_hdf5_real_dset(const hid_t  &file_id,
              const string &dset_name,
 			       const int npoints,
-			       double* var) {
+			       CCTK_REAL* var) {
 
     const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
     assert(dset_id >= 0);
@@ -202,20 +231,20 @@ public:
     CCTK_REAL *epstable;
     CCTK_REAL *alltables;
 
-    double* alltables_temp;
-    if (!(alltables_temp = (double*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(double)))) {
+    CCTK_REAL* alltables_temp;
+    if (!(alltables_temp = (CCTK_REAL*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
     	"Cannot allocate memory for EOS table");
     }
-    if (!(logrho = (double*)The_Managed_Arena()->alloc(nrho * sizeof(double)))) {
+    if (!(logrho = (CCTK_REAL*)The_Managed_Arena()->alloc(nrho * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
     	"Cannot allocate memory for EOS table");
     }
-    if (!(logtemp = (double*)The_Managed_Arena()->alloc(ntemp * sizeof(double)))) {
+    if (!(logtemp = (CCTK_REAL*)The_Managed_Arena()->alloc(ntemp * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
     	"Cannot allocate memory for EOS table");
     }
-    if (!(yes = (double*)The_Managed_Arena()->alloc(nye * sizeof(double)))) {
+    if (!(yes = (CCTK_REAL*)The_Managed_Arena()->alloc(nye * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
     	"Cannot allocate memory for EOS table");
     }
@@ -272,7 +301,7 @@ public:
     #endif
 
     // Fill actual table
-    if (!(alltables = (double*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(double)))) {
+    if (!(alltables = (CCTK_REAL*)The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
     	"Cannot allocate memory for EOS table");
     }
@@ -293,7 +322,7 @@ public:
 
     // allocate epstable; a linear-scale eps table
     // that allows us to extrapolate to negative eps
-    if (!(epstable = (double*)The_Managed_Arena()->alloc(npoints * sizeof(double)))) {
+    if (!(epstable = (CCTK_REAL*)The_Managed_Arena()->alloc(npoints * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
     	"Cannot allocate memory for EOS table");
     }
@@ -353,10 +382,10 @@ public:
     auto num_points =
       std::array<size_t, 3>{size_t(nrho), size_t(ntemp), size_t(nye)};
 
-    auto logrho_ptr = std::unique_ptr<double[]>(new double[nrho]);
-    auto logtemp_ptr = std::unique_ptr<double[]>(new double[ntemp]);
-    auto ye_ptr = std::unique_ptr<double[]>(new double[nye]);
-    auto alltables_ptr = std::unique_ptr<double[]>(new double[npoints*NTABLES]);
+    auto logrho_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[nrho]);
+    auto logtemp_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[ntemp]);
+    auto ye_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[nye]);
+    auto alltables_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[npoints*NTABLES]);
 
     for (int i = 0; i < nrho; ++i) logrho_ptr[i] = logrho[i];
     for (int i = 0; i < ntemp; ++i) logtemp_ptr[i] = logtemp[i];
@@ -369,7 +398,7 @@ public:
     free(alltables);
     free(epstable);
 
-    interp = linear_interp_uniform_ND_t<double, 3, NTABLES>(
+    interptable = linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES>(
       std::move(alltables_ptr), std::move(num_points), std::move(logrho_ptr),
       std::move(logtemp_ptr), std::move(ye_ptr));
 
@@ -379,61 +408,139 @@ public:
   }
 
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL press_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps, const CCTK_REAL ye) const
-{
-  CCTK_REAL press = 0.0; //tab3d_press(rho, eps, ye, &ierr);
-  return press;
-}
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  logtemp_from_eps(const CCTK_REAL rho, CCTK_REAL &eps,
+                   const CCTK_REAL ye) const {
+    const auto lrho = log(rho);
+    const auto leps = log(eps + energy_shift);
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps, const CCTK_REAL ye) const
-{
-  CCTK_REAL csnd2 = 0.0; //tab3d_csnd2(rho, eps, ye, &ierr);
-  assert(csnd2 >= 0); //Soundspeed^2 should never ever be negative
-  return sqrt(csnd2);
-}
+    // Get eps ranges
+    const auto varsmin =
+        interptable.interpolate<EV::EPS>(lrho, interptable.xmin<1>(), ye);
+    const auto varsmax =
+        interptable.interpolate<EV::EPS>(lrho, interptable.xmax<1>(), ye);
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL temp_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps, const CCTK_REAL ye) const
-{
-  CCTK_REAL temp = 0.0; //tab3d_temp(rho, eps, ye, &ierr);
-  return temp;
-}
+    if (leps <= varsmin[0]) {
+      eps = exp(varsmin[0]) - energy_shift;
+      return interptable.xmin<1>();
+    }
+    if (leps >= varsmax[0]) {
+      eps = exp(varsmax[0]) - energy_shift;
+      return interptable.xmax<1>();
+    }
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void press_derivs_from_valid_rho_eps_ye(CCTK_REAL& press, CCTK_REAL& dpdrho, CCTK_REAL& dpdeps,
-           const CCTK_REAL rho, const CCTK_REAL eps, const CCTK_REAL ye) const
-{
-  printf("press_derivs_from_valid_rho_eps_ye is not supported anymore!");
-  exit(EXIT_FAILURE);
-}
+    // Root finding interface closure
+    const auto func = [&](CCTK_REAL &lt) {
+      const auto vars = interptable.interpolate<EV::EPS>(lrho, lt, ye);
+      return leps - vars[0];
+    };
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL press_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const
-{
-    return 0.0; //tab3d_press_from_temp(rho, temp, ye);
-}
+    return zero_brent(interptable.xmin<1>(), interptable.xmax<1>(), 1.e-14,
+                      func);
+  }
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  press_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                               const CCTK_REAL ye) const {
+    // error = checkbounds<true>(rho, temp, ye);
+    const auto lrho = log(rho);
+    const auto ltemp = log(temp);
+    const auto vars = interptable.interpolate<EV::PRESS>(lrho, ltemp, ye);
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL csnd_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const
-{
-  CCTK_REAL csnd2 = 0.0; //tab3d_csnd2_from_temp(rho, temp, ye);
-  assert(csnd2 >= 0); //Soundspeed^2 should never ever be negative
-  return sqrt(csnd2);
-}
+    return exp(vars[0]);
+  }
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL entropy_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const
-{
-    return 0.0; //tab3d_entropy_from_temp(rho, temp, ye);
-}
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  press_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
+                              const CCTK_REAL ye) const {
+    const CCTK_REAL lrho = log(rho);
+    const CCTK_REAL ltemp = logtemp_from_eps(lrho, eps, ye);
+    const auto vars = interptable.interpolate<EV::PRESS>(lrho, ltemp, ye);
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
- range_eps_from_valid_rho_ye(const CCTK_REAL rho,
-                                          const CCTK_REAL ye) const {
-  return rgeps;
-}
+    return exp(vars[0]);
+  }
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eps_from_valid_rho_press_ye(const CCTK_REAL rho,
-                                          const CCTK_REAL press,
-                                          const CCTK_REAL ye) const {
-  return 0.0; //press / (rho * gm1);
-}
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  eps_from_valid_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
+                              const CCTK_REAL ye) const {
+
+    assert(
+        !"This routine should not be used. There is no monotonicity condition "
+         "to enforce a succesfull inversion from eps(press). So you better "
+         "rewrite your code to not require this call...");
+
+    return 0;
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  eps_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                             const CCTK_REAL ye) const {
+
+    const CCTK_REAL lrho = log(rho);
+    const CCTK_REAL ltemp = log(temp);
+    auto const vars = interptable.interpolate<EV::EPS>(lrho, ltemp, ye);
+    const auto eps = exp(vars[0]) - energy_shift;
+    return eps;
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  csnd_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                              const CCTK_REAL ye) const {
+    const auto lrho = log(rho);
+    const auto ltemp = log(temp);
+    const auto vars = interptable.interpolate<EV::CS2>(lrho, ltemp, ye);
+    assert(vars[0] >= 0); // Soundspeed^2 should never ever be negative
+
+    return sqrt(vars[0]);
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
+                             const CCTK_REAL ye) const {
+    const CCTK_REAL lrho = log(rho);
+    const CCTK_REAL ltemp = logtemp_from_eps(lrho, eps, ye);
+    const auto vars = interptable.interpolate<EV::CS2>(lrho, ltemp, ye);
+    assert(vars[0] >= 0); // Soundspeed^2 should never ever be negative
+
+    return sqrt(vars[0]);
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  temp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
+                             const CCTK_REAL ye) const {
+    const CCTK_REAL lrho = log(rho);
+    const CCTK_REAL ltemp = logtemp_from_eps(lrho, eps, ye);
+
+    return exp(ltemp);
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+  press_derivs_from_valid_rho_eps_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
+                                     CCTK_REAL &dpdeps, const CCTK_REAL rho,
+                                     const CCTK_REAL eps,
+                                     const CCTK_REAL ye) const {
+    printf("press_derivs_from_valid_rho_eps_ye is not supported for now!");
+    exit(EXIT_FAILURE);
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  entropy_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                                 const CCTK_REAL ye) const {
+    const CCTK_REAL lrho = log(rho);
+    const CCTK_REAL ltemp = log(temp);
+    const auto vars = interptable.interpolate<EV::S>(lrho, ltemp, ye);
+
+    return vars[0];
+  }
+
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
+  range_eps_from_valid_rho_ye(const CCTK_REAL rho, const CCTK_REAL ye) const {
+//    const CCTK_REAL lrho = log(rho);
+//    rgeps.min = interptable.interpolate<EV::EPS>(lrho, interptable.xmin<1>(), ye);
+//    rgeps.max = interptable.interpolate<EV::EPS>(lrho, interptable.xmax<1>(), ye);
+
+    return rgeps;
+  }
 
 };
 } // namespace EOSX

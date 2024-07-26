@@ -1,9 +1,9 @@
 /*
  * =====================================================================================
  *
- *       Filename:  linear_interp_ND.hh
+ *       Filename:  linear_interp_ND.hxx
  *
- *    Description:  Linear interpolation for arbitrary dimensions
+ *    Description:  Linear interpolation for arbitrary dimensions, adopted from FIL
  *
  *        Version:  1.1
  *        Created:  24/08/2017 10:00:00
@@ -16,8 +16,8 @@
  * =====================================================================================
  */
 
-#ifndef linear_interp_ND_INC
-#define linear_interp_ND_INC
+#ifndef LINEAR_INTERP_ND_HXX
+#define LINEAR_INTERP_ND_HXX
 
 #include <array>
 #include <cassert>
@@ -152,19 +152,19 @@ class lintp_ND_t {
 
   inline int size(size_t const which_dim) { return num_points[which_dim]; }
 
-  inline T const &xmin(size_t which_dim) { return x[which_dim][0]; };
+  inline T const &xmin(size_t which_dim) const { return x[which_dim][0]; };
 
   template <size_t which_dim>
-  inline T const &xmin() {
+  inline T const &xmin() const {
     return x[which_dim][0];
   };
 
-  inline T const &xmax(size_t which_dim) {
+  inline T const &xmax (size_t which_dim) const {
     return x[which_dim][num_points[which_dim] - 1];
   };
 
   template <size_t which_dim>
-  inline T const &xmax() {
+  inline T const &xmax() const {
     return x[which_dim][num_points[which_dim] - 1];
   };
 
