@@ -14,8 +14,8 @@ public:
   range rgeps;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  init(CCTK_REAL gamma_, CCTK_REAL umass_, range &rgeps_,
-       const range &rgrho_, const range &rgye_);
+  init(CCTK_REAL gamma_, CCTK_REAL umass_, range &rgeps_, const range &rgrho_,
+       const range &rgye_);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_valid_rho_eps_ye(
@@ -34,7 +34,7 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   csnd_from_valid_rho_eps_ye(
       const CCTK_REAL rho, ///< Rest mass density  \f$ \rho \f$
-      CCTK_REAL &eps, ///< Specific internal energy \f$ \epsilon \f$
+      CCTK_REAL &eps,      ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
       ) const;
 
@@ -121,8 +121,7 @@ eos_3p_idealgas::eps_from_valid_rho_press_ye(const CCTK_REAL rho,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-eos_3p_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho,
-                                            CCTK_REAL &eps,
+eos_3p_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                                             const CCTK_REAL ye) const {
   return sqrt(gm1 * eps / (eps + 1 / gamma));
 }

@@ -5,7 +5,8 @@
 #include <limits>
 
 template <typename F>
-inline double zero_brent(const double &a, const double &b, const double t, F &f)
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+zero_brent(const CCTK_REAL &a, const CCTK_REAL &b, const CCTK_REAL t, F &f)
 
 //****************************************************************************80
 //
@@ -49,32 +50,32 @@ inline double zero_brent(const double &a, const double &b, const double t, F &f)
 //
 //  Parameters:
 //
-//    Input, double A, B, the endpoints of the change of sign interval.
+//    Input, CCTK_REAL A, B, the endpoints of the change of sign interval.
 //
-//    Input, double T, a positive error tolerance.
+//    Input, CCTK_REAL T, a positive error tolerance.
 //
 //    Input, func_base& F, the name of a user-supplied c++ functor
 //    whose zero is being sought.  The input and output
-//    of F() are of type double.
+//    of F() are of type CCTK_REAL.
 //
-//    Output, double ZERO, the estimated value of a zero of
+//    Output, CCTK_REAL ZERO, the estimated value of a zero of
 //    the function F.
 //
 {
-  double c;
-  double d;
-  double e;
-  double fa;
-  double fb;
-  double fc;
-  double m;
-  double p;
-  double q;
-  double r;
-  double s;
-  double sa;
-  double sb;
-  double tol;
+  CCTK_REAL c;
+  CCTK_REAL d;
+  CCTK_REAL e;
+  CCTK_REAL fa;
+  CCTK_REAL fb;
+  CCTK_REAL fc;
+  CCTK_REAL m;
+  CCTK_REAL p;
+  CCTK_REAL q;
+  CCTK_REAL r;
+  CCTK_REAL s;
+  CCTK_REAL sa;
+  CCTK_REAL sb;
+  CCTK_REAL tol;
   //
   //  Make local copies of A and B.
   //
@@ -88,7 +89,7 @@ inline double zero_brent(const double &a, const double &b, const double t, F &f)
   e = sb - sa;
   d = e;
 
-  constexpr double macheps = std::numeric_limits<double>::epsilon();
+  constexpr CCTK_REAL macheps = std::numeric_limits<CCTK_REAL>::epsilon();
 
   for (;;) {
     if (std::fabs(fc) < std::fabs(fb)) {
@@ -167,7 +168,8 @@ inline double zero_brent(const double &a, const double &b, const double t, F &f)
 //****************************************************************************80
 
 template <typename F_t>
-inline double local_min(double a, double b, double t, F_t &f, double &x)
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+local_min(CCTK_REAL a, CCTK_REAL b, CCTK_REAL t, F_t &f, CCTK_REAL &x)
 
 //****************************************************************************80
 //
@@ -218,45 +220,45 @@ inline double local_min(double a, double b, double t, F_t &f, double &x)
 //
 //  Parameters:
 //
-//    Input, double A, B, the endpoints of the interval.
+//    Input, CCTK_REAL A, B, the endpoints of the interval.
 //
-//    Input, double T, a positive absolute error tolerance.
+//    Input, CCTK_REAL T, a positive absolute error tolerance.
 //
 //    Input, func_base& F, a user-supplied c++ functor whose
 //    local minimum is being sought.  The input and output
-//    of F() are of type double.
+//    of F() are of type CCTK_REAL.
 //
-//    Output, double &X, the estimated value of an abscissa
+//    Output, CCTK_REAL &X, the estimated value of an abscissa
 //    for which F attains a local minimum value in [A,B].
 //
-//    Output, double LOCAL_MIN, the value F(X).
+//    Output, CCTK_REAL LOCAL_MIN, the value F(X).
 //
 {
-  double c;
-  double d;
-  double e;
-  double eps;
-  double fu;
-  double fv;
-  double fw;
-  double fx;
-  double m;
-  double p;
-  double q;
-  double r;
-  double sa;
-  double sb;
-  double t2;
-  double tol;
-  double u;
-  double v;
-  double w;
+  CCTK_REAL c;
+  CCTK_REAL d;
+  CCTK_REAL e;
+  CCTK_REAL eps;
+  CCTK_REAL fu;
+  CCTK_REAL fv;
+  CCTK_REAL fw;
+  CCTK_REAL fx;
+  CCTK_REAL m;
+  CCTK_REAL p;
+  CCTK_REAL q;
+  CCTK_REAL r;
+  CCTK_REAL sa;
+  CCTK_REAL sb;
+  CCTK_REAL t2;
+  CCTK_REAL tol;
+  CCTK_REAL u;
+  CCTK_REAL v;
+  CCTK_REAL w;
   //
   //  C is the square of the inverse of the golden ratio.
   //
   c = 0.5 * (3.0 - sqrt(5.0));
 
-  eps = sqrt(std::numeric_limits<double>::epsilon());
+  eps = sqrt(std::numeric_limits<CCTK_REAL>::epsilon());
 
   sa = a;
   sb = b;
@@ -377,8 +379,9 @@ inline double local_min(double a, double b, double t, F_t &f, double &x)
 
 //****************************************************************************80
 template <typename F_t>
-double glomin(double a, double b, double c, double m, double e, double t,
-              F_t &f, double &x)
+CCTK_HOST CCTK_DEVICE CCTK_REAL glomin(CCTK_REAL a, CCTK_REAL b, CCTK_REAL c,
+                                       CCTK_REAL m, CCTK_REAL e, CCTK_REAL t,
+                                       F_t &f, CCTK_REAL &x)
 
 //****************************************************************************80
 //
@@ -414,54 +417,54 @@ double glomin(double a, double b, double c, double m, double e, double t,
 //
 //  Parameters:
 //
-//    Input, double A, B, the endpoints of the interval.
+//    Input, CCTK_REAL A, B, the endpoints of the interval.
 //    It must be the case that A < B.
 //
-//    Input, double C, an initial guess for the global
+//    Input, CCTK_REAL C, an initial guess for the global
 //    minimizer.  If no good guess is known, C = A or B is acceptable.
 //
-//    Input, double M, the bound on the second derivative.
+//    Input, CCTK_REAL M, the bound on the second derivative.
 //
-//    Input, double E, a positive tolerance, a bound for the
+//    Input, CCTK_REAL E, a positive tolerance, a bound for the
 //    absolute error in the evaluation of F(X) for any X in [A,B].
 //
-//    Input, double T, a positive error tolerance.
+//    Input, CCTK_REAL T, a positive error tolerance.
 //
 //    Input, func_base& F, a user-supplied c++ functor whose
 //    global minimum is being sought.  The input and output
-//    of F() are of type double.
+//    of F() are of type CCTK_REAL.
 //
-//    Output, double &X, the estimated value of the abscissa
+//    Output, CCTK_REAL &X, the estimated value of the abscissa
 //    for which F attains its global minimum value in [A,B].
 //
-//    Output, double GLOMIN, the value F(X).
+//    Output, CCTK_REAL GLOMIN, the value F(X).
 //
 {
-  double a0;
-  double a2;
-  double a3;
-  double d0;
-  double d1;
-  double d2;
-  double h;
+  CCTK_REAL a0;
+  CCTK_REAL a2;
+  CCTK_REAL a3;
+  CCTK_REAL d0;
+  CCTK_REAL d1;
+  CCTK_REAL d2;
+  CCTK_REAL h;
   int k;
-  double m2;
-  //    double macheps;
-  double p;
-  double q;
-  double qs;
-  double r;
-  double s;
-  double sc;
-  double y;
-  double y0;
-  double y1;
-  double y2;
-  double y3;
-  double yb;
-  double z0;
-  double z1;
-  double z2;
+  CCTK_REAL m2;
+  //    CCTK_REAL macheps;
+  CCTK_REAL p;
+  CCTK_REAL q;
+  CCTK_REAL qs;
+  CCTK_REAL r;
+  CCTK_REAL s;
+  CCTK_REAL sc;
+  CCTK_REAL y;
+  CCTK_REAL y0;
+  CCTK_REAL y1;
+  CCTK_REAL y2;
+  CCTK_REAL y3;
+  CCTK_REAL yb;
+  CCTK_REAL z0;
+  CCTK_REAL z1;
+  CCTK_REAL z2;
 
   a0 = b;
   x = a0;
@@ -481,7 +484,7 @@ double glomin(double a, double b, double c, double m, double e, double t,
     return y;
   }
 
-  constexpr double macheps = std::numeric_limits<double>::epsilon();
+  constexpr CCTK_REAL macheps = std::numeric_limits<CCTK_REAL>::epsilon();
 
   m2 = 0.5 * (1.0 + 16.0 * macheps) * m;
 
@@ -528,7 +531,7 @@ double glomin(double a, double b, double c, double m, double e, double t,
         }
         k = ((1611 * k) % 1048576);
         q = 1.0;
-        r = (b - a) * 0.00001 * (double)(k);
+        r = (b - a) * 0.00001 * (CCTK_REAL)(k);
 
         if (z2 <= r) {
           break;
@@ -537,7 +540,7 @@ double glomin(double a, double b, double c, double m, double e, double t,
     } else {
       k = ((1611 * k) % 1048576);
       q = 1.0;
-      r = (b - a) * 0.00001 * (double)(k);
+      r = (b - a) * 0.00001 * (CCTK_REAL)(k);
 
       while (r < z2) {
         if (q * (r * (yb - y2) + z2 * q * ((y2 - y) + t)) <
@@ -552,7 +555,7 @@ double glomin(double a, double b, double c, double m, double e, double t,
         }
         k = ((1611 * k) % 1048576);
         q = 1.0;
-        r = (b - a) * 0.00001 * (double)(k);
+        r = (b - a) * 0.00001 * (CCTK_REAL)(k);
       }
     }
 
