@@ -340,7 +340,7 @@ public:
           }
 
     // free memory of temporary array
-    free(alltables_temp);
+    The_Managed_Arena()->free(alltables_temp);
 
     // allocate epstable; a linear-scale eps table
     // that allows us to extrapolate to negative eps
@@ -419,18 +419,17 @@ public:
     for (int i = 0; i < npoints * NTABLES; ++i)
       alltables_ptr[i] = alltables[i];
 
-    free(logrho);
-    free(logtemp);
-    free(yes);
-    free(alltables);
-    free(epstable);
+    The_Managed_Arena()->free(logrho);
+    The_Managed_Arena()->free(logtemp);
+    The_Managed_Arena()->free(yes);
+    The_Managed_Arena()->free(alltables);
+    The_Managed_Arena()->free(epstable);
 
     interptable = linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES>(
         std::move(alltables_ptr), std::move(num_points), std::move(logrho_ptr),
         std::move(logtemp_ptr), std::move(ye_ptr));
 
     // set up steps, mins, maxes here?
-
     return;
   }
 
