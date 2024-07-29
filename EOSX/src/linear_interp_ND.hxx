@@ -77,7 +77,7 @@ private:
 
   template <typename CI_t, size_t offset> struct compressed_indexr_t {
     template <size_t N = 0>
-    static inline __attribute__((always_inline)) size_t
+    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline size_t
     value(std::array<size_t, dim> const &index,
           std::array<size_t, dim> const &num_points) {
       if constexpr (N < dim) {
@@ -91,7 +91,7 @@ private:
 
   struct compressed_index_t {
     template <size_t N = 0>
-    static inline __attribute__((always_inline)) size_t
+    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline size_t
     value(std::array<size_t, dim> const &index,
           std::array<size_t, dim> const &num_points) {
       return 0;
