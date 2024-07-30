@@ -17,8 +17,8 @@
  * =====================================================================================
  */
 
-#ifndef LINEAR_INTERP_ND_HXX
-#define LINEAR_INTERP_ND_HXX
+#ifndef EOS_LINEAR_INTERP_ND_HXX
+#define EOS_LINEAR_INTERP_ND_HXX
 
 #include <array>
 #include <cassert>

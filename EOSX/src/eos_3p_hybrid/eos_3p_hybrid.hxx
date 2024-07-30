@@ -12,8 +12,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "eos_3p.hxx"
-#include "eos_1p_polytropic.hxx"
+#include "../eos_3p.hxx"
+#include "../eos_1p_polytropic/eos_1p_polytropic.hxx"
 
 using namespace std;
 

@@ -1,7 +1,7 @@
 #ifndef EOS_1P_POLYTROPIC_HXX
 #define EOS_1P_POLYTROPIC_HXX
 
-#include "eos_1p.hxx"
+#include "../eos_1p.hxx"
 #include <cmath>
 
 namespace EOSX {

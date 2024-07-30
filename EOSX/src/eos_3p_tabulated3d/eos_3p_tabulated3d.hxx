@@ -15,11 +15,10 @@
 #include <cmath>
 #include <hdf5.h>
 #include <mpi.h>
-#include "eos_3p.hxx"
 #include <string>
-#include <AMReX.H>
-#include "brent.hxx"
-#include "linear_interp_ND.hxx"
+#include "../eos_3p.hxx"
+#include "../utils/eos_brent.hxx"
+#include "../utils/eos_linear_interp_ND.hxx"
 
 using namespace std;
 

@@ -1,5 +1,5 @@
-#ifndef BRENT_HXX
-#define BRENT_HXX
+#ifndef EOS_BRENT_HXX
+#define EOS_BRENT_HXX
 
 #include <cmath>
 #include <limits>

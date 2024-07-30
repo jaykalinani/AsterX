@@ -8,12 +8,12 @@
 #include <AMReX.H>
 
 #include "eos_1p.hxx"
-#include "eos_1p_polytropic.hxx"
+#include "eos_1p_polytropic/eos_1p_polytropic.hxx"
 
 #include "eos_3p.hxx"
-#include "eos_3p_idealgas.hxx"
-#include "eos_3p_hybrid.hxx"
-#include "eos_3p_tabulated3d.hxx"
+#include "eos_3p_idealgas/eos_3p_idealgas.hxx"
+#include "eos_3p_hybrid/eos_3p_hybrid.hxx"
+#include "eos_3p_tabulated3d/eos_3p_tabulated3d.hxx"
 
 namespace EOSX {
 

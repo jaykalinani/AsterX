@@ -3,7 +3,7 @@
 
 #include <cmath>
 
-#include "eos_3p.hxx"
+#include "../eos_3p.hxx"
 using namespace std;
 
 namespace EOSX {
