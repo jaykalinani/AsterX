@@ -4,12 +4,8 @@
 #define NTABLES 19
 
 #include <cctk.h>
-#include <cmath>
-#include <hdf5.h>
-#include <mpi.h>
 #include <string>
 #include "../eos_3p.hxx"
-#include "../utils/eos_brent.hxx"
 #include "../utils/eos_linear_interp_ND.hxx"
 
 namespace EOSX{
@@ -20,128 +16,10 @@ static linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interptable;
 static CCTK_INT ntemp, nrho, nye;
 static CCTK_REAL energy_shift;
 
-// Routine reading an HDF5 integer dataset
-CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-get_hdf5_int_dset(const hid_t &file_id, const string &dset_name,
-                  const int npoints, int *var) {
-
-  const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
-  assert(dset_id >= 0);
-
-  const auto dtype_id = H5Dget_type(dset_id);
-  assert(dtype_id >= 0);
-
-  const auto dtypeclass = H5Tget_class(dtype_id);
-  assert(dtypeclass == H5T_INTEGER);
-  CHECK_ERROR(H5Tclose(dtype_id));
-
-  auto dxpl_id = H5Pcreate(H5P_DATASET_XFER);
-  assert(dxpl_id >= 0);
-
-#ifdef H5_HAVE_PARALLEL
-  CHECK_ERROR(H5Pset_dxpl_mpio(dxpl_id, H5FD_MPIO_COLLECTIVE));
-#else
-  dxpl_id = H5P_DEFAULT;
-#endif
-
-  CHECK_ERROR(H5Dread(dset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, var));
-  CHECK_ERROR(H5Dclose(dset_id));
-
-#ifdef H5_HAVE_PARALLEL
-  H5D_mpio_actual_io_mode_t actual_io_mode;
-  CHECK_ERROR(H5Pget_mpio_actual_io_mode(dxpl_id, &actual_io_mode));
-
-  H5D_mpio_actual_chunk_opt_mode_t actual_chunk_opt_mode;
-  CHECK_ERROR(
-      H5Pget_mpio_actual_chunk_opt_mode(dxpl_id, &actual_chunk_opt_mode));
-
-  uint32_t no_collective_cause_local, no_collective_cause_global;
-  CHECK_ERROR(H5Pget_mpio_no_collective_cause(
-      dxpl_id, &no_collective_cause_local, &no_collective_cause_global));
-
-  if (actual_io_mode == H5D_MPIO_NO_COLLECTIVE or
-      // actual_chunk_opt_mode      == H5D_MPIO_NO_CHUNK_OPTIMIZATION or  //
-      // In general, input files are not chunked
-      no_collective_cause_local != H5D_MPIO_COLLECTIVE or
-      no_collective_cause_global != H5D_MPIO_COLLECTIVE) {
-    CCTK_VWARN(
-        1,
-        "Actual I/O mode, chunk optimization and local and global "
-        "non-collective I/O causes when reading data from dataset '%s': "
-        "'%s', '%s', '%s', '%s'",
-        H5D_mpio_actual_io_mode_map.at(actual_io_mode).c_str(),
-        H5D_mpio_actual_chunk_opt_mode_map.at(actual_chunk_opt_mode).c_str(),
-        H5Pget_mpio_no_collective_cause_map.at(no_collective_cause_local)
-            .c_str(),
-        H5Pget_mpio_no_collective_cause_map.at(no_collective_cause_global)
-            .c_str(),
-        dset_name.c_str());
-  }
-#endif // H5_HAVE_PARALLEL
-
-  CHECK_ERROR(H5Pclose(dxpl_id));
-}
-
-// Routine reading an HDF5 real number dataset
-CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-get_hdf5_real_dset(const hid_t &file_id, const string &dset_name,
-                   const int npoints, CCTK_REAL *var) {
-
-  const auto dset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
-  assert(dset_id >= 0);
-
-  auto dxpl_id = H5Pcreate(H5P_DATASET_XFER);
-  assert(dxpl_id >= 0);
-
-#ifdef H5_HAVE_PARALLEL
-  CHECK_ERROR(H5Pset_dxpl_mpio(dxpl_id, H5FD_MPIO_COLLECTIVE));
-#else
-  dxpl_id = H5P_DEFAULT;
-#endif
-
-  CHECK_ERROR(
-      H5Dread(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, dxpl_id, var));
-  CHECK_ERROR(H5Dclose(dset_id));
-
-#ifdef H5_HAVE_PARALLEL
-  H5D_mpio_actual_io_mode_t actual_io_mode;
-  CHECK_ERROR(H5Pget_mpio_actual_io_mode(dxpl_id, &actual_io_mode));
-
-  H5D_mpio_actual_chunk_opt_mode_t actual_chunk_opt_mode;
-  CHECK_ERROR(
-      H5Pget_mpio_actual_chunk_opt_mode(dxpl_id, &actual_chunk_opt_mode));
-
-  uint32_t no_collective_cause_local, no_collective_cause_global;
-  CHECK_ERROR(H5Pget_mpio_no_collective_cause(
-      dxpl_id, &no_collective_cause_local, &no_collective_cause_global));
-
-  if (actual_io_mode == H5D_MPIO_NO_COLLECTIVE or
-      // actual_chunk_opt_mode      == H5D_MPIO_NO_CHUNK_OPTIMIZATION or  //
-      // In general, input files are not chunked
-      no_collective_cause_local != H5D_MPIO_COLLECTIVE or
-      no_collective_cause_global != H5D_MPIO_COLLECTIVE) {
-    CCTK_VWARN(
-        1,
-        "Actual I/O mode, chunk optimization and local and global "
-        "non-collective I/O causes when reading data from dataset '%s': "
-        "'%s', '%s', '%s', '%s'",
-        H5D_mpio_actual_io_mode_map.at(actual_io_mode).c_str(),
-        H5D_mpio_actual_chunk_opt_mode_map.at(actual_chunk_opt_mode).c_str(),
-        H5Pget_mpio_no_collective_cause_map.at(no_collective_cause_local)
-            .c_str(),
-        H5Pget_mpio_no_collective_cause_map.at(no_collective_cause_global)
-            .c_str(),
-        dset_name.c_str());
-  }
-#endif // H5_HAVE_PARALLEL
-
-  CHECK_ERROR(H5Pclose(dxpl_id));
-}
-
 // Routine reading the EOS table and filling the corresponding object
 CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 eos_readtable_scollapse(const string &filename) {
-  CCTK_VINFO("Reading EOS table '%s'", filename.c_str());
+  CCTK_VINFO("Reading Stellar Collapse EOS table '%s'", filename.c_str());
 
   auto fapl_id = H5Pcreate(H5P_FILE_ACCESS);
   assert(fapl_id >= 0);
