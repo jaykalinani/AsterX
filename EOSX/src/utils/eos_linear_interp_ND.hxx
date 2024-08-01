@@ -195,9 +195,10 @@ public:
         (recursive_interpolate_single<decltype(*this), dim - 1, vars, compressed_index_t, Xt...>::linterp(*this, index, xin...))...};
   };
 
-  lintp_ND_t() = default;
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline lintp_ND_t() = default;
 
   template <typename Yt, typename... Xt>
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline
   lintp_ND_t(std::unique_ptr<Yt[]> __y, std::array<size_t, dim> __num_points, std::unique_ptr<Xt[]>... __x)
       : y(__y.release()), num_points(__num_points) {
     CCTK_INT n = 0;
