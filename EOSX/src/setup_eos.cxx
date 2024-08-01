@@ -93,8 +93,7 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
         sizeof *global_eos_3p_tab3d);
     new (global_eos_3p_tab3d) eos_3p_tabulated3d;
     assert(global_eos_3p_tab3d);
-    global_eos_3p_tab3d->init(rgeps, rgrho, rgye);
-    global_eos_3p_tab3d->read_eos_table(eos_filename);
+    global_eos_3p_tab3d->init(eos_filename, rgeps, rgrho, rgye);
     break;
   }
   default:

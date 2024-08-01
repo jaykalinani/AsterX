@@ -13,6 +13,7 @@ and electron fraction.
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 #include "utils/eos_utils.hxx"
+#include "utils/eos_constants.hxx"
 
 namespace EOSX {
 
