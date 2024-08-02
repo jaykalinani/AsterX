@@ -55,14 +55,15 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   static_assert(dir >= 0 && dir < 3, "");
 
   rec_var_t rec_var;
-  if (CCTK_EQUALS(recon_type, "v_vec"))
+  if (CCTK_EQUALS(recon_type, "v_vec")) {
     rec_var = rec_var_t::v_vec;
-  else if (CCTK_EQUALS(recon_type, "z_vec"))
+  } else if (CCTK_EQUALS(recon_type, "z_vec")) {
     rec_var = rec_var_t::z_vec;
-  else if (CCTK_EQUALS(recon_type, "s_vec"))
+  } else if (CCTK_EQUALS(recon_type, "s_vec")) {
     rec_var = rec_var_t::s_vec;
-  else
+  } else
     CCTK_ERROR("Unknown value for parameter \"recon_type\"");
+  }
 
   reconstruction_t reconstruction;
   if (CCTK_EQUALS(reconstruction_method, "Godunov"))
