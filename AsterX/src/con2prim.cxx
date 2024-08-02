@@ -262,6 +262,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
     pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
+
     zvec_x(p.I) = wlor * pv.vel(0); 
     zvec_y(p.I) = wlor * pv.vel(1);
     zvec_z(p.I) = wlor * pv.vel(2);

@@ -249,6 +249,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
       w_lorentz_rc(0) = 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(0));
       w_lorentz_rc(1) = 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(1));
+      break;
 
     };
     case rec_var_t::z_vec : {
@@ -268,6 +269,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 		      vlows_rc(i)(j) = zveclow_rc(i)(j)/w_lorentz_rc(j);
 	       }
       }
+      break;
 
     };
     case rec_var_t::s_vec : {
@@ -289,6 +291,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 		      vlows_rc(i)(j) = sveclow_rc(i)(j)/w_lorentz_rc(j)/w_lorentz_rc(j)/rhoh_rc(j);
 	       }
       }
+      break;
 
     };
     }
