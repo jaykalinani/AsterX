@@ -61,7 +61,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     rec_var = rec_var_t::z_vec;
   } else if (CCTK_EQUALS(recon_type, "s_vec")) {
     rec_var = rec_var_t::s_vec;
-  } else
+  } else {
     CCTK_ERROR("Unknown value for parameter \"recon_type\"");
   }
 
