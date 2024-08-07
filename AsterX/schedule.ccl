@@ -147,6 +147,7 @@ SCHEDULE AsterX_Fluxes IN AsterX_RHSGroup
   READS: dens(everywhere) tau(everywhere) mom(everywhere)
   READS: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::press(everywhere) HydroBaseX::eps(everywhere)
   READS: HydroBaseX::Bvec(everywhere)
+  READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
   READS: Avec_x(everywhere) Avec_y(everywhere) Avec_z(everywhere) Psi(everywhere)
   WRITES: flux_x(interior) flux_y(interior) flux_z(interior)
   WRITES: Aux_in_RHSof_A_Psi(interior)
@@ -163,7 +164,6 @@ SCHEDULE AsterX_SourceTerms IN AsterX_RHSGroup AFTER AsterX_Fluxes
   READS: ADMBaseX::curv(everywhere)
   READS: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::press(everywhere) HydroBaseX::eps(everywhere)
   READS: HydroBaseX::Bvec(everywhere)
-  READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
   WRITES: densrhs(interior) taurhs(interior) momrhs(interior)
   SYNC: densrhs taurhs momrhs
 } "Calculate the source terms and compute the RHS of the hydro equations"
