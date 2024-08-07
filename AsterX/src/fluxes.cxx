@@ -49,6 +49,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   const vec<GF3D2<const CCTK_REAL>, dim> gf_zvec{zvec_x, zvec_y, zvec_z};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_svec{svec_x, svec_y, svec_z};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_Bvecs{Bvecx, Bvecy, Bvecz};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_dBstags{dBx_stag, dBy_stag, dBz_stag};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_beta{betax, betay, betaz};
   const smat<GF3D2<const CCTK_REAL>, dim> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
@@ -227,14 +228,74 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       return rho_rc(f) + rho_rc(f)*eps_rc(f) + press_rc(f);
     });
 
-    const vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
+    // Introduce reconstructed Bs
+    // Use staggered dB for i == dir
+
+    vec<vec<CCTK_REAL, 2>, 3> Bs_rc;
+    array<CCTK_REAL,2> Bs_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+
+    Bs_rc(dir)(0) = gf_dBstags(dir)(p.I)/sqrtg;
+    Bs_rc(dir)(1) = Bs_rc(dir)(0);
+
+    if constexpr (dir==0) {
+
+      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(1), p, false, false);
+      Bs_rc(1)(0) = Bs_rc_dummy[0];
+      Bs_rc(1)(1) = Bs_rc_dummy[1];
+
+      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(2), p, false, false);
+      Bs_rc(2)(0) = Bs_rc_dummy[0];
+      Bs_rc(2)(1) = Bs_rc_dummy[1];
+
+    } else if (dir==1) {
+
+      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(0), p, false, false);
+      Bs_rc(0)(0) = Bs_rc_dummy[0];
+      Bs_rc(0)(1) = Bs_rc_dummy[1];
+
+      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(2), p, false, false);
+      Bs_rc(2)(0) = Bs_rc_dummy[0];
+      Bs_rc(2)(1) = Bs_rc_dummy[1];
+
+    } else if (dir==2) {
+
+      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(0), p, false, false);
+      Bs_rc(0)(0) = Bs_rc_dummy[0];
+      Bs_rc(0)(1) = Bs_rc_dummy[1];
+
+      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(1), p, false, false);
+      Bs_rc(1)(0) = Bs_rc_dummy[0];
+      Bs_rc(1)(1) = Bs_rc_dummy[1];
+
+    }
+
+    //
+
+    /*
+    vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
       return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, false)};
     });
+
+    if (dir==0) {
+      Bs_rc(dir)(0) = dBx_stag(p.I)/sqrtg;
+    } else if (dir==1) {
+      Bs_rc(dir)(0) = dBy_stag(p.I)/sqrtg;
+    } else if (dir==2) {
+      Bs_rc(dir)(0) = dBz_stag(p.I)/sqrtg;
+    } else {
+      printf("This shouldn't happen.");
+      assert(0);
+    }
+
+    Bs_rc(dir)(1) = Bs_rc(dir)(0);
+    */
+
+    // End of setting Bs
 
     vec<vec<CCTK_REAL, 2>, 3> vels_rc;
     vec<vec<CCTK_REAL, 2>, 3> vlows_rc;
     vec<CCTK_REAL, 2> w_lorentz_rc;
-    array<CCTK_REAL,2> vels_rc_dummy; // note: can't convert array<,2> to vec<,2>
+    array<CCTK_REAL,2> vels_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
     switch (rec_var) {
     case rec_var_t::v_vec : {
 
