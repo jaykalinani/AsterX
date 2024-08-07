@@ -195,6 +195,30 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
           eos_th.press_from_valid_rho_eps_ye(rho_rc(1), eps_min, ye_rc(1));
     }
 
+    /* Interpolate metric components from vertices to faces */
+    const CCTK_REAL alp_avg = calc_avg_v2f(alp, p, dir);
+    const vec<CCTK_REAL, 3> betas_avg(
+        [&](int i) ARITH_INLINE { return calc_avg_v2f(gf_beta(i), p, dir); });
+    const smat<CCTK_REAL, 3> g_avg([&](int i, int j) ARITH_INLINE {
+      return calc_avg_v2f(gf_g(i, j), p, dir);
+    });
+
+    /* determinant of spatial metric */
+    const CCTK_REAL detg_avg = calc_det(g_avg);
+    const CCTK_REAL sqrtg = sqrt(detg_avg);
+    /* co-velocity measured by Eulerian observer: v_j */
+    const vec<vec<CCTK_REAL, 2>, 3> vlows_rc = calc_contraction(g_avg, vels_rc);
+    /* vtilde^i = alpha * v^i - beta^i */
+    const vec<vec<CCTK_REAL, 2>, 3> vtildes_rc([&](int i) ARITH_INLINE {
+      return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
+        return alp_avg * vels_rc(i)(f) - betas_avg(i);
+      });
+    });
+    /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
+    const vec<CCTK_REAL, 2> w_lorentz_rc([&](int f) ARITH_INLINE {
+      return 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(f));
+    });
+
     // Introduce reconstructed Bs
     // Use staggered dB for i == dir
 
@@ -259,29 +283,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
     // End of setting Bs
 
-    /* Interpolate metric components from vertices to faces */
-    const CCTK_REAL alp_avg = calc_avg_v2f(alp, p, dir);
-    const vec<CCTK_REAL, 3> betas_avg(
-        [&](int i) ARITH_INLINE { return calc_avg_v2f(gf_beta(i), p, dir); });
-    const smat<CCTK_REAL, 3> g_avg([&](int i, int j) ARITH_INLINE {
-      return calc_avg_v2f(gf_g(i, j), p, dir);
-    });
-
-    /* determinant of spatial metric */
-    const CCTK_REAL detg_avg = calc_det(g_avg);
-    const CCTK_REAL sqrtg = sqrt(detg_avg);
-    /* co-velocity measured by Eulerian observer: v_j */
-    const vec<vec<CCTK_REAL, 2>, 3> vlows_rc = calc_contraction(g_avg, vels_rc);
-    /* vtilde^i = alpha * v^i - beta^i */
-    const vec<vec<CCTK_REAL, 2>, 3> vtildes_rc([&](int i) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>([&](int f) ARITH_INLINE {
-        return alp_avg * vels_rc(i)(f) - betas_avg(i);
-      });
-    });
-    /* Lorentz factor: W = 1 / sqrt(1 - v^2) */
-    const vec<CCTK_REAL, 2> w_lorentz_rc([&](int f) ARITH_INLINE {
-      return 1 / sqrt(1 - calc_contraction(vlows_rc, vels_rc)(f));
-    });
 
     /* alpha * b0 = W * B^i * v_i */
     const vec<CCTK_REAL, 2> alp_b0_rc([&](int f) ARITH_INLINE {
