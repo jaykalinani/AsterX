@@ -14,7 +14,7 @@ struct cons_vars {
   CCTK_REAL dens;
   vec<CCTK_REAL, 3> mom;
   CCTK_REAL tau;
-  CCTK_REAL dYe;
+  CCTK_REAL DYe;
   vec<CCTK_REAL, 3> dBvec;
 
   // Default constructor, no initialization.
@@ -22,9 +22,9 @@ struct cons_vars {
 
   // Construct from single variables.
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline cons_vars(
-      CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_, CCTK_REAL dYe_,
+      CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_, CCTK_REAL DYe_,
       vec<CCTK_REAL, 3> dBvec_)
-      : dens{dens_}, mom{mom_}, tau{tau_}, dYe{dYe_}, dBvec{dBvec_} {}
+      : dens{dens_}, mom{mom_}, tau{tau_}, DYe{DYe_}, dBvec{dBvec_} {}
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   from_prim(const prim_vars &pv, const smat<CCTK_REAL, 3> &g) {
@@ -65,12 +65,12 @@ struct cons_vars {
           dens;
 
     dBvec = sqrt_detg * pv.Bvec;
-    dYe = dens * pv.Ye;
+    DYe = dens * pv.Ye;
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   scatter(CCTK_REAL &dens_, CCTK_REAL &momx_, CCTK_REAL &momy_,
-          CCTK_REAL &momz_, CCTK_REAL &tau_, CCTK_REAL &dYe_,
+          CCTK_REAL &momz_, CCTK_REAL &tau_, CCTK_REAL &DYe_,
           CCTK_REAL &dBvecx_, CCTK_REAL &dBvecy_, CCTK_REAL &dBvecz_) const {
 
     dens_ = dens;
@@ -78,14 +78,14 @@ struct cons_vars {
     momy_ = mom(1);
     momz_ = mom(2);
     tau_ = tau;
-    dYe_ = dYe;
+    DYe_ = DYe;
     dBvecx_ = dBvec(0);
     dBvecy_ = dBvec(1);
     dBvecz_ = dBvec(2);
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_to_nan() {
-    dens = mom(0) = mom(1) = mom(2) = tau = dYe = dBvec(0) = dBvec(1) =
+    dens = mom(0) = mom(1) = mom(2) = tau = DYe = dBvec(0) = dBvec(1) =
         dBvec(2) = std::numeric_limits<CCTK_REAL>::quiet_NaN();
   }
 };

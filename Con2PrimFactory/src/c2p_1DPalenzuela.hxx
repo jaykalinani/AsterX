@@ -182,7 +182,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 
   pv.w_lor = W_sol;
 
-  pv.Ye = cv.dYe / cv.dens;
+  pv.Ye = cv.DYe / cv.dens;
 
   pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
@@ -213,7 +213,7 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
 
   // (ii)
   CCTK_REAL rho_loc = cv.dens / W_loc;
-  CCTK_REAL Ye_loc = cv.dYe / cv.dens;
+  CCTK_REAL Ye_loc = cv.DYe / cv.dens;
 
   // (iii)
   CCTK_REAL eps_loc = W_loc - 1.0 + (1.0 - W_loc * W_loc) * x / W_loc +
@@ -255,7 +255,7 @@ c2p_1DPalenzuela::solve(EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   cv.tau /= sqrt_detg;
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
-  cv.dYe /= sqrt_detg;
+  cv.DYe /= sqrt_detg;
 
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
@@ -277,8 +277,8 @@ c2p_1DPalenzuela::solve(EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   // const CCTK_REAL bsq = w_vsq_bsq(2);
 
   if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-      (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
-    rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
+      (!isfinite(BiSi)) || (!isfinite(cv.DYe))) {
+    rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.DYe);
     set_to_nan(pv, cv);
     return;
   }

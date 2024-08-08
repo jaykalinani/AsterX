@@ -176,7 +176,7 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
   pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
 
-  pv.Ye = cv.dYe / cv.dens;
+  pv.Ye = cv.DYe / cv.dens;
 
   pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
@@ -214,7 +214,7 @@ c2p_2DNoble::solve(EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   cv.tau /= sqrt_detg;
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
-  cv.dYe /= sqrt_detg;
+  cv.DYe /= sqrt_detg;
 
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
@@ -236,8 +236,8 @@ c2p_2DNoble::solve(EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   // const CCTK_REAL bsq = w_vsq_bsq(2); // small b^2
 
   if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-      (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
-    rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
+      (!isfinite(BiSi)) || (!isfinite(cv.DYe))) {
+    rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.DYe);
     set_to_nan(pv, cv);
     return;
   }

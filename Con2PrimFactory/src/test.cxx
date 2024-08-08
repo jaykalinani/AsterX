@@ -41,7 +41,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   prim_vars pv_seeds{0.125, 0.8, 0.5, 0.1, {0, 0, 0}, 1, {0.5, -1.0, 0}};
 
   // cons_vars cv{dens(p.I), {momx(p.I), momy(p.I), momz(p.I)}, tau(p.I),
-  //  dummy_dYe, {dBx(p.I), dBy(p.I), dBz(p.I)}};
+  //  dummy_DYe, {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
   cons_vars cv;
   cv.from_prim(pv_seeds, g);
@@ -71,11 +71,11 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "momx: %f \n"
          "momy: %f \n"
          "momz: %f \n"
-         "dYe: %f \n"
+         "DYe: %f \n"
          "dBx: %f \n"
          "dBy: %f \n"
          "dBz: %f \n",
-         cv.dens, cv.tau, cv.mom(0), cv.mom(1), cv.mom(2), cv.dYe, cv.dBvec(0),
+         cv.dens, cv.tau, cv.mom(0), cv.mom(1), cv.mom(2), cv.DYe, cv.dBvec(0),
          cv.dBvec(1), cv.dBvec(2));
   /*
     assert(pv.rho == pv_seeds.rho);
@@ -112,11 +112,11 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "momx: %f \n"
          "momy: %f \n"
          "momz: %f \n"
-         "dYe: %f \n"
+         "DYe: %f \n"
          "dBx: %f \n"
          "dBy: %f \n"
          "dBz: %f \n",
-         cv.dens, cv.tau, cv.mom(0), cv.mom(1), cv.mom(2), cv.dYe, cv.dBvec(0),
+         cv.dens, cv.tau, cv.mom(0), cv.mom(1), cv.mom(2), cv.DYe, cv.dBvec(0),
          cv.dBvec(1), cv.dBvec(2));
   /*
     assert(pv.rho == pv_seeds.rho);
