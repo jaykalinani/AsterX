@@ -141,6 +141,7 @@ template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
         momyrhs(p.I) = alp_avg * sqrt_detg * mom_source(1);
         momzrhs(p.I) = alp_avg * sqrt_detg * mom_source(2);
         taurhs(p.I) = alp_avg * sqrt_detg * tau_source;
+        DYe_rhs(p.I) = 0.0;
       }); // end of loop over grid
 }
 

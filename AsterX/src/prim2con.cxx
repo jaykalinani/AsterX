@@ -29,6 +29,7 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         pv.vel(2) = velz(p.I);
         pv.eps = eps(p.I);
         pv.press = press(p.I);
+        pv.Ye = Ye(p.I);
         pv.Bvec(0) = Bvecx(p.I);
         pv.Bvec(1) = Bvecy(p.I);
         pv.Bvec(2) = Bvecz(p.I);
@@ -41,6 +42,7 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         momy(p.I) = cv.mom(1);
         momz(p.I) = cv.mom(2);
         tau(p.I) = cv.tau;
+        DYe(p.I) = cv.DYe;
         dBx(p.I) = cv.dBvec(0);
         dBy(p.I) = cv.dBvec(1);
         dBz(p.I) = cv.dBvec(2);
@@ -50,6 +52,7 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         saved_vely(p.I) = pv.vel(1);
         saved_velz(p.I) = pv.vel(2);
         saved_eps(p.I) = pv.eps;
+        saved_Ye(p.I) = pv.Ye;
       });
 
   /* Initilaize Psi to 0.0 */

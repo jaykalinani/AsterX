@@ -88,16 +88,14 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     vec<CCTK_REAL, 3> Bup{dBx(p.I) / sqrt_detg, dBy(p.I) / sqrt_detg,
                           dBz(p.I) / sqrt_detg};
 
-    CCTK_REAL dummy_Ye = 0.5;
-    CCTK_REAL dummy_dYe = 0.5;
     prim_vars pv;
-    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), dummy_Ye, press(p.I),
+    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I), press(p.I),
                        v_up,           wlor,           Bup};
     // Note that cv are densitized, i.e. they all include sqrt_detg
     cons_vars cv{dens(p.I),
                  {momx(p.I), momy(p.I), momz(p.I)},
                  tau(p.I),
-                 dummy_dYe,
+                 DYe(p.I),
                  {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
     if (dens(p.I) <= sqrt_detg * rho_atmo_cut) {
@@ -161,17 +159,17 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
             "cctk_iteration = %i \n "
             "x, y, z = %26.16e, %26.16e, %26.16e \n "
             "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
-            "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+            "momy = %26.16e \n momz = %26.16e \n DYe =  %26.16e \n dBx = %26.16e \n "
             "dBy = %26.16e \n dBz = %26.16e \n "
             "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
             "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
-            "%26.16e \n "
+            "%26.16e \n saved_Ye = %26.16e \n"
             "Bvecx = %26.16e \n Bvecy = %26.16e \n "
             "Bvecz = %26.16e \n "
             "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
             cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-            momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), pv.rho, pv.eps,
-            pv.press, pv.vel(0), pv.vel(1), pv.vel(2), pv.Bvec(0), pv.Bvec(1),
+            momy(p.I), momz(p.I), DYe(p.I), dBx(p.I), dBy(p.I), dBz(p.I), pv.rho, pv.eps,
+            pv.press, pv.vel(0), pv.vel(1), pv.vel(2), pv.Ye, pv.Bvec(0), pv.Bvec(1),
             pv.Bvec(2),
             // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
             // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
@@ -195,11 +193,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     CCTK_REAL Ex, Ey, Ez;
 
     // Write back pv
-    pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), velx(p.I), vely(p.I),
+    pv.scatter(rho(p.I), eps(p.I), Ye(p.I), press(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
 
     // Write back cv
-    cv.scatter(dens(p.I), momx(p.I), momy(p.I), momz(p.I), tau(p.I), dummy_Ye,
+    cv.scatter(dens(p.I), momx(p.I), momy(p.I), momz(p.I), tau(p.I), DYe(p.I),
                dBx(p.I), dBy(p.I), dBz(p.I));
 
     // Update saved prims
@@ -208,6 +206,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     saved_vely(p.I) = vely(p.I);
     saved_velz(p.I) = velz(p.I);
     saved_eps(p.I) = eps(p.I);
+    saved_Ye(p.I) = Ye(p.I);
   }); // Loop
 }
 

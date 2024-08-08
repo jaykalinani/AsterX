@@ -43,7 +43,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   const atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
 
   CCTK_REAL dummy_Ye = 0.5;
-  CCTK_REAL dummy_dYe = 0.5;
+  CCTK_REAL dummy_DYe = 0.5;
 
   // Get a recovery function
   con2prim_mhd cv2pv(eos, 1e-5, 1, 100, 100, atmo, 1e-8, 100);
@@ -80,7 +80,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     // Note that cv are densitized, i.e. they all include sqrt_detg
     cons_vars_mhd cv{dens(p.I),
                      tau(p.I),
-                     dummy_dYe,
+                     dummy_DYe,
                      {momx(p.I), momy(p.I), momz(p.I)},
                      {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
