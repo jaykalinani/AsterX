@@ -161,22 +161,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
                                        dir,
                                        (dir==0) ? 1 : ( (dir==1) ? 2 : 0 )};
 
-  /*
-  CCTK_INT dir_m1;
-  CCTK_INT dir_p1;
-  
-  if constexpr (dir==0) {
-    dir_m1 = 2;
-    dir_p1 = 1;
-  } else if (dir==1) {
-    dir_m1 = 0;
-    dir_p1 = 2;
-  } else if (dir==2) {
-    dir_m1 = 1;
-    dir_p1 = 0;
-  }
-  */
-
   grid.loop_int_device<
       face_centred[0], face_centred[1],
       face_centred
@@ -255,75 +239,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_arr[2]), p, false, false);
     Bs_rc(dir_arr[2])(0) = Bs_rc_dummy[0];
     Bs_rc(dir_arr[2])(1) = Bs_rc_dummy[1];
-    
-    //
-
-    /*
-    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_m1), p, false, false);
-    Bs_rc(dir_m1)(0) = Bs_rc_dummy[0];
-    Bs_rc(dir_m1)(1) = Bs_rc_dummy[1];
-
-    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_p1), p, false, false);
-    Bs_rc(dir_p1)(0) = Bs_rc_dummy[0];
-    Bs_rc(dir_p1)(1) = Bs_rc_dummy[1];
-    */
-
-    //
-
-    /*
-    if constexpr (dir==0) {
-
-      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(1), p, false, false);
-      Bs_rc(1)(0) = Bs_rc_dummy[0];
-      Bs_rc(1)(1) = Bs_rc_dummy[1];
-
-      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(2), p, false, false);
-      Bs_rc(2)(0) = Bs_rc_dummy[0];
-      Bs_rc(2)(1) = Bs_rc_dummy[1];
-
-    } else if (dir==1) {
-
-      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(0), p, false, false);
-      Bs_rc(0)(0) = Bs_rc_dummy[0];
-      Bs_rc(0)(1) = Bs_rc_dummy[1];
-
-      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(2), p, false, false);
-      Bs_rc(2)(0) = Bs_rc_dummy[0];
-      Bs_rc(2)(1) = Bs_rc_dummy[1];
-
-    } else if (dir==2) {
-
-      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(0), p, false, false);
-      Bs_rc(0)(0) = Bs_rc_dummy[0];
-      Bs_rc(0)(1) = Bs_rc_dummy[1];
-
-      Bs_rc_dummy = reconstruct_pt(gf_Bvecs(1), p, false, false);
-      Bs_rc(1)(0) = Bs_rc_dummy[0];
-      Bs_rc(1)(1) = Bs_rc_dummy[1];
-
-    }
-    */
-
-    //
-
-    /*
-    vec<vec<CCTK_REAL, 2>, 3> Bs_rc([&](int i) ARITH_INLINE {
-      return vec<CCTK_REAL, 2>{reconstruct_pt(gf_Bvecs(i), p, false, false)};
-    });
-
-    if (dir==0) {
-      Bs_rc(dir)(0) = dBx_stag(p.I)/sqrtg;
-    } else if (dir==1) {
-      Bs_rc(dir)(0) = dBy_stag(p.I)/sqrtg;
-    } else if (dir==2) {
-      Bs_rc(dir)(0) = dBz_stag(p.I)/sqrtg;
-    } else {
-      printf("This shouldn't happen.");
-      assert(0);
-    }
-
-    Bs_rc(dir)(1) = Bs_rc(dir)(0);
-    */
 
     // End of setting Bs
 
