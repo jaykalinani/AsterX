@@ -157,6 +157,26 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
                                             !(dir == 2)};
 
+  constexpr array<int, dim> dir_arr = {(dir==0) ? 2 : ( (dir==1) ? 0 : 1 ), 
+                                       dir,
+                                       (dir==0) ? 1 : ( (dir==1) ? 2 : 0 )};
+
+  /*
+  CCTK_INT dir_m1;
+  CCTK_INT dir_p1;
+  
+  if constexpr (dir==0) {
+    dir_m1 = 2;
+    dir_p1 = 1;
+  } else if (dir==1) {
+    dir_m1 = 0;
+    dir_p1 = 2;
+  } else if (dir==2) {
+    dir_m1 = 1;
+    dir_p1 = 0;
+  }
+  */
+
   grid.loop_int_device<
       face_centred[0], face_centred[1],
       face_centred
@@ -228,6 +248,29 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     Bs_rc(dir)(0) = gf_dBstags(dir)(p.I)/sqrtg;
     Bs_rc(dir)(1) = Bs_rc(dir)(0);
 
+    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_arr[0]), p, false, false);
+    Bs_rc(dir_arr[0])(0) = Bs_rc_dummy[0];
+    Bs_rc(dir_arr[0])(1) = Bs_rc_dummy[1];
+
+    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_arr[2]), p, false, false);
+    Bs_rc(dir_arr[2])(0) = Bs_rc_dummy[0];
+    Bs_rc(dir_arr[2])(1) = Bs_rc_dummy[1];
+    
+    //
+
+    /*
+    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_m1), p, false, false);
+    Bs_rc(dir_m1)(0) = Bs_rc_dummy[0];
+    Bs_rc(dir_m1)(1) = Bs_rc_dummy[1];
+
+    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_p1), p, false, false);
+    Bs_rc(dir_p1)(0) = Bs_rc_dummy[0];
+    Bs_rc(dir_p1)(1) = Bs_rc_dummy[1];
+    */
+
+    //
+
+    /*
     if constexpr (dir==0) {
 
       Bs_rc_dummy = reconstruct_pt(gf_Bvecs(1), p, false, false);
@@ -259,6 +302,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       Bs_rc(1)(1) = Bs_rc_dummy[1];
 
     }
+    */
 
     //
 
