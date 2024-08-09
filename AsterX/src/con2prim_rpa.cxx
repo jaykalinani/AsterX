@@ -84,6 +84,9 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
                      {momx(p.I), momy(p.I), momz(p.I)},
                      {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
+    // Invert entropy here
+    entropy(p.I) = sstar(p.I)/dens(p.I);
+
     cv2pv(pv, cv, g, rep);
 
     // Handle incorrectable errors

@@ -137,6 +137,7 @@ template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
 
         /* Update the RHS grid functions */
         densrhs(p.I) = 0.0;
+        sstarrhs(p.I) = 0.0;
         momxrhs(p.I) = alp_avg * sqrt_detg * mom_source(0);
         momyrhs(p.I) = alp_avg * sqrt_detg * mom_source(1);
         momzrhs(p.I) = alp_avg * sqrt_detg * mom_source(2);

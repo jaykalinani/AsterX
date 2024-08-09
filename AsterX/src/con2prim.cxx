@@ -117,6 +117,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_report rep_first;
     c2p_report rep_second;
 
+    // Invert entropy here
+    entropy(p.I) = sstar(p.I)/dens(p.I);
+
     // Calling the first C2P
     switch (c2p_fir) {
     case c2p_first_t::Noble: {
