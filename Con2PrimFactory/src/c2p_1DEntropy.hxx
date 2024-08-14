@@ -192,16 +192,24 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
   pv.E = calc_contraction(gup, Elow);
 }
 
+// See Appendix A.4 of https://arxiv.org/pdf/1112.0568
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
-                                        CCTK_REAL BiSi, CCTK_REAL x,
-                                        EOSType &eos_th, cons_vars &cv) const {
-  // computes f(x) from x and q,r,s,t
-  const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
-  const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
-  const CCTK_REAL sPalenzuela = Bsq / cv.dens;
-  const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
+c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq,
+                                        CCTK_REAL BiSi, CCTK_REAL rho,
+                                        EOSType &eos_th, CCTK_REAL dens, 
+                                        CCTK_REAL sstar) const {
+
+  // dens and sstar are undensitized 
+  // i.e. we already divided by sqrt(gamma)
+
+  const CCTK_REAL ent = sstar/dens;
+
+  // Compute h_{cold} but using entropy
+
+  const CCTK_REAL P_loc =
+      eos_th.press_from_valid_rho_entropy_ye(rho_loc, eps_loc, Ye_loc);
+
 
   // (i)
   CCTK_REAL Wminus2 =
@@ -222,8 +230,6 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
                                sPalenzuela / (2 * W_loc * W_loc));
 
   // (iv)
-  CCTK_REAL P_loc =
-      eos_th.press_from_valid_rho_eps_ye(rho_loc, eps_loc, Ye_loc);
 
   return (x - (1.0 + eps_loc + P_loc / rho_loc) * W_loc);
 }
