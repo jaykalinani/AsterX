@@ -231,9 +231,9 @@ c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
-                        cons_vars cv, const smat<CCTK_REAL, 3> &glo,
-                        c2p_report &rep) const {
+c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
+                        cons_vars cv, CCTK_REAL sstar, 
+                        const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const {
 
   ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
@@ -257,6 +257,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
   cv.dYe /= sqrt_detg;
+  sstar /= sqrt_detg;
 
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
@@ -305,28 +306,27 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
   const CCTK_INT maxiters = maxIterations;
 
-  CCTK_REAL qPalenzuela = cv.tau / cv.dens;
-  CCTK_REAL sPalenzuela = Bsq / cv.dens;
-  CCTK_REAL xPalenzuela_lowerBound = 1.0 + qPalenzuela - sPalenzuela;
-  CCTK_REAL xPalenzuela_upperBound = 2.0 + 2.0 * qPalenzuela - sPalenzuela;
-  CCTK_REAL a = xPalenzuela_lowerBound;
-  CCTK_REAL b = xPalenzuela_upperBound;
+  // See Appendix A.4 of https://arxiv.org/pdf/1112.0568
+  // Compute (A59)
+  CCTK_REAL a = cv.dens/sqrt(1.0+Ssq/(cv.dens*cv.dens));
+  CCTK_REAL b = cv.dens;
   auto fn = [&](auto x) {
-    return funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, x, eos_th, cv);
+    return funcRoot_1DEntropy(Ssq, Bsq, BiSi, x, eos_th, 
+                              cv.dens, sstar, cv.dYe);
   };
   auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
 
   // Pick best solution
-  CCTK_REAL xPalenzuela_Sol;
+  CCTK_REAL xEntropy_Sol;
   if (abs(fn(result.first)) < abs(fn(result.second))) {
-    xPalenzuela_Sol = result.first;
+    xEntropy_Sol = result.first;
   } else {
-    xPalenzuela_Sol = result.second;
+    xEntropy_Sol = result.second;
   }
 
   // Check solution and calculate primitives
-  // TODO:check if to pass result.first or xPalenzuela_Sol
-  if (rep.iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
+  // TODO:check if to pass result.first or xEntropy_Sol
+  if (rep.iters < maxiters && abs(fn(xEntropy_Sol)) < tolerance) {
     rep.status = c2p_report::SUCCESS;
     status = ROOTSTAT::SUCCESS;
   } else {
@@ -335,7 +335,7 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     status = ROOTSTAT::NOT_CONVERGED;
   }
 
-  xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+  xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
