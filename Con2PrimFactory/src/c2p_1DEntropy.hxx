@@ -196,42 +196,37 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq,
-                                        CCTK_REAL BiSi, CCTK_REAL rho,
+                                        CCTK_REAL BiSi, CCTK_REAL x,
                                         EOSType &eos_th, CCTK_REAL dens, 
-                                        CCTK_REAL sstar) const {
+                                        CCTK_REAL sstar, CCTK_REAL dYe) const {
 
-  // dens and sstar are undensitized 
-  // i.e. we already divided by sqrt(gamma)
+  // We already divided dens, sstar and
+  // dYe by sqrt(gamma)
 
-  const CCTK_REAL ent = sstar/dens;
+  const CCTK_REAL ent_loc = sstar/dens;
+  const CCTK_REAL ye_loc  = dYe/dens;
 
   // Compute h_{cold} but using entropy
+  const CCTK_REAL press_loc =
+      eos_th.press_from_valid_rho_entropy_ye(x, ent_loc, ye_loc);
 
-  const CCTK_REAL P_loc =
-      eos_th.press_from_valid_rho_entropy_ye(rho_loc, eps_loc, Ye_loc);
+  const CCTK_REAL eps_loc =
+      eos_th.eps_from_valid_rho_entropy_ye(x, ent_loc, ye_loc);
 
+  // Compute (A60) using
+  // W = rho*h*lorentz*lorentz
+  const CCTK_REAL lor_loc = dens/x;
+  const CCTK_REAL h_loc = (1.0+eps_loc+press/x);
+  const CCTK_REAL W = x*h_loc*lor_loc*lor_loc;
 
-  // (i)
-  CCTK_REAL Wminus2 =
-      1.0 - (x * x * rPalenzuela +
-             (2.0 * x + sPalenzuela) * tPalenzuela * tPalenzuela) /
-                (x * x * (x + sPalenzuela) * (x + sPalenzuela));
-  Wminus2 = fmin(fmax(Wminus2, 1e-10), 1 - 1e-10);
-  const CCTK_REAL W_loc = pow(Wminus2, -0.5);
+  // Compute (A61)
+  const CCTK_REAL Sfsq = (W*W*Ssq+BiSi*BiSi*(Bsq+2.0*W))/
+                         ((W+Bsq)*(W+Bsq));
 
-  // (ii)
-  CCTK_REAL rho_loc = cv.dens / W_loc;
-  CCTK_REAL Ye_loc = cv.dYe / cv.dens;
+  // Compute (A62)
+  const CCTK_REAL rho = dens/sqrt(1.0+Sfsq/(dens*dens*h_loc*h_loc));
 
-  // (iii)
-  CCTK_REAL eps_loc = W_loc - 1.0 + (1.0 - W_loc * W_loc) * x / W_loc +
-                      W_loc * (qPalenzuela - sPalenzuela +
-                               tPalenzuela * tPalenzuela / (2 * x * x) +
-                               sPalenzuela / (2 * W_loc * W_loc));
-
-  // (iv)
-
-  return (x - (1.0 + eps_loc + P_loc / rho_loc) * W_loc);
+  return x-rho;
 }
 
 template <typename EOSType>
