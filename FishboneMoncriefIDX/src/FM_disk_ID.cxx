@@ -1,4 +1,3 @@
-#include <loop.hxx>
 #include <loop_device.hxx>
 
 #include <cctk.h>
@@ -45,9 +44,9 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
   }
 
   // Setup metric, loop over vertices
-  grid.loop_int<0, 0, 0>(
+  grid.loop_all_device<0, 0, 0>(
         grid.nghostzones,
-        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
@@ -104,9 +103,9 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial(CCTK_ARGUMENTS)
   });
 
   // Setup hydro, loop over cell centers
-  grid.loop_int<1, 1, 1>(
+  grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
-        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
@@ -197,9 +196,9 @@ extern "C" void FishboneMoncrief_ET_GRHD_initial__perturb_pressure(CCTK_ARGUMENT
   DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_ET_GRHD_initial__perturb_pressure;
   DECLARE_CCTK_PARAMETERS;
 
-  grid.loop_int<1, 1, 1>(
+  grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
-        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
     CCTK_REAL xcoord = p.x;
     CCTK_REAL ycoord = p.y;
@@ -235,9 +234,9 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
   DECLARE_CCTK_ARGUMENTSX_FishboneMoncrief_Set_A;
   DECLARE_CCTK_PARAMETERS;
 
-  grid.loop_int_device<1, 0, 0>(
+  grid.loop_all_device<1, 0, 0>(
       grid.nghostzones,
-      [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
@@ -262,9 +261,9 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         Avec_x(p.I) = AxL;
       });
 
-  grid.loop_int_device<0, 1, 0>(
+  grid.loop_all_device<0, 1, 0>(
       grid.nghostzones,
-      [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
@@ -289,9 +288,9 @@ extern "C" void FishboneMoncrief_Set_A(CCTK_ARGUMENTS)
         Avec_y(p.I) = AyL;
       });
 
-  grid.loop_int_device<0, 0, 1>(
+  grid.loop_all_device<0, 0, 1>(
       grid.nghostzones,
-      [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+      [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
@@ -324,9 +323,9 @@ extern "C" void FishboneMoncrief_Set_Spacetime(CCTK_ARGUMENTS)
   DECLARE_CCTK_PARAMETERS;
 
   // Setup metric, loop over vertices
-  grid.loop_int<0, 0, 0>(
+  grid.loop_all_device<0, 0, 0>(
         grid.nghostzones,
-        [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
         CCTK_REAL xcoord = p.x;
         CCTK_REAL ycoord = p.y;
