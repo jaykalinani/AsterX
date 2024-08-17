@@ -362,11 +362,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     // vars
 
     // Ideal gas case {
-    /* eps for ideal gas EOS */
-    //const vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
-    //  return eos_th.eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
-    //                                            ye_rc(f));
-    //});
     /* cs2 for ideal gas EOS */
     const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
       return eos_th.csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), ye_rc(f)) *
