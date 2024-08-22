@@ -36,7 +36,7 @@ public:
 
   T idx[dim], dx[dim];
   CCTK_INT nvars = num_vars;
-  std::array<size_t, dim> num_points;
+  std::array<size_t, dim> num_points; //fix this if necessary
   vec_ptr_t x[dim];
   vec_ptr_t y;
 
@@ -46,7 +46,7 @@ private:
   using all_true = std::is_same<bool_pack<bs..., true>, bool_pack<true, bs...>>;
 
   //! Get nearest table index of input value xin
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline size_t
+  CCTK_HOST CCTK_DEVICE size_t
   find_index(size_t const which_dim, T const &xin) const {
     if (uniform) {
       const auto xL = (xin - x[which_dim][0]);
@@ -77,7 +77,7 @@ private:
 
   template <typename CI_t, size_t offset> struct compressed_indexr_t {
     template <size_t N = 0>
-    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline size_t
+    static CCTK_HOST CCTK_DEVICE size_t
     value(std::array<size_t, dim> const &index,
           std::array<size_t, dim> const &num_points) {
       if constexpr (N < dim) {
@@ -91,14 +91,14 @@ private:
 
   struct compressed_index_t {
     template <size_t N = 0>
-    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline size_t
+    static CCTK_HOST CCTK_DEVICE size_t
     value(std::array<size_t, dim> const &index,
           std::array<size_t, dim> const &num_points) {
       return 0;
     }
   };
 
-  static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const
+  static CCTK_HOST CCTK_DEVICE T const
   linterp1D(T const &A, T const &B, T const &xA, T const &xB, T const &x) {
     const auto lambda = (x - xA) / (xB - xA);
     return (B - A) * lambda + A;
@@ -107,7 +107,7 @@ private:
   template <typename F_t, size_t which_dim, size_t var, typename CI_t,
             typename X1, typename... Xt>
   struct recursive_interpolate_single {
-    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const
+    static CCTK_HOST CCTK_DEVICE T const
     linterp(F_t const &F, std::array<size_t, dim> const &index,
             Xt const &...xin, X1 const &x1) {
       auto const xA = F.x[which_dim][index[which_dim]];
@@ -128,7 +128,7 @@ private:
 
   template <typename F_t, size_t var, typename CI_t, typename X1>
   struct recursive_interpolate_single<F_t, 0, var, CI_t, X1> {
-    static CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline T const
+    static CCTK_HOST CCTK_DEVICE T const
     linterp(F_t const &F, std::array<size_t, dim> const &index, X1 const &x1) {
       constexpr size_t which_dim = 0;
 
@@ -177,7 +177,7 @@ public:
 
   template <size_t... vars, typename... Xt>
   CCTK_HOST
-      CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec_t<sizeof...(vars)>
+      CCTK_DEVICE vec_t<sizeof...(vars)>
       interpolate(Xt const &...xin) const {
     static_assert(
         all_true<(std::is_convertible<typename std::remove_cv<Xt>::type, T>::value)...>::value,
@@ -195,20 +195,21 @@ public:
         (recursive_interpolate_single<decltype(*this), dim - 1, vars, compressed_index_t, Xt...>::linterp(*this, index, xin...))...};
   };
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline lintp_ND_t() = default;
+  //CCTK_HOST CCTK_DEVICE lintp_ND_t() = default;
 
   template <typename Yt, typename... Xt>
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline
-  lintp_ND_t(std::unique_ptr<Yt[]> __y, std::array<size_t, dim> __num_points, std::unique_ptr<Xt[]>... __x)
-      : y(__y.release()), num_points(__num_points) {
-    CCTK_INT n = 0;
-    CCTK_INT tmp[] = {(x[n] = __x.release(), ++n)...};
-    (void)tmp;
+  CCTK_HOST CCTK_DEVICE
+  lintp_ND_t(Yt* __y, std::array<size_t, dim> __num_points, Xt*... __x)
+      : y(__y), num_points(__num_points) {
 
-    for (CCTK_INT i = 0; i < dim; ++i) {
-      dx[i] = x[i][1] - x[i][0];
-      idx[i] = 1. / dx[i];
-    };
+      CCTK_INT n = 0;
+      CCTK_INT tmp[] = {(x[n] = __x, ++n)...};
+      (void)tmp;
+
+      for (CCTK_INT i = 0; i < dim; ++i) {
+          dx[i] = x[i][1] - x[i][0];
+          idx[i] = 1. / dx[i];
+      }
   }
 };
 

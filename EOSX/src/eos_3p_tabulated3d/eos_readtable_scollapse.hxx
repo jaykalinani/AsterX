@@ -12,13 +12,15 @@ namespace EOSX{
 using namespace std;
 using namespace eos_constants;
 
-static linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interptable;
-static CCTK_INT ntemp, nrho, nye;
-static CCTK_REAL energy_shift;
+CCTK_REAL *energy_shift;
+linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> *interptable;
+
 
 // Routine reading the EOS table and filling the corresponding object
-CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+CCTK_HOST void
 eos_readtable_scollapse(const string &filename) {
+
+  CCTK_INT ntemp, nrho, nye;    
   CCTK_VINFO("Reading Stellar Collapse EOS table '%s'", filename.c_str());
 
   auto fapl_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -51,33 +53,38 @@ eos_readtable_scollapse(const string &filename) {
   CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp,
              nrho, nye);
 
+  energy_shift = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(sizeof(CCTK_REAL));
+  assert(energy_shift);
+
   // Allocate memory for tables
 
   CCTK_REAL *logrho, *logtemp, *yes;
   CCTK_REAL *epstable;
   CCTK_REAL *alltables;
 
-  CCTK_REAL *alltables_temp;
-  if (!(alltables_temp = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+  if (!(alltables = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
             npoints * NTABLES * sizeof(CCTK_REAL)))) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
+    printf("Cannot allocate memory for alltables");
   }
   if (!(logrho = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nrho *
                                                          sizeof(CCTK_REAL)))) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
+    printf("Cannot allocate memory for logrho");
   }
   if (!(logtemp = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(ntemp *
                                                           sizeof(CCTK_REAL)))) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
+    printf("Cannot allocate memory for logtemp");
   }
   if (!(yes =
             (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nye * sizeof(CCTK_REAL)))) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
+    printf("Cannot allocate memory for yes");
   }
+
+  // allocate epstable; a linear-scale eps table
+  // that allows us to extrapolate to negative eps
+  if (!(epstable = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+            npoints * sizeof(CCTK_REAL)))) {
+    printf("Cannot allocate memory for epstable");
+  } 
 
   // Prepare HDF5 to read hyperslabs into alltables_temp
   hsize_t table_dims[2] = {NTABLES, (hsize_t)npoints};
@@ -86,40 +93,40 @@ eos_readtable_scollapse(const string &filename) {
 
   // hydro (and munu)
   get_hdf5_real_dset(file_id, "logpress", npoints,
-                     &alltables_temp[0 * npoints]);
+                     &alltables[0 * npoints]);
   get_hdf5_real_dset(file_id, "logenergy", npoints,
-                     &alltables_temp[1 * npoints]);
-  get_hdf5_real_dset(file_id, "entropy", npoints, &alltables_temp[2 * npoints]);
-  get_hdf5_real_dset(file_id, "munu", npoints, &alltables_temp[3 * npoints]);
-  get_hdf5_real_dset(file_id, "cs2", npoints, &alltables_temp[4 * npoints]);
-  get_hdf5_real_dset(file_id, "dedt", npoints, &alltables_temp[5 * npoints]);
-  get_hdf5_real_dset(file_id, "dpdrhoe", npoints, &alltables_temp[6 * npoints]);
-  get_hdf5_real_dset(file_id, "dpderho", npoints, &alltables_temp[7 * npoints]);
+                     &alltables[1 * npoints]);
+  get_hdf5_real_dset(file_id, "entropy", npoints, &alltables[2 * npoints]);
+  get_hdf5_real_dset(file_id, "munu", npoints, &alltables[3 * npoints]);
+  get_hdf5_real_dset(file_id, "cs2", npoints, &alltables[4 * npoints]);
+  get_hdf5_real_dset(file_id, "dedt", npoints, &alltables[5 * npoints]);
+  get_hdf5_real_dset(file_id, "dpdrhoe", npoints, &alltables[6 * npoints]);
+  get_hdf5_real_dset(file_id, "dpderho", npoints, &alltables[7 * npoints]);
 
   // chemical potentials
-  get_hdf5_real_dset(file_id, "muhat", npoints, &alltables_temp[8 * npoints]);
-  get_hdf5_real_dset(file_id, "mu_e", npoints, &alltables_temp[9 * npoints]);
-  get_hdf5_real_dset(file_id, "mu_p", npoints, &alltables_temp[10 * npoints]);
-  get_hdf5_real_dset(file_id, "mu_n", npoints, &alltables_temp[11 * npoints]);
+  get_hdf5_real_dset(file_id, "muhat", npoints, &alltables[8 * npoints]);
+  get_hdf5_real_dset(file_id, "mu_e", npoints, &alltables[9 * npoints]);
+  get_hdf5_real_dset(file_id, "mu_p", npoints, &alltables[10 * npoints]);
+  get_hdf5_real_dset(file_id, "mu_n", npoints, &alltables[11 * npoints]);
 
   // compositions
-  get_hdf5_real_dset(file_id, "Xa", npoints, &alltables_temp[12 * npoints]);
-  get_hdf5_real_dset(file_id, "Xh", npoints, &alltables_temp[13 * npoints]);
-  get_hdf5_real_dset(file_id, "Xn", npoints, &alltables_temp[14 * npoints]);
-  get_hdf5_real_dset(file_id, "Xp", npoints, &alltables_temp[15 * npoints]);
+  get_hdf5_real_dset(file_id, "Xa", npoints, &alltables[12 * npoints]);
+  get_hdf5_real_dset(file_id, "Xh", npoints, &alltables[13 * npoints]);
+  get_hdf5_real_dset(file_id, "Xn", npoints, &alltables[14 * npoints]);
+  get_hdf5_real_dset(file_id, "Xp", npoints, &alltables[15 * npoints]);
 
   // average nucleus
-  get_hdf5_real_dset(file_id, "Abar", npoints, &alltables_temp[16 * npoints]);
-  get_hdf5_real_dset(file_id, "Zbar", npoints, &alltables_temp[17 * npoints]);
+  get_hdf5_real_dset(file_id, "Abar", npoints, &alltables[16 * npoints]);
+  get_hdf5_real_dset(file_id, "Zbar", npoints, &alltables[17 * npoints]);
 
   // Gamma
-  get_hdf5_real_dset(file_id, "gamma", npoints, &alltables_temp[18 * npoints]);
+  get_hdf5_real_dset(file_id, "gamma", npoints, &alltables[18 * npoints]);
 
   // Read additional tables and variables
   get_hdf5_real_dset(file_id, "logrho", nrho, logrho);
   get_hdf5_real_dset(file_id, "logtemp", ntemp, logtemp);
   get_hdf5_real_dset(file_id, "ye", nye, yes);
-  get_hdf5_real_dset(file_id, "energy_shift", 1, &energy_shift);
+  get_hdf5_real_dset(file_id, "energy_shift", 1, energy_shift);
 
   CHECK_ERROR(H5Pclose(fapl_id));
   CHECK_ERROR(H5Sclose(mem3));
@@ -132,39 +139,8 @@ eos_readtable_scollapse(const string &filename) {
   }
 #endif
 
-  // Fill actual table
-  if (!(alltables = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
-            npoints * NTABLES * sizeof(CCTK_REAL)))) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
-  for (int iv = 0; iv < NTABLES; iv++)
-    for (int k = 0; k < nye; k++)
-      for (int j = 0; j < ntemp; j++)
-        for (int i = 0; i < nrho; i++) {
-          int indold = i + nrho * (j + ntemp * (k + nye * iv));
-          int indnew = iv + NTABLES * (i + nrho * (j + ntemp * k));
+  *energy_shift = *energy_shift * EPSGF;
 
-          // Maybe swap temp axis?
-          // int indnew = iv + NTABLES*(j + ntemp*(i + nrho*k));
-          alltables[indnew] = alltables_temp[indold];
-        }
-
-  // free memory of temporary array
-  amrex::The_Managed_Arena()->free(alltables_temp);
-
-  // allocate epstable; a linear-scale eps table
-  // that allows us to extrapolate to negative eps
-  if (!(epstable = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
-            npoints * sizeof(CCTK_REAL)))) {
-    CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-                "Cannot allocate memory for EOS table");
-  }
-
-  // convert units, convert logs to natural log
-  // The latter is great, because exp() is way faster than pow()
-  // pressure
-  energy_shift = energy_shift * EPSGF;
   for (int i = 0; i < nrho; i++) {
     // rewrite:
     // logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
@@ -215,33 +191,12 @@ eos_readtable_scollapse(const string &filename) {
   auto num_points =
       std::array<size_t, 3>{size_t(nrho), size_t(ntemp), size_t(nye)};
 
-  auto logrho_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[nrho]);
-  auto logtemp_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[ntemp]);
-  auto ye_ptr = std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[nye]);
-  auto alltables_ptr =
-      std::unique_ptr<CCTK_REAL[]>(new CCTK_REAL[npoints * NTABLES]);
-
-  for (int i = 0; i < nrho; ++i)
-    logrho_ptr[i] = logrho[i];
-  for (int i = 0; i < ntemp; ++i)
-    logtemp_ptr[i] = logtemp[i];
-  for (int i = 0; i < nye; ++i)
-    ye_ptr[i] = yes[i];
-  for (int i = 0; i < npoints * NTABLES; ++i)
-    alltables_ptr[i] = alltables[i];
-
-  amrex::The_Managed_Arena()->free(logrho);
-  amrex::The_Managed_Arena()->free(logtemp);
-  amrex::The_Managed_Arena()->free(yes);
-  amrex::The_Managed_Arena()->free(alltables);
-  amrex::The_Managed_Arena()->free(epstable);
-
-  interptable = linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES>(
-      std::move(alltables_ptr), std::move(num_points), std::move(logrho_ptr),
-      std::move(logtemp_ptr), std::move(ye_ptr));
-
+  interptable = (linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> *)amrex::The_Managed_Arena()->alloc(
+        sizeof *interptable);
+  assert(interptable);	  
+  new (interptable) linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> (alltables, num_points, logrho, logtemp, yes);	  
   // set up steps, mins, maxes here?
   return;
-};
+}
 } //namespace EOSX
 #endif

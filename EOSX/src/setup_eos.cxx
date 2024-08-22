@@ -37,8 +37,8 @@ extern "C" void EOSX_Setup_EOSID(CCTK_ARGUMENTS) {
     CCTK_INFO("Setting initial data EOS to Polytropic");
     global_eos_1p_poly = (eos_1p_polytrope *)The_Managed_Arena()->alloc(
         sizeof *global_eos_1p_poly);
-    new (global_eos_1p_poly) eos_1p_polytrope;
     assert(global_eos_1p_poly);
+    new (global_eos_1p_poly) eos_1p_polytrope;
     global_eos_1p_poly->init(poly_gamma, poly_k, rho_max);
     break;
   }
@@ -72,8 +72,8 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
     CCTK_INFO("Setting evolution EOS to Ideal Gas");
     global_eos_3p_ig =
         (eos_3p_idealgas *)The_Managed_Arena()->alloc(sizeof *global_eos_3p_ig);
-    new (global_eos_3p_ig) eos_3p_idealgas;
     assert(global_eos_3p_ig);
+    new (global_eos_3p_ig) eos_3p_idealgas;
     global_eos_3p_ig->init(gl_gamma, particle_mass, rgeps, rgrho, rgye);
     break;
   }
@@ -81,9 +81,9 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
     CCTK_INFO("Setting evolution EOS to Hybrid");
     global_eos_3p_hyb =
         (eos_3p_hybrid *)The_Managed_Arena()->alloc(sizeof *global_eos_3p_hyb);
+    assert(global_eos_3p_hyb);
     new (global_eos_3p_hyb)
         eos_3p_hybrid(global_eos_1p_poly, gamma_th, rgeps, rgrho, rgye);
-    assert(global_eos_3p_hyb);
     break;
   }
   case eos_3param::Tabulated: {
@@ -91,8 +91,8 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
     const string eos_filename = EOSTable_filename;
     global_eos_3p_tab3d = (eos_3p_tabulated3d *)The_Managed_Arena()->alloc(
         sizeof *global_eos_3p_tab3d);
-    new (global_eos_3p_tab3d) eos_3p_tabulated3d;
     assert(global_eos_3p_tab3d);
+    new (global_eos_3p_tab3d) eos_3p_tabulated3d;
     global_eos_3p_tab3d->init(eos_filename, rgeps, rgrho, rgye);
     break;
   }
