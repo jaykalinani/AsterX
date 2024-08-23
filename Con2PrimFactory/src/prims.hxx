@@ -14,6 +14,7 @@ struct prim_vars {
   CCTK_REAL eps;
   CCTK_REAL Ye;
   CCTK_REAL press;
+  CCTK_REAL entropy;
   vec<CCTK_REAL, 3> vel;
   CCTK_REAL w_lor;
   vec<CCTK_REAL, 3> Bvec;
@@ -24,13 +25,13 @@ struct prim_vars {
 
   /// Construct from single variables.
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline prim_vars(
-      CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL ye_, CCTK_REAL press_,
+      CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL ye_, CCTK_REAL press_, CCTK_REAL entropy_,
       vec<CCTK_REAL, 3> vel_, CCTK_REAL w_lor_, vec<CCTK_REAL, 3> Bvec_)
-      : rho(rho_), eps(eps_), Ye(ye_), press(press_), vel(vel_), w_lor(w_lor_),
+      : rho(rho_), eps(eps_), Ye(ye_), press(press_), entropy(entropy_), vel(vel_), w_lor(w_lor_),
         Bvec(Bvec_){};
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  scatter(CCTK_REAL &rho_, CCTK_REAL &eps_, CCTK_REAL &ye_, CCTK_REAL &press_,
+  scatter(CCTK_REAL &rho_, CCTK_REAL &eps_, CCTK_REAL &ye_, CCTK_REAL &press_, CCTK_REAL &entropy_,
           CCTK_REAL &velx_, CCTK_REAL &vely_, CCTK_REAL &velz_,
           CCTK_REAL &w_lor_, CCTK_REAL &Bvec_x_, CCTK_REAL &Bvec_y_,
           CCTK_REAL &Bvec_z_, CCTK_REAL &E_x_, CCTK_REAL &E_y_,
@@ -39,6 +40,7 @@ struct prim_vars {
     eps_ = eps;
     ye_ = Ye;
     press_ = press;
+    entropy_ = entropy;
     velx_ = vel(0);
     vely_ = vel(1);
     velz_ = vel(2);
@@ -52,7 +54,7 @@ struct prim_vars {
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void set_to_nan() {
-    rho = eps = Ye = press = vel(0) = vel(1) = vel(2) = w_lor = Bvec(0) =
+    rho = eps = Ye = press = entropy = vel(0) = vel(1) = vel(2) = w_lor = Bvec(0) =
         Bvec(1) = Bvec(2) = E(0) = E(1) = E(2) =
             std::numeric_limits<CCTK_REAL>::quiet_NaN();
   }

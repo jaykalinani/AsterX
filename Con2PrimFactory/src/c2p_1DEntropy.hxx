@@ -262,6 +262,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
     atmo.set(pv, cv, glo);
+    eos_th.entropy_from_valid_rho_eps_ye(x,pv.eps,pv.Ye); 
     return;
   }
 
@@ -316,13 +317,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   };
   auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
 
-  // Pick best solution
-  CCTK_REAL xEntropy_Sol;
-  if (abs(fn(result.first)) < abs(fn(result.second))) {
-    xEntropy_Sol = result.first;
-  } else {
-    xEntropy_Sol = result.second;
-  }
+  CCTK_REAL xEntropy_Sol = 0.5*(result.first+result.second);
 
   // Check solution and calculate primitives
   // TODO:check if to pass result.first or xEntropy_Sol
@@ -341,6 +336,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
     atmo.set(pv, cv, glo);
+       eos_th.entropy_from_valid_rho_temp_ye(x,,);   
     return;
   }
 
