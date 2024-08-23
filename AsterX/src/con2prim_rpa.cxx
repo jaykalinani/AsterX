@@ -1,12 +1,12 @@
+#include <loop_device.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
-#include <loop_device.hxx>
-
 #include <cmath>
 
-#include "utils.hxx"
+#include "aster_utils.hxx"
 
 #include "reprimand/eos_thermal.h" // The EOS framework
 #include "reprimand/eos_idealgas.h"
@@ -18,6 +18,7 @@ namespace AsterX {
 using namespace std;
 using namespace Loop;
 using namespace EOS_Toolkit;
+using namespace AsterUtils;
 
 extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;

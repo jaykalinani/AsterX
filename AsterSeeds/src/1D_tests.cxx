@@ -5,15 +5,16 @@
 #include <cctk_Parameters.h>
 
 #include <cmath>
-#include <seeds_utils.hxx>
 
-#include <eos.hxx>
-#include <eos_idealgas.hxx>
+#include "eos.hxx"
+#include "eos_idealgas.hxx"
+#include "seeds_utils.hxx"
 
 namespace AsterSeeds {
 using namespace std;
 using namespace Loop;
 using namespace EOSX;
+using namespace AsterUtils;
 
 extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_Tests1D_Initialize;

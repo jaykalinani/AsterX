@@ -1,28 +1,27 @@
+#include <loop_device.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
-
-#include <loop_device.hxx>
-
 #include <cmath>
 
 #include "c2p.hxx"
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
 
-#include <eos_1p.hxx>
-#include <eos_polytropic.hxx>
+#include "eos_1p.hxx"
+#include "eos_polytropic.hxx"
+#include "eos.hxx"
+#include "eos_idealgas.hxx"
 
-#include <eos.hxx>
-#include <eos_idealgas.hxx>
-
-#include "utils.hxx"
+#include "aster_utils.hxx"
 
 namespace AsterX {
 using namespace std;
 using namespace Loop;
 using namespace EOSX;
 using namespace Con2PrimFactory;
+using namespace AsterUtils;
 
 enum class eos_t { IdealGas, Hybrid, Tabulated };
 enum class c2p_first_t { Noble, Palenzuela };
