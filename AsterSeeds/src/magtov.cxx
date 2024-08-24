@@ -5,11 +5,13 @@
 #include <cctk_Parameters.h>
 
 #include <cmath>
+
 #include "seeds_utils.hxx"
 
 namespace AsterSeeds {
 using namespace std;
 using namespace Loop;
+using namespace AsterUtils;
 
 extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterSeeds_InitializeCenteredAvec;
