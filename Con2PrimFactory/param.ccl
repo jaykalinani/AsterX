@@ -111,5 +111,5 @@ CCTK_REAL eps_BH " Maximum eps allowed in regions where alp<alp_thresh" STEERABL
 
 CCTK_REAL vwlim_BH " Maximum zvec (v*w) allowed in regions where alp<alp_thresh" STEERABLE=ALWAYS
 {
-  1.0:* :: ""
+  0.0:* :: ""
 } 1.0e100
