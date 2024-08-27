@@ -123,22 +123,22 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
         pv_seeds.ye = Ye_atmo;
         pv_seeds.press =
             eos.at_rho_eps_ye(rho_BH, eps_BH, Ye_atmo).press();
-        if ( ((pv_seeds.vel(0) * pv_seeds.w_lor) > vwlim_BH) ||
-             ((pv_seeds.vel(1)*pv_seeds.w_lor) > vwlim_BH) ||
-             ((pv_seeds.vel(2)*pv_seeds.w_lor) > vwlim_BH) ) {
-            CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
-            CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-            pv_seeds.vel(0) *= vlim_BH / pv_seeds.vel(0);
-            pv_seeds.vel(1) *= vlim_BH / pv_seeds.vel(1);
-            pv_seeds.vel(2) *= vlim_BH / pv_seeds.vel(2);
-            pv_seeds.w_lor = wlim_BH;
-          }
+        // check on velocities
+        CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
+        CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
+        const vec<CCTK_REAL, 3> &v_up = pv_seeds.vel;
+        const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
+        CCTK_REAL vsq = calc_contraction(v_low, v_up);
+        CCTK_REAL sol_v = sqrt(vsq);
+        if (sol_v > vlim_BH) {
+          pv_seeds.vel *= vlim_BH/sol_v;
+          pv_seeds.w_lor = wlim_BH;
+        }
+
         // cv.from_prim(pv_seeds, g);
         // We do not save electric field, required by cv.from_prim(pv_seeds, g) in RPA.
         // Thus, we recompute the CVs explicitly below
 
-        const vec<CCTK_REAL, 3> &v_up = pv_seeds.vel;
-        const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
         /* Computing B_j */
         const vec<CCTK_REAL, 3> &B_up = pv_seeds.B;
         const vec<CCTK_REAL, 3> B_low = calc_contraction(glow, B_up);
@@ -210,15 +210,16 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
           pv.ye = Ye_atmo;
           pv.press =
               eos.at_rho_eps_ye(rho_BH, eps_BH, Ye_atmo).press();
-          if (((pv.vel(0) * pv.w_lor) > vwlim_BH) ||
-               ((pv.vel(1)*pv.w_lor) > vwlim_BH) ||
-               ((pv.vel(2)*pv.w_lor) > vwlim_BH) ) {
-              CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
-              CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-              pv.vel(0) *= vlim_BH / pv.vel(0);
-              pv.vel(1) *= vlim_BH / pv.vel(1);
-              pv.vel(2) *= vlim_BH / pv.vel(2);
-              pv.w_lor = wlim_BH;
+          // check on velocities
+          CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
+          CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
+          const vec<CCTK_REAL, 3> &v_up = pv.vel;
+          const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
+          CCTK_REAL vsq = calc_contraction(v_low, v_up);
+          CCTK_REAL sol_v = sqrt(vsq);
+          if (sol_v > vlim_BH) {
+            pv.vel *= vlim_BH/sol_v;
+            pv.w_lor = wlim_BH;
           }
           // cv.from_prim(pv, g);
           // We do not save electric field, required by cv.from_prim(pv, g) in RPA.
