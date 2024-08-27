@@ -59,10 +59,10 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
       press_atm = (radial_distance > r_atmo)
                       ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
                       : p_atmo;
-      //TODO: eos.at_rho_press_ye(rho_atm, press_atm, Ye_atmo).eps() does not exist in RePrimAnd
-      //Currently computing eps from ideal gas EOS
-      //eps_atm = eos.at_rho_press_ye(rho_atm, press_atm, Ye_atmo).eps();
-      eps_atm = press_atm/(rho_atm*(gl_gamma - 1.));
+      // TODO: eos.at_rho_press_ye(rho_atm, press_atm, Ye_atmo).eps() does not
+      // exist in RePrimAnd Currently computing eps from ideal gas EOS eps_atm =
+      // eos.at_rho_press_ye(rho_atm, press_atm, Ye_atmo).eps();
+      eps_atm = press_atm / (rho_atm * (gl_gamma - 1.));
     } else {
       eps_atm = eos_id.at_rho(rho_atm).eps();
       eps_atm = eos.range_eps(rho_atm, Ye_atmo).limit_to(eps_atm);
@@ -74,8 +74,8 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     CCTK_REAL dummy_dYe = 0.5;
 
     // Get a recovery function
-    con2prim_mhd cv2pv(eos, rho_strict, Ye_lenient, vw_lim, B_lim, atmo, c2p_tol,
-                       max_iter);
+    con2prim_mhd cv2pv(eos, rho_strict, Ye_lenient, vw_lim, B_lim, atmo,
+                       c2p_tol, max_iter);
 
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
@@ -109,7 +109,6 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
                      {momx(p.I), momy(p.I), momz(p.I)},
                      {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
-
     // Modifying primitive seeds within BH interiors before C2Ps are called
     // NOTE: By default, alp_thresh=0 so the if condition below is never
     // triggered. One must be very careful when using this functionality and
@@ -121,24 +120,22 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
                                // initial NS or disk
         pv_seeds.eps = eps_BH;
         pv_seeds.ye = Ye_atmo;
-        pv_seeds.press =
-            eos.at_rho_eps_ye(rho_BH, eps_BH, Ye_atmo).press();
+        pv_seeds.press = eos.at_rho_eps_ye(rho_BH, eps_BH, Ye_atmo).press();
         // check on velocities
         CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
         CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-        const vec<CCTK_REAL, 3> &v_up = pv_seeds.vel;
-        const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
-        CCTK_REAL vsq = calc_contraction(v_low, v_up);
-        CCTK_REAL sol_v = sqrt(vsq);
+        CCTK_REAL sol_v =
+            sqrt((pv_seeds.w_lor * pv_seeds.w_lor - 1.0)) / pv_seeds.w_lor;
         if (sol_v > vlim_BH) {
-          pv_seeds.vel *= vlim_BH/sol_v;
+          pv_seeds.vel *= vlim_BH / sol_v;
           pv_seeds.w_lor = wlim_BH;
         }
 
         // cv.from_prim(pv_seeds, g);
-        // We do not save electric field, required by cv.from_prim(pv_seeds, g) in RPA.
-        // Thus, we recompute the CVs explicitly below
-
+        // We do not save electric field, required by cv.from_prim(pv_seeds, g)
+        // in RPA. Thus, we recompute the CVs explicitly below
+        const vec<CCTK_REAL, 3> &v_up = pv_seeds.vel;
+        const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
         /* Computing B_j */
         const vec<CCTK_REAL, 3> &B_up = pv_seeds.B;
         const vec<CCTK_REAL, 3> B_low = calc_contraction(glow, B_up);
@@ -147,24 +144,35 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
         /* Computing b_j */
         const vec<CCTK_REAL, 3> b_low = B_low / pv_seeds.w_lor + bst * v_low;
         /* Computing b^mu b_mu */
-        const CCTK_REAL bs2 =
-            (calc_contraction(B_up, B_low) + bst * bst) / (pv_seeds.w_lor * pv_seeds.w_lor); 
+        const CCTK_REAL bs2 = (calc_contraction(B_up, B_low) + bst * bst) /
+                              (pv_seeds.w_lor * pv_seeds.w_lor);
         // computing conserved from primitives
         cv.dens = sqrt_detg * pv_seeds.rho * pv_seeds.w_lor;
-        cv.scon(0) = sqrt_detg * (pv_seeds.w_lor * pv_seeds.w_lor *
-                           (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) * v_low(0) -
-                       bst * b_low(0));
-        cv.scon(1) = sqrt_detg * (pv_seeds.w_lor * pv_seeds.w_lor *
-                           (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) * v_low(1) -
-                       bst * b_low(1));
-        cv.scon(2) = sqrt_detg * (pv_seeds.w_lor * pv_seeds.w_lor *
-                           (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) * v_low(2) -
-                       bst * b_low(2));
+        cv.scon(0) =
+            sqrt_detg *
+            (pv_seeds.w_lor * pv_seeds.w_lor *
+                 (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) *
+                 v_low(0) -
+             bst * b_low(0));
+        cv.scon(1) =
+            sqrt_detg *
+            (pv_seeds.w_lor * pv_seeds.w_lor *
+                 (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) *
+                 v_low(1) -
+             bst * b_low(1));
+        cv.scon(2) =
+            sqrt_detg *
+            (pv_seeds.w_lor * pv_seeds.w_lor *
+                 (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) *
+                 v_low(2) -
+             bst * b_low(2));
         cv.tau = sqrt_detg * (pv_seeds.w_lor * pv_seeds.w_lor *
-                           (pv_seeds.rho * (1.0 + pv_seeds.eps) + pv_seeds.press + bs2) -
-                       (pv_seeds.press + 0.5 * bs2) - bst * bst) - cv.dens;
+                                  (pv_seeds.rho * (1.0 + pv_seeds.eps) +
+                                   pv_seeds.press + bs2) -
+                              (pv_seeds.press + 0.5 * bs2) - bst * bst) -
+                 cv.dens;
         cv.bcons = sqrt_detg * pv_seeds.B;
-        cv.tracer_ye = cv.dens * pv_seeds.ye;       
+        cv.tracer_ye = cv.dens * pv_seeds.ye;
       }
     }
 
@@ -179,7 +187,8 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
         // need to fix pv to computed values like pv.rho instead of rho(p.I)
         printf(
             "WARNING: "
-            "C2P failed. Printing cons and saved prims before set to atmo or BH interior fix: \n"
+            "C2P failed. Printing cons and saved prims before set to atmo or "
+            "BH interior fix: \n"
             "cctk_iteration = %i \n "
             "x, y, z = %26.16e, %26.16e, %26.16e \n "
             "gxx, gxy, gxz, gyy, gyz, gzz = %f, %f, %f, %f, %f, %f \n "
@@ -205,25 +214,21 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
       if (alp(p.I) < alp_thresh) {
         if ((pv.rho > rho_BH) || (pv.eps > eps_BH)) {
           pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of
-                               // initial NS or disk
+                           // initial NS or disk
           pv.eps = eps_BH;
           pv.ye = Ye_atmo;
-          pv.press =
-              eos.at_rho_eps_ye(rho_BH, eps_BH, Ye_atmo).press();
+          pv.press = eos.at_rho_eps_ye(rho_BH, eps_BH, Ye_atmo).press();
           // check on velocities
           CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
           CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-          const vec<CCTK_REAL, 3> &v_up = pv.vel;
-          const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
-          CCTK_REAL vsq = calc_contraction(v_low, v_up);
-          CCTK_REAL sol_v = sqrt(vsq);
+          CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
           if (sol_v > vlim_BH) {
-            pv.vel *= vlim_BH/sol_v;
+            pv.vel *= vlim_BH / sol_v;
             pv.w_lor = wlim_BH;
           }
           // cv.from_prim(pv, g);
-          // We do not save electric field, required by cv.from_prim(pv, g) in RPA.
-          // Thus, we recompute the CVs explicitly below
+          // We do not save electric field, required by cv.from_prim(pv, g) in
+          // RPA. Thus, we recompute the CVs explicitly below
 
           const vec<CCTK_REAL, 3> &v_up = pv.vel;
           const vec<CCTK_REAL, 3> v_low = calc_contraction(glow, v_up);
@@ -235,27 +240,33 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
           /* Computing b_j */
           const vec<CCTK_REAL, 3> b_low = B_low / pv.w_lor + bst * v_low;
           /* Computing b^mu b_mu */
-          const CCTK_REAL bs2 =
-              (calc_contraction(B_up, B_low) + bst * bst) / (pv.w_lor * pv.w_lor);
+          const CCTK_REAL bs2 = (calc_contraction(B_up, B_low) + bst * bst) /
+                                (pv.w_lor * pv.w_lor);
           // computing conserved from primitives
           cv.dens = sqrt_detg * pv.rho * pv.w_lor;
-          cv.scon(0) = sqrt_detg * (pv.w_lor * pv.w_lor *
-                           (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(0) -
-                       bst * b_low(0));
-          cv.scon(1) = sqrt_detg * (pv.w_lor * pv.w_lor *
-                           (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(1) -
-                       bst * b_low(1));
-          cv.scon(2) = sqrt_detg * (pv.w_lor * pv.w_lor *
-                           (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(2) -
-                       bst * b_low(2));
+          cv.scon(0) =
+              sqrt_detg *
+              (pv.w_lor * pv.w_lor *
+                   (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(0) -
+               bst * b_low(0));
+          cv.scon(1) =
+              sqrt_detg *
+              (pv.w_lor * pv.w_lor *
+                   (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(1) -
+               bst * b_low(1));
+          cv.scon(2) =
+              sqrt_detg *
+              (pv.w_lor * pv.w_lor *
+                   (pv.rho * (1.0 + pv.eps) + pv.press + bs2) * v_low(2) -
+               bst * b_low(2));
           cv.tau = sqrt_detg * (pv.w_lor * pv.w_lor *
-                            (pv.rho * (1.0 + pv.eps) + pv.press + bs2) -
-                       (pv.press + 0.5 * bs2) - bst * bst) - cv.dens;
+                                    (pv.rho * (1.0 + pv.eps) + pv.press + bs2) -
+                                (pv.press + 0.5 * bs2) - bst * bst) -
+                   cv.dens;
           cv.bcons = sqrt_detg * pv.B;
           cv.tracer_ye = cv.dens * pv.ye;
         }
-      }
-      else {
+      } else {
         // set to atmo
         cv.bcons(0) = dBx(p.I);
         cv.bcons(1) = dBy(p.I);
@@ -274,13 +285,16 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     pv.scatter(rho(p.I), eps(p.I), dumye, press(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Ex, Ey, Ez, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I));
 
-    zvec_x(p.I) = wlor * pv.vel(0); 
+    zvec_x(p.I) = wlor * pv.vel(0);
     zvec_y(p.I) = wlor * pv.vel(1);
     zvec_z(p.I) = wlor * pv.vel(2);
 
-    svec_x(p.I) = (pv.rho+pv.rho*pv.eps+pv.press)*wlor*wlor*pv.vel(0); 
-    svec_y(p.I) = (pv.rho+pv.rho*pv.eps+pv.press)*wlor*wlor*pv.vel(1);
-    svec_z(p.I) = (pv.rho+pv.rho*pv.eps+pv.press)*wlor*wlor*pv.vel(2);
+    svec_x(p.I) =
+        (pv.rho + pv.rho * pv.eps + pv.press) * wlor * wlor * pv.vel(0);
+    svec_y(p.I) =
+        (pv.rho + pv.rho * pv.eps + pv.press) * wlor * wlor * pv.vel(1);
+    svec_z(p.I) =
+        (pv.rho + pv.rho * pv.eps + pv.press) * wlor * wlor * pv.vel(2);
 
     // Write back cv
     if (rep.adjust_cons) {

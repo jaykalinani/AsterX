@@ -145,11 +145,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         // check on velocities
         CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
         CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-        vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv_seeds.vel);
-        CCTK_REAL vsq = calc_contraction(v_low, pv_seeds.vel);
-        CCTK_REAL sol_v = sqrt(vsq);
+        CCTK_REAL sol_v =
+            sqrt((pv_seeds.w_lor * pv_seeds.w_lor - 1.0)) / pv_seeds.w_lor;
         if (sol_v > vlim_BH) {
-          pv_seeds.vel *= vlim_BH/sol_v; 
+          pv_seeds.vel *= vlim_BH / sol_v;
           pv_seeds.w_lor = wlim_BH;
         }
         cv.from_prim(pv_seeds, glo);
@@ -213,11 +212,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
           // check on velocities
           CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
           CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-          vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
-          CCTK_REAL vsq = calc_contraction(v_low, pv.vel);
-          CCTK_REAL sol_v = sqrt(vsq);
+          CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
           if (sol_v > vlim_BH) {
-            pv.vel *= vlim_BH/sol_v;
+            pv.vel *= vlim_BH / sol_v;
             pv.w_lor = wlim_BH;
           }
           cv.from_prim(pv, glo);
