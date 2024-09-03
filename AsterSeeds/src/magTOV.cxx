@@ -13,8 +13,8 @@ using namespace std;
 using namespace Loop;
 using namespace AsterUtils;
 
-extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTSX_AsterSeeds_InitializeCenteredAvec;
+extern "C" void AsterSeeds_InitializeCenteredAvec_TOV(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterSeeds_InitializeCenteredAvec_TOV;
   DECLARE_CCTK_PARAMETERS;
 
   if (CCTK_EQUALS(Afield_config, "internal dipole")) {
@@ -23,11 +23,14 @@ extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          CCTK_REAL x_local = p.x - dipole_x[0];
+          CCTK_REAL y_local = p.y - dipole_y[0];
+          CCTK_REAL z_local = p.z - dipole_z[0];
           CCTK_REAL Pcut = press_max * press_cut;
           CCTK_REAL Pdiff = std::max(press(p.I) - Pcut, 0.0);
           CCTK_REAL Aphi_local = Ab * pow(Pdiff, Avec_kappa);
-          Avec_x_cent(p.I) = -p.y * Aphi_local;
-          Avec_y_cent(p.I) = p.x * Aphi_local;
+          Avec_x_cent(p.I) = -y_local * Aphi_local;
+          Avec_y_cent(p.I) = x_local * Aphi_local;
           Avec_z_cent(p.I) = 0.0;
         });
 
@@ -37,8 +40,12 @@ extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          CCTK_REAL cylrad2 = p.x * p.x + p.y * p.y;
-          CCTK_REAL rsph = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+          CCTK_REAL x_local = p.x - dipole_x[0];
+          CCTK_REAL y_local = p.y - dipole_y[0];
+          CCTK_REAL z_local = p.z - dipole_z[0];
+          CCTK_REAL cylrad2 = x_local * x_local + y_local * y_local;
+          CCTK_REAL rsph =
+              sqrt(x_local * x_local + y_local * y_local + z_local * z_local);
           CCTK_REAL rsph3 = pow(rsph, 3.0);
           CCTK_REAL r03 = pow(r0, 3.0);
           CCTK_REAL Aphi_local =
@@ -53,8 +60,8 @@ extern "C" void AsterSeeds_InitializeCenteredAvec(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void AsterSeeds_InitializeStagAvec(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTSX_AsterSeeds_InitializeStagAvec;
+extern "C" void AsterSeeds_InitializeStagAvec_TOV(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterSeeds_InitializeStagAvec_TOV;
   DECLARE_CCTK_PARAMETERS;
 
   grid.loop_int_device<1, 0, 0>(
