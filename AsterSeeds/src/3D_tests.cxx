@@ -30,9 +30,9 @@ extern "C" void Tests3D_Initialize(CCTK_ARGUMENTS) {
 
   if (CCTK_EQUALS(test_case, "spherical shock")) {
 
-    grid.loop_all_device<1, 1, 1>(
+    grid.loop_all<1, 1, 1>(
         grid.nghostzones,
-        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const CCTK_REAL r2 = pow2(p.x) + pow2(p.y) + pow2(p.z);
           if (r2 <= pow2(shock_radius)) {
             rho(p.I) = 2.0;
@@ -51,19 +51,19 @@ extern "C" void Tests3D_Initialize(CCTK_ARGUMENTS) {
                                                         dummy_ye);
         });
 
-    grid.loop_all_device<1, 0, 0>(
+    grid.loop_all<1, 0, 0>(
         grid.nghostzones,
-        [=] CCTK_DEVICE(const PointDesc &p)
+        [=] CCTK_HOST(const PointDesc &p)
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
 
-    grid.loop_all_device<0, 1, 0>(
+    grid.loop_all<0, 1, 0>(
         grid.nghostzones,
-        [=] CCTK_DEVICE(const PointDesc &p)
+        [=] CCTK_HOST(const PointDesc &p)
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
 
-    grid.loop_all_device<0, 0, 1>(
+    grid.loop_all<0, 0, 1>(
         grid.nghostzones,
-        [=] CCTK_DEVICE(const PointDesc &p)
+        [=] CCTK_HOST(const PointDesc &p)
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
 
   } else {
