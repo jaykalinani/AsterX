@@ -25,7 +25,6 @@ extern "C" void AsterSeeds_InitializeCenteredAvec_TOV(CCTK_ARGUMENTS) {
         [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           CCTK_REAL x_local = p.x - dipole_x[0];
           CCTK_REAL y_local = p.y - dipole_y[0];
-          CCTK_REAL z_local = p.z - dipole_z[0];
           CCTK_REAL Pcut = press_max * press_cut;
           CCTK_REAL Pdiff = std::max(press(p.I) - Pcut, 0.0);
           CCTK_REAL Aphi_local = Ab * pow(Pdiff, Avec_kappa);
@@ -42,6 +41,7 @@ extern "C" void AsterSeeds_InitializeCenteredAvec_TOV(CCTK_ARGUMENTS) {
         [=] CCTK_HOST(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           CCTK_REAL x_local = p.x - dipole_x[0];
           CCTK_REAL y_local = p.y - dipole_y[0];
+          CCTK_REAL z_local = p.z - dipole_z[0];
           CCTK_REAL cylrad2 = x_local * x_local + y_local * y_local;
           CCTK_REAL rsph =
               sqrt(x_local * x_local + y_local * y_local + z_local * z_local);
