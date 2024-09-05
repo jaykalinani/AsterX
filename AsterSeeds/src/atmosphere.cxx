@@ -51,9 +51,7 @@ extern "C" void Atmosphere_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_HOST(const PointDesc &p)
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.; });
 
-:x
-
-
+    grid.loop_all<0, 0, 1>(
         grid.nghostzones,
         [=] CCTK_HOST(const PointDesc &p)
             CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.; });
