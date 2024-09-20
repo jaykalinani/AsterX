@@ -3,7 +3,7 @@ schedule SetEntropy IN HydroBaseX_PostInitial
 {
   LANG: C
 
-  READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::press(everywhere)
+  READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere)
   WRITES: HydroBaseX::entropy(everywhere)
 
 } "Set initial entropy"

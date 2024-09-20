@@ -9,8 +9,13 @@
 #include <cstdbool>
 #include <cmath> 
 
+#include "eos.hxx"
+#include "eos_idealgas.hxx"
+
 extern "C" void SetEntropy(CCTK_ARGUMENTS)
 {
+
+  using namespace EOSX;
 
   DECLARE_CCTK_ARGUMENTSX_SetEntropy;
   DECLARE_CCTK_PARAMETERS;
@@ -21,7 +26,7 @@ extern "C" void SetEntropy(CCTK_ARGUMENTS)
         grid.nghostzones,
         [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
 
-          entropy(p.I) = press(p.I)/rho(p.I);
+          entropy(p.I) = eos_th.entropy_from_valid_rho_eps_ye(rho(p.I),eps(p.I),1.0);
 
   });
 }
