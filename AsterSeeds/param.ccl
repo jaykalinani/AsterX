@@ -55,7 +55,13 @@ KEYWORD shock_dir "Shock direction" STEERABLE=never
   "x" :: "Parallel to x axis"
   "y" :: "Parallel to y axis"
   "z" :: "Parallel to z axis"
+  "xy" :: "Diagnal of xy plane"
 } "x"
+
+REAL shock_dir_xy_theta "Shock direction rotation angle in xy-plane (in units of pi)" STEERABLE=never
+{
+  0.0:* :: ""
+} 0.25
 
 # parameters for 2D tests
 
