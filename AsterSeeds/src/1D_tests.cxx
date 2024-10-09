@@ -179,6 +179,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     if (CCTK_EQUALS(shock_dir, "xy")) {
 
       CCTK_REAL theta = M_PI * shock_dir_xy_theta;
+      CCTK_REAL b = shock_dir_xy_shift;
       CCTK_REAL k = tan(theta + M_PI / 2);
       CCTK_REAL costh = cos(theta);
       CCTK_REAL sinth = sin(theta);
@@ -192,7 +193,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
       grid.loop_all<1, 1, 1>(
           grid.nghostzones,
           [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y - k * p.x <= 0.0) {
+            if (p.y - k * p.x - b <= 0.0) {
               rho(p.I) = rhol;
               velx(p.I) = vxl;
               vely(p.I) = vyl;
@@ -213,7 +214,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
       grid.loop_all<1, 0, 0>(
           grid.nghostzones,
           [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y - k * p.x <= 0.0) {
+            if (p.y - k * p.x - b <= 0.0) {
               Avec_x(p.I) = digByl * (p.z) - digBzl * (p.y);
             } else {
               Avec_x(p.I) = digByr * (p.z) - digBzr * (p.y);
@@ -223,7 +224,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
       grid.loop_all<0, 1, 0>(
           grid.nghostzones,
           [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y - k * p.x <= 0.0) {
+            if (p.y - k * p.x - b <= 0.0) {
               Avec_y(p.I) = digBzl * (p.x) - digBxl * (p.z);
             } else {
               Avec_y(p.I) = digBzr * (p.x) - digBxr * (p.z);

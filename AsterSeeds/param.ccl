@@ -63,6 +63,11 @@ REAL shock_dir_xy_theta "Shock direction rotation angle in xy-plane (in units of
   0.0:* :: ""
 } 0.25
 
+REAL shock_dir_xy_shift "Shock direction rotation shift in xy-plane (b in y=kx+b, where k=tan(theta))" STEERABLE=never
+{
+  0.0:* :: ""
+} 0.0
+
 # parameters for 2D tests
 
 CCTK_KEYWORD mag_loop_adv_type "2D or 3D magnetic loop advection" STEERABLE=NEVER
