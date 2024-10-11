@@ -43,7 +43,17 @@ KEYWORD rotate_axis "Rotation about which axis" STEERABLE=never
   "z" :: ""
 } "z"
 
-REAL rotate_angle "Rotation angle (in units of pi)" STEERABLE=never
+REAL rotate_angle_x "Rotation angle about x-axis (in units of pi)" STEERABLE=never
+{
+  *:* :: ""
+} 0.0
+
+REAL rotate_angle_y "Rotation angle about y-axis (in units of pi)" STEERABLE=never
+{
+  *:* :: ""
+} 0.0
+
+REAL rotate_angle_z "Rotation angle about z-axis (in units of pi)" STEERABLE=never
 {
   *:* :: ""
 } 0.5
