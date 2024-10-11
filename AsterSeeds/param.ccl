@@ -56,11 +56,6 @@ REAL rotate_angle_y "Rotation angle about y-axis (in units of pi)" STEERABLE=nev
 REAL rotate_angle_z "Rotation angle about z-axis (in units of pi)" STEERABLE=never
 {
   *:* :: ""
-} 0.5
-
-REAL rotate_shift "Rotation shift (b in y=kx+b, where k=tan(angle))" STEERABLE=never
-{
-  *:* :: ""
 } 0.0
 
 # parameters for atmosphere

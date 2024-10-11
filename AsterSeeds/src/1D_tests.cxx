@@ -156,850 +156,240 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
                                                    Avec_z(p.I) = 0.0;
                                                  });
 
-  } else if (CCTK_EQUALS(test_case, "Balsara1")) {
-
-    CCTK_REAL rhol = 1.0;
-    CCTK_REAL vxl = 0.0;
-    CCTK_REAL vyl = 0.0;
-    CCTK_REAL vzl = 0.0;
-    CCTK_REAL pressl = 1.0;
-    CCTK_REAL Bxl = 0.5;
-    CCTK_REAL Byl = 1.0;
-    CCTK_REAL Bzl = 0.0;
-
-    CCTK_REAL rhor = 0.125;
-    CCTK_REAL vxr = 0.0;
-    CCTK_REAL vyr = 0.0;
-    CCTK_REAL vzr = 0.0;
-    CCTK_REAL pressr = 0.1;
-    CCTK_REAL Bxr = 0.5;
-    CCTK_REAL Byr = -1.0;
-    CCTK_REAL Bzr = 0.0;
-
-    if (CCTK_EQUALS(shock_dir, "x")) {
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.x <= 0.0) {
-              rho(p.I) = rhol;
-              velx(p.I) = vxl;
-              vely(p.I) = vyl;
-              velz(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velx(p.I) = vxr;
-              vely(p.I) = vyr;
-              velz(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<1, 0, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.x <= 0.0) {
-                                     Avec_x(p.I) = Byl * (p.z) - Bzl * (p.y);
-                                   } else {
-                                     Avec_x(p.I) = Byr * (p.z) - Bzr * (p.y);
-                                   }
-                                 });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = Bxr * (p.y); });
-
-    } else if (CCTK_EQUALS(shock_dir, "y")) {
-
-      // x-->y, y-->z, z-->x
-      Byl = 0.5;
-      Bzl = 1.0;
-      Bxl = 0.0;
-      Byr = 0.5;
-      Bzr = -1.0;
-      Bxr = 0.0;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y <= 0.0) {
-              rho(p.I) = rhol;
-              vely(p.I) = vxl;
-              velz(p.I) = vyl;
-              velx(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              vely(p.I) = vxr;
-              velz(p.I) = vyr;
-              velx(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 1, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.y <= 0.0) {
-                                     Avec_y(p.I) = Bzl * (p.x) - Bxl * (p.z);
-                                   } else {
-                                     Avec_y(p.I) = Bzr * (p.x) - Bxr * (p.z);
-                                   }
-                                 });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = Byr * (p.z); });
-
-    } else if (CCTK_EQUALS(shock_dir, "z")) {
-
-      // x-->z, y-->x, z-->y
-      Bzl = 0.5;
-      Bxl = 1.0;
-      Byl = 0.0;
-      Bzr = 0.5;
-      Bxr = -1.0;
-      Byr = 0.0;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.z <= 0.0) {
-              rho(p.I) = rhol;
-              velz(p.I) = vxl;
-              velx(p.I) = vyl;
-              vely(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velz(p.I) = vxr;
-              velx(p.I) = vyr;
-              vely(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 0, 1>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.z <= 0.0) {
-                                     Avec_z(p.I) = Bxl * (p.y) - Byl * (p.x);
-                                   } else {
-                                     Avec_z(p.I) = Bxr * (p.y) - Byr * (p.x);
-                                   }
-                                 });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = Bzr * (p.x); });
-
-    } else {
-      CCTK_ERROR("Shock direction case not defined");
-    }
-
-  } else if (CCTK_EQUALS(test_case, "Balsara2")) {
-
-    CCTK_REAL rhol = 1.0;
-    CCTK_REAL vxl = 0.0;
-    CCTK_REAL vyl = 0.0;
-    CCTK_REAL vzl = 0.0;
-    CCTK_REAL pressl = 30.0;
-    CCTK_REAL Bxl = 5.0;
-    CCTK_REAL Byl = 6.0;
-    CCTK_REAL Bzl = 6.0;
-
-    CCTK_REAL rhor = 1.0;
-    CCTK_REAL vxr = 0.0;
-    CCTK_REAL vyr = 0.0;
-    CCTK_REAL vzr = 0.0;
-    CCTK_REAL pressr = 1.0;
-    CCTK_REAL Bxr = 5.0;
-    CCTK_REAL Byr = 0.7;
-    CCTK_REAL Bzr = 0.7;
-
-    if (CCTK_EQUALS(shock_dir, "x")) {
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.x <= 0.0) {
-              rho(p.I) = rhol;
-              velx(p.I) = vxl;
-              vely(p.I) = vyl;
-              velz(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velx(p.I) = vxr;
-              vely(p.I) = vyr;
-              velz(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<1, 0, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.x <= 0.0) {
-                                     Avec_x(p.I) = Byl * (p.z) - Bzl * (p.y);
-                                   } else {
-                                     Avec_x(p.I) = Byr * (p.z) - Bzr * (p.y);
-                                   }
-                                 });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = Bxr * (p.y); });
-
-    } else if (CCTK_EQUALS(shock_dir, "y")) {
-
-      // x-->y, y-->z, z-->x
-      Byl = 5.0;
-      Bzl = 6.0;
-      Bxl = 6.0;
-      Byr = 5.0;
-      Bzr = 0.7;
-      Bxr = 0.7;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y <= 0.0) {
-              rho(p.I) = rhol;
-              vely(p.I) = vxl;
-              velz(p.I) = vyl;
-              velx(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              vely(p.I) = vxr;
-              velz(p.I) = vyr;
-              velx(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 1, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.y <= 0.0) {
-                                     Avec_y(p.I) = Bzl * (p.x) - Bxl * (p.z);
-                                   } else {
-                                     Avec_y(p.I) = Bzr * (p.x) - Bxr * (p.z);
-                                   }
-                                 });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = Byr * (p.z); });
-
-    } else if (CCTK_EQUALS(shock_dir, "z")) {
-
-      // x-->z, y-->x, z-->y
-      Bzl = 5.0;
-      Bxl = 6.0;
-      Byl = 6.0;
-      Bzr = 5.0;
-      Bxr = 0.7;
-      Byr = 0.7;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.z <= 0.0) {
-              rho(p.I) = rhol;
-              velz(p.I) = vxl;
-              velx(p.I) = vyl;
-              vely(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velz(p.I) = vxr;
-              velx(p.I) = vyr;
-              vely(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 0, 1>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.z <= 0.0) {
-                                     Avec_z(p.I) = Bxl * (p.y) - Byl * (p.x);
-                                   } else {
-                                     Avec_z(p.I) = Bxr * (p.y) - Byr * (p.x);
-                                   }
-                                 });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = Bzr * (p.x); });
-
-    } else {
-      CCTK_ERROR("Shock direction case not defined");
-    }
-
-  } else if (CCTK_EQUALS(test_case, "Balsara3")) {
-
-    CCTK_REAL rhol = 1.0;
-    CCTK_REAL vxl = 0.0;
-    CCTK_REAL vyl = 0.0;
-    CCTK_REAL vzl = 0.0;
-    CCTK_REAL pressl = 1000.0;
-    CCTK_REAL Bxl = 10.0;
-    CCTK_REAL Byl = 7.0;
-    CCTK_REAL Bzl = 7.0;
-
-    CCTK_REAL rhor = 1.0;
-    CCTK_REAL vxr = 0.0;
-    CCTK_REAL vyr = 0.0;
-    CCTK_REAL vzr = 0.0;
-    CCTK_REAL pressr = 0.1;
-    CCTK_REAL Bxr = 10.0;
-    CCTK_REAL Byr = 0.7;
-    CCTK_REAL Bzr = 0.7;
-
-    if (CCTK_EQUALS(shock_dir, "x")) {
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.x <= 0.0) {
-              rho(p.I) = rhol;
-              velx(p.I) = vxl;
-              vely(p.I) = vyl;
-              velz(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velx(p.I) = vxr;
-              vely(p.I) = vyr;
-              velz(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<1, 0, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.x <= 0.0) {
-                                     Avec_x(p.I) = Byl * (p.z) - Bzl * (p.y);
-                                   } else {
-                                     Avec_x(p.I) = Byr * (p.z) - Bzr * (p.y);
-                                   }
-                                 });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = Bxr * (p.y); });
-
-    } else if (CCTK_EQUALS(shock_dir, "y")) {
-
-      // x-->y, y-->z, z-->x
-      Byl = 10.0;
-      Bzl = 7.0;
-      Bxl = 7.0;
-      Byr = 10.0;
-      Bzr = 0.7;
-      Bxr = 0.7;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y <= 0.0) {
-              rho(p.I) = rhol;
-              vely(p.I) = vxl;
-              velz(p.I) = vyl;
-              velx(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              vely(p.I) = vxr;
-              velz(p.I) = vyr;
-              velx(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 1, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.y <= 0.0) {
-                                     Avec_y(p.I) = Bzl * (p.x) - Bxl * (p.z);
-                                   } else {
-                                     Avec_y(p.I) = Bzr * (p.x) - Bxr * (p.z);
-                                   }
-                                 });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = Byr * (p.z); });
-
-    } else if (CCTK_EQUALS(shock_dir, "z")) {
-
-      // x-->z, y-->x, z-->y
-      Bzl = 10.0;
-      Bxl = 7.0;
-      Byl = 7.0;
-      Bzr = 10.0;
-      Bxr = 0.7;
-      Byr = 0.7;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.z <= 0.0) {
-              rho(p.I) = rhol;
-              velz(p.I) = vxl;
-              velx(p.I) = vyl;
-              vely(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velz(p.I) = vxr;
-              velx(p.I) = vyr;
-              vely(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 0, 1>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.z <= 0.0) {
-                                     Avec_z(p.I) = Bxl * (p.y) - Byl * (p.x);
-                                   } else {
-                                     Avec_z(p.I) = Bxr * (p.y) - Byr * (p.x);
-                                   }
-                                 });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = Bzr * (p.x); });
-
-    } else {
-      CCTK_ERROR("Shock direction case not defined");
-    }
-
-  } else if (CCTK_EQUALS(test_case, "Balsara4")) {
-
-    CCTK_REAL rhol = 1.0;
-    CCTK_REAL vxl = 0.999;
-    CCTK_REAL vyl = 0.0;
-    CCTK_REAL vzl = 0.0;
-    CCTK_REAL pressl = 0.1;
-    CCTK_REAL Bxl = 10.0;
-    CCTK_REAL Byl = 7.0;
-    CCTK_REAL Bzl = 7.0;
-
-    CCTK_REAL rhor = 1.0;
-    CCTK_REAL vxr = -0.999;
-    CCTK_REAL vyr = 0.0;
-    CCTK_REAL vzr = 0.0;
-    CCTK_REAL pressr = 0.1;
-    CCTK_REAL Bxr = 10.0;
-    CCTK_REAL Byr = -7.0;
-    CCTK_REAL Bzr = -7.0;
-
-    if (CCTK_EQUALS(shock_dir, "x")) {
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.x <= 0.0) {
-              rho(p.I) = rhol;
-              velx(p.I) = vxl;
-              vely(p.I) = vyl;
-              velz(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velx(p.I) = vxr;
-              vely(p.I) = vyr;
-              velz(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<1, 0, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.x <= 0.0) {
-                                     Avec_x(p.I) = Byl * (p.z) - Bzl * (p.y);
-                                   } else {
-                                     Avec_x(p.I) = Byr * (p.z) - Bzr * (p.y);
-                                   }
-                                 });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = Bxr * (p.y); });
-
-    } else if (CCTK_EQUALS(shock_dir, "y")) {
-
-      // x-->y, y-->z, z-->x
-      Byl = 10.0;
-      Bzl = 7.0;
-      Bxl = 7.0;
-      Byr = 10.0;
-      Bzr = -7.0;
-      Bxr = -7.0;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y <= 0.0) {
-              rho(p.I) = rhol;
-              vely(p.I) = vxl;
-              velz(p.I) = vyl;
-              velx(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              vely(p.I) = vxr;
-              velz(p.I) = vyr;
-              velx(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 1, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.y <= 0.0) {
-                                     Avec_y(p.I) = Bzl * (p.x) - Bxl * (p.z);
-                                   } else {
-                                     Avec_y(p.I) = Bzr * (p.x) - Bxr * (p.z);
-                                   }
-                                 });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = Byr * (p.z); });
-
-    } else if (CCTK_EQUALS(shock_dir, "z")) {
-
-      // x-->z, y-->x, z-->y
-      Bzl = 10.0;
-      Bxl = 7.0;
-      Byl = 7.0;
-      Bzr = 10.0;
-      Bxr = -7.0;
-      Byr = -7.0;
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.z <= 0.0) {
-              rho(p.I) = rhol;
-              velz(p.I) = vxl;
-              velx(p.I) = vyl;
-              vely(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velz(p.I) = vxr;
-              velx(p.I) = vyr;
-              vely(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 0, 1>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.z <= 0.0) {
-                                     Avec_z(p.I) = Bxl * (p.y) - Byl * (p.x);
-                                   } else {
-                                     Avec_z(p.I) = Bxr * (p.y) - Byr * (p.x);
-                                   }
-                                 });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = Bzr * (p.x); });
-
-    } else {
-      CCTK_ERROR("Shock direction case not defined");
-    }
-
-  } else if (CCTK_EQUALS(test_case, "Balsara5")) {
-
-    CCTK_REAL rhol = 1.08;
-    CCTK_REAL vxl = 0.4;
-    CCTK_REAL vyl = 0.3;
-    CCTK_REAL vzl = 0.2;
-    CCTK_REAL pressl = 0.95;
-    CCTK_REAL Bxl = 2.0;
-    CCTK_REAL Byl = 0.3;
-    CCTK_REAL Bzl = 0.3;
-
-    CCTK_REAL rhor = 1.0;
-    CCTK_REAL vxr = -0.45;
-    CCTK_REAL vyr = -0.2;
-    CCTK_REAL vzr = 0.2;
-    CCTK_REAL pressr = 1.0;
-    CCTK_REAL Bxr = 2.0;
-    CCTK_REAL Byr = -0.7;
-    CCTK_REAL Bzr = 0.5;
-
-    if (CCTK_EQUALS(shock_dir, "x")) {
-
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.x <= 0.0) {
-              rho(p.I) = rhol;
-              velx(p.I) = vxl;
-              vely(p.I) = vyl;
-              velz(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velx(p.I) = vxr;
-              vely(p.I) = vyr;
-              velz(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<1, 0, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.x <= 0.0) {
-                                     Avec_x(p.I) = Byl * (p.z) - Bzl * (p.y);
-                                   } else {
-                                     Avec_x(p.I) = Byr * (p.z) - Bzr * (p.y);
-                                   }
-                                 });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = Bxr * (p.y); });
-
-    } else if (CCTK_EQUALS(shock_dir, "y")) {
-
-      // x-->y, y-->z, z-->x
-      Byl = 2.0;
-      Bzl = 0.3;
-      Bxl = 0.3;
-      Byr = 2.0;
-      Bzr = -0.7;
+  } else if (CCTK_EQUALS(test_case, "Balsara1") ||
+             CCTK_EQUALS(test_case, "Balsara2") ||
+             CCTK_EQUALS(test_case, "Balsara3") ||
+             CCTK_EQUALS(test_case, "Balsara4") ||
+             CCTK_EQUALS(test_case, "Balsara5")) {
+
+    auto myNaN = numeric_limits<CCTK_REAL>::quiet_NaN();
+
+    CCTK_REAL rhol = myNaN;
+    CCTK_REAL vxl = myNaN;
+    CCTK_REAL vyl = myNaN;
+    CCTK_REAL vzl = myNaN;
+    CCTK_REAL pressl = myNaN;
+    CCTK_REAL Bxl = myNaN;
+    CCTK_REAL Byl = myNaN;
+    CCTK_REAL Bzl = myNaN;
+
+    CCTK_REAL rhor = myNaN;
+    CCTK_REAL vxr = myNaN;
+    CCTK_REAL vyr = myNaN;
+    CCTK_REAL vzr = myNaN;
+    CCTK_REAL pressr = myNaN;
+    CCTK_REAL Bxr = myNaN;
+    CCTK_REAL Byr = myNaN;
+    CCTK_REAL Bzr = myNaN;
+
+    if (CCTK_EQUALS(test_case, "Balsara1")) {
+      rhol = 1.0;
+      vxl = 0.0;
+      vyl = 0.0;
+      vzl = 0.0;
+      pressl = 1.0;
+      Bxl = 0.5;
+      Byl = 1.0;
+      Bzl = 0.0;
+
+      rhor = 0.125;
+      vxr = 0.0;
+      vyr = 0.0;
+      vzr = 0.0;
+      pressr = 0.1;
       Bxr = 0.5;
+      Byr = -1.0;
+      Bzr = 0.0;
+    } else if (CCTK_EQUALS(test_case, "Balsara2")) {
+      rhol = 1.0;
+      vxl = 0.0;
+      vyl = 0.0;
+      vzl = 0.0;
+      pressl = 30.0;
+      Bxl = 5.0;
+      Byl = 6.0;
+      Bzl = 6.0;
 
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.y <= 0.0) {
-              rho(p.I) = rhol;
-              vely(p.I) = vxl;
-              velz(p.I) = vyl;
-              velx(p.I) = vzl;
-              press(p.I) = pressl;
+      rhor = 1.0;
+      vxr = 0.0;
+      vyr = 0.0;
+      vzr = 0.0;
+      pressr = 1.0;
+      Bxr = 5.0;
+      Byr = 0.7;
+      Bzr = 0.7;
+    } else if (CCTK_EQUALS(test_case, "Balsara3")) {
+      rhol = 1.0;
+      vxl = 0.0;
+      vyl = 0.0;
+      vzl = 0.0;
+      pressl = 1000.0;
+      Bxl = 10.0;
+      Byl = 7.0;
+      Bzl = 7.0;
 
-            } else {
-              rho(p.I) = rhor;
-              vely(p.I) = vxr;
-              velz(p.I) = vyr;
-              velx(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
+      rhor = 1.0;
+      vxr = 0.0;
+      vyr = 0.0;
+      vzr = 0.0;
+      pressr = 0.1;
+      Bxr = 10.0;
+      Byr = 0.7;
+      Bzr = 0.7;
+    } else if (CCTK_EQUALS(test_case, "Balsara4")) {
+      rhol = 1.0;
+      vxl = 0.999;
+      vyl = 0.0;
+      vzl = 0.0;
+      pressl = 0.1;
+      Bxl = 10.0;
+      Byl = 7.0;
+      Bzl = 7.0;
 
-      grid.loop_all<0, 1, 0>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.y <= 0.0) {
-                                     Avec_y(p.I) = Bzl * (p.x) - Bxl * (p.z);
-                                   } else {
-                                     Avec_y(p.I) = Bzr * (p.x) - Bxr * (p.z);
-                                   }
-                                 });
-
-      grid.loop_all<0, 0, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = Byr * (p.z); });
-
-    } else if (CCTK_EQUALS(shock_dir, "z")) {
-
-      // x-->z, y-->x, z-->y
-      Bzl = 2.0;
-      Bxl = 0.3;
+      rhor = 1.0;
+      vxr = -0.999;
+      vyr = 0.0;
+      vzr = 0.0;
+      pressr = 0.1;
+      Bxr = 10.0;
+      Byr = -7.0;
+      Bzr = -7.0;
+    } else if (CCTK_EQUALS(test_case, "Balsara5")) {
+      rhol = 1.08;
+      vxl = 0.4;
+      vyl = 0.3;
+      vzl = 0.2;
+      pressl = 0.95;
+      Bxl = 2.0;
       Byl = 0.3;
-      Bzr = 2.0;
-      Bxr = -0.7;
-      Byr = 0.5;
+      Bzl = 0.3;
 
-      grid.loop_all<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-            if (p.z <= 0.0) {
-              rho(p.I) = rhol;
-              velz(p.I) = vxl;
-              velx(p.I) = vyl;
-              vely(p.I) = vzl;
-              press(p.I) = pressl;
-
-            } else {
-              rho(p.I) = rhor;
-              velz(p.I) = vxr;
-              velx(p.I) = vyr;
-              vely(p.I) = vzr;
-              press(p.I) = pressr;
-            }
-            eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
-                                                          dummy_ye);
-          });
-
-      grid.loop_all<0, 0, 1>(grid.nghostzones,
-                             [=] CCTK_HOST(const PointDesc &p)
-                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                   if (p.z <= 0.0) {
-                                     Avec_z(p.I) = Bxl * (p.y) - Byl * (p.x);
-                                   } else {
-                                     Avec_z(p.I) = Bxr * (p.y) - Byr * (p.x);
-                                   }
-                                 });
-
-      grid.loop_all<1, 0, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
-
-      grid.loop_all<0, 1, 0>(
-          grid.nghostzones,
-          [=] CCTK_HOST(const PointDesc &p)
-              CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = Bzr * (p.x); });
-
+      rhor = 1.0;
+      vxr = -0.45;
+      vyr = -0.2;
+      vzr = 0.2;
+      pressr = 1.0;
+      Bxr = 2.0;
+      Byr = -0.7;
+      Bzr = 0.5;
     } else {
-      CCTK_ERROR("Shock direction case not defined");
+      CCTK_ERROR("Balsara type not defined");
     }
+
+    CCTK_REAL theta_x = myNaN;
+    CCTK_REAL theta_y = myNaN;
+    CCTK_REAL theta_z = myNaN;
+
+    if (CCTK_EQUALS(shock_dir, "x")) {
+      theta_x = 0.0;
+      theta_y = 0.0;
+      theta_z = 0.0;
+    } else if (CCTK_EQUALS(shock_dir, "y")) {
+      theta_x = 0.0;
+      theta_y = 0.0;
+      theta_z = 0.5 * M_PI;
+    } else if (CCTK_EQUALS(shock_dir, "z")) {
+      theta_x = 0.0;
+      theta_y = 0.5 * M_PI;
+      theta_z = 0.0;
+    } else {
+      theta_x = rotate_angle_x * M_PI;
+      theta_y = rotate_angle_y * M_PI;
+      theta_z = rotate_angle_z * M_PI;
+    }
+
+    // Rotation matrix R_{ij}
+    const auto calc_R = [&](const CCTK_REAL th_x, const CCTK_REAL th_y,
+                            const CCTK_REAL th_z) {
+      const mat<CCTK_REAL, 3> R_x{
+          1.0, 0.0, 0.0, 0.0, cos(th_x), -sin(th_x), 0.0, sin(th_x), cos(th_x)};
+      const mat<CCTK_REAL, 3> R_y{cos(th_y),  0.0, sin(th_y), 0.0, 1.0, 0.0,
+                                  -sin(th_y), 0.0, cos(th_y)};
+      const mat<CCTK_REAL, 3> R_z{
+          cos(th_z), -sin(th_z), 0.0, sin(th_z), cos(th_z), 0.0, 0.0, 0.0, 1.0};
+      // R_{ij} = Rz_{ik} Ry_{kl} Rx_{lj}
+      return mat<CCTK_REAL, 3>([&](int i, int j) ARITH_INLINE {
+        return sum<3>([&](int k) ARITH_INLINE {
+          return R_z(i, k) * sum<3>([&](int l) ARITH_INLINE {
+                   return R_y(k, l) * R_x(l, j);
+                 });
+        });
+      });
+    };
+
+    // Tranform vector
+    const auto transform_vec = [&](const vec<CCTK_REAL, 3> u_vec,
+                                   const mat<CCTK_REAL, 3> R_mat) {
+      return vec<CCTK_REAL, 3>([&](int i) ARITH_INLINE {
+        return sum<3>([&](int k)
+                          ARITH_INLINE { return R_mat(i, k) * u_vec(k); });
+      });
+    };
+
+    const auto R = calc_R(theta_x, theta_y, theta_z);
+    const auto Rinv = calc_R(-theta_x, -theta_y, -theta_z);
+
+    // B and v in current coordinates
+    const auto oldBls = transform_vec(vec<CCTK_REAL, 3>{Bxl, Byl, Bzl}, Rinv);
+    const auto oldBrs = transform_vec(vec<CCTK_REAL, 3>{Bxr, Byr, Bzr}, Rinv);
+    const auto oldvls = transform_vec(vec<CCTK_REAL, 3>{vxl, vyl, vzl}, Rinv);
+    const auto oldvrs = transform_vec(vec<CCTK_REAL, 3>{vxr, vyr, vzr}, Rinv);
+
+    grid.loop_all<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+
+          if (newxs(0) <= 0.0) {
+            rho(p.I) = rhol;
+            velx(p.I) = oldvls(0);
+            vely(p.I) = oldvls(1);
+            velz(p.I) = oldvls(2);
+            press(p.I) = pressl;
+
+          } else {
+            rho(p.I) = rhor;
+            velx(p.I) = oldvrs(0);
+            vely(p.I) = oldvrs(1);
+            velz(p.I) = oldvrs(2);
+            press(p.I) = pressr;
+          }
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
+        });
+
+    grid.loop_all<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          if (newxs(0) <= 0.0) {
+            Avec_x(p.I) = oldBls(1) * (p.z);
+          } else {
+            Avec_x(p.I) = oldBrs(1) * (p.z);
+          }
+        });
+
+    grid.loop_all<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          if (newxs(0) <= 0.0) {
+            Avec_y(p.I) = oldBls(2) * (p.x);
+          } else {
+            Avec_y(p.I) = oldBrs(2) * (p.x);
+          }
+        });
+
+    grid.loop_all<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          if (newxs(0) <= 0.0) {
+            Avec_z(p.I) = oldBls(0) * (p.y);
+          } else {
+            Avec_z(p.I) = oldBrs(0) * (p.y);
+          }
+        });
 
   } else {
     CCTK_ERROR("Test case not defined");
