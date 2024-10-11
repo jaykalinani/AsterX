@@ -32,17 +32,6 @@ KEYWORD test_case "Name of the testcase" STEERABLE=never
 private:
 
 # parameters for rotating intial data
-BOOLEAN rotate_initial_data "Rotate initial data" STEERABLE=never
-{
-} no
-
-KEYWORD rotate_axis "Rotation about which axis" STEERABLE=never
-{
-  "x" :: ""
-  "y" :: ""
-  "z" :: ""
-} "z"
-
 REAL rotate_angle_x "Rotation angle about x-axis (in units of pi)" STEERABLE=never
 {
   *:* :: ""
