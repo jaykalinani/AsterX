@@ -279,66 +279,82 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     CCTK_REAL theta_x = myNaN;
     CCTK_REAL theta_y = myNaN;
     CCTK_REAL theta_z = myNaN;
+    vector<int> rotate_seq{2, 1, 0};
 
     if (CCTK_EQUALS(shock_dir, "x")) {
       theta_x = 0.0;
       theta_y = 0.0;
       theta_z = 0.0;
+      rotate_seq = {0, 1, 2};
     } else if (CCTK_EQUALS(shock_dir, "y")) {
-      theta_x = 0.0;
+      theta_x = 0.5 * M_PI;
       theta_y = 0.0;
       theta_z = 0.5 * M_PI;
+      rotate_seq = {1, 2, 0};
     } else if (CCTK_EQUALS(shock_dir, "z")) {
-      theta_x = 0.0;
+      theta_x = 0.5 * M_PI;
       theta_y = 0.5 * M_PI;
       theta_z = 0.0;
+      rotate_seq = {2, 0, 1};
     } else {
       theta_x = rotate_angle_x * M_PI;
       theta_y = rotate_angle_y * M_PI;
       theta_z = rotate_angle_z * M_PI;
     }
 
-    // Rotation matrix R_{ij}
+    // Rotation matrix R_{ij} that rotates the coordinate system through a
+    // counterclockwise angle of x0-, x1-, x2-axes. (v'_i = R_{ij}v_j under this
+    // coordinate transformation).
     const auto calc_R = [&](const CCTK_REAL th_x, const CCTK_REAL th_y,
-                            const CCTK_REAL th_z) {
+                            const CCTK_REAL th_z, vector<int> seq) {
       const mat<CCTK_REAL, 3> R_x{
-          1.0, 0.0, 0.0, 0.0, cos(th_x), -sin(th_x), 0.0, sin(th_x), cos(th_x)};
-      const mat<CCTK_REAL, 3> R_y{cos(th_y),  0.0, sin(th_y), 0.0, 1.0, 0.0,
-                                  -sin(th_y), 0.0, cos(th_y)};
+          1.0, 0.0, 0.0, 0.0, cos(th_x), sin(th_x), 0.0, -sin(th_x), cos(th_x)};
+      const mat<CCTK_REAL, 3> R_y{cos(th_y), 0.0, -sin(th_y), 0.0, 1.0, 0.0,
+                                  sin(th_y), 0.0, cos(th_y)};
       const mat<CCTK_REAL, 3> R_z{
-          cos(th_z), -sin(th_z), 0.0, sin(th_z), cos(th_z), 0.0, 0.0, 0.0, 1.0};
-      // R_{ij} = Rz_{ik} Ry_{kl} Rx_{lj}
+          cos(th_z), sin(th_z), 0.0, -sin(th_z), cos(th_z), 0.0, 0.0, 0.0, 1.0};
+      const vec<mat<CCTK_REAL, 3>, 3> Rs{R_x, R_y, R_z};
+      // R_{ij} = R3_{ik} R2_{kl} R1_{lj}
       return mat<CCTK_REAL, 3>([&](int i, int j) ARITH_INLINE {
         return sum<3>([&](int k) ARITH_INLINE {
-          return R_z(i, k) * sum<3>([&](int l) ARITH_INLINE {
-                   return R_y(k, l) * R_x(l, j);
+          return Rs(seq[2])(i, k) * sum<3>([&](int l) ARITH_INLINE {
+                   return Rs(seq[1])(k, l) * Rs(seq[0])(l, j);
                  });
         });
       });
     };
 
     // Tranform vector
-    const auto transform_vec = [&](const vec<CCTK_REAL, 3> u_vec,
-                                   const mat<CCTK_REAL, 3> R_mat) {
+    const auto transform_vec = [&](const mat<CCTK_REAL, 3> R_mat,
+                                   const vec<CCTK_REAL, 3> u_vec) {
       return vec<CCTK_REAL, 3>([&](int i) ARITH_INLINE {
         return sum<3>([&](int k)
                           ARITH_INLINE { return R_mat(i, k) * u_vec(k); });
       });
     };
 
-    const auto R = calc_R(theta_x, theta_y, theta_z);
-    const auto Rinv = calc_R(-theta_x, -theta_y, -theta_z);
+    // Construct rotation matrix and its inverse
+    const auto R = calc_R(theta_x, theta_y, theta_z, rotate_seq);
+    const auto Rinv =
+        calc_R(-theta_x, -theta_y, -theta_z,
+               vector<int>(rotate_seq.rbegin(), rotate_seq.rend()));
 
-    // B and v in current coordinates
-    const auto oldBls = transform_vec(vec<CCTK_REAL, 3>{Bxl, Byl, Bzl}, Rinv);
-    const auto oldBrs = transform_vec(vec<CCTK_REAL, 3>{Bxr, Byr, Bzr}, Rinv);
-    const auto oldvls = transform_vec(vec<CCTK_REAL, 3>{vxl, vyl, vzl}, Rinv);
-    const auto oldvrs = transform_vec(vec<CCTK_REAL, 3>{vxr, vyr, vzr}, Rinv);
+    // B and v in new coordinates: B' = Bs, v' = vs
+    const vec<CCTK_REAL, 3> newBls{Bxl, Byl, Bzl};
+    const vec<CCTK_REAL, 3> newBrs{Bxr, Byr, Bzr};
+    const vec<CCTK_REAL, 3> newvls{vxl, vyl, vzl};
+    const vec<CCTK_REAL, 3> newvrs{vxr, vyr, vzr};
+
+    // B and v in old coordinates: B_i = Rinv_{ij}B'_j, v_i = Rinv_{ij}v'_j
+    const auto oldBls = transform_vec(Rinv, newBls);
+    const auto oldBrs = transform_vec(Rinv, newBrs);
+    const auto oldvls = transform_vec(Rinv, newvls);
+    const auto oldvrs = transform_vec(Rinv, newvrs);
 
     grid.loop_all<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
 
           if (newxs(0) <= 0.0) {
             rho(p.I) = rhol;
@@ -361,7 +377,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     grid.loop_all<1, 0, 0>(
         grid.nghostzones,
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
             Avec_x(p.I) = oldBls(1) * (p.z);
           } else {
@@ -372,7 +388,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     grid.loop_all<0, 1, 0>(
         grid.nghostzones,
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
             Avec_y(p.I) = oldBls(2) * (p.x);
           } else {
@@ -383,7 +399,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     grid.loop_all<0, 0, 1>(
         grid.nghostzones,
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          const auto newxs = transform_vec(vec<CCTK_REAL, 3>{p.x, p.y, p.z}, R);
+          const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
             Avec_z(p.I) = oldBls(0) * (p.y);
           } else {
