@@ -282,24 +282,21 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     vector<int> rotate_seq{2, 1, 0};
 
     if (CCTK_EQUALS(shock_dir, "x")) {
+      theta_z = 0.0;
+      theta_y = 0.0;
       theta_x = 0.0;
-      theta_y = 0.0;
-      theta_z = 0.0;
-      rotate_seq = {0, 1, 2};
     } else if (CCTK_EQUALS(shock_dir, "y")) {
-      theta_x = 0.5 * M_PI;
-      theta_y = 0.0;
       theta_z = 0.5 * M_PI;
-      rotate_seq = {1, 2, 0};
-    } else if (CCTK_EQUALS(shock_dir, "z")) {
+      theta_y = 0.0;
       theta_x = 0.5 * M_PI;
-      theta_y = 0.5 * M_PI;
-      theta_z = 0.0;
-      rotate_seq = {2, 0, 1};
+    } else if (CCTK_EQUALS(shock_dir, "z")) {
+      theta_z = -0.5 * M_PI;
+      theta_y = -0.5 * M_PI;
+      theta_x = 0.0;
     } else {
-      theta_x = rotate_angle_x * M_PI;
-      theta_y = rotate_angle_y * M_PI;
       theta_z = rotate_angle_z * M_PI;
+      theta_y = rotate_angle_y * M_PI;
+      theta_x = rotate_angle_x * M_PI;
     }
 
     // Rotation matrix R_{ij} that rotates the coordinate system through a
