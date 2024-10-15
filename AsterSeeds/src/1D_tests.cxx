@@ -371,14 +371,31 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
                                                         dummy_ye);
         });
 
+    // Set up Avec (only support oldBs that have at least one zero component):
+    // we are set A in such a way that it only depends on the direction where
+    // B_i=0 (no step). Then, when take derivatives of A, it's well-behaved.
+    const CCTK_REAL tiny = 1e-12;
+    const auto are_all_components_nonzero = [&](const vec<CCTK_REAL, 3> Bs) {
+      return (abs(Bs(0)) > tiny) && (abs(Bs(1)) > tiny) && (abs(Bs(2)) > tiny);
+    };
+
+    if (are_all_components_nonzero(oldBls) ||
+        are_all_components_nonzero(oldBrs)) {
+      CCTK_ERROR("All non-zero B components not supported yet.");
+    }
+
     grid.loop_all<1, 0, 0>(
         grid.nghostzones,
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
-            Avec_x(p.I) = oldBls(1) * (p.z);
+            Avec_x(p.I) = (abs(oldBls(0)) < tiny)
+                              ? 0.0
+                              : oldBls(1) * (p.z) - oldBls(2) * (p.y);
           } else {
-            Avec_x(p.I) = oldBrs(1) * (p.z);
+            Avec_x(p.I) = (abs(oldBrs(0)) < tiny)
+                              ? 0.0
+                              : oldBrs(1) * (p.z) - oldBrs(2) * (p.y);
           }
         });
 
@@ -387,9 +404,13 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
-            Avec_y(p.I) = oldBls(2) * (p.x);
+            Avec_y(p.I) = (abs(oldBls(1)) < tiny)
+                              ? 0.0
+                              : oldBls(2) * (p.x) - oldBls(0) * (p.z);
           } else {
-            Avec_y(p.I) = oldBrs(2) * (p.x);
+            Avec_y(p.I) = (abs(oldBrs(1)) < tiny)
+                              ? 0.0
+                              : oldBrs(2) * (p.x) - oldBrs(0) * (p.z);
           }
         });
 
@@ -398,9 +419,13 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
         [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
-            Avec_z(p.I) = oldBls(0) * (p.y);
+            Avec_z(p.I) = (abs(oldBls(2)) < tiny)
+                              ? 0.0
+                              : (oldBls(0) * (p.y) - oldBls(1) * (p.x));
           } else {
-            Avec_z(p.I) = oldBrs(0) * (p.y);
+            Avec_z(p.I) = (abs(oldBrs(2)) < tiny)
+                              ? 0.0
+                              : (oldBrs(0) * (p.y) - oldBrs(1) * (p.x));
           }
         });
 
