@@ -30,37 +30,37 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
 
   if (CCTK_EQUALS(test_case, "equilibrium")) {
 
-    grid.loop_all<1, 1, 1>(grid.nghostzones,
-                           [=] CCTK_HOST(const PointDesc &p)
-                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                 rho(p.I) = 1.0;
-                                 velx(p.I) = 0.0;
-                                 vely(p.I) = 0.0;
-                                 velz(p.I) = 0.0;
-                                 press(p.I) = 1.0;
-                                 eps(p.I) = eos_th.eps_from_valid_rho_press_ye(
-                                     rho(p.I), press(p.I), dummy_ye);
-                               });
+    grid.loop_all_device<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          rho(p.I) = 1.0;
+          velx(p.I) = 0.0;
+          vely(p.I) = 0.0;
+          velz(p.I) = 0.0;
+          press(p.I) = 1.0;
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
+        });
 
-    grid.loop_all<1, 0, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_x(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
 
-    grid.loop_all<0, 1, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_y(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
 
-    grid.loop_all<0, 0, 1>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_z(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
 
   } else if (CCTK_EQUALS(test_case, "sound wave")) {
-    grid.loop_all<1, 1, 1>(
+    grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           rho(p.I) = 1.0;
           velx(p.I) = 0.0 + amplitude * sin(M_PI * p.x);
           vely(p.I) = 0.0;
@@ -70,29 +70,29 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
                                                         dummy_ye);
         });
 
-    grid.loop_all<1, 0, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_x(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
 
-    grid.loop_all<0, 1, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_y(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
 
-    grid.loop_all<0, 0, 1>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_z(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
 
   } else if (CCTK_EQUALS(test_case, "Alfven wave")) {
     const CCTK_REAL A0 = 1.0;
     const CCTK_REAL va = 0.5;
     const CCTK_REAL k = 2 * M_PI;
 
-    grid.loop_all<1, 1, 1>(
+    grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           rho(p.I) = 1.0;
           velx(p.I) = 0.0;
           vely(p.I) = -va * A0 * cos(k * p.x);
@@ -102,59 +102,59 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
                                                         dummy_ye);
         });
 
-    grid.loop_all<1, 0, 0>(
+    grid.loop_all_device<1, 0, 0>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           Avec_x(p.I) = p.z * cos(k * p.x) - p.y * sin(k * p.x);
         });
 
-    grid.loop_all<0, 1, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_y(p.I) = -p.z / 2.0;
-                                                 });
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = -p.z / 2.0; });
     // CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = p.x*sin(k*p.x) - p.z; });
 
-    grid.loop_all<0, 0, 1>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_z(p.I) = p.y / 2.0;
-                                                 });
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = p.y / 2.0; });
     // CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = p.y - p.x*cos(k*p.x); });
 
   } else if (CCTK_EQUALS(test_case, "shock tube")) {
-    grid.loop_all<1, 1, 1>(grid.nghostzones,
-                           [=] CCTK_HOST(const PointDesc &p)
-                               CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                 if (p.x <= 0.0) {
-                                   rho(p.I) = 2.0;
-                                   velx(p.I) = 0.0;
-                                   vely(p.I) = 0.0;
-                                   velz(p.I) = 0.0;
-                                   press(p.I) = 2.0;
-                                 } else {
-                                   rho(p.I) = 1.0;
-                                   velx(p.I) = 0.0;
-                                   vely(p.I) = 0.0;
-                                   velz(p.I) = 0.0;
-                                   press(p.I) = 1.0;
-                                 }
-                                 eps(p.I) = eos_th.eps_from_valid_rho_press_ye(
-                                     rho(p.I), press(p.I), dummy_ye);
-                               });
+    grid.loop_all_device<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          if (p.x <= 0.0) {
+            rho(p.I) = 2.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 2.0;
+          } else {
+            rho(p.I) = 1.0;
+            velx(p.I) = 0.0;
+            vely(p.I) = 0.0;
+            velz(p.I) = 0.0;
+            press(p.I) = 1.0;
+          }
+          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+                                                        dummy_ye);
+        });
 
-    grid.loop_all<1, 0, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_x(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<1, 0, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.0; });
 
-    grid.loop_all<0, 1, 0>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_y(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<0, 1, 0>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = 0.0; });
 
-    grid.loop_all<0, 0, 1>(grid.nghostzones, [=] CCTK_HOST(const PointDesc &p)
-                                                 CCTK_ATTRIBUTE_ALWAYS_INLINE {
-                                                   Avec_z(p.I) = 0.0;
-                                                 });
+    grid.loop_all_device<0, 0, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const PointDesc &p)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.0; });
 
   } else if (CCTK_EQUALS(test_case, "Balsara1") ||
              CCTK_EQUALS(test_case, "Balsara2") ||
@@ -302,8 +302,10 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     // Rotation matrix R_{ij} that rotates the coordinate system through a
     // counterclockwise angle of x0-, x1-, x2-axes. (v'_i = R_{ij}v_j under this
     // coordinate transformation).
-    const auto calc_R = [&](const CCTK_REAL th_x, const CCTK_REAL th_y,
-                            const CCTK_REAL th_z, vector<int> seq) {
+    const auto calc_R = [=] CCTK_HOST CCTK_DEVICE(
+                            const CCTK_REAL th_x, const CCTK_REAL th_y,
+                            const CCTK_REAL th_z,
+                            vector<int> seq) CCTK_ATTRIBUTE_ALWAYS_INLINE {
       const mat<CCTK_REAL, 3> R_x{
           1.0, 0.0, 0.0, 0.0, cos(th_x), sin(th_x), 0.0, -sin(th_x), cos(th_x)};
       const mat<CCTK_REAL, 3> R_y{cos(th_y), 0.0, -sin(th_y), 0.0, 1.0, 0.0,
@@ -322,13 +324,15 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     };
 
     // Tranform vector
-    const auto transform_vec = [&](const mat<CCTK_REAL, 3> R_mat,
-                                   const vec<CCTK_REAL, 3> u_vec) {
-      return vec<CCTK_REAL, 3>([&](int i) ARITH_INLINE {
-        return sum<3>([&](int k)
-                          ARITH_INLINE { return R_mat(i, k) * u_vec(k); });
-      });
-    };
+    const auto transform_vec =
+        [=] CCTK_HOST CCTK_DEVICE(const mat<CCTK_REAL, 3> R_mat,
+                                  const vec<CCTK_REAL, 3> u_vec)
+            CCTK_ATTRIBUTE_ALWAYS_INLINE {
+              return vec<CCTK_REAL, 3>([&](int i) ARITH_INLINE {
+                return sum<3>(
+                    [&](int k) ARITH_INLINE { return R_mat(i, k) * u_vec(k); });
+              });
+            };
 
     // Construct rotation matrix and its inverse
     const auto R = calc_R(theta_x, theta_y, theta_z, rotate_seq);
@@ -348,9 +352,9 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     const auto oldvls = transform_vec(Rinv, newvls);
     const auto oldvrs = transform_vec(Rinv, newvrs);
 
-    grid.loop_all<1, 1, 1>(
+    grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
 
           if (newxs(0) <= 0.0) {
@@ -384,9 +388,9 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
       CCTK_ERROR("All non-zero B components not supported yet.");
     }
 
-    grid.loop_all<1, 0, 0>(
+    grid.loop_all_device<1, 0, 0>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
             Avec_x(p.I) = (abs(oldBls(0)) < tiny)
@@ -399,9 +403,9 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
           }
         });
 
-    grid.loop_all<0, 1, 0>(
+    grid.loop_all_device<0, 1, 0>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
             Avec_y(p.I) = (abs(oldBls(1)) < tiny)
@@ -414,9 +418,9 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
           }
         });
 
-    grid.loop_all<0, 0, 1>(
+    grid.loop_all_device<0, 0, 1>(
         grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const auto newxs = transform_vec(R, vec<CCTK_REAL, 3>{p.x, p.y, p.z});
           if (newxs(0) <= 0.0) {
             Avec_z(p.I) = (abs(oldBls(2)) < tiny)
