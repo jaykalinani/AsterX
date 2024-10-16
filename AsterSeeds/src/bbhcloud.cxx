@@ -120,23 +120,20 @@ extern "C" void BBHCloud_Initialize(CCTK_ARGUMENTS) {
 
   });
 
-  if (add_magnetic_fields) {
+  grid.loop_all<1, 0, 0>(
+      grid.nghostzones,
+      [=] CCTK_HOST(const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.; });
 
-    grid.loop_all<1, 0, 0>(
-        grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_x(p.I) = 0.; });
+  grid.loop_all<0, 1, 0>(
+      grid.nghostzones,
+      [=] CCTK_HOST(const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = add_magnetic_fields ? B_initial*p.x : 0.; });
 
-    grid.loop_all<0, 1, 0>(
-        grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_y(p.I) = B_initial*p.x; });
-
-    grid.loop_all<0, 0, 1>(
-        grid.nghostzones,
-        [=] CCTK_HOST(const PointDesc &p)
-            CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.; });
-  }
+  grid.loop_all<0, 0, 1>(
+      grid.nghostzones,
+      [=] CCTK_HOST(const PointDesc &p)
+          CCTK_ATTRIBUTE_ALWAYS_INLINE { Avec_z(p.I) = 0.; });
 
 }
 
