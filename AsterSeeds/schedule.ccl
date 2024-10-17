@@ -69,3 +69,15 @@ if (CCTK_Equals(test_type, "3DTest")) {
     "Set up initial conditions for the vector potential"
   }
 }
+
+#Initial conditions for TabEOS tests
+
+if (CCTK_Equals(test_type, "TabEOS")) {
+
+  SCHEDULE TabEOSTests_Initialize IN HydroBaseX_InitialData AFTER HydroBaseX_initial_data {
+  LANG: C 
+  WRITES: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere)
+  WRITES: AsterX::Avec_x(everywhere) AsterX::Avec_y(everywhere) AsterX::Avec_z(everywhere)
+  }
+  "Set up initial conditions for TabEOS tests"
+}

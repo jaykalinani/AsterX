@@ -5,6 +5,7 @@ KEYWORD test_type "Type of test to set up" STEERABLE=never
   "1DTest" :: ""
   "2DTest" :: ""
   "3DTest" :: "" 
+  "TabEOSTest" :: "" 
   "Atmosphere" :: "Atmosphere" 
 } "1DTest"
 
@@ -26,6 +27,8 @@ KEYWORD test_case "Name of the testcase" STEERABLE=never
 
   "spherical shock"          :: ""
   "magTOV"                   :: ""
+
+  "isotropic gas"            :: ""
 } "Balsara1"
 
 private:
