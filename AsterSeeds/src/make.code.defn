@@ -1,7 +1,7 @@
 #Main make.code.defn file for thorn AsterSeeds
 
 #Source files in this directory
-SRCS = 1D_tests.cxx 2D_tests.cxx 3D_tests.cxx atmosphere.cxx magtov.cxx
+SRCS = 1D_tests.cxx 2D_tests.cxx 3D_tests.cxx atmosphere.cxx magtov.cxx TabEOS_tests.cxx
 
 #Subdirectories containing source files
            SUBDIRS =

@@ -1,5 +1,5 @@
 IMPLEMENTS: ID_TabEOS_HydroQuantities
-INHERITS: CarpetX HydroBaseX 
+INHERITS: HydroBaseX #CarpetXRegrid
 
 USES INCLUDE HEADER: loop_device.hxx
 USES INCLUDE HEADER: setup_eos.hxx
