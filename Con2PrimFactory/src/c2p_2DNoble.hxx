@@ -46,7 +46,8 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
           EOSType &eos_th, prim_vars &pv, cons_vars cv,
-          const smat<CCTK_REAL, 3> &gup) const;
+          const smat<CCTK_REAL, 3> &gup,
+          const smat<CCTK_REAL, 3> &glo) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
@@ -152,10 +153,46 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
                      CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv,
-                     cons_vars cv, const smat<CCTK_REAL, 3> &gup) const {
+                     cons_vars cv, const smat<CCTK_REAL, 3> &gup,
+                                   const smat<CCTK_REAL, 3> &glo ) const {
+  DECLARE_CCTK_PARAMETERS;
+
   CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
   pv.rho = cv.dens / W_Sol;
+
+  if (use_z) {
+
+  CCTK_REAL zx =
+      W_Sol * (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  zx += W_Sol * BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
+
+  CCTK_REAL zy =
+      W_Sol * (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  zy += W_Sol * BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+
+  CCTK_REAL zz =
+      W_Sol * (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  zz += W_Sol * BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+
+  CCTK_REAL zx_down = glo(X, X) * zx + glo(X, Y) * zy + glo(X, Z) * zz;
+  CCTK_REAL zy_down = glo(X, Y) * zx + glo(Y, Y) * zy + glo(Y, Z) * zz;
+  CCTK_REAL zz_down = glo(X, Z) * zx + glo(Y, Z) * zy + glo(Z, Z) * zz;
+  CCTK_REAL Zsq = zx*zx_down + zy*zy_down + zz*zz_down;
+  CCTK_REAL SafeLor = sqrt(1.0+Zsq);
+
+  pv.vel(X) = zx/SafeLor;
+
+  pv.vel(Y) = zy/SafeLor;
+
+  pv.vel(Z) = zz/SafeLor;
+
+  pv.w_lor = SafeLor;
+
+  } else {
 
   pv.vel(X) =
       (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
@@ -174,7 +211,10 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
   pv.w_lor = W_Sol;
 
-  pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
+  }
+
+  //pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
+  pv.eps = (Z_Sol / pv.w_lor / pv.w_lor / pv.rho - 1.0) / GammaIdealFluid;
 
   pv.Ye = cv.dYe / cv.dens;
 
@@ -387,7 +427,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL vsq_Sol = x[1];
 
   /* Write prims if C2P succeeded */
-  WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_th, pv, cv, gup);
+  WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
