@@ -16,7 +16,8 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_2DNoble(
       EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-      CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len);
+      CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
+      bool use_z);
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
       get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
                     const smat<CCTK_REAL, 3> &gup) const;
@@ -62,7 +63,8 @@ template <typename EOSType>
 CCTK_HOST
     CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_2DNoble::c2p_2DNoble(
         EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-        CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len) {
+        CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len, 
+        bool use_z) {
 
   GammaIdealFluid = eos_th.gamma;
   maxIterations = maxIter;
@@ -74,6 +76,7 @@ CCTK_HOST
   v_lim = vw_lim / w_lim;
   Bsq_lim = B_lim * B_lim;
   atmo = atm;
+  use_zprim = use_z;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -161,7 +164,7 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
   pv.rho = cv.dens / W_Sol;
 
-  if (use_z) {
+  if (use_zprim) {
 
   CCTK_REAL zx =
       W_Sol * (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
