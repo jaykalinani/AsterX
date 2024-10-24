@@ -14,7 +14,8 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy(
       EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-      CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len);
+      CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
+      CCTK_REAL consError);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_Ssq_Exact(vec<CCTK_REAL, 3> &mom, const smat<CCTK_REAL, 3> &gup) const;
@@ -54,7 +55,8 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE
 CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
     EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-    CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len) {
+    CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
+    CCTK_REAL consError) {
 
   GammaIdealFluid = eos_th.gamma;
   maxIterations = maxIter;
@@ -66,6 +68,7 @@ CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
   v_lim = vw_lim / w_lim;
   Bsq_lim = B_lim * B_lim;
   atmo = atm;
+  cons_error = consError;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -325,8 +328,11 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
 
   CCTK_REAL xEntropy_Sol = 0.5 * (result.first + result.second);
 
+  xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+
   // Check solution and calculate primitives
   //  if (rep.iters < maxiters && abs(fn(xEntropy_Sol)) < tolerance) {
+  /*
   if (abs(result.first - result.second) <=
       tolerance_0 * min(abs(result.first), abs(result.second))) {
     rep.status = c2p_report::SUCCESS;
@@ -336,8 +342,27 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
     rep.set_root_conv();
     status = ROOTSTAT::NOT_CONVERGED;
   }
+  */
+  if (abs(result.first - result.second) >
+      tolerance_0 * min(abs(result.first), abs(result.second))) {
 
-  xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+    // check primitives against conservatives
+    cons_vars cv_check;
+    cv_check.from_prim(pv, glo);
+    CCTK_REAL max_error = sqrt(max({pow(cv_check.dens-cv.dens,2.0)/pow(cv.dens,2.0),
+                                    pow(cv_check.mom(0)-cv.mom(0),2.0)/pow(cv.mom(0),2.0),
+                                    pow(cv_check.mom(1)-cv.mom(1),2.0)/pow(cv.mom(1),2.0),
+                                    pow(cv_check.mom(2)-cv.mom(2),2.0)/pow(cv.mom(2),2.0),
+                                    pow(cv_check.tau-cv.tau,2.0)/pow(cv.tau,2.0)}));  
+
+    // reject only if mismatch in conservatives is inappropriate, else accept
+    if (max_err >= cons_error) { 
+      // set status to root not converged
+      rep.set_root_conv();
+      status = ROOTSTAT::NOT_CONVERGED;
+      return;
+    }
+  }
 
   // Lower velocity
   const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);

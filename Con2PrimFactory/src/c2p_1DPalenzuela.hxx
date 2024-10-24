@@ -15,7 +15,8 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela(
       EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-      CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len);
+      CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
+      CCTK_REAL consError);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
       get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
@@ -58,7 +59,8 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE
     CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela::c2p_1DPalenzuela(
         EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-        CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len) {
+        CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
+        CCTK_REAL consError) {
 
   GammaIdealFluid = eos_th.gamma;
   maxIterations = maxIter;
@@ -70,6 +72,7 @@ CCTK_HOST CCTK_DEVICE
   v_lim = vw_lim / w_lim;
   Bsq_lim = B_lim * B_lim;
   atmo = atm;
+  cons_error = consError;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
