@@ -72,7 +72,7 @@ if (CCTK_Equals(test_type, "3DTest")) {
 
 #Initial conditions for TabEOS tests
 
-if (CCTK_Equals(test_type, "TabEOS")) {
+if (CCTK_Equals(test_type, "TabEOSTest")) {
 
   SCHEDULE TabEOSTests_Initialize IN HydroBaseX_InitialData AFTER HydroBaseX_initial_data {
   LANG: C 
