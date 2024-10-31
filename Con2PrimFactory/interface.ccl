@@ -8,3 +8,4 @@ INCLUDES HEADER: c2p_2DNoble.hxx IN c2p_2DNoble.hxx
 INCLUDES HEADER: c2p_1DPalenzuela.hxx IN c2p_1DPalenzuela.hxx 
 USES INCLUDE HEADER: setup_eos.hxx 
 USES INCLUDE HEADER: roots.hxx
+USES INCLUDE HEADER: aster_utils.hxx
