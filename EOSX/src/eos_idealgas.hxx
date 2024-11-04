@@ -84,6 +84,27 @@ public:
       const CCTK_REAL ye    ///< Electron fraction \f$ Y_e \f$
   ) const;
 
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  press_from_valid_rho_kappa_ye(
+      const CCTK_REAL rho,
+      const CCTK_REAL kappa, // p/rho^gamma
+      const CCTK_REAL ye   
+  ) const;
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  eps_from_valid_rho_kappa_ye(
+      const CCTK_REAL rho,
+      const CCTK_REAL kappa, // p/rho^gamma
+      const CCTK_REAL ye   
+  ) const;
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  kappa_from_valid_rho_eps_ye(
+      const CCTK_REAL rho,
+      const CCTK_REAL eps,
+      const CCTK_REAL ye   
+  ) const;
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
   range_eps_from_valid_rho_ye(
       const CCTK_REAL rho, ///< Rest mass density  \f$ \rho \f$
@@ -172,6 +193,33 @@ eos_idealgas::eps_from_valid_rho_temp_ye(const CCTK_REAL rho,
                                          const CCTK_REAL ye) const {
   return temp / temp_over_eps;
 }
+
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_idealgas::press_from_valid_rho_kappa_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL kappa, // p/rho^gamma
+    const CCTK_REAL ye   
+) const {
+  return kappa*pow(rho,gamma);
+}
+
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_idealgas::eps_from_valid_rho_kappa_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL kappa, // p/rho^gamma
+    const CCTK_REAL ye   
+) const {
+  return kappa*pow(rho,gamma-1.0)/(gamma-1.0);
+};
+
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_idealgas::kappa_from_valid_rho_eps_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL eps,
+    const CCTK_REAL ye   
+) const {
+  return (gamma-1.0)*eps*pow(rho,1.0-gamma);
+};
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos::range
 eos_idealgas::range_eps_from_valid_rho_ye(const CCTK_REAL rho,

@@ -136,7 +136,7 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
                               const smat<CCTK_REAL, 3> &glo) const {
   // Density, entropy, Ye
   pv.rho = xEntropy_Sol;
-  pv.entropy = cv.dS / cv.dens;
+  pv.kappa = cv.dS / cv.dens;
   pv.Ye = cv.dYe / cv.dens;
 
   // Lorentz factor
@@ -144,8 +144,8 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
 
   // Pressure and epsilon
   pv.press =
-      eos_th.press_from_valid_rho_entropy_ye(xEntropySol, pv.entropy, pv.Ye);
-  pv.eps = eos_th.eps_from_valid_rho_entropy_ye(xEntropySol, pv.entropy, pv.Ye);
+      eos_th.press_from_valid_rho_kappa_ye(xEntropySol, pv.kappa, pv.Ye);
+  pv.eps = eos_th.eps_from_valid_rho_kappa_ye(xEntropySol, pv.kappa, pv.Ye);
 
   // Taken from WZ2Prim (2DNRNoble)
   // Z_Sol = rho * h * w_lor * w_lor
@@ -188,10 +188,10 @@ c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
 
   // Compute h using entropy
   const CCTK_REAL press_loc =
-      eos_th.press_from_valid_rho_entropy_ye(x, ent_loc, ye_loc);
+      eos_th.press_from_valid_rho_kappa_ye(x, ent_loc, ye_loc);
 
   const CCTK_REAL eps_loc =
-      eos_th.eps_from_valid_rho_entropy_ye(x, ent_loc, ye_loc);
+      eos_th.eps_from_valid_rho_kappa_ye(x, ent_loc, ye_loc);
 
   // Compute (A60) using
   // W = rho*h*lorentz*lorentz
@@ -398,8 +398,8 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
     // add mass, keeps conserved density D
     pv.rho = cv.dens / w_lim;
     pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
-    pv.entropy =
-        eos_th.entropy_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.kappa =
+        eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
     // if (pv.rho >= rho_strict) {
     //  rep.set_speed_limit({ sol_v, sol_v, sol_v });
     //  set_to_nan(pv, cv);
@@ -419,8 +419,8 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
     // remove mass, changes conserved density D
     pv.rho = rho_strict;
     pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
-    pv.entropy =
-        eos_th.entropy_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
+    pv.kappa =
+        eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
   }
 
   // ----------
@@ -441,7 +441,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
     //}
     pv.eps = rgeps.max;
     pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.entropy = eos_th.entropy_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
   } else if (pv.eps < rgeps.min) {
     /*
     printf(
@@ -454,7 +454,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
     rep.adjust_cons = true;
     pv.eps = rgeps.min;
     pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.entropy = eos_th.entropy_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
   }
 
   // TODO: check validity for Ye

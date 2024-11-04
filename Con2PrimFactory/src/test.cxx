@@ -26,7 +26,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   const eos_idealgas eos_th(2.0, 938.985, rgeps, rgrho, rgye);
 
   // Setting up atmosphere
-  atmosphere atmo(1e-10, 1e-8, 0.5, 1e-8, 0.001);
+  atmosphere atmo(1e-10, 1e-8, 0.5, 1e-8, 1e-10, 0.001);
 
   // Metric
   const smat<CCTK_REAL, 3> g{1.0, 0.0, 0.0,
@@ -42,7 +42,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
 
   prim_vars pv;
   // rho(p.I), eps(p.I), dummy_Ye, press(p.I),v_up, wlor, Bup
-  prim_vars pv_seeds{0.125, 0.8, 0.5, 0.1, {0, 0, 0}, 1, {0.5, -1.0, 0}};
+  prim_vars pv_seeds{0.125, 0.8, 0.5, 0.1, 100,{0, 0, 0}, 1, {0.5, -1.0, 0}};
 
   // cons_vars cv{dens(p.I), {momx(p.I), momy(p.I), momz(p.I)}, tau(p.I),
   //  dummy_dYe, {dBx(p.I), dBy(p.I), dBz(p.I)}};

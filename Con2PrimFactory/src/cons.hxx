@@ -69,7 +69,7 @@ struct cons_vars {
 
     dBvec = sqrt_detg * pv.Bvec;
     dYe = dens * pv.Ye;
-    dS  = dens * pv.entropy;
+    dS  = dens * pv.kappa;
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void

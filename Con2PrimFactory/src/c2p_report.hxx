@@ -22,7 +22,7 @@ public:
     NANS_IN_CONS,           ///< One or more evolved variables is NAN/INF
     RANGE_RHO,              ///< Mass density outside EOS range
     RANGE_EPS,              ///< Fluid internal energy outside EOS range
-    RANGE_ENT,              ///< Evolved entropy outside EOS range
+    RANGE_KAPPA,              ///< Evolved entropy outside EOS range
     SPEED_LIMIT,            ///< Speed limit exceeded
     RANGE_YE,               ///< Electron fraction outside EOS range
     B_LIMIT,                ///< Magnetization above limit
@@ -159,7 +159,7 @@ public:
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   set_range_entropy(CCTK_REAL entropy_) {
-    status = RANGE_ENT;
+    status = RANGE_KAPPA;
     set_atmo = false;
     adjust_cons = true; // we adjust cons in this case!
     entropy = entropy_;
@@ -247,7 +247,7 @@ public:
     case RANGE_EPS:
       printf("Specific energy was out of range! eps readjusted to = %16.8e \n", eps);
       break;
-    case RANGE_ENT:
+    case RANGE_KAPPA:
       printf("Evolved entropy was out of range! entropy readjusted to = %16.8e \n", entropy);
       break;
     case SPEED_LIMIT:
