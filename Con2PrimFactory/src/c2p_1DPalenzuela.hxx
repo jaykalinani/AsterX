@@ -190,6 +190,8 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 
   pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
+  pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+
   pv.Bvec = cv.dBvec;
 
   const vec<CCTK_REAL, 3> Elow = calc_cross_product(pv.Bvec, pv.vel);
@@ -392,6 +394,8 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
     rep.adjust_cons = true;
   }
+
+  pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {

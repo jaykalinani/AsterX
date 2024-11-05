@@ -183,6 +183,8 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
   pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
+  pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+
   pv.Bvec = cv.dBvec;
 
   const vec<CCTK_REAL, 3> Elow = calc_cross_product(pv.Bvec, pv.vel);
@@ -442,6 +444,8 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
     rep.adjust_cons = true;
   }
+
+  pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {
