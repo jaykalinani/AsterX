@@ -8,6 +8,7 @@
 #include "c2p.hxx"
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
+#include "c2p_1DEntropy.hxx"
 
 #include "eos_1p.hxx"
 #include "eos_polytropic.hxx"
@@ -94,6 +95,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, rho_strict,
                              vw_lim, B_lim, Ye_lenient, cons_error_limit);
 
+    // Construct Entropy c2p object:
+    c2p_1DEntropy c2p_Ent(eos_th, atmo, max_iter, c2p_tol, rho_strict,
+                             vw_lim, B_lim, Ye_lenient, cons_error_limit);
+
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
         [&](int i, int j) ARITH_INLINE { return calc_avg_v2c(gf_g(i, j), p); });
@@ -160,6 +165,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     // Construct error report object:
     c2p_report rep_first;
     c2p_report rep_second;
+    c2p_report rep_ent;
 
     // Invert entropy here
     entropy(p.I) = sstar(p.I)/dens(p.I);
@@ -201,12 +207,16 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       printf("Second C2P failed too :( :( \n");
       rep_second.debug_message();
 
+      if (use_entropy_fix) {
+        c2p_Ent.solve(eos_th, pv, cv, glo, rep_ent);
+      }
+
       // Treatment for BH interiors after C2P failures
       // NOTE: By default, alp_thresh=0 so the if condition below is never
       // triggered. One must be very careful when using this functionality and
       // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the
       // parfile
-      if (alp(p.I) < alp_thresh) {
+      if ((alp(p.I) < alp_thresh) && rep_ent.failed()) {
         if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH)) {
           pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
                            // NS or disk
@@ -225,12 +235,13 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
           cv.from_prim(pv, glo);
           rep_first.set_atmo = 0;
           rep_second.set_atmo = 0;
+          rep_ent.set_atmo = 0;
         }
       }
-      con2prim_flag(p.I) = 0;
+      con2prim_flag(p.I) = rep_ent.failed() ? 0 : 1;
     }
 
-    if (rep_first.set_atmo && rep_second.set_atmo) {
+    if (rep_first.set_atmo && rep_second.set_atmo && rep_ent.set_atmo) {
       if (debug_mode) {
         printf(
             "WARNING: \n"

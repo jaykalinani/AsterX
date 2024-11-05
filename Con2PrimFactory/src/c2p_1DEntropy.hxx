@@ -43,7 +43,7 @@ public:
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
+  solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
 
   /* Destructor */
@@ -144,8 +144,8 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
 
   // Pressure and epsilon
   pv.press =
-      eos_th.press_from_valid_rho_kappa_ye(xEntropySol, pv.kappa, pv.Ye);
-  pv.eps = eos_th.eps_from_valid_rho_kappa_ye(xEntropySol, pv.kappa, pv.Ye);
+      eos_th.press_from_valid_rho_kappa_ye(xEntropy_Sol, pv.kappa, pv.Ye);
+  pv.eps = eos_th.eps_from_valid_rho_kappa_ye(xEntropy_Sol, pv.kappa, pv.Ye);
 
   // Taken from WZ2Prim (2DNRNoble)
   // Z_Sol = rho * h * w_lor * w_lor
@@ -183,8 +183,8 @@ c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
   // We already divided dens, dS and
   // dYe by sqrt(gamma)
 
-  const CCTK_REAL ent_loc = cv.dS / dens;
-  const CCTK_REAL ye_loc = cv.dYe / dens;
+  const CCTK_REAL ent_loc = cv.dS / cv.dens;
+  const CCTK_REAL ye_loc = cv.dYe / cv.dens;
 
   // Compute h using entropy
   const CCTK_REAL press_loc =
@@ -237,9 +237,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
   const bool minor2{ glo(X, X) * glo(Y, Y) - glo(X, Y) * glo(X, Y) > 0.0 };
   const bool minor3{ spatial_detg > 0.0 };
 
-  if (minor1 && minor2 && minor3) {
-    continue;
-  } else {
+  if (!(minor1 && minor2 && minor3)) {
     rep.set_invalid_detg(sqrt_detg);
     set_to_nan(pv, cv);
     return;
@@ -317,7 +315,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
   // This should probably be changed in Algo::brent
 
   // We want to set the tolerance to its correct parameter
-  constexpr CCTK_REAL log2 = std::log(2.0);
+  const CCTK_REAL log2 = std::log(2.0);
   const CCTK_INT minbits = int(abs(std::log(tolerance)) / log2);
   const CCTK_REAL tolerance_0 = std::ldexp(double(1.0), -minbits);
   // Old code:
@@ -356,7 +354,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
                                     pow(cv_check.tau-cv.tau,2.0)/pow(cv.tau,2.0)}));  
 
     // reject only if mismatch in conservatives is inappropriate, else accept
-    if (max_err >= cons_error) { 
+    if (max_error >= cons_error) { 
       // set status to root not converged
       rep.set_root_conv();
       status = ROOTSTAT::NOT_CONVERGED;
@@ -466,14 +464,14 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::set_to_nan(prim_vars &pv, cons_vars &cv) const {
+c2p_1DEntropy::set_to_nan(prim_vars &pv, cons_vars &cv) const {
   pv.set_to_nan();
   cv.set_to_nan();
 }
 
 /* Destructor */
 CCTK_HOST CCTK_DEVICE
-CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela::~c2p_1DPalenzuela() {
+CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::~c2p_1DEntropy() {
   // How to destruct properly a vector?
 }
 } // namespace Con2PrimFactory

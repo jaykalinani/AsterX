@@ -15,6 +15,10 @@ BOOLEAN use_uct "Shall we use the Upwind-CT method to compute the electric field
 {
 } "no"
 
+BOOLEAN use_entropy_fix "Shall we use inversion based on entropy as a backup?" STEERABLE=always
+{
+} "no"
+
 KEYWORD flux_type "Flux solver" STEERABLE=always
 {
   "LxF" :: ""
