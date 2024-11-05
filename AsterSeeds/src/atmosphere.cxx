@@ -5,14 +5,15 @@
 #include <cctk_Parameters.h>
 
 #include <cmath>
-#include <seeds_utils.hxx>
 
-#include <setup_eos.hxx>
+#include "setup_eos.hxx"
+#include "seeds_utils.hxx"
 
 namespace AsterSeeds {
 using namespace std;
 using namespace Loop;
 using namespace EOSX;
+using namespace AsterUtils;
 
 extern "C" void Atmosphere_Initialize(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_Atmosphere_Initialize;
@@ -28,7 +29,6 @@ extern "C" void Atmosphere_Initialize(CCTK_ARGUMENTS) {
   }
 
   const CCTK_REAL dummy_ye = 0.5;
-
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {

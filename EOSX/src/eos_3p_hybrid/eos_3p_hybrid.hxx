@@ -89,7 +89,7 @@ public:
 
   // edited
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  press_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
+  press_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                               const CCTK_REAL ye) const {
     CCTK_REAL p_c = p_cold(rho);
     CCTK_REAL eps_c = eps_cold(rho);

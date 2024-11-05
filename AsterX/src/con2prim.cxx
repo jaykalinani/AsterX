@@ -1,9 +1,8 @@
+#include <loop_device.hxx>
+
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
-
-#include <loop_device.hxx>
-
 #include <cmath>
 
 #include "c2p.hxx"
@@ -11,14 +10,14 @@
 #include "c2p_2DNoble.hxx"
 
 #include "setup_eos.hxx"
-
-#include "utils.hxx"
+#include "aster_utils.hxx"
 
 namespace AsterX {
 using namespace std;
 using namespace Loop;
 using namespace EOSX;
 using namespace Con2PrimFactory;
+using namespace AsterUtils;
 
 enum class eos_3param { IdealGas, Hybrid, Tabulated };
 enum class c2p_first_t { Noble, Palenzuela };
@@ -51,28 +50,46 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
-  // Setting up atmosphere
-  const CCTK_REAL rho_atmo_cut = rho_abs_min * (1 + atmo_tol);
-  const CCTK_REAL gm1 = eos_1p->gm1_from_valid_rho(rho_abs_min);
-  CCTK_REAL eps_atm = eos_1p->sed_from_valid_gm1(gm1);
-  eps_atm = std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
-  const CCTK_REAL p_atm =
-      eos_3p->press_from_valid_rho_eps_ye(rho_abs_min, eps_atm, Ye_atmo);
-  atmosphere atmo(rho_abs_min, eps_atm, Ye_atmo, p_atm, rho_atmo_cut);
-
-  // Construct Noble c2p object:
-  c2p_2DNoble c2p_Noble(eos_3p, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
-                        B_lim, Ye_lenient);
-
-  // Construct Palenzuela c2p object:
-  c2p_1DPalenzuela c2p_Pal(eos_3p, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
-                           B_lim, Ye_lenient);
-
   // Loop over the interior of the grid
   cctk_grid.loop_int_device<
       1, 1, 1>(grid.nghostzones, [=] CCTK_DEVICE(
                                      const PointDesc
                                          &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    // Setting up atmosphere
+    CCTK_REAL rho_atm = 0.0;   // dummy initialization
+    CCTK_REAL press_atm = 0.0; // dummy initialization
+    CCTK_REAL eps_atm = 0.0;   // dummy initialization
+    CCTK_REAL local_eps_BH = eps_BH;
+    CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+
+    // Grading rho
+    rho_atm = (radial_distance > r_atmo)
+                  ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
+                  : rho_abs_min;
+    const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
+
+    // Grading pressure based on either cold or thermal EOS
+    if (thermal_eos_atmo) {
+      press_atm = (radial_distance > r_atmo)
+                      ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
+                      : p_atmo;
+      eps_atm = eos_3p->eps_from_valid_rho_press_ye(rho_atm, press_atm, Ye_atmo);
+    } else {
+      const CCTK_REAL gm1 = eos_1p->gm1_from_valid_rho(rho_atm);
+      eps_atm = eos_1p->sed_from_valid_gm1(gm1);
+      eps_atm = std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
+      press_atm = eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+    }
+    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, rho_atmo_cut);
+
+    // Construct Noble c2p object:
+    c2p_2DNoble c2p_Noble(eos_3p, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
+                          B_lim, Ye_lenient);
+
+    // Construct Palenzuela c2p object:
+    c2p_1DPalenzuela c2p_Pal(eos_3p, atmo, max_iter, c2p_tol, rho_strict,
+                             vw_lim, B_lim, Ye_lenient);
+
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
         [&](int i, int j) ARITH_INLINE { return calc_avg_v2c(gf_g(i, j), p); });
@@ -105,6 +122,32 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       pv.Bvec = cv.dBvec / sqrt_detg;
       atmo.set(pv, cv, glo);
       atmo.set(pv_seeds);
+    }
+
+    // Modifying primitive seeds within BH interiors before C2Ps are called
+    // NOTE: By default, alp_thresh=0 so the if condition below is never
+    // triggered. One must be very careful when using this functionality and
+    // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the parfile
+
+    if (alp(p.I) < alp_thresh) {
+      if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > local_eps_BH)) {
+        pv_seeds.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of
+                               // initial NS or disk
+        pv_seeds.eps = local_eps_BH;
+        pv_seeds.Ye = Ye_atmo;
+        pv_seeds.press =
+            eos_3p->press_from_valid_rho_eps_ye(rho_BH, local_eps_BH, Ye_atmo);
+        // check on velocities
+        CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
+        CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
+        CCTK_REAL sol_v =
+            sqrt((pv_seeds.w_lor * pv_seeds.w_lor - 1.0)) / pv_seeds.w_lor;
+        if (sol_v > vlim_BH) {
+          pv_seeds.vel *= vlim_BH / sol_v;
+          pv_seeds.w_lor = wlim_BH;
+        }
+        cv.from_prim(pv_seeds, glo);
+      }
     }
 
     // Construct error report object:
@@ -147,6 +190,33 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     if (rep_first.failed() && rep_second.failed()) {
       printf("Second C2P failed too :( :( \n");
       rep_second.debug_message();
+
+      // Treatment for BH interiors after C2P failures
+      // NOTE: By default, alp_thresh=0 so the if condition below is never
+      // triggered. One must be very careful when using this functionality and
+      // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the
+      // parfile
+      if (alp(p.I) < alp_thresh) {
+        if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > local_eps_BH)) {
+          pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
+                           // NS or disk
+          pv.eps = local_eps_BH;
+          pv.Ye = Ye_atmo;
+          pv.press =
+              eos_3p->press_from_valid_rho_eps_ye(rho_BH, local_eps_BH, Ye_atmo);
+          // check on velocities
+          CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
+          CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
+          CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
+          if (sol_v > vlim_BH) {
+            pv.vel *= vlim_BH / sol_v;
+            pv.w_lor = wlim_BH;
+          }
+          cv.from_prim(pv, glo);
+          rep_first.set_atmo = 0;
+          rep_second.set_atmo = 0;
+        }
+      }
       con2prim_flag(p.I) = 0;
     }
 
@@ -195,6 +265,17 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // Write back pv
     pv.scatter(rho(p.I), eps(p.I), Ye(p.I), press(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
+
+    zvec_x(p.I) = wlor * pv.vel(0);
+    zvec_y(p.I) = wlor * pv.vel(1);
+    zvec_z(p.I) = wlor * pv.vel(2);
+
+    svec_x(p.I) =
+        (pv.rho + pv.rho * pv.eps + pv.press) * wlor * wlor * pv.vel(0);
+    svec_y(p.I) =
+        (pv.rho + pv.rho * pv.eps + pv.press) * wlor * wlor * pv.vel(1);
+    svec_z(p.I) =
+        (pv.rho + pv.rho * pv.eps + pv.press) * wlor * wlor * pv.vel(2);
 
     // Write back cv
     cv.scatter(dens(p.I), momx(p.I), momy(p.I), momz(p.I), tau(p.I), DYe(p.I),
