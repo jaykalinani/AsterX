@@ -149,6 +149,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         pv_seeds.Ye = Ye_atmo;
         pv_seeds.press =
             eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+        pv.kappa =
+            eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
         // check on velocities
         CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
         CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
@@ -167,8 +169,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_report rep_second;
     c2p_report rep_ent;
 
-    // Invert entropy here
-    entropy(p.I) = sstar(p.I)/dens(p.I);
+    /* set flag to success */
+    con2prim_flag(p.I) = 1;
 
     // Calling the first C2P
     switch (c2p_fir) {
@@ -203,45 +205,63 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       }
     }
 
-    if (rep_first.failed() && rep_second.failed()) {
-      printf("Second C2P failed too :( :( \n");
-      rep_second.debug_message();
-
+    if (rep_second.failed()) {
       if (use_entropy_fix) {
-        c2p_Ent.solve(eos_th, pv, cv, glo, rep_ent);
-      }
 
-      // Treatment for BH interiors after C2P failures
-      // NOTE: By default, alp_thresh=0 so the if condition below is never
-      // triggered. One must be very careful when using this functionality and
-      // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the
-      // parfile
-      if ((alp(p.I) < alp_thresh) && rep_ent.failed()) {
-        if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH)) {
-          pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
-                           // NS or disk
-          pv.eps = eps_BH;
-          pv.Ye = Ye_atmo;
-          pv.press =
-              eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
-          // check on velocities
-          CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
-          CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-          CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
-          if (sol_v > vlim_BH) {
-            pv.vel *= vlim_BH / sol_v;
-            pv.w_lor = wlim_BH;
+        c2p_Ent.solve(eos_th, pv, cv, glo, rep_ent);
+
+        if (rep_ent.failed()) {
+          printf("Entropy C2P failed too :( :( \n");
+          rep_ent.debug_message();
+          // set to atmo
+          cv.dBvec(0) = dBx(p.I);
+          cv.dBvec(1) = dBy(p.I);
+          cv.dBvec(2) = dBz(p.I);
+          pv.Bvec = cv.dBvec / sqrt_detg;
+          atmo.set(pv, cv, glo);
+
+          con2prim_flag(p.I) = 0;
+        }
+
+      } else {
+
+        printf("Second C2P failed too :( :( \n");
+        rep_second.debug_message();
+        con2prim_flag(p.I) = 0;
+
+        // Treatment for BH interiors after C2P failures
+        // NOTE: By default, alp_thresh=0 so the if condition below is never
+        // triggered. One must be very careful when using this functionality and
+        // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the
+        // parfile
+        if (alp(p.I) < alp_thresh) {
+          if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH)) {
+            pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
+                             // NS or disk
+            pv.eps = eps_BH;
+            pv.Ye = Ye_atmo;
+            pv.press =
+                eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+            pv.kappa =
+                eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+            // check on velocities
+            CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
+            CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
+            CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
+            if (sol_v > vlim_BH) {
+              pv.vel *= vlim_BH / sol_v;
+              pv.w_lor = wlim_BH;
+            }
+            cv.from_prim(pv, glo);
+            rep_first.set_atmo = 0;
+            rep_second.set_atmo = 0;
+            rep_ent.set_atmo = 0;
           }
-          cv.from_prim(pv, glo);
-          rep_first.set_atmo = 0;
-          rep_second.set_atmo = 0;
-          rep_ent.set_atmo = 0;
         }
       }
-      con2prim_flag(p.I) = rep_ent.failed() ? 0 : 1;
     }
 
-    if (rep_first.set_atmo && rep_second.set_atmo && rep_ent.set_atmo) {
+    if (rep_first.set_atmo && rep_second.set_atmo && !(use_entropy_fix)) {
       if (debug_mode) {
         printf(
             "WARNING: \n"
@@ -277,14 +297,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       // assert(0);
     }
 
-    /* set flag to success */
-    con2prim_flag(p.I) = 1;
-
     // dummy vars
     CCTK_REAL Ex, Ey, Ez;
 
     // Write back pv
-    pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), entropy(p.I),velx(p.I), vely(p.I),
+    pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), entropy(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
 
     zvec_x(p.I) = wlor * pv.vel(0);
