@@ -174,9 +174,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     }
 
     if (rep_first.failed()) {
-      printf("First C2P failed :( \n");
-      rep_first.debug_message();
-      printf("Calling the back up C2P.. \n");
+      if (debug_mode) {
+         printf("First C2P failed :( \n");
+         rep_first.debug_message();
+         printf("Calling the back up C2P.. \n");
+      }
       // Calling the second C2P
       switch (c2p_sec) {
       case c2p_second_t::Noble: {
@@ -193,9 +195,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     }
 
     if (rep_first.failed() && rep_second.failed()) {
-      printf("Second C2P failed too :( :( \n");
-      rep_second.debug_message();
-
+      if (debug_mode) {
+         printf("Second C2P failed too :( :( \n");
+         rep_second.debug_message();
+      }
       // Treatment for BH interiors after C2P failures
       // NOTE: By default, alp_thresh=0 so the if condition below is never
       // triggered. One must be very careful when using this functionality and
