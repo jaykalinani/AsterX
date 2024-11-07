@@ -179,7 +179,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       break;
     }
     case c2p_first_t::Palenzuela: {
-      c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+      //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+      c2p_Pal.solve(eos_th, pv, cv, glo, rep_first);
       break;
     }
     default:
@@ -197,7 +198,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         break;
       }
       case c2p_second_t::Palenzuela: {
-        c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
+        //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
+        c2p_Pal.solve(eos_th, pv, cv, glo, rep_first);
         break;
       }
       default:

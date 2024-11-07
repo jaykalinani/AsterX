@@ -15,20 +15,21 @@ public:
   /* Constructor */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_2DNoble(
-      EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+      const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
       CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
       CCTK_REAL consError);
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
+      get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
                     const smat<CCTK_REAL, 3> &gup) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up,
+      get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
                     const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec, vec<CCTK_REAL, 3> &mom) const;
+      get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec, const vec<CCTK_REAL, 3> &mom) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
-      get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
-                                 vec<CCTK_REAL, 3> &v_up,
+      get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
+                                 const vec<CCTK_REAL, 3> &v_up,
                                  const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   set_to_nan(prim_vars &pv, cons_vars &cv) const;
@@ -38,19 +39,19 @@ public:
   get_Z_Seed(CCTK_REAL rho, CCTK_REAL eps, CCTK_REAL press,
              CCTK_REAL w_lor) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq, cons_vars &cv) const;
+  get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq, const cons_vars &cv) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq, cons_vars &cv) const;
+  get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq, const cons_vars &cv) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
-          EOSType &eos_th, prim_vars &pv, cons_vars cv,
+          const EOSType &eos_th, prim_vars &pv, const cons_vars &cv,
           const smat<CCTK_REAL, 3> &gup) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars cv,
+  solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds, cons_vars &cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
 
   /* Destructor */
@@ -61,7 +62,7 @@ public:
 template <typename EOSType>
 CCTK_HOST
     CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_2DNoble::c2p_2DNoble(
-        EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+        const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
         CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
         CCTK_REAL consError) {
 
@@ -79,33 +80,33 @@ CCTK_HOST
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_2DNoble::get_Ssq_Exact(vec<CCTK_REAL, 3> &mom_low,
+c2p_2DNoble::get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom_low,
                            const smat<CCTK_REAL, 3> &gup) const {
   vec<CCTK_REAL, 3> mom_up = calc_contraction(gup, mom_low);
   CCTK_REAL Ssq = calc_contraction(mom_low, mom_up);
 
-  if ((Ssq < 0.) && (fabs(Ssq) < 1.0e-13)) {
-    Ssq = fabs(Ssq);
-  }
+  //if ((Ssq < 0.) && (fabs(Ssq) < 1.0e-13)) {
+  //  Ssq = fabs(Ssq);
+  //}
   return Ssq;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_2DNoble::get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up,
+c2p_2DNoble::get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
                            const smat<CCTK_REAL, 3> &glo) const {
   vec<CCTK_REAL, 3> B_low = calc_contraction(glo, B_up);
   return calc_contraction(B_low, B_up); // Bsq
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_2DNoble::get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec,
-                            vec<CCTK_REAL, 3> &mom) const {
+c2p_2DNoble::get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec,
+                            const vec<CCTK_REAL, 3> &mom) const {
   return calc_contraction(mom, Bvec); // BiS^i
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
-c2p_2DNoble::get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
-                                        vec<CCTK_REAL, 3> &v_up,
+c2p_2DNoble::get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
+                                        const vec<CCTK_REAL, 3> &v_up,
                                         const smat<CCTK_REAL, 3> &glo) const {
   vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
   CCTK_REAL vsq = calc_contraction(v_low, v_up);
@@ -113,9 +114,9 @@ c2p_2DNoble::get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
   CCTK_REAL VdotBsq = VdotB * VdotB;
   CCTK_REAL Bsq = get_Bsq_Exact(B_up, glo);
 
-  if ((vsq < 0.) && (fabs(vsq) < 1.0e-13)) {
-    vsq = fabs(vsq);
-  }
+  //if ((vsq < 0.) && (fabs(vsq) < 1.0e-13)) {
+  //  vsq = fabs(vsq);
+  //}
 
   CCTK_REAL w_lor = 1. / sqrt(1. - vsq);
   CCTK_REAL bsq = ((Bsq) / (w_lor * w_lor)) + VdotBsq;
@@ -134,7 +135,7 @@ c2p_2DNoble::get_Z_Seed(CCTK_REAL rho, CCTK_REAL eps, CCTK_REAL press,
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq,
-                                cons_vars &cv) const {
+                                const cons_vars &cv) const {
   return ((Z * (1.0 - Vsq) - cv.dens * sqrt(1.0 - Vsq)) *
           (GammaIdealFluid - 1.0) / (GammaIdealFluid));
 }
@@ -146,7 +147,7 @@ c2p_2DNoble::get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq) const {
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_2DNoble::get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq,
-                                 cons_vars &cv) const {
+                                 const cons_vars &cv) const {
   return ((-Z + cv.dens / (2.0 * sqrt(1.0 - Vsq))) * (GammaIdealFluid - 1.0) /
           GammaIdealFluid);
 }
@@ -154,8 +155,8 @@ c2p_2DNoble::get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
-                     CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv,
-                     cons_vars cv, const smat<CCTK_REAL, 3> &gup) const {
+                     CCTK_REAL BiSi, const EOSType &eos_th, prim_vars &pv,
+                     const cons_vars &cv, const smat<CCTK_REAL, 3> &gup) const {
   CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
   pv.rho = cv.dens / W_Sol;
@@ -193,8 +194,8 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
-                   cons_vars cv, const smat<CCTK_REAL, 3> &glo,
+c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
+                   cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
                    c2p_report &rep) const {
 
   ROOTSTAT status = ROOTSTAT::SUCCESS;
@@ -207,11 +208,25 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const CCTK_REAL spatial_detg = calc_det(glo);
   const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
 
-  if ((!isfinite(sqrt_detg)) || (sqrt_detg <= 0)) {
+  //if ((!isfinite(sqrt_detg)) || (sqrt_detg <= 0)) {
+  //  rep.set_invalid_detg(sqrt_detg);
+  //  set_to_nan(pv, cv);
+  //  return;
+  //}
+
+  // Check positive definiteness of spatial metric
+  // Sylvester's criterion, see
+  // https://en.wikipedia.org/wiki/Sylvester%27s_criterion
+  const bool minor1{ glo(X, X) > 0.0 };
+  const bool minor2{ glo(X, X) * glo(Y, Y) - glo(X, Y) * glo(X, Y) > 0.0 };
+  const bool minor3{ spatial_detg > 0.0 };
+
+  if (!(minor1 && minor2 && minor3)) {
     rep.set_invalid_detg(sqrt_detg);
     set_to_nan(pv, cv);
     return;
   }
+
   const smat<CCTK_REAL, 3> gup = calc_inv(glo, spatial_detg);
 
   /* Undensitize the conserved vars */
@@ -220,6 +235,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
   cv.dYe /= sqrt_detg;
+  cv.dS /= sqrt_detg;
 
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
@@ -240,18 +256,18 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL vsq_seed = w_vsq_bsq(1);
   // const CCTK_REAL bsq = w_vsq_bsq(2); // small b^2
 
-  if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-      (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
-    rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
-    set_to_nan(pv, cv);
-    return;
-  }
+  //if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
+  //    (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
+  //  rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
+  //  set_to_nan(pv, cv);
+  //  return;
+  //}
 
-  if (Bsq < 0) {
-    rep.set_neg_Bsq(Bsq);
-    set_to_nan(pv, cv);
-    return;
-  }
+  //if (Bsq < 0) {
+  //  rep.set_neg_Bsq(Bsq);
+  //  set_to_nan(pv, cv);
+  //  return;
+  //}
 
   if (Bsq > Bsq_lim) {
     rep.set_B_limit(Bsq);
@@ -371,13 +387,20 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   // storing number of iterations taken to find the root
   rep.iters = k;
 
-  if (fabs(errx) <= tolerance) {
-    rep.status = c2p_report::SUCCESS;
-    status = ROOTSTAT::SUCCESS;
-  } else {
+  //if (fabs(errx) <= tolerance) {
+    //rep.status = c2p_report::SUCCESS;
+    //status = ROOTSTAT::SUCCESS;
+  //} else {
+    // set status to root not converged
+    //rep.set_root_conv();
+    //status = ROOTSTAT::NOT_CONVERGED;
+  //}
+
+  if (fabs(errx) > tolerance) {
     // set status to root not converged
     rep.set_root_conv();
     status = ROOTSTAT::NOT_CONVERGED;
+    return;
   }
 
   // Check for bad untrapped divergences
@@ -394,6 +417,11 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   /* Write prims if C2P succeeded */
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_th, pv, cv, gup);
 
+  // ----------
+  // Floor and ceiling for rho and velocity
+  // Keeps pressure the same and changes eps
+  // ----------
+
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
@@ -401,56 +429,116 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     return;
   }
 
+  // check if computed velocities are within the specified limit
+  CCTK_REAL sol_v = sqrt(vsq_Sol);
+  if (sol_v > v_lim) {
+    // add mass, keeps conserved density D
+    pv.rho = cv.dens / w_lim;
+    pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
+    pv.kappa =
+        eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.vel *= v_lim / sol_v;
+    pv.w_lor = w_lim;
+    rep.adjust_cons = true;
+  }
+
+  if (pv.rho > rho_strict) {
+    rep.adjust_cons = true;
+    // remove mass, changes conserved density D
+    pv.rho = rho_strict;
+    pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
+    pv.kappa =
+        eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
+  }
+
+  // ----------
+  // Floor and ceiling for eps
+  // Keeps rho the same and changes press
+  // ----------
+
   // check the validity of the computed eps
   auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
   if (pv.eps > rgeps.max) {
-    //printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
     rep.adjust_cons = true;
-    if (pv.rho >= rho_strict) {
-      rep.set_range_eps(pv.eps); // sets adjust_cons to false by default
-      rep.adjust_cons = true;
-      set_to_nan(pv, cv);
-      return;
-    }
+    pv.eps = rgeps.max;
+    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
   } else if (pv.eps < rgeps.min) {
+    rep.adjust_cons = true;
+    pv.eps = rgeps.min;
+    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  }
+
+  // TODO: check validity for Ye
+
+  // Recompute cons if prims have been adjusted
+  if (rep.adjust_cons) {
+    cv.from_prim(pv, glo);
+  }
+
+
+  // START OLD CODE
+
+  // set to atmo if computed rho is below floor density
+  //if (pv.rho < atmo.rho_cut) {
+    //rep.set_atmo_set();
+    //atmo.set(pv, cv, glo);
+    //return;
+  //}
+
+  // check the validity of the computed eps
+  //auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
+  //if (pv.eps > rgeps.max) {
+    //printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
+    //rep.adjust_cons = true;
+    //if (pv.rho >= rho_strict) {
+      //rep.set_range_eps(pv.eps); // sets adjust_cons to false by default
+      //rep.adjust_cons = true;
+      //set_to_nan(pv, cv);
+      //return;
+    //}
+  //} else if (pv.eps < rgeps.min) {
     /*
     printf(
         "(pv.eps < rgeps.min) is true! pv.eps, rgeps.min: %26.16e, %26.16e \n",
         pv.eps, rgeps.min);
     printf(" Not adjusting cons.. \n");
     */
-    rep.set_range_eps(rgeps.min); // sets adjust_cons to true by default
-  }
+    //rep.set_range_eps(rgeps.min); // sets adjust_cons to true by default
+  //}
 
   // TODO: check validity for Ye
 
   // check if computed velocities are within the specified limit
-  CCTK_REAL sol_v = sqrt(vsq_Sol);
-  if (sol_v > v_lim) {
+  //CCTK_REAL sol_v = sqrt(vsq_Sol);
+  //if (sol_v > v_lim) {
     /*
     printf("(sol_v > v_lim) is true! \n");
     printf("sol_v, v_lim: %26.16e, %26.16e \n", sol_v, v_lim);
     */
-    pv.rho = cv.dens / w_lim;
-    if (pv.rho >= rho_strict) {
-      rep.set_speed_limit({sol_v, sol_v, sol_v});
-      set_to_nan(pv, cv);
-      return;
-    }
-    pv.vel *= v_lim / sol_v;
-    pv.w_lor = w_lim;
-    pv.eps = std::min(std::max(eos_th.rgeps.min, pv.eps), eos_th.rgeps.max);
-    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.rho = cv.dens / w_lim;
+    //if (pv.rho >= rho_strict) {
+      //rep.set_speed_limit({sol_v, sol_v, sol_v});
+      //set_to_nan(pv, cv);
+      //return;
+    //}
+    //pv.vel *= v_lim / sol_v;
+    //pv.w_lor = w_lim;
+    //pv.eps = std::min(std::max(eos_th.rgeps.min, pv.eps), eos_th.rgeps.max);
+    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
-    rep.adjust_cons = true;
-  }
+    //rep.adjust_cons = true;
+  //}
 
-  pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
   // Recompute cons if prims have been adjusted
-  if (rep.adjust_cons) {
-    cv.from_prim(pv, glo);
-  }
+  //if (rep.adjust_cons) {
+    //cv.from_prim(pv, glo);
+  //}
+
+  // END OLD CODE
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
