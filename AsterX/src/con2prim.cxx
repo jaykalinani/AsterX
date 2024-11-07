@@ -84,7 +84,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       eps_atm = std::min(std::max(eos_th.rgeps.min, eps_atm), eos_th.rgeps.max);
       press_atm = eos_th.press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     }
-    CCTK_REAL kappa_atm = press_atm/pow(rho_atm,gl_gamma);
+    CCTK_REAL kappa_atm = eos_th.kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, kappa_atm, rho_atmo_cut);
 
     // Construct Noble c2p object:
