@@ -260,7 +260,7 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   pv_seeds.rho = cv.dens / pv_seeds.w_lor;
 
   CCTK_REAL eps_min =
-      eos_th.range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
+       eos_th.range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
   CCTK_REAL eps_last = max({pv_seeds.eps, eps_min});
 
   /* get pressure seed from updated pv_seeds.rho */
@@ -408,12 +408,14 @@ c2p_2DNoble::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
       return;
     }
   } else if (pv.eps < rgeps.min) {
-    /*
+    /*    
     printf(
         "(pv.eps < rgeps.min) is true! pv.eps, rgeps.min: %26.16e, %26.16e \n",
         pv.eps, rgeps.min);
     printf(" Not adjusting cons.. \n");
     */
+    pv.eps = rgeps.min;
+    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
     rep.set_range_eps(rgeps.min); // sets adjust_cons to true by default
   }
 
