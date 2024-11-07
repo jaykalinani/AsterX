@@ -13,18 +13,18 @@ public:
   /* Constructor */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy(
-      EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+      const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
       CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
       CCTK_REAL consError);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_Ssq_Exact(vec<CCTK_REAL, 3> &mom, const smat<CCTK_REAL, 3> &gup) const;
+  get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom, const smat<CCTK_REAL, 3> &gup) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up, const smat<CCTK_REAL, 3> &glo) const;
+  get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up, const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec, vec<CCTK_REAL, 3> &mom) const;
+  get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec, const vec<CCTK_REAL, 3> &mom) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
-  get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up, vec<CCTK_REAL, 3> &v_up,
+  get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up, const vec<CCTK_REAL, 3> &v_up,
                              const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   set_to_nan(prim_vars &pv, cons_vars &cv) const;
@@ -32,18 +32,18 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq, CCTK_REAL Bsq,
-                 CCTK_REAL BiSi, EOSType &eos_th, prim_vars &pv, cons_vars cv,
+                 CCTK_REAL BiSi, const EOSType &eos_th, prim_vars &pv, const cons_vars &cv,
                  const smat<CCTK_REAL, 3> &gup,
                  const smat<CCTK_REAL, 3> &glo) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi, CCTK_REAL x,
-                     EOSType &eos_th, cons_vars &cv) const;
+                     const EOSType &eos_th, const cons_vars &cv) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
+  solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
 
   /* Destructor */
@@ -54,7 +54,7 @@ public:
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE
 CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
-    EOSType &eos_th, atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
+    const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
     CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
     CCTK_REAL consError) {
 
@@ -72,7 +72,7 @@ CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DEntropy::get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
+c2p_1DEntropy::get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
                              const smat<CCTK_REAL, 3> &gup) const {
 
   CCTK_REAL Ssq;
@@ -90,7 +90,7 @@ c2p_1DEntropy::get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DEntropy::get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up,
+c2p_1DEntropy::get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
                              const smat<CCTK_REAL, 3> &glo) const {
 
   vec<CCTK_REAL, 3> B_low = calc_contraction(glo, B_up);
@@ -98,15 +98,15 @@ c2p_1DEntropy::get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DEntropy::get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec,
-                              vec<CCTK_REAL, 3> &mom) const {
+c2p_1DEntropy::get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec,
+                              const vec<CCTK_REAL, 3> &mom) const {
 
   return Bvec(X) * mom(X) + Bvec(Y) * mom(Y) + Bvec(Z) * mom(Z); // BiSi
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
-c2p_1DEntropy::get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
-                                          vec<CCTK_REAL, 3> &v_up,
+c2p_1DEntropy::get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
+                                          const vec<CCTK_REAL, 3> &v_up,
                                           const smat<CCTK_REAL, 3> &glo) const {
   vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
   CCTK_REAL vsq = calc_contraction(v_low, v_up);
@@ -130,8 +130,8 @@ c2p_1DEntropy::get_WLorentz_vsq_bsq_Seeds(vec<CCTK_REAL, 3> &B_up,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
-                              CCTK_REAL Bsq, CCTK_REAL BiSi, EOSType &eos_th,
-                              prim_vars &pv, cons_vars cv,
+                              CCTK_REAL Bsq, CCTK_REAL BiSi, const EOSType &eos_th,
+                              prim_vars &pv, const cons_vars &cv,
                               const smat<CCTK_REAL, 3> &gup,
                               const smat<CCTK_REAL, 3> &glo) const {
   // Density, entropy, Ye
@@ -177,8 +177,8 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
-                                  CCTK_REAL x, EOSType &eos_th,
-                                  cons_vars &cv) const {
+                                  CCTK_REAL x, const EOSType &eos_th,
+                                  const cons_vars &cv) const {
 
   // We already divided dens, dS and
   // dYe by sqrt(gamma)
@@ -212,7 +212,7 @@ c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
+c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
                      const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const {
 
   ROOTSTAT status = ROOTSTAT::SUCCESS;
@@ -247,7 +247,7 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
 
   /* Undensitize the conserved vars */
   cv.dens /= sqrt_detg;
-  // cv.tau /= sqrt_detg;
+  cv.tau /= sqrt_detg;
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
   cv.dYe /= sqrt_detg;
@@ -347,11 +347,21 @@ c2p_1DEntropy::solve(EOSType &eos_th, prim_vars &pv, cons_vars cv,
     // check primitives against conservatives
     cons_vars cv_check;
     cv_check.from_prim(pv, glo);
-    CCTK_REAL max_error = sqrt(max({pow(cv_check.dens-cv.dens,2.0)/pow(cv.dens,2.0),
-                                    pow(cv_check.mom(0)-cv.mom(0),2.0)/pow(cv.mom(0),2.0),
-                                    pow(cv_check.mom(1)-cv.mom(1),2.0)/pow(cv.mom(1),2.0),
-                                    pow(cv_check.mom(2)-cv.mom(2),2.0)/pow(cv.mom(2),2.0),
-                                    pow(cv_check.tau-cv.tau,2.0)/pow(cv.tau,2.0)}));  
+    /* Undensitize the conserved vars */
+    cv_check.dens /= sqrt_detg;
+    cv_check.tau /= sqrt_detg;
+    cv_check.mom /= sqrt_detg;
+    cv_check.dBvec /= sqrt_detg;
+    cv_check.dYe /= sqrt_detg;
+    cv_check.dS /= sqrt_detg;
+
+    CCTK_REAL small = 1e-50;
+
+    CCTK_REAL max_error = sqrt(max({pow((cv_check.dens-cv.dens)/(cv.dens+small),2.0),
+                                    pow((cv_check.mom(0)-cv.mom(0))/(cv.mom(0)+small),2.0),
+                                    pow((cv_check.mom(1)-cv.mom(1))/(cv.mom(1)+small),2.0),
+                                    pow((cv_check.mom(2)-cv.mom(2))/(cv.mom(2)+small),2.0),
+                                    pow((cv_check.tau-cv.tau)/(cv.tau+small),2.0)}));  
 
     // reject only if mismatch in conservatives is inappropriate, else accept
     if (max_error >= cons_error) { 

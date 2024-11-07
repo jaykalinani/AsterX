@@ -32,6 +32,24 @@ struct prim_vars {
       : rho(rho_), eps(eps_), Ye(ye_), press(press_), kappa(kappa_), vel(vel_), w_lor(w_lor_),
         Bvec(Bvec_){};
 
+  /// Copy assignment
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline prim_vars &
+  operator=(const prim_vars &other) {
+    if (this == &other)
+      return *this; // Handle self-assignment
+    // Copy data members from 'other' to 'this'
+    rho = other.rho;
+    eps = other.eps;
+    Ye = other.Ye;
+    press = other.press;
+    kappa = other.kappa;
+    vel = other.vel;
+    w_lor = other.w_lor;
+    Bvec = other.Bvec;
+    E = other.E;
+    return *this;
+  }
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   scatter(CCTK_REAL &rho_, CCTK_REAL &eps_, CCTK_REAL &ye_, CCTK_REAL &press_, CCTK_REAL &kappa_,
           CCTK_REAL &velx_, CCTK_REAL &vely_, CCTK_REAL &velz_,

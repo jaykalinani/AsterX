@@ -29,6 +29,21 @@ struct cons_vars {
       vec<CCTK_REAL, 3> dBvec_)
       : dens{dens_}, mom{mom_}, tau{tau_}, dYe{dYe_}, dS{dS_}, dBvec{dBvec_} {}
 
+  /// Copy assignment
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline cons_vars &
+  operator=(const cons_vars &other) {
+    if (this == &other)
+      return *this; // Handle self-assignment
+    // Copy data members from 'other' to 'this'
+    dens = other.dens;
+    mom = other.mom;
+    tau = other.tau;
+    dYe = other.dYe;
+    dS = other.dS;
+    dBvec = other.dBvec;
+    return *this;
+  }
+
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   from_prim(const prim_vars &pv, const smat<CCTK_REAL, 3> &g) {
 

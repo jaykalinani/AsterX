@@ -49,15 +49,15 @@ protected:
   CCTK_REAL cons_error;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_Ssq_Exact(vec<CCTK_REAL, 3> &mom,
+      get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
                     const smat<CCTK_REAL, 3> &gup) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_Bsq_Exact(vec<CCTK_REAL, 3> &B_up,
+      get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
                     const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_BiSi_Exact(vec<CCTK_REAL, 3> &Bvec, vec<CCTK_REAL, 3> &mom) const;
+      get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec, const vec<CCTK_REAL, 3> &mom) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 2>
-      get_WLorentz_bsq_Seeds(vec<CCTK_REAL, 3> &B_up, vec<CCTK_REAL, 3> &v_up,
+      get_WLorentz_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up, const vec<CCTK_REAL, 3> &v_up,
                              const smat<CCTK_REAL, 3> &glo) const;
 };
 
