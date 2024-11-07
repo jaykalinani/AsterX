@@ -356,12 +356,15 @@ c2p_1DPalenzuela::solve(EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
       return;
     }
   } else if (pv.eps < rgeps.min) {
+   
     /*
     printf(
         "(pv.eps < rgeps.min) is true! pv.eps, rgeps.min: %26.16e, %26.16e \n",
         pv.eps, rgeps.min);
-    printf(" Not adjusting cons.. \n");
+    printf("Adjusting cons.. \n");
     */
+    pv.eps = rgeps.min;
+    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
     rep.set_range_eps(rgeps.min); // sets adjust_cons to true
   }
 
