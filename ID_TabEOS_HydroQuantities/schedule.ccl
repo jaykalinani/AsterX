@@ -1,6 +1,6 @@
 # Schedule definitions for thorn ID_TabEOS_HydroQuantities
 
-schedule GROUP ID_TabEOS_init IN HydroBaseX_InitialData AFTER Tests1D_Initialize{
+schedule GROUP ID_TabEOS_init IN HydroBaseX_PostInitial {
 } "Group for writing tabulated EOS-related quantities" 
 
 

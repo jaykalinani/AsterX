@@ -26,14 +26,21 @@ using namespace amrex;
 using namespace std;
 
 class Ye_reader {
-	private:
+private:
 	double* Ye_rho_arr;
 	double* rho_arr;
 	FILE* in1D;
 	int nrho;
 
-	public:
-  CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void init(int init_nrho, FILE* init_in1D, double* init_logrho_arr) {
+	// Interpolation Helpers
+	double* rho_sample;
+	double* l_i_of_r;
+
+public:
+
+	bool interp_err{false};
+
+  CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void init(int init_nrho, FILE* init_in1D, double* init_logrho_arr, const int stencil_size) {
 		nrho = init_nrho;	
 		in1D = init_in1D;
 
@@ -46,6 +53,10 @@ class Ye_reader {
 		
 		// Init Y_e array
 		read_1dfile__set_array();
+
+		// Init Interpolation Helpers
+		rho_sample = (double*)The_Managed_Arena()->alloc(stencil_size * sizeof(double));
+		l_i_of_r = (double*)The_Managed_Arena()->alloc(stencil_size * sizeof(double));
 
 		return;
   }
@@ -93,14 +104,9 @@ class Ye_reader {
 		// Now perform the Lagrange polynomial interpolation:
 
 		// First set the interpolation coefficients:
-		// CCTK_REAL rho_sample[interp_stencil_size];
-		CCTK_REAL* rho_sample;
-    rho_sample = (double*)The_Managed_Arena()->alloc(interp_stencil_size * sizeof(double));
 		for(int i=idxmin;i<idxmin+interp_stencil_size;i++) {
 			rho_sample[i-idxmin] = rho_arr[i];
 		}
-		CCTK_REAL* l_i_of_r;
-    l_i_of_r = (double*)The_Managed_Arena()->alloc(interp_stencil_size * sizeof(double));
 		for(int i=0;i<interp_stencil_size;i++) {
 			CCTK_REAL numer = 1.0;
 			CCTK_REAL denom = 1.0;
@@ -123,7 +129,7 @@ class Ye_reader {
 	}
 
 	// Find interpolation index using Bisection root-finding algorithm:
-	CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE static inline int bisection_idx_finder(const CCTK_REAL rrbar, const int numlines_in_file, const CCTK_REAL *restrict rbar_arr) {
+	CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline int bisection_idx_finder(const CCTK_REAL rrbar, const int numlines_in_file, const CCTK_REAL *restrict rbar_arr) {
 		int x1 = 0;
 		int x2 = numlines_in_file-1;
 		CCTK_REAL y1 = rrbar-rbar_arr[x1];
@@ -131,7 +137,11 @@ class Ye_reader {
 		if(y1*y2 >= 0) {
 			// Cannot print on GPU
 			// fprintf(stderr,"INTERPOLATION BRACKETING ERROR %e | %e %e\n",rrbar,y1,y2);
-			exit(1);
+			// exit(1);
+
+			// Return poison value instead
+			interp_err = true;
+			return 2555;
 		}
 		for(int i=0;i<numlines_in_file;i++) {
 			int x_midpoint = (x1+x2)/2;
@@ -154,7 +164,11 @@ class Ye_reader {
 		}
 		// Cannot print on GPU
 		// fprintf(stderr,"INTERPOLATION BRACKETING ERROR: DID NOT CONVERGE.\n");
-		exit(1);
+		// exit(1);
+
+		// Return poison value instead
+		interp_err = true;
+		return 2555;
 	}
 
 	// Reference: https://en.wikipedia.org/wiki/Linear_interpolation
