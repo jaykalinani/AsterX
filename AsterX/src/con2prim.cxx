@@ -170,7 +170,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_report rep_ent;
 
     /* set flag to success */
-    con2prim_flag(p.I) = 1;
+    con2prim_flag(p.I) = 1; 
 
     // Calling the first C2P
     switch (c2p_fir) {
