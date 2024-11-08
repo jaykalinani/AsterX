@@ -215,8 +215,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         c2p_Ent.solve(eos_th, pv, cv, glo, rep_ent);
 
         if (rep_ent.failed()) {
-          printf("Entropy C2P failed too :( :( \n");
-          rep_ent.debug_message();
           // set to atmo
           cv.dBvec(0) = dBx(p.I);
           cv.dBvec(1) = dBy(p.I);
