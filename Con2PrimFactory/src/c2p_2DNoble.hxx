@@ -417,11 +417,6 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   /* Write prims if C2P succeeded */
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_th, pv, cv, gup);
 
-  // ----------
-  // Floor and ceiling for rho and velocity
-  // Keeps pressure the same and changes eps
-  // ----------
-
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
@@ -429,27 +424,41 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     return;
   }
 
-  // check if computed velocities are within the specified limit
-  CCTK_REAL sol_v = sqrt(vsq_Sol);
-  if (sol_v > v_lim) {
-    // add mass, keeps conserved density D
-    pv.rho = cv.dens / w_lim;
-    pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
-    pv.kappa =
-        eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.vel *= v_lim / sol_v;
-    pv.w_lor = w_lim;
-    rep.adjust_cons = true;
-  }
+  c2p::prims_floors_and_ceilings(eos_th,pv,cv,glo,rep);
 
-  if (pv.rho > rho_strict) {
-    rep.adjust_cons = true;
+  // ----------
+  // Floor and ceiling for rho and velocity
+  // Keeps pressure the same and changes eps
+  // ----------
+
+  // set to atmo if computed rho is below floor density
+  //if (pv.rho < atmo.rho_cut) {
+  //  rep.set_atmo_set();
+  //  atmo.set(pv, cv, glo);
+  //  return;
+  //}
+
+  // check if computed velocities are within the specified limit
+  //CCTK_REAL sol_v = sqrt(vsq_Sol);
+  //if (sol_v > v_lim) {
+    // add mass, keeps conserved density D
+    //pv.rho = cv.dens / w_lim;
+    //pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
+    //pv.kappa =
+    //    eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.vel *= v_lim / sol_v;
+    //pv.w_lor = w_lim;
+    //rep.adjust_cons = true;
+  //}
+
+  //if (pv.rho > rho_strict) {
+    //rep.adjust_cons = true;
     // remove mass, changes conserved density D
-    pv.rho = rho_strict;
-    pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
-    pv.kappa =
-        eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
-  }
+    //pv.rho = rho_strict;
+    //pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
+    //pv.kappa =
+        //eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
+  //}
 
   // ----------
   // Floor and ceiling for eps
@@ -457,18 +466,18 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   // ----------
 
   // check the validity of the computed eps
-  auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
-  if (pv.eps > rgeps.max) {
-    rep.adjust_cons = true;
-    pv.eps = rgeps.max;
-    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  } else if (pv.eps < rgeps.min) {
-    rep.adjust_cons = true;
-    pv.eps = rgeps.min;
-    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  }
+  //auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
+  //if (pv.eps > rgeps.max) {
+    //rep.adjust_cons = true;
+    //pv.eps = rgeps.max;
+    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  //} else if (pv.eps < rgeps.min) {
+    //rep.adjust_cons = true;
+    //pv.eps = rgeps.min;
+    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  //}
 
   // TODO: check validity for Ye
 

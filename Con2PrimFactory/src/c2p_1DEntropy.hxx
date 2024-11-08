@@ -383,11 +383,6 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
             (pv.press + 0.5 * bs2) - bst * bst) -
            cv.dens;
 
-  // ----------
-  // Floor and ceiling for rho and velocity
-  // Keeps pressure the same and changes eps
-  // ----------
-
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
@@ -395,41 +390,55 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     return;
   }
 
+  c2p::prims_floors_and_ceilings(eos_th,pv,cv,glo,rep);
+
+  // ----------
+  // Floor and ceiling for rho and velocity
+  // Keeps pressure the same and changes eps
+  // ----------
+
+  // set to atmo if computed rho is below floor density
+  //if (pv.rho < atmo.rho_cut) {
+  //  rep.set_atmo_set();
+  //  atmo.set(pv, cv, glo);
+  //  return;
+  //}
+
   // check if computed velocities are within the specified limit
-  CCTK_REAL vsq_Sol = calc_contraction(v_low, pv.vel);
-  CCTK_REAL sol_v = sqrt(vsq_Sol);
-  if (sol_v > v_lim) {
+  //CCTK_REAL vsq_Sol = calc_contraction(v_low, pv.vel);
+  //CCTK_REAL sol_v = sqrt(vsq_Sol);
+  //if (sol_v > v_lim) {
     /*
     printf("(sol_v > v_lim) is true! \n");
     printf("sol_v, v_lim: %26.16e, %26.16e \n", sol_v, v_lim);
     */
     // add mass, keeps conserved density D
-    pv.rho = cv.dens / w_lim;
-    pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
-    pv.kappa =
-        eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.rho = cv.dens / w_lim;
+    //pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
+    //pv.kappa =
+    //    eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
     // if (pv.rho >= rho_strict) {
     //  rep.set_speed_limit({ sol_v, sol_v, sol_v });
     //  set_to_nan(pv, cv);
     //  return;
     //}
-    pv.vel *= v_lim / sol_v;
-    pv.w_lor = w_lim;
+    //pv.vel *= v_lim / sol_v;
+    //pv.w_lor = w_lim;
     // pv.eps = std::min(std::max(eos_th.rgeps.min, pv.eps),
     // eos_th.rgeps.max);
     // pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
-    rep.adjust_cons = true;
-  }
+    //rep.adjust_cons = true;
+  //}
 
-  if (pv.rho > rho_strict) {
-    rep.adjust_cons = true;
+  //if (pv.rho > rho_strict) {
+    //rep.adjust_cons = true;
     // remove mass, changes conserved density D
-    pv.rho = rho_strict;
-    pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
-    pv.kappa =
-        eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
-  }
+    //pv.rho = rho_strict;
+    //pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
+    //pv.kappa =
+        //eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
+  //}
 
   // ----------
   // Floor and ceiling for eps
@@ -437,20 +446,20 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
   // ----------
 
   // check the validity of the computed eps
-  auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
-  if (pv.eps > rgeps.max) {
+  //auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
+  //if (pv.eps > rgeps.max) {
     // printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
-    rep.adjust_cons = true;
+    //rep.adjust_cons = true;
     // if (pv.rho >= rho_strict) {
     //  rep.set_range_eps(pv.eps); // sets adjust_cons to false by default
     //  rep.adjust_cons = true;
     //  set_to_nan(pv, cv);
     //  return;
     //}
-    pv.eps = rgeps.max;
-    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  } else if (pv.eps < rgeps.min) {
+    //pv.eps = rgeps.max;
+    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  //} else if (pv.eps < rgeps.min) {
     /*
     printf(
         "(pv.eps < rgeps.min) is true! pv.eps, rgeps.min: %26.16e, %26.16e
@@ -459,11 +468,11 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     printf(" Not adjusting cons.. \n");
     */
     // rep.set_range_eps(rgeps.min); // sets adjust_cons to true
-    rep.adjust_cons = true;
-    pv.eps = rgeps.min;
-    pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  }
+    //rep.adjust_cons = true;
+    //pv.eps = rgeps.min;
+    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  //}
 
   // TODO: check validity for Ye
 
