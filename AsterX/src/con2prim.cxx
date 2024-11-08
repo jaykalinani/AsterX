@@ -149,7 +149,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         pv_seeds.Ye = Ye_atmo;
         pv_seeds.press =
             eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
-        pv.kappa =
+        pv_seeds.kappa =
             eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
         // check on velocities
         CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
