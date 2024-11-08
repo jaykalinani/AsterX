@@ -227,8 +227,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
       } else {
 
-        printf("Second C2P failed too :( :( \n");
-        rep_second.debug_message();
+        if (debug_mode) {      
+          printf("Second C2P failed too :( :( \n");
+          rep_second.debug_message();
+        }
+
         con2prim_flag(p.I) = 0;
 
         // Treatment for BH interiors after C2P failures
