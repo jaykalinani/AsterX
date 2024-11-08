@@ -87,9 +87,6 @@ c2p_1DPalenzuela::get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
   Ssq +=
       mom(Z) * (gup(X, Z) * mom(X) + gup(Y, Z) * mom(Y) + gup(Z, Z) * mom(Z));
 
-  //if ((Ssq < 0.) && (fabs(Ssq) < 1.0e-13)) {
-  //  Ssq = fabs(Ssq);
-  //}
   return Ssq;
 }
 
@@ -117,10 +114,6 @@ c2p_1DPalenzuela::get_WLorentz_vsq_bsq_Seeds(
   CCTK_REAL VdotB = calc_contraction(v_low, B_up);
   CCTK_REAL VdotBsq = VdotB * VdotB;
   CCTK_REAL Bsq = get_Bsq_Exact(B_up, glo);
-
-  //if ((vsq < 0.) && (fabs(vsq) < 1.0e-13)) {
-  //  vsq = fabs(vsq);
-  //}
 
   CCTK_REAL w_lor = 1. / sqrt(1. - vsq);
   CCTK_REAL bsq = ((Bsq) / (w_lor * w_lor)) + VdotBsq;
@@ -249,6 +242,7 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
   /* Check validity of the 3-metric and compute its inverse */
   const CCTK_REAL spatial_detg = calc_det(glo);
   const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
+
   //if ((!isfinite(sqrt_detg)) || (sqrt_detg <= 0)) {
   //  rep.set_invalid_detg(sqrt_detg);
   //  set_to_nan(pv, cv);
@@ -284,28 +278,13 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
     return;
   }
 
-  // compute primitive B seed from conserved B of current time step for better
-  // guess
-  // pv_seeds.Bvec = cv.dBvec;
-
   const CCTK_REAL Ssq = get_Ssq_Exact(cv.mom, gup);
   const CCTK_REAL Bsq = get_Bsq_Exact(cv.dBvec, glo);
   const CCTK_REAL BiSi = get_BiSi_Exact(cv.dBvec,cv.mom);
-  //const vec<CCTK_REAL, 3> w_vsq_bsq = get_WLorentz_vsq_bsq_Seeds(
-  //    pv_seeds.Bvec, pv_seeds.vel, glo); // this also recomputes pv_seeds.w_lor
-  //pv_seeds.w_lor = w_vsq_bsq(0);
-  // CCTK_REAL vsq_seed = w_vsq_bsq(1);
-  // const CCTK_REAL bsq = w_vsq_bsq(2);
 
   //if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
   //    (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
   //  rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
-  //  set_to_nan(pv, cv);
-  //  return;
-  //}
-
-  //if (Bsq < 0) {
-  //  rep.set_neg_Bsq(Bsq);
   //  set_to_nan(pv, cv);
   //  return;
   //}
@@ -315,11 +294,6 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
     set_to_nan(pv, cv);
     return;
   }
-
-  /* update rho seed from cv and wlor */
-  // rho consistent with cv.rho should be better guess than rho from last
-  // timestep
-  // pv_seeds.rho = cv.dens / pv_seeds.w_lor;
 
   // Find x, this is the recovery process
   //const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
@@ -412,68 +386,6 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
 
   c2p::prims_floors_and_ceilings(eos_th,pv,cv,glo,rep);
 
-  // Lower velocity
-  //const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
-
-  // ----------
-  // Floor and ceiling for rho and velocity
-  // Keeps pressure the same and changes eps
-  // ----------
-
-  // set to atmo if computed rho is below floor density
-  //if (pv.rho < atmo.rho_cut) {
-    //rep.set_atmo_set();
-    //atmo.set(pv, cv, glo);
-    //return;
-  //}
-
-  // check if computed velocities are within the specified limit
-  //CCTK_REAL vsq_Sol = calc_contraction(v_low, pv.vel);
-  //CCTK_REAL sol_v = sqrt(vsq_Sol);
-  //if (sol_v > v_lim) {
-    // add mass, keeps conserved density D
-    //pv.rho = cv.dens / w_lim;
-    //pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
-    //pv.kappa =
-    //    eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    //pv.vel *= v_lim / sol_v;
-    //pv.w_lor = w_lim;
-
-    //rep.adjust_cons = true;
-  //}
-
-  //if (pv.rho > rho_strict) {
-    //rep.adjust_cons = true;
-    // remove mass, changes conserved density D
-    //pv.rho = rho_strict;
-    //pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
-    //pv.kappa =
-        //eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
-  //}
-
-  // ----------
-  // Floor and ceiling for eps
-  // Keeps rho the same and changes press
-  // ----------
-
-  // check the validity of the computed eps
-  //auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
-  //if (pv.eps > rgeps.max) {
-
-    //rep.adjust_cons = true;
-    //pv.eps = rgeps.max;
-    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  //} else if (pv.eps < rgeps.min) {
-
-    //rep.adjust_cons = true;
-    //pv.eps = rgeps.min;
-    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  //}
-
-  // TODO: check validity for Ye
-
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {
     cv.from_prim(pv, glo);
@@ -487,69 +399,6 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
     cv.dS *= sqrt_detg;
   }
 
-  // OLD CODE START
-
-  // set to atmo if computed rho is below floor density
-  //if (pv.rho < atmo.rho_cut) {
-  //  rep.set_atmo_set();
-  //  atmo.set(pv, cv, glo);
-  //  return;
-  //}
-
-  // check the validity of the computed eps
-  //auto rgeps = eos_th.range_eps_from_valid_rho_ye(pv.rho, pv.Ye);
-  //if (pv.eps > rgeps.max) {
-    //printf("(pv.eps > rgeps.max) is true, adjusting cons.. \n");
-    //rep.adjust_cons = true;
-    //if (pv.rho >= rho_strict) {
-      //rep.set_range_eps(pv.eps); // sets adjust_cons to false by default
-      //rep.adjust_cons = true;
-      //set_to_nan(pv, cv);
-      //return;
-    //}
-  //} else if (pv.eps < rgeps.min) {
-    /*
-    printf(
-        "(pv.eps < rgeps.min) is true! pv.eps, rgeps.min: %26.16e, %26.16e \n",
-        pv.eps, rgeps.min);
-    printf(" Not adjusting cons.. \n");
-    */
-    //rep.set_range_eps(rgeps.min); // sets adjust_cons to true
-  //}
-
-  // TODO: check validity for Ye
-
-  // check if computed velocities are within the specified limit
-  //vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
-  //CCTK_REAL vsq_Sol = calc_contraction(v_low, pv.vel);
-  //CCTK_REAL sol_v = sqrt(vsq_Sol);
-  //if (sol_v > v_lim) {
-    /*
-    printf("(sol_v > v_lim) is true! \n");
-    printf("sol_v, v_lim: %26.16e, %26.16e \n", sol_v, v_lim);
-    */
-    //pv.rho = cv.dens / w_lim;
-    //if (pv.rho >= rho_strict) {
-      //rep.set_speed_limit({sol_v, sol_v, sol_v});
-      //set_to_nan(pv, cv);
-      //return;
-    //}
-    //pv.vel *= v_lim / sol_v;
-    //pv.w_lor = w_lim;
-    //pv.eps = std::min(std::max(eos_th.rgeps.min, pv.eps), eos_th.rgeps.max);
-    //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-
-    //rep.adjust_cons = true;
-  //}
-
-  //pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-
-  // Recompute cons if prims have been adjusted
-  //if (rep.adjust_cons) {
-  //  cv.from_prim(pv, glo);
-  //}
-
-  // OLD CODE END
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
