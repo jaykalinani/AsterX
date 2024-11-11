@@ -192,6 +192,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         printf("First C2P failed :( \n");
         rep_first.debug_message();
         printf("Calling the back up C2P.. \n");
+      }
       // Calling the second C2P
       switch (c2p_sec) {
       case c2p_second_t::Noble: {
