@@ -15,7 +15,8 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy(
       const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
       CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
-      CCTK_REAL consError);
+      CCTK_REAL consError,
+      bool use_z);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom, const smat<CCTK_REAL, 3> &gup) const;
@@ -56,7 +57,8 @@ CCTK_HOST CCTK_DEVICE
 CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
     const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
     CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
-    CCTK_REAL consError) {
+    CCTK_REAL consError,
+    bool use_z) {
 
   GammaIdealFluid = eos_th.gamma;
   maxIterations = maxIter;
@@ -69,6 +71,7 @@ CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
   Bsq_lim = B_lim * B_lim;
   atmo = atm;
   cons_error = consError;
+  use_zprim = use_z;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -145,20 +148,55 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
   CCTK_REAL Z_Sol =
       (xEntropy_Sol + pv.eps * xEntropy_Sol + pv.press) * pv.w_lor * pv.w_lor;
 
-  pv.vel(X) =
-      (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
-      (Z_Sol + Bsq);
-  pv.vel(X) += BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
+  if (use_zprim) {
 
-  pv.vel(Y) =
-      (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
-      (Z_Sol + Bsq);
-  pv.vel(Y) += BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+    CCTK_REAL zx =
+        pv.w_lor * (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
+        (Z_Sol + Bsq);
+    zx += pv.w_lor * BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
 
-  pv.vel(Z) =
-      (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
-      (Z_Sol + Bsq);
-  pv.vel(Z) += BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+    CCTK_REAL zy =
+        pv.w_lor * (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
+        (Z_Sol + Bsq);
+    zy += pv.w_lor * BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+
+    CCTK_REAL zz =
+        pv.w_lor * (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
+        (Z_Sol + Bsq);
+    zz += pv.w_lor * BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+
+    CCTK_REAL zx_down = glo(X, X) * zx + glo(X, Y) * zy + glo(X, Z) * zz;
+    CCTK_REAL zy_down = glo(X, Y) * zx + glo(Y, Y) * zy + glo(Y, Z) * zz;
+    CCTK_REAL zz_down = glo(X, Z) * zx + glo(Y, Z) * zy + glo(Z, Z) * zz;
+
+    CCTK_REAL Zsq = zx*zx_down + zy*zy_down + zz*zz_down;
+
+    CCTK_REAL SafeLor = sqrt(1.0+Zsq);
+
+    pv.vel(X) = zx/SafeLor;
+    pv.vel(Y) = zy/SafeLor;
+    pv.vel(Z) = zz/SafeLor;
+
+    pv.w_lor = SafeLor;
+
+  } else {
+
+    pv.vel(X) =
+        (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
+        (Z_Sol + Bsq);
+    pv.vel(X) += BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
+  
+    pv.vel(Y) =
+        (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
+        (Z_Sol + Bsq);
+    pv.vel(Y) += BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+  
+    pv.vel(Z) =
+        (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
+        (Z_Sol + Bsq);
+    pv.vel(Z) += BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+
+  }
 
   pv.Bvec = cv.dBvec;
 
