@@ -28,7 +28,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
   const eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
   const CCTK_REAL dummy_ye = 0.5;
 
-  const bool rot_off = ((rotate_angle_x == 0.0) && (rotate_angle_y == 0.0) && (rotate_angle == 0.0)) ? true : false;
+  const bool rot_off = ((rotate_angle_x == 0.0) && (rotate_angle_y == 0.0) && (rotate_angle_z == 0.0)) ? true : false;
 
   if (CCTK_EQUALS(test_case, "equilibrium")) {
 
