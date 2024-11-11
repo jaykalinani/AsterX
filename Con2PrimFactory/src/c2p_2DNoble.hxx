@@ -308,7 +308,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   pv_seeds.rho = cv.dens / pv_seeds.w_lor;
 
   CCTK_REAL eps_min =
-      eos_th.range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
+       eos_th.range_eps_from_valid_rho_ye(pv_seeds.rho, pv_seeds.Ye).min;
   CCTK_REAL eps_last = max({pv_seeds.eps, eps_min});
 
   /* get pressure seed from updated pv_seeds.rho */
