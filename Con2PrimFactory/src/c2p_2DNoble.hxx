@@ -232,7 +232,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
                    cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
                    c2p_report &rep) const {
 
-  ROOTSTAT status = ROOTSTAT::SUCCESS;
+  //ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
   rep.adjust_cons = false;
   rep.set_atmo = false;
@@ -424,7 +424,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   if (fabs(errx) > tolerance) {
     // set status to root not converged
     rep.set_root_conv();
-    status = ROOTSTAT::NOT_CONVERGED;
+    //status = ROOTSTAT::NOT_CONVERGED;
     return;
   }
 

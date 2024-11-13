@@ -201,7 +201,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       }
       case c2p_second_t::Palenzuela: {
         //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
-        c2p_Pal.solve(eos_th, pv, cv, glo, rep_first);
+        c2p_Pal.solve(eos_th, pv, cv, glo, rep_second);
         break;
       }
       default:
@@ -216,6 +216,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         c2p_Ent.solve(eos_th, pv, cv, glo, rep_ent);
 
         if (rep_ent.failed()) {
+
+          if (debug_mode) {      
+            printf("Entropy C2P failed. Setting point to atmosphere.\n");
+            rep_ent.debug_message();
+          }
+
           // set to atmo
           cv.dBvec(0) = dBx(p.I);
           cv.dBvec(1) = dBy(p.I);

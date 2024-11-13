@@ -246,7 +246,7 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
                      const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const {
 
-  ROOTSTAT status = ROOTSTAT::SUCCESS;
+  //ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
   rep.adjust_cons = false;
   rep.set_atmo = false;
@@ -377,7 +377,7 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     if (max_error >= cons_error) { 
       // set status to root not converged
       rep.set_root_conv();
-      status = ROOTSTAT::NOT_CONVERGED;
+      //status = ROOTSTAT::NOT_CONVERGED;
       return;
     }
   }
