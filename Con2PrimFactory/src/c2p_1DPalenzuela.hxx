@@ -146,7 +146,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
        (2.0 * xPalenzuela_Sol + sPalenzuela) * tPalenzuela * tPalenzuela) /
           (xPalenzuela_Sol * xPalenzuela_Sol * (xPalenzuela_Sol + sPalenzuela) *
            (xPalenzuela_Sol + sPalenzuela));
-  Wminus2 = fmin(fmax(Wminus2, 1e-10), 1 - 1e-10);
+  Wminus2 = fmin(fmax(Wminus2, 1e-20), 1 - 1e-20);
   const CCTK_REAL W_sol = pow(Wminus2, -0.5);
 
   // (ii)
@@ -245,7 +245,7 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
       1.0 - (x * x * rPalenzuela +
              (2.0 * x + sPalenzuela) * tPalenzuela * tPalenzuela) /
                 (x * x * (x + sPalenzuela) * (x + sPalenzuela));
-  Wminus2 = fmin(fmax(Wminus2, 1e-10), 1 - 1e-10);
+  Wminus2 = fmin(fmax(Wminus2, 1e-20), 1 - 1e-20);
   const CCTK_REAL W_loc = pow(Wminus2, -0.5);
 
   // (ii)
@@ -390,6 +390,7 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
     // check primitives against conservatives
     cons_vars cv_check;
     cv_check.from_prim(pv, glo);
+
     /* Undensitize the conserved vars */
     cv_check.dens /= sqrt_detg;
     cv_check.tau /= sqrt_detg;
@@ -408,6 +409,7 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
 
     // reject only if mismatch in conservatives is inappropriate, else accept
     if (max_error >= cons_error) { 
+
       // set status to root not converged
       rep.set_root_conv();
       //status = ROOTSTAT::NOT_CONVERGED;

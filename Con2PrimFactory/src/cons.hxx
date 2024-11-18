@@ -54,7 +54,8 @@ struct cons_vars {
     const vec<CCTK_REAL, 3> &v_up = pv.vel;
     const vec<CCTK_REAL, 3> v_low = calc_contraction(g, v_up);
 
-    const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
+    const CCTK_REAL w_lorentz = pv.w_lor;;
+    //const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
 
     /* Computing B_j */
     const vec<CCTK_REAL, 3> &B_up = pv.Bvec;

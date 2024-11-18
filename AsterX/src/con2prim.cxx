@@ -34,6 +34,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
+  const bool use_v_vec = CCTK_EQUALS(recon_type, "v_vec");
+
   c2p_first_t c2p_fir;
   c2p_second_t c2p_sec;
 
@@ -60,6 +62,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       1, 1, 1>(grid.nghostzones, [=] CCTK_DEVICE(
                                      const PointDesc
                                          &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  // Note that HydroBaseX gfs are NaN when entering this loop due
+  // explicit dependence on conservatives from AsterX ->
+  // dependents tag 
+
     // Setting up atmosphere
     CCTK_REAL rho_atm = 0.0;   // dummy initialization
     CCTK_REAL press_atm = 0.0; // dummy initialization
@@ -108,8 +114,22 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
 
     vec<CCTK_REAL, 3> v_up{saved_velx(p.I), saved_vely(p.I), saved_velz(p.I)};
-    const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
-    CCTK_REAL wlor = calc_wlorentz(v_low, v_up);
+    vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
+    CCTK_REAL zsq{0.0};
+
+    const CCTK_REAL vsq = calc_contraction(v_low,v_up);
+    if (vsq >= 1.0) {
+      CCTK_REAL wlim = sqrt(1.0 + vw_lim * vw_lim);
+      CCTK_REAL vlim = vw_lim/wlim;
+      v_up *= vlim/sqrt(vsq);
+      v_low *= vlim/sqrt(vsq);
+      zsq = vw_lim;
+    } else {
+      zsq = vsq/(1.0-vsq);
+    } 
+       
+    //CCTK_REAL wlor = calc_wlorentz(v_low, v_up);
+    CCTK_REAL wlor = sqrt(1.0+zsq);
 
     vec<CCTK_REAL, 3> Bup{dBx(p.I) / sqrt_detg, dBy(p.I) / sqrt_detg,
                           dBz(p.I) / sqrt_detg};
@@ -239,6 +259,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
           rep_second.debug_message();
         }
 
+        rep_first.set_atmo = true;
+        rep_second.set_atmo = true;
+
         con2prim_flag(p.I) = 0;
 
         // Treatment for BH interiors after C2P failures
@@ -337,6 +360,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     saved_vely(p.I) = vely(p.I);
     saved_velz(p.I) = velz(p.I);
     saved_eps(p.I) = eps(p.I);
+
   }); // Loop
 }
 

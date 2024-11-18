@@ -11,6 +11,7 @@ class c2p_2DNoble : public c2p {
 public:
   /* Some attributes */
   CCTK_REAL GammaIdealFluid;
+  CCTK_REAL Zmin;
 
   /* Constructor */
   template <typename EOSType>
@@ -32,6 +33,10 @@ public:
       get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
                                  const vec<CCTK_REAL, 3> &v_up,
                                  const smat<CCTK_REAL, 3> &glo) const;
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
+      getZ_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
+                                  const vec<CCTK_REAL, 3> &z_up,
+                                  const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   set_to_nan(prim_vars &pv, cons_vars &cv) const;
 
@@ -81,6 +86,7 @@ CCTK_HOST
   atmo = atm;
   cons_error = consError;
   use_zprim = use_z;
+  Zmin = eos_th.rgrho.min;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -116,6 +122,26 @@ c2p_2DNoble::get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
   CCTK_REAL Bsq = get_Bsq_Exact(B_up, glo);
 
   CCTK_REAL w_lor = 1. / sqrt(1. - vsq);
+  CCTK_REAL bsq = ((Bsq) / (w_lor * w_lor)) + VdotBsq;
+  vec<CCTK_REAL, 3> w_vsq_bsq{w_lor, vsq, bsq};
+
+  return w_vsq_bsq; //{w_lor, vsq, bsq}
+}
+
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
+c2p_2DNoble::getZ_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
+                                         const vec<CCTK_REAL, 3> &z_up,
+                                         const smat<CCTK_REAL, 3> &glo) const {
+  vec<CCTK_REAL, 3> z_low = calc_contraction(glo, z_up);
+  CCTK_REAL zsq = calc_contraction(z_low, z_up);
+  
+  CCTK_REAL w_lor = sqrt(1. + zsq);
+  CCTK_REAL vsq   = min(zsq/w_lor/w_lor,1.-1.e-15);
+
+  CCTK_REAL VdotB = calc_contraction(z_low, B_up)/w_lor;
+  CCTK_REAL VdotBsq = VdotB * VdotB;
+  CCTK_REAL Bsq = get_Bsq_Exact(B_up, glo);
+
   CCTK_REAL bsq = ((Bsq) / (w_lor * w_lor)) + VdotBsq;
   vec<CCTK_REAL, 3> w_vsq_bsq{w_lor, vsq, bsq};
 
@@ -284,10 +310,28 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const CCTK_REAL Ssq = get_Ssq_Exact(cv.mom, gup);
   const CCTK_REAL Bsq = get_Bsq_Exact(pv_seeds.Bvec, glo);
   const CCTK_REAL BiSi = get_BiSi_Exact(pv_seeds.Bvec, cv.mom);
-  const vec<CCTK_REAL, 3> w_vsq_bsq = get_WLorentz_vsq_bsq_Seeds(
+
+  vec<CCTK_REAL, 3> w_vsq_bsq;
+  CCTK_REAL vsq_seed;
+
+  if (use_zprim) {
+
+    vec<CCTK_REAL,3> zvec = pv_seeds.vel*pv_seeds.w_lor;
+
+    w_vsq_bsq = getZ_WLorentz_vsq_bsq_Seeds(
+      pv_seeds.Bvec, zvec, glo); // this also recomputes pv_seeds.w_lor
+
+    pv_seeds.w_lor = w_vsq_bsq(0);
+    vsq_seed = w_vsq_bsq(1);
+
+  } else {
+
+    w_vsq_bsq = get_WLorentz_vsq_bsq_Seeds(
       pv_seeds.Bvec, pv_seeds.vel, glo); // this also recomputes pv_seeds.w_lor
-  pv_seeds.w_lor = w_vsq_bsq(0);
-  CCTK_REAL vsq_seed = w_vsq_bsq(1);
+
+    pv_seeds.w_lor = w_vsq_bsq(0);
+    vsq_seed = w_vsq_bsq(1);
+  }
 
   //if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
   //    (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
@@ -330,8 +374,14 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   x_old[1] = x[1];
 
   /* Start Recovery with 2D NR Solver */
-  const CCTK_INT n = 2;
-  const CCTK_REAL dv = (1. - 1.e-15);
+  constexpr CCTK_INT n = 2;
+  //constexpr CCTK_REAL dv = (1. - 1.e-10);//v_lim*v_lim; //(1. - 1.e-15);
+  //constexpr CCTK_REAL dw = 1. / (1. - dv);//w_lim*w_lim;
+  const CCTK_REAL dv = v_lim*v_lim; //(1. - 1.e-15);
+  const CCTK_REAL dw = w_lim*w_lim;
+
+
+
   CCTK_REAL dx[n];
   CCTK_REAL fjac[n][n];
   CCTK_REAL resid[n];
@@ -347,9 +397,29 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     implementation in the Spritz code. As the analytical form of the equations
     is known, the Newton-Raphson step can be computed explicitly */
 
+    if (x[1] < 0.0) {
+      x[1] = 0.0;
+    }
+
+    else {
+      if (x[1] >= dv) {
+        x[0] *= dw*(1.0-x[1]);
+        x[1] = dv;
+      }
+    }
+
+    if (x[0] < Zmin) {
+      x[0] = Zmin;
+    } else {
+      if (x[0] > 1e20) {
+        x[0] = x_old[0];
+      }
+    }
+
     const CCTK_REAL Z = x[0];
     const CCTK_REAL invZ = 1.0 / Z;
     const CCTK_REAL Vsq = x[1];
+
     const CCTK_REAL Sdotn = -(cv.tau + cv.dens);
     const CCTK_REAL p_tmp = get_Press_funcZVsq(Z, Vsq, cv);
     const CCTK_REAL dPdvsq = get_dPdVsq_funcZVsq(Z, Vsq, cv);
@@ -390,6 +460,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     errx = (x[0] == 0.) ? fabs(dx[0]) : fabs(dx[0] / x[0]);
 
     /* make sure that the new x[] is physical */
+    /*
     if (x[0] < 0.0) {
       x[0] = fabs(x[0]);
     } else {
@@ -407,6 +478,12 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
         x[1] = dv;
       }
     }
+    */
+
+    if (fabs(errx) <= tolerance) {
+      break;
+    }
+
   }
 
   // storing number of iterations taken to find the root
