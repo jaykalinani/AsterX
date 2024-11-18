@@ -34,8 +34,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
-  const bool use_v_vec = CCTK_EQUALS(recon_type, "v_vec");
-
   c2p_first_t c2p_fir;
   c2p_second_t c2p_sec;
 
