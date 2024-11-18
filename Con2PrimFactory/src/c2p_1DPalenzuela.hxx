@@ -146,7 +146,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
        (2.0 * xPalenzuela_Sol + sPalenzuela) * tPalenzuela * tPalenzuela) /
           (xPalenzuela_Sol * xPalenzuela_Sol * (xPalenzuela_Sol + sPalenzuela) *
            (xPalenzuela_Sol + sPalenzuela));
-  Wminus2 = fmin(fmax(Wminus2, 1e-20), 1 - 1e-20);
+  Wminus2 = fmin(fmax(Wminus2, 1e-10), 1 - 1e-10);
   const CCTK_REAL W_sol = pow(Wminus2, -0.5);
 
   // (ii)
@@ -245,7 +245,7 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
       1.0 - (x * x * rPalenzuela +
              (2.0 * x + sPalenzuela) * tPalenzuela * tPalenzuela) /
                 (x * x * (x + sPalenzuela) * (x + sPalenzuela));
-  Wminus2 = fmin(fmax(Wminus2, 1e-20), 1 - 1e-20);
+  Wminus2 = fmin(fmax(Wminus2, 1e-10), 1 - 1e-10);
   const CCTK_REAL W_loc = pow(Wminus2, -0.5);
 
   // (ii)
