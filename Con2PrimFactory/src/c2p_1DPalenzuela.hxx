@@ -438,7 +438,6 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
     cv.dYe *= sqrt_detg;
     cv.dS *= sqrt_detg;
   }
-
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void

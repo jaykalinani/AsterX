@@ -529,8 +529,9 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {
     cv.from_prim(pv, glo);
-  } else {
-    /* Densitize the conserved vars again*/
+  } 
+  else {
+  /* If not adjusted, densitize back the original conserved vars */
     cv.dens *= sqrt_detg;
     cv.tau *= sqrt_detg;
     cv.mom *= sqrt_detg;
@@ -538,7 +539,6 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     cv.dYe *= sqrt_detg;
     cv.dS *= sqrt_detg;
   }
-
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
