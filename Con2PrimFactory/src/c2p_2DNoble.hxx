@@ -380,8 +380,6 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const CCTK_REAL dv = v_lim*v_lim; //(1. - 1.e-15);
   const CCTK_REAL dw = w_lim*w_lim;
 
-
-
   CCTK_REAL dx[n];
   CCTK_REAL fjac[n][n];
   CCTK_REAL resid[n];
@@ -390,31 +388,32 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL df = 1.;
   CCTK_REAL f = 1.;
 
+  /* make sure that x[] is physical */
+  if (x[1] < 0.0) {
+    x[1] = 0.0;
+  }
+
+  else {
+    if (x[1] >= dv) {
+      x[0] *= dw*(1.0-x[1]);
+      x[1] = dv;
+    }
+  }
+
+  if (x[0] < Zmin) {
+    x[0] = Zmin;
+  } else {
+    if (x[0] > 1e20) {
+      x[0] = x_old[0];
+    }
+  }
+
   CCTK_INT k;
   for (k = 1; k <= maxIterations; k++) {
 
     /* Expressions for the jacobian are adapted from the Noble C2P
     implementation in the Spritz code. As the analytical form of the equations
     is known, the Newton-Raphson step can be computed explicitly */
-
-    if (x[1] < 0.0) {
-      x[1] = 0.0;
-    }
-
-    else {
-      if (x[1] >= dv) {
-        x[0] *= dw*(1.0-x[1]);
-        x[1] = dv;
-      }
-    }
-
-    if (x[0] < Zmin) {
-      x[0] = Zmin;
-    } else {
-      if (x[0] > 1e20) {
-        x[0] = x_old[0];
-      }
-    }
 
     const CCTK_REAL Z = x[0];
     const CCTK_REAL invZ = 1.0 / Z;
@@ -460,25 +459,24 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     errx = (x[0] == 0.) ? fabs(dx[0]) : fabs(dx[0] / x[0]);
 
     /* make sure that the new x[] is physical */
-    /*
-    if (x[0] < 0.0) {
-      x[0] = fabs(x[0]);
-    } else {
-      if (x[0] > 1e20) {
-        x[0] = x_old[0];
-      }
-    }
-
     if (x[1] < 0.0) {
       x[1] = 0.0;
     }
 
     else {
-      if (x[1] >= 1.0) {
+      if (x[1] >= dv) {
+        x[0] *= dw*(1.0-x[1]);
         x[1] = dv;
       }
     }
-    */
+
+    if (x[0] < Zmin) {
+      x[0] = Zmin;
+    } else {
+      if (x[0] > 1e20) {
+        x[0] = x_old[0];
+      }
+    }
 
     if (fabs(errx) <= tolerance) {
       break;
