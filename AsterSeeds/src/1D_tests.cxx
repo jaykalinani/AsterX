@@ -304,7 +304,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     // Rotation matrix R_{ij} that rotates the coordinate system through a
     // counterclockwise angle of x0-, x1-, x2-axes. (v'_i = R_{ij}v_j under this
     // coordinate transformation).
-    const auto calc_R = [=] CCTK_HOST CCTK_DEVICE(
+    const auto calc_R = [=] CCTK_HOST(
                             const CCTK_REAL th_x, const CCTK_REAL th_y,
                             const CCTK_REAL th_z,
                             vector<int> seq) CCTK_ATTRIBUTE_ALWAYS_INLINE {
