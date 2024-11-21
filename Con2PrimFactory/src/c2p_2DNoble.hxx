@@ -375,10 +375,8 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
   /* Start Recovery with 2D NR Solver */
   constexpr CCTK_INT n = 2;
-  //constexpr CCTK_REAL dv = (1. - 1.e-10);//v_lim*v_lim; //(1. - 1.e-15);
-  //constexpr CCTK_REAL dw = 1. / (1. - dv);//w_lim*w_lim;
-  const CCTK_REAL dv = v_lim*v_lim; //(1. - 1.e-15);
-  const CCTK_REAL dw = w_lim*w_lim;
+  constexpr CCTK_REAL dv = (1. - 1.e-10);
+  constexpr CCTK_REAL dw = 1. / (1. - dv);
 
   CCTK_REAL dx[n];
   CCTK_REAL fjac[n][n];
