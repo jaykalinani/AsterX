@@ -149,7 +149,14 @@ REAL dipole_z[2] "z-coordinate of the dipole center" STEERABLE=ALWAYS
   *:*     :: "Anything"
 } 0.0
 
+# entropy
+
+BOOLEAN set_entropy_postinitial "Set the entropy consistently in HydroBaseX_PostInitial" STEERABLE=always
+{
+} "yes"
+
 SHARES: EOSX
+USES KEYWORD evolution_eos
 USES CCTK_REAL poly_gamma
 USES CCTK_REAL poly_k
 USES CCTK_REAL gl_gamma
