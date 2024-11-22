@@ -74,20 +74,28 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   cons_vars cv_Noble;
   cons_vars cv_Pal;
   cons_vars cv_Ent;
+  cons_vars cv_all;
 
+  // C2P solve may modify cons_vars input
+  // Use the following to test C2Ps independently
   cv_Noble.from_prim(pv_seeds, g);
   cv_Pal.from_prim(pv_seeds, g);
   cv_Ent.from_prim(pv_seeds, g);
 
+  // Use the following to test C2Ps in sequence
+  // (As done in AsterX, the evolution thorn)
+  cv_all.from_prim(pv_seeds, g);
+
   // Testing C2P Noble
   CCTK_VINFO("Testing C2P Noble...");
-  c2p_Noble.solve(eos_th, pv, pv_seeds, cv_Noble, g, rep_Noble);
+  c2p_Noble.solve(eos_th, pv, pv_seeds, cv_all, g, rep_Noble);
 
   printf("pv_seeds, pv: \n"
          "rho: %f, %f \n"
          "eps: %f, %f \n"
          "Ye: %f, %f \n"
          "press: %f, %f \n"
+         "entropy: %f, %f \n"
          "velx: %f, %f \n"
          "vely: %f, %f \n"
          "velz: %f, %f \n"
@@ -95,7 +103,8 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "By: %f, %f \n"
          "Bz: %f, %f \n",
          pv_seeds.rho, pv.rho, pv_seeds.eps, pv.eps, pv_seeds.Ye, pv.Ye,
-         pv_seeds.press, pv.press, pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
+         pv_seeds.press, pv.press, pv_seeds.kappa, pv.kappa, 
+         pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
          pv.vel(1), pv_seeds.vel(2), pv.vel(2), pv_seeds.Bvec(0), pv.Bvec(0),
          pv_seeds.Bvec(1), pv.Bvec(1), pv_seeds.Bvec(2), pv.Bvec(2));
   printf("cv: \n"
@@ -107,9 +116,10 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "dYe: %f \n"
          "dBx: %f \n"
          "dBy: %f \n"
-         "dBz: %f \n",
-         cv_Noble.dens, cv_Noble.tau, cv_Noble.mom(0), cv_Noble.mom(1), cv_Noble.mom(2), cv_Noble.dYe, cv_Noble.dBvec(0),
-         cv_Noble.dBvec(1), cv_Noble.dBvec(2));
+         "dBz: %f \n"
+         "dS: %f \n", 
+         cv_all.dens, cv_all.tau, cv_all.mom(0), cv_all.mom(1), cv_all.mom(2), cv_all.dYe, cv_all.dBvec(0),
+         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.dS);
   /*
     assert(pv.rho == pv_seeds.rho);
     assert(pv.eps == pv_seeds.eps);
@@ -123,13 +133,14 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   // Testing C2P Palenzuela
   CCTK_VINFO("Testing C2P Palenzuela...");
   //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, g, rep_Pal);
-  c2p_Pal.solve(eos_th, pv, cv_Noble, g, rep_Pal);
+  c2p_Pal.solve(eos_th, pv, cv_all, g, rep_Pal);
 
   printf("pv_seeds, pv: \n"
          "rho: %f, %f \n"
          "eps: %f, %f \n"
          "Ye: %f, %f \n"
          "press: %f, %f \n"
+         "entropy: %f, %f \n"
          "velx: %f, %f \n"
          "vely: %f, %f \n"
          "velz: %f, %f \n"
@@ -137,7 +148,8 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "By: %f, %f \n"
          "Bz: %f, %f \n",
          pv_seeds.rho, pv.rho, pv_seeds.eps, pv.eps, pv_seeds.Ye, pv.Ye,
-         pv_seeds.press, pv.press, pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
+         pv_seeds.press, pv.press, pv_seeds.kappa, pv.kappa, 
+         pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
          pv.vel(1), pv_seeds.vel(2), pv.vel(2), pv_seeds.Bvec(0), pv.Bvec(0),
          pv_seeds.Bvec(1), pv.Bvec(1), pv_seeds.Bvec(2), pv.Bvec(2));
   printf("cv: \n"
@@ -149,9 +161,10 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "dYe: %f \n"
          "dBx: %f \n"
          "dBy: %f \n"
-         "dBz: %f \n",
-         cv_Noble.dens, cv_Noble.tau, cv_Noble.mom(0), cv_Noble.mom(1), cv_Noble.mom(2), cv_Noble.dYe, cv_Noble.dBvec(0),
-         cv_Noble.dBvec(1), cv_Noble.dBvec(2));
+         "dBz: %f \n"
+         "dS: %f \n", 
+         cv_all.dens, cv_all.tau, cv_all.mom(0), cv_all.mom(1), cv_all.mom(2), cv_all.dYe, cv_all.dBvec(0),
+         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.dS);
   /*
     assert(pv.rho == pv_seeds.rho);
     assert(pv.eps == pv_seeds.eps);
@@ -163,13 +176,14 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
 
   // Testing C2P Entropy
   CCTK_VINFO("Testing C2P Entropy...");
-  c2p_Ent.solve(eos_th, pv, cv_Ent, g, rep_Ent);
+  c2p_Ent.solve(eos_th, pv, cv_all, g, rep_Ent);
 
   printf("pv_seeds, pv: \n"
          "rho: %f, %f \n"
          "eps: %f, %f \n"
          "Ye: %f, %f \n"
          "press: %f, %f \n"
+         "entropy: %f, %f \n"
          "velx: %f, %f \n"
          "vely: %f, %f \n"
          "velz: %f, %f \n"
@@ -177,7 +191,8 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "By: %f, %f \n"
          "Bz: %f, %f \n",
          pv_seeds.rho, pv.rho, pv_seeds.eps, pv.eps, pv_seeds.Ye, pv.Ye,
-         pv_seeds.press, pv.press, pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
+         pv_seeds.press, pv.press, pv_seeds.kappa, pv.kappa, 
+         pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
          pv.vel(1), pv_seeds.vel(2), pv.vel(2), pv_seeds.Bvec(0), pv.Bvec(0),
          pv_seeds.Bvec(1), pv.Bvec(1), pv_seeds.Bvec(2), pv.Bvec(2));
   printf("cv: \n"
@@ -189,9 +204,10 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "dYe: %f \n"
          "dBx: %f \n"
          "dBy: %f \n"
-         "dBz: %f \n",
-         cv_Ent.dens, cv_Ent.tau, cv_Ent.mom(0), cv_Ent.mom(1), cv_Ent.mom(2), cv_Ent.dYe, cv_Ent.dBvec(0),
-         cv_Ent.dBvec(1), cv_Ent.dBvec(2));
+         "dBz: %f \n"
+         "dS: %f \n", 
+         cv_all.dens, cv_all.tau, cv_all.mom(0), cv_all.mom(1), cv_all.mom(2), cv_all.dYe, cv_all.dBvec(0),
+         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.dS);
   /*
     assert(pv.rho == pv_seeds.rho);
     assert(pv.eps == pv_seeds.eps);

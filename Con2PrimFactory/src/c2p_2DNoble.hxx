@@ -333,12 +333,13 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     vsq_seed = w_vsq_bsq(1);
   }
 
-  //if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-  //    (!isfinite(BiSi)) || (!isfinite(cv.dYe))) {
-  //  rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
-  //  set_to_nan(pv, cv);
-  //  return;
-  //}
+  // TODO: Is this check really necessary?
+  if ( isfinite(cv.dens) || isfinite(Ssq) || isfinite(Bsq) ||
+       isfinite(BiSi) || isfinite(cv.dYe) || isfinite(cv.dS) ) {
+    rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
+    set_to_nan(pv, cv);
+    return;
+  }
 
   if (Bsq > Bsq_lim) {
     rep.set_B_limit(Bsq);
