@@ -321,8 +321,8 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
   const CCTK_REAL BiSi = get_BiSi_Exact(cv.dBvec,cv.mom);
 
   // TODO: Is this check really necessary?
-  if ( isfinite(cv.dens) || isfinite(Ssq) || isfinite(Bsq) ||
-       isfinite(BiSi) || isfinite(cv.dYe) || isfinite(cv.dS) ) {
+  if ( (!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
+       (!isfinite(BiSi)) || (!isfinite(cv.dYe)) || (!isfinite(cv.dS)) ) {
     rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
     set_to_nan(pv, cv);
     return;
