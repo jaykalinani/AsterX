@@ -148,6 +148,8 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
   CCTK_REAL Z_Sol =
       (xEntropy_Sol + pv.eps * xEntropy_Sol + pv.press) * pv.w_lor * pv.w_lor;
 
+  // TODO: Debug code to capture v>1,
+  // remove soon
   if (use_zprim) {
 
     CCTK_REAL zx =

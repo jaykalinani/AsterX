@@ -165,6 +165,8 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
   // Taken from WZ2Prim (2DNRNoble)
   CCTK_REAL Z_Sol = xPalenzuela_Sol * pv.rho * W_sol;
 
+  // TODO: Debug code to capture v>1,
+  // remove soon
   if (use_zprim) {
 
     CCTK_REAL zx =

@@ -33,6 +33,8 @@ public:
       get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
                                  const vec<CCTK_REAL, 3> &v_up,
                                  const smat<CCTK_REAL, 3> &glo) const;
+  // TODO: Debug function to capture v>1,
+  // remove soon
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
       getZ_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
                                   const vec<CCTK_REAL, 3> &z_up,
@@ -128,6 +130,8 @@ c2p_2DNoble::get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
   return w_vsq_bsq; //{w_lor, vsq, bsq}
 }
 
+// TODO: Debug function to capture v>1,
+// remove soon
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
 c2p_2DNoble::getZ_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
                                          const vec<CCTK_REAL, 3> &z_up,
@@ -185,6 +189,8 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
 
   pv.rho = cv.dens / W_Sol;
 
+  // TODO: Debug code to capture v>1,
+  // remove soon
   if (use_zprim) {
 
     CCTK_REAL zx =
@@ -314,6 +320,8 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   vec<CCTK_REAL, 3> w_vsq_bsq;
   CCTK_REAL vsq_seed;
 
+  // TODO: Debug code to capture v>1,
+  // remove soon
   if (use_zprim) {
 
     vec<CCTK_REAL,3> zvec = pv_seeds.vel*pv_seeds.w_lor;

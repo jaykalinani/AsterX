@@ -115,6 +115,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
     CCTK_REAL zsq{0.0};
 
+    // TODO: Debug code to capture v>1 early,
+    // remove soon
     const CCTK_REAL vsq = calc_contraction(v_low,v_up);
     if (vsq >= 1.0) {
       CCTK_REAL wlim = sqrt(1.0 + vw_lim * vw_lim);
