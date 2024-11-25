@@ -65,6 +65,11 @@ protected:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_vars &cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
+
+  template <typename EOSType>
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+  bh_interior_fail(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
+        const smat<CCTK_REAL, 3> &glo) const;
 };
 
 template <typename EOSType>
@@ -158,6 +163,36 @@ c2p::prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_
   }
 
   // TODO: check validity for Ye
+
+}
+
+template <typename EOSType>
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+c2p::bh_interior_fail(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
+                      const smat<CCTK_REAL, 3> &glo) const {
+
+  // Treatment for BH interiors after C2P failures
+  // NOTE: By default, alp_thresh=0 so the if condition below is never
+  // triggered. One must be very careful when using this functionality and
+  // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the
+  // parfile
+  pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
+                   // NS or disk
+  pv.eps = eps_BH;
+  pv.Ye = Ye_atmo;
+  pv.press =
+      eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+  pv.entropy =
+      eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+  // check on velocities
+  CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
+  CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
+  CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
+  if (sol_v > vlim_BH) {
+    pv.vel *= vlim_BH / sol_v;
+    pv.w_lor = wlim_BH;
+  }
+  cv.from_prim(pv, glo);
 
 }
 
