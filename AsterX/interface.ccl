@@ -23,7 +23,7 @@ CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs" dependents="HydroBaseX:
 
 CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" dependents="HydroBaseX::eps HydroBaseX::press HydroBaseX::temperature HydroBaseX::Ye HydroBaseX::Bvec TmunuBaseX::eTij"' "Conserved internal energy density"
 
-# sstar is the conserved "evolved" entropy.
+# DEnt is the conserved "evolved" entropy.
 # The corresponding primitive is stored in HydroBaseX::entropy.
 # However, note that this gf stores the "evolved" entropy which is 
 # not necessarily the "physical" entropy. This depends on the EOS, e.g.
@@ -31,16 +31,16 @@ CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" dependents="HydroBaseX:
 # The distinction between "evolved" and "physical" entropy is made
 # explicit in EOSX where functions with "entropy_..." and "kappa_..." 
 # refer to "physical" and "evolved" entropy, respectively. In this 
-# evolution thorn we always refer to sstar and entropy to describe 
+# evolution thorn we always refer to DEnt and entropy to describe 
 # the "evolved" quantities. 
-CCTK_REAL sstar TYPE=gf CENTERING={ccc} TAGS='rhs="sstarrhs" dependents="HydroBaseX::entropy AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Advected entropy density"
+CCTK_REAL DEnt TYPE=gf CENTERING={ccc} TAGS='rhs="DEntrhs" dependents="HydroBaseX::entropy AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Advected entropy density"
 
 CCTK_REAL flux_x TYPE=gf CENTERING={vcc} TAGS='checkpoint="no"'
 {
   fxdens
   fxmomx fxmomy fxmomz
   fxtau
-  fxsstar
+  fxDEnt
   fxBx fxBy fxBz
 } "Fluxes in x direction"
 
@@ -49,7 +49,7 @@ CCTK_REAL flux_y TYPE=gf CENTERING={cvc} TAGS='checkpoint="no"'
   fydens
   fymomx fymomy fymomz
   fytau
-  fysstar
+  fyDEnt
   fyBx fyBy fyBz
 } "Fluxes in y direction"
 
@@ -58,7 +58,7 @@ CCTK_REAL flux_z TYPE=gf CENTERING={ccv} TAGS='checkpoint="no"'
   fzdens
   fzmomx fzmomy fzmomz
   fztau
-  fzsstar
+  fzDEnt
   fzBx fzBy fzBz
 } "Fluxes in z direction"
 
@@ -71,7 +71,7 @@ CCTK_REAL momrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 
 CCTK_REAL taurhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved internal energy density RHS" 
 
-CCTK_REAL sstarrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Advected entropy density RHS"
+CCTK_REAL DEntrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Advected entropy density RHS"
 
 CCTK_REAL Avec_x TYPE=gf CENTERING={cvv} TAGS='rhs="Avec_x_rhs"' "x-component of vector potential"
 CCTK_REAL Avec_y TYPE=gf CENTERING={vcv} TAGS='rhs="Avec_y_rhs"' "y-component of vector potential"

@@ -110,7 +110,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
                      {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
     // Invert entropy here
-    entropy(p.I) = sstar(p.I)/dens(p.I);
+    entropy(p.I) = DEnt(p.I)/dens(p.I);
 
     // Modifying primitive seeds within BH interiors before C2Ps are called
     // NOTE: By default, alp_thresh=0 so the if condition below is never

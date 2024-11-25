@@ -132,7 +132,7 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
                               const smat<CCTK_REAL, 3> &glo) const {
   // Density, entropy, Ye
   pv.rho = xEntropy_Sol;
-  pv.entropy = cv.dS / cv.dens;
+  pv.entropy = cv.DEnt / cv.dens;
   pv.Ye = cv.dYe / cv.dens;
 
   // Lorentz factor
@@ -213,10 +213,10 @@ c2p_1DEntropy::funcRoot_1DEntropy(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
                                   CCTK_REAL x, const EOSType &eos_th,
                                   const cons_vars &cv) const {
 
-  // We already divided dens, dS and
+  // We already divided dens, DEnt and
   // dYe by sqrt(gamma)
 
-  const CCTK_REAL ent_loc = cv.dS / cv.dens;
+  const CCTK_REAL ent_loc = cv.DEnt / cv.dens;
   const CCTK_REAL ye_loc = cv.dYe / cv.dens;
 
   // Compute h using entropy
@@ -285,7 +285,7 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
   cv.dYe /= sqrt_detg;
-  cv.dS /= sqrt_detg;
+  cv.DEnt /= sqrt_detg;
 
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
@@ -299,7 +299,7 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
 
   // TODO: Is this check really necessary?
   if ( (!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-       (!isfinite(BiSi)) || (!isfinite(cv.dYe)) || (!isfinite(cv.dS)) ) {
+       (!isfinite(BiSi)) || (!isfinite(cv.dYe)) || (!isfinite(cv.DEnt)) ) {
     rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
     set_to_nan(pv, cv);
     return;
@@ -365,7 +365,7 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     cv_check.mom /= sqrt_detg;
     cv_check.dBvec /= sqrt_detg;
     cv_check.dYe /= sqrt_detg;
-    cv_check.dS /= sqrt_detg;
+    cv_check.DEnt /= sqrt_detg;
 
     CCTK_REAL small = 1e-50;
 
@@ -414,7 +414,7 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     cv.mom *= sqrt_detg;
     cv.dBvec *= sqrt_detg;
     cv.dYe *= sqrt_detg;
-    cv.dS *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
   }
 
 }

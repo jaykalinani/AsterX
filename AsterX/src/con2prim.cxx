@@ -145,7 +145,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                  {momx(p.I), momy(p.I), momz(p.I)},
                  tau(p.I),
                  dummy_dYe,
-                 sstar(p.I),
+                 DEnt(p.I),
                  {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
     if (dens(p.I) <= sqrt_detg * rho_atmo_cut) {
@@ -326,7 +326,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
     // Write back cv
     cv.scatter(dens(p.I), momx(p.I), momy(p.I), momz(p.I), tau(p.I), dummy_Ye,
-               sstar(p.I), dBx(p.I), dBy(p.I), dBz(p.I));
+               DEnt(p.I), dBx(p.I), dBy(p.I), dBz(p.I));
 
     // Update saved prims
     saved_rho(p.I) = rho(p.I);

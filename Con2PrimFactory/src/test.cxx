@@ -117,9 +117,9 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "dBx: %f \n"
          "dBy: %f \n"
          "dBz: %f \n"
-         "dS: %f \n", 
+         "DEnt: %f \n", 
          cv_all.dens, cv_all.tau, cv_all.mom(0), cv_all.mom(1), cv_all.mom(2), cv_all.dYe, cv_all.dBvec(0),
-         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.dS);
+         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.DEnt);
   /*
     assert(pv.rho == pv_seeds.rho);
     assert(pv.eps == pv_seeds.eps);
@@ -162,9 +162,9 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "dBx: %f \n"
          "dBy: %f \n"
          "dBz: %f \n"
-         "dS: %f \n", 
+         "DEnt: %f \n", 
          cv_all.dens, cv_all.tau, cv_all.mom(0), cv_all.mom(1), cv_all.mom(2), cv_all.dYe, cv_all.dBvec(0),
-         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.dS);
+         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.DEnt);
   /*
     assert(pv.rho == pv_seeds.rho);
     assert(pv.eps == pv_seeds.eps);
@@ -205,9 +205,9 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "dBx: %f \n"
          "dBy: %f \n"
          "dBz: %f \n"
-         "dS: %f \n", 
+         "DEnt: %f \n", 
          cv_all.dens, cv_all.tau, cv_all.mom(0), cv_all.mom(1), cv_all.mom(2), cv_all.dYe, cv_all.dBvec(0),
-         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.dS);
+         cv_all.dBvec(1), cv_all.dBvec(2), cv_all.DEnt);
   /*
     assert(pv.rho == pv_seeds.rho);
     assert(pv.eps == pv_seeds.eps);

@@ -44,7 +44,7 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         dBy(p.I) = cv.dBvec(1);
         dBz(p.I) = cv.dBvec(2);
 
-        sstar(p.I) = entropy(p.I)*cv.dens;
+        DEnt(p.I) = entropy(p.I)*cv.dens;
 
         saved_rho(p.I) = pv.rho;
         saved_velx(p.I) = pv.vel(0);

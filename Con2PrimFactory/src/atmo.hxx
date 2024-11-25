@@ -71,7 +71,7 @@ struct atmosphere {
     cv.mom(1) = 0.0;
     cv.mom(2) = 0.0;
     cv.dYe = cv.dens * ye_atmo;
-    cv.dS = cv.dens * entropy_atmo;
+    cv.DEnt = cv.dens * entropy_atmo;
     const vec<CCTK_REAL, 3> &B_up = pv.Bvec;
     const vec<CCTK_REAL, 3> B_low = calc_contraction(g, B_up);
     CCTK_REAL Bsq = calc_contraction(B_up, B_low);

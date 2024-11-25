@@ -301,7 +301,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
   cv.dYe /= sqrt_detg;
-  cv.dS /= sqrt_detg;
+  cv.DEnt /= sqrt_detg;
 
   if (cv.dens <= atmo.rho_cut) {
     rep.set_atmo_set();
@@ -343,7 +343,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
   // TODO: Is this check really necessary?
   if ( (!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-       (!isfinite(BiSi)) || (!isfinite(cv.dYe)) || (!isfinite(cv.dS)) ) {
+       (!isfinite(BiSi)) || (!isfinite(cv.dYe)) || (!isfinite(cv.DEnt)) ) {
     rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.dYe);
     set_to_nan(pv, cv);
     return;
@@ -544,7 +544,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     cv.mom *= sqrt_detg;
     cv.dBvec *= sqrt_detg;
     cv.dYe *= sqrt_detg;
-    cv.dS *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
   }
 }
 

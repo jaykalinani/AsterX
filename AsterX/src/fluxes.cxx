@@ -44,7 +44,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
   /* grid functions for fluxes */
   const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
-  const vec<GF3D2<CCTK_REAL>, dim> fluxsstars{fxsstar, fysstar, fzsstar};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxDEnts{fxDEnt, fyDEnt, fzDEnt};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomxs{fxmomx, fymomx, fzmomx};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomys{fxmomy, fymomy, fzmomy};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomzs{fxmomz, fymomz, fzmomz};
@@ -390,8 +390,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       return sqrtg * rho_rc(f) * w_lorentz_rc(f);
     });
 
-    /* sstar = sqrt(g) * D * s  = sqrt(g) * (rho * W) * s */
-    const vec<CCTK_REAL, 2> sstar_rc([&](int f) ARITH_INLINE {
+    /* DEnt = sqrt(g) * D * s  = sqrt(g) * (rho * W) * s */
+    /*    s = entropy */
+    const vec<CCTK_REAL, 2> DEnt_rc([&](int f) ARITH_INLINE {
       return sqrtg * rho_rc(f) * w_lorentz_rc(f) * entropy_rc(f);
     });
 
@@ -436,9 +437,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const vec<CCTK_REAL, 2> flux_dens(
         [&](int f) ARITH_INLINE { return dens_rc(f) * vtilde_rc(f); });
 
-    /* flux(sstar) = sqrt(g) * D * s * vtilde^i = sqrt(g) * rho * W * s * vtilde^i */
-    const vec<CCTK_REAL, 2> flux_sstar(
-        [&](int f) ARITH_INLINE { return sstar_rc(f) * vtilde_rc(f); });
+    /* flux(DEnt) = sqrt(g) * D * s * vtilde^i = sqrt(g) * rho * W * s * vtilde^i */
+    const vec<CCTK_REAL, 2> flux_DEnt(
+        [&](int f) ARITH_INLINE { return DEnt_rc(f) * vtilde_rc(f); });
 
     /* flux(mom_j)^i = sqrt(g)*(
      *  S_j*vtilde^i + alpha*((pgas+pmag)*delta^i_j - b_jB^i/W) ) */
@@ -476,7 +477,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
     /* Calculate numerical fluxes */
     fluxdenss(dir)(p.I) = calcflux(lambda, dens_rc, flux_dens);
-    fluxsstars(dir)(p.I) = calcflux(lambda, sstar_rc, flux_sstar);
+    fluxDEnts(dir)(p.I) = calcflux(lambda, DEnt_rc, flux_DEnt);
     fluxmomxs(dir)(p.I) = calcflux(lambda, moms_rc(0), flux_moms(0));
     fluxmomys(dir)(p.I) = calcflux(lambda, moms_rc(1), flux_moms(1));
     fluxmomzs(dir)(p.I) = calcflux(lambda, moms_rc(2), flux_moms(2));
