@@ -88,8 +88,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       eps_atm = std::min(std::max(eos_th.rgeps.min, eps_atm), eos_th.rgeps.max);
       press_atm = eos_th.press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     }
-    CCTK_REAL kappa_atm = eos_th.kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
-    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, kappa_atm, rho_atmo_cut);
+    CCTK_REAL entropy_atm = eos_th.kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, entropy_atm, rho_atmo_cut);
 
     // Construct Noble c2p object:
     c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
@@ -167,7 +167,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         pv_seeds.Ye = Ye_atmo;
         pv_seeds.press =
             eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
-        pv_seeds.kappa =
+        pv_seeds.entropy =
             eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
         // check on velocities
         CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
@@ -275,7 +275,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
             pv.Ye = Ye_atmo;
             pv.press =
                 eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
-            pv.kappa =
+            pv.entropy =
                 eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
             // check on velocities
             CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);

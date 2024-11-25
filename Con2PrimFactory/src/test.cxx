@@ -103,7 +103,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "By: %f, %f \n"
          "Bz: %f, %f \n",
          pv_seeds.rho, pv.rho, pv_seeds.eps, pv.eps, pv_seeds.Ye, pv.Ye,
-         pv_seeds.press, pv.press, pv_seeds.kappa, pv.kappa, 
+         pv_seeds.press, pv.press, pv_seeds.entropy, pv.entropy, 
          pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
          pv.vel(1), pv_seeds.vel(2), pv.vel(2), pv_seeds.Bvec(0), pv.Bvec(0),
          pv_seeds.Bvec(1), pv.Bvec(1), pv_seeds.Bvec(2), pv.Bvec(2));
@@ -148,7 +148,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "By: %f, %f \n"
          "Bz: %f, %f \n",
          pv_seeds.rho, pv.rho, pv_seeds.eps, pv.eps, pv_seeds.Ye, pv.Ye,
-         pv_seeds.press, pv.press, pv_seeds.kappa, pv.kappa, 
+         pv_seeds.press, pv.press, pv_seeds.entropy, pv.entropy, 
          pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
          pv.vel(1), pv_seeds.vel(2), pv.vel(2), pv_seeds.Bvec(0), pv.Bvec(0),
          pv_seeds.Bvec(1), pv.Bvec(1), pv_seeds.Bvec(2), pv.Bvec(2));
@@ -191,7 +191,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
          "By: %f, %f \n"
          "Bz: %f, %f \n",
          pv_seeds.rho, pv.rho, pv_seeds.eps, pv.eps, pv_seeds.Ye, pv.Ye,
-         pv_seeds.press, pv.press, pv_seeds.kappa, pv.kappa, 
+         pv_seeds.press, pv.press, pv_seeds.entropy, pv.entropy, 
          pv_seeds.vel(0), pv.vel(0), pv_seeds.vel(1),
          pv.vel(1), pv_seeds.vel(2), pv.vel(2), pv_seeds.Bvec(0), pv.Bvec(0),
          pv_seeds.Bvec(1), pv.Bvec(1), pv_seeds.Bvec(2), pv.Bvec(2));

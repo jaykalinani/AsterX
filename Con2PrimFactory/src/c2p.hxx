@@ -94,7 +94,7 @@ c2p::prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_
     // add mass, keeps conserved density D
     pv.rho = cv.dens / w_lim;
     pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
-    pv.kappa =
+    pv.entropy =
         eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
     // if (pv.rho >= rho_strict) {
     //  rep.set_speed_limit({ sol_v, sol_v, sol_v });
@@ -115,7 +115,7 @@ c2p::prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_
     // remove mass, changes conserved density D
     pv.rho = rho_strict;
     pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
-    pv.kappa =
+    pv.entropy =
         eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
 
     rep.adjust_cons = true;
@@ -138,7 +138,7 @@ c2p::prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_
     //}
     pv.eps = rgeps.max;
     pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.entropy = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
     rep.adjust_cons = true;
   } else if (pv.eps < rgeps.min) {
@@ -152,7 +152,7 @@ c2p::prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_
     // rep.set_range_eps(rgeps.min); // sets adjust_cons to true
     pv.eps = rgeps.min;
     pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.kappa = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.entropy = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
     rep.adjust_cons = true;
   }

@@ -98,6 +98,13 @@ public:
       const CCTK_REAL ye   
   ) const;
 
+  // Note that kappa implements a generic thermodynamic quantity
+  // meant to describe the "evolved" entropy by an evolution/application
+  // thorn.
+  // The notion of the "evolved" entropy (kappa) might differ from the definition
+  // of the actual entropy (entropy_from..., see above) for different EOS, 
+  // e.g. for the ideal gas EOS we have kappa = p * (rho)^(-gamma),
+  // where gamma is the adiabatic index.
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   kappa_from_valid_rho_eps_ye(
       const CCTK_REAL rho,
@@ -212,6 +219,13 @@ eos_idealgas::eps_from_valid_rho_kappa_ye(
   return kappa*pow(rho,gamma-1.0)/(gamma-1.0);
 };
 
+// Note that kappa implements a generic thermodynamic quantity
+// meant to describe the "evolved" entropy by an evolution/application
+// thorn.
+// The notion of the "evolved" entropy (kappa) might differ from the definition
+// of the actual entropy (entropy_from..., see above) for different EOS, 
+// e.g. for the ideal gas EOS we have kappa = p * (rho)^(-gamma),
+// where gamma is the adiabatic index.
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_idealgas::kappa_from_valid_rho_eps_ye(
     const CCTK_REAL rho,

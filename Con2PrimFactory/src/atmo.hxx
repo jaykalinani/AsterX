@@ -18,16 +18,16 @@ struct atmosphere {
   CCTK_REAL eps_atmo;
   CCTK_REAL ye_atmo;
   CCTK_REAL press_atmo;
-  CCTK_REAL kappa_atmo;
+  CCTK_REAL entropy_atmo;
   CCTK_REAL rho_cut;
 
   CCTK_DEVICE
       CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere() = default;
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere(
-      CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL Ye_, CCTK_REAL press_, CCTK_REAL kappa_,
+      CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL Ye_, CCTK_REAL press_, CCTK_REAL entropy_,
       CCTK_REAL rho_cut_)
-      : rho_atmo(rho_), eps_atmo(eps_), ye_atmo(Ye_), press_atmo(press_), kappa_atmo(kappa_),
+      : rho_atmo(rho_), eps_atmo(eps_), ye_atmo(Ye_), press_atmo(press_), entropy_atmo(entropy_),
         rho_cut(rho_cut_) {}
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere &
@@ -39,7 +39,7 @@ struct atmosphere {
     eps_atmo = other.eps_atmo;
     ye_atmo = other.ye_atmo;
     press_atmo = other.press_atmo;
-    kappa_atmo = other.kappa_atmo;
+    entropy_atmo = other.entropy_atmo;
     rho_cut = other.rho_cut;
     return *this;
   }
@@ -51,7 +51,7 @@ struct atmosphere {
     pv.eps = eps_atmo;
     pv.Ye = ye_atmo;
     pv.press = press_atmo;
-    pv.kappa = kappa_atmo;
+    pv.entropy = entropy_atmo;
     pv.vel(0) = 0.0;
     pv.vel(1) = 0.0;
     pv.vel(2) = 0.0;
@@ -71,7 +71,7 @@ struct atmosphere {
     cv.mom(1) = 0.0;
     cv.mom(2) = 0.0;
     cv.dYe = cv.dens * ye_atmo;
-    cv.dS = cv.dens * kappa_atmo;
+    cv.dS = cv.dens * entropy_atmo;
     const vec<CCTK_REAL, 3> &B_up = pv.Bvec;
     const vec<CCTK_REAL, 3> B_low = calc_contraction(g, B_up);
     CCTK_REAL Bsq = calc_contraction(B_up, B_low);

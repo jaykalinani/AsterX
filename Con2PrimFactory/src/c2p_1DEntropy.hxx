@@ -132,7 +132,7 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
                               const smat<CCTK_REAL, 3> &glo) const {
   // Density, entropy, Ye
   pv.rho = xEntropy_Sol;
-  pv.kappa = cv.dS / cv.dens;
+  pv.entropy = cv.dS / cv.dens;
   pv.Ye = cv.dYe / cv.dens;
 
   // Lorentz factor
@@ -140,8 +140,8 @@ c2p_1DEntropy::xEntropyToPrim(CCTK_REAL xEntropy_Sol, CCTK_REAL Ssq,
 
   // Pressure and epsilon
   pv.press =
-      eos_th.press_from_valid_rho_kappa_ye(xEntropy_Sol, pv.kappa, pv.Ye);
-  pv.eps = eos_th.eps_from_valid_rho_kappa_ye(xEntropy_Sol, pv.kappa, pv.Ye);
+      eos_th.press_from_valid_rho_kappa_ye(xEntropy_Sol, pv.entropy, pv.Ye);
+  pv.eps = eos_th.eps_from_valid_rho_kappa_ye(xEntropy_Sol, pv.entropy, pv.Ye);
 
   // Taken from WZ2Prim (2DNRNoble)
   // Z_Sol = rho * h * w_lor * w_lor
