@@ -15,8 +15,8 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy(
       const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
       CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
-      CCTK_REAL consError,
-      bool use_z);
+      CCTK_REAL consError, bool use_z, CCTK_REAL alp_thresh_in, 
+      CCTK_REAL rho_BH_in, CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom, const smat<CCTK_REAL, 3> &gup) const;
@@ -57,10 +57,10 @@ CCTK_HOST CCTK_DEVICE
 CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
     const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
     CCTK_REAL rho_str, CCTK_REAL vwlim, CCTK_REAL B_lim, bool ye_len,
-    CCTK_REAL consError,
-    bool use_z) {
+    CCTK_REAL consError, bool use_z, CCTK_REAL alp_thresh_in, 
+      CCTK_REAL rho_BH_in, CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in) {
 
-  GammaIdealFluid = eos_th.gamma;
+  // Base
   maxIterations = maxIter;
   tolerance = tol;
   rho_strict = rho_str;
@@ -72,6 +72,13 @@ CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DEntropy::c2p_1DEntropy(
   atmo = atm;
   cons_error = consError;
   use_zprim = use_z;
+  alp_thresh = alp_thresh_in;
+  rho_BH = rho_BH_in;
+  eps_BH = eps_BH_in;
+  vwlim_BH = vwlim_BH_in;
+
+  // Derived
+  GammaIdealFluid = eos_th.gamma;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL

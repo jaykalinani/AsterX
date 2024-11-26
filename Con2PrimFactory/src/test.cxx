@@ -41,12 +41,19 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   const smat<CCTK_REAL, 3> g{1.0, 0.0, 0.0,
                              1.0, 0.0, 1.0}; // xx, xy, xz, yy, yz, zz
 
+  // Set BH limiters
+  const CCTK_REAL alp_thresh = -1.;
+  const CCTK_REAL rho_BH = 1e20;
+  const CCTK_REAL eps_BH = 1e20;
+  const CCTK_REAL vwlim_BH = 1e20;
+
   // Con2Prim objects
   // (eos_th, atmo, max_iter, c2p_tol, rho_strict,
-  // vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z)
-  c2p_2DNoble c2p_Noble(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true,-1.,false);
-  c2p_1DPalenzuela c2p_Pal(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true,-1.,false);
-  c2p_1DEntropy c2p_Ent(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true,-1.,false);
+  // vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z, alp_thresh,
+  // rho_BH, eps_BH, vwlim_BH)
+  c2p_2DNoble c2p_Noble(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true,-1.,false, alp_thresh, rho_BH, eps_BH, vwlim_BH);
+  c2p_1DPalenzuela c2p_Pal(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true,-1.,false, alp_thresh, rho_BH, eps_BH, vwlim_BH);
+  c2p_1DEntropy c2p_Ent(eos_th, atmo, 100, 1e-8, 1e8, 1, 1, true,-1.,false, alp_thresh, rho_BH, eps_BH, vwlim_BH);
 
   // Construct error report object:
   c2p_report rep_Noble;
@@ -69,7 +76,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   prim_vars pv_seeds{rho_in, eps_in, Ye_in, press_in, entropy_in, vup_in, wlor_in, Bup_in};
 
   // cons_vars cv{dens(p.I), {momx(p.I), momy(p.I), momz(p.I)}, tau(p.I),
-  //  dummy_dYe, {dBx(p.I), dBy(p.I), dBz(p.I)}};
+  //  dummy_dYe, DEnt, {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
   cons_vars cv_Noble;
   cons_vars cv_Pal;

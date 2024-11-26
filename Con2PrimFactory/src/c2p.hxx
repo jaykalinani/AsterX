@@ -48,6 +48,11 @@ protected:
   atmosphere atmo;
   CCTK_REAL cons_error;
   bool use_zprim;
+  // Parameters for BH interiors
+  CCTK_REAL alp_thresh;
+  CCTK_REAL rho_BH;
+  CCTK_REAL eps_BH;
+  CCTK_REAL vwlim_BH;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
       get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
@@ -65,6 +70,8 @@ protected:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_vars &cv,
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
+
+  public:
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -179,11 +186,11 @@ c2p::bh_interior_fail(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
   pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
                    // NS or disk
   pv.eps = eps_BH;
-  pv.Ye = Ye_atmo;
+  pv.Ye = 0.5;
   pv.press =
-      eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+      eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, 0.5);
   pv.entropy =
-      eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
+      eos_th.kappa_from_valid_rho_eps_ye(rho_BH, eps_BH, 0.5);
   // check on velocities
   CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
   CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;

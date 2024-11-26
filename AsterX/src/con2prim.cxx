@@ -61,8 +61,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                                      const PointDesc
                                          &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
   // Note that HydroBaseX gfs are NaN when entering this loop due
-  // explicit dependence on conservatives from AsterX ->
-  // dependents tag 
+  // explicit dependence on conservatives from 
+  // AsterX -> dependents tag 
 
     // Setting up atmosphere
     CCTK_REAL rho_atm = 0.0;   // dummy initialization
@@ -93,15 +93,18 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
     // Construct Noble c2p object:
     c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
-                          B_lim, Ye_lenient, cons_error_limit, use_z);
+                          B_lim, Ye_lenient, cons_error_limit, use_z,
+                          alp_thresh, rho_BH, eps_BH, vwlim_BH);
 
     // Construct Palenzuela c2p object:
     c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, rho_strict,
-                             vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z);
+                             vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z,
+                          alp_thresh, rho_BH, eps_BH, vwlim_BH);
 
     // Construct Entropy c2p object:
     c2p_1DEntropy c2p_Ent(eos_th, atmo, max_iter, c2p_tol, rho_strict,
-                             vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z);
+                             vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z,
+                          alp_thresh, rho_BH, eps_BH, vwlim_BH);
 
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
