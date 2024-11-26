@@ -394,6 +394,20 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
 
   xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
+
+  // General comment: 
+  // One could think of expressing the following condition
+  // in a way that is "safe" against NaNs and infs. First, this only makes 
+  // sense if we want these values to be considered as failures which should 
+  // be treated as "not converged".
+  //
+  // inf: Since inf behaves like a large valid number nothing special needs 
+  // to be done except of rewriting the argument of the if condition such that 
+  // possible infs are present only on one side of the comparison, eg
+  // abs(difference)/abs(normalization) > tolerance_0
+  //
+  // NaN: If the argument of if (...) is NaN, it usually evaluates to false.
+  // Here, we would need to rewrite the logic a little bit.
   if (abs(result.first - result.second) >
       tolerance_0 * min(abs(result.first), abs(result.second))) {
 
