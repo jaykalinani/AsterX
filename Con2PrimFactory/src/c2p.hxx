@@ -37,21 +37,20 @@ class c2p {
 protected:
   /* The constructor must initialize the following variables */
 
+  atmosphere atmo;
   CCTK_INT maxIterations;
   CCTK_REAL tolerance;
-  bool ye_lenient;
-  CCTK_REAL v_lim;
-  CCTK_REAL w_lim;
-  CCTK_REAL vw_lim;
-  CCTK_REAL Bsq_lim;
-  atmosphere atmo;
-  CCTK_REAL cons_error;
-  bool use_zprim;
-  // Parameters for BH interiors
   CCTK_REAL alp_thresh;
+  CCTK_REAL cons_error;
+  CCTK_REAL vw_lim;
+  CCTK_REAL w_lim;
+  CCTK_REAL v_lim;
+  CCTK_REAL Bsq_lim;
   CCTK_REAL rho_BH;
   CCTK_REAL eps_BH;
   CCTK_REAL vwlim_BH;
+  bool ye_lenient;
+  bool use_zprim;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
       get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,

@@ -92,19 +92,22 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, entropy_atm, rho_atmo_cut);
 
     // Construct Noble c2p object:
-    c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, vw_lim,
-                          B_lim, Ye_lenient, cons_error_limit, use_z,
-                          alp_thresh, rho_BH, eps_BH, vwlim_BH);
+    c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
 
     // Construct Palenzuela c2p object:
-    c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol,
-                             vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z,
-                          alp_thresh, rho_BH, eps_BH, vwlim_BH);
+    c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
 
     // Construct Entropy c2p object:
-    c2p_1DEntropy c2p_Ent(eos_th, atmo, max_iter, c2p_tol,
-                             vw_lim, B_lim, Ye_lenient, cons_error_limit, use_z,
-                          alp_thresh, rho_BH, eps_BH, vwlim_BH);
+    c2p_1DEntropy c2p_Ent(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
 
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
@@ -253,7 +256,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                    Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
           }
 
-          if ( (alp(p.I) < alp_thresh) && ( (pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH) ) ) {
+          if ( (alp(p.I) < alp_thresh) ) {
             c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
           } else {
             // set to atmo
