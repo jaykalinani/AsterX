@@ -39,7 +39,6 @@ protected:
 
   CCTK_INT maxIterations;
   CCTK_REAL tolerance;
-  CCTK_REAL rho_strict;
   bool ye_lenient;
   CCTK_REAL v_lim;
   CCTK_REAL w_lim;
@@ -122,13 +121,13 @@ c2p::prims_floors_and_ceilings(const EOSType &eos_th, prim_vars &pv, const cons_
     rep.adjust_cons = true;
   }
 
-  if (pv.rho > rho_strict) {
+  if (pv.rho > eos_th.rgrho.max) {
 
     // remove mass, changes conserved density D
-    pv.rho = rho_strict;
-    pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_strict, pv.press, pv.Ye);
+    pv.rho = eos_th.rgrho.max;
+    pv.eps = eos_th.eps_from_valid_rho_press_ye(eos_th.rgrho.max, pv.press, pv.Ye);
     pv.entropy =
-        eos_th.kappa_from_valid_rho_eps_ye(rho_strict, pv.eps, pv.Ye);
+        eos_th.kappa_from_valid_rho_eps_ye(eos_th.rgrho.max, pv.eps, pv.Ye);
 
     rep.adjust_cons = true;
   }

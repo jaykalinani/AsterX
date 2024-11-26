@@ -74,7 +74,7 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     CCTK_REAL dummy_dYe = 0.5;
 
     // Get a recovery function
-    con2prim_mhd cv2pv(eos, rho_strict, Ye_lenient, vw_lim, B_lim, atmo,
+    con2prim_mhd cv2pv(eos, 1.0e5, Ye_lenient, vw_lim, B_lim, atmo,
                        c2p_tol, max_iter);
 
     /* Get covariant metric */
