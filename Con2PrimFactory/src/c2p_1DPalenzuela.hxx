@@ -140,8 +140,6 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
                                     const EOSType &eos_th, prim_vars &pv,
                                     const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
                                     const smat<CCTK_REAL, 3> &glo) const {
-  DECLARE_CCTK_PARAMETERS;
-
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
   const CCTK_REAL sPalenzuela = Bsq / cv.dens;
