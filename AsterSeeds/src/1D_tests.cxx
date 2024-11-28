@@ -28,6 +28,8 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
   const eos_idealgas eos_th(gl_gamma, particle_mass, rgeps, rgrho, rgye);
   const CCTK_REAL dummy_ye = 0.5;
 
+  const bool rot_off = ((rotate_angle_x == 0.0) && (rotate_angle_y == 0.0) && (rotate_angle_z == 0.0)) ? true : false;
+
   if (CCTK_EQUALS(test_case, "equilibrium")) {
 
     grid.loop_all_device<1, 1, 1>(
@@ -302,7 +304,7 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
     // Rotation matrix R_{ij} that rotates the coordinate system through a
     // counterclockwise angle of x0-, x1-, x2-axes. (v'_i = R_{ij}v_j under this
     // coordinate transformation).
-    const auto calc_R = [=] CCTK_HOST CCTK_DEVICE(
+    const auto calc_R = [=] CCTK_HOST(
                             const CCTK_REAL th_x, const CCTK_REAL th_y,
                             const CCTK_REAL th_z,
                             vector<int> seq) CCTK_ATTRIBUTE_ALWAYS_INLINE {
@@ -383,8 +385,8 @@ extern "C" void Tests1D_Initialize(CCTK_ARGUMENTS) {
       return (abs(Bs(0)) > tiny) && (abs(Bs(1)) > tiny) && (abs(Bs(2)) > tiny);
     };
 
-    if (are_all_components_nonzero(oldBls) ||
-        are_all_components_nonzero(oldBrs)) {
+    if ( (are_all_components_nonzero(oldBls) && !(rot_off)) ||
+         (are_all_components_nonzero(oldBrs) && !(rot_off)) ) {
       CCTK_ERROR("All non-zero B components not supported yet.");
     }
 

@@ -239,8 +239,14 @@ CCTK_REAL B_initial "Initial value for the magnetic field"
 
 # ---------------------------------------
 
+# entropy
+
+BOOLEAN set_entropy_postinitial "Set the entropy consistently in HydroBaseX_PostInitial" STEERABLE=always
+{
+} "yes"
 
 SHARES: EOSX
+USES KEYWORD evolution_eos
 USES CCTK_REAL poly_gamma
 USES CCTK_REAL poly_k
 USES CCTK_REAL gl_gamma
