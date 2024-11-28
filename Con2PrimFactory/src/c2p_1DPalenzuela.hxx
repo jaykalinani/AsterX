@@ -225,8 +225,6 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 
   }
 
-  }
-
   pv.Ye = cv.dYe / cv.dens;
 
   pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
