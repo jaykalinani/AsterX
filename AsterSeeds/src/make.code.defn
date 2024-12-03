@@ -7,8 +7,8 @@ SRCS =	\
   3D_tests.cxx \
   atmosphere.cxx \
   magTOV.cxx \
-  magBNS.cxx  
-	
+  magBNS.cxx \
+  SetEntropy.cxx
 
 # Subdirectories containing source files
 SUBDIRS = 
