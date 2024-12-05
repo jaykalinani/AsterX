@@ -221,8 +221,19 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       rho_rc(1) = rho_abs_min;
     }
 
-    vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
+    //vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
+    const vec<CCTK_REAL, 2> temp_rc{reconstruct_pt(temperature, p, false, false)};
     const vec<CCTK_REAL, 2> Ye_rc{reconstruct_pt(Ye, p, false, false)};
+
+    vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
+      return eos_3p->eps_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f),
+                                                Ye_rc(f));
+    });
+    
+    vec<CCTK_REAL, 2> press_rc([&](int f) ARITH_INLINE {
+      return eos_3p->press_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
+                                                Ye_rc(f));
+    });
 
     // TODO: currently sets negative reconstructed pressure to 0 since eps_min=0
     // for ideal gas
@@ -234,11 +245,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       press_rc(1) =
           eos_3p->press_from_valid_rho_eps_ye(rho_rc(1), eos_3p->rgeps.min, Ye_rc(1));
     }
-
-    vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
-      return eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
-                                                Ye_rc(f));
-    });
 
     const vec<CCTK_REAL, 2> rhoh_rc([&](int f) ARITH_INLINE {
       return rho_rc(f) + rho_rc(f)*eps_rc(f) + press_rc(f);

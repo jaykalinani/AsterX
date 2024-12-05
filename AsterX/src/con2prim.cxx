@@ -59,6 +59,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     CCTK_REAL rho_atm = 0.0;   // dummy initialization
     CCTK_REAL press_atm = 0.0; // dummy initialization
     CCTK_REAL eps_atm = 0.0;   // dummy initialization
+    CCTK_REAL temp_atm = 0.0;   // dummy initialization
     CCTK_REAL local_eps_BH = eps_BH;
     CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
 
@@ -73,7 +74,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       press_atm = (radial_distance > r_atmo)
                       ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
                       : p_atmo;
-      eps_atm = eos_3p->eps_from_valid_rho_press_ye(rho_atm, press_atm, Ye_atmo);
+      temp_atm = (radial_distance > t_atmo)
+                      ? (p_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
+                      : t_atmo;
+      eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
     } else {
       const CCTK_REAL gm1 = eos_1p->gm1_from_valid_rho(rho_atm);
       eps_atm = eos_1p->sed_from_valid_gm1(gm1);

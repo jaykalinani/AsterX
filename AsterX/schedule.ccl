@@ -149,7 +149,7 @@ SCHEDULE AsterX_Fluxes IN AsterX_RHSGroup
   READS: ADMBaseX::lapse(everywhere)
   READS: ADMBaseX::shift(everywhere)
   READS: dens(everywhere) tau(everywhere) mom(everywhere) 
-  READS: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::press(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
+  READS: HydroBaseX::rho(everywhere) HydroBaseX::vel(everywhere) HydroBaseX::press(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::temperature(everywhere)  HydroBaseX::Ye(everywhere)
   READS: HydroBaseX::Bvec(everywhere)
   READS: dBx_stag(everywhere) dBy_stag(everywhere) dBz_stag(everywhere)
   READS: zvec_x(everywhere) zvec_y(everywhere) zvec_z(everywhere)

@@ -70,7 +70,7 @@ AsterX::update_tmunu = "no"
 
 ReconX::reconstruction_method = "wenoz"
 
-Con2PrimFactory::c2p_prime = "Noble"
+Con2PrimFactory::c2p_prime = "Palenzuela"
 Con2PrimFactory::c2p_second = "Palenzuela"
 Con2PrimFactory::c2p_tol = 1e-8
 Con2PrimFactory::max_iter = 100
@@ -81,9 +81,9 @@ Con2PrimFactory::vw_lim = 1e8
 Con2PrimFactory::Ye_lenient = "yes"
 
 EOSX::evolution_eos = "Tabulated3d"
-EOSX::EOSTable_filename = "/ddnA/project/sbrandt/carpetx/acwen/EOS/APR_3335_rho393_temp133_ye66_gitM180edd5_20190225_adj_mineps0.h5"
+EOSX::EOSTable_filename = "/work2/09228/jkalinan/frontera/AsterX_BNS/tabeos_tovid/APR_3335_rho393_temp133_ye66_gitM180edd5_20190225_adj_mineps0.h5"
 
-ID_TabEOS_HydroQuantities::Y_e_filename = "/ddnA/project/sbrandt/carpetx/acwen/EOS/Ye_beq_SCAPR4_mineps0.txt"
+ID_TabEOS_HydroQuantities::Y_e_filename = "/home1/09228/jkalinan/AsterX_BNS/tabeos_tovid/Ye_beq_SCAPR4_mineps0.txt"
 ID_TabEOS_HydroQuantities::id_entropy_type = "from table"
 ID_TabEOS_HydroQuantities::id_rho_atm_max = 1e-8
 ID_TabEOS_HydroQuantities::id_Y_e_atm = 0.5

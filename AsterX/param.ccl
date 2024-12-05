@@ -100,6 +100,7 @@ USES CCTK_REAL rho_abs_min
 USES CCTK_REAL atmo_tol
 USES CCTK_REAL eps_atmo
 USES CCTK_REAL p_atmo
+USES CCTK_REAL t_atmo
 USES CCTK_REAL Ye_atmo
 USES CCTK_REAL B_lim
 USES CCTK_REAL vw_lim
@@ -110,6 +111,7 @@ USES CCTK_REAL c2p_tol
 USES CCTK_REAL r_atmo
 USES CCTK_REAL n_rho_atmo
 USES CCTK_REAL n_press_atmo
+USES CCTK_REAL n_temp_atmo
 USES BOOLEAN thermal_eos_atmo
 USES CCTK_REAL alp_thresh
 USES CCTK_REAL rho_BH
