@@ -164,11 +164,12 @@ public:
   }
 
   // edited
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   eps_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                              const CCTK_REAL ye) const {
     // return temp / temp_over_eps;
     printf("EOS: eps from temperature not implemented for eos_3p_hybrid.");
+    return 0.0;
   }
 
   // edited
