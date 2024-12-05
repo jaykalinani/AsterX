@@ -29,18 +29,19 @@ CCTK_REAL atmo_tol "atmosphere density tolerance factor" STEERABLE=ALWAYS
 
 CCTK_REAL eps_atmo "Specific energy density of the atmosphere" STEERABLE = recover {
   0 : *::"Larger than zero"
-}
-1e-10
+} 1e-10
 
 CCTK_REAL p_atmo "Pressure of the atmosphere" STEERABLE = recover {
   0 : *::"Larger than zero"
-}
-1e-10
+} 1e-10
+
+CCTK_REAL t_atmo "Temperature of the atmosphere in MeV" STEERABLE = recover {
+  0 : *::"Larger than zero"
+} 1e-10
 
 CCTK_REAL Ye_atmo "Electron fraction of the atmosphere" STEERABLE = recover {
   0 : *::"Larger than zero"
-}
-1e-10
+} 1e-10
 
 CCTK_REAL B_lim "Upper limit for the value of magnetization" STEERABLE=ALWAYS
 {
@@ -84,6 +85,11 @@ CCTK_REAL n_rho_atmo "Exponential of the radial power law atmosphere prescriptio
 } 0.0
 
 CCTK_REAL n_press_atmo "Exponential of the radial power law atmosphere prescription for pressure." STEERABLE=ALWAYS
+{
+  0.0:* :: ""
+} 0.0
+
+CCTK_REAL n_temp_atmo "Exponential of the radial power law atmosphere prescription for temperature." STEERABLE=ALWAYS
 {
   0.0:* :: ""
 } 0.0
