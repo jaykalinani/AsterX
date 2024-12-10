@@ -9,9 +9,12 @@
 #include <array>
 #include <cmath>
 
-namespace FM_Utils {
+#include "aster_utils.hxx"
+
+namespace FMdisk {
+
 using namespace std;
-using namespace Loop;
+//using namespace Loop;
 
 template <typename T>
 inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
@@ -19,6 +22,7 @@ inline CCTK_ATTRIBUTE_ALWAYS_INLINE CCTK_DEVICE CCTK_HOST T pow2(T x) {
 }
 
 // Second-order average of cell-centered grid functions to edge center
+/*
 template <typename T>
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline T
 calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
@@ -33,7 +37,12 @@ calc_avg_c2e(const GF3D2<const T> &gf, const PointDesc &p, const int dir) {
   }
   return gf_avg / 4.0;
 }
+*/
 
-} // namespace FM_Utils
+enum class atmosphere_t {isentropic_graded,
+	                 free_graded,
+		         constant };
+
+} // namespace FMdisk
 
 #endif // FM_UTILS_HXX
