@@ -41,7 +41,7 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   temp_from_valid_rho_eps_ye(
       const CCTK_REAL rho, ///< Rest mass density  \f$ \rho \f$
-      const CCTK_REAL eps, ///< Specific internal energy \f$ \epsilon \f$
+      CCTK_REAL &eps, ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
       ) const;
 
@@ -77,6 +77,41 @@ public:
       const CCTK_REAL temp, ///< Temperature \f$ T \f$ in MeV
       const CCTK_REAL ye    ///< Electron fraction \f$ Y_e \f$
       ) const;
+  
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  press_from_valid_rho_temp_ye(
+      const CCTK_REAL rho,  ///< Rest mass density  \f$ \rho \f$
+      const CCTK_REAL temp, ///< Temperature \f$ T \f$ in MeV
+      const CCTK_REAL ye    ///< Electron fraction \f$ Y_e \f$
+      ) const;
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  press_from_valid_rho_kappa_ye(
+      const CCTK_REAL rho,
+      const CCTK_REAL kappa, // p/rho^gamma
+      const CCTK_REAL ye   
+  ) const;
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  eps_from_valid_rho_kappa_ye(
+      const CCTK_REAL rho,
+      const CCTK_REAL kappa, // p/rho^gamma
+      const CCTK_REAL ye   
+  ) const;
+
+  // Note that kappa implements a generic thermodynamic quantity
+  // meant to describe the "evolved" entropy by an evolution/application
+  // thorn.
+  // The notion of the "evolved" entropy (kappa) might differ from the definition
+  // of the actual entropy (entropy_from..., see above) for different EOS, 
+  // e.g. for the ideal gas EOS we have kappa = p * (rho)^(-gamma),
+  // where gamma is the adiabatic index.
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  kappa_from_valid_rho_eps_ye(
+      const CCTK_REAL rho,
+      CCTK_REAL &eps,
+      const CCTK_REAL ye   
+  ) const;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
   range_eps_from_valid_rho_ye(
@@ -128,7 +163,7 @@ eos_3p_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_3p_idealgas::temp_from_valid_rho_eps_ye(const CCTK_REAL rho,
-                                            const CCTK_REAL eps,
+                                            CCTK_REAL &eps,
                                             const CCTK_REAL ye) const {
   return temp_over_eps * eps;
 }
@@ -163,9 +198,51 @@ eos_3p_idealgas::eps_from_valid_rho_temp_ye(const CCTK_REAL rho,
   return temp / temp_over_eps;
 }
 
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_3p_idealgas::press_from_valid_rho_temp_ye(const CCTK_REAL rho,
+                                            const CCTK_REAL temp,
+                                            const CCTK_REAL ye) const {
+  CCTK_REAL eps = eps_from_valid_rho_temp_ye(rho, temp, ye);
+  return press_from_valid_rho_eps_ye(rho, eps, ye);
+}
+
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_3p_idealgas::press_from_valid_rho_kappa_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL kappa, // p/rho^gamma
+    const CCTK_REAL ye   
+) const {
+  return kappa*pow(rho,gamma);
+}
+
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_3p_idealgas::eps_from_valid_rho_kappa_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL kappa, // p/rho^gamma
+    const CCTK_REAL ye   
+) const {
+  return kappa*pow(rho,gamma-1.0)/(gamma-1.0);
+};
+
+// Note that kappa implements a generic thermodynamic quantity
+// meant to describe the "evolved" entropy by an evolution/application
+// thorn.
+// The notion of the "evolved" entropy (kappa) might differ from the definition
+// of the actual entropy (entropy_from..., see above) for different EOS, 
+// e.g. for the ideal gas EOS we have kappa = p * (rho)^(-gamma),
+// where gamma is the adiabatic index.
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+eos_3p_idealgas::kappa_from_valid_rho_eps_ye(
+    const CCTK_REAL rho,
+    CCTK_REAL &eps,
+    const CCTK_REAL ye   
+) const {
+  return (gamma-1.0)*eps*pow(rho,1.0-gamma);
+};
+
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_3p::range
 eos_3p_idealgas::range_eps_from_valid_rho_ye(const CCTK_REAL rho,
-                                             const CCTK_REAL ye) const {
+                                          const CCTK_REAL ye) const {
   return rgeps;
 }
 

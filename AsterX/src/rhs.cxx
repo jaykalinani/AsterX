@@ -71,6 +71,7 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
                                 1 / CCTK_DELTA_SPACE(2)};
 
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fdens{fxdens, fydens, fzdens};
+  const vec<GF3D2<const CCTK_REAL>, dim> gf_fDEnt{fxDEnt, fyDEnt, fzDEnt};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fmomx{fxmomx, fymomx, fzmomx};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fmomy{fxmomy, fymomy, fzmomy};
   const vec<GF3D2<const CCTK_REAL>, dim> gf_fmomz{fxmomz, fymomz, fzmomz};
@@ -188,6 +189,7 @@ extern "C" void AsterX_RHS(CCTK_ARGUMENTS) {
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         densrhs(p.I) += calcupdate_hydro(gf_fdens, p);
+        DEntrhs(p.I) += calcupdate_hydro(gf_fDEnt, p);
         momxrhs(p.I) += calcupdate_hydro(gf_fmomx, p);
         momyrhs(p.I) += calcupdate_hydro(gf_fmomy, p);
         momzrhs(p.I) += calcupdate_hydro(gf_fmomz, p);

@@ -42,6 +42,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
   /* grid functions for fluxes */
   const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxDEnts{fxDEnt, fyDEnt, fzDEnt};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomxs{fxmomx, fymomx, fzmomx};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomys{fxmomy, fymomy, fzmomy};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomzs{fxmomz, fymomz, fzmomz};
@@ -221,19 +222,43 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       rho_rc(1) = rho_abs_min;
     }
 
-    //vec<CCTK_REAL, 2> press_rc{reconstruct_pt(press, p, false, true)};
-    const vec<CCTK_REAL, 2> temp_rc{reconstruct_pt(temperature, p, false, false)};
+    // Reconstruct entropy and Ye
+    vec<CCTK_REAL, 2> entropy_rc{reconstruct_pt(entropy, p, true, true)};
     const vec<CCTK_REAL, 2> Ye_rc{reconstruct_pt(Ye, p, false, false)};
 
-    vec<CCTK_REAL, 2> eps_rc([&](int f) ARITH_INLINE {
-      return eos_3p->eps_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f),
-                                                Ye_rc(f));
-    });
-    
-    vec<CCTK_REAL, 2> press_rc([&](int f) ARITH_INLINE {
-      return eos_3p->press_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
-                                                Ye_rc(f));
-    });
+    // Initialize variables for eps, pressure, and temperature
+    vec<CCTK_REAL, 2> eps_rc;
+    array<CCTK_REAL, 2> eps_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+    vec<CCTK_REAL, 2> press_rc;
+    array<CCTK_REAL, 2> press_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+    vec<CCTK_REAL, 2> temp_rc;
+    array<CCTK_REAL, 2> temp_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+
+    if (reconstruct_with_temperature) {
+       // Reconstruct temperature
+       temp_rc_dummy = reconstruct_pt(temperature, p, false, false);
+       
+       // Compute eps_rc and press_rc using lambdas
+       for (int f = 0; f < 2; ++f) {
+          temp_rc(f) = temp_rc_dummy[f];
+          eps_rc_dummy[f] = eos_3p->eps_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
+          eps_rc(f) = eps_rc_dummy[f];
+          press_rc_dummy[f] = eos_3p->press_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
+          press_rc(f) = press_rc_dummy[f];
+       }
+    } else {
+       // Reconstruct pressure
+       press_rc_dummy = reconstruct_pt(press, p, false, true);
+
+       // Compute eps_rc and temp_rc using lambdas
+       for (int f = 0; f < 2; ++f) {
+          press_rc(f) = press_rc_dummy[f];
+          eps_rc_dummy[f] = eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f), Ye_rc(f));
+          eps_rc(f) = eps_rc_dummy[f];
+          temp_rc_dummy[f] = eos_3p->temp_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
+          temp_rc(f) = temp_rc_dummy[f]; 
+       }
+    }
 
     // TODO: currently sets negative reconstructed pressure to 0 since eps_min=0
     // for ideal gas
@@ -388,6 +413,12 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       return sqrtg * rho_rc(f) * w_lorentz_rc(f);
     });
 
+    /* DEnt = sqrt(g) * D * s  = sqrt(g) * (rho * W) * s */
+    /*    s = entropy */
+    const vec<CCTK_REAL, 2> DEnt_rc([&](int f) ARITH_INLINE {
+      return sqrtg * rho_rc(f) * w_lorentz_rc(f) * entropy_rc(f);
+    });
+
     /* auxiliary: dens * h * W = sqrt(g) * rho * h * W^2 */
     const vec<CCTK_REAL, 2> dens_h_W_rc([&](int f) ARITH_INLINE {
       return dens_rc(f) * h_rc(f) * w_lorentz_rc(f);
@@ -428,6 +459,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     /* flux(dens) = sqrt(g) * D * vtilde^i = sqrt(g) * rho * W * vtilde^i */
     const vec<CCTK_REAL, 2> flux_dens(
         [&](int f) ARITH_INLINE { return dens_rc(f) * vtilde_rc(f); });
+
+    /* flux(DEnt) = sqrt(g) * D * s * vtilde^i = sqrt(g) * rho * W * s * vtilde^i */
+    const vec<CCTK_REAL, 2> flux_DEnt(
+        [&](int f) ARITH_INLINE { return DEnt_rc(f) * vtilde_rc(f); });
 
     /* flux(mom_j)^i = sqrt(g)*(
      *  S_j*vtilde^i + alpha*((pgas+pmag)*delta^i_j - b_jB^i/W) ) */
@@ -473,6 +508,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
     /* Calculate numerical fluxes */
     fluxdenss(dir)(p.I) = calcflux(lambda, dens_rc, flux_dens);
+    fluxDEnts(dir)(p.I) = calcflux(lambda, DEnt_rc, flux_DEnt);
     fluxmomxs(dir)(p.I) = calcflux(lambda, moms_rc(0), flux_moms(0));
     fluxmomys(dir)(p.I) = calcflux(lambda, moms_rc(1), flux_moms(1));
     fluxmomzs(dir)(p.I) = calcflux(lambda, moms_rc(2), flux_moms(2));

@@ -7,8 +7,11 @@ SRCS =	\
   3D_tests.cxx \
   TabEOS_tests.cxx \
   atmosphere.cxx \
+  bbhcloud.cxx \
   magTOV.cxx \
-  magBNS.cxx  
+  magBNS.cxx \
+  SetTemperature.cxx \
+  SetEntropy.cxx
 
 #Subdirectories containing source files
 SUBDIRS =

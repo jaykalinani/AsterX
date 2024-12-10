@@ -253,7 +253,7 @@ eos_readtable_scollapse(const string &filename) {
 /*** Function calls to compute hydro variables ***/
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  logtemp_from_eps(const CCTK_REAL rho, CCTK_REAL &eps,
+  logtemp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                    const CCTK_REAL ye) const {
     const auto lrho = log(rho);
     const auto leps = log(eps + *energy_shift);
@@ -282,6 +282,7 @@ eos_readtable_scollapse(const string &filename) {
     return zero_brent(interptable->xmin<1>(), interptable->xmax<1>(), 1.e-14,
                       func);
   }
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                                const CCTK_REAL ye) const {
@@ -297,7 +298,7 @@ eos_readtable_scollapse(const string &filename) {
   press_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                               const CCTK_REAL ye) const {
     const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = logtemp_from_eps(lrho, eps, ye);
+    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
     const auto vars = interptable->interpolate<EV::PRESS>(lrho, ltemp, ye);
 
     return exp(vars[0]);
@@ -340,8 +341,8 @@ eos_readtable_scollapse(const string &filename) {
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                              const CCTK_REAL ye) const {
-    const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = logtemp_from_eps(lrho, eps, ye);
+    const auto lrho = log(rho);
+    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
     const auto vars = interptable->interpolate<EV::CS2>(lrho, ltemp, ye);
     assert(vars[0] >= 0); // Soundspeed^2 should never ever be negative
 
@@ -351,8 +352,7 @@ eos_readtable_scollapse(const string &filename) {
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   temp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                              const CCTK_REAL ye) const {
-    const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = logtemp_from_eps(lrho, eps, ye);
+    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
 
     return exp(ltemp);
   }
@@ -376,6 +376,47 @@ eos_readtable_scollapse(const string &filename) {
     return vars[0];
   }
 
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  press_from_valid_rho_kappa_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL kappa, // kappa=entropy
+    const CCTK_REAL ye
+  ) const {
+    printf("press_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
+    return 0.0;
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  eps_from_valid_rho_kappa_ye(
+    const CCTK_REAL rho,
+    const CCTK_REAL kappa, // kappa=entropy
+    const CCTK_REAL ye
+  ) const {
+    printf("eps_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
+    return 0.0;
+  };
+
+  // Note that kappa implements a generic thermodynamic quantity
+  // meant to describe the "evolved" entropy by an evolution/application
+  // thorn.
+  // The notion of the "evolved" entropy (kappa) might differ from the definition
+  // of the actual entropy (entropy_from..., see above) for different EOS, 
+  
+  // For tabulated EOS, kappa=entropy
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  kappa_from_valid_rho_eps_ye(
+    const CCTK_REAL rho,
+    CCTK_REAL &eps,
+    const CCTK_REAL ye
+  ) const {
+    const CCTK_REAL lrho = log(rho);
+    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
+    const auto vars = interptable->interpolate<EV::S>(lrho, ltemp, ye);
+
+    return vars[0];
+  };
+
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
   range_eps_from_valid_rho_ye(const CCTK_REAL rho, const CCTK_REAL ye) const {
     //    const CCTK_REAL lrho = log(rho);
@@ -385,6 +426,9 @@ eos_readtable_scollapse(const string &filename) {
 
     return rgeps;
   }
+
+  
+
 };
 } // namespace EOSX
 
