@@ -306,32 +306,11 @@ GRHD_perturb_pressure(CCTK_REAL &press, CCTK_REAL &eps, CCTK_REAL const &rho,
 		      CCTK_REAL const random_number_between_min_and_max,
 		      CCTK_REAL const gamma) {
 
-  /*
-  // Generate random number in range [0,1),
-  // snippet courtesy http://daviddeley.com/random/crandom.htm
-  const CCTK_REAL random_number_between_0_and_1 =
-      ((CCTK_REAL)rand() / ((CCTK_REAL)(RAND_MAX) + (CCTK_REAL)(1)));
-
-  const CCTK_REAL random_number_between_min_and_max =
-      random_min + (random_max - random_min) * random_number_between_0_and_1;
-  */
-
   press = press * (1.0 + random_number_between_min_and_max);
 
   // Add 1e-300 to rho to avoid division by zero when density is zero.
   eps = press / ((rho + 1e-300) * (gamma - 1.0));
 }
-
-// CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-// GRMHD_set_A(CCTK_REAL const &press, CCTK_REAL const &xtilde, CCTK_REAL const
-// &ytilde, CCTK_REAL &Ax, CCTK_REAL &Ay, CCTK_REAL &Az) {
-//
-//  DECLARE_CCTK_PARAMETERS;
-//
-//  Ax = - A_b * pow(fmax(press-press_cut,0.),A_n) * ytilde;
-//  Ay =   A_b * pow(fmax(press-press_cut,0.),A_n) * xtilde;
-//  Az = 0.;
-//}
 
 CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 GRMHD_set_A(CCTK_REAL const &press, CCTK_REAL const &rho,
