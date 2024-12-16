@@ -119,7 +119,7 @@ if (CCTK_Equals(test_type, "TabEOSTest")) {
 
 #Initial conditions for temperature
 
-schedule SetTemperature IN HydroBaseX_PostInitial
+schedule SetTemperature IN HydroBaseX_PostInitial AFTER ID_TabEOS_init
 {
   LANG: C
 
@@ -130,7 +130,7 @@ schedule SetTemperature IN HydroBaseX_PostInitial
 
 #Initial conditions for entropy
 
-schedule SetEntropy IN HydroBaseX_PostInitial
+schedule SetEntropy IN HydroBaseX_PostInitial AFTER ID_TabEOS_init
 {
   LANG: C
 
