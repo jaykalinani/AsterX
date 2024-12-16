@@ -126,7 +126,7 @@ schedule SetTemperature IN HydroBaseX_PostInitial
   READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
   WRITES: HydroBaseX::eps(everywhere) HydroBaseX::temperature(everywhere)
 
-} "Set initial entropy"
+} "Set initial temperature"
 
 #Initial conditions for entropy
 
