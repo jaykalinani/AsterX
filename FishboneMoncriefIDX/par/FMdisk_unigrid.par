@@ -87,7 +87,7 @@ CarpetX::regrid_error_threshold = 5.0e-5
 
 CarpetX::prolongation_type = "ddf"
 CarpetX::ghost_size = 3
-CarpetX::dtfac = 0.2 #0.4
+CarpetX::dtfac = 0.2
 
 ADMBaseX::initial_data       = "FishboneMoncriefID"
 ADMBaseX::initial_lapse      = "FishboneMoncriefID"
@@ -194,6 +194,7 @@ CarpetX::out_norm_every = 10
 #CarpetX::openpmd_format = "HDF5"
 CarpetX::out_openpmd_every = 0 #400
 CarpetX::out_openpmd_vars = "
+    AsterX::con2prim_flag
 #    AsterX::Avec_x
 #    AsterX::Avec_y
 #    AsterX::Avec_z
@@ -201,8 +202,6 @@ CarpetX::out_openpmd_vars = "
     AsterX::dens
     AsterX::mom
     AsterX::tau
-    AsterX::aux_fields
-    AsterX::aux_fields_B
 #    AsterX::taurhs
     HydroBaseX::Bvec
     HydroBaseX::rho
@@ -218,6 +217,7 @@ CarpetX::out_openpmd_vars = "
 
 CarpetX::out_silo_every = 100
 CarpetX::out_silo_vars = "
+    AsterX::con2prim_flag
 #    AsterX::Avec_x
 #    AsterX::Avec_y
 #    AsterX::Avec_z
@@ -225,8 +225,6 @@ CarpetX::out_silo_vars = "
     AsterX::dens
     AsterX::mom
     AsterX::tau
-    AsterX::aux_fields
-    AsterX::aux_fields_B
 #    AsterX::taurhs
     HydroBaseX::Bvec
     HydroBaseX::rho
@@ -242,6 +240,7 @@ CarpetX::out_silo_vars = "
 
 CarpetX::out_tsv_every = 100
 CarpetX::out_tsv_vars = "
+    AsterX::con2prim_flag
     AsterX::Avec_x
     AsterX::Avec_y
     AsterX::Avec_z

@@ -187,12 +187,12 @@ ODESolvers::verbose = "no"
 #AHFinder::initial_radius = 2.0
 #AHFinder::max_iters = 100
 
-IO::out_every = 40
+IO::out_every = 100
 IO::out_dir = "./data"
 
 CarpetX::out_norm_vars = "all"
 CarpetX::out_norm_omit_unstable = yes
-CarpetX::out_norm_every = 8
+CarpetX::out_norm_every = 10
 
 #CarpetX::openpmd_format = "HDF5"
 CarpetX::out_openpmd_every = 0 #400
@@ -205,8 +205,6 @@ CarpetX::out_openpmd_vars = "
     AsterX::dens
     AsterX::mom
     AsterX::tau
-#    AsterX::aux_fields
-#    AsterX::aux_fields_B
 #    AsterX::taurhs
     HydroBaseX::Bvec
     HydroBaseX::rho
@@ -220,7 +218,7 @@ CarpetX::out_openpmd_vars = "
 #    ADMBaseX::curv
 "
 
-CarpetX::out_silo_every = 40
+CarpetX::out_silo_every = 100
 CarpetX::out_silo_vars = "
     AsterX::con2prim_flag
 #    AsterX::Avec_x
@@ -230,8 +228,6 @@ CarpetX::out_silo_vars = "
     AsterX::dens
     AsterX::mom
     AsterX::tau
-#    AsterX::aux_fields
-#    AsterX::aux_fields_B
 #    AsterX::taurhs
     HydroBaseX::Bvec
     HydroBaseX::rho
@@ -245,7 +241,7 @@ CarpetX::out_silo_vars = "
 #    ADMBaseX::curv
 "
 
-CarpetX::out_tsv_every = 40
+CarpetX::out_tsv_every = 100
 CarpetX::out_tsv_vars = "
     AsterX::con2prim_flag
     AsterX::Avec_x
@@ -269,7 +265,7 @@ CarpetX::out_tsv_vars = "
 #    ADMBaseX::curv
 "
 
-TimerReport::out_every = 40
+TimerReport::out_every = 100
 TimerReport::out_filename = "TimerReport"
 TimerReport::output_all_timers_together = yes
 TimerReport::output_all_timers_readable = yes
