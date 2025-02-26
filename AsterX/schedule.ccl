@@ -70,6 +70,8 @@ SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFro
   READS: ADMBaseX::metric(interior)
   READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
   READS: HydroBaseX::entropy(interior)
+  WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior)
+  WRITES: HydroBaseX::entropy(interior)
   WRITES: dens(interior) tau(interior) DEnt(interior) mom(interior) dB(interior)
   WRITES: Psi(everywhere)
   WRITES: saved_prims
