@@ -70,20 +70,20 @@ SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFro
   READS: ADMBaseX::metric(interior)
   READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
   READS: HydroBaseX::entropy(interior)
+  READS: Psi(everywhere)
   WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior)
   WRITES: HydroBaseX::entropy(interior)
   WRITES: dens(interior) tau(interior) DEnt(interior) mom(interior) dB(interior)
   WRITES: Psi(everywhere)
-  WRITES: saved_prims
-  WRITES: zvec
-  WRITES: svec
+  WRITES: saved_prims(interior)
+  WRITES: zvec(interior)
+  WRITES: svec(interior)
   SYNC: dens tau DEnt mom dB
+  SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press HydroBaseX::entropy
   SYNC: saved_prims
   SYNC: zvec
   SYNC: svec
 } "Compute conserved variables from primitive variables at initial"
-
-
 
 SCHEDULE AsterX_Sync AT postregrid
 {

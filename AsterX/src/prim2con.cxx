@@ -11,6 +11,7 @@
 namespace AsterX {
 using namespace Loop;
 using namespace EOSX;
+using namespace std;
 
 extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Prim2Con_Initial;
@@ -29,6 +30,22 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         const smat<CCTK_REAL, 3> g{calc_avg_v2c(gxx, p), calc_avg_v2c(gxy, p),
                                    calc_avg_v2c(gxz, p), calc_avg_v2c(gyy, p),
                                    calc_avg_v2c(gyz, p), calc_avg_v2c(gzz, p)};
+
+        if (entropy(p.I) != entropy(p.I) ||
+            eps(p.I) != eps(p.I) ) {
+          printf("Initial data is craaaaap");
+          printf("rho = %16.8e \n",rho(p.I));
+          printf("eps = %16.8e \n",eps(p.I));
+          printf("press = %16.8e \n",press(p.I));
+          printf("entropy = %16.8e \n",entropy(p.I));
+          printf("velx = %16.8e \n",velx(p.I));
+          printf("vely = %16.8e \n",vely(p.I));
+          printf("velz = %16.8e \n",velz(p.I));
+          printf("Bvecx = %16.8e \n",Bvecx(p.I));
+          printf("Bvecy = %16.8e \n",Bvecy(p.I));
+          printf("Bvecz = %16.8e \n",Bvecz(p.I));
+          assert(0);
+        }
 
         prim pv;
         pv.rho = rho(p.I);
@@ -81,6 +98,20 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
 
             entropy(p.I) =
                 eos_th.kappa_from_valid_rho_eps_ye(eos_th.rgrho.max, pv.eps, 0.5);
+
+          }
+
+          if (pv.rho < rho_abs_min * (1 + atmo_tol)) {
+      
+            // add mass
+            pv.rho = rho_abs_min;
+            rho(p.I) = pv.rho;
+
+            pv.eps = eos_th.eps_from_valid_rho_press_ye(rho_abs_min, pv.press, 0.5);
+            eps(p.I) = pv.eps;
+
+            entropy(p.I) =
+                eos_th.kappa_from_valid_rho_eps_ye(rho_abs_min, pv.eps, 0.5);
 
           }
       
@@ -136,11 +167,45 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         dBz(p.I) = cv.dBvec(2);
 
         if (cv.tau!=cv.tau) {
-          printf("NaN in cv.tau");
+          printf("NaN in cvtau - 1");
           assert(0);
         }
 
+        if (max(max(abs(cv.dBvec(0)),abs(cv.dBvec(1))),abs(cv.dBvec(2))) > 10.0) {
+          printf("B field too large.");
+          printf("dBx = %16.8e \n",cv.dBvec(0));
+          printf("dBy = %16.8e \n",cv.dBvec(1));
+          printf("dBz = %16.8e \n",cv.dBvec(2));
+          assert(0);
+        }
+
+       if (cv.dBvec(0)!=cv.dBvec(0)) {
+          printf("NaN in bx");
+          assert(0);
+        }
+
+        if (cv.dBvec(1)!=cv.dBvec(1)) {
+          printf("NaN in by");
+          assert(0);
+        }
+
+        if (cv.dBvec(2)!=cv.dBvec(2)) {
+          printf("NaN in bz");
+          assert(0);
+        }
+ 
+
         DEnt(p.I) = entropy(p.I)*cv.dens;
+
+        if (DEnt(p.I)!=DEnt(p.I)) {
+          printf("NaN in DEnt in prim2con initial - chabamamba");
+          assert(0);
+        }
+
+        if (tau(p.I)!=tau(p.I)) {
+          printf("NaN in cvtau - 2");
+          assert(0);
+        }
 
         saved_rho(p.I) = pv.rho;
         saved_velx(p.I) = pv.vel(0);
@@ -162,10 +227,12 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
 
       });
 
-  /* Initilaize Psi to 0.0 */
-  grid.loop_all_device<0, 0, 0>(
-      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                            CCTK_ATTRIBUTE_ALWAYS_INLINE { Psi(p.I) = 0.0; });
+  if (zero_psi) {
+    /* Initilaize Psi to 0.0 */
+    grid.loop_all_device<0, 0, 0>(
+        grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
+                              CCTK_ATTRIBUTE_ALWAYS_INLINE { Psi(p.I) = 0.0; });
+  }
 }
 
 } // namespace AsterX
