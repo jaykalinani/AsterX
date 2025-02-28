@@ -302,6 +302,7 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   const smat<CCTK_REAL, 3> gup = calc_inv(glo, spatial_detg);
 
   /* Undensitize the conserved vars */
+  /* Make sure to return densitized values later on! */
   cv.dens /= sqrt_detg;
   cv.tau /= sqrt_detg;
   cv.mom /= sqrt_detg;
@@ -513,6 +514,12 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     // set status to root not converged
     rep.set_root_conv();
     //status = ROOTSTAT::NOT_CONVERGED;
+    cv.dens *= sqrt_detg;
+    cv.tau *= sqrt_detg;
+    cv.mom *= sqrt_detg;
+    cv.dBvec *= sqrt_detg;
+    cv.dYe *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
     return;
   }
 
