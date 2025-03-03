@@ -536,6 +536,8 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
 
   /* Write prims if C2P succeeded */
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+  // Conserved entropy must be consistent with new prims
+  cv.DEnt = cv.dens*pv.entropy;
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {

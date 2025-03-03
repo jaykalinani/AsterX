@@ -347,6 +347,17 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
 
   xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
+  // Lower velocity
+  const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
+  // Computing b^t : this is b^0 * alp
+  const CCTK_REAL bst = pv.w_lor * calc_contraction(pv.Bvec, v_low);
+  // Computing b^mu b_mu
+  const CCTK_REAL bs2 = (Bsq + bst * bst) / (pv.w_lor * pv.w_lor);
+  // Recompute tau
+  cv.tau = (pv.w_lor * pv.w_lor * (pv.rho * (1.0 + pv.eps) + pv.press + bs2) -
+            (pv.press + 0.5 * bs2) - bst * bst) -
+           cv.dens;
+
   // Check solution and calculate primitives
   //  if (rep.iters < maxiters && abs(fn(xEntropy_Sol)) < tolerance) {
   /*
@@ -397,17 +408,6 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     }
   }
 
-  // Lower velocity
-  const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
-  // Computing b^t : this is b^0 * alp
-  const CCTK_REAL bst = pv.w_lor * calc_contraction(pv.Bvec, v_low);
-  // Computing b^mu b_mu
-  const CCTK_REAL bs2 = (Bsq + bst * bst) / (pv.w_lor * pv.w_lor);
-  // Recompute tau
-  cv.tau = (pv.w_lor * pv.w_lor * (pv.rho * (1.0 + pv.eps) + pv.press + bs2) -
-            (pv.press + 0.5 * bs2) - bst * bst) -
-           cv.dens;
-
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
@@ -423,8 +423,8 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
   } else {
     /* Densitize the conserved vars again*/
     cv.dens *= sqrt_detg;
-    cv.tau *= sqrt_detg;
     cv.mom *= sqrt_detg;
+    cv.tau *= sqrt_detg;
     cv.dBvec *= sqrt_detg;
     cv.dYe *= sqrt_detg;
     cv.DEnt *= sqrt_detg;

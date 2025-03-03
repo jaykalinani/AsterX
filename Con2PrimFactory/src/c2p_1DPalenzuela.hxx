@@ -447,6 +447,9 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
     }
   }
 
+  // Conserved entropy must be consistent with new prims
+  cv.DEnt = cv.dens*pv.entropy;
+
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
