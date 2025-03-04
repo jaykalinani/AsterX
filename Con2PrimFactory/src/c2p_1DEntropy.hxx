@@ -294,11 +294,12 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
   cv.dYe /= sqrt_detg;
   cv.DEnt /= sqrt_detg;
 
-  if (cv.dens <= atmo.rho_cut) {
-    rep.set_atmo_set();
-    atmo.set(pv, cv, glo);
-    return;
-  }
+  //if (cv.dens <= atmo.rho_cut) {
+  //  rep.set_atmo_set();
+  //  pv.Bvec = cv.dBvec;
+  //  atmo.set(pv, cv, glo);
+  //  return;
+  //}
 
   const CCTK_REAL Ssq = get_Ssq_Exact(cv.mom, gup);
   const CCTK_REAL Bsq = get_Bsq_Exact(cv.dBvec, glo);
@@ -376,11 +377,13 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
 
     CCTK_REAL small = 1e-50;
 
+    // note that we don't compute the error in 
+    // tau as we make use of the conserved entropy
+    // for the inversion
     CCTK_REAL max_error = sqrt(max({pow((cv_check.dens-cv.dens)/(cv.dens+small),2.0),
                                     pow((cv_check.mom(0)-cv.mom(0))/(cv.mom(0)+small),2.0),
                                     pow((cv_check.mom(1)-cv.mom(1))/(cv.mom(1)+small),2.0),
-                                    pow((cv_check.mom(2)-cv.mom(2))/(cv.mom(2)+small),2.0),
-                                    pow((cv_check.tau-cv.tau)/(cv.tau+small),2.0)}));  
+                                    pow((cv_check.mom(2)-cv.mom(2))/(cv.mom(2)+small),2.0)}));  
 
     // reject only if mismatch in conservatives is inappropriate, else accept
     if (max_error >= cons_error) { 

@@ -310,11 +310,12 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   cv.dYe /= sqrt_detg;
   cv.DEnt /= sqrt_detg;
 
-  if (cv.dens <= atmo.rho_cut) {
-    rep.set_atmo_set();
-    atmo.set(pv, cv, glo);
-    return;
-  }
+  //if (cv.dens <= atmo.rho_cut) {
+  //  rep.set_atmo_set();
+  //  pv.Bvec = cv.dBvec;
+  //  atmo.set(pv, cv, glo);
+  //  return;
+  //}
 
   // compute primitive B seed from conserved B of current time step for better
   // guess
