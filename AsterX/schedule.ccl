@@ -64,7 +64,7 @@ SCHEDULE AsterX_ComputeBFromdB IN AsterX_InitialGroup AFTER AsterX_ComputedBFrom
   SYNC: HydroBaseX::Bvec
 } "Calculate centered B from densitized B"
 
-SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFromdB
+SCHEDULE AsterX_CheckPrims IN AsterX_InitialGroup AFTER AsterX_ComputeBFromdB
 {
   LANG: C
   READS: ADMBaseX::metric(interior)
@@ -72,15 +72,23 @@ SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFro
   READS: HydroBaseX::entropy(interior)
   WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior)
   WRITES: HydroBaseX::entropy(interior)
-  WRITES: dens(interior) tau(interior) DEnt(interior) mom(interior) dB(interior)
   WRITES: saved_prims(interior)
   WRITES: zvec(interior)
   WRITES: svec(interior)
-  SYNC: dens tau DEnt mom dB
   SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press HydroBaseX::entropy
   SYNC: saved_prims
   SYNC: zvec
   SYNC: svec
+} "Enforce limits on primitive variables"
+
+SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_CheckPrims
+{
+  LANG: C
+  READS: ADMBaseX::metric(interior)
+  READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
+  READS: HydroBaseX::entropy(interior)
+  WRITES: dens(interior) tau(interior) DEnt(interior) mom(interior) dB(interior)
+  SYNC: dens tau DEnt mom dB
 } "Compute conserved variables from primitive variables at initial"
 
 if (zero_psi) {
