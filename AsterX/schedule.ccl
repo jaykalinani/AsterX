@@ -84,7 +84,7 @@ SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFro
 } "Compute conserved variables from primitive variables at initial"
 
 if (zero_psi) {
-  SCHEDULE AsterX_PsiZero_Initial IN AsterX_InitialGroup AFTER AsterX_PsiZero_Initial
+  SCHEDULE AsterX_PsiZero_Initial IN AsterX_InitialGroup AFTER AsterX_Prim2Con_Initial
   {
     LANG: C
     WRITES: Psi(everywhere)
