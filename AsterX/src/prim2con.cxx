@@ -160,12 +160,16 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
 
       });
 
-  if (zero_psi) {
-    /* Initilaize Psi to 0.0 */
-    grid.loop_all_device<0, 0, 0>(
-        grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
-                              CCTK_ATTRIBUTE_ALWAYS_INLINE { Psi(p.I) = 0.0; });
-  }
+}
+
+extern "C" void AsterX_PsiZero_Initial(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTSX_AsterX_PsiZero_Initial;
+  DECLARE_CCTK_PARAMETERS;
+
+  /* Initilaize Psi to 0.0 */
+  grid.loop_all_device<0, 0, 0>(
+      grid.nghostzones, [=] CCTK_DEVICE(const PointDesc &p)
+                            CCTK_ATTRIBUTE_ALWAYS_INLINE { Psi(p.I) = 0.0; });
 }
 
 } // namespace AsterX
