@@ -250,12 +250,16 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
   }
 
   //pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
-  pv.eps = (Z_Sol / pv.w_lor / pv.w_lor / pv.rho - 1.0) / GammaIdealFluid;
-
+  //pv.eps = (Z_Sol / pv.w_lor / pv.w_lor / pv.rho - 1.0) / GammaIdealFluid;
+ 
   pv.Ye = cv.dYe / cv.dens;
 
-  pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  //pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
+  pv.press = -0.5*Bsq/(pv.w_lor*pv.w_lor) - cv.tau - cv.dens + Z_Sol + Bsq - 0.5*(BiSi*BiSi)/(Z_Sol*Z_Sol);
+  pv.eps = (Z_Sol - cv.dens * pv.w_lor - pv.press*pv.w_lor*pv.w_lor)/(cv.dens*pv.w_lor);
+  pv.press = eos_th.press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  
   pv.entropy = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
   pv.Bvec = cv.dBvec;
