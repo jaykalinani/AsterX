@@ -14,14 +14,14 @@ USES INCLUDE HEADER: aster_fd.hxx aster_interp.hxx aster_utils.hxx
 
 PUBLIC:
 
-CCTK_REAL dens TYPE=gf CENTERING={ccc} TAGS='rhs="densrhs" dependents="HydroBaseX::rho TmunuBaseX::eTtt AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Conserved rest mass density"
+CCTK_REAL dens TYPE=gf CENTERING={ccc} TAGS='rhs="densrhs" p_rhs="densrhs_p" pp_rhs="densrhs_pp" dependents="HydroBaseX::rho TmunuBaseX::eTtt AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Conserved rest mass density"
 
-CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs" dependents="HydroBaseX::vel TmunuBaseX::eTti"'
+CCTK_REAL mom TYPE=gf CENTERING={ccc} TAGS='rhs="momrhs" p_rhs="momrhs_p" pp_rhs="momrhs_pp" dependents="HydroBaseX::vel TmunuBaseX::eTti"'
 {
   momx, momy, momz
 } "Conserved momentum density"
 
-CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" dependents="HydroBaseX::eps HydroBaseX::press HydroBaseX::temperature HydroBaseX::Ye HydroBaseX::Bvec TmunuBaseX::eTij"' "Conserved internal energy density"
+CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" p_rhs="taurhs_p" pp_rhs="taurhs_pp" dependents="HydroBaseX::eps HydroBaseX::press HydroBaseX::temperature HydroBaseX::Ye HydroBaseX::Bvec TmunuBaseX::eTij"' "Conserved internal energy density"
 
 # DEnt is the conserved "evolved" entropy.
 # The corresponding primitive is stored in HydroBaseX::entropy.
@@ -33,7 +33,7 @@ CCTK_REAL tau TYPE=gf CENTERING={ccc} TAGS='rhs="taurhs" dependents="HydroBaseX:
 # refer to "physical" and "evolved" entropy, respectively. In this 
 # evolution thorn we always refer to DEnt and entropy to describe 
 # the "evolved" quantities. 
-CCTK_REAL DEnt TYPE=gf CENTERING={ccc} TAGS='rhs="DEntrhs" dependents="HydroBaseX::entropy AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Advected entropy density"
+CCTK_REAL DEnt TYPE=gf CENTERING={ccc} TAGS='rhs="DEntrhs" p_rhs="DEntrhs_p" pp_rhs="DEntrhs_pp" dependents="HydroBaseX::entropy AsterX::flux_x AsterX::flux_y AsterX::flux_z"' "Advected entropy density"
 
 CCTK_REAL flux_x TYPE=gf CENTERING={vcc} TAGS='checkpoint="no"'
 {
@@ -63,23 +63,47 @@ CCTK_REAL flux_z TYPE=gf CENTERING={ccv} TAGS='checkpoint="no"'
 } "Fluxes in z direction"
 
 CCTK_REAL densrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved rest mass density RHS"
+CCTK_REAL densrhs_p TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved rest mass density RHS previous state"
+CCTK_REAL densrhs_pp TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved rest mass density RHS previous previous state"
 
 CCTK_REAL momrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {
   momxrhs, momyrhs, momzrhs
 } "Conserved momentum density RHS"
 
+CCTK_REAL momrhs_p TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
+{
+  momxrhs_p, momyrhs_p, momzrhs_p
+} "Conserved momentum density RHS previous state"
+
+CCTK_REAL momrhs_pp TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
+{
+  momxrhs_pp, momyrhs_pp, momzrhs_pp
+} "Conserved momentum density RHS previous previous state"
+
 CCTK_REAL taurhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved internal energy density RHS" 
+CCTK_REAL taurhs_p TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved internal energy density RHS previous state" 
+CCTK_REAL taurhs_pp TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Conserved internal energy density RHS previous previous state" 
 
 CCTK_REAL DEntrhs TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Advected entropy density RHS"
+CCTK_REAL DEntrhs_p TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Advected entropy density RHS previous state"
+CCTK_REAL DEntrhs_pp TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Advected entropy density RHS previous previous state"
 
-CCTK_REAL Avec_x TYPE=gf CENTERING={cvv} TAGS='rhs="Avec_x_rhs"' "x-component of vector potential"
-CCTK_REAL Avec_y TYPE=gf CENTERING={vcv} TAGS='rhs="Avec_y_rhs"' "y-component of vector potential"
-CCTK_REAL Avec_z TYPE=gf CENTERING={vvc} TAGS='rhs="Avec_z_rhs"' "z-component of vector potential"
+CCTK_REAL Avec_x TYPE=gf CENTERING={cvv} TAGS='rhs="Avec_x_rhs" p_rhs="Avec_x_rhs_p" pp_rhs="Avec_x_rhs_pp"' "x-component of vector potential"
+CCTK_REAL Avec_y TYPE=gf CENTERING={vcv} TAGS='rhs="Avec_y_rhs" p_rhs="Avec_y_rhs_p" pp_rhs="Avec_y_rhs_pp"' "y-component of vector potential"
+CCTK_REAL Avec_z TYPE=gf CENTERING={vvc} TAGS='rhs="Avec_z_rhs" p_rhs="Avec_z_rhs_p" pp_rhs="Avec_z_rhs_pp"' "z-component of vector potential"
 
 CCTK_REAL Avec_x_rhs TYPE=gf CENTERING={cvv} TAGS='checkpoint="no"' "x-component of vector potential RHS"
+CCTK_REAL Avec_x_rhs_p TYPE=gf CENTERING={cvv} TAGS='checkpoint="no"' "x-component of vector potential RHS previous state"
+CCTK_REAL Avec_x_rhs_pp TYPE=gf CENTERING={cvv} TAGS='checkpoint="no"' "x-component of vector potential RHS previous previous state"
+
 CCTK_REAL Avec_y_rhs TYPE=gf CENTERING={vcv} TAGS='checkpoint="no"' "y-component of vector potential RHS"
+CCTK_REAL Avec_y_rhs_p TYPE=gf CENTERING={vcv} TAGS='checkpoint="no"' "y-component of vector potential RHS previous state"
+CCTK_REAL Avec_y_rhs_pp TYPE=gf CENTERING={vcv} TAGS='checkpoint="no"' "y-component of vector potential RHS previous previous state"
+
 CCTK_REAL Avec_z_rhs TYPE=gf CENTERING={vvc} TAGS='checkpoint="no"' "z-component of vector potential RHS"
+CCTK_REAL Avec_z_rhs_p TYPE=gf CENTERING={vvc} TAGS='checkpoint="no"' "z-component of vector potential RHS previous state"
+CCTK_REAL Avec_z_rhs_pp TYPE=gf CENTERING={vvc} TAGS='checkpoint="no"' "z-component of vector potential RHS previous previous state"
 
 CCTK_REAL Bx_stag TYPE=gf CENTERING={vcc} TAGS='checkpoint="no"' "x-component of staggered magnetic field"
 CCTK_REAL By_stag TYPE=gf CENTERING={cvc} TAGS='checkpoint="no"' "y-component of staggered magnetic field"
@@ -94,9 +118,11 @@ CCTK_REAL dBx_stag TYPE=gf CENTERING={vcc} TAGS='checkpoint="no"' "x-component o
 CCTK_REAL dBy_stag TYPE=gf CENTERING={cvc} TAGS='checkpoint="no"' "y-component of staggered densitized magnetic field"
 CCTK_REAL dBz_stag TYPE=gf CENTERING={ccv} TAGS='checkpoint="no"' "z-component of staggered densitized magnetic field"
 
-CCTK_REAL Psi TYPE=gf CENTERING={vvv} TAGS='rhs="Psi_rhs"' "t-component of vector potential: sqrt(det(gamma_ij))*Phi"
+CCTK_REAL Psi TYPE=gf CENTERING={vvv} TAGS='rhs="Psi_rhs" p_rhs="Psi_rhs_p" pp_rhs="Psi_rhs_pp"' "t-component of vector potential: sqrt(det(gamma_ij))*Phi"
 
 CCTK_REAL Psi_rhs TYPE=gf CENTERING={vvv} TAGS='checkpoint="no"' "t-component of vector potential RHS"
+CCTK_REAL Psi_rhs_p TYPE=gf CENTERING={vvv} TAGS='checkpoint="no"' "t-component of vector potential RHS previous state"
+CCTK_REAL Psi_rhs_pp TYPE=gf CENTERING={vvv} TAGS='checkpoint="no"' "t-component of vector potential RHS previous previous state"
 
 CCTK_REAL Aux_in_RHSof_A_Psi TYPE=gf CENTERING={vvv} TAGS='checkpoint="no"'
 {
