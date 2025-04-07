@@ -9,13 +9,14 @@
 #include <array>
 #include <cassert>
 #include <cmath>
-#include "utils.hxx"
+#include "aster_utils.hxx"
 #include "estimate_error.hxx"
 
 namespace AsterX {
 using namespace std;
 using namespace Loop;
 using namespace Arith;
+using namespace AsterUtils;
 
 enum class regrid_t {
   first_deriv,
