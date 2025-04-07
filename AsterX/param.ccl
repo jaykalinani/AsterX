@@ -15,6 +15,10 @@ BOOLEAN use_uct "Shall we use the Upwind-CT method to compute the electric field
 {
 } "no"
 
+BOOLEAN use_entropy_fix "Shall we use inversion based on entropy as a backup?" STEERABLE=always
+{
+} "no"
+
 KEYWORD flux_type "Flux solver" STEERABLE=always
 {
   "LxF" :: ""
@@ -86,6 +90,10 @@ BOOLEAN update_tmunu "Updates tmunu gridfunctions if set to yes" STEERABLE=alway
 { 
 } yes
 
+BOOLEAN zero_psi "Set Psi, time component of 4-vector potential, to zero initially?" STEERABLE=always
+{
+} yes
+
 SHARES: EOSX
 USES KEYWORD evolution_eos
 USES CCTK_REAL poly_gamma
@@ -109,7 +117,6 @@ USES CCTK_REAL p_atmo
 USES CCTK_REAL Ye_atmo
 USES CCTK_REAL B_lim
 USES CCTK_REAL vw_lim
-USES CCTK_REAL rho_strict
 USES BOOLEAN Ye_lenient
 USES CCTK_INT max_iter
 USES CCTK_REAL c2p_tol
@@ -121,6 +128,8 @@ USES CCTK_REAL alp_thresh
 USES CCTK_REAL rho_BH
 USES CCTK_REAL eps_BH
 USES CCTK_REAL vwlim_BH
+USES CCTK_REAL cons_error_limit
+USES BOOLEAN use_z
 
 SHARES: ReconX
 USES KEYWORD reconstruction_method

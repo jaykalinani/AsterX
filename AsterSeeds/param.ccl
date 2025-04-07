@@ -2,10 +2,12 @@
 
 KEYWORD test_type "Type of test to set up" STEERABLE=never
 {
+  "None"   :: "Initial data should be written by another thorn"
   "1DTest" :: ""
   "2DTest" :: ""
   "3DTest" :: "" 
-  "Atmosphere" :: "Atmosphere" 
+  "Atmosphere" :: "Atmosphere"
+  "BBHCloud" :: "BBHCloud ID" 
 } "1DTest"
 
 KEYWORD test_case "Name of the testcase" STEERABLE=never
@@ -30,6 +32,10 @@ KEYWORD test_case "Name of the testcase" STEERABLE=never
   "magBNS"                   :: ""
 } "Balsara1"
 
+
+# ---------------------------------------
+
+
 private:
 
 # parameters for rotating intial data
@@ -48,12 +54,20 @@ REAL rotate_angle_z "Rotation angle about z-axis (in units of pi)" STEERABLE=nev
   *:* :: ""
 } 0.0
 
+
+# ---------------------------------------
+
+
 # parameters for atmosphere
 
 REAL rho_atmosphere "floor density in the atmosphere"
 {
   0.0:*   :: "Positive"
 } 1e-5
+
+
+# ---------------------------------------
+
 
 # parameters for 1D tests
 
@@ -74,6 +88,10 @@ KEYWORD shock_dir "Shock direction" STEERABLE=never
   "z" :: "Parallel to z axis"
   "angle" :: "use rotate_angle_[x/y/z] instead"
 } "x"
+
+
+# ---------------------------------------
+
 
 # parameters for 2D tests
 
@@ -191,7 +209,83 @@ REAL dipole_z[2] "z-coordinate of the dipole center" STEERABLE=ALWAYS
   *:*     :: "Anything"
 } 0.0
 
+
+# ---------------------------------------
+
+
+# parameters for bbhcloud
+
+KEYWORD initial_distribution "" STEERABLE=never
+{
+  "gaussian" :: " rho = rho_disk*exp(-pow(z,2)/disk_width)"
+  "constant" :: " rho = rho_disk"
+  "powerlaw" :: " rho = rho_disk*pow(radius,-nrho)"
+} "constant"
+
+CCTK_REAL zr_0 "" STEERABLE=always
+{
+ *:* :: "should be positive"
+} 0.0
+
+CCTK_REAL rad_ztheta_0 "" STEERABLE=always
+{
+ *:* :: "should be positive"
+} 0.0
+
+CCTK_REAL rad_zphi_0 "" STEERABLE=always
+{
+ *:* :: "should be positive"
+} 0.0
+
+CCTK_REAL rho_disk "Density of the matter"
+{
+  (0.0:*      :: "Positive values"
+} 1.0e-3
+
+CCTK_REAL disk_width "Width of the gaussian distribution"
+{
+  (0:*      :: "Positive values"
+} 5.0
+
+CCTK_REAL press_disk "Pressure of the matter"
+{
+  (0.0:*      :: "Positive values"
+} 1.0e-5
+
+BOOLEAN isentropic "Specify pressure based on press_disk or polytropic pressure?"
+{
+} "yes"
+
+BOOLEAN add_magnetic_fields "Do we add an uniform magnetic field to the solution?"
+{
+} "no"
+
+CCTK_REAL nrho "Exponent of power-law density"
+{
+  [0.0:*     :: ""
+} 1.5
+
+CCTK_REAL npress "Exponent of power-law pressure"
+{
+  [0.0:*     :: ""
+} 2.5
+
+CCTK_REAL B_initial "Initial value for the magnetic field"
+{
+  [0:*      :: "Positive values"
+} 1.0
+
+
+# ---------------------------------------
+
+# entropy
+
+BOOLEAN set_entropy_postinitial "Set the entropy consistently in HydroBaseX_PostInitial" STEERABLE=always
+{
+} "yes"
+
 SHARES: EOSX
+USES KEYWORD evolution_eos
 USES CCTK_REAL poly_gamma
 USES CCTK_REAL poly_k
 USES CCTK_REAL gl_gamma

@@ -44,6 +44,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
   /* grid functions for fluxes */
   const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
+  const vec<GF3D2<CCTK_REAL>, dim> fluxDEnts{fxDEnt, fyDEnt, fzDEnt};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomxs{fxmomx, fymomx, fzmomx};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomys{fxmomy, fymomy, fzmomy};
   const vec<GF3D2<CCTK_REAL>, dim> fluxmomzs{fxmomz, fymomz, fzmomz};
@@ -213,6 +214,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const CCTK_REAL sqrtg = sqrt(detg_avg);
 
     vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, true)};
+
+    vec<CCTK_REAL, 2> entropy_rc{reconstruct_pt(entropy, p, true, true)};
 
     // set to atmo if reconstructed rho is less than atmo or is negative
     if (rho_rc(0) < rho_abs_min) {
@@ -387,6 +390,12 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
       return sqrtg * rho_rc(f) * w_lorentz_rc(f);
     });
 
+    /* DEnt = sqrt(g) * D * s  = sqrt(g) * (rho * W) * s */
+    /*    s = entropy */
+    const vec<CCTK_REAL, 2> DEnt_rc([&](int f) ARITH_INLINE {
+      return sqrtg * rho_rc(f) * w_lorentz_rc(f) * entropy_rc(f);
+    });
+
     /* auxiliary: dens * h * W = sqrt(g) * rho * h * W^2 */
     const vec<CCTK_REAL, 2> dens_h_W_rc([&](int f) ARITH_INLINE {
       return dens_rc(f) * h_rc(f) * w_lorentz_rc(f);
@@ -428,6 +437,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
     const vec<CCTK_REAL, 2> flux_dens(
         [&](int f) ARITH_INLINE { return dens_rc(f) * vtilde_rc(f); });
 
+    /* flux(DEnt) = sqrt(g) * D * s * vtilde^i = sqrt(g) * rho * W * s * vtilde^i */
+    const vec<CCTK_REAL, 2> flux_DEnt(
+        [&](int f) ARITH_INLINE { return DEnt_rc(f) * vtilde_rc(f); });
+
     /* flux(mom_j)^i = sqrt(g)*(
      *  S_j*vtilde^i + alpha*((pgas+pmag)*delta^i_j - b_jB^i/W) ) */
     const vec<vec<CCTK_REAL, 2>, 3> flux_moms([&](int j) ARITH_INLINE {
@@ -464,6 +477,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
     /* Calculate numerical fluxes */
     fluxdenss(dir)(p.I) = calcflux(lambda, dens_rc, flux_dens);
+    fluxDEnts(dir)(p.I) = calcflux(lambda, DEnt_rc, flux_DEnt);
     fluxmomxs(dir)(p.I) = calcflux(lambda, moms_rc(0), flux_moms(0));
     fluxmomys(dir)(p.I) = calcflux(lambda, moms_rc(1), flux_moms(1));
     fluxmomzs(dir)(p.I) = calcflux(lambda, moms_rc(2), flux_moms(2));
@@ -516,6 +530,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
              moms_rc(0)(0), moms_rc(0)(1), moms_rc(1)(0), moms_rc(1)(1),
              moms_rc(2)(0), moms_rc(2)(1));
       printf("  tau_rc  = %16.8e, %16.8e,\n", tau_rc(0), tau_rc(1));
+      printf("  Bs_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e,\n",
+             Bs_rc(0)(0), Bs_rc(0)(1), Bs_rc(1)(0),
+             Bs_rc(1)(1), Bs_rc(2)(0), Bs_rc(2)(1));
       printf("  Bts_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e,\n",
              Btildes_rc(0)(0), Btildes_rc(0)(1), Btildes_rc(1)(0),
              Btildes_rc(1)(1), Btildes_rc(2)(0), Btildes_rc(2)(1));

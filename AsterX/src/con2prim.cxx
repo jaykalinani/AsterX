@@ -8,6 +8,7 @@
 #include "c2p.hxx"
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
+#include "c2p_1DEntropy.hxx"
 
 #include "eos_1p.hxx"
 #include "eos_polytropic.hxx"
@@ -59,6 +60,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       1, 1, 1>(grid.nghostzones, [=] CCTK_DEVICE(
                                      const PointDesc
                                          &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+  // Note that HydroBaseX gfs are NaN when entering this loop due
+  // explicit dependence on conservatives from 
+  // AsterX -> dependents tag 
+
     // Setting up atmosphere
     CCTK_REAL rho_atm = 0.0;   // dummy initialization
     CCTK_REAL press_atm = 0.0; // dummy initialization
@@ -83,15 +88,26 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       eps_atm = std::min(std::max(eos_th.rgeps.min, eps_atm), eos_th.rgeps.max);
       press_atm = eos_th.press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     }
-    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, rho_atmo_cut);
+    CCTK_REAL entropy_atm = eos_th.kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, entropy_atm, rho_atmo_cut);
 
     // Construct Noble c2p object:
-    c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, rho_strict, vw_lim,
-                          B_lim, Ye_lenient);
+    c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
 
     // Construct Palenzuela c2p object:
-    c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, rho_strict,
-                             vw_lim, B_lim, Ye_lenient);
+    c2p_1DPalenzuela c2p_Pal(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
+
+    // Construct Entropy c2p object:
+    c2p_1DEntropy c2p_Ent(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
 
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
@@ -102,8 +118,24 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
 
     vec<CCTK_REAL, 3> v_up{saved_velx(p.I), saved_vely(p.I), saved_velz(p.I)};
-    const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
-    CCTK_REAL wlor = calc_wlorentz(v_low, v_up);
+    vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
+    CCTK_REAL zsq{0.0};
+
+    // TODO: Debug code to capture v>1 early,
+    // remove soon
+    const CCTK_REAL vsq = calc_contraction(v_low,v_up);
+    if (vsq >= 1.0) {
+      CCTK_REAL wlim = sqrt(1.0 + vw_lim * vw_lim);
+      CCTK_REAL vlim = vw_lim/wlim;
+      v_up *= vlim/sqrt(vsq);
+      v_low *= vlim/sqrt(vsq);
+      zsq = vw_lim;
+    } else {
+      zsq = vsq/(1.0-vsq);
+    } 
+       
+    //CCTK_REAL wlor = calc_wlorentz(v_low, v_up);
+    CCTK_REAL wlor = sqrt(1.0+zsq);
 
     vec<CCTK_REAL, 3> Bup{dBx(p.I) / sqrt_detg, dBy(p.I) / sqrt_detg,
                           dBz(p.I) / sqrt_detg};
@@ -111,13 +143,19 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     CCTK_REAL dummy_Ye = 0.5;
     CCTK_REAL dummy_dYe = 0.5;
     prim_vars pv;
-    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), dummy_Ye, press(p.I),
-                       v_up,           wlor,           Bup};
+    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), dummy_Ye, 
+                             eos_th.press_from_valid_rho_eps_ye(saved_rho(p.I), 
+                                                                saved_eps(p.I), dummy_Ye),
+                             eos_th.kappa_from_valid_rho_eps_ye(saved_rho(p.I), 
+                                                                saved_eps(p.I), dummy_Ye),
+                             v_up,           wlor,           Bup};
+
     // Note that cv are densitized, i.e. they all include sqrt_detg
     cons_vars cv{dens(p.I),
                  {momx(p.I), momy(p.I), momz(p.I)},
                  tau(p.I),
                  dummy_dYe,
+                 DEnt(p.I),
                  {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
     if (dens(p.I) <= sqrt_detg * rho_atmo_cut) {
@@ -136,28 +174,17 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
     if (alp(p.I) < alp_thresh) {
       if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH)) {
-        pv_seeds.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of
-                               // initial NS or disk
-        pv_seeds.eps = eps_BH;
-        pv_seeds.Ye = Ye_atmo;
-        pv_seeds.press =
-            eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
-        // check on velocities
-        CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
-        CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-        CCTK_REAL sol_v =
-            sqrt((pv_seeds.w_lor * pv_seeds.w_lor - 1.0)) / pv_seeds.w_lor;
-        if (sol_v > vlim_BH) {
-          pv_seeds.vel *= vlim_BH / sol_v;
-          pv_seeds.w_lor = wlim_BH;
-        }
-        cv.from_prim(pv_seeds, glo);
+        c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
       }
     }
 
     // Construct error report object:
     c2p_report rep_first;
     c2p_report rep_second;
+    c2p_report rep_ent;
+
+    /* set flag to success */
+    con2prim_flag(p.I) = 1; 
 
     // Calling the first C2P
     switch (c2p_fir) {
@@ -166,7 +193,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       break;
     }
     case c2p_first_t::Palenzuela: {
-      c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+      //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+      c2p_Pal.solve(eos_th, pv, cv, glo, rep_first);
       break;
     }
     default:
@@ -174,9 +202,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     }
 
     if (rep_first.failed()) {
-      printf("First C2P failed :( \n");
-      rep_first.debug_message();
-      printf("Calling the back up C2P.. \n");
+      if (debug_mode) {      
+        printf("First C2P failed :( \n");
+        rep_first.debug_message();
+        printf("Calling the back up C2P.. \n");
+      }
       // Calling the second C2P
       switch (c2p_sec) {
       case c2p_second_t::Noble: {
@@ -184,7 +214,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         break;
       }
       case c2p_second_t::Palenzuela: {
-        c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
+        //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
+        c2p_Pal.solve(eos_th, pv, cv, glo, rep_second);
         break;
       }
       default:
@@ -193,82 +224,103 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     }
 
     if (rep_first.failed() && rep_second.failed()) {
-      printf("Second C2P failed too :( :( \n");
-      rep_second.debug_message();
 
-      // Treatment for BH interiors after C2P failures
-      // NOTE: By default, alp_thresh=0 so the if condition below is never
-      // triggered. One must be very careful when using this functionality and
-      // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the
-      // parfile
-      if (alp(p.I) < alp_thresh) {
-        if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH)) {
-          pv.rho = rho_BH; // typically set to 0.01% to 1% of rho_max of initial
-                           // NS or disk
-          pv.eps = eps_BH;
-          pv.Ye = Ye_atmo;
-          pv.press =
-              eos_th.press_from_valid_rho_eps_ye(rho_BH, eps_BH, Ye_atmo);
-          // check on velocities
-          CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);
-          CCTK_REAL vlim_BH = vwlim_BH / wlim_BH;
-          CCTK_REAL sol_v = sqrt((pv.w_lor * pv.w_lor - 1.0)) / pv.w_lor;
-          if (sol_v > vlim_BH) {
-            pv.vel *= vlim_BH / sol_v;
-            pv.w_lor = wlim_BH;
+      if (use_entropy_fix) {
+
+        c2p_Ent.solve(eos_th, pv, cv, glo, rep_ent);
+
+        if (rep_ent.failed()) {
+
+          con2prim_flag(p.I) = 0;
+
+          if (debug_mode) {      
+            printf("Entropy C2P failed. Setting point to atmosphere.\n");
+            rep_ent.debug_message();
+            printf(
+                   "WARNING: \n"
+                   "C2Ps failed. Printing cons and saved prims before set to "
+                   "atmo: \n"
+                   "cctk_iteration = %i \n "
+                   "x, y, z = %26.16e, %26.16e, %26.16e \n "
+                   "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+                   "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+                   "dBy = %26.16e \n dBz = %26.16e \n "
+                   "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
+                   "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
+                   "%26.16e \n "
+                   "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+                   "Bvecz = %26.16e \n "
+                   "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+                   cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
+                   momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), pv.rho, pv.eps,
+                   pv.press, pv.vel(0), pv.vel(1), pv.vel(2), pv.Bvec(0), pv.Bvec(1),
+                   pv.Bvec(2),
+                   // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
+                   // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+                   Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
           }
-          cv.from_prim(pv, glo);
-          rep_first.set_atmo = 0;
-          rep_second.set_atmo = 0;
+
+          if ( (alp(p.I) < alp_thresh) ) {
+            c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
+          } else {
+            // set to atmo
+            cv.dBvec(0) = dBx(p.I);
+            cv.dBvec(1) = dBy(p.I);
+            cv.dBvec(2) = dBz(p.I);
+            pv.Bvec = cv.dBvec / sqrt_detg;
+            atmo.set(pv, cv, glo);
+          }
+        }
+
+      } else {
+
+        con2prim_flag(p.I) = 0;
+
+        if (debug_mode) {      
+          printf("Second C2P failed too :( :( \n");
+          rep_second.debug_message();
+          printf(
+                 "WARNING: \n"
+                 "C2Ps failed. Printing cons and saved prims before set to "
+                 "atmo: \n"
+                 "cctk_iteration = %i \n "
+                 "x, y, z = %26.16e, %26.16e, %26.16e \n "
+                 "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
+                 "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
+                 "dBy = %26.16e \n dBz = %26.16e \n "
+                 "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
+                 "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
+                 "%26.16e \n "
+                 "Bvecx = %26.16e \n Bvecy = %26.16e \n "
+                 "Bvecz = %26.16e \n "
+                 "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
+                 cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
+                 momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), pv.rho, pv.eps,
+                 pv.press, pv.vel(0), pv.vel(1), pv.vel(2), pv.Bvec(0), pv.Bvec(1),
+                 pv.Bvec(2),
+                 // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
+                 // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+                 Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
+        }
+
+        if ( (alp(p.I) < alp_thresh) && ( (pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH) ) ) {
+          c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
+        } else {
+          // set to atmo
+          cv.dBvec(0) = dBx(p.I);
+          cv.dBvec(1) = dBy(p.I);
+          cv.dBvec(2) = dBz(p.I);
+          pv.Bvec = cv.dBvec / sqrt_detg;
+          atmo.set(pv, cv, glo);
         }
       }
-      con2prim_flag(p.I) = 0;
     }
-
-    if (rep_first.set_atmo && rep_second.set_atmo) {
-      if (debug_mode) {
-        printf(
-            "WARNING: \n"
-            "C2Ps failed. Printing cons and saved prims before set to "
-            "atmo: \n"
-            "cctk_iteration = %i \n "
-            "x, y, z = %26.16e, %26.16e, %26.16e \n "
-            "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
-            "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
-            "dBy = %26.16e \n dBz = %26.16e \n "
-            "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e \n "
-            "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
-            "%26.16e \n "
-            "Bvecx = %26.16e \n Bvecy = %26.16e \n "
-            "Bvecz = %26.16e \n "
-            "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
-            cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-            momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), pv.rho, pv.eps,
-            pv.press, pv.vel(0), pv.vel(1), pv.vel(2), pv.Bvec(0), pv.Bvec(1),
-            pv.Bvec(2),
-            // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
-            // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
-            Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
-      }
-
-      // set to atmo
-      cv.dBvec(0) = dBx(p.I);
-      cv.dBvec(1) = dBy(p.I);
-      cv.dBvec(2) = dBz(p.I);
-      pv.Bvec = cv.dBvec / sqrt_detg;
-      atmo.set(pv, cv, glo);
-
-      // assert(0);
-    }
-
-    /* set flag to success */
-    con2prim_flag(p.I) = 1;
 
     // dummy vars
     CCTK_REAL Ex, Ey, Ez;
 
     // Write back pv
-    pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), velx(p.I), vely(p.I),
+    pv.scatter(rho(p.I), eps(p.I), dummy_Ye, press(p.I), entropy(p.I), velx(p.I), vely(p.I),
                velz(p.I), wlor, Bvecx(p.I), Bvecy(p.I), Bvecz(p.I), Ex, Ey, Ez);
 
     zvec_x(p.I) = wlor * pv.vel(0);
@@ -284,7 +336,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
 
     // Write back cv
     cv.scatter(dens(p.I), momx(p.I), momy(p.I), momz(p.I), tau(p.I), dummy_Ye,
-               dBx(p.I), dBy(p.I), dBz(p.I));
+               DEnt(p.I), dBx(p.I), dBy(p.I), dBz(p.I));
 
     // Update saved prims
     saved_rho(p.I) = rho(p.I);
@@ -292,6 +344,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     saved_vely(p.I) = vely(p.I);
     saved_velz(p.I) = velz(p.I);
     saved_eps(p.I) = eps(p.I);
+
   }); // Loop
 }
 
