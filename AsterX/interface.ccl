@@ -142,6 +142,12 @@ CCTK_REAL saved_prims TYPE=gf CENTERING={ccc}
   saved_eps
 } "Saved primitive variables as initial guesses for con2prim"
 
+CCTK_REAL analysis_quantities TYPE=gf CENTERING={ccc}
+{
+  b2small
+  total_energy
+} "Analysis quantities"
+
 CCTK_REAL zvec TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {
   zvec_x, zvec_y, zvec_z

@@ -41,6 +41,7 @@ KEYWORD regrid_method "Regrid method" STEERABLE=always
   "first derivative" :: ""
   "second derivative" :: ""
   "second derivative norm" :: ""
+  "SDN total energy" :: "second derivative norm of total energy"
   "first gradient" :: ""
 } "first gradient"
 
