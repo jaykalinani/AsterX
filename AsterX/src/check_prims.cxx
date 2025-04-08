@@ -35,6 +35,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
         CCTK_REAL pressL   = press(p.I);
         CCTK_REAL entropyL = entropy(p.I);
         CCTK_REAL YeL      = Ye(p.I);
+        CCTK_REAL tempL    = temperature(p.I);
 
         // Lower velocity
         vec<CCTK_REAL, 3> v_low = calc_contraction(g, v_up);
@@ -64,9 +65,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
       
           // remove mass
           rhoL = eos_3p->rgrho.max;
-          epsL = eos_3p->eps_from_valid_rho_press_ye(eos_3p->rgrho.max, pressL, YeL);
+
+          if (use_temperature) {
+             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+          } else {
+             epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
+          }
           entropyL =
-              eos_3p->kappa_from_valid_rho_eps_ye(eos_3p->rgrho.max, epsL, YeL);
+              eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
 
         }
 
@@ -74,9 +80,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
       
           // add mass
           rhoL = rho_abs_min;
-          epsL = eos_3p->eps_from_valid_rho_press_ye(rho_abs_min, pressL, YeL);
+
+          if (use_temperature) {
+             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+          } else {
+             epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
+          }
           entropyL =
-              eos_3p->kappa_from_valid_rho_eps_ye(rho_abs_min, epsL, YeL);
+              eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
 
         }
       

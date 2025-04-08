@@ -126,6 +126,7 @@ USES CCTK_REAL eps_BH
 USES CCTK_REAL vwlim_BH
 USES CCTK_REAL cons_error_limit
 USES BOOLEAN use_z
+USES BOOLEAN use_temperature
 
 SHARES: ReconX
 USES KEYWORD reconstruction_method

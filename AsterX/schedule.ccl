@@ -68,7 +68,7 @@ SCHEDULE AsterX_CheckPrims IN AsterX_InitialGroup AFTER AsterX_ComputeBFromdB
 {
   LANG: C
   READS: ADMBaseX::metric(interior)
-  READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
+  READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::temperature(interior) HydroBaseX::Bvec(interior)
   READS: HydroBaseX::entropy(interior) HydroBaseX::Ye(interior)
   WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior)
   WRITES: HydroBaseX::entropy(interior) HydroBaseX::Ye(interior)
