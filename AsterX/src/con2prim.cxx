@@ -72,16 +72,15 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     rho_atm = (radial_distance > r_atmo)
                   ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
                   : rho_abs_min;
-    const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
 
     // Grading pressure based on either cold or thermal EOS
     if (thermal_eos_atmo) {
-      press_atm = (radial_distance > r_atmo)
-                      ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
-                      : p_atmo;
-      temp_atm = (radial_distance > t_atmo)
-                      ? (p_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
+      //rho_atm = max(rho_atm, eos_3p->interptable->xmin<0>());
+      temp_atm = (radial_distance > r_atmo)
+                      ? (t_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
                       : t_atmo;
+      //temp_atm = max(temp_atm, eos_3p->interptable->xmin<1>());
+      press_atm = eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
       eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
     } else {
       const CCTK_REAL gm1 = eos_1p->gm1_from_valid_rho(rho_atm);
@@ -90,6 +89,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       press_atm = eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     }
     CCTK_REAL entropy_atm = eos_3p->kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+    const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
     atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, temp_atm, entropy_atm, rho_atmo_cut);
 
     // Construct Noble c2p object:
