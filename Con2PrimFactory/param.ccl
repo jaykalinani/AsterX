@@ -37,11 +37,11 @@ CCTK_REAL p_atmo "Pressure of the atmosphere" STEERABLE = recover {
 
 CCTK_REAL t_atmo "Temperature of the atmosphere in MeV" STEERABLE = recover {
   0 : *::"Larger than zero"
-} 1e-10
+} 1e-2
 
 CCTK_REAL Ye_atmo "Electron fraction of the atmosphere" STEERABLE = recover {
   0 : *::"Larger than zero"
-} 1e-10
+} 0.5
 
 CCTK_REAL B_lim "Upper limit for the value of magnetization" STEERABLE=ALWAYS
 {
