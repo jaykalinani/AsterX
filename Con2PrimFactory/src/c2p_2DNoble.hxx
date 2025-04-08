@@ -304,6 +304,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   const smat<CCTK_REAL, 3> gup = calc_inv(glo, spatial_detg);
 
   /* Undensitize the conserved vars */
+  /* Make sure to return densitized values later on! */
   cv.dens /= sqrt_detg;
   cv.tau /= sqrt_detg;
   cv.mom /= sqrt_detg;
@@ -311,11 +312,12 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   cv.DYe /= sqrt_detg;
   cv.DEnt /= sqrt_detg;
 
-  if (cv.dens <= atmo.rho_cut) {
-    rep.set_atmo_set();
-    atmo.set(pv, cv, glo);
-    return;
-  }
+  //if (cv.dens <= atmo.rho_cut) {
+  //  rep.set_atmo_set();
+  //  pv.Bvec = cv.dBvec;
+  //  atmo.set(pv, cv, glo);
+  //  return;
+  //}
 
   // compute primitive B seed from conserved B of current time step for better
   // guess
@@ -514,6 +516,12 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     // set status to root not converged
     rep.set_root_conv();
     //status = ROOTSTAT::NOT_CONVERGED;
+    cv.dens *= sqrt_detg;
+    cv.tau *= sqrt_detg;
+    cv.mom *= sqrt_detg;
+    cv.dBvec *= sqrt_detg;
+    cv.DYe *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
     return;
   }
 
@@ -530,6 +538,8 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
 
   /* Write prims if C2P succeeded */
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
+  // Conserved entropy must be consistent with new prims
+  cv.DEnt = cv.dens*pv.entropy;
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {

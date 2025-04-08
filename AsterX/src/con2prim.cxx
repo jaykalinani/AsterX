@@ -142,9 +142,15 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                           dBz(p.I) / sqrt_detg};
 
     prim_vars pv;
-    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I), press(p.I), temperature(p.I), entropy(p.I),
-                       v_up,           wlor,           Bup};
     // Note that pv_seeds.press and pv_seeds.entropy are NaN at this point
+    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I), 
+                             eos_3p->press_from_valid_rho_eps_ye(saved_rho(p.I), 
+                                                                saved_eps(p.I), saved_Ye(p.I)), 
+                             temperature(p.I),
+                             eos_3p->kappa_from_valid_rho_eps_ye(saved_rho(p.I), 
+                                                                saved_eps(p.I), saved_Ye(p.I)),
+                             v_up,           wlor,           Bup};
+
     // Note that cv are densitized, i.e. they all include sqrt_detg
     cons_vars cv{dens(p.I),
                  {momx(p.I), momy(p.I), momz(p.I)},

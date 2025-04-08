@@ -566,6 +566,9 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
              moms_rc(2)(0), moms_rc(2)(1));
       printf("  tau_rc  = %16.8e, %16.8e,\n", tau_rc(0), tau_rc(1));
       printf("  DYe_rc  = %16.8e, %16.8e,\n", DYe_rc(0), DYe_rc(1));
+      printf("  Bs_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e,\n",
+             Bs_rc(0)(0), Bs_rc(0)(1), Bs_rc(1)(0),
+             Bs_rc(1)(1), Bs_rc(2)(0), Bs_rc(2)(1));
       printf("  Bts_rc  = %16.8e, %16.8e, %16.8e, %16.8e, %16.8e, %16.8e,\n",
              Btildes_rc(0)(0), Btildes_rc(0)(1), Btildes_rc(1)(0),
              Btildes_rc(1)(1), Btildes_rc(2)(0), Btildes_rc(2)(1));

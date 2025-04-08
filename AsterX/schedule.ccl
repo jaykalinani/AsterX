@@ -7,6 +7,8 @@ STORAGE: ADMBaseX::metric ADMBaseX::lapse ADMBaseX::shift ADMBaseX::curv
 STORAGE: Aux_in_RHSof_A_Psi
 STORAGE: TmunuBaseX::eTtt TmunuBaseX::eTti TmunuBaseX::eTij
 
+
+
 if(unit_test)
 {
   SCHEDULE AsterX_Test AT wragh
@@ -31,6 +33,8 @@ if(local_estimate_error)
     WRITES: CarpetXRegrid::regrid_error(interior)
   } "Estimate local error for regridding initial conditions"
 }
+
+
 
 SCHEDULE GROUP AsterX_InitialGroup AT initial IN ODESolvers_Initial AFTER HydroBaseX_PostInitial 
 {
@@ -60,24 +64,40 @@ SCHEDULE AsterX_ComputeBFromdB IN AsterX_InitialGroup AFTER AsterX_ComputedBFrom
   SYNC: HydroBaseX::Bvec
 } "Calculate centered B from densitized B"
 
-SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFromdB
+SCHEDULE AsterX_CheckPrims IN AsterX_InitialGroup AFTER AsterX_ComputeBFromdB
+{
+  LANG: C
+  READS: ADMBaseX::metric(interior)
+  READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
+  READS: HydroBaseX::entropy(interior) HydroBaseX::Ye(interior)
+  WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior)
+  WRITES: HydroBaseX::entropy(interior) HydroBaseX::Ye(interior)
+  WRITES: saved_prims(interior)
+  WRITES: zvec(interior)
+  WRITES: svec(interior)
+  SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press HydroBaseX::entropy HydroBaseX::Ye
+  SYNC: saved_prims
+  SYNC: zvec
+  SYNC: svec
+} "Enforce limits on primitive variables"
+
+SCHEDULE AsterX_Prim2Con_Initial IN AsterX_InitialGroup AFTER AsterX_CheckPrims
 {
   LANG: C
   READS: ADMBaseX::metric(interior)
   READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
   READS: HydroBaseX::entropy(interior) HydroBaseX::Ye(interior)
   WRITES: dens(interior) tau(interior) DEnt(interior) mom(interior) DYe(interior) dB(interior)
-  WRITES: Psi(everywhere)
-  WRITES: saved_prims
-  WRITES: zvec
-  WRITES: svec
-  SYNC: dens tau DEnt mom DYe dB
-  SYNC: saved_prims
-  SYNC: zvec
-  SYNC: svec
+  SYNC: dens tau DEnt mom dYe dB 
 } "Compute conserved variables from primitive variables at initial"
 
-
+if (zero_psi) {
+  SCHEDULE AsterX_PsiZero_Initial IN AsterX_InitialGroup AFTER AsterX_Prim2Con_Initial
+  {
+    LANG: C
+    WRITES: Psi(everywhere)
+  } "Set Psi, time component of 4-vector potential, to zero initially"
+}
 
 SCHEDULE AsterX_Sync AT postregrid
 {
@@ -140,6 +160,7 @@ SCHEDULE AsterX_Con2Prim IN AsterX_Con2PrimGroup AFTER AsterX_ComputedBFromdBsta
   SYNC: svec
   SYNC: dens tau DEnt mom dYe dB
 } "Calculate primitive variables from conservative variables"
+
 
 
 SCHEDULE GROUP AsterX_RHSGroup IN ODESolvers_RHS
