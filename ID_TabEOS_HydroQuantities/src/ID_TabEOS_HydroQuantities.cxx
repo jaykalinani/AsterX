@@ -51,7 +51,7 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_Y_e(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          if (rho(p.I) > id_rho_atm_max) {
+          if (rho(p.I) > rho_abs_min * (1 + atmo_tol)) {
             // Interpolate Y_e(rho_i) at gridpoint i
             CCTK_REAL Y_eL;
             id_ye_reader->interpolate_1d_quantity_as_function_of_rho(
@@ -60,15 +60,9 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_Y_e(CCTK_ARGUMENTS) {
             Ye(p.I) = MIN(MAX(Y_eL, eos_3p_tab3d->interptable->xmin<2>()),
                           eos_3p_tab3d->interptable->xmax<2>());
           } else {
-            Ye(p.I) = id_Y_e_atm;
+            Ye(p.I) = Ye_atmo;
           }
         });
-
-    // if (id_ye_reader->interp_err) {
-    //	CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
-    //							"1D Interpolator Encountered Error In Y_e
-    //Init");
-    //}
 
     The_Managed_Arena()->free(id_ye_reader);
   }
@@ -87,13 +81,13 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_temperature(CCTK_ARGUMENTS) {
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        const CCTK_REAL r_pow_T = atmo_falloff_T ? r_power_T : 0.;
-        const CCTK_REAL radius = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-        const CCTK_REAL r_atmo = std::max(r_atmo_min, radius);
-        const CCTK_REAL id_T_atm =
-            std::max(id_T_atm_max * std::pow(r_atmo / r_atmo_min, r_pow_T),
-                     eos_3p_tab3d->interptable->xmin<1>());
+        CCTK_REAL radial_distance = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+        CCTK_REAL temp_atm = 0.0;
+        temp_atm = (radial_distance > r_atmo)
+                      ? (t_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
+                      : t_atmo;
 
+        const CCTK_REAL id_T_atm = std::max(temp_atm, eos_3p_tab3d->interptable->xmin<1>());
         temperature(p.I) = id_T_atm;
       });
 }
@@ -125,14 +119,15 @@ ID_TabEOS_HydroQuantities__recompute_HydroBase_variables(CCTK_ARGUMENTS) {
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
         // Find Atmospheric Density
         CCTK_REAL rhoL = rho(p.I);
-        const CCTK_REAL radius = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-        const CCTK_REAL r_atmo = std::max(r_atmo_min, radius);
-        const CCTK_REAL r_pow = atmo_falloff ? r_power : 0.;
-        const CCTK_REAL rho_atmL =
-            std::max(id_rho_atm_max * std::pow(r_atmo / r_atmo_min, r_pow),
-                     eos_3p_tab3d->interptable->xmin<0>());
-
-        if (rhoL > rho_atmL) {
+        CCTK_REAL rho_atm = 0.0;
+        CCTK_REAL radial_distance = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+        rho_atm = (radial_distance > r_atmo)
+                  ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
+                  : rho_abs_min;
+        rho_atm = std::max(rho_atm, eos_3p_tab3d->interptable->xmin<0>()); 
+        const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);   
+    
+        if (rhoL > rho_atmo_cut) {
           CCTK_REAL yeL = Ye(p.I);
           CCTK_REAL tempL = temperature(p.I);
           press(p.I) =
@@ -145,18 +140,18 @@ ID_TabEOS_HydroQuantities__recompute_HydroBase_variables(CCTK_ARGUMENTS) {
           // Reset to atmosphere
           CCTK_REAL tempL = temperature(p.I);
 
-          rho(p.I) = rho_atmL;
-          Ye(p.I) = id_Y_e_atm;
+          rho(p.I) = rho_atm;
+          Ye(p.I) = Ye_atmo;
           press(p.I) = eos_3p_tab3d->press_from_valid_rho_temp_ye(
-              rho_atmL, tempL, id_Y_e_atm);
-          eps(p.I) = eos_3p_tab3d->eps_from_valid_rho_temp_ye(rho_atmL, tempL,
-                                                              id_Y_e_atm);
+              rho_atm, tempL, Ye_atmo);
+          eps(p.I) = eos_3p_tab3d->eps_from_valid_rho_temp_ye(rho_atm, tempL,
+                                                              Ye_atmo);
           velx(p.I) = 0.0;
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
           if (initialize_entropy)
             entropy(p.I) = eos_3p_tab3d->entropy_from_valid_rho_temp_ye(
-                rhoL, tempL, id_Y_e_atm);
+                rhoL, tempL, Ye_atmo);
         }
       });
 }
