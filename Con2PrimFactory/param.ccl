@@ -125,3 +125,9 @@ CCTK_REAL cons_error_limit  "Relative deviations in conservatives after c2p fail
 BOOLEAN use_z "" STEERABLE=ALWAYS
 {
 }  "no"
+
+# Parameters for tabulated EOS
+
+BOOLEAN use_temperature "Use temperature to compute other thermodynamic quatities" STEERABLE=ALWAYS
+{
+}  "no"
