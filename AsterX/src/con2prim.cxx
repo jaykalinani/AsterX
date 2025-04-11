@@ -9,6 +9,8 @@
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_2DNoble.hxx"
 #include "c2p_1DEntropy.hxx"
+#include "c2p_1DPalenzuelaInv.hxx"
+#include "c2p_1DPalenzuelaZ.hxx"
 
 #include "eos_1p.hxx"
 #include "eos_polytropic.hxx"
@@ -184,7 +186,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_report rep_ent;
 
     /* set flag to success */
-    con2prim_flag(p.I) = 1; 
+    con2prim_flag(p.I) = 1;
+
+    // Limit conservatives before calling C2P
+    c2p_Noble.cons_floors_and_ceilings(eos_th,cv,glo);
+
+    /*
 
     // Calling the first C2P
     switch (c2p_fir) {
@@ -314,6 +321,37 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
           atmo.set(pv, cv, glo);
         }
       }
+    }
+
+    */
+
+    c2p_1DPalenzuelaInv c2p_PalInv(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
+
+    c2p_1DPalenzuelaZ c2p_PalZ(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
+
+    //c2p_Noble.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
+    //c2p_Pal.solve(eos_th, pv, cv, glo, rep_first);
+    //c2p_Ent.solve(eos_th, pv, cv, glo, rep_first);
+    c2p_PalInv.solve(eos_th, pv, cv, glo, rep_first);
+    //c2p_PalZ.solve(eos_th, pv, cv, glo, rep_first);
+
+    if (rep_first.failed()) {
+
+      con2prim_flag(p.I) = 0;
+
+      // set to atmo
+      cv.dBvec(0) = dBx(p.I);
+      cv.dBvec(1) = dBy(p.I);
+      cv.dBvec(2) = dBz(p.I);
+      pv.Bvec = cv.dBvec / sqrt_detg;
+      atmo.set(pv, cv, glo);
+
     }
 
     // dummy vars

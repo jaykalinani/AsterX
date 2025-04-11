@@ -1,19 +1,19 @@
-#ifndef C2P_1DPALENZUELA_HXX
-#define C2P_1DPALENZUELA_HXX
+#ifndef C2P_1DPALENZUELAZ_HXX
+#define C2P_1DPALENZUELAZ_HXX
 
 #include "c2p.hxx"
 #include "roots.hxx"
 
 namespace Con2PrimFactory {
 
-class c2p_1DPalenzuela : public c2p {
+class c2p_1DPalenzuelaZ : public c2p {
 public:
   /* Some attributes */
   CCTK_REAL GammaIdealFluid;
 
   /* Constructor */
   template <typename EOSType>
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela(
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuelaZ(
         const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
         CCTK_REAL alp_thresh_in, CCTK_REAL consError, 
         CCTK_REAL vwlim, CCTK_REAL B_lim, CCTK_REAL rho_BH_in, CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in, 
@@ -33,18 +33,20 @@ public:
                                  const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   set_to_nan(prim_vars &pv, cons_vars &cv) const;
-  /* Called by 1DPalenzuela */
+  /* Called by 1DPalenzuelaZ */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq, CCTK_REAL Bsq,
+  xPalenzuelaZToPrim(CCTK_REAL xPalenzuelaZ_Sol, CCTK_REAL Ssq, CCTK_REAL Bsq,
                     CCTK_REAL BiSi, const EOSType &eos_th, prim_vars &pv,
                     const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
                     const smat<CCTK_REAL, 3> &glo) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
-                        CCTK_REAL x, const EOSType &eos_th, const cons_vars &cv) const;
+  funcRoot_1DPalenzuelaZ(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
+                        CCTK_REAL x, const EOSType &eos_th, const cons_vars &cv,
+                                        const smat<CCTK_REAL, 3> &gup,
+                                        const smat<CCTK_REAL, 3> &glo) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -52,13 +54,13 @@ public:
         const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
 
   /* Destructor */
-  CCTK_HOST CCTK_DEVICE ~c2p_1DPalenzuela();
+  CCTK_HOST CCTK_DEVICE ~c2p_1DPalenzuelaZ();
 };
 
 /* Constructor */
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE
-    CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela::c2p_1DPalenzuela(
+    CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuelaZ::c2p_1DPalenzuelaZ(
         const EOSType &eos_th, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
         CCTK_REAL alp_thresh_in, CCTK_REAL consError, 
         CCTK_REAL vwlim, CCTK_REAL B_lim, CCTK_REAL rho_BH_in, CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in, 
@@ -85,7 +87,7 @@ CCTK_HOST CCTK_DEVICE
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DPalenzuela::get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
+c2p_1DPalenzuelaZ::get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
                                 const smat<CCTK_REAL, 3> &gup) const {
 
   CCTK_REAL Ssq;
@@ -100,7 +102,7 @@ c2p_1DPalenzuela::get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DPalenzuela::get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
+c2p_1DPalenzuelaZ::get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
                                 const smat<CCTK_REAL, 3> &glo) const {
 
   vec<CCTK_REAL, 3> B_low = calc_contraction(glo, B_up);
@@ -108,14 +110,14 @@ c2p_1DPalenzuela::get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DPalenzuela::get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec,
+c2p_1DPalenzuelaZ::get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec,
                                  const vec<CCTK_REAL, 3> &mom) const {
 
   return Bvec(X) * mom(X) + Bvec(Y) * mom(Y) + Bvec(Z) * mom(Z); // BiSi
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
-c2p_1DPalenzuela::get_WLorentz_vsq_bsq_Seeds(
+c2p_1DPalenzuelaZ::get_WLorentz_vsq_bsq_Seeds(
     const vec<CCTK_REAL, 3> &B_up, const vec<CCTK_REAL, 3> &v_up,
     const smat<CCTK_REAL, 3> &glo) const {
   vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
@@ -131,27 +133,32 @@ c2p_1DPalenzuela::get_WLorentz_vsq_bsq_Seeds(
   return w_vsq_bsq; //{w_lor, vsq, bsq}
 }
 
-/* Called by 1DPalenzuela */
+/* Called by 1DPalenzuelaZ */
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
+c2p_1DPalenzuelaZ::xPalenzuelaZToPrim(CCTK_REAL xPalenzuelaZ_Sol, CCTK_REAL Ssq,
                                     CCTK_REAL Bsq, CCTK_REAL BiSi,
                                     const EOSType &eos_th, prim_vars &pv,
                                     const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
                                     const smat<CCTK_REAL, 3> &glo) const {
+
+  /*
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
   const CCTK_REAL sPalenzuela = Bsq / cv.dens;
   const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
 
+  // (0) hW = rho*h*W*W/D
+  CCTK_REAL xPalenzuela = xPalenzuelaZ_Sol/cv.dens;
+
   // (i)
   CCTK_REAL Wminus2 =
       1.0 -
-      (xPalenzuela_Sol * xPalenzuela_Sol * rPalenzuela +
-       (2.0 * xPalenzuela_Sol + sPalenzuela) * tPalenzuela * tPalenzuela) /
-          (xPalenzuela_Sol * xPalenzuela_Sol * (xPalenzuela_Sol + sPalenzuela) *
-           (xPalenzuela_Sol + sPalenzuela));
+      (xPalenzuela * xPalenzuela * rPalenzuela +
+       (2.0 * xPalenzuela + sPalenzuela) * tPalenzuela * tPalenzuela) /
+          (xPalenzuela * xPalenzuela * (xPalenzuela + sPalenzuela) *
+           (xPalenzuela + sPalenzuela));
   Wminus2 = fmin(fmax(Wminus2, 1e-10), 1);
   const CCTK_REAL W_sol = pow(Wminus2, -0.5);
 
@@ -159,17 +166,17 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
   pv.rho = cv.dens / W_sol;
 
   // (iii)
-  pv.eps = W_sol - 1.0 + (1.0 - W_sol * W_sol) * xPalenzuela_Sol / W_sol +
+  pv.eps = W_sol - 1.0 + (1.0 - W_sol * W_sol) * xPalenzuela / W_sol +
            W_sol * (qPalenzuela - sPalenzuela +
                     tPalenzuela * tPalenzuela /
-                        (2 * xPalenzuela_Sol * xPalenzuela_Sol) +
+                        (2 * xPalenzuela * xPalenzuela) +
                     sPalenzuela / (2.0 * W_sol * W_sol));
 
   // (iv)
   // CCTK_REAL P_loc = get_Press_funcRhoEps(rho_loc, eps_loc);
 
   // Taken from WZ2Prim (2DNRNoble)
-  CCTK_REAL Z_Sol = xPalenzuela_Sol * pv.rho * W_sol;
+  CCTK_REAL Z_Sol = xPalenzuelaZ_Sol;
 
   // TODO: Debug code to capture v>1,
   // remove soon
@@ -224,6 +231,63 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
     pv.w_lor = W_sol;
 
   }
+  */
+
+  // Taken from WZ2Prim (2DNRNoble)
+  CCTK_REAL Z_Sol = xPalenzuelaZ_Sol;
+
+  pv.vel(X) =
+      (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  pv.vel(X) += BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
+  
+  pv.vel(Y) =
+      (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  pv.vel(Y) += BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+  
+  pv.vel(Z) =
+      (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  pv.vel(Z) += BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+
+  // Limiting
+  constexpr CCTK_REAL dv = (1. - 1.e-10);
+  const CCTK_REAL sqrt_dv = sqrt(dv);
+  constexpr CCTK_REAL dw = 1. / (1. - dv);
+
+  const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
+  CCTK_REAL vsq = calc_contraction(v_low, pv.vel);
+
+  if (vsq > dv) {
+    Z_Sol *= dw*(1.0-vsq);
+    CCTK_REAL sqrt_vsq = sqrt(vsq);
+    pv.vel(X) *= sqrt_dv/sqrt_vsq;
+    pv.vel(Y) *= sqrt_dv/sqrt_vsq;
+    pv.vel(Z) *= sqrt_dv/sqrt_vsq;
+    vsq = dv;
+  }
+
+  if (Z_Sol < 0.0) {
+    Z_Sol = eos_th.rgrho.min;
+  }
+
+  pv.w_lor = 1./sqrt(1.0-vsq);
+
+  pv.rho = cv.dens/pv.w_lor;
+
+  // From Palenzuela
+  const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
+  const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
+  const CCTK_REAL sPalenzuela = Bsq / cv.dens;
+  const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
+  const CCTK_REAL xPalenzuela = Z_Sol/cv.dens;
+
+  pv.eps = pv.w_lor - 1.0 + (1.0 - pv.w_lor * pv.w_lor) * xPalenzuela / pv.w_lor +
+           pv.w_lor * (qPalenzuela - sPalenzuela +
+                    tPalenzuela * tPalenzuela /
+                        (2 * xPalenzuela * xPalenzuela) +
+                    sPalenzuela / (2.0 * pv.w_lor * pv.w_lor));
 
   pv.Ye = cv.dYe / cv.dens;
 
@@ -239,20 +303,27 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
+c2p_1DPalenzuelaZ::funcRoot_1DPalenzuelaZ(CCTK_REAL Ssq, CCTK_REAL Bsq,
                                         CCTK_REAL BiSi, CCTK_REAL x,
-                                        const EOSType &eos_th, const cons_vars &cv) const {
+                                        const EOSType &eos_th, const cons_vars &cv,
+                                        const smat<CCTK_REAL, 3> &gup,
+                                        const smat<CCTK_REAL, 3> &glo) const {
+
+  /*
   // computes f(x) from x and q,r,s,t
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
   const CCTK_REAL sPalenzuela = Bsq / cv.dens;
   const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
 
+  // (0) hW = rho*h*W*W/D
+  CCTK_REAL xPalenzuela = x/cv.dens;
+
   // (i)
   CCTK_REAL Wminus2 =
-      1.0 - (x * x * rPalenzuela +
-             (2.0 * x + sPalenzuela) * tPalenzuela * tPalenzuela) /
-                (x * x * (x + sPalenzuela) * (x + sPalenzuela));
+      1.0 - (xPalenzuela * xPalenzuela * rPalenzuela +
+             (2.0 * xPalenzuela + sPalenzuela) * tPalenzuela * tPalenzuela) /
+                (xPalenzuela * xPalenzuela * (xPalenzuela + sPalenzuela) * (xPalenzuela + sPalenzuela));
   Wminus2 = fmin(fmax(Wminus2, 1e-10), 1);
   const CCTK_REAL W_loc = pow(Wminus2, -0.5);
 
@@ -261,21 +332,86 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
   CCTK_REAL Ye_loc = cv.dYe / cv.dens;
 
   // (iii)
-  CCTK_REAL eps_loc = W_loc - 1.0 + (1.0 - W_loc * W_loc) * x / W_loc +
+  CCTK_REAL eps_loc = W_loc - 1.0 + (1.0 - W_loc * W_loc) * xPalenzuela / W_loc +
                       W_loc * (qPalenzuela - sPalenzuela +
-                               tPalenzuela * tPalenzuela / (2 * x * x) +
+                               tPalenzuela * tPalenzuela / (2 * xPalenzuela * xPalenzuela) +
                                sPalenzuela / (2 * W_loc * W_loc));
 
   // (iv)
   CCTK_REAL P_loc =
       eos_th.press_from_valid_rho_eps_ye(rho_loc, eps_loc, Ye_loc);
 
-  return (x - (1.0 + eps_loc + P_loc / rho_loc) * W_loc);
+  return (x - (1.0 + eps_loc + P_loc / rho_loc) * W_loc * cv.dens);
+  */
+
+  // Taken from WZ2Prim (2DNRNoble)
+  CCTK_REAL Z_Sol = x;
+
+  vec<CCTK_REAL, 3> v_up{0.0,0.0,0.0};
+
+  v_up(X) =
+      (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  v_up(X) += BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
+  
+  v_up(Y) =
+      (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  v_up(Y) += BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+  
+  v_up(Z) =
+      (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
+      (Z_Sol + Bsq);
+  v_up(Z) += BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+
+  // Limiting
+  constexpr CCTK_REAL dv = (1. - 1.e-10);
+  const CCTK_REAL sqrt_dv = sqrt(dv);
+  constexpr CCTK_REAL dw = 1. / (1. - dv);
+
+  const vec<CCTK_REAL, 3> v_low = calc_contraction(glo, v_up);
+  CCTK_REAL vsq = calc_contraction(v_low, v_up);
+
+  if (vsq > dv) {
+    Z_Sol *= dw*(1.0-vsq);
+    CCTK_REAL sqrt_vsq = sqrt(vsq);
+    v_up(X) *= sqrt_dv/sqrt_vsq;
+    v_up(Y) *= sqrt_dv/sqrt_vsq;
+    v_up(Z) *= sqrt_dv/sqrt_vsq;
+    vsq = dv;
+  }
+
+  if (Z_Sol < 0.0) {
+    Z_Sol = eos_th.rgrho.min;
+  }
+
+  CCTK_REAL W_loc = 1./sqrt(1.0-vsq);
+
+  CCTK_REAL rho_loc = cv.dens/W_loc;
+  CCTK_REAL Ye_loc = cv.dYe / cv.dens;
+
+  // From Palenzuela
+  const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
+  const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
+  const CCTK_REAL sPalenzuela = Bsq / cv.dens;
+  const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
+  const CCTK_REAL xPalenzuela = Z_Sol/cv.dens;
+
+  CCTK_REAL eps_loc = W_loc - 1.0 + (1.0 - W_loc * W_loc) * xPalenzuela / W_loc +
+           W_loc * (qPalenzuela - sPalenzuela +
+                    tPalenzuela * tPalenzuela /
+                        (2 * xPalenzuela * xPalenzuela) +
+                    sPalenzuela / (2.0 * W_loc * W_loc));
+
+  CCTK_REAL P_loc =
+      eos_th.press_from_valid_rho_eps_ye(rho_loc, eps_loc, Ye_loc);
+
+  return (x - (1.0 + eps_loc + P_loc / rho_loc) * W_loc * cv.dens);
 }
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
+c2p_1DPalenzuelaZ::solve(const EOSType &eos_th, prim_vars &pv,
                         cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
                         c2p_report &rep) const {
 
@@ -365,16 +501,16 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
 
   CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   CCTK_REAL sPalenzuela = Bsq / cv.dens;
-  CCTK_REAL xPalenzuela_lowerBound = 1.0 + qPalenzuela - sPalenzuela;
-  CCTK_REAL xPalenzuela_upperBound = 2.0 + 2.0 * qPalenzuela - sPalenzuela;
-  CCTK_REAL a = xPalenzuela_lowerBound;
-  CCTK_REAL b = xPalenzuela_upperBound;
+  CCTK_REAL xPalenzuelaZ_lowerBound = cv.dens*(1.0 + qPalenzuela - sPalenzuela);
+  CCTK_REAL xPalenzuelaZ_upperBound = cv.dens*(2.0 + 2.0 * qPalenzuela - sPalenzuela);
+  CCTK_REAL a = xPalenzuelaZ_lowerBound;
+  CCTK_REAL b = xPalenzuelaZ_upperBound;
   auto fn = [&](auto x) {
-    return funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, x, eos_th, cv);
+    return funcRoot_1DPalenzuelaZ(Ssq, Bsq, BiSi, x, eos_th, cv, gup, glo);
   };
   auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
 
-  CCTK_REAL xPalenzuela_Sol = 0.5 * (result.first + result.second);
+  CCTK_REAL xPalenzuelaZ_Sol = 0.5 * (result.first + result.second);
 
   //if (abs(fn(result.first)) < abs(fn(result.second))) {
   //  xPalenzuela_Sol = result.first;
@@ -383,8 +519,8 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
   //}
 
   // Check solution and calculate primitives
-  // TODO:check if to pass result.first or xPalenzuela_Sol
-  //if (rep.iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
+  // TODO:check if to pass result.first or xPalenzuelaZ_Sol
+  //if (rep.iters < maxiters && abs(fn(xPalenzuelaZ_Sol)) < tolerance) {
   //  rep.status = c2p_report::SUCCESS;
   //  status = ROOTSTAT::SUCCESS;
   //} else {
@@ -393,7 +529,7 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
   //  status = ROOTSTAT::NOT_CONVERGED;
   //}
 
-  xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+  xPalenzuelaZToPrim(xPalenzuelaZ_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
 
   // General comment: 
@@ -479,14 +615,14 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::set_to_nan(prim_vars &pv, cons_vars &cv) const {
+c2p_1DPalenzuelaZ::set_to_nan(prim_vars &pv, cons_vars &cv) const {
   pv.set_to_nan();
   cv.set_to_nan();
 }
 
 /* Destructor */
 CCTK_HOST CCTK_DEVICE
-    CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela::~c2p_1DPalenzuela() {
+    CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuelaZ::~c2p_1DPalenzuelaZ() {
   // How to destruct properly a vector?
 }
 } // namespace Con2PrimFactory
