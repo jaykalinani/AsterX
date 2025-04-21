@@ -146,6 +146,13 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
   const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
 
   // (i)
+  /*
+  CCTK_REAL Wminus2 =
+      1.0 -
+      (rPalenzuela +
+       (2.0 * xPalenzuela_Sol + sPalenzuela) * tPalenzuela * tPalenzuela / ( xPalenzuela_Sol * xPalenzuela_Sol ) ) /
+          ( (xPalenzuela_Sol + sPalenzuela) * (xPalenzuela_Sol + sPalenzuela) );
+  */
   CCTK_REAL Wminus2 =
       1.0 -
       (xPalenzuela_Sol * xPalenzuela_Sol * rPalenzuela +
@@ -249,6 +256,13 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
   const CCTK_REAL tPalenzuela = BiSi / pow(cv.dens, 3. / 2.);
 
   // (i)
+  /*
+  CCTK_REAL Wminus2 =
+      1.0 -
+      (rPalenzuela +
+       (2.0 * x + sPalenzuela) * tPalenzuela * tPalenzuela / ( x * x ) ) /
+          ( (x + sPalenzuela) * (x + sPalenzuela) );
+  */
   CCTK_REAL Wminus2 =
       1.0 - (x * x * rPalenzuela +
              (2.0 * x + sPalenzuela) * tPalenzuela * tPalenzuela) /
