@@ -10,7 +10,6 @@
 #include "c2p_2DNoble.hxx"
 #include "c2p_1DEntropy.hxx"
 #include "c2p_1DPalenzuelaInv.hxx"
-#include "c2p_1DPalenzuelaZ.hxx"
 
 #include "eos_1p.hxx"
 #include "eos_polytropic.hxx"
@@ -27,8 +26,8 @@ using namespace Con2PrimFactory;
 using namespace AsterUtils;
 
 enum class eos_t { IdealGas, Hybrid, Tabulated };
-enum class c2p_first_t { Noble, Palenzuela };
-enum class c2p_second_t { Noble, Palenzuela };
+enum class c2p_first_t { None, Noble, Palenzuela, PalenzuelaInv, Entropy };
+enum class c2p_second_t { None, Noble, Palenzuela, PalenzuelaInv, Entropy };
 
 template <typename EOSIDType, typename EOSType>
 void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
@@ -43,6 +42,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_fir = c2p_first_t::Noble;
   } else if (CCTK_EQUALS(c2p_prime, "Palenzuela")) {
     c2p_fir = c2p_first_t::Palenzuela;
+  } else if (CCTK_EQUALS(c2p_prime, "PalenzuelaInv")) {
+    c2p_fir = c2p_first_t::PalenzuelaInv;
+  } else if (CCTK_EQUALS(c2p_prime, "Entropy")) {
+    c2p_fir = c2p_first_t::Entropy;
+  } else if (CCTK_EQUALS(c2p_prime, "None")) {
+    c2p_fir = c2p_first_t::None;
   } else {
     CCTK_ERROR("Unknown value for parameter \"c2p_prime\"");
   }
@@ -51,6 +56,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     c2p_sec = c2p_second_t::Noble;
   } else if (CCTK_EQUALS(c2p_second, "Palenzuela")) {
     c2p_sec = c2p_second_t::Palenzuela;
+  } else if (CCTK_EQUALS(c2p_second, "PalenzuelaInv")) {
+    c2p_sec = c2p_second_t::PalenzuelaInv;
+  } else if (CCTK_EQUALS(c2p_second, "Entropy")) {
+    c2p_sec = c2p_second_t::Entropy;
+  } else if (CCTK_EQUALS(c2p_second, "None")) {
+    c2p_sec = c2p_second_t::None;
   } else {
     CCTK_ERROR("Unknown value for parameter \"c2p_second\"");
   }
@@ -93,6 +104,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     CCTK_REAL entropy_atm = eos_th.kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, entropy_atm, rho_atmo_cut);
 
+    // ----- Construct C2P objects -----
+
     // Construct Noble c2p object:
     c2p_2DNoble c2p_Noble(eos_th, atmo, max_iter, c2p_tol, 
                           alp_thresh, cons_error_limit,
@@ -110,6 +123,15 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                           alp_thresh, cons_error_limit,
                           vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
                           Ye_lenient, use_z);
+
+    // Construct PalenzuelaInv c2p object:
+    c2p_1DPalenzuelaInv c2p_PalInv(eos_th, atmo, max_iter, c2p_tol, 
+                          alp_thresh, cons_error_limit,
+                          vw_lim, B_lim, rho_BH, eps_BH, vwlim_BH,
+                          Ye_lenient, use_z);
+
+    // ----------
+
 
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
@@ -163,11 +185,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                  DEnt(p.I),
                  {dBx(p.I), dBy(p.I), dBz(p.I)}};
 
-    if (dens(p.I) <= sqrt_detg * rho_atmo_cut) {
-      cv.dBvec(0) = dBx(p.I); // densitized
-      cv.dBvec(1) = dBy(p.I);
-      cv.dBvec(2) = dBz(p.I);
-      pv.Bvec = cv.dBvec / sqrt_detg;
+    if (cv.dens <= sqrt_detg * rho_atmo_cut) {
+      //cv.dBvec(0) = dBx(p.I); // densitized
+      //cv.dBvec(1) = dBy(p.I);
+      //cv.dBvec(2) = dBz(p.I);
+      pv.Bvec = Bup;
       atmo.set(pv, cv, glo);
       atmo.set(pv_seeds);
     }
@@ -187,10 +209,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       //cv.dBvec(0) = dBx(p.I); // densitized
       //cv.dBvec(1) = dBy(p.I);
       //cv.dBvec(2) = dBz(p.I);
-      //pv.Bvec = cv.dBvec / sqrt_detg;
-      //atmo.set(pv, cv, glo);
-      //atmo.set(pv_seeds);
-      c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
+      pv.Bvec = Bup;
+      atmo.set(pv, cv, glo);
+      atmo.set(pv_seeds);
+      //c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
     }
 
     // Construct error report object:
@@ -211,8 +233,19 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       break;
     }
     case c2p_first_t::Palenzuela: {
-      //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_first);
       c2p_Pal.solve(eos_th, pv, cv, glo, rep_first);
+      break;
+    }
+    case c2p_first_t::PalenzuelaInv: {
+      c2p_PalInv.solve(eos_th, pv, cv, glo, rep_first);
+      break;
+    }
+    case c2p_first_t::Entropy: {
+      c2p_Ent.solve(eos_th, pv, cv, glo, rep_first);
+      break;
+    }
+    case c2p_first_t::None: {
+      // solve not called, pv remains unwritten
       break;
     }
     default:
@@ -232,8 +265,19 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
         break;
       }
       case c2p_second_t::Palenzuela: {
-        //c2p_Pal.solve(eos_th, pv, pv_seeds, cv, glo, rep_second);
         c2p_Pal.solve(eos_th, pv, cv, glo, rep_second);
+        break;
+      }
+      case c2p_second_t::PalenzuelaInv: {
+        c2p_PalInv.solve(eos_th, pv, cv, glo, rep_second);
+        break;
+      }
+      case c2p_second_t::Entropy: {
+        c2p_Ent.solve(eos_th, pv, cv, glo, rep_second);
+        break;
+      }
+      case c2p_second_t::None: {
+        // solve not called, pv remains unwritten
         break;
       }
       default:
@@ -371,6 +415,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
       atmo.set(pv, cv, glo);
     }
     */
+
+    // ----- Write to gfs -----
 
     // dummy vars
     CCTK_REAL Ex, Ey, Ez;

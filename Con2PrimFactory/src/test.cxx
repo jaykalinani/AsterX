@@ -11,7 +11,6 @@
 #include "c2p_2DNoble.hxx"
 #include "c2p_1DEntropy.hxx"
 #include "c2p_1DPalenzuelaInv.hxx"
-#include "c2p_1DPalenzuelaZ.hxx"
 
 #include "c2p_utils.hxx"
 
