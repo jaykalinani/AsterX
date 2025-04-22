@@ -164,18 +164,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
     //CCTK_REAL wlor = calc_wlorentz(v_low, v_up);
     CCTK_REAL wlor = sqrt(1.0+zsq);
 
-    vec<CCTK_REAL, 3> Bup{dBx(p.I) / sqrt_detg, dBy(p.I) / sqrt_detg,
-                          dBz(p.I) / sqrt_detg};
-
+    // Dummy values for Ye
     CCTK_REAL dummy_Ye = 0.5;
     CCTK_REAL dummy_dYe = 0.5;
-    prim_vars pv;
-    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), dummy_Ye, 
-                             eos_th.press_from_valid_rho_eps_ye(saved_rho(p.I), 
-                                                                saved_eps(p.I), dummy_Ye),
-                             eos_th.kappa_from_valid_rho_eps_ye(saved_rho(p.I), 
-                                                                saved_eps(p.I), dummy_Ye),
-                             v_up,           wlor,           Bup};
 
     // Note that cv are densitized, i.e. they all include sqrt_detg
     cons_vars cv{dens(p.I),
@@ -184,6 +175,19 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
                  dummy_dYe,
                  DEnt(p.I),
                  {dBx(p.I), dBy(p.I), dBz(p.I)}};
+
+    // Undensitized magnetic fields
+    const vec<CCTK_REAL, 3> Bup{cv.dBvec(0) / sqrt_detg, cv.dBvec(1) / sqrt_detg,
+                                cv.dBvec(2) / sqrt_detg};
+
+    prim_vars pv;
+    prim_vars pv_seeds{saved_rho(p.I), saved_eps(p.I), dummy_Ye, 
+                             eos_th.press_from_valid_rho_eps_ye(saved_rho(p.I), 
+                                                                saved_eps(p.I), dummy_Ye),
+                             eos_th.kappa_from_valid_rho_eps_ye(saved_rho(p.I), 
+                                                                saved_eps(p.I), dummy_Ye),
+                             v_up,           wlor,           Bup};
+
 
     if (cv.dens <= sqrt_detg * rho_atmo_cut) {
       //cv.dBvec(0) = dBx(p.I); // densitized
@@ -326,10 +330,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
             c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
           } else {
             // set to atmo
-            cv.dBvec(0) = dBx(p.I);
-            cv.dBvec(1) = dBy(p.I);
-            cv.dBvec(2) = dBz(p.I);
-            pv.Bvec = cv.dBvec / sqrt_detg;
+            cv.dBvec(0) = sqrt_detg * Bup(0);
+            cv.dBvec(1) = sqrt_detg * Bup(1);
+            cv.dBvec(2) = sqrt_detg * Bup(2);
+            pv.Bvec = Bup;
             atmo.set(pv, cv, glo);
           }
         }
@@ -369,10 +373,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType &eos_cold,
           c2p_Noble.bh_interior_fail(eos_th,pv,cv,glo);
         } else {
           // set to atmo
-          cv.dBvec(0) = dBx(p.I);
-          cv.dBvec(1) = dBy(p.I);
-          cv.dBvec(2) = dBz(p.I);
-          pv.Bvec = cv.dBvec / sqrt_detg;
+          cv.dBvec(0) = sqrt_detg * Bup(0);
+          cv.dBvec(1) = sqrt_detg * Bup(1);
+          cv.dBvec(2) = sqrt_detg * Bup(2);
+          pv.Bvec = Bup; 
           atmo.set(pv, cv, glo);
         }
       }
