@@ -175,9 +175,9 @@ c2p_1DPalenzuelaInv::xPalenzuelaInvToPrim(CCTK_REAL xPalenzuelaInv_Sol, CCTK_REA
                     sPalenzuela / (2.0 * W_sol * W_sol));
 
   // (iv)
-  if (pv.eps < 0.0) {
-    pv.eps = eos_th.rgeps.min;
-  }
+  //if (pv.eps < 0.0) {
+  //  pv.eps = eos_th.rgeps.min;
+  //}
 
   // (v)
   // CCTK_REAL P_loc = get_Press_funcRhoEps(rho_loc, eps_loc);
@@ -290,9 +290,9 @@ c2p_1DPalenzuelaInv::funcRoot_1DPalenzuelaInv(CCTK_REAL Ssq, CCTK_REAL Bsq,
                                sPalenzuela / (2 * W_loc * W_loc));
 
   // (iv)
-  if (eps_loc < 0.0) {
-    eps_loc = eos_th.rgeps.min;
-  }
+  //if (eps_loc < 0.0) {
+  //  eps_loc = eos_th.rgeps.min;
+  //}
 
   // (v)
   CCTK_REAL P_loc =
@@ -426,6 +426,18 @@ c2p_1DPalenzuelaInv::solve(const EOSType &eos_th, prim_vars &pv,
 
   xPalenzuelaInvToPrim(xPalenzuelaInv_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
+  // Error out if eps is negative or zero
+  if (pv.eps <= 0.0) {
+    // set status to eps is out of range
+    rep.set_range_eps(pv.eps);
+    cv.dens *= sqrt_detg;
+    cv.tau *= sqrt_detg;
+    cv.mom *= sqrt_detg;
+    cv.dBvec *= sqrt_detg;
+    cv.dYe *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
+    return;
+  }
 
   // General comment: 
   // One could think of expressing the following condition

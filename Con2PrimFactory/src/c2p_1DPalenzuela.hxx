@@ -409,6 +409,18 @@ c2p_1DPalenzuela::solve(const EOSType &eos_th, prim_vars &pv,
 
   xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
+  // Error out if eps is negative or zero
+  if (pv.eps <= 0.0) {
+    // set status to eps is out of range
+    rep.set_range_eps(pv.eps);
+    cv.dens *= sqrt_detg;
+    cv.tau *= sqrt_detg;
+    cv.mom *= sqrt_detg;
+    cv.dBvec *= sqrt_detg;
+    cv.dYe *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
+    return;
+  }
 
   // General comment: 
   // One could think of expressing the following condition
