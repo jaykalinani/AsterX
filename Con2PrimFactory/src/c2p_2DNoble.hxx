@@ -538,6 +538,19 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
   /* Write prims if C2P succeeded */
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_th, pv, cv, gup, glo);
 
+  // Error out if rho is negative or zero
+  if (pv.rho <= 0.0) {
+    // set status to rho is out of range
+    rep.set_range_rho(cv.dens, pv.rho);
+    cv.dens *= sqrt_detg;
+    cv.tau *= sqrt_detg;
+    cv.mom *= sqrt_detg;
+    cv.dBvec *= sqrt_detg;
+    cv.dYe *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
+    return;
+  }
+
   // Error out if eps is negative or zero
   if (pv.eps <= 0.0) {
     // set status to eps is out of range
@@ -563,6 +576,17 @@ c2p_2DNoble::solve(const EOSType &eos_th, prim_vars &pv, prim_vars &pv_seeds,
     pv.rho = atmo.rho_atmo;
     pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, 0.5);
     pv.entropy = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, 0.5);
+
+    // conserve D, this will reduce the velocity
+    CCTK_REAL w2 = pv.w_lor*pv.w_lor;
+    const CCTK_REAL old_v  = sqrt(1.0-1.0/w2);
+
+    pv.w_lor = cv.dens/pv.rho;
+    w2 = pv.w_lor*pv.w_lor;
+    const CCTK_REAL new_v  = sqrt(1.0-1.0/w2);
+
+    pv.vel *= new_v / old_v;
+    
     rep.adjust_cons = true; 
   }
 

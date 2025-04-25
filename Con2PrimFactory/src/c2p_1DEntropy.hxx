@@ -346,8 +346,6 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
 
   CCTK_REAL xEntropy_Sol = 0.5 * (result.first + result.second);
 
-  xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
-
   // Check solution and calculate primitives
   //  if (rep.iters < maxiters && abs(fn(xEntropy_Sol)) < tolerance) {
   /*
@@ -361,6 +359,22 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     status = ROOTSTAT::NOT_CONVERGED;
   }
   */
+
+  xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_th, pv, cv, gup, glo);
+
+  // Error out if rho is negative or zero
+  if (pv.rho <= 0.0) {
+    // set status to rho is out of range
+    rep.set_range_rho(cv.dens, pv.rho);
+    cv.dens *= sqrt_detg;
+    cv.tau *= sqrt_detg;
+    cv.mom *= sqrt_detg;
+    cv.dBvec *= sqrt_detg;
+    cv.dYe *= sqrt_detg;
+    cv.DEnt *= sqrt_detg;
+    return;
+  }
+
   if (abs(result.first - result.second) >
       tolerance_0 * min(abs(result.first), abs(result.second))) {
 
@@ -420,6 +434,17 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     pv.rho = atmo.rho_atmo;
     pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, 0.5);
     pv.entropy = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, 0.5);
+
+    // conserve D, this will reduce the velocity
+    CCTK_REAL w2 = pv.w_lor*pv.w_lor;
+    const CCTK_REAL old_v  = sqrt(1.0-1.0/w2);
+
+    pv.w_lor = cv.dens/pv.rho;
+    w2 = pv.w_lor*pv.w_lor;
+    const CCTK_REAL new_v  = sqrt(1.0-1.0/w2);
+
+    pv.vel *= new_v / old_v;
+    
     rep.adjust_cons = true; 
   }
 
