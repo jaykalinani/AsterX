@@ -435,11 +435,11 @@ c2p_1DEntropy::solve(const EOSType &eos_th, prim_vars &pv, cons_vars &cv,
     pv.eps = eos_th.eps_from_valid_rho_press_ye(pv.rho, pv.press, 0.5);
     pv.entropy = eos_th.kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, 0.5);
 
-    // conserve D, this will reduce the velocity
+    // conserve D, if possible
     CCTK_REAL w2 = pv.w_lor*pv.w_lor;
-    const CCTK_REAL old_v  = sqrt(1.0-1.0/w2);
+    const CCTK_REAL old_v  = sqrt(1.0-1.0/w2) + 1e-50;
 
-    pv.w_lor = cv.dens/pv.rho;
+    pv.w_lor = max(cv.dens/pv.rho,1.0);
     w2 = pv.w_lor*pv.w_lor;
     const CCTK_REAL new_v  = sqrt(1.0-1.0/w2);
 
