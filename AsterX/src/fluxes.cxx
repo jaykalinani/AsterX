@@ -187,9 +187,13 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
   constexpr array<int, dim> face_centred = {!(dir == 0), !(dir == 1),
                                             !(dir == 2)};
 
-  constexpr array<int, dim> dir_arr = {(dir == 0) ? 2 : ((dir == 1) ? 0 : 1),
-                                       dir,
-                                       (dir == 0) ? 1 : ((dir == 1) ? 2 : 0)};
+  // Precompute mapping table once for clarity and efficiency
+  constexpr array<array<int, 3>, 3> dir_arr_table = {{
+      {0, 1, 2}, // dir == 0: x, y, z
+      {1, 2, 0}, // dir == 1: y, z, x
+      {2, 0, 1}  // dir == 2: z, x, y
+  }};
+  constexpr auto dir_arr = dir_arr_table[dir];
 
   grid.loop_int_device<
       face_centred[0], face_centred[1],
@@ -251,22 +255,23 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType &eos_th) {
 
     // Introduce reconstructed Bs
     // Use staggered dB for i == dir
-
     vec<vec<CCTK_REAL, 2>, 3> Bs_rc;
-    array<CCTK_REAL, 2>
-        Bs_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
 
-    Bs_rc(dir)(0) = gf_dBstags(dir)(p.I) / sqrtg;
-    Bs_rc(dir)(1) = Bs_rc(dir)(0);
+    // Assign the value for the primary direction
+    const CCTK_REAL val = gf_dBstags(dir)(p.I) / sqrtg;
+    Bs_rc(dir)(0) = val;
+    Bs_rc(dir)(1) = val;
 
-    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_arr[0]), p, false, false);
-    Bs_rc(dir_arr[0])(0) = Bs_rc_dummy[0];
-    Bs_rc(dir_arr[0])(1) = Bs_rc_dummy[1];
+    // Lambda to assign the reconstructed values
+    auto assign_reconstructed = [&](int d) {
+      const auto tmp = reconstruct_pt(gf_Bvecs(d), p, false, false);
+      Bs_rc(d)(0) = tmp[0];
+      Bs_rc(d)(1) = tmp[1];
+    };
 
-    Bs_rc_dummy = reconstruct_pt(gf_Bvecs(dir_arr[2]), p, false, false);
-    Bs_rc(dir_arr[2])(0) = Bs_rc_dummy[0];
-    Bs_rc(dir_arr[2])(1) = Bs_rc_dummy[1];
-
+    // Assign reconstructed values for the two perpendicular directions
+    assign_reconstructed(dir_arr[1]);
+    assign_reconstructed(dir_arr[2]);
     // End of setting Bs
 
     vec<vec<CCTK_REAL, 2>, 3> vels_rc;
