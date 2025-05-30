@@ -166,6 +166,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
                         (2 * xPalenzuela_Sol * xPalenzuela_Sol) +
                     sPalenzuela / (2.0 * W_sol * W_sol));
 
+  pv.eps = std::max(pv.eps, eos_3p->rgeps.min);
   // (iv)
   // CCTK_REAL P_loc = get_Press_funcRhoEps(rho_loc, eps_loc);
 
@@ -268,6 +269,7 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
                       W_loc * (qPalenzuela - sPalenzuela +
                                tPalenzuela * tPalenzuela / (2 * x * x) +
                                sPalenzuela / (2 * W_loc * W_loc));
+  eps_loc = std::max(eps_loc, eos_3p->rgeps.min);
 
   // (iv)
   CCTK_REAL P_loc =
@@ -368,16 +370,48 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
 
   CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   CCTK_REAL sPalenzuela = Bsq / cv.dens;
-  CCTK_REAL xPalenzuela_lowerBound = 1.0 + qPalenzuela - sPalenzuela;
+  CCTK_REAL xPalenzuela_lowerBound = std::max(1e-10, 1.0 + qPalenzuela - sPalenzuela);
   CCTK_REAL xPalenzuela_upperBound = 2.0 + 2.0 * qPalenzuela - sPalenzuela;
   CCTK_REAL a = xPalenzuela_lowerBound;
   CCTK_REAL b = xPalenzuela_upperBound;
   auto fn = [&](auto x) {
     return funcRoot_1DPalenzuela(Ssq, Bsq, BiSi, x, eos_3p, cv);
   };
-  auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
 
-  CCTK_REAL xPalenzuela_Sol = 0.5 * (result.first + result.second);
+  // Dominant energy check
+  if (fn(a)*fn(b)>0) {
+    printf("for fn(a)*fn(b)>0, fa, fb: %26.16e, %26.16e \n\n", fn(a), fn(b) );
+    b = 3.0 + 3.0*qPalenzuela - 1.5*sPalenzuela;
+    if(fn(a)*fn(b)<0) {
+      printf("for fn(a)*fn(b)<0, fa, fb: %26.16e, %26.16e \n\n", fn(a), fn(b) );
+      printf("Palenzuela C2P: dominant energy condition has been violated!\n\n");
+    }
+  }
+
+  auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
+  
+  // hybrid: prefer endpoint with smaller |f|, else midpoint
+  CCTK_REAL a_root = result.first;
+  CCTK_REAL b_root = result.second;
+  CCTK_REAL fa = fn(a_root);
+  CCTK_REAL fb = fn(b_root);
+
+  CCTK_REAL xPalenzuela_Sol;
+  if (fb == (CCTK_REAL)0 || std::abs(fb) < std::abs(fa)) {
+    // exact root or smaller residual at b
+    xPalenzuela_Sol = b_root;
+  }
+  else if (std::abs(fa) < std::abs(fb)) {
+    // smaller residual at a
+    xPalenzuela_Sol = a_root;
+  }
+  else {
+    // fall back to midpoint
+    xPalenzuela_Sol = CCTK_REAL(0.5) * (a_root + b_root);
+  }
+
+  // for now, we do not use the above hybrid scheme
+  xPalenzuela_Sol = 0.5 * (result.first + result.second);
 
   //if (abs(fn(result.first)) < abs(fn(result.second))) {
   //  xPalenzuela_Sol = result.first;
@@ -387,14 +421,14 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
 
   // Check solution and calculate primitives
   // TODO:check if to pass result.first or xPalenzuela_Sol
-  //if (rep.iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
-  //  rep.status = c2p_report::SUCCESS;
+  if (rep.iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
+    rep.status = c2p_report::SUCCESS;
   //  status = ROOTSTAT::SUCCESS;
-  //} else {
+  } else {
     // set status to root not converged
-  //  rep.set_root_conv();
+    rep.set_root_conv();
   //  status = ROOTSTAT::NOT_CONVERGED;
-  //}
+  }
 
   xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
 

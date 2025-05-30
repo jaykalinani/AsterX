@@ -23,6 +23,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+       
+        CCTK_REAL rhomin = eos_3p->rgrho.min;
+        CCTK_REAL rhomax = eos_3p->rgrho.max;
+        CCTK_REAL tempmin = eos_3p->rgtemp.min;
+        CCTK_REAL tempmax = eos_3p->rgtemp.max;
+        CCTK_REAL epsmin = eos_3p->rgeps.min;
+        CCTK_REAL epsmax = eos_3p->rgeps.max;
+
         // Interpolate metric terms from vertices to center
         const smat<CCTK_REAL, 3> g{calc_avg_v2c(gxx, p), calc_avg_v2c(gxy, p),
                                    calc_avg_v2c(gxz, p), calc_avg_v2c(gyy, p),
@@ -61,13 +69,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
      
         }
       
-        if (rhoL > eos_3p->rgrho.max) {
+        if (rhoL > rhomax) {
       
           // remove mass
-          rhoL = eos_3p->rgrho.max;
+          rhoL = rhomax;
 
           if (use_temperature) {
              epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+	     pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
           } else {
              epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
           }
@@ -83,6 +92,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
           if (use_temperature) {
              epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+	     pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
           } else {
              epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
           }
@@ -90,23 +100,45 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
               eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
 
         }
-      
+        
+        // ----------
+        // Floor and ceiling for temp
+        // Keeps rho the same and changes press
+        // ----------
+
+        if (use_temperature) {
+          // check the validity of the computed temperature
+          if (tempL > tempmax) {
+             tempL = tempmax;
+             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+             pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+             entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+          }
+          if (tempL < tempmin) {
+             tempL = tempmin;
+             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+             pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+             entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+          }
+        }
+	
         // ----------
         // Floor and ceiling for eps
         // Keeps rho the same and changes press
         // ----------
       
         // check the validity of the computed eps
-        auto rgeps = eos_3p->range_eps_from_valid_rho_ye(rhoL, YeL);
-        if (epsL > rgeps.max) {
+        if (epsL > epsmax) {
 
-          epsL   = rgeps.max;
+          epsL   = epsmax;
+	  tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);  
 
-        } else if (epsL < rgeps.min) {
+        } else if (epsL < epsmin) {
 
-          epsL = rgeps.min;
+          epsL = epsmin;
+	  tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL); 
 
@@ -129,6 +161,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
         press(p.I)   = pressL;
         entropy(p.I) = entropyL;
         Ye(p.I) = YeL;
+	temperature(p.I) = tempL;
 
         saved_rho(p.I) = rhoL;
         saved_velx(p.I) = v_up(0);

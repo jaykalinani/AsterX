@@ -23,6 +23,7 @@ schedule ID_TabEOS_HydroQuantities__recompute_HydroBase_variables IN ID_TabEOS_i
 {
   LANG: C
   READS: HydroBaseX::rho(Everywhere)
+  READS: HydroBaseX::eps(Everywhere)
   READS: HydroBaseX::temperature(Everywhere)
   READS: HydroBaseX::Ye(Everywhere)
   READS: HydroBaseX::velx(Everywhere)
@@ -35,7 +36,7 @@ schedule ID_TabEOS_HydroQuantities__recompute_HydroBase_variables IN ID_TabEOS_i
   WRITES: HydroBaseX::press(Everywhere)
   WRITES: HydroBaseX::eps(Everywhere)
   WRITES: HydroBaseX::Ye(Everywhere)
-  WRITES: HydroBaseX::entropy(Everywhere)
+  WRITES: HydroBaseX::temperature(Everywhere)
 } "Set up general relativistic hydrodynamic (GRHD) fields"
 
 # if( CCTK_EQUALS( initial_Y_e        ,"ID_tabEOS_HydroQuantities" ) ||

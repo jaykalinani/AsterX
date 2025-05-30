@@ -14,7 +14,7 @@ enum class eos_1param { Polytropic, PWPolytropic };
 enum class eos_3param { IdealGas, Hybrid, Tabulated };
 
 // initial data EOS
-eos_1p_polytrope *global_eos_1p_poly = nullptr;
+eos_1p_polytropic *global_eos_1p_poly = nullptr;
 
 // evolution EOS
 eos_3p_idealgas *global_eos_3p_ig = nullptr;
@@ -35,10 +35,10 @@ extern "C" void EOSX_Setup_EOSID(CCTK_ARGUMENTS) {
   switch (eos_1p_type) {
   case eos_1param::Polytropic: {
     CCTK_INFO("Setting initial data EOS to Polytropic");
-    global_eos_1p_poly = (eos_1p_polytrope *)The_Managed_Arena()->alloc(
+    global_eos_1p_poly = (eos_1p_polytropic *)The_Managed_Arena()->alloc(
         sizeof *global_eos_1p_poly);
     assert(global_eos_1p_poly);
-    new (global_eos_1p_poly) eos_1p_polytrope;
+    new (global_eos_1p_poly) eos_1p_polytropic;
     global_eos_1p_poly->init(poly_gamma, poly_k, rho_max);
     break;
   }

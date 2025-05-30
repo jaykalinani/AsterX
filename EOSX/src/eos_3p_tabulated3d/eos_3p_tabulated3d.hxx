@@ -1,13 +1,16 @@
 #ifndef EOS_3P_TABULATED3D_HXX
 #define EOS_3P_TABULATED3D_HXX
 
-#include <cctk.h>
 #include <cmath>
-#include <hdf5.h>
-#include <mpi.h>
+#include <cassert>
+#include <limits>
 #include <string>
+#include <array>
+#include <mpi.h>
+#include <hdf5.h>
+
 #include "../eos_3p.hxx"
-#include "../utils/eos_brent.hxx"
+#include "../utils/eos_brent.hxx" // zero_brent
 #include "../utils/eos_linear_interp_ND.hxx"
 
 #define NTABLES 19
@@ -17,344 +20,220 @@ using namespace std;
 using namespace eos_constants;
 
 class eos_3p_tabulated3d : public eos_3p {
-
 public:
-  enum errors {
-    NO_ERRORS = 0,
-    RHO_TOO_HIGH,
-    RHO_TOO_LOW,
-    YE_TOO_HIGH,
-    YE_TOO_LOW,
-    TEMP_TOO_HIGH,
-    TEMP_TOO_LOW,
-    num_errors
-  };
-
+  // must match order of HDF5 datasets below
   enum EV {
-    PRESS = 0,
-    EPS,
-    S,
-    CS2,
-    MUE,
-    MUP,
-    MUN,
-    XA,
-    XH,
-    XN,
-    XP,
-    ABAR,
-    ZBAR,
+    PRESS   = 0, // "logpress"
+    EPS     = 1, // "logenergy"
+    S       = 2, // "entropy"
+    MUNU    = 3, // "munu"
+    CS2     = 4, // "cs2"
+    DEDT    = 5, // "dedt"
+    DPDRHOE = 6, // "dpdrhoe"
+    DPDERHO = 7, // "dpderho"
+    MUHAT   = 8, // "muhat"
+    MU_E    = 9, // "mu_e"
+    MU_P    = 10,// "mu_p"
+    MU_N    = 11,// "mu_n"
+    XA      = 12,// "Xa"
+    XH      = 13,// "Xh"
+    XN      = 14,// "Xn"
+    XP      = 15,// "Xp"
+    ABAR    = 16,// "Abar"
+    ZBAR    = 17,// "Zbar"
     NUM_VARS
   };
 
-  CCTK_REAL gamma;
-  range rgeps;
+  CCTK_REAL gamma;  // table Γ
   CCTK_REAL *energy_shift;
-  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> *interptable;
-
-  CCTK_HOST void
-  init(const string &filename, range &rgeps_, const range &rgrho_, const range &rgye_) {
-    eos_readtable_scollapse(filename);
-    set_range_rho(rgrho_);
-    set_range_ye(rgye_);
-    rgeps_ = range_eps_from_valid_rho_ye(rgrho_.min, rgye_.min);
-    // TODO: first compute temp as a function of rho, ye, and eps, and then
-    // initialize its range For now, as dummy, we pass range of eps as range of
-    // temp
-    set_range_temp(rgeps_);
-  }
-
-/*** Table readers ***/
-
-// Routine reading the EOS table and filling the corresponding object
-CCTK_HOST void
-eos_readtable_scollapse(const string &filename) {
-
-  CCTK_INT ntemp, nrho, nye;
-  CCTK_VINFO("Reading Stellar Collapse EOS table '%s'", filename.c_str());
-
-  auto fapl_id = H5Pcreate(H5P_FILE_ACCESS);
-  assert(fapl_id >= 0);
-  hid_t file_id = 0;
-  int rank_id;
-  CHECK_ERROR(MPI_Comm_rank(MPI_COMM_WORLD, &rank_id));
-
-#ifdef H5_HAVE_PARALLEL
-  CHECK_ERROR(H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL));
-  CHECK_ERROR(H5Pset_all_coll_metadata_ops(fapl_id, true));
-  file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, fapl_id);
-#else
-  fapl_id = H5P_DEFAULT;
-  if (rank_id == 0) {
-    file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, fapl_id);
-  }
-// TODO: bcast table info to all ranks
-#endif
-
-  assert(file_id >= 0);
-
-  // Get number of points
-  get_hdf5_int_dset(file_id, "pointstemp", 1, &ntemp);
-  get_hdf5_int_dset(file_id, "pointsrho", 1, &nrho);
-  get_hdf5_int_dset(file_id, "pointsye", 1, &nye);
-
-  const int npoints = ntemp * nrho * nye;
-
-  CCTK_VINFO("EOS table dimensions: ntemp = %d, nrho = %d, nye = %d", ntemp,
-             nrho, nye);
-
-  energy_shift = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(sizeof(CCTK_REAL));
-  assert(energy_shift);
-
-  // Allocate memory for tables
-
-  CCTK_REAL *logrho, *logtemp, *yes;
-  CCTK_REAL *epstable;
-  CCTK_REAL *alltables;
-
-  if (!(alltables = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
-            npoints * NTABLES * sizeof(CCTK_REAL)))) {
-    printf("Cannot allocate memory for alltables");
-  }
-  if (!(logrho = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nrho *
-                                                         sizeof(CCTK_REAL)))) {
-    printf("Cannot allocate memory for logrho");
-  }
-  if (!(logtemp = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(ntemp *
-                                                          sizeof(CCTK_REAL)))) {
-    printf("Cannot allocate memory for logtemp");
-  }
-  if (!(yes =
-            (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nye * sizeof(CCTK_REAL)))) {
-    printf("Cannot allocate memory for yes");
-  }
-
-  // allocate epstable; a linear-scale eps table
-  // that allows us to extrapolate to negative eps
-  if (!(epstable = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
-            npoints * sizeof(CCTK_REAL)))) {
-    printf("Cannot allocate memory for epstable");
-  }
-
-  // Prepare HDF5 to read hyperslabs into alltables_temp
-  hsize_t table_dims[2] = {NTABLES, (hsize_t)npoints};
-  hsize_t var3[2] = {1, (hsize_t)npoints};
-  hid_t mem3 = H5Screate_simple(2, table_dims, NULL);
-
-  // hydro (and munu)
-  get_hdf5_real_dset(file_id, "logpress", npoints,
-                     &alltables[0 * npoints]);
-  get_hdf5_real_dset(file_id, "logenergy", npoints,
-                     &alltables[1 * npoints]);
-  get_hdf5_real_dset(file_id, "entropy", npoints, &alltables[2 * npoints]);
-  get_hdf5_real_dset(file_id, "munu", npoints, &alltables[3 * npoints]);
-  get_hdf5_real_dset(file_id, "cs2", npoints, &alltables[4 * npoints]);
-  get_hdf5_real_dset(file_id, "dedt", npoints, &alltables[5 * npoints]);
-  get_hdf5_real_dset(file_id, "dpdrhoe", npoints, &alltables[6 * npoints]);
-  get_hdf5_real_dset(file_id, "dpderho", npoints, &alltables[7 * npoints]);
-
-  // chemical potentials
-  get_hdf5_real_dset(file_id, "muhat", npoints, &alltables[8 * npoints]);
-  get_hdf5_real_dset(file_id, "mu_e", npoints, &alltables[9 * npoints]);
-  get_hdf5_real_dset(file_id, "mu_p", npoints, &alltables[10 * npoints]);
-  get_hdf5_real_dset(file_id, "mu_n", npoints, &alltables[11 * npoints]);
-
-  // compositions
-  get_hdf5_real_dset(file_id, "Xa", npoints, &alltables[12 * npoints]);
-  get_hdf5_real_dset(file_id, "Xh", npoints, &alltables[13 * npoints]);
-  get_hdf5_real_dset(file_id, "Xn", npoints, &alltables[14 * npoints]);
-  get_hdf5_real_dset(file_id, "Xp", npoints, &alltables[15 * npoints]);
-
-  // average nucleus
-  get_hdf5_real_dset(file_id, "Abar", npoints, &alltables[16 * npoints]);
-  get_hdf5_real_dset(file_id, "Zbar", npoints, &alltables[17 * npoints]);
-
-  // Gamma
-  get_hdf5_real_dset(file_id, "gamma", npoints, &alltables[18 * npoints]);
-
-  // Read additional tables and variables
-  get_hdf5_real_dset(file_id, "logrho", nrho, logrho);
-  get_hdf5_real_dset(file_id, "logtemp", ntemp, logtemp);
-  get_hdf5_real_dset(file_id, "ye", nye, yes);
-  get_hdf5_real_dset(file_id, "energy_shift", 1, energy_shift);
-
-  CHECK_ERROR(H5Pclose(fapl_id));
-  CHECK_ERROR(H5Sclose(mem3));
-
-#ifdef H5_HAVE_PARALLEL
-  CHECK_ERROR(H5Fclose(file_id));
-#else
-  if (rank_id == 0) {
-    CHECK_ERROR(H5Fclose(file_id));
-  }
-#endif
-
-  *energy_shift = *energy_shift * EPSGF;
-
-  for (int i = 0; i < nrho; i++) {
-    // rewrite:
-    // logrho[i] = log(pow(10.0,logrho[i]) * RHOGF);
-    // by using log(a^b*c) = b*log(a)+log(c)
-    logrho[i] = logrho[i] * log(10.) + log(RHOGF);
-  }
-
-  for (int i = 0; i < ntemp; i++) {
-    // logtemp[i] = log(pow(10.0,logtemp[i]));
-    logtemp[i] = logtemp[i] * log(10.0);
-  }
-
-  // convert units
-  for (int i = 0; i < npoints; i++) {
-
-    { // pressure
-      int idx = 0 + NTABLES * i;
-      alltables[idx] = alltables[idx] * log(10.0) + log(PRESSGF);
-    }
-
-    { // eps
-      int idx = 1 + NTABLES * i;
-      alltables[idx] = alltables[idx] * log(10.0) + log(EPSGF);
-      epstable[i] = exp(alltables[idx]);
-    }
-
-    { // cs2
-      int idx = 4 + NTABLES * i;
-      alltables[idx] *= LENGTHGF * LENGTHGF / TIMEGF / TIMEGF;
-    }
-
-    { // dedT
-      int idx = 5 + NTABLES * i;
-      alltables[idx] *= EPSGF;
-    }
-
-    { // dpdrhoe
-      int idx = 6 + NTABLES * i;
-      alltables[idx] *= PRESSGF / RHOGF;
-    }
-
-    { // dpderho
-      int idx = 7 + NTABLES * i;
-      alltables[idx] *= PRESSGF / EPSGF;
-    }
-  }
-
-  auto num_points =
-      std::array<size_t, 3>{size_t(nrho), size_t(ntemp), size_t(nye)};
-
-  interptable = (linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> *)amrex::The_Managed_Arena()->alloc(
-        sizeof *interptable);
-  assert(interptable);
-  new (interptable) linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> (alltables, num_points, logrho, logtemp, yes);
-  // set up steps, mins, maxes here?
-  return;
-}
-
+  range     rgeps;
+  linear_interp_uniform_ND_t<CCTK_REAL,3,NTABLES> *interptable;
   
-/*** Function calls to compute hydro variables ***/
+    CCTK_HOST void init(const std::string &filename, range &rgeps_out,
+                      const range &, const range &)
+  {
+    CCTK_VINFO("Reading Stellar Collapse EOS table '%s'", filename.c_str());
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  logtemp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
-                   const CCTK_REAL ye) const {
-    const auto lrho = log(rho);
-    const auto leps = log(eps + *energy_shift);
+    int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+    assert(fapl_id >= 0);
 
-    // Get eps ranges
-    const auto varsmin =
-        interptable->interpolate<EV::EPS>(lrho, interptable->xmin<1>(), ye);
-    const auto varsmax =
-        interptable->interpolate<EV::EPS>(lrho, interptable->xmax<1>(), ye);
-
-    if (leps <= varsmin[0]) {
-      eps = exp(varsmin[0]) - *energy_shift;
-      return interptable->xmin<1>();
+    hid_t file_id = -1;
+#ifdef H5_HAVE_PARALLEL
+    CHECK_ERROR(H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL));
+    CHECK_ERROR(H5Pset_all_coll_metadata_ops(fapl_id, true));
+    file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, fapl_id);
+    assert(file_id >= 0);
+#else
+    if (rank == 0) {
+      file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      assert(file_id >= 0);
     }
-    if (leps >= varsmax[0]) {
-      eps = exp(varsmax[0]) - *energy_shift;
-      return interptable->xmax<1>();
-    }
+#endif
 
-    // Root finding interface closure
-    const auto func = [&](CCTK_REAL &lt) {
-      const auto vars = interptable->interpolate<EV::EPS>(lrho, lt, ye);
-      return leps - vars[0];
+    int nrho, ntemp, nye;
+    if (rank == 0) {
+      get_hdf5_int_dset(file_id,"pointsrho",1,&nrho);
+      get_hdf5_int_dset(file_id,"pointstemp",1,&ntemp);
+      get_hdf5_int_dset(file_id,"pointsye",1,&nye);
+    }
+    MPI_Bcast(&nrho,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&ntemp,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&nye,  1,MPI_INT,0,MPI_COMM_WORLD);
+
+    const int npoints = nrho * ntemp * nye;
+
+    CCTK_REAL *logrho   = (CCTK_REAL*)amrex::The_Managed_Arena()->alloc(nrho * sizeof(CCTK_REAL));
+    CCTK_REAL *logtemp  = (CCTK_REAL*)amrex::The_Managed_Arena()->alloc(ntemp * sizeof(CCTK_REAL));
+    CCTK_REAL *yes      = (CCTK_REAL*)amrex::The_Managed_Arena()->alloc(nye * sizeof(CCTK_REAL));
+    CCTK_REAL *alltables= (CCTK_REAL*)amrex::The_Managed_Arena()->alloc(npoints * NTABLES * sizeof(CCTK_REAL));
+    energy_shift        = (CCTK_REAL*)amrex::The_Managed_Arena()->alloc(sizeof(CCTK_REAL));
+
+    static const char* dnames[NTABLES] = {
+      "logpress","logenergy","entropy","munu","cs2","dedt","dpdrhoe","dpderho",
+      "muhat","mu_e","mu_p","mu_n","Xa","Xh","Xn","Xp","Abar","Zbar"
     };
 
-    return zero_brent(interptable->xmin<1>(), interptable->xmax<1>(), 1.e-14,
-                      func);
+#ifdef H5_HAVE_PARALLEL
+    get_hdf5_real_dset(file_id,"logrho",nrho,logrho);
+    get_hdf5_real_dset(file_id,"logtemp",ntemp,logtemp);
+    get_hdf5_real_dset(file_id,"ye",nye,yes);
+    get_hdf5_real_dset(file_id,"energy_shift",1,energy_shift);
+    for(int iv=0; iv<NTABLES; iv++) {
+      get_hdf5_real_dset(file_id,dnames[iv],npoints,&alltables[iv*npoints]);
+    }
+    CHECK_ERROR(H5Fclose(file_id));
+    CHECK_ERROR(H5Pclose(fapl_id));
+#else
+    if (rank == 0) {
+      get_hdf5_real_dset(file_id,"logrho",nrho,logrho);
+      get_hdf5_real_dset(file_id,"logtemp",ntemp,logtemp);
+      get_hdf5_real_dset(file_id,"ye",nye,yes);
+      get_hdf5_real_dset(file_id,"energy_shift",1,energy_shift);
+      for(int iv=0; iv<NTABLES; iv++) {
+        get_hdf5_real_dset(file_id,dnames[iv],npoints,&alltables[iv*npoints]);
+      }
+      CHECK_ERROR(H5Fclose(file_id));
+    }
+    MPI_Bcast(logrho,nrho,MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Bcast(logtemp,ntemp,MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Bcast(yes,nye,MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Bcast(energy_shift,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+    MPI_Bcast(alltables,npoints*NTABLES,MPI_DOUBLE,0,MPI_COMM_WORLD);
+#endif
+
+    *energy_shift *= EPSGF;
+    const CCTK_REAL ln10 = log(10.0);
+    const CCTK_REAL inv_time2 = 1/(TIMEGF*TIMEGF);
+    for (int i=0; i<nrho; i++) logrho[i] = logrho[i]*ln10 + log(RHOGF);
+    for (int i=0; i<ntemp; i++) logtemp[i] *= ln10;
+    
+    for (size_t idx=0; idx<npoints; idx++) {
+      size_t b = idx*NTABLES;
+      alltables[b+PRESS]   = alltables[b+PRESS]*ln10 + log(PRESSGF);
+      alltables[b+EPS]     = alltables[b+EPS]*ln10 + log(EPSGF);
+      alltables[b+CS2]     = alltables[b+CS2]*LENGTHGF*LENGTHGF*inv_time2;
+      alltables[b+DEDT]    = alltables[b+DEDT]*EPSGF;
+      alltables[b+DPDRHOE] = alltables[b+DPDRHOE]*PRESSGF/RHOGF;
+      alltables[b+DPDERHO] = alltables[b+DPDERHO]*PRESSGF/EPSGF;
+    }
+
+    std::array<size_t,3> dims{size_t(nrho),size_t(ntemp),size_t(nye)};
+    interptable = (decltype(interptable))amrex::The_Managed_Arena()->alloc(sizeof(*interptable));
+    new (interptable) linear_interp_uniform_ND_t<CCTK_REAL,3,NTABLES>(alltables, dims, logrho, logtemp, yes);
+
+    set_range_rho( range{exp(interptable->xmin<0>()),exp(interptable->xmax<0>())} );
+    set_range_temp(range{exp(interptable->xmin<1>()),exp(interptable->xmax<1>())});
+    set_range_ye  (range{interptable->xmin<2>(),interptable->xmax<2>()});
+
+    rgeps = compute_eps_range_full_table();
+    rgeps_out = rgeps;
   }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  press_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
-                               const CCTK_REAL ye) const {
-    // error = checkbounds<true>(rho, temp, ye);
-    const auto lrho = log(rho);
-    const auto ltemp = log(temp);
-    const auto vars = interptable->interpolate<EV::PRESS>(lrho, ltemp, ye);
+  // Device‐callable routines
 
-    return exp(vars[0]);
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  logtemp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps, const CCTK_REAL ye) const {
+    // bound inputs
+    CCTK_REAL r  = std::fmin(std::fmax(rho, rgrho.min), rgrho.max);
+    eps  = std::fmax(eps + *energy_shift, rgeps.min + *energy_shift) - *energy_shift;
+    CCTK_REAL lrho = std::log(r);
+    CCTK_REAL leps = std::log(eps + *energy_shift);
+
+    // table‐edge clamp
+    auto vmin = interptable->interpolate<EV::EPS>(lrho, interptable->xmin<1>(), ye)[0];
+    auto vmax = interptable->interpolate<EV::EPS>(lrho, interptable->xmax<1>(), ye)[0];
+    if (leps <= vmin) { eps = exp(vmin) - *energy_shift; return interptable->xmin<1>(); }
+    if (leps >= vmax) { eps = exp(vmax) - *energy_shift; return interptable->xmax<1>(); }
+
+    // root‐find for logtemp
+    auto func = [&](CCTK_REAL &lt){
+      CCTK_REAL val = interptable->interpolate<EV::EPS>(lrho, lt, ye)[0];
+      return leps - val;
+    };
+    return zero_brent(interptable->xmin<1>(), interptable->xmax<1>(), 1.e-14, func);
   }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  press_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
-                              const CCTK_REAL ye) const {
-    const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
-    const auto vars = interptable->interpolate<EV::PRESS>(lrho, ltemp, ye);
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  press_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const {
+    // bound
+    CCTK_REAL r = std::fmin(std::fmax(rho, rgrho.min), rgrho.max);
+    CCTK_REAL t = std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max);
+    CCTK_REAL lr = std::log(rho), lt = std::log(temp);
+    CCTK_REAL v = interptable->interpolate<EV::PRESS>(lr, lt, ye)[0];
+    return exp(v);
+  }
 
-    return exp(vars[0]);
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  press_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps, const CCTK_REAL ye) const {
+    CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
+    CCTK_REAL lt = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
+    CCTK_REAL v  = interptable->interpolate<EV::PRESS>(lr, lt, ye)[0];
+    return exp(v);
+  }
+
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  eps_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const {
+    CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
+    CCTK_REAL lt = std::log(std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max));
+    CCTK_REAL v  = interptable->interpolate<EV::EPS>(lr, lt, ye)[0];
+    return exp(v) - *energy_shift;
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   eps_from_valid_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
                               const CCTK_REAL ye) const {
 
-    assert(
-        !"This routine should not be used. There is no monotonicity condition "
+    CCTK_ERROR(
+	 "This routine should not be used. There is no monotonicity condition "
          "to enforce a succesfull inversion from eps(press). So you better "
          "rewrite your code to not require this call...");
 
     return 0;
   }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  eps_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
-                             const CCTK_REAL ye) const {
-
-    const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = log(temp);
-    auto const vars = interptable->interpolate<EV::EPS>(lrho, ltemp, ye);
-    const auto eps = exp(vars[0]) - *energy_shift;
-    return eps;
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  csnd_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const {
+    CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
+    CCTK_REAL lt = std::log(std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max));
+    CCTK_REAL v  = interptable->interpolate<EV::CS2>(lr, lt, ye)[0];
+    assert(v >= 0);
+    return sqrt(v);
   }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  csnd_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
-                              const CCTK_REAL ye) const {
-    const auto lrho = log(rho);
-    const auto ltemp = log(temp);
-    const auto vars = interptable->interpolate<EV::CS2>(lrho, ltemp, ye);
-    assert(vars[0] >= 0); // Soundspeed^2 should never ever be negative
-
-    return sqrt(vars[0]);
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps, const CCTK_REAL ye) const {
+    CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
+    CCTK_REAL lt = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
+    CCTK_REAL v  = interptable->interpolate<EV::CS2>(lr, lt, ye)[0];
+    assert(v >= 0);
+    return sqrt(v);
   }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
-                             const CCTK_REAL ye) const {
-    const auto lrho = log(rho);
-    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
-    const auto vars = interptable->interpolate<EV::CS2>(lrho, ltemp, ye);
-    assert(vars[0] >= 0); // Soundspeed^2 should never ever be negative
-
-    return sqrt(vars[0]);
-  }
-
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  temp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
-                             const CCTK_REAL ye) const {
-    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
-
-    return exp(ltemp);
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  temp_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps, const CCTK_REAL ye) const {
+    CCTK_REAL lt = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
+    return exp(lt);
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -362,18 +241,14 @@ eos_readtable_scollapse(const string &filename) {
                                      CCTK_REAL &dpdeps, const CCTK_REAL rho,
                                      const CCTK_REAL eps,
                                      const CCTK_REAL ye) const {
-    printf("press_derivs_from_valid_rho_eps_ye is not supported for now!");
-    exit(EXIT_FAILURE);
+    CCTK_ERROR("press_derivs_from_valid_rho_eps_ye is not supported for now!");
   }
 
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  entropy_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
-                                 const CCTK_REAL ye) const {
-    const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = log(temp);
-    const auto vars = interptable->interpolate<EV::S>(lrho, ltemp, ye);
-
-    return vars[0];
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  entropy_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp, const CCTK_REAL ye) const {
+    CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
+    CCTK_REAL lt = std::log(std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max));
+    return interptable->interpolate<EV::S>(lr, lt, ye)[0];
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -382,7 +257,7 @@ eos_readtable_scollapse(const string &filename) {
     const CCTK_REAL kappa, // kappa=entropy
     const CCTK_REAL ye
   ) const {
-    printf("press_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
+    CCTK_ERROR("press_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
     return 0.0;
   }
 
@@ -392,44 +267,43 @@ eos_readtable_scollapse(const string &filename) {
     const CCTK_REAL kappa, // kappa=entropy
     const CCTK_REAL ye
   ) const {
-    printf("eps_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
+    CCTK_ERROR("eps_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
     return 0.0;
   };
 
-  // Note that kappa implements a generic thermodynamic quantity
-  // meant to describe the "evolved" entropy by an evolution/application
-  // thorn.
-  // The notion of the "evolved" entropy (kappa) might differ from the definition
-  // of the actual entropy (entropy_from..., see above) for different EOS, 
-  
-  // For tabulated EOS, kappa=entropy
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  kappa_from_valid_rho_eps_ye(
-    const CCTK_REAL rho,
-    CCTK_REAL &eps,
-    const CCTK_REAL ye
-  ) const {
-    const CCTK_REAL lrho = log(rho);
-    const CCTK_REAL ltemp = logtemp_from_valid_rho_eps_ye(rho, eps, ye);
-    const auto vars = interptable->interpolate<EV::S>(lrho, ltemp, ye);
-
-    return vars[0];
-  };
-
-
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline range
-  range_eps_from_valid_rho_ye(const CCTK_REAL rho, const CCTK_REAL ye) const {
-    //    const CCTK_REAL lrho = log(rho);
-    //    rgeps.min = interptable->interpolate<EV::EPS>(lrho,
-    //    interptable->xmin<1>(), ye); rgeps.max =
-    //    interptable->interpolate<EV::EPS>(lrho, interptable->xmax<1>(), ye);
-
-    return rgeps;
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  kappa_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps, const CCTK_REAL ye) const {
+    return entropy_from_valid_rho_temp_ye(rho, temp_from_valid_rho_eps_ye(rho,eps,ye), ye);
   }
 
-  
+  CCTK_HOST CCTK_DEVICE inline range
+  range_eps_from_valid_rho_ye(const CCTK_REAL rho, const CCTK_REAL ye) const {
+    CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
+    CCTK_REAL vmin = interptable->interpolate<EV::EPS>(lr, interptable->xmin<1>(), ye)[0];
+    CCTK_REAL vmax = interptable->interpolate<EV::EPS>(lr, interptable->xmax<1>(), ye)[0];
+    return range{exp(vmin)-*energy_shift, exp(vmax)-*energy_shift};
+  }
 
-};
+  CCTK_HOST CCTK_DEVICE inline range
+  compute_eps_range_full_table() const {
+    size_t n0 = interptable->num_points[0];
+    size_t n1 = interptable->num_points[1];
+    size_t n2 = interptable->num_points[2];
+    size_t total = n0*n1*n2;
+    const CCTK_REAL* eps_data = interptable->y + EV::EPS * total;
+    CCTK_REAL eps_min = std::numeric_limits<CCTK_REAL>::max();
+    CCTK_REAL eps_max = std::numeric_limits<CCTK_REAL>::lowest();
+    for(size_t i=0;i<total;i++){
+      CCTK_REAL val = exp(eps_data[i]) - *energy_shift;
+      eps_min = std::fmin(eps_min,val);
+      eps_max = std::fmax(eps_max,val);
+    }
+    return range{eps_min,eps_max};
+  }
+  
+}; // class eos_3p_tabulated3d
+
 } // namespace EOSX
 
-#endif
+#endif // EOS_3P_TABULATED3D_HXX
+

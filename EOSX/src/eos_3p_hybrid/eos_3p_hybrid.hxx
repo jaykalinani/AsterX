@@ -25,12 +25,12 @@ public:
   CCTK_REAL gamma;            // dummy
   CCTK_REAL gamma_th, gm1_th; // TODO: temp_over_eps
   range rgeps;
-  eos_1p_polytrope *eos_c;
+  eos_1p_polytropic *eos_c;
 
   // constructor
   CCTK_HOST
   CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline eos_3p_hybrid(
-      eos_1p_polytrope *eos_c_, CCTK_REAL gamma_th_, range &rgrho_,
+      eos_1p_polytropic *eos_c_, CCTK_REAL gamma_th_, range &rgrho_,
       range &rgeps_, range &rgye_)
       : eos_c(eos_c_), gamma_th(gamma_th_), rgeps(rgeps_) {
 

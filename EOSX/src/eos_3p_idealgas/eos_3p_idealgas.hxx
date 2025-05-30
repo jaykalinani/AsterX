@@ -4,13 +4,12 @@
 #include <cmath>
 
 #include "../eos_3p.hxx"
-using namespace std;
 
 namespace EOSX {
 
 class eos_3p_idealgas : public eos_3p {
 public:
-  CCTK_REAL gamma, gm1, temp_over_eps;
+  CCTK_REAL gamma, gm1, inv_gamma, temp_over_eps;
   range rgeps;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -126,13 +125,13 @@ eos_3p_idealgas::init(CCTK_REAL gamma_, CCTK_REAL umass_, range &rgeps_,
                       const range &rgrho_, const range &rgye_) {
   gamma = gamma_;
   gm1 = gamma_ - 1;
+  inv_gamma = 1/gamma_;
   rgeps = rgeps_;
   if (gamma < 1) {
-    assert(0);
-    // runtime_error("EOS_IdealGas: initialized with gamma < 1");
+    CCTK_ERROR("EOS_IdealGas: initialized with gamma < 1");
   }
   if (gamma > 2) { // Ensure subluminal Soundspeed and P < E
-    rgeps.max = min(rgeps.max, 1 / (gamma * (gamma - 2)));
+    rgeps.max = std::min(rgeps.max, 1 / (gamma * (gamma - 2)));
   }
   // set_range_h(range(1 + gamma * rgeps.min, 1 + gamma * rgeps.max));
   set_range_rho(rgrho_);
@@ -158,7 +157,7 @@ eos_3p_idealgas::eps_from_valid_rho_press_ye(const CCTK_REAL rho,
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 eos_3p_idealgas::csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                                             const CCTK_REAL ye) const {
-  return sqrt(gm1 * eps / (eps + 1 / gamma));
+  return sqrt(gm1 * eps / (eps + inv_gamma));
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
