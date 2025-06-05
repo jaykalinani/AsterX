@@ -14,8 +14,7 @@ using namespace std;
 
 enum class eos_3param { IdealGas, Hybrid, Tabulated };
 
-template <typename EOSType>
-void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
+template <typename EOSType> void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_CheckPrims;
   DECLARE_CCTK_PARAMETERS;
 
@@ -23,7 +22,6 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-       
         CCTK_REAL rhomin = eos_3p->rgrho.min;
         CCTK_REAL rhomax = eos_3p->rgrho.max;
         CCTK_REAL tempmin = eos_3p->rgtemp.min;
@@ -38,12 +36,12 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
         vec<CCTK_REAL, 3> v_up{velx(p.I), vely(p.I), velz(p.I)};
 
-        CCTK_REAL rhoL     = rho(p.I);
-        CCTK_REAL epsL     = eps(p.I);
-        CCTK_REAL pressL   = press(p.I);
+        CCTK_REAL rhoL = rho(p.I);
+        CCTK_REAL epsL = eps(p.I);
+        CCTK_REAL pressL = press(p.I);
         CCTK_REAL entropyL = entropy(p.I);
-        CCTK_REAL YeL      = Ye(p.I);
-        CCTK_REAL tempL    = temperature(p.I);
+        CCTK_REAL YeL = Ye(p.I);
+        CCTK_REAL tempL = temperature(p.I);
 
         // Lower velocity
         vec<CCTK_REAL, 3> v_low = calc_contraction(g, v_up);
@@ -53,12 +51,12 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
         const CCTK_REAL w_lim = sqrt(1.0 + vw_lim * vw_lim);
         const CCTK_REAL v_lim = vw_lim / w_lim;
-      
+
         // ----------
         // Floor and ceiling for rho and velocity
         // Keeps pressure the same and changes eps
         // ----------
-      
+
         // check if computed velocities are within the specified limit
         CCTK_REAL vsq_Sol = calc_contraction(v_low, v_up);
         CCTK_REAL sol_v = sqrt(vsq_Sol);
@@ -66,41 +64,36 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
           v_up *= v_lim / sol_v;
           v_low = v_low * v_lim / sol_v;
-     
         }
-      
+
         if (rhoL > rhomax) {
-      
+
           // remove mass
           rhoL = rhomax;
 
           if (use_temperature) {
-             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
-	     pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
           } else {
-             epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
+            epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
           }
-          entropyL =
-              eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
-
+          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
         }
 
         if (rhoL < rho_abs_min * (1 + atmo_tol)) {
-      
+
           // add mass
           rhoL = rho_abs_min;
 
           if (use_temperature) {
-             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
-	     pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
           } else {
-             epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
+            epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
           }
-          entropyL =
-              eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
-
+          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
         }
-        
+
         // ----------
         // Floor and ceiling for temp
         // Keeps rho the same and changes press
@@ -109,59 +102,57 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
         if (use_temperature) {
           // check the validity of the computed temperature
           if (tempL > tempmax) {
-             tempL = tempmax;
-             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
-             pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
-             entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+            tempL = tempmax;
+            epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           }
           if (tempL < tempmin) {
-             tempL = tempmin;
-             epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
-             pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
-             entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+            tempL = tempmin;
+            epsL = eos_3p->eps_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            pressL = eos_3p->press_from_valid_rho_temp_ye(rhoL, tempL, YeL);
+            entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           }
         }
-	
+
         // ----------
         // Floor and ceiling for eps
         // Keeps rho the same and changes press
         // ----------
-      
+
         // check the validity of the computed eps
         if (epsL > epsmax) {
 
-          epsL   = epsmax;
-	  tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+          epsL = epsmax;
+          tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
-          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);  
+          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
 
         } else if (epsL < epsmin) {
 
           epsL = epsmin;
-	  tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+          tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
-          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL); 
-
+          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
         }
- 
 
         // ----------
         // Floor and ceiling for Ye
         // ----------
 
-        //TODO:
+        // TODO:
 
         // ---------- End of validity check
 
-        rho(p.I)     = rhoL;
-        velx(p.I)    = v_up(0);
-        vely(p.I)    = v_up(1);
-        velz(p.I)    = v_up(2);
-        eps(p.I)     = epsL;
-        press(p.I)   = pressL;
+        rho(p.I) = rhoL;
+        velx(p.I) = v_up(0);
+        vely(p.I) = v_up(1);
+        velz(p.I) = v_up(2);
+        eps(p.I) = epsL;
+        press(p.I) = pressL;
         entropy(p.I) = entropyL;
         Ye(p.I) = YeL;
-	temperature(p.I) = tempL;
+        temperature(p.I) = tempL;
 
         saved_rho(p.I) = rhoL;
         saved_velx(p.I) = v_up(0);
@@ -172,16 +163,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
         CCTK_REAL wlor = calc_wlorentz(v_low, v_up);
 
-	zvec_x(p.I) = wlor * v_up(0);
-	zvec_y(p.I) = wlor * v_up(1);
-	zvec_z(p.I) = wlor * v_up(2);
+        zvec_x(p.I) = wlor * v_up(0);
+        zvec_y(p.I) = wlor * v_up(1);
+        zvec_z(p.I) = wlor * v_up(2);
 
-	svec_x(p.I) = (rhoL+rhoL*epsL+pressL)*wlor*wlor*v_up(0);
-	svec_y(p.I) = (rhoL+rhoL*epsL+pressL)*wlor*wlor*v_up(1);
-	svec_z(p.I) = (rhoL+rhoL*epsL+pressL)*wlor*wlor*v_up(2);
-
+        svec_x(p.I) = (rhoL + rhoL * epsL + pressL) * wlor * wlor * v_up(0);
+        svec_y(p.I) = (rhoL + rhoL * epsL + pressL) * wlor * wlor * v_up(1);
+        svec_z(p.I) = (rhoL + rhoL * epsL + pressL) * wlor * wlor * v_up(2);
       });
-
 }
 
 extern "C" void AsterX_CheckPrims(CCTK_ARGUMENTS) {
@@ -225,7 +214,6 @@ extern "C" void AsterX_CheckPrims(CCTK_ARGUMENTS) {
   default:
     assert(0);
   }
-
 }
 
 } // namespace AsterX

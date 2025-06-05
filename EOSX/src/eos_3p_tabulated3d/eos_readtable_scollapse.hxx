@@ -20,7 +20,7 @@ linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> *interptable;
 CCTK_HOST void eos_readtable_scollapse(const string &filename) {
   CCTK_VINFO("Reading Stellar Collapse EOS table '%s'", filename.c_str());
   CCTK_INT ntemp, nrho, nye;
-  
+
   int rank_id;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank_id);
 
@@ -42,27 +42,34 @@ CCTK_HOST void eos_readtable_scollapse(const string &filename) {
   }
 
   MPI_Bcast(&ntemp, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&nrho,  1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&nye,   1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nrho, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nye, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   CCTK_INT npoints = ntemp * nrho * nye;
   CCTK_VINFO("EOS dimensions: ntemp=%d, nrho=%d, nye=%d", ntemp, nrho, nye);
 
-  energy_shift = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(sizeof(CCTK_REAL));
-  CCTK_REAL *logrho   = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nrho*sizeof(CCTK_REAL));
-  CCTK_REAL *logtemp  = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(ntemp*sizeof(CCTK_REAL));
-  CCTK_REAL *yes      = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nye*sizeof(CCTK_REAL));
-  CCTK_REAL *alltables= (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(npoints*NTABLES*sizeof(CCTK_REAL));
-  CCTK_REAL *epstable = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(npoints*sizeof(CCTK_REAL));
+  energy_shift =
+      (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(sizeof(CCTK_REAL));
+  CCTK_REAL *logrho =
+      (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nrho * sizeof(CCTK_REAL));
+  CCTK_REAL *logtemp =
+      (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(ntemp * sizeof(CCTK_REAL));
+  CCTK_REAL *yes =
+      (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nye * sizeof(CCTK_REAL));
+  CCTK_REAL *alltables = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+      npoints * NTABLES * sizeof(CCTK_REAL));
+  CCTK_REAL *epstable = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+      npoints * sizeof(CCTK_REAL));
 
   if (rank_id == 0) {
-    const char* datasets[NTABLES] = {
-      "logpress","logenergy","entropy","munu","cs2","dedt","dpdrhoe","dpderho",
-      "muhat","mu_e","mu_p","mu_n","Xa","Xh","Xn","Xp","Abar","Zbar"
-    };
+    const char *datasets[NTABLES] = {
+        "logpress", "logenergy", "entropy", "munu", "cs2",  "dedt",
+        "dpdrhoe",  "dpderho",   "muhat",   "mu_e", "mu_p", "mu_n",
+        "Xa",       "Xh",        "Xn",      "Xp",   "Abar", "Zbar"};
 
-    for(int i=0; i<NTABLES; i++)
-      get_hdf5_real_dset(file_id, datasets[i], npoints, &alltables[i*npoints]);
+    for (int i = 0; i < NTABLES; i++)
+      get_hdf5_real_dset(file_id, datasets[i], npoints,
+                         &alltables[i * npoints]);
 
     get_hdf5_real_dset(file_id, "logrho", nrho, logrho);
     get_hdf5_real_dset(file_id, "logtemp", ntemp, logtemp);
@@ -70,7 +77,7 @@ CCTK_HOST void eos_readtable_scollapse(const string &filename) {
     get_hdf5_real_dset(file_id, "energy_shift", 1, energy_shift);
   }
 
-  MPI_Bcast(alltables, npoints*NTABLES, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(alltables, npoints * NTABLES, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(logrho, nrho, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(logtemp, ntemp, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(yes, nye, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -81,27 +88,28 @@ CCTK_HOST void eos_readtable_scollapse(const string &filename) {
 
   *energy_shift *= EPSGF;
   const CCTK_REAL ln10 = log(10.0);
-  const CCTK_REAL inv_time2 = 1/(TIMEGF*TIMEGF);
+  const CCTK_REAL inv_time2 = 1 / (TIMEGF * TIMEGF);
 
-  for(int i=0; i<nrho; i++)
-    logrho[i] = logrho[i]*ln10 + log(RHOGF);
+  for (int i = 0; i < nrho; i++)
+    logrho[i] = logrho[i] * ln10 + log(RHOGF);
 
-  for(int i=0; i<ntemp; i++)
+  for (int i = 0; i < ntemp; i++)
     logtemp[i] *= ln10;
 
-  for(int i=0; i<npoints; i++) {
-    alltables[i] = alltables[i]*ln10 + log(PRESSGF); //PRESS
-    alltables[npoints+i] = alltables[npoints+i]*ln10 + log(EPSGF); //EPS
-    epstable[i]  = exp(alltables[i]); //EPS
-    alltables[4*npoints+i] *= LENGTHGF*LENGTHGF*inv_time2; //CS2
-    alltables[5*npoints+i] *= EPSGF; //DEDT
-    alltables[6*npoints+i] *= PRESSGF/RHOGF; //DPDRHOE
-    alltables[7*npoints+i] *= PRESSGF/EPSGF; //DPDERHO
+  for (int i = 0; i < npoints; i++) {
+    alltables[i] = alltables[i] * ln10 + log(PRESSGF); // PRESS
+    alltables[npoints + i] = alltables[npoints + i] * ln10 + log(EPSGF); // EPS
+    epstable[i] = exp(alltables[i]);                                     // EPS
+    alltables[4 * npoints + i] *= LENGTHGF * LENGTHGF * inv_time2;       // CS2
+    alltables[5 * npoints + i] *= EPSGF;                                 // DEDT
+    alltables[6 * npoints + i] *= PRESSGF / RHOGF; // DPDRHOE
+    alltables[7 * npoints + i] *= PRESSGF / EPSGF; // DPDERHO
   }
 
-  interptable = new(amrex::The_Managed_Arena()->alloc(sizeof(*interptable)))
-    linear_interp_uniform_ND_t<CCTK_REAL,3,NTABLES>(alltables,{(size_t)nrho,(size_t)ntemp,(size_t)nye},logrho,logtemp,yes);
+  interptable = new (amrex::The_Managed_Arena()->alloc(sizeof(*interptable)))
+      linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES>(
+          alltables, {(size_t)nrho, (size_t)ntemp, (size_t)nye}, logrho,
+          logtemp, yes);
 }
 } // namespace EOSX
 #endif
-

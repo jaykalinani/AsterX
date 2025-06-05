@@ -73,23 +73,22 @@ template <int FDORDER> void SourceTerms(CCTK_ARGUMENTS) {
         vec<CCTK_REAL, 3> v_up;
         vec<CCTK_REAL, 3> v_low;
         CCTK_REAL w_lorentz;
-	if (use_v_vec) {
+        if (use_v_vec) {
 
-            v_up(0) = velx(p.I);
-	    v_up(1) = vely(p.I);
-	    v_up(2) = velz(p.I);
-            v_low = calc_contraction(g_avg, v_up);
-            w_lorentz = calc_wlorentz(v_low, v_up);
+          v_up(0) = velx(p.I);
+          v_up(1) = vely(p.I);
+          v_up(2) = velz(p.I);
+          v_low = calc_contraction(g_avg, v_up);
+          w_lorentz = calc_wlorentz(v_low, v_up);
 
-	} else {
+        } else {
 
-            const vec<CCTK_REAL, 3> z_up{zvec_x(p.I), zvec_y(p.I), zvec_z(p.I)};
-            const vec<CCTK_REAL, 3> z_low = calc_contraction(g_avg, z_up);
-            w_lorentz = calc_wlorentz_zvec(z_low, z_up);
-            v_up  = z_up/w_lorentz;
-            v_low = z_low/w_lorentz;
-
-	}
+          const vec<CCTK_REAL, 3> z_up{zvec_x(p.I), zvec_y(p.I), zvec_z(p.I)};
+          const vec<CCTK_REAL, 3> z_low = calc_contraction(g_avg, z_up);
+          w_lorentz = calc_wlorentz_zvec(z_low, z_up);
+          v_up = z_up / w_lorentz;
+          v_low = z_low / w_lorentz;
+        }
 
         /* Computing [ \rho(1+\epsilon) + Pgas ]*W^2 = \rho * h * W^2 */
         const CCTK_REAL rhoenthalpyW2 =

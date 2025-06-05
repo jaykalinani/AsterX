@@ -20,14 +20,14 @@ extern "C" void TabEOSTests_Initialize(CCTK_ARGUMENTS) {
 
   if (CCTK_EQUALS(test_case, "Isotropic Gas")) {
 
-    grid.loop_all_device<1, 1, 1>(
-        grid.nghostzones,
-        [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-					rho(p.I) = 1e-4;
-					velx(p.I) = 0.0;
-					vely(p.I) = 0.0;
-					velz(p.I) = 0.0;
-        });
+    grid.loop_all_device<1, 1, 1>(grid.nghostzones,
+                                  [=] CCTK_DEVICE(const PointDesc &p)
+                                      CCTK_ATTRIBUTE_ALWAYS_INLINE {
+                                        rho(p.I) = 1e-4;
+                                        velx(p.I) = 0.0;
+                                        vely(p.I) = 0.0;
+                                        velz(p.I) = 0.0;
+                                      });
 
     grid.loop_all_device<1, 0, 0>(
         grid.nghostzones,

@@ -14,23 +14,25 @@ public:
   /* Constructor */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela(
-        const EOSType *eos_3p, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-        CCTK_REAL alp_thresh_in, CCTK_REAL consError, 
-        CCTK_REAL vwlim, CCTK_REAL B_lim, CCTK_REAL rho_BH_in, CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in, 
-        bool ye_len, bool use_z, bool use_temperature);
+      const EOSType *eos_3p, const atmosphere &atm, CCTK_INT maxIter,
+      CCTK_REAL tol, CCTK_REAL alp_thresh_in, CCTK_REAL consError,
+      CCTK_REAL vwlim, CCTK_REAL B_lim, CCTK_REAL rho_BH_in,
+      CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in, bool ye_len, bool use_z,
+      bool use_temperature);
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
-                    const smat<CCTK_REAL, 3> &gup) const;
+  get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
+                const smat<CCTK_REAL, 3> &gup) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
-                    const smat<CCTK_REAL, 3> &glo) const;
+  get_Bsq_Exact(const vec<CCTK_REAL, 3> &B_up,
+                const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-      get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec, const vec<CCTK_REAL, 3> &mom) const;
+  get_BiSi_Exact(const vec<CCTK_REAL, 3> &Bvec,
+                 const vec<CCTK_REAL, 3> &mom) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<CCTK_REAL, 3>
-      get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
-                                 const vec<CCTK_REAL, 3> &v_up,
-                                 const smat<CCTK_REAL, 3> &glo) const;
+  get_WLorentz_vsq_bsq_Seeds(const vec<CCTK_REAL, 3> &B_up,
+                             const vec<CCTK_REAL, 3> &v_up,
+                             const smat<CCTK_REAL, 3> &glo) const;
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   set_to_nan(prim_vars &pv, cons_vars &cv) const;
   /* Called by 1DPalenzuela */
@@ -44,7 +46,8 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq, CCTK_REAL BiSi,
-                        CCTK_REAL x, const EOSType *eos_3p, const cons_vars &cv) const;
+                        CCTK_REAL x, const EOSType *eos_3p,
+                        const cons_vars &cv) const;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -59,10 +62,11 @@ public:
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE
     CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela::c2p_1DPalenzuela(
-        const EOSType *eos_3p, const atmosphere &atm, CCTK_INT maxIter, CCTK_REAL tol,
-        CCTK_REAL alp_thresh_in, CCTK_REAL consError, 
-        CCTK_REAL vwlim, CCTK_REAL B_lim, CCTK_REAL rho_BH_in, CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in, 
-        bool ye_len, bool use_z, bool use_temperature) {
+        const EOSType *eos_3p, const atmosphere &atm, CCTK_INT maxIter,
+        CCTK_REAL tol, CCTK_REAL alp_thresh_in, CCTK_REAL consError,
+        CCTK_REAL vwlim, CCTK_REAL B_lim, CCTK_REAL rho_BH_in,
+        CCTK_REAL eps_BH_in, CCTK_REAL vwlim_BH_in, bool ye_len, bool use_z,
+        bool use_temperature) {
 
   // Base
   atmo = atm;
@@ -139,7 +143,8 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
                                     CCTK_REAL Bsq, CCTK_REAL BiSi,
                                     const EOSType *eos_3p, prim_vars &pv,
-                                    const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
+                                    const cons_vars &cv,
+                                    const smat<CCTK_REAL, 3> &gup,
                                     const smat<CCTK_REAL, 3> &glo) const {
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
@@ -177,54 +182,56 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
   // remove soon
   if (use_zprim) {
 
-    CCTK_REAL zx =
-        W_sol * (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
-        (Z_Sol + Bsq);
+    CCTK_REAL zx = W_sol *
+                   (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) +
+                    gup(X, Z) * cv.mom(Z)) /
+                   (Z_Sol + Bsq);
     zx += W_sol * BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
 
-    CCTK_REAL zy =
-        W_sol * (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
-        (Z_Sol + Bsq);
+    CCTK_REAL zy = W_sol *
+                   (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) +
+                    gup(Y, Z) * cv.mom(Z)) /
+                   (Z_Sol + Bsq);
     zy += W_sol * BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
 
-    CCTK_REAL zz =
-        W_sol * (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
-        (Z_Sol + Bsq);
+    CCTK_REAL zz = W_sol *
+                   (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) +
+                    gup(Z, Z) * cv.mom(Z)) /
+                   (Z_Sol + Bsq);
     zz += W_sol * BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
 
     CCTK_REAL zx_down = glo(X, X) * zx + glo(X, Y) * zy + glo(X, Z) * zz;
     CCTK_REAL zy_down = glo(X, Y) * zx + glo(Y, Y) * zy + glo(Y, Z) * zz;
     CCTK_REAL zz_down = glo(X, Z) * zx + glo(Y, Z) * zy + glo(Z, Z) * zz;
 
-    CCTK_REAL Zsq = zx*zx_down + zy*zy_down + zz*zz_down;
+    CCTK_REAL Zsq = zx * zx_down + zy * zy_down + zz * zz_down;
 
-    CCTK_REAL SafeLor = sqrt(1.0+Zsq);
+    CCTK_REAL SafeLor = sqrt(1.0 + Zsq);
 
-    pv.vel(X) = zx/SafeLor;
-    pv.vel(Y) = zy/SafeLor;
-    pv.vel(Z) = zz/SafeLor;
+    pv.vel(X) = zx / SafeLor;
+    pv.vel(Y) = zy / SafeLor;
+    pv.vel(Z) = zz / SafeLor;
 
     pv.w_lor = SafeLor;
 
   } else {
 
-    pv.vel(X) =
-        (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) + gup(X, Z) * cv.mom(Z)) /
-        (Z_Sol + Bsq);
+    pv.vel(X) = (gup(X, X) * cv.mom(X) + gup(X, Y) * cv.mom(Y) +
+                 gup(X, Z) * cv.mom(Z)) /
+                (Z_Sol + Bsq);
     pv.vel(X) += BiSi * cv.dBvec(X) / (Z_Sol * (Z_Sol + Bsq));
-  
-    pv.vel(Y) =
-        (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) + gup(Y, Z) * cv.mom(Z)) /
-        (Z_Sol + Bsq);
-    pv.vel(Y) += BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
-  
-    pv.vel(Z) =
-        (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) + gup(Z, Z) * cv.mom(Z)) /
-        (Z_Sol + Bsq);
-    pv.vel(Z) += BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
-  
-    pv.w_lor = W_sol;
 
+    pv.vel(Y) = (gup(X, Y) * cv.mom(X) + gup(Y, Y) * cv.mom(Y) +
+                 gup(Y, Z) * cv.mom(Z)) /
+                (Z_Sol + Bsq);
+    pv.vel(Y) += BiSi * cv.dBvec(Y) / (Z_Sol * (Z_Sol + Bsq));
+
+    pv.vel(Z) = (gup(X, Z) * cv.mom(X) + gup(Y, Z) * cv.mom(Y) +
+                 gup(Z, Z) * cv.mom(Z)) /
+                (Z_Sol + Bsq);
+    pv.vel(Z) += BiSi * cv.dBvec(Z) / (Z_Sol * (Z_Sol + Bsq));
+
+    pv.w_lor = W_sol;
   }
 
   pv.Ye = cv.DYe / cv.dens;
@@ -245,7 +252,8 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
 c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
                                         CCTK_REAL BiSi, CCTK_REAL x,
-                                        const EOSType *eos_3p, const cons_vars &cv) const {
+                                        const EOSType *eos_3p,
+                                        const cons_vars &cv) const {
   // computes f(x) from x and q,r,s,t
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   const CCTK_REAL rPalenzuela = Ssq / pow(cv.dens, 2);
@@ -280,11 +288,10 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
-                        cons_vars &cv, const smat<CCTK_REAL, 3> &glo,
-                        c2p_report &rep) const {
+c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
+                        const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const {
 
-  //ROOTSTAT status = ROOTSTAT::SUCCESS;
+  // ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
   rep.adjust_cons = false;
   rep.set_atmo = false;
@@ -294,18 +301,18 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   const CCTK_REAL spatial_detg = calc_det(glo);
   const CCTK_REAL sqrt_detg = sqrt(spatial_detg);
 
-  //if ((!isfinite(sqrt_detg)) || (sqrt_detg <= 0)) {
+  // if ((!isfinite(sqrt_detg)) || (sqrt_detg <= 0)) {
   //  rep.set_invalid_detg(sqrt_detg);
   //  set_to_nan(pv, cv);
   //  return;
   //}
-  
+
   // Check positive definiteness of spatial metric
   // Sylvester's criterion, see
   // https://en.wikipedia.org/wiki/Sylvester%27s_criterion
-  const bool minor1{ glo(X, X) > 0.0 };
-  const bool minor2{ glo(X, X) * glo(Y, Y) - glo(X, Y) * glo(X, Y) > 0.0 };
-  const bool minor3{ spatial_detg > 0.0 };
+  const bool minor1{glo(X, X) > 0.0};
+  const bool minor2{glo(X, X) * glo(Y, Y) - glo(X, Y) * glo(X, Y) > 0.0};
+  const bool minor3{spatial_detg > 0.0};
 
   if (!(minor1 && minor2 && minor3)) {
     rep.set_invalid_detg(sqrt_detg);
@@ -322,9 +329,9 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   cv.mom /= sqrt_detg;
   cv.dBvec /= sqrt_detg;
   cv.DYe /= sqrt_detg;
-  cv.DEnt  /= sqrt_detg;
+  cv.DEnt /= sqrt_detg;
 
-  //if (cv.dens <= atmo.rho_cut) {
+  // if (cv.dens <= atmo.rho_cut) {
   //  rep.set_atmo_set();
   //  pv.Bvec = cv.dBvec;
   //  atmo.set(pv, cv, glo);
@@ -333,11 +340,11 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
 
   const CCTK_REAL Ssq = get_Ssq_Exact(cv.mom, gup);
   const CCTK_REAL Bsq = get_Bsq_Exact(cv.dBvec, glo);
-  const CCTK_REAL BiSi = get_BiSi_Exact(cv.dBvec,cv.mom);
+  const CCTK_REAL BiSi = get_BiSi_Exact(cv.dBvec, cv.mom);
 
   // TODO: Is this check really necessary?
-  if ( (!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
-       (!isfinite(BiSi)) || (!isfinite(cv.DYe)) || (!isfinite(cv.DEnt)) ) {
+  if ((!isfinite(cv.dens)) || (!isfinite(Ssq)) || (!isfinite(Bsq)) ||
+      (!isfinite(BiSi)) || (!isfinite(cv.DYe)) || (!isfinite(cv.DEnt))) {
     rep.set_nans_in_cons(cv.dens, Ssq, Bsq, BiSi, cv.DYe);
     set_to_nan(pv, cv);
     return;
@@ -350,8 +357,8 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   }
 
   // Find x, this is the recovery process
-  //const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
-  //const CCTK_INT maxiters = maxIterations;
+  // const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
+  // const CCTK_INT maxiters = maxIterations;
 
   // Important!
   // Algo::brent terminates if the following accuracy is achieved
@@ -370,7 +377,8 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
 
   CCTK_REAL qPalenzuela = cv.tau / cv.dens;
   CCTK_REAL sPalenzuela = Bsq / cv.dens;
-  CCTK_REAL xPalenzuela_lowerBound = std::max(1e-10, 1.0 + qPalenzuela - sPalenzuela);
+  CCTK_REAL xPalenzuela_lowerBound =
+      std::max(1e-10, 1.0 + qPalenzuela - sPalenzuela);
   CCTK_REAL xPalenzuela_upperBound = 2.0 + 2.0 * qPalenzuela - sPalenzuela;
   CCTK_REAL a = xPalenzuela_lowerBound;
   CCTK_REAL b = xPalenzuela_upperBound;
@@ -379,17 +387,18 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   };
 
   // Dominant energy check
-  if (fn(a)*fn(b)>0) {
-    printf("for fn(a)*fn(b)>0, fa, fb: %26.16e, %26.16e \n\n", fn(a), fn(b) );
-    b = 3.0 + 3.0*qPalenzuela - 1.5*sPalenzuela;
-    if(fn(a)*fn(b)<0) {
-      printf("for fn(a)*fn(b)<0, fa, fb: %26.16e, %26.16e \n\n", fn(a), fn(b) );
-      printf("Palenzuela C2P: dominant energy condition has been violated!\n\n");
+  if (fn(a) * fn(b) > 0) {
+    printf("for fn(a)*fn(b)>0, fa, fb: %26.16e, %26.16e \n\n", fn(a), fn(b));
+    b = 3.0 + 3.0 * qPalenzuela - 1.5 * sPalenzuela;
+    if (fn(a) * fn(b) < 0) {
+      printf("for fn(a)*fn(b)<0, fa, fb: %26.16e, %26.16e \n\n", fn(a), fn(b));
+      printf(
+          "Palenzuela C2P: dominant energy condition has been violated!\n\n");
     }
   }
 
   auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
-  
+
   // hybrid: prefer endpoint with smaller |f|, else midpoint
   CCTK_REAL a_root = result.first;
   CCTK_REAL b_root = result.second;
@@ -400,12 +409,10 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   if (fb == (CCTK_REAL)0 || std::abs(fb) < std::abs(fa)) {
     // exact root or smaller residual at b
     xPalenzuela_Sol = b_root;
-  }
-  else if (std::abs(fa) < std::abs(fb)) {
+  } else if (std::abs(fa) < std::abs(fb)) {
     // smaller residual at a
     xPalenzuela_Sol = a_root;
-  }
-  else {
+  } else {
     // fall back to midpoint
     xPalenzuela_Sol = CCTK_REAL(0.5) * (a_root + b_root);
   }
@@ -413,7 +420,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   // for now, we do not use the above hybrid scheme
   xPalenzuela_Sol = 0.5 * (result.first + result.second);
 
-  //if (abs(fn(result.first)) < abs(fn(result.second))) {
+  // if (abs(fn(result.first)) < abs(fn(result.second))) {
   //  xPalenzuela_Sol = result.first;
   //} else {
   //  xPalenzuela_Sol = result.second;
@@ -423,24 +430,23 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   // TODO:check if to pass result.first or xPalenzuela_Sol
   if (rep.iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
     rep.status = c2p_report::SUCCESS;
-  //  status = ROOTSTAT::SUCCESS;
+    //  status = ROOTSTAT::SUCCESS;
   } else {
     // set status to root not converged
     rep.set_root_conv();
-  //  status = ROOTSTAT::NOT_CONVERGED;
+    //  status = ROOTSTAT::NOT_CONVERGED;
   }
 
   xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
 
-
-  // General comment: 
+  // General comment:
   // One could think of expressing the following condition
-  // in a way that is "safe" against NaNs and infs. First, this only makes 
-  // sense if we want these values to be considered as failures which should 
+  // in a way that is "safe" against NaNs and infs. First, this only makes
+  // sense if we want these values to be considered as failures which should
   // be treated as "not converged".
   //
-  // inf: Since inf behaves like a large valid number nothing special needs 
-  // to be done except of rewriting the argument of the if condition such that 
+  // inf: Since inf behaves like a large valid number nothing special needs
+  // to be done except of rewriting the argument of the if condition such that
   // possible infs are present only on one side of the comparison, eg
   // abs(difference)/abs(normalization) > tolerance_0
   //
@@ -463,21 +469,22 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
 
     CCTK_REAL small = 1e-50;
 
-    // note that we don't compute the error in 
+    // note that we don't compute the error in
     // the conserved entropy as this quantity doesn't
     // include shock heating and might be therefore
     // inconsistent
-    CCTK_REAL max_error = sqrt(max({pow((cv_check.dens-cv.dens)/(cv.dens+small),2.0),
-                                    pow((cv_check.mom(0)-cv.mom(0))/(cv.mom(0)+small),2.0),
-                                    pow((cv_check.mom(1)-cv.mom(1))/(cv.mom(1)+small),2.0),
-                                    pow((cv_check.mom(2)-cv.mom(2))/(cv.mom(2)+small),2.0),
-                                    pow((cv_check.tau-cv.tau)/(cv.tau+small),2.0)}));  
+    CCTK_REAL max_error =
+        sqrt(max({pow((cv_check.dens - cv.dens) / (cv.dens + small), 2.0),
+                  pow((cv_check.mom(0) - cv.mom(0)) / (cv.mom(0) + small), 2.0),
+                  pow((cv_check.mom(1) - cv.mom(1)) / (cv.mom(1) + small), 2.0),
+                  pow((cv_check.mom(2) - cv.mom(2)) / (cv.mom(2) + small), 2.0),
+                  pow((cv_check.tau - cv.tau) / (cv.tau + small), 2.0)}));
 
     // reject only if mismatch in conservatives is inappropriate, else accept
-    if (max_error >= cons_error) { 
+    if (max_error >= cons_error) {
       // set status to root not converged
       rep.set_root_conv();
-      //status = ROOTSTAT::NOT_CONVERGED;
+      // status = ROOTSTAT::NOT_CONVERGED;
       cv.dens *= sqrt_detg;
       cv.tau *= sqrt_detg;
       cv.mom *= sqrt_detg;
@@ -489,7 +496,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
   }
 
   // Conserved entropy must be consistent with new prims
-  cv.DEnt = cv.dens*pv.entropy;
+  cv.DEnt = cv.dens * pv.entropy;
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
@@ -498,7 +505,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv,
     return;
   }
 
-  c2p::prims_floors_and_ceilings(eos_3p,pv,cv,glo,rep);
+  c2p::prims_floors_and_ceilings(eos_3p, pv, cv, glo, rep);
 
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {

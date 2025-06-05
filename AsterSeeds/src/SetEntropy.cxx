@@ -7,7 +7,7 @@
 
 #include <cstdio>
 #include <cstdbool>
-#include <cmath> 
+#include <cmath>
 
 #include <setup_eos.hxx>
 
@@ -23,18 +23,15 @@ void SetEntropy_typeEoS(CCTK_ARGUMENTS, EOSType *eos_3p) {
   if (set_entropy_postinitial) {
 
     grid.loop_all_device<1, 1, 1>(
-          grid.nghostzones,
-          [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-
-            entropy(p.I) = eos_3p->kappa_from_valid_rho_eps_ye(rho(p.I),eps(p.I),Ye(p.I));
-
-    });
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          entropy(p.I) =
+              eos_3p->kappa_from_valid_rho_eps_ye(rho(p.I), eps(p.I), Ye(p.I));
+        });
   }
 }
 
-
-extern "C" void SetEntropy(CCTK_ARGUMENTS)
-{
+extern "C" void SetEntropy(CCTK_ARGUMENTS) {
 
   DECLARE_CCTK_ARGUMENTSX_SetEntropy;
   DECLARE_CCTK_PARAMETERS;
@@ -72,5 +69,3 @@ extern "C" void SetEntropy(CCTK_ARGUMENTS)
     assert(0);
   }
 }
-
-

@@ -8,7 +8,7 @@
 #include "../eos_3p.hxx"
 #include "../utils/eos_linear_interp_ND.hxx"
 
-namespace EOSX{
+namespace EOSX {
 using namespace std;
 using namespace eos_constants;
 
@@ -63,18 +63,18 @@ eos_readtable_compose(const string &filename) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
                 "Cannot allocate memory for EOS table");
   }
-  if (!(logrho = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nrho *
-                                                         sizeof(CCTK_REAL)))) {
+  if (!(logrho = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+            nrho * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
                 "Cannot allocate memory for EOS table");
   }
-  if (!(logtemp = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(ntemp *
-                                                          sizeof(CCTK_REAL)))) {
+  if (!(logtemp = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+            ntemp * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
                 "Cannot allocate memory for EOS table");
   }
-  if (!(yes =
-            (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(nye * sizeof(CCTK_REAL)))) {
+  if (!(yes = (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(
+            nye * sizeof(CCTK_REAL)))) {
     CCTK_VError(__LINE__, __FILE__, CCTK_THORNSTRING,
                 "Cannot allocate memory for EOS table");
   }
@@ -84,29 +84,28 @@ eos_readtable_compose(const string &filename) {
   hsize_t var3[2] = {1, (hsize_t)npoints};
   hid_t mem3 = H5Screate_simple(2, table_dims, NULL);
 
-  
   // Read additional tables and variables
   get_hdf5_real_dset(file_id, "nb", nrho, logrho);
   get_hdf5_real_dset(file_id, "t", ntemp, logtemp);
   get_hdf5_real_dset(file_id, "yq", nye, yes);
 
-  
   // Thermo Table
   // Number of variables in the thermo table
 
   hid_t thermo_id;
   HDF5_ERROR(thermo_id = H5Gopen(file, "/Thermo_qty"));
   int nthermo;
-  get_hdf5_int_dset(thermo_id, "pointsqty", 1, &nthermo); 
-  
+  get_hdf5_int_dset(thermo_id, "pointsqty", 1, &nthermo);
+
   // Read thermo index array
   int *thermo_index = new int[nthermo];
-  get_hdf5_real_dset(thermo_id,"index_thermo", thermo_index, H5T_NATIVE_INT, H5S_ALL);
+  get_hdf5_real_dset(thermo_id, "index_thermo", thermo_index, H5T_NATIVE_INT,
+                     H5S_ALL);
 
   // Allocate memory and read table
   double *thermo_table = new double[nthermo * nrho * ntemp * nye];
-  READ_EOS_HDF5_COMPOSE(thermo_id,"thermo", thermo_table, H5T_NATIVE_DOUBLE, H5S_ALL);
-
+  READ_EOS_HDF5_COMPOSE(thermo_id, "thermo", thermo_table, H5T_NATIVE_DOUBLE,
+                        H5S_ALL);
 
   /////////////////
 
@@ -269,5 +268,5 @@ eos_readtable_compose(const string &filename) {
   // set up steps, mins, maxes here?
   return;
 };
-} //namespace EOSX
+} // namespace EOSX
 #endif

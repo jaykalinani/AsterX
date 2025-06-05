@@ -176,45 +176,38 @@ public:
   // edited
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_valid_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
-                             const CCTK_REAL ye) const {
+                               const CCTK_REAL ye) const {
     // return temp / temp_over_eps;
     printf("EOS: press from temperature not implemented for eos_3p_hybrid.");
     return 0.0;
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  press_from_valid_rho_kappa_ye(
-    const CCTK_REAL rho,
-    const CCTK_REAL kappa, // p/rho^gamma_th
-    const CCTK_REAL ye
-  ) const {
-    return kappa*pow(rho,gamma_th);
+  press_from_valid_rho_kappa_ye(const CCTK_REAL rho,
+                                const CCTK_REAL kappa, // p/rho^gamma_th
+                                const CCTK_REAL ye) const {
+    return kappa * pow(rho, gamma_th);
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  eps_from_valid_rho_kappa_ye(
-    const CCTK_REAL rho,
-    const CCTK_REAL kappa, // p/rho^gamma
-    const CCTK_REAL ye
-  ) const {
-    return kappa*pow(rho,gm1_th)/gm1_th;
+  eps_from_valid_rho_kappa_ye(const CCTK_REAL rho,
+                              const CCTK_REAL kappa, // p/rho^gamma
+                              const CCTK_REAL ye) const {
+    return kappa * pow(rho, gm1_th) / gm1_th;
   };
 
   // Note that kappa implements a generic thermodynamic quantity
   // meant to describe the "evolved" entropy by an evolution/application
   // thorn.
-  // The notion of the "evolved" entropy (kappa) might differ from the definition
-  // of the actual entropy (entropy_from..., see above) for different EOS, 
-  // e.g. for the thermal part of hybrid EOS we have kappa = p * (rho)^(-gamma_th),
-  // where gamma is the adiabatic index.
+  // The notion of the "evolved" entropy (kappa) might differ from the
+  // definition of the actual entropy (entropy_from..., see above) for different
+  // EOS, e.g. for the thermal part of hybrid EOS we have kappa = p *
+  // (rho)^(-gamma_th), where gamma is the adiabatic index.
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  kappa_from_valid_rho_eps_ye(
-    const CCTK_REAL rho,
-    CCTK_REAL &eps,
-    const CCTK_REAL ye
-  ) const {
+  kappa_from_valid_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
+                              const CCTK_REAL ye) const {
     CCTK_REAL eps_th = eps - eps_cold(rho);
-    return gm1_th*eps_th*pow(rho,gm1_th);
+    return gm1_th * eps_th * pow(rho, gm1_th);
   };
 
   // edited

@@ -25,9 +25,10 @@ struct cons_vars {
 
   // Construct from single variables.
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline cons_vars(
-      CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_, CCTK_REAL DYe_, CCTK_REAL DEnt_,
-      vec<CCTK_REAL, 3> dBvec_)
-      : dens{dens_}, mom{mom_}, tau{tau_}, DYe{DYe_}, DEnt{DEnt_}, dBvec{dBvec_} {}
+      CCTK_REAL dens_, vec<CCTK_REAL, 3> mom_, CCTK_REAL tau_, CCTK_REAL DYe_,
+      CCTK_REAL DEnt_, vec<CCTK_REAL, 3> dBvec_)
+      : dens{dens_}, mom{mom_}, tau{tau_}, DYe{DYe_}, DEnt{DEnt_},
+        dBvec{dBvec_} {}
 
   /// Copy assignment
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline cons_vars &
@@ -54,8 +55,9 @@ struct cons_vars {
     const vec<CCTK_REAL, 3> &v_up = pv.vel;
     const vec<CCTK_REAL, 3> v_low = calc_contraction(g, v_up);
 
-    const CCTK_REAL w_lorentz = pv.w_lor;;
-    //const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
+    const CCTK_REAL w_lorentz = pv.w_lor;
+    ;
+    // const CCTK_REAL w_lorentz = calc_wlorentz(v_low, v_up);
 
     /* Computing B_j */
     const vec<CCTK_REAL, 3> &B_up = pv.Bvec;
@@ -85,7 +87,7 @@ struct cons_vars {
 
     dBvec = sqrt_detg * pv.Bvec;
     DYe = dens * pv.Ye;
-    DEnt  = dens * pv.entropy;
+    DEnt = dens * pv.entropy;
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -99,7 +101,7 @@ struct cons_vars {
     momz_ = mom(2);
     tau_ = tau;
     DYe_ = DYe;
-    DEnt_  = DEnt;
+    DEnt_ = DEnt;
     dBvecx_ = dBvec(0);
     dBvecy_ = dBvec(1);
     dBvecz_ = dBvec(2);

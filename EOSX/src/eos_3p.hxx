@@ -29,7 +29,6 @@ public:
   range rgtemp; ///< Valid range for temperature \f$ T \f$
 
 protected:
-
   /// Set the density range. Has to be called in the constructor of any
   /// implementation.
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -50,8 +49,7 @@ protected:
   }
 
 public:
-  CCTK_DEVICE CCTK_HOST eos_3p() {
-  }
+  CCTK_DEVICE CCTK_HOST eos_3p() {}
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
@@ -110,13 +108,13 @@ public:
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
-                              const CCTK_REAL ye) const;
+                        const CCTK_REAL ye) const;
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   eps_from_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
-                              const CCTK_REAL ye) const;
+                        const CCTK_REAL ye) const;
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   csnd_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
-                             const CCTK_REAL ye) const;
+                       const CCTK_REAL ye) const;
 };
 
 } // namespace EOSX

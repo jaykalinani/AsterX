@@ -232,47 +232,54 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
     // Initialize variables for eps, pressure, and temperature
     vec<CCTK_REAL, 2> eps_rc;
-    array<CCTK_REAL, 2> eps_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+    array<CCTK_REAL, 2>
+        eps_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
     vec<CCTK_REAL, 2> press_rc;
-    array<CCTK_REAL, 2> press_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+    array<CCTK_REAL, 2>
+        press_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
     vec<CCTK_REAL, 2> temp_rc;
-    array<CCTK_REAL, 2> temp_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
+    array<CCTK_REAL, 2>
+        temp_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
 
     if (reconstruct_with_temperature) {
-       // Reconstruct temperature
-       temp_rc_dummy = reconstruct_pt(temperature, p, false, false);
-       
-       // Compute eps_rc and press_rc using lambdas
-       for (int f = 0; f < 2; ++f) {
-          temp_rc(f) = temp_rc_dummy[f];
-          eps_rc_dummy[f] = eos_3p->eps_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
-          eps_rc(f) = eps_rc_dummy[f];
-          press_rc_dummy[f] = eos_3p->press_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
-          press_rc(f) = press_rc_dummy[f];
-       }
-    } else {
-       // Reconstruct pressure
-       press_rc_dummy = reconstruct_pt(press, p, false, true);
+      // Reconstruct temperature
+      temp_rc_dummy = reconstruct_pt(temperature, p, false, false);
 
-       // Compute eps_rc and temp_rc using lambdas
-       for (int f = 0; f < 2; ++f) {
-          press_rc(f) = press_rc_dummy[f];
-          eps_rc_dummy[f] = eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f), Ye_rc(f));
-          eps_rc(f) = eps_rc_dummy[f];
-          temp_rc_dummy[f] = eos_3p->temp_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
-          temp_rc(f) = temp_rc_dummy[f]; 
-       }
+      // Compute eps_rc and press_rc using lambdas
+      for (int f = 0; f < 2; ++f) {
+        temp_rc(f) = temp_rc_dummy[f];
+        eps_rc_dummy[f] =
+            eos_3p->eps_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
+        eps_rc(f) = eps_rc_dummy[f];
+        press_rc_dummy[f] = eos_3p->press_from_valid_rho_temp_ye(
+            rho_rc(f), temp_rc(f), Ye_rc(f));
+        press_rc(f) = press_rc_dummy[f];
+      }
+    } else {
+      // Reconstruct pressure
+      press_rc_dummy = reconstruct_pt(press, p, false, true);
+
+      // Compute eps_rc and temp_rc using lambdas
+      for (int f = 0; f < 2; ++f) {
+        press_rc(f) = press_rc_dummy[f];
+        eps_rc_dummy[f] = eos_3p->eps_from_valid_rho_press_ye(
+            rho_rc(f), press_rc(f), Ye_rc(f));
+        eps_rc(f) = eps_rc_dummy[f];
+        temp_rc_dummy[f] =
+            eos_3p->temp_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
+        temp_rc(f) = temp_rc_dummy[f];
+      }
     }
 
     // TODO: currently sets negative reconstructed pressure to 0 since eps_min=0
     // for ideal gas
     if (press_rc(0) < 0) {
-      press_rc(0) =
-          eos_3p->press_from_valid_rho_eps_ye(rho_rc(0), eos_3p->rgeps.min, Ye_rc(0));
+      press_rc(0) = eos_3p->press_from_valid_rho_eps_ye(
+          rho_rc(0), eos_3p->rgeps.min, Ye_rc(0));
     }
     if (press_rc(1) < 0) {
-      press_rc(1) =
-          eos_3p->press_from_valid_rho_eps_ye(rho_rc(1), eos_3p->rgeps.min, Ye_rc(1));
+      press_rc(1) = eos_3p->press_from_valid_rho_eps_ye(
+          rho_rc(1), eos_3p->rgeps.min, Ye_rc(1));
     }
 
     const vec<CCTK_REAL, 2> rhoh_rc([&](int f) ARITH_INLINE {
@@ -410,7 +417,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     // vars
 
     const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-      return eos_3p->csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f)) *
+      return eos_3p->csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f),
+                                                Ye_rc(f)) *
              eos_3p->csnd_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
     });
 
@@ -496,12 +504,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     });
 
     /* flux(DYe) = sqrt(g) * (D * Ye * vtilde^i) */
-    const vec<CCTK_REAL, 2> DYe_rc([&](int f) ARITH_INLINE {
-      return dens_rc(f) * Ye_rc(f);
-    });
-    const vec<CCTK_REAL, 2> flux_DYe([&](int f) ARITH_INLINE {
-      return DYe_rc(f) * vtilde_rc(f);
-    });
+    const vec<CCTK_REAL, 2> DYe_rc(
+        [&](int f) ARITH_INLINE { return dens_rc(f) * Ye_rc(f); });
+    const vec<CCTK_REAL, 2> flux_DYe(
+        [&](int f) ARITH_INLINE { return DYe_rc(f) * vtilde_rc(f); });
 
     /* electric field E_i = \tilde\epsilon_{ijk} Btilde_j * vtilde_k */
     const vec<vec<CCTK_REAL, 2>, 3> Es_rc =
@@ -541,11 +547,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
         isnan(Btildes_rc(0)(1)) || isnan(Btildes_rc(1)(0)) ||
         isnan(Btildes_rc(1)(1)) || isnan(Btildes_rc(2)(0)) ||
         isnan(Btildes_rc(2)(1)) || isnan(DYe_rc(0)) || isnan(DYe_rc(1)) ||
-        isnan(flux_dens(0)) || isnan(flux_dens(1)) ||
-        isnan(flux_moms(0)(0)) || isnan(flux_moms(0)(1)) ||
-        isnan(flux_moms(1)(0)) || isnan(flux_moms(1)(1)) ||
-        isnan(flux_moms(2)(0)) || isnan(flux_moms(2)(1)) ||
-        isnan(flux_DYe(0)) || isnan(flux_DYe(1)) ||
+        isnan(flux_dens(0)) || isnan(flux_dens(1)) || isnan(flux_moms(0)(0)) ||
+        isnan(flux_moms(0)(1)) || isnan(flux_moms(1)(0)) ||
+        isnan(flux_moms(1)(1)) || isnan(flux_moms(2)(0)) ||
+        isnan(flux_moms(2)(1)) || isnan(flux_DYe(0)) || isnan(flux_DYe(1)) ||
         isnan(flux_tau(0)) || isnan(flux_tau(1)) || isnan(flux_Btildes(0)(0)) ||
         isnan(flux_Btildes(0)(1)) || isnan(flux_Btildes(1)(0)) ||
         isnan(flux_Btildes(1)(1)) || isnan(flux_Btildes(2)(0)) ||

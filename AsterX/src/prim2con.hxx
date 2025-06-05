@@ -35,8 +35,8 @@ struct cons {
   vec<CCTK_REAL, 3> dBvec;
 };
 
-CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g,
-                                    const prim &pv, cons &cv) {
+CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g, const prim &pv,
+                                    cons &cv) {
 
   // determinant of spatial metric
   const CCTK_REAL sqrt_detg = sqrt(calc_det(g));

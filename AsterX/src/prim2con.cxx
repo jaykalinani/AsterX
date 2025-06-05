@@ -46,11 +46,9 @@ extern "C" void AsterX_Prim2Con_Initial(CCTK_ARGUMENTS) {
         DYe(p.I) = cv.DYe;
         dBx(p.I) = cv.dBvec(0);
         dBy(p.I) = cv.dBvec(1);
-        dBz(p.I) = cv.dBvec(2); 
+        dBz(p.I) = cv.dBvec(2);
         DEnt(p.I) = cv.DEnt;
-
       });
-
 }
 
 extern "C" void AsterX_PsiZero_Initial(CCTK_ARGUMENTS) {
