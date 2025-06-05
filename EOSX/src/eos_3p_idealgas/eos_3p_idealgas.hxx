@@ -128,7 +128,8 @@ eos_3p_idealgas::init(CCTK_REAL gamma_, CCTK_REAL umass_, range &rgeps_,
   inv_gamma = 1/gamma_;
   rgeps = rgeps_;
   if (gamma < 1) {
-    CCTK_ERROR("EOS_IdealGas: initialized with gamma < 1");
+    printf("EOS_IdealGas: initialized with gamma < 1. \n");
+    assert(false);
   }
   if (gamma > 2) { // Ensure subluminal Soundspeed and P < E
     rgeps.max = std::min(rgeps.max, 1 / (gamma * (gamma - 2)));

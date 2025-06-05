@@ -204,11 +204,11 @@ public:
   eps_from_valid_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
                               const CCTK_REAL ye) const {
 
-    CCTK_ERROR(
+    printf(
 	 "This routine should not be used. There is no monotonicity condition "
          "to enforce a succesfull inversion from eps(press). So you better "
-         "rewrite your code to not require this call...");
-
+         "rewrite your code to not require this call. \n");
+    assert(false);
     return 0;
   }
 
@@ -241,7 +241,8 @@ public:
                                      CCTK_REAL &dpdeps, const CCTK_REAL rho,
                                      const CCTK_REAL eps,
                                      const CCTK_REAL ye) const {
-    CCTK_ERROR("press_derivs_from_valid_rho_eps_ye is not supported for now!");
+    printf("press_derivs_from_valid_rho_eps_ye is not supported for now! \n");
+    assert(false);
   }
 
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
@@ -257,7 +258,8 @@ public:
     const CCTK_REAL kappa, // kappa=entropy
     const CCTK_REAL ye
   ) const {
-    CCTK_ERROR("press_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
+    printf("press_from_valid_rho_kappa_ye is not supported for tabulated EOS! \n");
+    assert(false);
     return 0.0;
   }
 
@@ -267,7 +269,8 @@ public:
     const CCTK_REAL kappa, // kappa=entropy
     const CCTK_REAL ye
   ) const {
-    CCTK_ERROR("eps_from_valid_rho_kappa_ye is not supported for tabulated EOS!");
+    printf("eps_from_valid_rho_kappa_ye is not supported for tabulated EOS! \n");
+    assert(false);
     return 0.0;
   };
 
