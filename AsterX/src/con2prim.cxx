@@ -146,7 +146,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                           dBz(p.I) / sqrt_detg};
 
     prim_vars pv;
-    // Note that pv_seeds.press and pv_seeds.entropy are NaN at this point
     prim_vars pv_seeds{saved_rho(p.I),
                        saved_eps(p.I),
                        saved_Ye(p.I),

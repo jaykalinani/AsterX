@@ -201,7 +201,8 @@ c2p::bh_interior_fail(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
                    // NS or disk
   pv.eps = eps_BH;
   pv.Ye = 0.5;
-  pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  pv.temperature = eos_3p->temp_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye); 
   pv.entropy = eos_3p->kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
   // check on velocities
   CCTK_REAL wlim_BH = sqrt(1.0 + vwlim_BH * vwlim_BH);

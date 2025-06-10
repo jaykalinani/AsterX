@@ -76,7 +76,7 @@ CCTK_DEVICE CCTK_HOST void prim2con(const smat<CCTK_REAL, 3> &g, const prim &pv,
                         (pv.press + 0.5 * bs2) - bst * bst) -
            cv.dens;
 
-  cv.DYe = sqrt_detg * cv.dens * pv.Ye;
+  cv.DYe = cv.dens * pv.Ye;
   cv.dBvec = sqrt_detg * pv.Bvec;
 
   cv.DEnt = pv.entropy * cv.dens;
