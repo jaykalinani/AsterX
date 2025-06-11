@@ -259,7 +259,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       // Compute eps_rc and temp_rc using lambdas
       for (int f = 0; f < 2; ++f) {
         press_rc(f) = press_rc_dummy[f];
-        eps_rc(f) = eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), temp_rc(f),
+        eps_rc(f) = eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), press_rc(f),
                                                         Ye_rc(f));
         temp_rc_dummy[f] =
             eos_3p->temp_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
