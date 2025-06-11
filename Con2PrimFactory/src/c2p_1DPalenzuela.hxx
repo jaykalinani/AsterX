@@ -173,7 +173,7 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
 
   pv.eps = std::max(pv.eps, eos_3p->rgeps.min); // check on lower bound
   pv.eps = std::min(pv.eps, eos_3p->rgeps.max); // check on upper bound
- 
+
   // (iv)
   // CCTK_REAL P_loc = get_Press_funcRhoEps(rho_loc, eps_loc);
 
@@ -279,10 +279,10 @@ c2p_1DPalenzuela::funcRoot_1DPalenzuela(CCTK_REAL Ssq, CCTK_REAL Bsq,
                       W_loc * (qPalenzuela - sPalenzuela +
                                tPalenzuela * tPalenzuela / (2 * x * x) +
                                sPalenzuela / (2 * W_loc * W_loc));
- 
+
   eps_loc = std::max(eps_loc, eos_3p->rgeps.min); // check on lower bound
   eps_loc = std::min(eps_loc, eos_3p->rgeps.max); // check on upper bound
- 
+
   // (iv)
   CCTK_REAL P_loc =
       eos_3p->press_from_valid_rho_eps_ye(rho_loc, eps_loc, Ye_loc);
@@ -430,21 +430,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   //  xPalenzuela_Sol = result.second;
   //}
 
-  // Check solution and calculate primitives
-  // TODO:check if to pass result.first or xPalenzuela_Sol
-  //if (rep.iters < maxiters && abs(fn(xPalenzuela_Sol)) < tolerance) {
-  //  rep.status = c2p_report::SUCCESS;
-    //  status = ROOTSTAT::SUCCESS;
-  //} else {
-    // set status to root not converged
-  //  rep.set_root_conv();
-    //  status = ROOTSTAT::NOT_CONVERGED;
-  //}
-
   xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
-
-  // Initially assume the root finding to be a success before the check below
-  rep.status = c2p_report::SUCCESS;
 
   // General comment:
   // One could think of expressing the following condition
@@ -459,8 +445,8 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   //
   // NaN: If the argument of if (...) is NaN, it usually evaluates to false.
   // Here, we would need to rewrite the logic a little bit.
-  if ((rep.iters > maxiters) || (abs(result.first - result.second) >
-      tolerance_0 * min(abs(result.first), abs(result.second)))) {
+
+  if (rep.iters >= maxiters || abs(fn(xPalenzuela_Sol)) > tolerance_0) {
 
     // check primitives against conservatives
     cons_vars cv_check;
@@ -488,7 +474,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
                   pow((cv_check.tau - cv.tau) / (cv.tau + small), 2.0)}));
 
     // reject only if mismatch in conservatives is inappropriate, else accept
-    if ( (max_error >= cons_error) || rep.iters > maxiters) {
+    if (max_error > cons_error) {
       // set status to root not converged
       rep.set_root_conv();
       // status = ROOTSTAT::NOT_CONVERGED;
@@ -499,10 +485,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
       cv.DYe *= sqrt_detg;
       cv.DEnt *= sqrt_detg;
       return;
-    } else {
-      rep.status = c2p_report::SUCCESS;
     }
-    
   }
 
   // Conserved entropy must be consistent with new prims

@@ -232,8 +232,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
     // Initialize variables for eps, pressure, and temperature
     vec<CCTK_REAL, 2> eps_rc;
-    array<CCTK_REAL, 2>
-        eps_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
     vec<CCTK_REAL, 2> press_rc;
     array<CCTK_REAL, 2>
         press_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
@@ -248,9 +246,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       // Compute eps_rc and press_rc using lambdas
       for (int f = 0; f < 2; ++f) {
         temp_rc(f) = temp_rc_dummy[f];
-        eps_rc_dummy[f] =
+        eps_rc(f) =
             eos_3p->eps_from_valid_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
-        eps_rc(f) = eps_rc_dummy[f];
         press_rc_dummy[f] = eos_3p->press_from_valid_rho_temp_ye(
             rho_rc(f), temp_rc(f), Ye_rc(f));
         press_rc(f) = press_rc_dummy[f];
@@ -262,9 +259,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       // Compute eps_rc and temp_rc using lambdas
       for (int f = 0; f < 2; ++f) {
         press_rc(f) = press_rc_dummy[f];
-        eps_rc_dummy[f] = eos_3p->eps_from_valid_rho_press_ye(
-            rho_rc(f), press_rc(f), Ye_rc(f));
-        eps_rc(f) = eps_rc_dummy[f];
+        eps_rc(f) = eos_3p->eps_from_valid_rho_press_ye(rho_rc(f), temp_rc(f),
+                                                        Ye_rc(f));
         temp_rc_dummy[f] =
             eos_3p->temp_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
         temp_rc(f) = temp_rc_dummy[f];
