@@ -2,11 +2,19 @@
 
 restricted:
 
+KEYWORD initial_data_eos "Name of active EOS for initial data"
+{
+  "Polytropic" :: ""
+  "PWPolytropic" :: ""
+  "none" :: "No EOS available"
+} "Polytropic"
+
 KEYWORD evolution_eos "Equation of state employed during evolution" STEERABLE=never
 { 
-  "IdealGas" :: ""
-  "Hybrid" :: "" 
-  "Tabulated" :: ""
+  "IdealGas" :: "Ideal Gas"
+  "Hybrid" :: "Cold EOS plus thermal component" 
+  "Tabulated3d" :: "EOS Tabulated in (rho, T, Ye)"
+  "none" :: "No EOS available"
 } "IdealGas"
 
 #parameters for Polytropic EOS
@@ -64,3 +72,16 @@ CCTK_REAL particle_mass "mass used to formally compute temperature from kinetic 
   0:* :: "in MeV"
 } 938.985
 
+#parameters for Hybrid EOS
+
+CCTK_REAL gamma_th "Gamma for the thermal part"
+{
+  0:* :: ""
+} 2.0
+
+#parameters for Tabulated 3D EOS
+
+CCTK_STRING EOSTable_filename "File name of the 3D EOS table" STEERABLE=RECOVER 
+{  
+  ".+" :: ""
+} "."
