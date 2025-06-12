@@ -262,7 +262,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
           break;
         }
         case c2p_second_t::Entropy: {
-          c2p_Ent.solve(eos_3p, 3p, cv, glo, rep_second);
+          c2p_Ent.solve(eos_3p, pv, cv, glo, rep_second);
           break;
         }
         case c2p_second_t::None: {

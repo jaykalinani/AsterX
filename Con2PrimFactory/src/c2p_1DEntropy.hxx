@@ -384,7 +384,7 @@ c2p_1DEntropy::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     cv.tau *= sqrt_detg;
     cv.mom *= sqrt_detg;
     cv.dBvec *= sqrt_detg;
-    cv.dYe *= sqrt_detg;
+    cv.DYe *= sqrt_detg;
     cv.DEnt *= sqrt_detg;
     return;
   }

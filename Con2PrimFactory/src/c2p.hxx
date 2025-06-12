@@ -78,7 +78,7 @@ public:
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-  cons_floors_and_ceilings(const EOSType &eos_3p, cons_vars &cv, 
+  cons_floors_and_ceilings(const EOSType *eos_3p, cons_vars &cv, 
                            const smat<CCTK_REAL, 3> &glo) const;
 };
 
@@ -222,7 +222,7 @@ c2p::bh_interior_fail(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
-c2p::cons_floors_and_ceilings(const EOSType &eos_3p, cons_vars &cv, 
+c2p::cons_floors_and_ceilings(const EOSType *eos_3p, cons_vars &cv, 
                               const smat<CCTK_REAL, 3> &glo) const {
 
   // Limit conservative variables

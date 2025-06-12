@@ -550,7 +550,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     cv.tau *= sqrt_detg;
     cv.mom *= sqrt_detg;
     cv.dBvec *= sqrt_detg;
-    cv.dYe *= sqrt_detg;
+    cv.DYe *= sqrt_detg;
     cv.DEnt *= sqrt_detg;
     return;
   }
@@ -563,7 +563,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     cv.tau *= sqrt_detg;
     cv.mom *= sqrt_detg;
     cv.dBvec *= sqrt_detg;
-    cv.dYe *= sqrt_detg;
+    cv.DYe *= sqrt_detg;
     cv.DEnt *= sqrt_detg;
     return;
   }
