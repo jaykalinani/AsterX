@@ -1,4 +1,4 @@
-/*! \file eos.hxx
+/*! \file eos_3p.hxx
 \brief Defines an EOS
 
 EOS is effectively an interface that describes how to create an equation of
@@ -7,18 +7,19 @@ and electron fraction.
 
 */
 
-#ifndef EOS_HXX
-#define EOS_HXX
+#ifndef EOS_3P_HXX
+#define EOS_3P_HXX
 #include <cctk.h>
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
-#include "eos_utils.hxx"
+#include "utils/eos_utils.hxx"
+#include "utils/eos_constants.hxx"
 
 namespace EOSX {
 
-/// Abstract class eos
+/// Abstract class eos_3p
 
-class eos {
+class eos_3p {
 public:
   typedef eos_status status;
   typedef eos_range range;
@@ -28,13 +29,6 @@ public:
   range rgtemp; ///< Valid range for temperature \f$ T \f$
 
 protected:
-  CCTK_REAL rho_atm;
-  CCTK_REAL rho_threshold;
-  CCTK_REAL press_atm;
-  CCTK_REAL Ye_atm;
-  CCTK_REAL vel_max;
-  CCTK_REAL bsq_max;
-
   /// Set the density range. Has to be called in the constructor of any
   /// implementation.
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -55,14 +49,7 @@ protected:
   }
 
 public:
-  CCTK_DEVICE CCTK_HOST eos() {
-    rho_atm = 1e-11;
-    rho_threshold = 10.0;
-    press_atm = 1e-11;
-    Ye_atm = 0.0;
-    vel_max = 1.0 - 1e-15;
-    bsq_max = 1e20;
-  }
+  CCTK_DEVICE CCTK_HOST eos_3p() {}
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   press_from_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
@@ -120,14 +107,14 @@ public:
   CCTK_DEVICE CCTK_HOST static CCTK_REAL nan() { return 0.0 / 0.0; }
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  press_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
-                              const CCTK_REAL ye) const;
+  press_from_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
+                        const CCTK_REAL ye) const;
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  eps_from_valid_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
-                              const CCTK_REAL ye) const;
+  eps_from_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
+                        const CCTK_REAL ye) const;
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  csnd_from_valid_rho_eps_ye(const CCTK_REAL rho, const CCTK_REAL eps,
-                             const CCTK_REAL ye) const;
+  csnd_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
+                       const CCTK_REAL ye) const;
 };
 
 } // namespace EOSX
