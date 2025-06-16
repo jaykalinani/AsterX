@@ -132,7 +132,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         [&](int i, int j) ARITH_INLINE { return calc_avg_v2c(gf_g(i, j), p); });
 
     /* Get mask */
-    const CCTK_REAL mask_avg = calc_avg_v2c(aster_mask_vc, p);
+    CCTK_REAL mask_local = calc_avg_v2c(aster_mask_vc, p);
 
     /* Calculate inverse of 3-metric */
     const CCTK_REAL spatial_detg = calc_det(glo);
@@ -182,6 +182,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
     /* set flag to success */
     con2prim_flag(p.I) = 1;
+    bool c2p_flag_local = 1;
     bool call_c2p = true;
 
     if (cv.dens <= sqrt_detg * rho_atmo_cut) {
@@ -197,18 +198,17 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the parfile
 
     if (alp(p.I) < alp_thresh) {
-      if ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH)) {
-        c2p_Noble.bh_interior_fail(eos_3p, pv, cv, glo);
-        call_c2p = false;
-      }
+      mask_local = 0.0;
     }
 
-    if(mask_avg != 1.0) {
-      pv.Bvec = Bup;
-      atmo.set(pv, cv, glo);
-      atmo.set(pv_seeds);
-      //c2p_Noble.bh_interior_fail(eos_3p,pv,cv,glo);
-      call_c2p = false;
+    if (excise) {
+
+      if (mask_local != 1.0) {
+        c2p_Noble.bh_interior<EOSType,false>(eos_3p,pv_seeds,cv,glo);
+        pv = pv_seeds;
+        call_c2p = false;
+      }
+
     }
 
     // Construct error report object:
@@ -282,7 +282,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
         if (rep_ent.failed()) {
 
-          con2prim_flag(p.I) = 0;
+          c2p_flag_local = 0;
 
           if (debug_mode) {
             printf("Entropy C2P failed. Setting point to atmosphere.\n");
@@ -312,21 +312,24 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                 Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
           }
 
-          if ((alp(p.I) < alp_thresh)) {
-            c2p_Noble.bh_interior_fail(eos_3p, pv, cv, glo);
-          } else {
-            // set to atmo
-            cv.dBvec(0) = sqrt_detg * Bup(0);
-            cv.dBvec(1) = sqrt_detg * Bup(1);
-            cv.dBvec(2) = sqrt_detg * Bup(2);
-            pv.Bvec = Bup;
-            atmo.set(pv, cv, glo);
+          // Failure, set to atmo
+          cv.dBvec(0) = sqrt_detg * Bup(0);
+          cv.dBvec(1) = sqrt_detg * Bup(1);
+          cv.dBvec(2) = sqrt_detg * Bup(2);
+          pv.Bvec = Bup;
+          atmo.set(pv, cv, glo);
+
+          // Failure inside mask
+          if (mask_local != 1.0) {
+            c2p_Noble.bh_interior<EOSType,false>(eos_3p,pv_seeds,cv,glo);
+            pv = pv_seeds;
           }
+
         }
 
       } else {
 
-        con2prim_flag(p.I) = 0;
+        c2p_flag_local = 0;
 
         if (debug_mode) {
           printf("Second C2P failed too :( :( \n");
@@ -355,20 +358,29 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
               Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
         }
 
-        if ((alp(p.I) < alp_thresh) &&
-            ((pv_seeds.rho > rho_BH) || (pv_seeds.eps > eps_BH))) {
-          c2p_Noble.bh_interior_fail(eos_3p, pv, cv, glo);
-        } else {
-          // set to atmo
-          cv.dBvec(0) = sqrt_detg * Bup(0);
-          cv.dBvec(1) = sqrt_detg * Bup(1);
-          cv.dBvec(2) = sqrt_detg * Bup(2);
-          pv.Bvec = Bup; 
-          atmo.set(pv, cv, glo);
+        // Failure, set to atmo
+        cv.dBvec(0) = sqrt_detg * Bup(0);
+        cv.dBvec(1) = sqrt_detg * Bup(1);
+        cv.dBvec(2) = sqrt_detg * Bup(2);
+        pv.Bvec = Bup; 
+        atmo.set(pv, cv, glo);
+
+        // Failure inside mask
+        if (mask_local != 1.0) {
+          c2p_Noble.bh_interior<EOSType,false>(eos_3p,pv_seeds,cv,glo);
+          pv = pv_seeds;
         }
+
       }
     }
   }
+
+    // Inside mask, C2P success
+    if ( (mask_local != 1.0) && c2p_flag_local == 1 ) {
+      c2p_Noble.bh_interior<EOSType,true>(eos_3p, pv, cv, glo);
+    }
+
+    con2prim_flag(p.I) = c2p_flag_local;
 
     // ----- ----- C2P ----- -----
 

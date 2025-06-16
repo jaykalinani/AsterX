@@ -93,6 +93,10 @@ BOOLEAN zero_psi "Set Psi, time component of 4-vector potential, to zero initial
 {
 } yes
 
+BOOLEAN excise "Avoid C2P and use BH values in masked region" STEERABLE=always
+{
+} no
+
 SHARES: EOSX
 USES CCTK_REAL poly_gamma
 USES CCTK_REAL poly_k
