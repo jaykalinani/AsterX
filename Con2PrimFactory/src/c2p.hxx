@@ -268,7 +268,7 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     vec<CCTK_REAL, 3> mom_low = cv.mom / sqrt(spatial_detg);
     vec<CCTK_REAL, 3> mom_up  = calc_contraction(gup, mom_low);
     const CCTK_REAL Ssq_old = calc_contraction(mom_low, mom_up);
-    const CCTK_REAL S_old = sqrt(Ssq_old);
+    const CCTK_REAL S_old = sqrt(Ssq_old) + 1e-50;
 
     // Get BiSi = S_iB^i
     const CCTK_REAL BiSi_old = calc_contraction(mom_low, pv.Bvec);
