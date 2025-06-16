@@ -97,6 +97,10 @@ BOOLEAN excise "Avoid C2P and use BH values in masked region" STEERABLE=always
 {
 } no
 
+BOOLEAN use_mask "Use AsterMasks gridfunctions?" STEERABLE=always
+{
+} no
+
 SHARES: EOSX
 USES CCTK_REAL poly_gamma
 USES CCTK_REAL poly_k

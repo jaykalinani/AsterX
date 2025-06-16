@@ -17,6 +17,7 @@ ActiveThorns = "
     TimerReport
     TmunuBaseX
     AsterX
+    AsterMasks
 "
 
 $nlevels	= 1

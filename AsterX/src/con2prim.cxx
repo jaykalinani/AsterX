@@ -132,7 +132,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         [&](int i, int j) ARITH_INLINE { return calc_avg_v2c(gf_g(i, j), p); });
 
     /* Get mask */
-    CCTK_REAL mask_local = calc_avg_v2c(aster_mask_vc, p);
+    CCTK_REAL mask_local = use_mask ? calc_avg_v2c(aster_mask_vc, p) : 1.0;
 
     /* Calculate inverse of 3-metric */
     const CCTK_REAL spatial_detg = calc_det(glo);
