@@ -373,12 +373,13 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
       }
     }
-  }
 
     // Inside mask, C2P success
     if ( (mask_local != 1.0) && (c2p_flag_local == 1) ) {
       c2p_Noble.bh_interior<EOSType,true>(eos_3p, pv, cv, glo);
     }
+
+  }
 
     con2prim_flag(p.I) = c2p_flag_local;
 
