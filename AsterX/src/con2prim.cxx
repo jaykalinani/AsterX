@@ -184,7 +184,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
     /* set flag to success */
     con2prim_flag(p.I) = 1;
-    bool c2p_flag_local = 1;
+    bool c2p_flag_local = true;
     bool call_c2p = true;
 
     if (cv.dens <= sqrt_detg * rho_atmo_cut) {
@@ -284,7 +284,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
         if (rep_ent.failed()) {
 
-          c2p_flag_local = 0;
+          c2p_flag_local = false;
 
           if (debug_mode) {
             printf("Entropy C2P failed. Setting point to atmosphere.\n");
@@ -331,7 +331,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
       } else {
 
-        c2p_flag_local = 0;
+        c2p_flag_local = false;
 
         if (debug_mode) {
           printf("Second C2P failed too :( :( \n");
@@ -377,7 +377,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     }
 
     // Inside mask, C2P success
-    if ( (mask_local != 1.0) && (c2p_flag_local == 1) ) {
+    if ( (mask_local != 1.0) && c2p_flag_local ) {
       c2p_Noble.bh_interior<EOSType,true>(eos_3p, pv, cv, glo);
     }
 
