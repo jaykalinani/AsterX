@@ -126,6 +126,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
     // ----------
 
+    /* Get lapse */  
+    const CCTK_REAL alp_avg = calc_avg_v2c(alp, p);
 
     /* Get covariant metric */
     const smat<CCTK_REAL, 3> glo(
@@ -197,7 +199,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // triggered. One must be very careful when using this functionality and
     // must correctly set alp_thresh, rho_BH, eps_BH and vwlim_BH in the parfile
 
-    if (alp(p.I) < alp_thresh) {
+    if (alp_avg < alp_thresh) {
       mask_local = 0.0;
     }
 
