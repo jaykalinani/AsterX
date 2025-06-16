@@ -312,17 +312,17 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                 Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
           }
 
-          // Failure, set to atmo
-          cv.dBvec(0) = sqrt_detg * Bup(0);
-          cv.dBvec(1) = sqrt_detg * Bup(1);
-          cv.dBvec(2) = sqrt_detg * Bup(2);
-          pv.Bvec = Bup;
-          atmo.set(pv, cv, glo);
-
-          // Failure inside mask
           if (mask_local != 1.0) {
+            // Failure inside mask
             c2p_Noble.bh_interior<EOSType,false>(eos_3p,pv_seeds,cv,glo);
             pv = pv_seeds;
+          } else {
+            // Failure outside, set to atmo
+            cv.dBvec(0) = sqrt_detg * Bup(0);
+            cv.dBvec(1) = sqrt_detg * Bup(1);
+            cv.dBvec(2) = sqrt_detg * Bup(2);
+            pv.Bvec = Bup;
+            atmo.set(pv, cv, glo);
           }
 
         }
@@ -358,17 +358,17 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
               Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
         }
 
-        // Failure, set to atmo
-        cv.dBvec(0) = sqrt_detg * Bup(0);
-        cv.dBvec(1) = sqrt_detg * Bup(1);
-        cv.dBvec(2) = sqrt_detg * Bup(2);
-        pv.Bvec = Bup; 
-        atmo.set(pv, cv, glo);
-
-        // Failure inside mask
         if (mask_local != 1.0) {
+          // Failure inside mask
           c2p_Noble.bh_interior<EOSType,false>(eos_3p,pv_seeds,cv,glo);
           pv = pv_seeds;
+        } else {
+          // Failure outside, set to atmo
+          cv.dBvec(0) = sqrt_detg * Bup(0);
+          cv.dBvec(1) = sqrt_detg * Bup(1);
+          cv.dBvec(2) = sqrt_detg * Bup(2);
+          pv.Bvec = Bup; 
+          atmo.set(pv, cv, glo);
         }
 
       }
