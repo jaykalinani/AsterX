@@ -258,6 +258,9 @@ public:
     case PREP_ROOT_FAIL_BRACKET:
       printf("Preparatory root finding failed (faulty bracketing) \n");
       break;
+    case ERR_CODE_NOT_SET:
+      printf("Error code not set! Report was initialized but never changed. \n");
+      break;
     default:
       assert(false);
       printf("Invalid error type. Should never happen. Code is messed up. \n");
