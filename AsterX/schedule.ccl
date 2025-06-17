@@ -146,14 +146,16 @@ SCHEDULE AsterX_Con2Prim IN AsterX_Con2PrimGroup AFTER AsterX_ComputedBFromdBsta
   READS: saved_prims(interior)
 ###  READS: HydroBaseX::press(interior) HydroBaseX::temperature(interior) HydroBaseX::entropy(interior)
   READS: Avec_x(interior) Avec_y(interior) Avec_z(interior)
-  WRITES: con2prim_flag(interior)
+  WRITES: con2prim_flag(interior) 
+  WRITES: AsterMasks::aster_mask_cc(interior) 
   WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior) 
   WRITES: HydroBaseX::temperature(interior) HydroBaseX::entropy(interior) HydroBaseX::Ye(interior)
   WRITES: saved_prims(interior)
   WRITES: zvec(interior)
   WRITES: svec(interior)
   WRITES: dens(interior) tau(interior) DEnt(interior) mom(interior) DYe(interior) dB(interior)
-  SYNC: con2prim_flag
+  SYNC: con2prim_flag  
+  SYNC: AsterMasks::aster_mask_cc
   SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press HydroBaseX::Bvec 
   SYNC: HydroBaseX::temperature HydroBaseX::entropy HydroBaseX::Ye
   SYNC: saved_prims
