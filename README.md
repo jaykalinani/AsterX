@@ -45,12 +45,12 @@
 
 ## Related Talks and Tutorials
 
-* [Using CarpetX: A Guide for Early Adopters](http://einsteintoolkit.org/seminars/2021_03_18/index.html)
-  Seminar by Erik Schnetter providing an overview of **CarpetX** capabilities.  
+* [Using CarpetX: A Guide for Early Adopters](http://einsteintoolkit.org/seminars/2021_03_18/index.html)  
+  Seminar by Erik Schnetter providing an overview of **CarpetX** capabilities.
 
-* [Tutorial: GPUs and the Einstein Toolkit](https://einsteintoolkit.github.io/et2022uidaho/lectures/38-Tutorial8/index.html)
-  Tutorial by Lorenzo Ennoggi, Jay Kalinani, and Federico Lopez Armengol during the North American Einstein Toolkit Workshop 2022. Includes an introduction to **AsterX** and hands-on sessions.  
+* [Tutorial: GPUs and the Einstein Toolkit](https://einsteintoolkit.github.io/et2022uidaho/lectures/38-Tutorial8/index.html)  
+  Tutorial by Lorenzo Ennoggi, Jay Kalinani, and Federico Lopez Armengol during the North American Einstein Toolkit Workshop 2022. Includes an introduction to **AsterX** and hands-on sessions.
 
 * [AsterX: A New Open-Source GPU-Accelerated GRMHD Code for Dynamical Spacetimes](https://drive.google.com/file/d/1Z4i--W56mxeNIu598LQTpEEowX56FOoD/view?usp=sharing)  
-  Slides from a talk by Jay Kalinani at the APS April Meeting 2023.  
+  Slides from a talk by Jay Kalinani at the APS April Meeting 2023.
 
