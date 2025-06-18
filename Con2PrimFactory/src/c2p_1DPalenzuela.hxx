@@ -472,8 +472,10 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   // NaN: If the argument of if (...) is NaN, it usually evaluates to false.
   // Here, we would need to rewrite the logic a little bit.
 
-  if (rep.iters >= maxiters || abs(fn(xPalenzuela_Sol)) > tolerance_0) {
-
+  // TODO: have an explicit check on max_iters, e.g.:
+  // if (rep.iters >= maxiters || abs(fn(xPalenzuela_Sol)) > tolerance) {
+  if (abs(result.first - result.second) >
+      tolerance_0 * min(abs(result.first), abs(result.second))) {
     // check primitives against conservatives
     cons_vars cv_check;
     cv_check.from_prim(pv, glo);
