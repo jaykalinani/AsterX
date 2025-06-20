@@ -13,7 +13,7 @@
 #include "../utils/eos_brent.hxx" // zero_brent
 #include "../utils/eos_linear_interp_ND.hxx"
 
-#define NTABLES 18
+#define NTABLES 19
 
 namespace EOSX {
 using namespace std;
