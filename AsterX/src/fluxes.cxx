@@ -219,12 +219,12 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, true)};
 
     // set to atmo if reconstructed rho is less than atmo or is negative
-    if (rho_rc(0) < rho_abs_min) {
-      rho_rc(0) = rho_abs_min;
-    }
-    if (rho_rc(1) < rho_abs_min) {
-      rho_rc(1) = rho_abs_min;
-    }
+    // if (rho_rc(0) < rho_abs_min) {
+    //  rho_rc(0) = rho_abs_min;
+    // }
+    // if (rho_rc(1) < rho_abs_min) {
+    //  rho_rc(1) = rho_abs_min;
+    // }
 
     // Reconstruct entropy and Ye
     vec<CCTK_REAL, 2> entropy_rc{reconstruct_pt(entropy, p, false, false)};
@@ -269,14 +269,14 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
     // TODO: currently sets negative reconstructed pressure to 0 since eps_min=0
     // for ideal gas
-    if (press_rc(0) < 0) {
-      press_rc(0) = eos_3p->press_from_valid_rho_eps_ye(
-          rho_rc(0), eos_3p->rgeps.min, Ye_rc(0));
-    }
-    if (press_rc(1) < 0) {
-      press_rc(1) = eos_3p->press_from_valid_rho_eps_ye(
-          rho_rc(1), eos_3p->rgeps.min, Ye_rc(1));
-    }
+    // if (press_rc(0) < 0) {
+    //  press_rc(0) = eos_3p->press_from_valid_rho_eps_ye(
+    //      rho_rc(0), eos_3p->rgeps.min, Ye_rc(0));
+    // }
+    // if (press_rc(1) < 0) {
+    //  press_rc(1) = eos_3p->press_from_valid_rho_eps_ye(
+    //      rho_rc(1), eos_3p->rgeps.min, Ye_rc(1));
+    // }
 
     const vec<CCTK_REAL, 2> rhoh_rc([&](int f) ARITH_INLINE {
       return rho_rc(f) + rho_rc(f) * eps_rc(f) + press_rc(f);
