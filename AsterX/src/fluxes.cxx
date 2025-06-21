@@ -267,12 +267,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       // eps_min=0 for ideal gas
 
       if (press_rc_dummy[0] < 0) {
-        auto rgeps = eos_3p->range_eps_from_valid_rho_ye(rho_rc(0), Ye_rc(0));
         press_rc_dummy[0] =
             eos_3p->press_from_valid_rho_eps_ye(rho_rc(0), rgeps.min, Ye_rc(0));
       }
       if (press_rc_dummy[1] < 0) {
-        auto rgeps = eos_3p->range_eps_from_valid_rho_ye(rho_rc(1), Ye_rc(1));
         press_rc_dummy[1] =
             eos_3p->press_from_valid_rho_eps_ye(rho_rc(1), rgeps.min, Ye_rc(1));
       }
