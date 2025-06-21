@@ -268,11 +268,11 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
       if (press_rc_dummy[0] < 0) {
         press_rc_dummy[0] =
-            eos_3p->press_from_valid_rho_eps_ye(rho_rc(0), rgeps.min, Ye_rc(0));
+            eos_3p->press_from_valid_rho_eps_ye(rho_rc(0), eos_3p->rgeps.min, Ye_rc(0));
       }
       if (press_rc_dummy[1] < 0) {
         press_rc_dummy[1] =
-            eos_3p->press_from_valid_rho_eps_ye(rho_rc(1), rgeps.min, Ye_rc(1));
+            eos_3p->press_from_valid_rho_eps_ye(rho_rc(1), eos_3p->rgeps.min, Ye_rc(1));
       }
 
       // Compute eps_rc and temp_rc using lambdas
