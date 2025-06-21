@@ -220,10 +220,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
     // set to atmo if reconstructed rho is less than atmo or is negative
     if (rho_rc(0) <= 0.0) {
-      rho_rc(0) = rho_abs_min;
+      rho_rc(0) = eos_3p->rgrho.min;
     }
     if (rho_rc(1) <= 0.0) {
-      rho_rc(1) = rho_abs_min;
+      rho_rc(1) = eos_3p->rgrho.min;
     }
 
     // Reconstruct entropy and Ye
