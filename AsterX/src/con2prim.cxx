@@ -73,6 +73,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     CCTK_REAL press_atm = 0.0; // dummy initialization
     CCTK_REAL eps_atm = 0.0;   // dummy initialization
     CCTK_REAL temp_atm = 0.0;  // dummy initialization
+    const CCTK_REAL ye_atm = std::max(eos_3p->rgye.min, Ye_atmo);
+
     CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
 
     // Grading rho
@@ -90,8 +92,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       temp_atm = std::max(eos_3p->rgtemp.min, temp_atm);
       // temp_atm = max(temp_atm, eos_3p->interptable->xmin<1>());
       press_atm =
-          eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
-      eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
+          eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, ye_atm);
+      eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, ye_atm);
       // eps_atm should be kept consistent with temp_atm, so we do not use
       // the setting below
       // eps_atm =
@@ -102,12 +104,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       eps_atm =
           std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
       press_atm =
-          eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+          eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
     }
     CCTK_REAL entropy_atm =
-        eos_3p->kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+        eos_3p->kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
     const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
-    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, temp_atm, entropy_atm,
+    atmosphere atmo(rho_atm, eps_atm, ye_atm, press_atm, temp_atm, entropy_atm,
                     rho_atmo_cut);
 
     // ----- Construct C2P objects -----
@@ -155,7 +157,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       CCTK_REAL vlim = vw_lim / wlim;
       v_up *= vlim / sqrt(vsq);
       v_low *= vlim / sqrt(vsq);
-      zsq = vw_lim;
+      zsq = vw_lim * vw_lim;
     } else {
       zsq = vsq / (1.0 - vsq);
     }

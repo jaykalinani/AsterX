@@ -119,11 +119,23 @@ if (CCTK_Equals(test_type, "TabEOSTest")) {
 
 #Initial conditions for entropy
 
-schedule SetEntropy IN HydroBaseX_PostInitial AFTER ID_TabEOS_init
+schedule SetTempEntropy IN HydroBaseX_PostInitial AFTER ID_TabEOS_init
 {
   LANG: C
 
   READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
-  WRITES: HydroBaseX::eps(everywhere) HydroBaseX::entropy(everywhere)
+  READS: HydroBaseX::entropy(everywhere) HydroBaseX::temperature(everywhere)
+  WRITES: HydroBaseX::eps(everywhere) HydroBaseX::entropy(everywhere) HydroBaseX::temperature(everywhere)
 
-} "Set initial entropy"
+} "Set initial temperature and entropy"
+
+#Initial conditions for Ye
+
+schedule SetYe IN HydroBaseX_PostInitial BEFORE SetTempEntropy
+{
+  LANG: C
+
+  READS: HydroBaseX::Ye(everywhere)
+  WRITES: HydroBaseX::Ye(everywhere)
+
+} "Set initial Ye"

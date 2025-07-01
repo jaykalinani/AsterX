@@ -15,9 +15,9 @@ using namespace EOSX;
 enum class eos_3param { IdealGas, Hybrid, Tabulated };
 
 template <typename EOSType>
-void SetEntropy_typeEoS(CCTK_ARGUMENTS, EOSType *eos_3p) {
+void SetTempEntropy_typeEoS(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
-  DECLARE_CCTK_ARGUMENTSX_SetEntropy;
+  DECLARE_CCTK_ARGUMENTSX_SetTempEntropy;
   DECLARE_CCTK_PARAMETERS;
 
   if (set_entropy_postinitial) {
@@ -29,11 +29,21 @@ void SetEntropy_typeEoS(CCTK_ARGUMENTS, EOSType *eos_3p) {
               eos_3p->kappa_from_valid_rho_eps_ye(rho(p.I), eps(p.I), Ye(p.I));
         });
   }
+
+  if (set_temperature_postinitial) {
+
+    grid.loop_all_device<1, 1, 1>(
+        grid.nghostzones,
+        [=] CCTK_DEVICE(const Loop::PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+          temperature(p.I) =
+              eos_3p->temp_from_valid_rho_eps_ye(rho(p.I), eps(p.I), Ye(p.I));
+        });
+  }
 }
 
-extern "C" void SetEntropy(CCTK_ARGUMENTS) {
+extern "C" void SetTempEntropy(CCTK_ARGUMENTS) {
 
-  DECLARE_CCTK_ARGUMENTSX_SetEntropy;
+  DECLARE_CCTK_ARGUMENTSX_SetTempEntropy;
   DECLARE_CCTK_PARAMETERS;
 
   // defining EOS objects
@@ -52,17 +62,17 @@ extern "C" void SetEntropy(CCTK_ARGUMENTS) {
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
     auto eos_3p_ig = global_eos_3p_ig;
-    SetEntropy_typeEoS(CCTK_PASS_CTOC, eos_3p_ig);
+    SetTempEntropy_typeEoS(CCTK_PASS_CTOC, eos_3p_ig);
     break;
   }
   case eos_3param::Hybrid: {
     auto eos_3p_hyb = global_eos_3p_hyb;
-    SetEntropy_typeEoS(CCTK_PASS_CTOC, eos_3p_hyb);
+    SetTempEntropy_typeEoS(CCTK_PASS_CTOC, eos_3p_hyb);
     break;
   }
   case eos_3param::Tabulated: {
     auto eos_3p_tab3d = global_eos_3p_tab3d;
-    SetEntropy_typeEoS(CCTK_PASS_CTOC, eos_3p_tab3d);
+    SetTempEntropy_typeEoS(CCTK_PASS_CTOC, eos_3p_tab3d);
     break;
   }
   default:
