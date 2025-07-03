@@ -83,7 +83,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                   : rho_abs_min;
     rho_atm = std::max(eos_3p->rgrho.min, rho_atm);
 
-    // Grading temerature or pressure based on either cold or thermal EOS
+    // Grading temperature or pressure based on either cold or thermal EOS
     if (thermal_eos_atmo) {
       // rho_atm = max(rho_atm, eos_3p->interptable->xmin<0>());
 
