@@ -43,7 +43,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
         CCTK_REAL press_atm = 0.0; // dummy initialization
         CCTK_REAL eps_atm = 0.0;   // dummy initialization
         CCTK_REAL temp_atm = 0.0;  // dummy initialization
-        const CCTK_REAL ye_atm = std::max(eos_3p->rgye.min, Ye_atmo);
+        const CCTK_REAL ye_atm = std::min(eos_3p->rgye.max, Ye_atmo);
         auto rgeps = eos_3p->range_eps_from_valid_rho_ye(rhoL, YeL);
 
         CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
@@ -168,8 +168,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
         }
 
         // ----------
-        // Floor and ceiling for eps
-        // Keeps rho the same and changes press
+        // Floor and ceiling for eps or pressure
         // ----------
 
         // check the validity of the computed eps
@@ -180,19 +179,29 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
           pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
           entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
 
-        } else if (epsL < eps_atm) {
+        } 
 
-          epsL = eps_atm;
-          tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
-          pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
-          entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+        if (use_press_atmo) {
+
+          if (pressL < press_atm) {
+
+            pressL = press_atm;
+            epsL = eos_3p->eps_from_valid_rho_press_ye(rhoL, pressL, YeL);
+            tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+            entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+          }
+
+        } else {
+
+          if (epsL < eps_atm) {
+
+            epsL = eps_atm;
+            tempL = eos_3p->temp_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+            pressL = eos_3p->press_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+            entropyL = eos_3p->kappa_from_valid_rho_eps_ye(rhoL, epsL, YeL);
+          }
+
         }
-
-        // ----------
-        // Floor and ceiling for Ye
-        // ----------
-
-        // TODO:
 
         // ---------- End of validity check
 

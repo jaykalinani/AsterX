@@ -49,6 +49,7 @@ protected:
   bool ye_lenient;
   bool use_zprim;
   bool use_temp;
+  bool use_press_atmo;
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_Ssq_Exact(const vec<CCTK_REAL, 3> &mom,
@@ -95,14 +96,14 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
   // Floor and ceiling for Ye
   // ----------
 
-  if (pv.Ye > eos_3p->rgye.max) {
+  if (pv.Ye < eos_3p->rgye.min) {
 
-    pv.Ye = eos_3p->rgye.max;
+    pv.Ye = eos_3p->rgye.min;
     rep.adjust_cons = true;
     recomp_eps_press_entropy = true;
   }
 
-  if (pv.Ye < atmo.ye_atmo) {
+  if (pv.Ye > atmo.ye_atmo) {
 
     pv.Ye = atmo.ye_atmo;
     rep.adjust_cons = true;
@@ -130,6 +131,7 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       recomp_eps_press_entropy = true;
     } else {
       // keeps pressure, changes eps
+      recomp_eps_press_entropy = false;
       pv.eps = eos_3p->eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
       pv.temperature = eos_3p->temp_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
       pv.entropy = eos_3p->kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
@@ -146,6 +148,7 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       recomp_eps_press_entropy = true;
     } else {
       // keeps pressure, changes eps
+      recomp_eps_press_entropy = false;
       pv.eps = eos_3p->eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
       pv.temperature = eos_3p->temp_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
       pv.entropy = eos_3p->kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
@@ -153,7 +156,7 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
   }
 
   // ----------
-  // Floor and ceiling for temperature
+  // Ceiling for temperature
   // Keeps rho the same and changes press
   // ----------
   
@@ -163,11 +166,44 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     recomp_eps_press_entropy = true;
     rep.adjust_cons = true;
 
-  } else if (pv.temperature < atmo.temp_atmo) {
+  }
 
-    pv.temperature = atmo.temp_atmo;
-    recomp_eps_press_entropy = true;
-    rep.adjust_cons = true;
+  // ----------
+  // Floors
+  // ----------
+
+  if (use_press_atmo) {
+
+    // ----------
+    // Pressure floor
+    // Keeps rho the same and changes temperature
+    // ----------
+
+    if (pv.press < atmo.press_atmo) {
+
+      pv.press = atmo.press_atmo;
+      pv.eps = eos_3p->eps_from_valid_rho_press_ye(pv.rho, pv.press, pv.Ye);
+      pv.temperature = eos_3p->temp_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      pv.entropy = eos_3p->kappa_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      recomp_eps_press_entropy = false;
+      rep.adjust_cons = true;
+
+    }
+  
+  } else {
+
+    // ----------
+    // Temperature floor
+    // Keeps rho the same and changes press
+    // ----------
+   
+    if (pv.temperature < atmo.temp_atmo) {
+  
+      pv.temperature = atmo.temp_atmo;
+      recomp_eps_press_entropy = true;
+      rep.adjust_cons = true;
+  
+    }
 
   }
 
@@ -216,8 +252,6 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     };
 
     if (recomp_flag) {
-
-      pv.Ye = atmo.ye_atmo;
   
       pv.temperature = eos_3p->temp_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
       pv.press = eos_3p->press_from_valid_rho_eps_ye(pv.rho, pv.eps, pv.Ye); 
