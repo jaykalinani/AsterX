@@ -264,10 +264,8 @@ BOOLEAN set_Ye_postinitial "Set Ye in HydroBaseX_PostInitial" STEERABLE=always
 {
 } "yes"
 
-CCTK_REAL Ye_atmosphere "Ye in the atmosphere"
-{
-  (0.0:*   :: "Positive"
-} 0.5
-
 SHARES: EOSX
 USES KEYWORD evolution_eos
+
+SHARES: Con2PrimFactory
+USES CCTK_REAL Ye_atmo

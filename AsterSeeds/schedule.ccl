@@ -117,25 +117,36 @@ if (CCTK_Equals(test_type, "TabEOSTest")) {
   "Set up initial conditions for TabEOS tests"
 }
 
-#Initial conditions for entropy
+#Initial conditions for temperature, entropy and Ye
 
-schedule SetTempEntropy IN HydroBaseX_PostInitial AFTER ID_TabEOS_init
-{
-  LANG: C
+if (set_Ye_postinitial) {
+  SCHEDULE SetYe IN HydroBaseX_PostInitial
+  {
+    LANG: C
+    READS: HydroBaseX::Ye(everywhere)
+    WRITES: HydroBaseX::Ye(everywhere)
+  
+  } "Set initial Ye"
+}
 
-  READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
-  READS: HydroBaseX::entropy(everywhere) HydroBaseX::temperature(everywhere)
-  WRITES: HydroBaseX::eps(everywhere) HydroBaseX::entropy(everywhere) HydroBaseX::temperature(everywhere)
+if (set_temperature_postinitial) {
+  SCHEDULE SetTemp IN HydroBaseX_PostInitial AFTER SetYe
+  {
+    LANG: C 
+    READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
+    READS: HydroBaseX::temperature(everywhere)
+    WRITES: HydroBaseX::temperature(everywhere) HydroBaseX::eps(everywhere)
+  
+  } "Set initial temperature"
+}
 
-} "Set initial temperature and entropy"
-
-#Initial conditions for Ye
-
-schedule SetYe IN HydroBaseX_PostInitial BEFORE SetTempEntropy
-{
-  LANG: C
-
-  READS: HydroBaseX::Ye(everywhere)
-  WRITES: HydroBaseX::Ye(everywhere)
-
-} "Set initial Ye"
+if (set_entropy_postinitial) {
+  SCHEDULE SetEntropy IN HydroBaseX_PostInitial AFTER SetTemp
+  {
+    LANG: C
+    READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
+    READS: HydroBaseX::entropy(everywhere)
+    WRITES: HydroBaseX::entropy(everywhere) HydroBaseX::eps(everywhere)
+  
+  } "Set initial entropy"
+}

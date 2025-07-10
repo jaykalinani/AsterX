@@ -10,8 +10,7 @@ SRCS =	\
   bbhcloud.cxx \
   magTOV.cxx \
   magBNS.cxx \
-  SetTempEntropy.cxx \
-  SetYe.cxx
+  SetTempEntropyYe.cxx
 
 #Subdirectories containing source files
 SUBDIRS =

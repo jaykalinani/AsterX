@@ -59,6 +59,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
+  const CCTK_REAL ye_atm = std::min(eos_3p->rgye.max, Ye_atmo);
+
   // Loop over the interior of the grid
   cctk_grid.loop_int_device<
       1, 1, 1>(grid.nghostzones, [=] CCTK_DEVICE(
@@ -73,7 +75,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     CCTK_REAL press_atm = 0.0; // dummy initialization
     CCTK_REAL eps_atm = 0.0;   // dummy initialization
     CCTK_REAL temp_atm = 0.0;  // dummy initialization
-    const CCTK_REAL ye_atm = std::min(eos_3p->rgye.max, Ye_atmo);
 
     CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
 
