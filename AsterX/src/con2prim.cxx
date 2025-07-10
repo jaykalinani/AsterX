@@ -59,8 +59,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
-  const CCTK_REAL ye_atm = std::min(eos_3p->rgye.max, Ye_atmo);
-
   // Loop over the interior of the grid
   cctk_grid.loop_int_device<
       1, 1, 1>(grid.nghostzones, [=] CCTK_DEVICE(
@@ -92,9 +90,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         press_atm = (radial_distance > r_atmo)
                        ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
                        : p_atmo;
-        press_atm = std::max(eos_3p->press_from_valid_rho_temp_ye(rho_atm,eos_3p->rgtemp.min,ye_atm), press_atm);
-        eps_atm = eos_3p->eps_from_valid_rho_press_ye(rho_atm, press_atm, ye_atm);
-        temp_atm = eos_3p->temp_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
+        press_atm = std::max(eos_3p->press_from_valid_rho_temp_ye(rho_atm, eos_3p->rgtemp.min, Ye_atmo), press_atm);
+        eps_atm = eos_3p->eps_from_valid_rho_press_ye(rho_atm, press_atm, Ye_atmo);
+        temp_atm = eos_3p->temp_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
       } else {
         temp_atm = (radial_distance > r_atmo)
                        ? (t_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
@@ -102,8 +100,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         temp_atm = std::max(eos_3p->rgtemp.min, temp_atm);
         // temp_atm = max(temp_atm, eos_3p->interptable->xmin<1>());
         press_atm =
-            eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, ye_atm);
-        eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, ye_atm);
+            eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
+        eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
         // eps_atm should be kept consistent with temp_atm, so we do not use
         // the setting below
         // eps_atm =
@@ -116,12 +114,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       eps_atm =
           std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
       press_atm =
-          eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
+          eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     }
     CCTK_REAL entropy_atm =
-        eos_3p->kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
+        eos_3p->kappa_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
     const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
-    atmosphere atmo(rho_atm, eps_atm, ye_atm, press_atm, temp_atm, entropy_atm,
+    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, temp_atm, entropy_atm,
                     rho_atmo_cut);
 
     // ----- Construct C2P objects -----

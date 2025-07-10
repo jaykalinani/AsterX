@@ -81,6 +81,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     CCTK_ERROR("Unknown value for parameter \"recon_type\"");
   }
 
+  // Primary reconstruction method
   reconstruction_t reconstruction;
   if (CCTK_EQUALS(reconstruction_method, "Godunov"))
     reconstruction = reconstruction_t::Godunov;
@@ -98,6 +99,17 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     reconstruction = reconstruction_t::mp5;
   else
     CCTK_ERROR("Unknown value for parameter \"reconstruction_method\"");
+
+  // Lower-order fallback for negative values
+  reconstruction_t reconstruction_LO;
+  if (CCTK_EQUALS(loworder_method, "Godunov"))
+    reconstruction_LO = reconstruction_t::Godunov;
+  else if (CCTK_EQUALS(loworder_method, "minmod"))
+    reconstruction_LO = reconstruction_t::minmod;
+  else if (CCTK_EQUALS(loworder_method, "monocentral"))
+    reconstruction_LO = reconstruction_t::monocentral;
+  else
+    CCTK_ERROR("Unknown value for parameter \"loworder_method\"");
 
   flux_t fluxtype;
   if (CCTK_EQUALS(flux_type, "LxF")) {
@@ -163,7 +175,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       [=] CCTK_DEVICE(const GF3D2<const CCTK_REAL> &var, const PointDesc &p,
                       const bool &gf_is_rho,
                       const bool &gf_is_press) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        return reconstruct(var, p, reconstruction_t::Godunov, dir, gf_is_rho, gf_is_press,
+        return reconstruct(var, p, reconstruction_LO, dir, gf_is_rho, gf_is_press,
                            press, gf_vels(dir), reconstruct_params);
       };
   const auto calcflux =
@@ -228,24 +240,14 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     bool useLO_0 = false;
     bool useLO_1 = false;
 
+    // Reconstruct density
     vec<CCTK_REAL, 2> rho_rc{reconstruct_pt(rho, p, true, true)};
-    vec<CCTK_REAL, 2> rhoLO_rc{reconstruct_loworder(rho, p, true, true)};
 
     // Reconstruct entropy
     vec<CCTK_REAL, 2> entropy_rc{reconstruct_pt(entropy, p, false, false)};
-    vec<CCTK_REAL, 2> entropyLO_rc{reconstruct_loworder(entropy, p, false, false)};
 
     // Reconstruct Ye
     vec<CCTK_REAL, 2> Ye_rc{reconstruct_pt(Ye, p, false, false)};
-    vec<CCTK_REAL, 2> YeLO_rc{reconstruct_loworder(Ye, p, false, false)};
-
-    // Use low order if reconstructed rho, entropy or Ye is <= 0
-    if ((rho_rc(0) <= 0.0) || (entropy_rc(0) <= 0.0) || (Ye_rc(0) <= 0.0)) {
-      useLO_0 = true;
-    }
-    if ((rho_rc(1) <= 0.0) || (entropy_rc(1) <= 0.0) || (Ye_rc(1) <= 0.0)) {
-      useLO_1 = true;
-    }
 
     // Initialize variables for eps, pressure, and temperature
     vec<CCTK_REAL, 2> eps_rc;
@@ -254,33 +256,40 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
 
     if (reconstruct_with_temperature) {
 
-      array<CCTK_REAL, 2> temp_rc_dummy;
-      array<CCTK_REAL, 2> tempLO_rc_dummy;
-
       // Reconstruct temperature
+      array<CCTK_REAL, 2> temp_rc_dummy;
       temp_rc_dummy = reconstruct_pt(temperature, p, false, false);
-      tempLO_rc_dummy = reconstruct_loworder(temperature, p, false, false);
 
-      if (temp_rc_dummy[0] <= 0.0) {
+      // Use lower-order if reconstructed rho, entropy, Ye or T is <= 0
+      if ((rho_rc(0) <= 0.0) || (entropy_rc(0) <= 0.0) || (Ye_rc(0) <= 0.0) || (temp_rc_dummy[0] <= 0.0)) {
         useLO_0 = true;
       }
-      if (temp_rc_dummy[1] <= 0.0) {
+      if ((rho_rc(1) <= 0.0) || (entropy_rc(1) <= 0.0) || (Ye_rc(1) <= 0.0) || (temp_rc_dummy[1] <= 0.0)) {
         useLO_1 = true;
       }
 
-      // Decide whether we need to overwrite states
-      // with low order values
       if (useLO_0) {
+        vec<CCTK_REAL, 2> rhoLO_rc{reconstruct_loworder(rho, p, true, true)};
+        vec<CCTK_REAL, 2> entropyLO_rc{reconstruct_loworder(entropy, p, false, false)};
+        vec<CCTK_REAL, 2> YeLO_rc{reconstruct_loworder(Ye, p, false, false)};
+        vec<CCTK_REAL, 2> tempLO_rc{reconstruct_loworder(temperature, p, false, false)};
+
         rho_rc(0) = rhoLO_rc(0);
         entropy_rc(0) = entropyLO_rc(0);
         Ye_rc(0) = YeLO_rc(0);
-        temp_rc_dummy[0] = tempLO_rc_dummy[0];
+        temp_rc_dummy[0] = tempLO_rc(0);
       }
+
       if (useLO_1) {
+        vec<CCTK_REAL, 2> rhoLO_rc{reconstruct_loworder(rho, p, true, true)};
+        vec<CCTK_REAL, 2> entropyLO_rc{reconstruct_loworder(entropy, p, false, false)};
+        vec<CCTK_REAL, 2> YeLO_rc{reconstruct_loworder(Ye, p, false, false)};
+        vec<CCTK_REAL, 2> tempLO_rc{reconstruct_loworder(temperature, p, false, false)};
+
         rho_rc(1) = rhoLO_rc(1);
         entropy_rc(1) = entropyLO_rc(1);
         Ye_rc(1) = YeLO_rc(1);
-        temp_rc_dummy[1] = tempLO_rc_dummy[1];
+        temp_rc_dummy[1] = tempLO_rc(1);
       }
 
       // Compute eps_rc and press_rc using lambdas
@@ -291,36 +300,43 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
         press_rc(f) = eos_3p->press_from_valid_rho_temp_ye(
             rho_rc(f), temp_rc(f), Ye_rc(f));
       }
+
     } else {
 
-      array<CCTK_REAL, 2> press_rc_dummy;
-      array<CCTK_REAL, 2> pressLO_rc_dummy;
-
       // Reconstruct pressure
+      array<CCTK_REAL, 2> press_rc_dummy;
       press_rc_dummy = reconstruct_pt(press, p, false, true);
-      pressLO_rc_dummy = reconstruct_loworder(press, p, false, true);
 
-      // Use low order values if reconstructed pressure is 0 or negative
-      if (press_rc_dummy[0] <= 0.0) {
+      // Use lower-order if reconstructed rho, entropy, Ye or pressure is <= 0
+      if ((rho_rc(0) <= 0.0) || (entropy_rc(0) <= 0.0) || (Ye_rc(0) <= 0.0) || (press_rc_dummy[0] <= 0.0)) {
         useLO_0 = true;
       }
-      if (press_rc_dummy[1] <= 0.0) {
+      if ((rho_rc(1) <= 0.0) || (entropy_rc(1) <= 0.0) || (Ye_rc(1) <= 0.0) || (press_rc_dummy[1] <= 0.0)) {
         useLO_1 = true;
       }
 
-      // Decide whether we need to overwrite states
-      // with low order values
       if (useLO_0) {
+        vec<CCTK_REAL, 2> rhoLO_rc{reconstruct_loworder(rho, p, true, true)};
+        vec<CCTK_REAL, 2> entropyLO_rc{reconstruct_loworder(entropy, p, false, false)};
+        vec<CCTK_REAL, 2> YeLO_rc{reconstruct_loworder(Ye, p, false, false)};
+        vec<CCTK_REAL, 2> pressLO_rc{reconstruct_loworder(press, p, false, true)};
+
         rho_rc(0) = rhoLO_rc(0);
         entropy_rc(0) = entropyLO_rc(0);
         Ye_rc(0) = YeLO_rc(0);
-        press_rc_dummy[0] = pressLO_rc_dummy[0];
+        press_rc_dummy[0] = pressLO_rc(0);
       }
+
       if (useLO_1) {
+        vec<CCTK_REAL, 2> rhoLO_rc{reconstruct_loworder(rho, p, true, true)};
+        vec<CCTK_REAL, 2> entropyLO_rc{reconstruct_loworder(entropy, p, false, false)};
+        vec<CCTK_REAL, 2> YeLO_rc{reconstruct_loworder(Ye, p, false, false)};
+        vec<CCTK_REAL, 2> pressLO_rc{reconstruct_loworder(press, p, false, true)};
+
         rho_rc(1) = rhoLO_rc(1);
         entropy_rc(1) = entropyLO_rc(1);
         Ye_rc(1) = YeLO_rc(1);
-        press_rc_dummy[1] = pressLO_rc_dummy[1];
+        press_rc_dummy[1] = pressLO_rc(1);
       }
 
       // Compute eps_rc and temp_rc using lambdas
@@ -331,6 +347,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
         temp_rc(f) =
             eos_3p->temp_from_valid_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
       }
+
     }
 
     const vec<CCTK_REAL, 2> rhoh_rc([&](int f) ARITH_INLINE {

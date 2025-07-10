@@ -43,7 +43,6 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
         CCTK_REAL press_atm = 0.0; // dummy initialization
         CCTK_REAL eps_atm = 0.0;   // dummy initialization
         CCTK_REAL temp_atm = 0.0;  // dummy initialization
-        const CCTK_REAL ye_atm = std::min(eos_3p->rgye.max, Ye_atmo);
         auto rgeps = eos_3p->range_eps_from_valid_rho_ye(rhoL, YeL);
 
         CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
@@ -63,9 +62,9 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
             press_atm = (radial_distance > r_atmo)
                            ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
                            : p_atmo;
-            press_atm = std::max(eos_3p->press_from_valid_rho_temp_ye(rho_atm,eos_3p->rgtemp.min,ye_atm), press_atm);
-            eps_atm = eos_3p->eps_from_valid_rho_press_ye(rho_atm, press_atm, ye_atm);
-            temp_atm = eos_3p->temp_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
+            press_atm = std::max(eos_3p->press_from_valid_rho_temp_ye(rho_atm, eos_3p->rgtemp.min, Ye_atmo), press_atm);
+            eps_atm = eos_3p->eps_from_valid_rho_press_ye(rho_atm, press_atm, Ye_atmo);
+            temp_atm = eos_3p->temp_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
           } else {
             temp_atm = (radial_distance > r_atmo)
                            ? (t_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
@@ -73,8 +72,8 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
             temp_atm = std::max(eos_3p->rgtemp.min, temp_atm);
             // temp_atm = max(temp_atm, eos_3p->interptable->xmin<1>());
             press_atm =
-                eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, ye_atm);
-            eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, ye_atm);
+                eos_3p->press_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
+            eps_atm = eos_3p->eps_from_valid_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
             // eps_atm should be kept consistent with temp_atm, so we do not use
             // the setting below
             // eps_atm =
@@ -87,7 +86,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
           eps_atm =
               std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
           press_atm =
-              eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, ye_atm);
+              eos_3p->press_from_valid_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
         }
 
         const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
@@ -95,13 +94,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
         CCTK_REAL rhomax = eos_3p->rgrho.max;
         CCTK_REAL tempmax = eos_3p->rgtemp.max;
         CCTK_REAL epsmax = rgeps.max;
-        CCTK_REAL yemin = eos_3p->rgye.min; 
+        CCTK_REAL yemin = eos_3p->rgye.min;
+        CCTK_REAL yemax = eos_3p->rgye.max; 
 
         // ----------
         // Floor and ceiling for Ye
         // ----------
       
-        if (YeL > ye_atm) { YeL = ye_atm; }
+        if (YeL > yemax) { YeL = yemax; }
       
         if (YeL < yemin) { YeL = yemin; }
 

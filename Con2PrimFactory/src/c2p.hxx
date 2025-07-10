@@ -103,9 +103,9 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     recomp_eps_press_entropy = true;
   }
 
-  if (pv.Ye > atmo.ye_atmo) {
+  if (pv.Ye > eos_3p->rgye.max) {
 
-    pv.Ye = atmo.ye_atmo;
+    pv.Ye = eos_3p->rgye.max;
     rep.adjust_cons = true;
     recomp_eps_press_entropy = true;
   }
