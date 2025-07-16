@@ -268,10 +268,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
         useLO_1 = true;
       }
 
-      // Remove
-      bool useLO_0 = false;
-      bool useLO_1 = false;
-
       // Lower-order
       if (useLO_0) {
         vec<CCTK_REAL, 2> rhoLO_rc{reconstruct_loworder(rho, p, true, true)};
@@ -320,10 +316,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
       if ((rho_rc(1) <= 0.0) || (entropy_rc(1) <= 0.0) || (Ye_rc(1) <= 0.0) || (press_rc_dummy[1] <= 0.0)) {
         useLO_1 = true;
       }
-
-      // Remove
-      bool useLO_0 = false;
-      bool useLO_1 = false;
 
       // Lower-order
       if (useLO_0) {
