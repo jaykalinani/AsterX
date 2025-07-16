@@ -25,12 +25,13 @@ enum class c2p_first_t { None, Noble, Palenzuela, Entropy };
 enum class c2p_second_t { None, Noble, Palenzuela, Entropy };
 
 enum C2PFlag : CCTK_INT {
-  C2P_FAIL = 0,       // primitives set by atmosphere prescription
+  C2P_INIT = 0,       // initial value
   C2P_PRIME = 1,      // 2‑D Noble solver succeeded
   C2P_SECOND = 2,     // 1‑D Palenzuela solver succeeded
   C2P_ENTROPY = 3,    // 1‑D Entropy (kappa) solver succeeded
   C2P_ATMO = 4,       // when (cv.dens <= sqrt_detg * rho_atmo_cut) is true
-  C2P_AVG = 5         // primitives obtained by neighbour‑averaging
+  C2P_AVG = 5,        // primitives obtained by neighbour‑averaging
+  C2P_FAIL = 6        // when C2P fails
 };
 
 template <typename EOSIDType, typename EOSType>
@@ -196,9 +197,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                        Bup};
 
     /* set flag to success */
-    con2prim_flag(p.I) = 1;
     bool c2p_flag_local = true;
-    CCTK_INT c2p_flag_code = C2P_FAIL;
+    CCTK_INT c2p_flag_code = C2P_INIT;
     bool call_c2p = true;
 
     if (cv.dens <= sqrt_detg * rho_atmo_cut) {
@@ -301,8 +301,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
           c2p_Ent.solve(eos_3p, pv, cv, glo, rep_ent);
            
           if (rep_ent.failed()) {
-
+            
             c2p_flag_local = false;
+            c2p_flag_code = C2P_FAIL;
 
             if (debug_mode) {
               printf("Entropy C2P failed. Setting point to atmosphere.\n");
@@ -351,6 +352,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         } else {
 
           c2p_flag_local = false;
+          c2p_flag_code = C2P_FAIL;
 
           if (debug_mode) {
             printf("Second C2P failed too :( :( \n");
