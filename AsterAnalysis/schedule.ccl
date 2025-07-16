@@ -1,0 +1,31 @@
+#Schedule definitions for thorn AsterAnalysis
+
+if(compute_MHD){
+  SCHEDULE AsterAnalysis_MHD AT analysis 
+  {
+    LANG: C 
+    READS: 
+    WRITES: 
+  }
+  "Compute MHD analysis quantities"
+}
+
+if(compute_MHD_spherical){
+  SCHEDULE AsterAnalysis_MHD_Spherical AT analysis AFTER AsterAnalysis_MHD
+  { 
+    LANG: C
+    READS:  
+    WRITES: 
+  }
+  "Compute MHD analysis quantities in spherical coordinates"
+}
+
+if(compute_VI){
+  SCHEDULE AsterAnalysis_VolumeIntegrals AT analysis AFTER AsterAnalysis_MHD_Spherical 
+  {
+    LANG: C
+    READS:
+    WRITES:
+  }
+  "Compute MHD volume integrals"
+}

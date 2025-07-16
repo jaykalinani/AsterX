@@ -1,0 +1,8 @@
+# Main make.code.defn file for thorn AsterAnalysis
+
+# Source files in this directory
+SRCS = \
+  analysis.cxx
+
+# Subdirectories containing source files
+SUBDIRS =
