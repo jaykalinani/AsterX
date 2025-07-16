@@ -378,10 +378,11 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p) {
     vec<vec<CCTK_REAL, 2>, 3> vels_rc;
     vec<vec<CCTK_REAL, 2>, 3> vlows_rc;
     vec<CCTK_REAL, 2> w_lorentz_rc;
-    array<CCTK_REAL, 2>
-        vels_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
     switch (rec_var) {
     case rec_var_t::v_vec: {
+
+      array<CCTK_REAL, 2>
+          vels_rc_dummy; // note: can't copy array<,2> to vec<,2>, only construct
 
       for (int i = 0; i <= 2; ++i) { // loop over components
         vels_rc_dummy = reconstruct_pt(gf_vels(i), p, false, false);
