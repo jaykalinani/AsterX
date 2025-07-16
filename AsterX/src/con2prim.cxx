@@ -26,10 +26,11 @@ enum class c2p_second_t { None, Noble, Palenzuela, Entropy };
 
 enum C2PFlag : CCTK_INT {
   C2P_FAIL = 0,       // primitives set by atmosphere prescription
-  C2P_NOBLE = 1,      // 2‑D Noble solver succeeded
-  C2P_PALENZUELA = 2, // 1‑D Palenzuela solver succeeded
+  C2P_PRIME = 1,      // 2‑D Noble solver succeeded
+  C2P_SECOND = 2,     // 1‑D Palenzuela solver succeeded
   C2P_ENTROPY = 3,    // 1‑D Entropy (kappa) solver succeeded
-  C2P_AVG = 4         // primitives obtained by neighbour‑averaging
+  C2P_ATMO = 4,       // when (cv.dens <= sqrt_detg * rho_atmo_cut) is true
+  C2P_AVG = 5         // primitives obtained by neighbour‑averaging
 };
 
 template <typename EOSIDType, typename EOSType>
@@ -197,13 +198,14 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     /* set flag to success */
     con2prim_flag(p.I) = 1;
     bool c2p_flag_local = true;
-    int c2p_flag_code = C2P_FAIL;
+    CCTK_INT c2p_flag_code = C2P_FAIL;
     bool call_c2p = true;
 
     if (cv.dens <= sqrt_detg * rho_atmo_cut) {
       pv.Bvec = Bup;
       atmo.set(pv, cv, glo);
       atmo.set(pv_seeds);
+      c2p_flag_code = C2P_ATMO;
       call_c2p = false;
     }
 
@@ -239,23 +241,18 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     if (call_c2p) {
 
       // Calling the first C2P
+      c2p_flag_code = C2P_PRIME;
       switch (c2p_fir) {
       case c2p_first_t::Noble: {
         c2p_Noble.solve(eos_3p, pv, pv_seeds, cv, glo, rep_first);
-        if (!rep_first.failed())
-          c2p_flag_code = C2P_NOBLE;
         break;
       }
       case c2p_first_t::Palenzuela: {
         c2p_Pal.solve(eos_3p, pv, cv, glo, rep_first);
-        if (!rep_first.failed())
-          c2p_flag_code = C2P_PALENZUELA;
         break;
       }
       case c2p_first_t::Entropy: {
         c2p_Ent.solve(eos_3p, pv, cv, glo, rep_first);
-        if (!rep_first.failed())
-          c2p_flag_code = C2P_ENTROPY;
         break;
       }
       case c2p_first_t::None: {
@@ -267,6 +264,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       }
 
       if (rep_first.failed()) {
+        c2p_flag_code = C2P_SECOND;
         if (debug_mode) {
           printf("First C2P failed :( \n");
           rep_first.debug_message();
@@ -276,20 +274,14 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         switch (c2p_sec) {
         case c2p_second_t::Noble: {
           c2p_Noble.solve(eos_3p, pv, pv_seeds, cv, glo, rep_second);
-          if (!rep_second.failed())
-            c2p_flag_code = C2P_NOBLE;
           break;
         }
         case c2p_second_t::Palenzuela: {
           c2p_Pal.solve(eos_3p, pv, cv, glo, rep_second);
-          if (!rep_second.failed())
-            c2p_flag_code = C2P_PALENZUELA;
           break;
         }
         case c2p_second_t::Entropy: {
           c2p_Ent.solve(eos_3p, pv, cv, glo, rep_second);
-          if (!rep_second.failed())
-            c2p_flag_code = C2P_ENTROPY;
           break;
         }
         case c2p_second_t::None: {
@@ -304,12 +296,11 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       if (rep_first.failed() && rep_second.failed()) {
 
         if (use_entropy_fix) {
-
+          
+          c2p_flag_code = C2P_ENTROPY; 
           c2p_Ent.solve(eos_3p, pv, cv, glo, rep_ent);
-
-          if (!rep_ent.failed()) {
-            c2p_flag_code = C2P_ENTROPY;
-          } else {
+           
+          if (rep_ent.failed()) {
 
             c2p_flag_local = false;
 
