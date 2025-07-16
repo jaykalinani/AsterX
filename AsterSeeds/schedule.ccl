@@ -123,7 +123,6 @@ if (set_Ye_postinitial) {
   SCHEDULE SetYe IN HydroBaseX_PostInitial
   {
     LANG: C
-    READS: HydroBaseX::Ye(everywhere)
     WRITES: HydroBaseX::Ye(everywhere)
   
   } "Set initial Ye"
@@ -134,7 +133,6 @@ if (set_temperature_postinitial) {
   {
     LANG: C 
     READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
-    READS: HydroBaseX::temperature(everywhere)
     WRITES: HydroBaseX::temperature(everywhere) HydroBaseX::eps(everywhere)
   
   } "Set initial temperature"
@@ -145,7 +143,6 @@ if (set_entropy_postinitial) {
   {
     LANG: C
     READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere)
-    READS: HydroBaseX::entropy(everywhere)
     WRITES: HydroBaseX::entropy(everywhere) HydroBaseX::eps(everywhere)
   
   } "Set initial entropy"
