@@ -24,6 +24,14 @@ enum class eos_3param { IdealGas, Hybrid, Tabulated };
 enum class c2p_first_t { None, Noble, Palenzuela, Entropy };
 enum class c2p_second_t { None, Noble, Palenzuela, Entropy };
 
+enum C2PFlag : CCTK_INT {
+  C2P_FAIL = 0,       // primitives set by atmosphere prescription
+  C2P_NOBLE = 1,      // 2‑D Noble solver succeeded
+  C2P_PALENZUELA = 2, // 1‑D Palenzuela solver succeeded
+  C2P_ENTROPY = 3,    // 1‑D Entropy (kappa) solver succeeded
+  C2P_AVG = 4         // primitives obtained by neighbour‑averaging
+};
+
 template <typename EOSIDType, typename EOSType>
 void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                              EOSType *eos_3p) {
@@ -189,6 +197,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     /* set flag to success */
     con2prim_flag(p.I) = 1;
     bool c2p_flag_local = true;
+    int c2p_flag_code = C2P_FAIL;
     bool call_c2p = true;
 
     if (cv.dens <= sqrt_detg * rho_atmo_cut) {
@@ -233,14 +242,20 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       switch (c2p_fir) {
       case c2p_first_t::Noble: {
         c2p_Noble.solve(eos_3p, pv, pv_seeds, cv, glo, rep_first);
+        if (!rep_first.failed())
+          c2p_flag_code = C2P_NOBLE;
         break;
       }
       case c2p_first_t::Palenzuela: {
         c2p_Pal.solve(eos_3p, pv, cv, glo, rep_first);
+        if (!rep_first.failed())
+          c2p_flag_code = C2P_PALENZUELA;
         break;
       }
       case c2p_first_t::Entropy: {
         c2p_Ent.solve(eos_3p, pv, cv, glo, rep_first);
+        if (!rep_first.failed())
+          c2p_flag_code = C2P_ENTROPY;
         break;
       }
       case c2p_first_t::None: {
@@ -261,14 +276,20 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
         switch (c2p_sec) {
         case c2p_second_t::Noble: {
           c2p_Noble.solve(eos_3p, pv, pv_seeds, cv, glo, rep_second);
+          if (!rep_second.failed())
+            c2p_flag_code = C2P_NOBLE;
           break;
         }
         case c2p_second_t::Palenzuela: {
           c2p_Pal.solve(eos_3p, pv, cv, glo, rep_second);
+          if (!rep_second.failed())
+            c2p_flag_code = C2P_PALENZUELA;
           break;
         }
         case c2p_second_t::Entropy: {
           c2p_Ent.solve(eos_3p, pv, cv, glo, rep_second);
+          if (!rep_second.failed())
+            c2p_flag_code = C2P_ENTROPY;
           break;
         }
         case c2p_second_t::None: {
@@ -286,7 +307,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
           c2p_Ent.solve(eos_3p, pv, cv, glo, rep_ent);
 
-          if (rep_ent.failed()) {
+          if (!rep_ent.failed()) {
+            c2p_flag_code = C2P_ENTROPY;
+          } else {
 
             c2p_flag_local = false;
 
@@ -387,7 +410,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       }
     }
 
-    con2prim_flag(p.I) = c2p_flag_local;
+    con2prim_flag(p.I) = c2p_flag_code;
 
     // ----- ----- C2P ----- -----
 
@@ -484,7 +507,7 @@ extern "C" void AsterX_Con2Prim_Interpolate_Failed(CCTK_ARGUMENTS) {
   grid.loop_int_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        if (con2prim_flag(p.I) == 0) {
+        if (con2prim_flag(p.I) == C2P_FAIL) {
 
           const vec<CCTK_REAL, 6> flag_nbs = get_neighbors(con2prim_flag, p);
           const vec<CCTK_REAL, 6> rho_nbs = get_neighbors(rho, p);
@@ -509,7 +532,7 @@ extern "C" void AsterX_Con2Prim_Interpolate_Failed(CCTK_ARGUMENTS) {
           press(p.I) = (gl_gamma - 1) * eps(p.I) * rho(p.I);
 
           /* reset flag */
-          con2prim_flag(p.I) = 1;
+          con2prim_flag(p.I) = C2P_AVG;
 
           // set to atmos
           /*
