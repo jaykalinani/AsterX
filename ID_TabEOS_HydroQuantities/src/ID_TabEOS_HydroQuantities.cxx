@@ -44,11 +44,6 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_Y_e(CCTK_ARGUMENTS) {
     id_ye_reader->init(nrho, Y_e_file, eos_3p_tab3d->interptable->x[0],
                        interp_stencil_size); // eg. logrho array
 
-    // CCTK_REAL Y_etest = 
-    // id_ye_reader->interpolate_1d_quantity_as_function_of_rho(
-    //     interp_stencil_size, nrho, 4.5e-4);
-    // printf("Outside Loop: Y_e test = %e\n", Y_etest);
-
     // Close the file
     fclose(Y_e_file);
 
@@ -56,12 +51,6 @@ extern "C" void ID_TabEOS_HydroQuantities__initial_Y_e(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-
-          // const CCTK_REAL Y_etestin =
-          // id_ye_reader->interpolate_1d_quantity_as_function_of_rho(
-          //     interp_stencil_size, nrho, 4.5e-4);
-          // if (Y_etestin != Y_etest) 
-          //   printf("Inside Loop Issue! Y_e test = %e\n", Y_etestin);
 
           if (rho(p.I) > rho_abs_min * (1 + atmo_tol)) {
             // Interpolate Y_e(rho_i) at gridpoint i
@@ -135,22 +124,21 @@ ID_TabEOS_HydroQuantities__recompute_HydroBase_variables(CCTK_ARGUMENTS) {
   auto eos_3p_tab3d = global_eos_3p_tab3d;
 
   // table minimum values
-  const CCTK_REAL Tmin = eos_3p_tab3d->interptable->xmin<1>();
-  const CCTK_REAL rho_min = eos_3p_tab3d->interptable->xmin<0>();
-  const CCTK_REAL Ye_min = eos_3p_tab3d->interptable->xmin<2>();
-  const CCTK_REAL Ye_max = eos_3p_tab3d->interptable->xmax<2>();
+  const CCTK_REAL Tmin    = eos_3p_tab3d->rgtemp.min;
+  const CCTK_REAL rho_min = eos_3p_tab3d->rgrho.min;
+  const CCTK_REAL Ye_min  = eos_3p_tab3d->rgye.min;
+  const CCTK_REAL Ye_max  = eos_3p_tab3d->rgye.max;
+  const CCTK_REAL eps_min = eos_3p_tab3d->rgeps.min;
 
   // compute P_min from table at (rho_min, Tmin, Ye_min)
   const CCTK_REAL P_min =
-      eos_3p_tab3d->press_from_valid_rho_temp_ye(exp(rho_min), exp(Tmin), Ye_min);
-
-  const CCTK_REAL eps_min = eos_3p_tab3d->rgeps.min;
-  CCTK_VINFO("Table lims: Tmin = %e; rho_min = %e; Ye_min = %e, Ye_max = %e; P_min = %e; eps_min = %e", Tmin, rho_min, Ye_min, Ye_max, P_min, eps_min);
+      eos_3p_tab3d->press_from_valid_rho_temp_ye(rho_min, Tmin, Ye_min);
 
   // Loop over the grid, recomputing the HydroBase quantities
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+
         // Find Atmospheric Density
         CCTK_REAL rhoL = rho(p.I);
         CCTK_REAL tempL = temperature(p.I);
@@ -213,10 +201,6 @@ ID_TabEOS_HydroQuantities__recompute_HydroBase_variables(CCTK_ARGUMENTS) {
           velx(p.I) = 0.0;
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
-        }
-
-        if (rho(p.I) > 1e-10) {
-          printf("Post ID_Tab: rho = %e; T = %e; Ye = %e; eps = %e; press = %e;\n", rho(p.I), temperature(p.I), Ye(p.I), eps(p.I), press(p.I));
         }
 
       });

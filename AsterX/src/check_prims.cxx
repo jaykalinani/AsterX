@@ -225,10 +225,6 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
         Ye(p.I) = YeL;
         temperature(p.I) = tempL;
 
-        if (rhoL > 1e-10) {
-          printf("Post check prims: rho = %e; T = %e; Ye = %e; eps = %e; press = %e;\n", rho(p.I), temperature(p.I), Ye(p.I), eps(p.I), press(p.I));
-        }
-
         saved_rho(p.I) = rhoL;
         saved_velx(p.I) = v_up(0);
         saved_vely(p.I) = v_up(1);
