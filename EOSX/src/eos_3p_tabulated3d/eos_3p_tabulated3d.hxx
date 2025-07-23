@@ -98,10 +98,9 @@ public:
         (CCTK_REAL *)amrex::The_Managed_Arena()->alloc(sizeof(CCTK_REAL));
 
     static const char *dnames[NTABLES] = {
-        "logpress", "logenergy", "entropy", "munu", "cs2",  "dedt",
-        "dpdrhoe",  "dpderho",   "muhat",   "mu_e", "mu_p", "mu_n",
-        "Xa",       "Xh",        "Xn",      "Xp",   "Abar", "Zbar",
-        "gamma"};
+        "logpress", "logenergy", "entropy", "munu", "cs2",  "dedt", "dpdrhoe",
+        "dpderho",  "muhat",     "mu_e",    "mu_p", "mu_n", "Xa",   "Xh",
+        "Xn",       "Xp",        "Abar",    "Zbar", "gamma"};
 
 #ifdef H5_HAVE_PARALLEL
     get_hdf5_real_dset(file_id, "logrho", nrho, logrho);

@@ -68,7 +68,7 @@ public:
   interpolate_1d_quantity_as_function_of_rho(const int interp_stencil_size,
                                              const int numlines_in_file,
                                              const CCTK_REAL rho) {
-                                             //CCTK_REAL *restrict f_of_rho) {
+    // CCTK_REAL *restrict f_of_rho) {
 
     // First find the central interpolation stencil index:
     int idx = bisection_idx_finder(rho, numlines_in_file, rho_arr);
