@@ -97,7 +97,8 @@ public:
     static const char *dnames[NTABLES] = {
         "logpress", "logenergy", "entropy", "munu", "cs2",  "dedt",
         "dpdrhoe",  "dpderho",   "muhat",   "mu_e", "mu_p", "mu_n",
-        "Xa",       "Xh",        "Xn",      "Xp",   "Abar", "Zbar"};
+        "Xa",       "Xh",        "Xn",      "Xp",   "Abar", "Zbar",
+        "gamma"};
 
 #ifdef H5_HAVE_PARALLEL
     get_hdf5_real_dset(file_id, "logrho", nrho, logrho);
@@ -333,6 +334,7 @@ public:
       eps_min = std::fmin(eps_min, val);
       eps_max = std::fmax(eps_max, val);
     }
+    eps_min = std::fmax(eps_min, 1e-15); // Force eps positive
     return range{eps_min, eps_max};
   }
 
