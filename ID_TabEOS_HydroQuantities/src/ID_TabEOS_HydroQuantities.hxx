@@ -6,19 +6,6 @@
 #include "AMReX.H"
 #include <array>
 
-//------ EOS_Omni stuff ------
-// namespace nuc_eos {
-//  extern double eos_yemin, eos_yemax;
-//  extern double eos_rhomin, eos_rhomax;
-//  extern double eos_tempmin, eos_tempmax;
-//}
-//
-// namespace nuc_eos_private {
-//  extern int nrho;
-//  extern double *restrict logrho;
-//}
-//----------------------------
-
 // EOSX Stuff
 #include "setup_eos.hxx"
 namespace ID_TabEOS_HydroQuantities {
@@ -32,10 +19,6 @@ private:
   double *rho_arr;
   FILE *in1D;
   int nrho;
-
-  // Interpolation Helpers
-  // double *rho_sample;
-  // double *l_i_of_r;
 
 public:
   bool interp_err{false};
@@ -57,17 +40,6 @@ public:
 
     // Init Y_e array
     read_1dfile__set_array();
-
-    // printf("rho  |  Ye  \n");
-    // for (int i = 0; i < nrho; i++) {
-    //   printf("%e | %e\n", rho_arr[i], Ye_rho_arr[i]);
-    // }
-
-    // Init Interpolation Helpers
-    // rho_sample =
-    //     (double *)The_Managed_Arena()->alloc(stencil_size * sizeof(double));
-    // l_i_of_r =
-    //     (double *)The_Managed_Arena()->alloc(stencil_size * sizeof(double));
 
     return;
   }
