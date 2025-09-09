@@ -222,7 +222,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
 
           // TODO: compute eps using EOS driver
           // for now, using ideal gas EOS
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
@@ -269,7 +269,7 @@ extern "C" void Tests2D_Initialize(CCTK_ARGUMENTS) {
           vely(p.I) = 0.5 * epsilon * (sin(kx) - sin(-kx) )*exp(-arg);
           velz(p.I) = 0.0;
 
-          eps(p.I) = eos_th.eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
+          eps(p.I) = eos_3p_ig->eps_from_valid_rho_press_ye(rho(p.I), press(p.I),
                                                         dummy_ye);
         });
 
