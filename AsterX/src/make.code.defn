@@ -5,13 +5,9 @@ SRCS = \
   computeBfromA.cxx \
   con2prim.cxx \
   estimate_error.cxx \
-  fluxes.cxx \
   check_prims.cxx \
   prim2con.cxx \
-  rhs.cxx \
   sync.cxx \
-  source.cxx \
-  tmunu.cxx \
   test.cxx
 
 # Subdirectories containing source files
