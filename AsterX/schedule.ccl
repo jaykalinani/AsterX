@@ -183,6 +183,7 @@ SCHEDULE AsterX_Sync IN ODESolvers_PostStep
   LANG: C
   OPTIONS: global
   SYNC: cons_vector Avec_x Avec_y Avec_z Psi
+  SYNC: saved_prims
 } "Synchronize"
 
 SCHEDULE AsterX_Sync AT post_recover_variables BEFORE ODESolvers_PostStep AFTER AsterX_TouchNonEvolVarsGroup
