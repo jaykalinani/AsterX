@@ -147,9 +147,10 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_temp_ent(CCTK_ARGUMENTS) {
         }
 
         if (temperature(p.I) < 0.0) {
-          printf("Negative input for temperature at I=%d (x=%.5e y=%.5e "
-                 "z=%.5e): temp=%.5e\n",
-                 p.I, p.x, p.y, p.z, temperature(p.I));
+          printf("Negative input for temperature at I=(%d,%d,%d) "
+                 "(x=%.5e y=%.5e z=%.5e): temp=%.5e\n",
+                 p.I[0], p.I[1], p.I[2], p.x, p.y, p.z,
+                 temperature(p.I));
         }
       });
 }
