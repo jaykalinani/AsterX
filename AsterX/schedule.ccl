@@ -182,6 +182,7 @@ SCHEDULE AsterX_Sync IN ODESolvers_PostStep
 {
   LANG: C
   OPTIONS: global
+  SYNC: saved_prims
   SYNC: cons_vector Avec_x Avec_y Avec_z Psi
   SYNC: saved_prims
 } "Synchronize"
