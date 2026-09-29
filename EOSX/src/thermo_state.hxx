@@ -4,6 +4,7 @@
 #include <cctk.h>
 
 #include <cmath>
+#include <limits>
 
 #include "eos_3p.hxx"
 
@@ -115,6 +116,9 @@ state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
     // Stable EOSs have dh/deps = 1 + (dP/deps)/rho > 0. Keep a bracket
     // around the solution and fall back to its midpoint if a Newton step
     // would leave the local EOS range.
+    const CCTK_REAL htol =
+        32.0 * std::numeric_limits<CCTK_REAL>::epsilon() *
+        fmax(1.0, fabs(enthalpy));
     for (CCTK_INT n = 0; n < 32; ++n) {
       CCTK_REAL press;
       CCTK_REAL dpdrho;
@@ -122,6 +126,9 @@ state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
       eos->press_derivs_from_rho_eps_ye(press, dpdrho, dpdeps, rho_limited,
                                         eps, Ye_limited);
       const CCTK_REAL f = 1.0 + eps + press / rho_limited - enthalpy;
+      if (fabs(f) <= htol) {
+        break;
+      }
       if (f < 0.0) {
         eps_lo = eps;
       } else {
