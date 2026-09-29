@@ -25,6 +25,7 @@ struct thermo_state_derivs {
   CCTK_REAL dpdrho;
   CCTK_REAL dpdeps;
   bool enthalpy_clipped;
+  bool enthalpy_converged;
 };
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
@@ -83,6 +84,37 @@ state_from_rho_press_ye(const EOSType *eos, const CCTK_REAL rho,
   return state_from_rho_eps_ye(eos, rho_limited, eps, Ye_limited);
 }
 
+// Raise temperature to meet a pressure floor without assuming that P -> T
+// is unique. The bracket stays above the original temperature. The caller
+// must check whether the returned pressure actually satisfies the floor.
+template <typename EOSType>
+CCTK_HOST CCTK_DEVICE inline thermo_state
+state_with_temp_press_floor(const EOSType *eos, const CCTK_REAL rho,
+                            const CCTK_REAL temperature, const CCTK_REAL Ye,
+                            const CCTK_REAL press_min) {
+  auto state = state_from_rho_temp_ye(eos, rho, temperature, Ye);
+  if (state.press >= press_min)
+    return state;
+  CCTK_REAL temp_lo = state.temperature;
+  CCTK_REAL temp_hi = eos->rgtemp.max;
+  auto state_hi = state_from_rho_temp_ye(eos, state.rho, temp_hi, state.Ye);
+  if (state_hi.press < press_min)
+    return state_hi;
+  for (CCTK_INT n = 0; n < 64; ++n) {
+    const CCTK_REAL temp_mid = temp_lo + 0.5 * (temp_hi - temp_lo);
+    if (temp_mid == temp_lo || temp_mid == temp_hi)
+      break;
+    state = state_from_rho_temp_ye(eos, state.rho, temp_mid, state.Ye);
+    if (state.press < press_min) {
+      temp_lo = temp_mid;
+    } else {
+      temp_hi = temp_mid;
+      state_hi = state;
+    }
+  }
+  return state_hi;
+}
+
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline thermo_state_derivs
 state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
@@ -119,7 +151,7 @@ state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
     const CCTK_REAL htol =
         32.0 * std::numeric_limits<CCTK_REAL>::epsilon() *
         fmax(1.0, fabs(enthalpy));
-    for (CCTK_INT n = 0; n < 32; ++n) {
+    for (CCTK_INT n = 0; n < 80; ++n) {
       CCTK_REAL press;
       CCTK_REAL dpdrho;
       CCTK_REAL dpdeps;
@@ -137,7 +169,7 @@ state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
 
       const CCTK_REAL dhdeps = 1.0 + dpdeps / rho_limited;
       const CCTK_REAL eps_newton = eps - f / dhdeps;
-      const bool use_newton = std::isfinite(eps_newton) &&
+      const bool use_newton = dhdeps > 0.0 && std::isfinite(eps_newton) &&
                               eps_newton > eps_lo && eps_newton < eps_hi;
       eps = use_newton ? eps_newton : 0.5 * (eps_lo + eps_hi);
     }
@@ -150,6 +182,15 @@ state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
       result.state.press, result.dpdrho, result.dpdeps, result.state.rho,
       result.state.eps, result.state.Ye);
   result.enthalpy_clipped = enthalpy_clipped;
+  const CCTK_REAL h_result = 1.0 + result.state.eps +
+                             result.state.press / result.state.rho;
+  const CCTK_REAL h_target = fmin(fmax(enthalpy, hmin), hmax);
+  result.enthalpy_converged = std::isfinite(enthalpy) &&
+      std::isfinite(h_result) && std::isfinite(result.dpdrho) &&
+      std::isfinite(result.dpdeps) &&
+      fabs(h_result - h_target) <=
+          128.0 * std::numeric_limits<CCTK_REAL>::epsilon() *
+              fmax(1.0, fabs(h_target));
   return result;
 }
 
