@@ -354,12 +354,18 @@ public:
     const CCTK_REAL lr = std::log(r);
     CCTK_REAL epsL = eps;
     const CCTK_REAL lt = logtemp_from_rho_eps_ye(r, epsL, y);
-    const auto vars =
-        interptable->interpolate<EV::PRESS, EV::DPDRHOE, EV::DPDERHO>(lr, lt,
-                                                                     y);
-    press = exp(vars[0]);
-    dpdrho = vars[1];
-    dpdeps = vars[2];
+    const auto p = interptable->interpolate_with_derivs<EV::PRESS>(lr, lt, y);
+    const auto e = interptable->interpolate_with_derivs<EV::EPS>(lr, lt, y);
+    press = exp(p[0]);
+    // Differentiate the interpolants used by the EOS, including for CompOSE
+    // tables without derivative columns. Coordinates are log(rho), log(T), Ye.
+    // Convert from fixed T to fixed physical eps with the chain rule.
+    if (!(e[2] > 0.0) || !std::isfinite(e[2])) {
+      dpdrho = dpdeps = std::numeric_limits<CCTK_REAL>::quiet_NaN();
+      return;
+    }
+    dpdeps = press / exp(e[0]) * p[2] / e[2];
+    dpdrho = press / r * (p[1] - p[2] * e[1] / e[2]);
   }
 
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
