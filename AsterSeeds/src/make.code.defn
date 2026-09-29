@@ -2,6 +2,7 @@
 
 # Source files in this directory
 SRCS =	\
+  test.cxx \
   1D_tests.cxx \
   2D_tests.cxx \
   3D_tests.cxx \

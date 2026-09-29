@@ -1,5 +1,13 @@
 #Schedule definitions for thorn AsterSeeds
 
+if (unit_test) {
+  SCHEDULE AsterSeeds_Test AT CCTK_WRAGH AFTER EOSX_Setup_EOS
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Test thermodynamic closure used after seeding adjustments"
+}
+
 STORAGE: Avec_cent
 
 STORAGE: CoM_NS1
