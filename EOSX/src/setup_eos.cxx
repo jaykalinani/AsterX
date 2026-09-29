@@ -31,6 +31,9 @@ eos_3p_tabulated3d *global_eos_3p_tab3d = nullptr;
 
 template <typename EOSType>
 void report_eos_bounds(const EOSType *eos) {
+  if (!(eos->rgeps.min > -1.0))
+    CCTK_ERROR("The GRMHD energy convention requires 1 + physical eps > 0 "
+               "throughout the supported EOS domain");
   CCTK_VINFO("Effective evolution EOS bounds: rho=[%.16e, %.16e] "
              "T=[%.16e, %.16e] Ye=[%.16e, %.16e] "
              "physical eps=[%.16e, %.16e]",
