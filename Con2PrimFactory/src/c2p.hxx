@@ -433,11 +433,13 @@ c2p::cons_floors_and_ceilings(const EOSType *eos_3p, cons_vars &cv,
   // Lower limit on tau/conserved internal energy
   // Based on Appendix A of https://arxiv.org/pdf/1112.0568
 
-  // Estimate rho and Ye before C2P and obtain the local physical eps range.
-  // This permits tabulated EOSs whose physical eps minimum is negative.
+  // Estimate rho and Ye for a possible repair. The local minimum at this
+  // estimated density is not an admissibility bound for every recovered rho.
+  // Following FIL, use the global physical minimum to decide whether a
+  // repair is necessary, then use the local minimum for the repaired state.
   const CCTK_REAL rhoL =
       cv.dens > 0.0
-          ? fmin(fmax(cv.dens / (sqrt_detg * w_lim), eos_3p->rgrho.min),
+          ? fmin(fmax(cv.dens / sqrt_detg, eos_3p->rgrho.min),
                  eos_3p->rgrho.max)
           : eos_3p->rgrho.min;
   const CCTK_REAL YeL =
@@ -450,11 +452,11 @@ c2p::cons_floors_and_ceilings(const EOSType *eos_3p, cons_vars &cv,
   const vec<CCTK_REAL, 3> B_low = calc_contraction(glo, cv.dBvec);
   const CCTK_REAL BsqL = calc_contraction(B_low, cv.dBvec);
   const CCTK_REAL tau_lim =
-      0.5 * BsqL / sqrt_detg + cv.dens * rgeps.min +
-      sqrt_detg * tauFluid_atmo;
+      0.5 * BsqL / sqrt_detg + cv.dens * fmin(0.0, eos_3p->rgeps.min);
 
   if (cv.tau < tau_lim) {
-    cv.tau = tau_lim;
+    cv.tau = 0.5 * BsqL / sqrt_detg + cv.dens * rgeps.min +
+             sqrt_detg * tauFluid_atmo;
   }
 
   // Dominant energy condition
