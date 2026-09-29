@@ -27,6 +27,18 @@ STORAGE: LOflag etac
 STORAGE: theta_x theta_y theta_z theta_tot
 
 
+# Without subcycling, AsterX_RestrictFluxes hands the coarse RHS the fine
+# fluxes on every fine-covered face, so the driver's flux register (which
+# ODESolvers also feeds without subcycling) only accumulates round-off.
+if(restrict_fluxes && !use_subcycling && !freeze_evolution)
+{
+  SCHEDULE AsterX_CheckRedundantReflux AT CCTK_PARAMCHECK
+  {
+    LANG: C
+    OPTIONS: global
+  } "Warn that CarpetX::do_reflux is redundant with restrict_fluxes without subcycling"
+}
+
 if(unit_test)
 {
   SCHEDULE AsterX_Test AT wragh
@@ -410,7 +422,7 @@ SCHEDULE AsterX_CalcAuxTermsForAvecPsiRHS IN AsterX_FluxGroup AFTER AsterX_Fluxe
   WRITES: Fx_stag(everywhere) Fy_stag(everywhere) Fz_stag(everywhere)
 } "Calculate the auxiliary terms for the rhs of Avec and Psi"
 
-if(restrict_fluxes && !use_subcycling) {
+if(restrict_aux_terms && !use_subcycling) {
 SCHEDULE AsterX_RestrictAuxTermsForAvecPsiRHS IN AsterX_FluxGroup AFTER AsterX_CalcAuxTermsForAvecPsiRHS
 {
   LANG: C
