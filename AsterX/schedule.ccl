@@ -324,19 +324,37 @@ SCHEDULE GROUP AsterX_FluxGroup IN AsterX_RHSGroup
 
 if(interpolate_failed_c2p)
 {
+  STORAGE: c2p_saved
+
+  SCHEDULE AsterX_SaveC2P IN AsterX_FluxGroup BEFORE AsterX_Con2Prim_Interpolate_Failed
+  {
+    LANG: C
+    READS: con2prim_flag(everywhere)
+    READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::Ye(everywhere) HydroBaseX::vel(everywhere)
+    WRITES: c2p_saved(everywhere)
+    SYNC: c2p_saved
+  } "Freeze neighbour inputs before repairing failed C2P points"
+
   SCHEDULE AsterX_Con2Prim_Interpolate_Failed IN AsterX_FluxGroup BEFORE AsterX_Fluxes
   {
     LANG: C
     READS: ADMBaseX::metric(interior)
     READS: con2prim_flag(interior)
+    READS: c2p_saved(everywhere)
+    READS: HydroBaseX::Ye(interior) HydroBaseX::temperature(interior) HydroBaseX::entropy(interior)
+    READS: diagnostics(interior) zvec(interior) svec(interior)
     READS: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior) HydroBaseX::Bvec(interior)
     READS: saved_prims(interior)
     READS: cons_vector(interior)
     WRITES: con2prim_flag(interior)
+    WRITES: HydroBaseX::Ye(interior) HydroBaseX::temperature(interior) HydroBaseX::entropy(interior) HydroBaseX::Bvec(interior)
+    WRITES: diagnostics(interior) zvec(interior) svec(interior)
     WRITES: HydroBaseX::rho(interior) HydroBaseX::vel(interior) HydroBaseX::eps(interior) HydroBaseX::press(interior)
     WRITES: saved_prims(interior)
     WRITES: cons_vector(interior)
     SYNC: con2prim_flag
+    SYNC: HydroBaseX::Ye HydroBaseX::temperature HydroBaseX::entropy HydroBaseX::Bvec
+    SYNC: diagnostics zvec svec
     SYNC: HydroBaseX::rho HydroBaseX::vel HydroBaseX::eps HydroBaseX::press
     SYNC: saved_prims
     SYNC: cons_vector
