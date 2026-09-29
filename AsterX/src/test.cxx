@@ -29,6 +29,7 @@ extern "C" void AsterX_Test(CCTK_ARGUMENTS) {
 
     test_uct_edge_speed_envelope();
     test_hlle();
+    test_thermo();
 
   } else {
     CCTK_INFO("Skipping unit tests");
