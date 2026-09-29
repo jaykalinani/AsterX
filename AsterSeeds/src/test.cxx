@@ -24,7 +24,9 @@ template <typename EOSType> void test_closure(const EOSType *eos) {
         changed.rho, eps, changed.Ye);
     const auto recovered = state_from_rho_eps_ye(
         eos, changed.rho, changed.eps, changed.Ye);
-    if (!std::isfinite(changed.kappa) ||
+    if (!std::isfinite(changed.kappa) || !std::isfinite(kappa) ||
+        !std::isfinite(state.temperature) ||
+        !std::isfinite(recovered.temperature) ||
         fabs(changed.kappa - kappa) > 1.0e-10 * fmax(1.0, fabs(kappa)) ||
         fabs(recovered.temperature - state.temperature) >
             1.0e-7 * fmax(state.temperature, 1.0e-12))
