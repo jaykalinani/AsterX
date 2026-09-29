@@ -511,6 +511,12 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     CCTK_ERROR("Tabulated3d does not support eps_from_rho_press_ye; set "
                "Con2PrimFactory::use_press_atmo = no.");
   }
+  // These parameters are steerable, so retain the check after startup too.
+  if (CCTK_EQUALS(evolution_eos, "Tabulated3d") &&
+      (use_entropy_fix || CCTK_EQUALS(c2p_prime, "Entropy") ||
+       CCTK_EQUALS(c2p_second, "Entropy"))) {
+    CCTK_ERROR("Tabulated3d does not implement entropy C2P inversions.");
+  }
 
   // defining EOS objects
   eos_3param eos_3p_type;
@@ -531,7 +537,10 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     auto eos_1p_poly = global_eos_1p_poly;
     auto eos_3p_ig = global_eos_3p_ig;
 
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_ig);
+    if (global_eos_1p_pwpoly)
+      AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, global_eos_1p_pwpoly, eos_3p_ig);
+    else
+      AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_ig);
     break;
   }
   case eos_3param::Hybrid: {
@@ -569,7 +578,10 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
     auto eos_1p_poly = global_eos_1p_poly;
     auto eos_3p_tab3d = global_eos_3p_tab3d;
 
-    AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_tab3d);
+    if (global_eos_1p_pwpoly)
+      AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, global_eos_1p_pwpoly, eos_3p_tab3d);
+    else
+      AsterX_Con2Prim_typeEoS(CCTK_PASS_CTOC, eos_1p_poly, eos_3p_tab3d);
     break;
   }
   default:

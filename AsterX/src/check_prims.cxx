@@ -147,7 +147,10 @@ extern "C" void AsterX_CheckPrims(CCTK_ARGUMENTS) {
     auto eos_1p_poly = global_eos_1p_poly;
     auto eos_3p_ig = global_eos_3p_ig;
 
-    CheckPrims(cctkGH, eos_1p_poly, eos_3p_ig);
+    if (global_eos_1p_pwpoly)
+      CheckPrims(cctkGH, global_eos_1p_pwpoly, eos_3p_ig);
+    else
+      CheckPrims(cctkGH, eos_1p_poly, eos_3p_ig);
     break;
   }
   case eos_3param::Hybrid: {
@@ -185,7 +188,10 @@ extern "C" void AsterX_CheckPrims(CCTK_ARGUMENTS) {
     auto eos_1p_poly = global_eos_1p_poly;
     auto eos_3p_tab3d = global_eos_3p_tab3d;
 
-    CheckPrims(cctkGH, eos_1p_poly, eos_3p_tab3d);
+    if (global_eos_1p_pwpoly)
+      CheckPrims(cctkGH, global_eos_1p_pwpoly, eos_3p_tab3d);
+    else
+      CheckPrims(cctkGH, eos_1p_poly, eos_3p_tab3d);
     break;
   }
   default:
