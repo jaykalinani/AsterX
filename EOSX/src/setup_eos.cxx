@@ -29,6 +29,15 @@ eos_3p_hybrid_poly *global_eos_3p_hyb_poly = nullptr;
 eos_3p_hybrid_pwpoly *global_eos_3p_hyb_pwpoly = nullptr;
 eos_3p_tabulated3d *global_eos_3p_tab3d = nullptr;
 
+template <typename EOSType>
+void report_eos_bounds(const EOSType *eos) {
+  CCTK_VINFO("Effective evolution EOS bounds: rho=[%.16e, %.16e] "
+             "T=[%.16e, %.16e] Ye=[%.16e, %.16e] "
+             "physical eps=[%.16e, %.16e]",
+             eos->rgrho.min, eos->rgrho.max, eos->rgtemp.min, eos->rgtemp.max,
+             eos->rgye.min, eos->rgye.max, eos->rgeps.min, eos->rgeps.max);
+}
+
 enum class eos_table_format { StellarCollapse = 0, Compose = 1 };
 
 static inline eos_table_format
@@ -157,12 +166,22 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
 
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
+    if (!(gl_gamma > 1.0) || !(particle_mass > 0.0) ||
+        !(rho_min > 0.0 && rho_max >= rho_min) ||
+        !(eps_min >= 0.0 && eps_max >= eps_min) || !(ye_max >= ye_min))
+      CCTK_ERROR("Invalid ideal-gas EOS parameters: require gamma>1, "
+                 "particle_mass>0 and ordered rho, eps and Ye bounds");
     CCTK_INFO("Setting evolution EOS to Ideal Gas");
     global_eos_3p_ig =
         (eos_3p_idealgas *)The_Managed_Arena()->alloc(sizeof *global_eos_3p_ig);
     assert(global_eos_3p_ig);
     new (global_eos_3p_ig) eos_3p_idealgas;
     global_eos_3p_ig->init(gl_gamma, particle_mass, rgeps, rgrho, rgye);
+    if (global_eos_3p_ig->rgeps.max < global_eos_3p_ig->rgeps.min)
+      CCTK_ERROR("Ideal-gas causality limit lies below eps_min");
+    report_eos_bounds(global_eos_3p_ig);
+    CCTK_VINFO("Ideal gas: gamma=%.16e particle_mass=%.16e; "
+               "T=(gamma-1)*particle_mass*eps", gl_gamma, particle_mass);
     break;
   }
   case eos_3param::Hybrid: {
@@ -193,6 +212,12 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
     assert(global_eos_3p_tab3d);
     new (global_eos_3p_tab3d) eos_3p_tabulated3d;
     global_eos_3p_tab3d->init(eos_filename, rgeps, rgrho, rgye);
+    CCTK_INFO("The table supplies evolution rho, eps, Ye and T bounds; "
+              "generic EOSX rho/eps/ye min/max inputs do not replace them");
+    report_eos_bounds(global_eos_3p_tab3d);
+    CCTK_VINFO("Tabulated interpolation energy shift=%.16e; physical eps "
+               "passed to hydrodynamics is unshifted",
+               *global_eos_3p_tab3d->energy_shift);
     break;
   }
   default:
