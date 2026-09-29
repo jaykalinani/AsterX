@@ -1,6 +1,11 @@
 #Schedule definitions for thorn Con2PrimFactory
 
 if (unit_test) {
+  SCHEDULE Con2PrimFactory_TestEOSRepairs AT CCTK_WRAGH AFTER EOSX_Setup_EOS
+  {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Test ideal-gas and tabulated EOS repair invariants"
   SCHEDULE Con2PrimFactory_Test AT CCTK_WRAGH AFTER EOSX_Setup_EOS {
   LANG:
     C OPTIONS : meta

@@ -24,6 +24,10 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
 
   // Get local eos object
   auto eos_3p_ig = global_eos_3p_ig;
+  if (!eos_3p_ig) {
+    CCTK_INFO("Skipping the legacy ideal-gas-only C2P example");
+    return;
+  }
 
   // Set atmo values
   const CCTK_REAL rho_atmo = 1e-10;
