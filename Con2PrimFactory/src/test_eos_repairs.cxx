@@ -40,10 +40,11 @@ void test_roundtrip(const EOSType *eos, const CCTK_REAL rho,
 
 template <typename EOSType>
 void test_recovery(const EOSType *eos, const thermo_state &state,
-                   const atmosphere &atmo, const bool magnetized) {
+                   const atmosphere &atmo, const bool magnetized,
+                   const CCTK_REAL vx = 0.1) {
   const smat<CCTK_REAL, 3> g{1.0, 0.0, 0.0, 1.0, 0.0, 1.0};
   const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
-  const vec<CCTK_REAL, 3> vel{0.1, -0.05, 0.02};
+  const vec<CCTK_REAL, 3> vel{vx, -0.5 * vx, 0.2 * vx};
   const CCTK_REAL B = magnetized ? sqrt(0.1 * state.press) : 0.0;
   const vec<CCTK_REAL, 3> Bvec{B, -0.5 * B, 0.25 * B};
   const CCTK_REAL wlor = 1.0 / sqrt(1.0 - calc_contraction(vel, vel));
@@ -122,6 +123,57 @@ void test_recovery(const EOSType *eos, const thermo_state &state,
               cv.dens * atmo.eps_atmo + 0.5 * calc_contraction(Bvec, Bvec));
 }
 
+template <typename EOSType>
+void test_tau(const EOSType *eos, const thermo_state &state,
+              const atmosphere &atmo) {
+  // Non-unit determinant catches confusion between densitized tau and eps.
+  const smat<CCTK_REAL, 3> g{2.0, 0.0, 0.0, 3.0, 0.0, 4.0};
+  const CCTK_REAL sqrtg = sqrt(calc_det(g));
+  prim_vars pv{state.rho, state.eps, state.Ye, state.press,
+               state.temperature, state.kappa, {0.0, 0.0, 0.0}, 1.0,
+               {0.001, -0.002, 0.003}};
+  pv.E = {0.0, 0.0, 0.0};
+  cons_vars cv;
+  cv.from_prim(pv, g);
+  c2p_2DNoble c2p(eos, atmo, 150, 1.0e-10, 0.0, 10.0, 100.0,
+                  1.0, 1.0, 10.0, 1.0e12, 1.0e12, true, false,
+                  true, false, false, 1.0);
+  const CCTK_REAL valid_tau = cv.tau;
+  c2p.cons_floors_and_ceilings(eos, cv, g, 1.0e-15);
+  check_close("valid tau unchanged", cv.tau, valid_tau, 0.0, 0.0);
+  const CCTK_REAL tau_mag = 0.5 * sqrtg *
+      calc_contraction(pv.Bvec, calc_contraction(g, pv.Bvec));
+  cv.tau = tau_mag + cv.dens * (fmin(0.0, eos->rgeps.min) - 0.1);
+  c2p.cons_floors_and_ceilings(eos, cv, g, 1.0e-15);
+  const auto er = eos->range_eps_from_rho_ye(pv.rho, pv.Ye);
+  check_close("invalid tau repaired", cv.tau,
+              tau_mag + cv.dens * er.min + sqrtg * 1.0e-15);
+  atmo.set(pv, cv, g);
+  const CCTK_REAL atmo_tau = cv.tau;
+  c2p.cons_floors_and_ceilings(eos, cv, g, 1.0e-15);
+  check_close("atmosphere tau unchanged", cv.tau, atmo_tau, 0.0, 0.0);
+}
+
+template <typename EOSType>
+void test_temp_floor(const EOSType *eos, const thermo_state &state) {
+  const auto hotter = state_from_rho_temp_ye(
+      eos, state.rho, 2.0 * state.temperature, state.Ye);
+  const auto heated = state_with_temp_press_floor(
+      eos, state.rho, state.temperature, state.Ye, hotter.press);
+  if (heated.temperature < state.temperature || heated.press < hotter.press)
+    CCTK_ERROR("EOS repair test: thermal pressure floor was not reached");
+  check_close("pressure floor temperature", heated.temperature, hotter.temperature);
+  const auto unchanged = state_with_temp_press_floor(
+      eos, state.rho, state.temperature, state.Ye, 0.5 * state.press);
+  check_close("inactive pressure floor", unchanged.eps, state.eps, 0.0, 0.0);
+  const auto upper = state_from_rho_temp_ye(
+      eos, state.rho, eos->rgtemp.max, state.Ye);
+  const auto saturated = state_with_temp_press_floor(
+      eos, state.rho, state.temperature, state.Ye, 2.0 * upper.press);
+  check_close("unreachable floor saturates at Tmax", saturated.temperature,
+              eos->rgtemp.max, 0.0, 0.0);
+}
+
 void test_ideal_gas() {
   eos_3p_idealgas eos;
   eos_3p::range rgeps{0.0, 2.0}, rgrho{1.0e-14, 1.0}, rgye{0.0, 1.0};
@@ -144,6 +196,19 @@ void test_ideal_gas() {
   test_roundtrip(&eos, state.rho, state.temperature, state.Ye);
   test_recovery(&eos, state, inner, false);
   test_recovery(&eos, state, inner, true);
+  test_tau(&eos, state, inner);
+  test_temp_floor(&eos, state);
+  for (const CCTK_REAL gamma : {1.4, 5.0 / 3.0, 2.0}) {
+    eos.init(gamma, 1.0, rgeps, rgrho, rgye);
+    const auto atmo = make_atmosphere(&cold, &eos, 1.0, 1.0e-6, 0.0,
+        1.0e-4, 0.5, 1.0, 0.0, 0.0, 0.0, 1.0e-3, true, false);
+    for (const CCTK_REAL rho : {1.0e-4, 1.0e-2})
+      for (const CCTK_REAL vx : {0.1, 0.5, 0.7}) {
+        const auto sample = state_from_rho_temp_ye(&eos, rho, 0.02, 0.5);
+        test_recovery(&eos, sample, atmo, false, vx);
+        test_recovery(&eos, sample, atmo, true, vx);
+      }
+  }
 }
 
 void test_shifted_table() {
@@ -194,6 +259,15 @@ void test_shifted_table() {
   check_close("tabulated graded energy", outer.eps_atmo, outer.temp_atmo-shift);
   test_recovery(&eos, state, inner, false);
   test_recovery(&eos, state, inner, true);
+  test_tau(&eos, state, inner);
+  test_temp_floor(&eos, state);
+  for (const CCTK_REAL rho : {3.0e-4, 3.0e-3})
+    for (const CCTK_REAL temp : {0.006, 0.02, 0.07})
+      for (const CCTK_REAL vx : {0.1, 0.5, 0.7}) {
+        const auto sample = state_from_rho_temp_ye(&eos, rho, temp, 0.3);
+        test_recovery(&eos, sample, inner, false, vx);
+        test_recovery(&eos, sample, inner, true, vx);
+      }
 }
 } // namespace
 
