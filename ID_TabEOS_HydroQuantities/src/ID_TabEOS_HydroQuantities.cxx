@@ -62,7 +62,7 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_Y_e(CCTK_ARGUMENTS) {
               p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
               n_temp_atmo, atmo_tol, true, false);
 
-          if (rho(p.I) > atmo.rho_cut) {
+          if (rho(p.I) > atmo.rho_cell_reset_cut) {
             // Interpolate Y_e(rho_i) at gridpoint i
             const CCTK_REAL Y_eL =
                 id_ye_reader.interpolate_1d_quantity_as_function_of_rho(
@@ -125,7 +125,7 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_temp_ent(CCTK_ARGUMENTS) {
           break;
         }
         case TS_ID_t::Entropy: {
-          if (rhoL > atmo.rho_cut) {
+          if (rhoL > atmo.rho_cell_reset_cut) {
             CCTK_REAL ent_val = id_entropy;
             CCTK_REAL temp_val = eos_3p_tab3d->temp_from_rho_entropy_ye(
                 rhoL, ent_val, yeL);
@@ -173,7 +173,8 @@ ID_TabEOS_HydroQuantities_recompute_HydroBase_variables(CCTK_ARGUMENTS) {
             p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
             n_temp_atmo, atmo_tol, true, false);
 
-        const bool reset_to_atmosphere = rho(p.I) <= atmo.rho_cut;
+        const bool reset_to_atmosphere =
+            rho(p.I) <= atmo.rho_cell_reset_cut;
         const auto state =
             reset_to_atmosphere
                 ? state_from_rho_temp_ye(eos_3p_tab3d, atmo.rho_atmo,

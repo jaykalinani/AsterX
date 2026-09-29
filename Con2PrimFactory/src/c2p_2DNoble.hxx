@@ -331,7 +331,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   cv.DYe /= sqrt_detg;
   cv.DEnt /= sqrt_detg;
 
-  // if (cv.dens <= atmo.rho_cut) {
+  // if (cv.dens <= atmo.rho_cell_reset_cut) {
   //  rep.set_atmo_set();
   //  pv.Bvec = cv.dBvec;
   //  atmo.set(pv, cv, glo);
@@ -574,7 +574,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   }
 
   // set to atmo if computed rho is below floor density
-  if (pv.rho < atmo.rho_cut) {
+  if (pv.rho < atmo.rho_cell_reset_cut) {
     rep.set_atmo_set();
     atmo.set(pv, cv, glo);
     return;
