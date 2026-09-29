@@ -5,6 +5,7 @@ SRCS = contraction_smat_upvec.cxx    \
        contraction_upvec_downvec.cxx \
        cross_product.cxx             \
        minmod.cxx                    \
+       hlle.cxx                      \
        mp5.cxx                       \
        uct_edge_speed_envelope.cxx   \
        wlorentz.cxx
