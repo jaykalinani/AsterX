@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 
 #include "c2p_1DPalenzuela.hxx"
 #include "c2p_1DRePrimAnd.hxx"
@@ -183,6 +184,114 @@ void test_temp_floor(const EOSType *eos, const thermo_state &state) {
               eos->rgtemp.max, 0.0, 0.0);
 }
 
+// Exercise the shared finalizer without depending on root convergence.
+struct test_c2p : c2p_2DNoble {
+  using c2p_2DNoble::c2p_2DNoble;
+  using c2p::prims_floors_and_ceilings;
+};
+
+template <typename EOSType>
+void test_mag_floors(const EOSType *eos, const atmosphere &atmo,
+                     const bool use_temp) {
+  const smat<CCTK_REAL, 3> g{2.0, 0.0, 0.0, 3.0, 0.0, 4.0};
+  const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
+  const auto state = state_from_rho_temp_ye(
+      eos, 0.25 * eos->rgrho.max, 0.25 * eos->rgtemp.max,
+      0.5 * (eos->rgye.min + eos->rgye.max));
+  const auto upper = state_from_rho_temp_ye(
+      eos, state.rho, eos->rgtemp.max, state.Ye);
+  const CCTK_REAL eps = std::numeric_limits<CCTK_REAL>::epsilon();
+  const CCTK_REAL tol = 64.0 * eps;
+
+  auto check = [&](const char *name, const CCTK_REAL rho_min,
+                   const CCTK_REAL press_min, const vec<CCTK_REAL, 3> &vel,
+                   const bool failed, const bool magnetized = true) {
+    const vec<CCTK_REAL, 3> Bvec{
+        magnetized ? 1.0 / sqrt(g(0, 0)) : 0.0, 0.0, 0.0};
+    const auto v_low = calc_contraction(g, vel);
+    const CCTK_REAL vsq = calc_contraction(vel, v_low);
+    const CCTK_REAL B2 =
+        calc_contraction(Bvec, calc_contraction(g, Bvec));
+    const CCTK_REAL Bdotv = calc_contraction(Bvec, v_low);
+    const CCTK_REAL bsq = B2 * (1.0 - vsq) + Bdotv * Bdotv;
+    // Choose the limits to request the supplied density and pressure floors.
+    const CCTK_REAL sigma = (magnetized ? bsq : 1.0) / rho_min;
+    const CCTK_REAL inv_beta = 0.5 * (magnetized ? bsq : 1.0) / press_min;
+    prim_vars pv{state.rho, state.eps, state.Ye, state.press,
+                 state.temperature, state.kappa, vel, 1.0 / sqrt(1.0 - vsq),
+                 Bvec};
+    pv.E = calc_contraction(calc_inv(g, calc_det(g)),
+                            calc_cross_product(Bvec, vel));
+    cons_vars cv;
+    cv.from_prim(pv, g);
+    test_c2p c2p(eos, atmo, 150, 1.0e-10, 0.0, 10.0, 100.0,
+                  1.0, 1.0, 10.0, sigma, inv_beta, true, false,
+                  use_temp, false, false, 1.0);
+    c2p_report rep;
+    rep.status = c2p_report::SUCCESS;
+    c2p.prims_floors_and_ceilings(eos, pv, cv, 1.0, beta, g, rep);
+    if (failed) {
+      if (rep.status != c2p_report::B_LIMIT)
+        CCTK_VERROR("EOS repair test: %s did not report B_LIMIT (use_temp=%d)",
+                    name, int(use_temp));
+      return;
+    }
+    if (rep.failed()) {
+      rep.debug_message();
+      CCTK_VERROR("EOS repair test: %s failed (use_temp=%d)",
+                  name, int(use_temp));
+    }
+
+    const auto er = eos->range_eps_from_rho_ye(pv.rho, pv.Ye);
+    const CCTK_REAL Bdotv_new =
+        calc_contraction(Bvec, calc_contraction(g, pv.vel));
+    const CCTK_REAL vsq_new =
+        calc_contraction(pv.vel, calc_contraction(g, pv.vel));
+    const CCTK_REAL bsq_new =
+        B2 * (1.0 - vsq_new) + Bdotv_new * Bdotv_new;
+    if (!std::isfinite(pv.rho) || !std::isfinite(pv.eps) ||
+        !std::isfinite(pv.press) || !std::isfinite(bsq_new) ||
+        pv.rho < eos->rgrho.min || pv.rho > eos->rgrho.max ||
+        pv.eps < er.min || pv.eps > er.max ||
+        pv.rho < (1.0 - tol) * rho_min ||
+        pv.press < (1.0 - tol) * press_min ||
+        bsq_new > (1.0 + tol) * sigma * pv.rho ||
+        bsq_new > (1.0 + tol) * 2.0 * inv_beta * pv.press)
+      CCTK_VERROR("EOS repair test: %s lost an EOS or magnetic limit", name);
+    check_close("magnetic floor Lorentz factor", pv.w_lor,
+                1.0 / sqrt(1.0 - vsq_new));
+    const auto closed = state_from_rho_eps_ye(eos, pv.rho, pv.eps, pv.Ye);
+    check_close("magnetic floor pressure", pv.press, closed.press);
+    check_close("magnetic floor temperature", pv.temperature, closed.temperature);
+    check_close("magnetic floor kappa", pv.entropy, closed.kappa);
+    for (int d = 0; d < 3; ++d)
+      check_close("magnetic floor B unchanged", pv.Bvec(d), Bvec(d), 0.0, 0.0);
+  };
+
+  const std::array<vec<CCTK_REAL, 3>, 4> velocities{
+      vec<CCTK_REAL, 3>{0.0, 0.0, 0.0},
+      vec<CCTK_REAL, 3>{0.3, 0.0, 0.0},
+      vec<CCTK_REAL, 3>{0.0, 0.2, 0.0},
+      vec<CCTK_REAL, 3>{0.3, 0.2, 0.1}};
+  for (const auto &vel : velocities) {
+    check("zero field", state.rho, state.press, vel, false, false);
+    check("inactive floors", 0.5 * state.rho, 0.5 * state.press, vel, false);
+    check("density floor", 2.0 * state.rho, state.press, vel, false);
+    check("pressure floor", state.rho, 2.0 * state.press, vel, false);
+    check("both floors", 2.0 * state.rho, 2.0 * state.press, vel, false);
+    check("density saturation", 2.0 * eos->rgrho.max, state.press, vel, true);
+    check("pressure saturation", state.rho, 2.0 * upper.press, vel, true);
+    check("density roundoff", (1.0 + 8.0 * eps) * eos->rgrho.max,
+          state.press, vel, false);
+    check("pressure roundoff", state.rho,
+          (1.0 + 8.0 * eps) * upper.press, vel, false);
+    check("density beyond roundoff", (1.0 + 1.0e-8) * eos->rgrho.max,
+          state.press, vel, true);
+    check("pressure beyond roundoff", state.rho,
+          (1.0 + 1.0e-8) * upper.press, vel, true);
+  }
+}
+
 void test_ideal_gas() {
   eos_3p_idealgas eos;
   eos_3p::range rgeps{0.0, 2.0}, rgrho{1.0e-14, 1.0}, rgye{0.0, 1.0};
@@ -213,6 +322,8 @@ void test_ideal_gas() {
     eos.init(gamma, 1.0, rgeps, rgrho, rgye);
     const auto atmo = make_atmosphere(&cold, &eos, 1.0, 1.0e-6, 0.0,
         1.0e-4, 0.5, 1.0, 0.0, 0.0, 0.0, 1.0e-3, true, false);
+    test_mag_floors(&eos, atmo, true);
+    test_mag_floors(&eos, atmo, false);
     for (const CCTK_REAL rho : {1.0e-4, 1.0e-2})
       for (const CCTK_REAL vx : {0.1, 0.5, 0.7}) {
         const auto sample = state_from_rho_temp_ye(&eos, rho, 0.02, 0.5);
@@ -272,6 +383,7 @@ void test_shifted_table() {
   test_recovery(&eos, state, inner, true);
   test_tau(&eos, state, inner);
   test_temp_floor(&eos, state);
+  test_mag_floors(&eos, inner, true);
   for (const CCTK_REAL rho : {3.0e-4, 3.0e-3})
     for (const CCTK_REAL temp : {0.006, 0.02, 0.07})
       for (const CCTK_REAL vx : {0.1, 0.5, 0.7}) {

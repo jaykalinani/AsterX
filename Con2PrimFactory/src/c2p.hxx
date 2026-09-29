@@ -14,6 +14,8 @@ c2p is effectively an interface to be used by different c2p implementations.
 #include <cctk_Parameters.h>
 #include <math.h>
 
+#include <limits>
+
 #include "atmo.hxx"
 #include "c2p_report.hxx"
 #include "c2p_utils.hxx"
@@ -240,19 +242,25 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
   if (mag_ceiling) {
 
     rep.adjust_cons = true;
+    const CCTK_REAL tol =
+        64.0 * std::numeric_limits<CCTK_REAL>::epsilon();
 
     if (use_temp) {
       // Increase T within the EOS domain to meet the pressure floor.
       // A unique pressure inversion is not required for a tabulated EOS.
       state = EOSX::state_with_temp_press_floor(
           eos_3p, pv.rho, pv.temperature, pv.Ye, pv.press);
-      if (!std::isfinite(state.press) || state.press < pv.press) {
-        rep.set_range_eps(state.eps);
-        return;
-      }
     } else {
       state =
           EOSX::state_from_rho_press_ye(eos_3p, pv.rho, pv.press, pv.Ye);
+    }
+    // EOS bounds must not silently undo either requested floor. Allow
+    // relative roundoff without introducing an absolute density/P floor.
+    if (!std::isfinite(state.rho) || !std::isfinite(state.press) ||
+        state.rho < (1.0 - tol) * pv.rho ||
+        state.press < (1.0 - tol) * pv.press) {
+      rep.set_B_limit(B2);
+      return;
     }
     set_thermo_state(pv, state);
 
@@ -316,6 +324,18 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       pv.w_lor = w_lim;
     } else {
       pv.w_lor = 1. / sqrt(1. - vsq_Sol);
+    }
+
+    // Recheck the final state: the drift/speed adjustment can change b^2.
+    const CCTK_REAL Bdotv_new =
+        calc_contraction(pv.Bvec, calc_contraction(glo, pv.vel));
+    const CCTK_REAL bsq_new =
+        B2 / (pv.w_lor * pv.w_lor) + Bdotv_new * Bdotv_new;
+    if (!std::isfinite(bsq_new) ||
+        bsq_new > (1.0 + tol) * sigma_max * pv.rho ||
+        bsq_new > (1.0 + tol) * 2.0 * inv_beta_max * pv.press) {
+      rep.set_B_limit(B2);
+      return;
     }
   }
 
