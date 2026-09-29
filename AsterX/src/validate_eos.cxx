@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "atmo.hxx"
+#include "atmo_cache.hxx"
 #include "setup_eos.hxx"
 
 namespace AsterX {
@@ -28,10 +29,13 @@ void ReportAtmosphere(const EOSIDType *eos_1p, const EOSType *eos_3p) {
              atmo.entropy_atmo);
   if (atmo.rho_atmo != rho_abs_min || atmo.ye_atmo != Ye_atmo)
     CCTK_INFO("Requested atmosphere rho or Ye was limited to the EOS domain");
+  cached_atmo.store(eos_1p, eos_3p, atmo, rho_abs_min, p_atmo, t_atmo,
+                     Ye_atmo, thermal_eos_atmo, use_press_atmo);
 }
 
 extern "C" void AsterX_ValidateEOS(CCTK_ARGUMENTS) {
   DECLARE_CCTK_PARAMETERS;
+  cached_atmo.valid = false;
   if (CCTK_EQUALS(evolution_eos, "Tabulated3d")) {
     if (!use_temperature || !reconstruct_with_temperature || use_press_atmo)
       CCTK_ERROR("Tabulated3d requires use_temperature=yes, "

@@ -16,6 +16,7 @@
 
 #include "aster_utils.hxx"
 #include "atmo.hxx"
+#include "atmo_cache.hxx"
 #include "eigenvalues.hxx"
 #include "fluxes.hxx"
 #include "reconstruct.hxx"
@@ -50,6 +51,12 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
   repair_diagnostics diagnostics(repair_every > 0 &&
       cctk_iteration % repair_every == 0);
   auto *counts = diagnostics.data();
+
+  atmosphere atmo_const{};
+  const bool use_atmo_const = cached_atmo.load(
+      eos_1p, eos_3p, rho_abs_min, p_atmo, t_atmo, Ye_atmo, n_rho_atmo,
+      n_press_atmo, n_temp_atmo, atmo_tol, thermal_eos_atmo,
+      use_press_atmo, atmo_const);
 
   switch (reconstruction) {
   case reconstruction_t::Godunov:
@@ -228,26 +235,30 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
     vec<CCTK_REAL, 2> cs2_rc;
 
     // Setting up atmosphere for two neighboring cell centers
-    vec<CCTK_REAL, 2> r_atm;
+    vec<CCTK_REAL, 2> r_atm{0.0, 0.0};
     vec<CCTK_REAL, 2> r2_atm = {0.0, 0.0};
 
     // Get coordinates at neighboring cell centers
-    for (int ii = 0; ii < 3; ii++) {
-      r2_atm(0) += (p.X[ii] - (ii == dir_i) * 0.5 * (p.DX[dir_i])) *
-                   (p.X[ii] - (ii == dir_i) * 0.5 * (p.DX[dir_i]));
-      r2_atm(1) += (p.X[ii] + (ii == dir_i) * 0.5 * (p.DX[dir_i])) *
-                   (p.X[ii] + (ii == dir_i) * 0.5 * (p.DX[dir_i]));
+    if (!use_atmo_const) {
+      for (int ii = 0; ii < 3; ii++) {
+        r2_atm(0) += (p.X[ii] - (ii == dir_i) * 0.5 * (p.DX[dir_i])) *
+                     (p.X[ii] - (ii == dir_i) * 0.5 * (p.DX[dir_i]));
+        r2_atm(1) += (p.X[ii] + (ii == dir_i) * 0.5 * (p.DX[dir_i])) *
+                     (p.X[ii] + (ii == dir_i) * 0.5 * (p.DX[dir_i]));
+      }
+      r_atm(0) = sqrt(r2_atm(0));
+      r_atm(1) = sqrt(r2_atm(1));
     }
-    r_atm(0) = sqrt(r2_atm(0));
-    r_atm(1) = sqrt(r2_atm(1));
 
     // Build the atmosphere independently at the left and right cell-center
     // positions. This preserves the face-specific radial grading.
     const atmosphere atmo_rc[2] = {
+        use_atmo_const ? atmo_const :
         make_atmosphere(eos_1p, eos_3p, r_atm(0), rho_abs_min, p_atmo,
                         t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
                         n_temp_atmo, atmo_tol, thermal_eos_atmo,
                         use_press_atmo),
+        use_atmo_const ? atmo_const :
         make_atmosphere(eos_1p, eos_3p, r_atm(1), rho_abs_min, p_atmo,
                         t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
                         n_temp_atmo, atmo_tol, thermal_eos_atmo,

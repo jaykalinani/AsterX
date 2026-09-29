@@ -12,6 +12,7 @@
 #include "c2p_2DNoble.hxx"
 
 #include "aster_utils.hxx"
+#include "atmo_cache.hxx"
 #include "setup_eos.hxx"
 #include "repair_diagnostics.hxx"
 
@@ -45,6 +46,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
   repair_diagnostics diagnostics(repair_every > 0 &&
       cctk_iteration % repair_every == 0);
   auto *counts = diagnostics.data();
+
+  atmosphere atmo_const{};
+  const bool use_atmo_const = cached_atmo.load(
+      eos_1p, eos_3p, rho_abs_min, p_atmo, t_atmo, Ye_atmo, n_rho_atmo,
+      n_press_atmo, n_temp_atmo, atmo_tol, thermal_eos_atmo,
+      use_press_atmo, atmo_const);
 
   c2p_first_t c2p_fir;
   c2p_second_t c2p_sec;
@@ -87,10 +94,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // explicit dependence on conservatives from
     // AsterX -> dependents tag
 
-    const CCTK_REAL radial_distance =
-        sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-    const auto atmo = make_atmosphere(
-        eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
+    const auto atmo = use_atmo_const ? atmo_const : make_atmosphere(
+        eos_1p, eos_3p, sqrt(p.x * p.x + p.y * p.y + p.z * p.z),
+        rho_abs_min, p_atmo, t_atmo,
         Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo, atmo_tol,
         thermal_eos_atmo, use_press_atmo);
 
@@ -174,15 +180,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                                 cv.dBvec(1) / sqrt_detg,
                                 cv.dBvec(2) / sqrt_detg};
 
-    // HydroBaseX primitives are invalidated before recovery. Construct the
-    // complete seed from saved independent variables, including temperature.
-    const auto seed = state_from_rho_eps_ye(
-        eos_3p, saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I));
     prim_vars pv;
-    prim_vars pv_seeds{seed.rho, seed.eps, seed.Ye, seed.press,
-                       seed.temperature, seed.kappa, v_up, wlor, Bup};
-    pv_seeds.E = calc_contraction(calc_inv(glo, spatial_detg),
-                                  calc_cross_product(Bup, v_up));
+    prim_vars pv_seeds;
+    pv_seeds.Bvec = Bup;
 
     /* set flag to success */
     bool c2p_flag_local = true;
@@ -214,6 +214,20 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       mask_local = 0.0;
     }
     aster_mask_cc(p.I) = mask_local;
+
+    // RePrimAnd, Palenzuela and Entropy do not use primitive seeds. Close
+    // saved thermodynamics only for Noble or a possible masked-cell repair.
+    // Atmosphere seeds were already set exactly above, including B and E.
+    if (!set_atmo && (c2p_fir == c2p_first_t::Noble ||
+                     c2p_sec == c2p_second_t::Noble || mask_local != 1.0)) {
+      const auto seed = state_from_rho_eps_ye(
+          eos_3p, saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I));
+      set_thermo_state(pv_seeds, seed);
+      pv_seeds.vel = v_up;
+      pv_seeds.w_lor = wlor;
+      pv_seeds.E = calc_contraction(calc_inv(glo, spatial_detg),
+                                    calc_cross_product(Bup, v_up));
+    }
 
     if (excise) {
 
