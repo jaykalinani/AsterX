@@ -347,9 +347,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                      "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
                      "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
                      "dBy = %26.16e \n dBz = %26.16e \n "
-                     "saved_rho = %26.16e \n saved_eps = %26.16e \n press= "
-                     "%26.16e "
-                     "\n "
+                     "saved_rho = %26.16e \n saved_eps = %26.16e \n "
+                     "saved_Ye = %26.16e \n "
                      "saved_velx = %26.16e \n saved_vely = %26.16e \n "
                      "saved_velz = "
                      "%26.16e \n "
@@ -359,10 +358,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                      "\n ",
                      cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I),
                      momx(p.I), momy(p.I), momz(p.I), dBx(p.I), dBy(p.I),
-                     dBz(p.I), pv.rho, pv.eps, pv.press, pv.vel(0), pv.vel(1),
-                     pv.vel(2), pv.Bvec(0), pv.Bvec(1), pv.Bvec(2),
-                     // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
-                     // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+                     dBz(p.I), saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I),
+                     saved_velx(p.I), saved_vely(p.I), saved_velz(p.I),
+                     Bup(0), Bup(1), Bup(2),
                      Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
             }
 
@@ -397,19 +395,18 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                 "dens = %26.16e \n tau = %26.16e \n momx = %26.16e \n "
                 "momy = %26.16e \n momz = %26.16e \n dBx = %26.16e \n "
                 "dBy = %26.16e \n dBz = %26.16e \n "
-                "saved_rho = %26.16e \n saved_eps = %26.16e \n press= %26.16e "
-                "\n "
+                "saved_rho = %26.16e \n saved_eps = %26.16e \n "
+                "saved_Ye = %26.16e \n "
                 "saved_velx = %26.16e \n saved_vely = %26.16e \n saved_velz = "
                 "%26.16e \n "
                 "Bvecx = %26.16e \n Bvecy = %26.16e \n "
                 "Bvecz = %26.16e \n "
                 "Avec_x = %26.16e \n Avec_y = %26.16e \n Avec_z = %26.16e \n ",
                 cctk_iteration, p.x, p.y, p.z, dens(p.I), tau(p.I), momx(p.I),
-                momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I), pv.rho,
-                pv.eps, pv.press, pv.vel(0), pv.vel(1), pv.vel(2), pv.Bvec(0),
-                pv.Bvec(1), pv.Bvec(2),
-                // rho(p.I), eps(p.I), press(p.I), velx(p.I), vely(p.I),
-                // velz(p.I), Bvecx(p.I), Bvecy(p.I), Bvecz(p.I),
+                momy(p.I), momz(p.I), dBx(p.I), dBy(p.I), dBz(p.I),
+                saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I),
+                saved_velx(p.I), saved_vely(p.I), saved_velz(p.I),
+                Bup(0), Bup(1), Bup(2),
                 Avec_x(p.I), Avec_y(p.I), Avec_z(p.I));
           }
 
