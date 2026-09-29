@@ -3,13 +3,103 @@
 Review snapshot: 2026-09-29. Repository: `repos/AsterX`; branch: `eos_repairs`.
 The local `dev` and existing `origin/dev` references both remain at
 `d91110629c68ee2942ca916a12e131438b70c0b6`. No remote reference was fetched or
-updated for this review. No production parfile or executable was changed by
-this series.
+updated for this review. These source patches do not edit production parfiles.
 
-Status: source changes and opt-in tests are committed for review. **Nothing
-has been compiled or rebuilt, and the new C++ tests have not been run.**
-Static review is not evidence of successful compilation, GPU execution, or
-improved stellar evolution. The user will perform the rebuild.
+Status update: the original repairs were subsequently rebuilt through
+`0d0f0b26`. The performance follow-up below is committed but **has not been
+compiled, rebuilt, or run**. The user will rebuild it. Earlier validation
+notes in this report describe the original source-review handoff, not the
+later production run. Static review does not establish GPU correctness or
+performance.
+
+## Performance follow-up (2026-09-29)
+
+Target: approximately the dev/reference evolution speed, without removing
+EOS consistency checks or changing atmosphere grading. No new parameters,
+solver tolerances, reconstruction choices, table bounds, or floor policies
+are introduced by these optimizations.
+
+The existing RNS timing files show, through iteration 512:
+
+| Evolution time | OLD reference | Before optimization | Increase |
+|---|---:|---:|---:|
+| Compute | 804.958 s | 1064.48 s | 32.24% |
+| Output | 67.1321 s | 70.6548 s | 5.25% |
+| Total | 872.09 s | 1135.13 s | 30.16% |
+
+Both runs used 8 nodes, 64 MPI ranks, identical saved build options, and
+7.8676e10 recorded cell updates. These are aggregate timings from their
+`output-0000/<simulation>/performance.yaml` files, not per-kernel profiles.
+They do not establish how much time each EOS call accounts for.
+
+| Commit | Change |
+|---|---|
+| `47420078` | EOSX: reuse temperature in tabulated state closure |
+| `9306422f` | Con2PrimFactory: finalize RePrimAnd thermodynamics once |
+| `cfdd3645` | AsterX: cache uniform atmospheres and skip unused C2P seeds |
+
+### Changes and invariants
+
+- Tabulated temperature closure makes no energy-to-temperature inversion.
+  Its kappa query uses the known temperature; the table owns the fact that
+  its kappa is physical entropy. Ideal gas still uses its analytic energy
+  path and `P/rho^Gamma`, not physical entropy.
+- Tabulated energy closure clamps rho/Ye and the local eps interval as
+  before, then performs one inverse instead of four and reuses T for P,
+  kappa and sound speed. Physical eps and the interpolation shift retain
+  their original meanings. No temperature-derived energy floor is added.
+- RePrimAnd no longer computes T and kappa immediately before the common
+  finalizer recomputes them. The finalizer, finite checks, limiting, and
+  conservative recomputation remain active. Temporary T/kappa are marked
+  NaN until finalization or an exact atmosphere reset supplies them.
+- Ordinary RePrimAnd/Palenzuela cells no longer close unused primitive
+  seeds. Noble and masked/excised cells still get complete saved seeds.
+  Atmosphere seeds are set exactly, retaining the magnetic field.
+- The startup atmosphere is reused in the C2P and flux kernels only when
+  all active grading exponents are zero and its EOS pointers, thermal mode,
+  and input rho/P/T/Ye match. Loads are read-only host operations; there is
+  no per-cell allocation or host table access during evolution. A changed
+  mode/input or nonzero active grading selects the existing device builder.
+  Left and right graded radii are still evaluated separately. Steered
+  `atmo_tol` updates the cutoff on the copied state. An uninitialized cache
+  safely falls back to the builder; Hybrid keeps this fallback.
+
+The intended change is less work for the same EOS state, not bitwise identity:
+removing repeated inversions and copying a host-built constant atmosphere
+can change floating-point roundoff. Both EOSs still require regression runs.
+
+### Tests and review
+
+Added to the existing thorn-local suites:
+
+- EOSX: 125 bounded temperature states and 625 energy states from a shifted
+  synthetic table with rho/Ye-dependent energy bounds, including negative
+  eps and both endpoints. Check all thermodynamic outputs against analytic
+  or legacy-API references and assert zero/one inverse calls, respectively.
+- EOSX: active-EOS device round trips now check eps/P/kappa/cs2 as well as T;
+  an active table also gets a device-side inversion-count test.
+- Con2PrimFactory: successful, unmodified RePrimAnd recovery must obtain
+  kappa once. Existing ideal-gas and shifted-table recovery tests exercise
+  this with and without magnetic fields and at several velocities.
+- AsterX: exact host cache/builder comparison for cold, temperature-primary
+  and pressure-primary modes; active/inactive grading, cutoff steering,
+  mode/input changes, and changed EOS pointers. Existing left/right graded
+  atmosphere and characteristic-speed checks remain.
+
+Reviewed every changed line, including all primitive-seed consumers and
+RePrimAnd returns before/after finalization. `git diff --check` passes.
+**The added C++ tests have not been executed; no compilation or job submission
+was performed for this follow-up.**
+
+After rebuilding, run the existing startup suite and active-DD2 tests before
+benchmarking. For speed, leave `EOSX::eos_call_diagnostics_every=0` and
+`AsterX::repair_every=0`; use a separate diagnostic run for call counts.
+Compare equal iteration intervals (e.g. 256--512), MPI/GPU layout, AMR work,
+output cadence, compiler settings, and valid atmosphere inputs. Use the
+delta of evolution-compute-seconds, excluding startup and output. Repeat
+if node variability is significant. Near-dev performance is the target,
+**not yet a measured result**; a remaining gap needs kernel profiling rather
+than removal of physical checks or further speculative restructuring.
 
 ## Scope and numbering
 
