@@ -664,6 +664,8 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   }
 
   if (ye_clipped || eps_clipped) {
+    rep.ye_clamped |= ye_clipped;
+    rep.eps_clamped |= eps_clipped;
     rep.adjust_cons = true;
   }
 

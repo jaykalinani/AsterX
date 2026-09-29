@@ -119,6 +119,9 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
   // dependent thermodynamic quantities must come from the same state.
   EOSX::thermo_state state =
       EOSX::state_from_rho_eps_ye(eos_3p, pv.rho, pv.eps, pv.Ye);
+  rep.rho_clamped |= state.rho != pv.rho;
+  rep.eps_clamped |= state.eps != pv.eps;
+  rep.ye_clamped |= state.Ye != pv.Ye;
   if (state.rho != pv.rho || state.eps != pv.eps || state.Ye != pv.Ye ||
       state.press != pv.press) {
     rep.adjust_cons = true;
@@ -196,6 +199,7 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     // ----------
 
     if (pv.temperature < atmo.temp_atmo) {
+      rep.temp_clamped = true;
 
       state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho, atmo.temp_atmo,
                                            pv.Ye);

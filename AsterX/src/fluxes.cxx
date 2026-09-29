@@ -20,6 +20,7 @@
 #include "fluxes.hxx"
 #include "reconstruct.hxx"
 #include "setup_eos.hxx"
+#include "repair_diagnostics.hxx"
 
 namespace AsterX {
 using namespace std;
@@ -45,6 +46,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
               const flux_t fluxtype) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
+
+  repair_diagnostics diagnostics(eos_repair_diagnostics_every > 0 &&
+      cctk_iteration % eos_repair_diagnostics_every == 0);
+  auto *counts = diagnostics.data();
 
   switch (reconstruction) {
   case reconstruction_t::Godunov:
@@ -330,6 +335,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
                               rho_rc(f) <= rho_cut(f) ||
                               rho_rc(f) < eos_3p->rgrho.min;
       if (reset_face) {
+        count_repair(counts, face_atmo);
         rho_rc(f) = atmo_rc[f].rho_atmo;
         eps_rc(f) = atmo_rc[f].eps_atmo;
         Ye_rc(f) = atmo_rc[f].ye_atmo;
@@ -349,6 +355,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
                                      eos_3p, rho_rc(f), temp_rc(f), Ye_rc(f))
                                : EOSX::state_from_rho_press_ye(
                                      eos_3p, rho_rc(f), press_rc(f), Ye_rc(f));
+        count_repair(counts, rho_clamp, state.rho != rho_rc(f));
+        count_repair(counts, ye_clamp, state.Ye != Ye_rc(f));
+        count_repair(counts, temp_clamp,
+                     reconstruct_with_temperature && state.temperature != temp_rc(f));
         rho_rc(f) = state.rho;
         eps_rc(f) = state.eps;
         Ye_rc(f) = state.Ye;
@@ -362,6 +372,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
     const vec<CCTK_REAL, 2> rhoh_rc([&](int f) ARITH_INLINE {
       return rho_rc(f) + rho_rc(f) * eps_rc(f) + press_rc(f);
     });
+    count_repair(counts, loworder_face, useLO);
 
     // Introduce reconstructed Bs
     // Use staggered dB for i == dir_i
@@ -965,6 +976,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
       }
 
       // Update flux GF
+      count_repair(counts, pplim_activation, theta < 1.0);
       fluxdenss(dir_i)(Ip) =
           (1 - theta) * fluxLOdenss + theta * fluxdenss(dir_i)(Ip);
       fluxDEnts(dir_i)(Ip) =
@@ -1105,6 +1117,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
 
     /* End code for upwindCT */
   });
+  diagnostics.report(cctkGH, "flux", dir_i);
 }
 
 extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {

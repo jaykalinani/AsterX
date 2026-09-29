@@ -248,6 +248,8 @@ public:
     // If root-cache thermodynamics were clipped to EOS bounds, force
     // conservative recomputation for consistency with adjusted primitives.
     if (ye_clipped || eps_clipped) {
+      rep.ye_clamped |= ye_clipped;
+      rep.eps_clamped |= eps_clipped;
       rep.adjust_cons = true;
     }
 

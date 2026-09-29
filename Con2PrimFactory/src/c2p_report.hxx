@@ -68,6 +68,12 @@ public:
   /// Root solve accepted via near-convergence policy (warning-only).
   bool soft_root_conv{false};
 
+  // Final-state EOS clamps for optional evolution diagnostics.
+  bool rho_clamped{false};
+  bool eps_clamped{false};
+  bool temp_clamped{false};
+  bool ye_clamped{false};
+
   /// Number of calls to the EOS needed for the root finding.
   CCTK_INT iters;
 

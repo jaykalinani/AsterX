@@ -13,6 +13,7 @@
 
 #include "aster_utils.hxx"
 #include "setup_eos.hxx"
+#include "repair_diagnostics.hxx"
 
 namespace AsterX {
 using namespace std;
@@ -40,6 +41,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                              EOSType *eos_3p) {
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
+
+  repair_diagnostics diagnostics(eos_repair_diagnostics_every > 0 &&
+      cctk_iteration % eos_repair_diagnostics_every == 0);
+  auto *counts = diagnostics.data();
 
   c2p_first_t c2p_fir;
   c2p_second_t c2p_sec;
@@ -232,7 +237,9 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     if (call_c2p) {
 
       // Limit conservatives before calling C2P
+      const CCTK_REAL tau_before = cv.tau;
       c2p_Noble.cons_floors_and_ceilings(eos_3p, cv, glo, tauFluid_atmo);
+      count_repair(counts, tau_repair, cv.tau != tau_before);
 
       // Calling the first C2P
       c2p_flag_code = C2P_PRIME;
@@ -265,6 +272,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
       }
 
       if (rep_first.failed()) {
+        count_repair(counts, primary_failure,
+                     c2p_fir != c2p_first_t::None);
+        count_repair(counts, backup_call,
+                     c2p_sec != c2p_second_t::None);
         c2p_flag_code = C2P_SECOND;
 
         if (debug_mode) {
@@ -414,6 +425,22 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     }
 
     con2prim_flag(p.I) = c2p_flag_code;
+    count_repair(counts, cell_atmo, set_atmo || rep_first.set_atmo ||
+        rep_second.set_atmo || rep_ent.set_atmo ||
+        (!c2p_flag_local && mask_local == 1.0));
+    count_repair(counts, backup_failure,
+        rep_second.status != c2p_report::ERR_CODE_NOT_SET && rep_second.failed());
+    count_repair(counts, conservative_recompute,
+        rep_first.adjust_cons || rep_second.adjust_cons || rep_ent.adjust_cons ||
+        set_atmo || !c2p_flag_local);
+    count_repair(counts, rho_clamp, rep_first.rho_clamped +
+        rep_second.rho_clamped + rep_ent.rho_clamped);
+    count_repair(counts, eps_clamp, rep_first.eps_clamped +
+        rep_second.eps_clamped + rep_ent.eps_clamped);
+    count_repair(counts, temp_clamp, rep_first.temp_clamped +
+        rep_second.temp_clamped + rep_ent.temp_clamped);
+    count_repair(counts, ye_clamp, rep_first.ye_clamped +
+        rep_second.ye_clamped + rep_ent.ye_clamped);
 
     // ----- ----- C2P ----- -----
 
@@ -466,6 +493,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
   };
 
   cctk_grid.loop_all_device<1, 1, 1>(grid.nghostzones, c2p_impl);
+  diagnostics.report(cctkGH, "C2P");
 }
 
 extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {

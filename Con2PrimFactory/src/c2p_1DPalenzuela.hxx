@@ -469,6 +469,8 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   }
 
   if (ye_clipped || eps_clipped) {
+    rep.ye_clamped |= ye_clipped;
+    rep.eps_clamped |= eps_clipped;
     rep.adjust_cons = true;
   }
 

@@ -19,6 +19,11 @@ BOOLEAN use_entropy_fix "Shall we use inversion based on entropy as a backup?" S
 {
 } "no"
 
+CCTK_INT eos_repair_diagnostics_every "Print per-grid-call EOS repair counters every N iterations; 0 disables allocation and reporting" STEERABLE=always
+{
+  0:* :: "Nonnegative sampling interval"
+} 0
+
 BOOLEAN prolongate_dbstag "Shall we prolongate dBstag?" STEERABLE=always
 {
 } "no"
