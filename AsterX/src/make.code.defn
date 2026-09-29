@@ -15,6 +15,7 @@ SRCS = \
   sync.cxx \
   source.cxx \
   tmunu.cxx \
+  validate_eos.cxx \
   test.cxx
 
 # Subdirectories containing source files
