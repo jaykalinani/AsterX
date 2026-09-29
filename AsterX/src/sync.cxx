@@ -102,12 +102,58 @@ extern "C" void AsterX_ApplyOuterBCOnPrim(CCTK_ARGUMENTS) {
   ApplyOuterBC(CCTK_PASS_CTOC, groups);
 }
 
+// Same-level ghost exchange of `groups` on every active level that has an
+// aligned child, i.e. on the levels RestrictFromAlignedChildren has just
+// rewritten; the other levels were not restricted, so their ghost copies still
+// match the neighbouring interiors.
+// No outer boundary conditions are applied: ghost points that lie outside the
+// domain or beyond a refinement boundary keep their locally computed values,
+// only the ghost points covered by a neighbouring box are refreshed from its
+// interior. In particular the ghost points beyond a reflection symmetry plane
+// are not refreshed (that needs the parities of `groups`, which the flux and G
+// groups do not declare), so they keep the unrestricted values even where
+// their mirror image was restricted.
+// Single patch only: ghost points on an inter-patch boundary would need
+// MultiPatch_Interpolate.
+static void FillGhostsFromNeighbours(const cGH *const cctkGH,
+                                     const std::vector<int> &groups) {
+  assert(active_levels);
+  assert(ghext->num_patches() == 1);
+  for (const int gi : groups) {
+    active_levels->loop_serially([&](auto &restrict leveldata) {
+      if (!has_aligned_child(leveldata.level))
+        return;
+      auto &restrict groupdata = *leveldata.groupdata.at(gi);
+      const int ntls = groupdata.mfab.size();
+      const int sync_tl = ntls > 1 ? ntls - 1 : ntls;
+      const auto &geom =
+          ghext->patchdata.at(leveldata.patch).amrcore->Geom(leveldata.level);
+      for (int tl = 0; tl < sync_tl; ++tl) {
+        auto &mfab = *groupdata.mfab.at(tl);
+        mfab.FillBoundary(0, mfab.nComp(), mfab.nGrowVect(),
+                          geom.periodicity());
+      }
+    });
+  }
+  synchronize();
+}
+
 extern "C" void AsterX_RestrictFluxes(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_PARAMETERS;
+
   static const std::vector<int> restrict_groups = {
       CCTK_GroupIndex("AsterX::flux_x"), CCTK_GroupIndex("AsterX::flux_y"),
       CCTK_GroupIndex("AsterX::flux_z")};
 
   RestrictFromAlignedChildren(cctkGH, restrict_groups);
+  // The restriction only rewrites the coarse valid regions. At
+  // hydro_correction_order > 2 the flux-difference stencil in AsterX_RHS reads
+  // one face beyond each box's interior, so refresh the same-level ghost copies
+  // from the (now restricted) neighbouring interiors; otherwise a cell next to
+  // an interprocess boundary sees a restricted flux on one side and the stale
+  // unrestricted coarse flux on the other. At 2nd order no ghost face is read.
+  if (hydro_correction_order > 2)
+    FillGhostsFromNeighbours(cctkGH, restrict_groups);
 }
 
 // Scheduled only with restrict_fluxes, without subcycling and without
@@ -149,11 +195,23 @@ extern "C" void AsterX_CheckRedundantReflux(CCTK_ARGUMENTS) {
 }
 
 extern "C" void AsterX_RestrictAuxTermsForAvecPsiRHS(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_PARAMETERS;
+
   static const std::vector<int> restrict_groups = {
       CCTK_GroupIndex("AsterX::G"), CCTK_GroupIndex("AsterX::Ex"),
       CCTK_GroupIndex("AsterX::Ey"), CCTK_GroupIndex("AsterX::Ez")};
+  static const std::vector<int> ghost_groups = {CCTK_GroupIndex("AsterX::G")};
 
   RestrictFromAlignedChildren(cctkGH, restrict_groups);
+  // Same as in AsterX_RestrictFluxes: at mag_correction_order > 2 the D_i G
+  // stencil in CalcRHSofAvec_impl reads one ghost vertex of G, so its ghost
+  // copies must match the restricted interiors of the neighbouring boxes. Only
+  // the generalized Lorenz gauge has that term; in the algebraic gauge G is
+  // not read at all. E is read on interior edges only, so its ghost copies are
+  // left alone.
+  if (mag_correction_order > 2 &&
+      CCTK_EQUALS(vector_potential_gauge, "generalized Lorenz"))
+    FillGhostsFromNeighbours(cctkGH, ghost_groups);
 }
 
 extern "C" void AsterX_ProlongatedBstag(CCTK_ARGUMENTS) {
