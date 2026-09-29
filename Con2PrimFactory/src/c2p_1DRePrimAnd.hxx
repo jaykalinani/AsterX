@@ -253,8 +253,9 @@ public:
       rep.adjust_cons = true;
     }
 
-    pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    // The common finalizer below closes rho, eps and Ye, including after
+    // velocity limiting. Do not invert the same energy for T and kappa here.
+    pv.temperature = pv.entropy = std::numeric_limits<CCTK_REAL>::quiet_NaN();
 
     // ------------------------------------------------------------------
     // Velocity: RePrimAnd magnetic-aware reconstruction
@@ -281,8 +282,6 @@ public:
       const auto rgeps_lim = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
       pv.eps = fmin(fmax(rgeps_lim.min, pv.eps), rgeps_lim.max);
       pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
       rep.adjust_cons = true;
     } else {
       pv.w_lor = cache.w;

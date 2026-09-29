@@ -73,8 +73,17 @@ void test_recovery(const EOSType *eos, const thermo_state &state,
       noble.solve(eos, pv, trial, cv, 1.0, beta, g, rep);
     else if (solver == 1)
       pal.solve(eos, pv, cv, 1.0, beta, g, rep);
-    else
-      rpa.solve(eos, pv, cv, 1.0, beta, g, rep);
+    else {
+      auto counted = *eos;
+      eos_call_counts counts;
+      counted.call_counts = &counts;
+      rpa.solve(&counted, pv, cv, 1.0, beta, g, rep);
+      // These states need no limiter: kappa must be filled once, by the
+      // finalizer, not separately before it. Check both EOS implementations.
+      if (!rep.failed() &&
+          counts.value[static_cast<int>(eos_call::kappa)] != 1)
+        CCTK_ERROR("EOS repair test: RePrimAnd repeated thermal closure");
+    }
     if (rep.failed()) {
       rep.debug_message();
       CCTK_VERROR("EOS repair test: energy C2P %d failed (magnetized=%d)",
