@@ -218,9 +218,20 @@ public:
       (void)f(mu);
     }
 
-    // RePrimAnd clips eps before exposing it through pv. Inspect the raw value
-    // so entropy fallback follows the same policy as the other C2P methods.
-    if (reject_nonpositive_eps && cache.eps_raw <= 0.0) {
+    if ((!isfinite(cache.rho)) || (cache.rho <= 0.0)) {
+      rep.set_range_rho(cv.dens, cache.rho);
+      cv = cv_const;
+      return;
+    }
+
+    const auto rgeps = eos_3p->range_eps_from_rho_ye(cache.rho, cache.ye);
+    const bool eps_clipped =
+        cache.eps_raw < rgeps.min || cache.eps_raw > rgeps.max;
+
+    // The argument name is retained for compatibility. For an EOS with
+    // negative physical eps, only values outside the local range are rejected.
+    if ((!isfinite(cache.eps_raw)) ||
+        (reject_nonpositive_eps && eps_clipped)) {
       rep.set_range_eps(cache.eps_raw);
       cv = cv_const;
       return;
@@ -237,14 +248,8 @@ public:
 
     // If root-cache thermodynamics were clipped to EOS bounds, force
     // conservative recomputation for consistency with adjusted primitives.
-    if (ye_clipped) {
+    if (ye_clipped || eps_clipped) {
       rep.adjust_cons = true;
-    }
-    {
-      const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
-      if (cache.eps_raw < rgeps.min || cache.eps_raw > rgeps.max) {
-        rep.adjust_cons = true;
-      }
     }
 
     pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);

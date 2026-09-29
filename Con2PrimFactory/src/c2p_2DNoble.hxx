@@ -58,7 +58,8 @@ public:
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
-          const EOSType *eos_3p, prim_vars &pv, const cons_vars &cv,
+          const EOSType *eos_3p, prim_vars &pv, CCTK_REAL &eps_raw,
+          const cons_vars &cv,
           const smat<CCTK_REAL, 3> &gup, const smat<CCTK_REAL, 3> &glo) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -201,7 +202,8 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
                      CCTK_REAL BiSi, const EOSType *eos_3p, prim_vars &pv,
-                     const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
+                     CCTK_REAL &eps_raw, const cons_vars &cv,
+                     const smat<CCTK_REAL, 3> &gup,
                      const smat<CCTK_REAL, 3> &glo) const {
   CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
@@ -264,9 +266,10 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
   }
 
   // pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
-  pv.eps = (Z_Sol / pv.w_lor / pv.w_lor / pv.rho - 1.0) / GammaIdealFluid;
-
+  eps_raw = (Z_Sol / pv.w_lor / pv.w_lor / pv.rho - 1.0) / GammaIdealFluid;
   pv.Ye = cv.DYe / cv.dens;
+  const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
+  pv.eps = fmin(fmax(eps_raw, rgeps.min), rgeps.max);
 
   pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
@@ -384,12 +387,22 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     return;
   }
 
+  CCTK_REAL Ye_raw = cv.DYe / cv.dens;
+  const CCTK_REAL Ye = fmin(fmax(eos_3p->rgye.min, Ye_raw), eos_3p->rgye.max);
+  const bool ye_clipped =
+      (Ye_raw < eos_3p->rgye.min) || (Ye_raw > eos_3p->rgye.max);
+  cv.DYe = cv.dens * Ye;
+
   /* update rho seed from cv and wlor */
   // rho consistent with cv.rho should be better guess than rho from last
   // timestep
   pv_seeds.rho = cv.dens / pv_seeds.w_lor;
+  pv_seeds.Ye = Ye;
 
-  CCTK_REAL eps_last = max({pv_seeds.eps, atmo.eps_atmo});
+  const auto rgeps_seed =
+      eos_3p->range_eps_from_rho_ye(pv_seeds.rho, pv_seeds.Ye);
+  CCTK_REAL eps_last =
+      fmin(fmax(pv_seeds.eps, rgeps_seed.min), rgeps_seed.max);
 
   /* get pressure seed from updated pv_seeds.rho */
   pv_seeds.press =
@@ -555,22 +568,30 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL vsq_Sol = x[1];
 
   /* Write prims if C2P succeeded */
-  WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
+  CCTK_REAL eps_raw;
+  WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, eps_raw, cv, gup, glo);
 
   // Error out if rho is negative or zero
-  if (pv.rho <= 0.0) {
+  if ((!isfinite(pv.rho)) || (pv.rho <= 0.0)) {
     // set status to rho is out of range
     rep.set_range_rho(cv.dens, pv.rho);
     cv = cv_const;
     return;
   }
 
-  // Let the usual temperature floor repair non-positive eps unless the caller
-  // has an entropy-based fallback available.
-  if (reject_nonpositive_eps && pv.eps <= 0.0) {
-    rep.set_range_eps(pv.eps);
+  const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
+  const bool eps_clipped = eps_raw < rgeps.min || eps_raw > rgeps.max;
+
+  // The argument name is retained for compatibility. For an EOS with
+  // negative physical eps, only values outside the local range are rejected.
+  if ((!isfinite(eps_raw)) || (reject_nonpositive_eps && eps_clipped)) {
+    rep.set_range_eps(eps_raw);
     cv = cv_const;
     return;
+  }
+
+  if (ye_clipped || eps_clipped) {
+    rep.adjust_cons = true;
   }
 
   // set to atmo if computed rho is below floor density
