@@ -45,7 +45,13 @@ state_from_rho_temp_ye(const EOSType *eos, const CCTK_REAL rho,
       eos->eps_from_rho_temp_ye(state.rho, state.temperature, state.Ye);
   state.press =
       eos->press_from_rho_temp_ye(state.rho, state.temperature, state.Ye);
-  state.kappa = eos->kappa_from_rho_eps_ye(state.rho, state.eps, state.Ye);
+  // For a temperature-based EOS, do not invert the energy just computed
+  // above to recover a temperature that is already known.
+  if constexpr (EOSType::temperature_primary)
+    state.kappa = eos->kappa_from_rho_temp_ye(
+        state.rho, state.temperature, state.Ye);
+  else
+    state.kappa = eos->kappa_from_rho_eps_ye(state.rho, state.eps, state.Ye);
   const CCTK_REAL csound =
       eos->csnd_from_rho_temp_ye(state.rho, state.temperature, state.Ye);
   state.cs2 = csound * csound;
@@ -61,13 +67,29 @@ state_from_rho_eps_ye(const EOSType *eos, const CCTK_REAL rho,
   state.Ye = limit_to_range(Ye, eos->rgye);
   const auto eps_range = eos->range_eps_from_rho_ye(state.rho, state.Ye);
   state.eps = limit_to_range(eps, eps_range);
-  state.press = eos->press_from_rho_eps_ye(state.rho, state.eps, state.Ye);
-  state.temperature =
-      eos->temp_from_rho_eps_ye(state.rho, state.eps, state.Ye);
-  state.kappa = eos->kappa_from_rho_eps_ye(state.rho, state.eps, state.Ye);
-  const CCTK_REAL csound =
-      eos->csnd_from_rho_eps_ye(state.rho, state.eps, state.Ye);
-  state.cs2 = csound * csound;
+  if constexpr (EOSType::temperature_primary) {
+    // Invert once, then reuse T for all table queries. Keep the bounded
+    // physical eps returned by the inversion as the energy authority.
+    state.temperature =
+        eos->temp_from_rho_eps_ye(state.rho, state.eps, state.Ye);
+    state.press = eos->press_from_rho_temp_ye(
+        state.rho, state.temperature, state.Ye);
+    state.kappa = eos->kappa_from_rho_temp_ye(
+        state.rho, state.temperature, state.Ye);
+    const CCTK_REAL csound = eos->csnd_from_rho_temp_ye(
+        state.rho, state.temperature, state.Ye);
+    state.cs2 = csound * csound;
+  } else {
+    // Retain the analytic energy path, including ideal-gas kappa. In
+    // particular, do not substitute physical entropy for evolved entropy.
+    state.press = eos->press_from_rho_eps_ye(state.rho, state.eps, state.Ye);
+    state.temperature =
+        eos->temp_from_rho_eps_ye(state.rho, state.eps, state.Ye);
+    state.kappa = eos->kappa_from_rho_eps_ye(state.rho, state.eps, state.Ye);
+    const CCTK_REAL csound =
+        eos->csnd_from_rho_eps_ye(state.rho, state.eps, state.Ye);
+    state.cs2 = csound * csound;
+  }
   return state;
 }
 

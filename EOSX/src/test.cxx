@@ -81,6 +81,79 @@ void test_ideal() {
   }
 }
 
+void test_table_closure() {
+  // A shifted log-linear table with rho- and Ye-dependent energy bounds.
+  // This exercises the real interpolator and inverse, not a mock EOS.
+  std::array<CCTK_REAL, 3> lr{log(1.0e-6), log(1.0e-4), log(1.0e-2)};
+  std::array<CCTK_REAL, 3> lt{log(1.0e-3), log(1.0e-2), log(1.0e-1)};
+  std::array<CCTK_REAL, 2> ye{0.1, 0.5};
+  std::array<CCTK_REAL, 18 * NTABLES> data{};
+  CCTK_REAL shift = 0.05;
+  for (int k = 0; k < 2; ++k)
+    for (int j = 0; j < 3; ++j)
+      for (int i = 0; i < 3; ++i) {
+        const int offset = NTABLES * (i + 3*(j + 3*k));
+        data[offset + eos_3p_tabulated3d::PRESS] = lr[i] + lt[j];
+        data[offset + eos_3p_tabulated3d::EPS] = lt[j] + 0.1*lr[i] + 0.2*ye[k];
+        data[offset + eos_3p_tabulated3d::S] = lt[j] - lr[i] + ye[k];
+        data[offset + eos_3p_tabulated3d::CS2] = 0.2;
+      }
+  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interp(
+      data.data(), {3, 3, 2}, lr.data(), lt.data(), ye.data());
+  eos_3p_tabulated3d eos;
+  eos.interptable = &interp;
+  eos.energy_shift = &shift;
+  eos.rgrho = {exp(lr.front()), exp(lr.back())};
+  eos.rgtemp = {exp(lt.front()), exp(lt.back())};
+  eos.rgye = {ye.front(), ye.back()};
+  eos.rgeps = eos.compute_eps_range_full_table();
+  eos_call_counts counts;
+  eos.call_counts = &counts;
+
+  const auto check_value = [](const char *name, CCTK_REAL a, CCTK_REAL b) {
+    if (!std::isfinite(a) || !std::isfinite(b) ||
+        fabs(a-b) > 1.0e-10*fmax(1.0e-12, fabs(b)))
+      CCTK_VERROR("EOSX test %s failed: %.16e != %.16e", name, a, b);
+  };
+  for (const CCTK_REAL rho : {1.0e-8, 1.0e-6, 3.0e-4, 1.0e-2, 1.0})
+    for (const CCTK_REAL temp : {0.0, 0.001, 0.007, 0.1, 1.0})
+      for (const CCTK_REAL Ye : {-0.1, 0.1, 0.3, 0.5, 0.9}) {
+        counts = {};
+        const auto state = state_from_rho_temp_ye(&eos, rho, temp, Ye);
+        if (counts.value[static_cast<int>(eos_call::table_inverse)] != 0)
+          CCTK_ERROR("EOSX test: temperature closure inverted the table");
+        const CCTK_REAL r = limit_to_range(rho, eos.rgrho);
+        const CCTK_REAL t = limit_to_range(temp, eos.rgtemp);
+        const CCTK_REAL y = limit_to_range(Ye, eos.rgye);
+        check_value("table T-primary eps", state.eps,
+                    t*pow(r, 0.1)*exp(0.2*y)-shift);
+        check_value("table T-primary P", state.press, r*t);
+        check_value("table T-primary kappa", state.kappa, log(t)-log(r)+y);
+        check_value("table T-primary cs2", state.cs2, 0.2);
+        check("table T authority", state.temperature, t, 0.0);
+
+        const auto er = eos.range_eps_from_rho_ye(r, y);
+        for (const CCTK_REAL eps : {er.min-1.0, er.min, state.eps,
+                                    er.max, er.max+1.0}) {
+          counts = {};
+          const auto recovered = state_from_rho_eps_ye(&eos, rho, eps, Ye);
+          if (counts.value[static_cast<int>(eos_call::table_inverse)] != 1)
+            CCTK_ERROR("EOSX test: energy closure did not invert exactly once");
+          CCTK_REAL eps_ref = limit_to_range(eps, er);
+          // Independent legacy calls provide a reference for each output.
+          const CCTK_REAL press = eos.press_from_rho_eps_ye(r, eps_ref, y);
+          const CCTK_REAL temperature = eos.temp_from_rho_eps_ye(r, eps_ref, y);
+          const CCTK_REAL kappa = eos.kappa_from_rho_eps_ye(r, eps_ref, y);
+          const CCTK_REAL cs = eos.csnd_from_rho_eps_ye(r, eps_ref, y);
+          check_value("table energy authority", recovered.eps, eps_ref);
+          check_value("table reused P", recovered.press, press);
+          check_value("table reused T", recovered.temperature, temperature);
+          check_value("table reused kappa", recovered.kappa, kappa);
+          check_value("table reused cs2", recovered.cs2, cs*cs);
+        }
+      }
+}
+
 template <typename EOSType> void test_device(const EOSType *eos) {
   amrex::Gpu::DeviceScalar<unsigned int> failures(0);
   auto *failed = failures.dataPtr();
@@ -92,6 +165,13 @@ template <typename EOSType> void test_device(const EOSType *eos) {
     const CCTK_REAL Ye = eos->rgye.min + f*(eos->rgye.max-eos->rgye.min);
     const auto state = state_from_rho_temp_ye(eos, rho, temp, Ye);
     const auto recovered = state_from_rho_eps_ye(eos, rho, state.eps, Ye);
+    const CCTK_REAL actual[] = {recovered.eps, recovered.press,
+                                recovered.kappa, recovered.cs2};
+    const CCTK_REAL expected[] = {state.eps, state.press, state.kappa, state.cs2};
+    for (int j = 0; j < 4; ++j)
+      if (!std::isfinite(actual[j]) || !std::isfinite(expected[j]) ||
+          fabs(actual[j]-expected[j]) > 1.0e-7*fmax(fabs(expected[j]), 1.0e-20))
+        amrex::HostDevice::Atomic::Add(failed, 1U);
     if (!std::isfinite(recovered.temperature) ||
         fabs(recovered.temperature-temp) > 1.0e-7*fmax(temp, 1.0e-12))
       amrex::HostDevice::Atomic::Add(failed, 1U);
@@ -99,6 +179,28 @@ template <typename EOSType> void test_device(const EOSType *eos) {
   amrex::Gpu::streamSynchronize();
   if (failures.dataValue())
     CCTK_ERROR("EOSX test: active-EOS device round trips failed");
+
+  if constexpr (EOSType::temperature_primary) {
+    amrex::Gpu::DeviceScalar<eos_call_counts> calls(eos_call_counts{});
+    auto *counts = calls.dataPtr();
+    amrex::ParallelFor(1, [=] AMREX_GPU_DEVICE(int) {
+      auto local = *eos;
+      local.call_counts = counts;
+      const CCTK_REAL rho = sqrt(eos->rgrho.min * eos->rgrho.max);
+      const CCTK_REAL temp = sqrt(eos->rgtemp.min * eos->rgtemp.max);
+      const CCTK_REAL Ye = 0.5 * (eos->rgye.min + eos->rgye.max);
+      const auto state = state_from_rho_temp_ye(&local, rho, temp, Ye);
+      if (counts->value[static_cast<int>(eos_call::table_inverse)] != 0)
+        amrex::HostDevice::Atomic::Add(failed, 1U);
+      const auto recovered = state_from_rho_eps_ye(&local, rho, state.eps, Ye);
+      if (!std::isfinite(recovered.temperature))
+        amrex::HostDevice::Atomic::Add(failed, 1U);
+    });
+    amrex::Gpu::streamSynchronize();
+    if (failures.dataValue() ||
+        calls.dataValue().value[static_cast<int>(eos_call::table_inverse)] != 1)
+      CCTK_ERROR("EOSX test: device closure did not reuse table temperature");
+  }
 }
 } // namespace
 
@@ -106,6 +208,7 @@ extern "C" void EOSX_Test(CCTK_ARGUMENTS) {
   test_interp<true>();
   test_interp<false>();
   test_ideal();
+  test_table_closure();
   if (global_eos_3p_ig)
     test_device(global_eos_3p_ig);
   if (global_eos_3p_tab3d)

@@ -35,6 +35,10 @@ public:
   typedef eos_status status;
   typedef eos_range range;
 
+  // Select the native thermal coordinate for dependent EOS queries. This
+  // does not change which variable is authoritative in state closure.
+  static constexpr bool temperature_primary = false;
+
   range rgrho;  ///< Valid range for density \f$ \rho \f$
   range rgye;   ///< Valid range for electron fraction \f$ Y_e \f$
   range rgtemp; ///< Valid range for temperature \f$ T \f$

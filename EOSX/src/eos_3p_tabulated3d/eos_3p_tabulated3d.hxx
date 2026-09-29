@@ -47,6 +47,8 @@ CCTK_HOST void eos_readtable(const std::string &filename,
 //-----------------
 class eos_3p_tabulated3d : public eos_3p {
 public:
+  static constexpr bool temperature_primary = true;
+
   // must match order of HDF5 datasets below
   enum EV {
     PRESS = 0,   // "logpress"
@@ -429,6 +431,15 @@ public:
     assert(false);
     return 0.0;
   };
+
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  kappa_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                         const CCTK_REAL ye) const {
+    record_call(eos_call::kappa);
+    // The table's evolved entropy is its physical entropy. Keep this
+    // distinction inside the EOS; ideal gas uses a different kappa.
+    return entropy_from_rho_temp_ye(rho, temp, ye);
+  }
 
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   kappa_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
