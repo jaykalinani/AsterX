@@ -23,7 +23,8 @@ std::array<CCTK_REAL, 2> sample(const int method,
   }
 }
 void check(const CCTK_REAL actual, const CCTK_REAL expected) {
-  if (!std::isfinite(actual) || fabs(actual-expected) > 1.0e-11*fmax(1.0, fabs(expected)))
+  if (!std::isfinite(actual) || !std::isfinite(expected) ||
+      fabs(actual-expected) > 1.0e-11*fmax(1.0, fabs(expected)))
     CCTK_VERROR("ReconX test failed: %.16e != %.16e", actual, expected);
 }
 } // namespace
