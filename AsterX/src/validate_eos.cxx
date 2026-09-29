@@ -67,7 +67,7 @@ extern "C" void AsterX_ValidateEOS(CCTK_ARGUMENTS) {
   CCTK_VINFO("Atmosphere grading: r_atmo=%.16e n_rho=%.16e n_temp=%.16e "
              "n_press=%.16e", r_atmo, n_rho_atmo, n_temp_atmo, n_press_atmo);
   const CCTK_REAL face_atmo_factor =
-      use_atmo_tol_for_recon_thresh ? 1.0 + atmo_tol : recon_thresh;
+      recon_use_atmo_tol ? 1.0 + atmo_tol : recon_thresh;
   CCTK_VINFO("Atmosphere cutoff factors: cells=%.16e faces=%.16e; each "
              "multiplies its own local graded atmosphere density",
              1.0 + atmo_tol, face_atmo_factor);

@@ -19,7 +19,7 @@ BOOLEAN use_entropy_fix "Shall we use inversion based on entropy as a backup?" S
 {
 } "no"
 
-CCTK_INT eos_repair_diagnostics_every "Print per-grid-call EOS repair counters every N iterations; 0 disables allocation and reporting" STEERABLE=always
+CCTK_INT repair_every "Print per-grid-call EOS repair counters every N iterations; 0 disables allocation and reporting" STEERABLE=always
 {
   0:* :: "Nonnegative sampling interval"
 } 0
@@ -246,7 +246,7 @@ USES KEYWORD reconstruction_method
 USES KEYWORD loworder_method
 USES CCTK_BOOLEAN reconstruct_with_temperature
 USES CCTK_REAL recon_thresh
-USES BOOLEAN use_atmo_tol_for_recon_thresh
+USES BOOLEAN recon_use_atmo_tol
 USES CCTK_REAL ppm_eta1
 USES CCTK_REAL ppm_eta2
 USES CCTK_REAL ppm_eps

@@ -47,8 +47,8 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
   DECLARE_CCTK_ARGUMENTSX_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
-  repair_diagnostics diagnostics(eos_repair_diagnostics_every > 0 &&
-      cctk_iteration % eos_repair_diagnostics_every == 0);
+  repair_diagnostics diagnostics(repair_every > 0 &&
+      cctk_iteration % repair_every == 0);
   auto *counts = diagnostics.data();
 
   switch (reconstruction) {
@@ -257,7 +257,7 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
     // Keep the established reconstruction threshold semantics. A separate
     // startup diagnostic reports this face cutoff and the cell cutoff.
     const CCTK_REAL face_atmo_factor =
-        use_atmo_tol_for_recon_thresh ? 1.0 + atmo_tol : recon_thresh;
+        recon_use_atmo_tol ? 1.0 + atmo_tol : recon_thresh;
     const vec<CCTK_REAL, 2> rho_cut{rho_atm(0) * face_atmo_factor,
                                     rho_atm(1) * face_atmo_factor};
     // End atmosphere

@@ -42,8 +42,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
-  repair_diagnostics diagnostics(eos_repair_diagnostics_every > 0 &&
-      cctk_iteration % eos_repair_diagnostics_every == 0);
+  repair_diagnostics diagnostics(repair_every > 0 &&
+      cctk_iteration % repair_every == 0);
   auto *counts = diagnostics.data();
 
   c2p_first_t c2p_fir;
