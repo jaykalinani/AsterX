@@ -349,8 +349,17 @@ public:
   press_derivs_from_rho_eps_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
                                CCTK_REAL &dpdeps, const CCTK_REAL rho,
                                const CCTK_REAL eps, const CCTK_REAL ye) const {
-    printf("press_derivs_from_rho_eps_ye is not supported for now! \n");
-    assert(false);
+    const CCTK_REAL r = std::fmin(std::fmax(rho, rgrho.min), rgrho.max);
+    const CCTK_REAL y = std::fmin(std::fmax(ye, rgye.min), rgye.max);
+    const CCTK_REAL lr = std::log(r);
+    CCTK_REAL epsL = eps;
+    const CCTK_REAL lt = logtemp_from_rho_eps_ye(r, epsL, y);
+    const auto vars =
+        interptable->interpolate<EV::PRESS, EV::DPDRHOE, EV::DPDERHO>(lr, lt,
+                                                                     y);
+    press = exp(vars[0]);
+    dpdrho = vars[1];
+    dpdeps = vars[2];
   }
 
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
