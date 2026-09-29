@@ -232,9 +232,13 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   logtemp_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                           const CCTK_REAL ye) const {
-    // bound inputs
-    eps = std::fmax(eps, rgeps.min);
-    CCTK_REAL leps = std::log(eps + *energy_shift);
+    // Keep the logarithm in the global table range. The inversion below then
+    // restricts eps further to the temperature-edge range at this (rho, Ye).
+    // energy_shift is an interpolation detail only: eps remains unshifted.
+    eps = std::fmin(std::fmax(eps, rgeps.min), rgeps.max);
+    const CCTK_REAL shifted_eps = eps + *energy_shift;
+    assert(shifted_eps > 0.0);
+    CCTK_REAL leps = std::log(shifted_eps);
     CCTK_REAL lt = logtemp_from_rho_var_ye<EV::EPS>(rho, leps, ye);
     eps = exp(leps) - *energy_shift;
     return lt;
@@ -422,12 +426,12 @@ public:
 
     for (size_t i = 0; i < total; i++) {
       const CCTK_REAL logeps = interptable->y[EV::EPS + NTABLES * i];
+      // The table stores log(eps + energy_shift); EOS callers use physical eps.
       CCTK_REAL val = exp(logeps) - *energy_shift;
       eps_min = std::fmin(eps_min, val);
       eps_max = std::fmax(eps_max, val);
     }
 
-    eps_min = std::fmax(eps_min, 1e-27); // Force eps positive
     return range{eps_min, eps_max};
   }
 
