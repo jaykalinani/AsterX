@@ -89,6 +89,16 @@ public:
                            const CCTK_REAL &tauFluid_atm) const;
 };
 
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+set_thermo_state(prim_vars &pv, const EOSX::thermo_state &state) {
+  pv.rho = state.rho;
+  pv.eps = state.eps;
+  pv.Ye = state.Ye;
+  pv.press = state.press;
+  pv.temperature = state.temperature;
+  pv.entropy = state.kappa;
+}
+
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
@@ -97,28 +107,17 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
                                const smat<CCTK_REAL, 3> &glo,
                                c2p_report &rep) const {
 
-  bool recomp_eps_press_entropy = false;
+  // Use rho, eps and Ye returned by C2P as the initial authority. All
+  // dependent thermodynamic quantities must come from the same state.
+  EOSX::thermo_state state =
+      EOSX::state_from_rho_eps_ye(eos_3p, pv.rho, pv.eps, pv.Ye);
+  if (state.rho != pv.rho || state.eps != pv.eps || state.Ye != pv.Ye) {
+    rep.adjust_cons = true;
+  }
+  set_thermo_state(pv, state);
 
   // Need to store this here for later use
   const CCTK_REAL rho_h_fluid_old = pv.rho + pv.rho * pv.eps + pv.press;
-
-  // ----------
-  // Floor and ceiling for Ye
-  // ----------
-
-  if (pv.Ye < eos_3p->rgye.min) {
-
-    pv.Ye = eos_3p->rgye.min;
-    rep.adjust_cons = true;
-    recomp_eps_press_entropy = true;
-  }
-
-  if (pv.Ye > eos_3p->rgye.max) {
-
-    pv.Ye = eos_3p->rgye.max;
-    rep.adjust_cons = true;
-    recomp_eps_press_entropy = true;
-  }
 
   // ----------
   // Floor and ceiling for rho and velocity
@@ -137,32 +136,15 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     rep.adjust_cons = true;
 
     if (use_temp) {
-      // changes pressure
-      recomp_eps_press_entropy = true;
+      // Keep temperature, changes pressure
+      state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho, pv.temperature,
+                                           pv.Ye);
     } else {
-      // keeps pressure, changes eps
-      recomp_eps_press_entropy = false;
-      pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      // Keep pressure, changes eps
+      state =
+          EOSX::state_from_rho_press_ye(eos_3p, pv.rho, pv.press, pv.Ye);
     }
-  }
-
-  if (pv.rho > eos_3p->rgrho.max) {
-    // remove mass, changes conserved density D
-    pv.rho = eos_3p->rgrho.max;
-    rep.adjust_cons = true;
-
-    if (use_temp) {
-      // changes pressure
-      recomp_eps_press_entropy = true;
-    } else {
-      // keeps pressure, changes eps
-      recomp_eps_press_entropy = false;
-      pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    }
+    set_thermo_state(pv, state);
   }
 
   // ----------
@@ -172,8 +154,9 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 
   if (pv.temperature > eos_3p->rgtemp.max) {
 
-    pv.temperature = eos_3p->rgtemp.max;
-    recomp_eps_press_entropy = true;
+    state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho,
+                                         eos_3p->rgtemp.max, pv.Ye);
+    set_thermo_state(pv, state);
     rep.adjust_cons = true;
   }
 
@@ -190,11 +173,9 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 
     if (pv.press < atmo.press_atmo) {
 
-      pv.press = atmo.press_atmo;
-      pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      recomp_eps_press_entropy = false;
+      state = EOSX::state_from_rho_press_ye(eos_3p, pv.rho,
+                                            atmo.press_atmo, pv.Ye);
+      set_thermo_state(pv, state);
       rep.adjust_cons = true;
     }
 
@@ -207,17 +188,11 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 
     if (pv.temperature < atmo.temp_atmo) {
 
-      pv.temperature = atmo.temp_atmo;
-      recomp_eps_press_entropy = true;
+      state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho, atmo.temp_atmo,
+                                           pv.Ye);
+      set_thermo_state(pv, state);
       rep.adjust_cons = true;
     }
-  }
-
-  if (recomp_eps_press_entropy) {
-    pv.eps = eos_3p->eps_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-    pv.press = eos_3p->press_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    recomp_eps_press_entropy = false;
   }
 
   // ----------
@@ -255,14 +230,26 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 
     if (use_temp) {
       // Recompute T from adjusted rho, P
-      pv.temperature = eos_3p->temp_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.eps = eos_3p->eps_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-      pv.entropy = eos_3p->entropy_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+      CCTK_REAL pressL = pv.press;
+      const CCTK_REAL tempL =
+          eos_3p->temp_from_rho_press_ye(pv.rho, pressL, pv.Ye);
+      state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho, tempL, pv.Ye);
+    } else {
+      state =
+          EOSX::state_from_rho_press_ye(eos_3p, pv.rho, pv.press, pv.Ye);
     }
-    else {
-      pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    set_thermo_state(pv, state);
+
+    // The magnetic ceiling can change rho and the thermal state. Apply the
+    // selected atmosphere floor to the new EOS-consistent state.
+    if (use_press_atmo && pv.press < atmo.press_atmo) {
+      state = EOSX::state_from_rho_press_ye(eos_3p, pv.rho,
+                                            atmo.press_atmo, pv.Ye);
+      set_thermo_state(pv, state);
+    } else if (!use_press_atmo && pv.temperature < atmo.temp_atmo) {
+      state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho, atmo.temp_atmo,
+                                           pv.Ye);
+      set_thermo_state(pv, state);
     }
 
     mag_ceiling = false;
