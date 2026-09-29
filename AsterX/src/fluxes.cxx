@@ -15,6 +15,7 @@
 #include <cmath>
 
 #include "aster_utils.hxx"
+#include "atmo.hxx"
 #include "eigenvalues.hxx"
 #include "fluxes.hxx"
 #include "reconstruct.hxx"
@@ -25,6 +26,7 @@ using namespace std;
 using namespace Loop;
 using namespace Arith;
 using namespace EOSX;
+using namespace Con2PrimFactory;
 using namespace ReconX;
 using namespace AsterUtils;
 
@@ -35,9 +37,9 @@ enum class rec_var_t { v_vec, z_vec, s_vec };
 // Calculate the fluxes in direction `dir`. This function is more
 // complex because it has to handle any direction, but as reward,
 // there is only one function, not three.
-template <int dir_i, typename EOSType>
-void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
-              const reconstruction_t reconstruction,
+template <int dir_i, typename EOSIDType, typename EOSType>
+void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
+              const rec_var_t rec_var, const reconstruction_t reconstruction,
               const reconstruction_t reconstruction_LO,
               const reconstruct_params_t reconstruct_params,
               const flux_t fluxtype) {
@@ -210,25 +212,19 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
     // Reconstruct density
     auto rho_rc = reconstruct_pt(rho, p, true, true);
 
-    // Reconstruct entropy
-    auto entropy_rc = reconstruct_pt(entropy, p, false, false);
-
     // Reconstruct Ye
     auto Ye_rc = reconstruct_pt(Ye, p, false, false);
 
-    // Initialize variables for eps, pressure, and temperature
+    // Initialize the remaining thermodynamic variables
     vec<CCTK_REAL, 2> eps_rc;
     vec<CCTK_REAL, 2> press_rc;
     vec<CCTK_REAL, 2> temp_rc;
+    vec<CCTK_REAL, 2> entropy_rc;
+    vec<CCTK_REAL, 2> cs2_rc;
 
     // Setting up atmosphere for two neighboring cell centers
     vec<CCTK_REAL, 2> r_atm;
     vec<CCTK_REAL, 2> r2_atm = {0.0, 0.0};
-    vec<CCTK_REAL, 2> rho_atm;
-    vec<CCTK_REAL, 2> rho_cut;
-    vec<CCTK_REAL, 2> press_atm;
-    vec<CCTK_REAL, 2> eps_atm;
-    vec<CCTK_REAL, 2> temp_atm;
 
     // Get coordinates at neighboring cell centers
     for (int ii = 0; ii < 3; ii++) {
@@ -240,60 +236,23 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
     r_atm(0) = sqrt(r2_atm(0));
     r_atm(1) = sqrt(r2_atm(1));
 
-    // Grading rho
-    rho_atm(0) = (r_atm(0) > r_atmo)
-                     ? (rho_abs_min * pow((r_atmo / r_atm(0)), n_rho_atmo))
-                     : rho_abs_min;
-    rho_atm(0) = std::max(eos_3p->rgrho.min, rho_atm(0));
-    rho_cut(0) = rho_atm(0) * recon_thresh;
-
-    rho_atm(1) = (r_atm(1) > r_atmo)
-                     ? (rho_abs_min * pow((r_atmo / r_atm(1)), n_rho_atmo))
-                     : rho_abs_min;
-    rho_atm(1) = std::max(eos_3p->rgrho.min, rho_atm(1));
-    rho_cut(1) = rho_atm(1) * recon_thresh;
-
-    // Grading temperature or pressure
-    if (use_press_atmo) {
-      press_atm(0) = (r_atm(0) > r_atmo)
-                         ? (p_atmo * pow(r_atmo / r_atm(0), n_press_atmo))
-                         : p_atmo;
-      press_atm(0) = std::max(eos_3p->press_from_rho_temp_ye(
-                                  rho_atm(0), eos_3p->rgtemp.min, Ye_atmo),
-                              press_atm(0));
-      press_atm(1) = (r_atm(1) > r_atmo)
-                         ? (p_atmo * pow(r_atmo / r_atm(1), n_press_atmo))
-                         : p_atmo;
-      press_atm(1) = std::max(eos_3p->press_from_rho_temp_ye(
-                                  rho_atm(1), eos_3p->rgtemp.min, Ye_atmo),
-                              press_atm(1));
-      eps_atm(0) =
-          eos_3p->eps_from_rho_press_ye(rho_atm(0), press_atm(0), Ye_atmo);
-      eps_atm(1) =
-          eos_3p->eps_from_rho_press_ye(rho_atm(1), press_atm(1), Ye_atmo);
-      temp_atm(0) =
-          eos_3p->temp_from_rho_eps_ye(rho_atm(0), eps_atm(0), Ye_atmo);
-      temp_atm(1) =
-          eos_3p->temp_from_rho_eps_ye(rho_atm(1), eps_atm(1), Ye_atmo);
-    } else {
-      temp_atm(0) = (r_atm(0) > r_atmo)
-                        ? (t_atmo * pow(r_atmo / r_atm(0), n_temp_atmo))
-                        : t_atmo;
-      temp_atm(0) = std::max(eos_3p->rgtemp.min, temp_atm(0));
-
-      temp_atm(1) = (r_atm(1) > r_atmo)
-                        ? (t_atmo * pow(r_atmo / r_atm(1), n_temp_atmo))
-                        : t_atmo;
-      temp_atm(1) = std::max(eos_3p->rgtemp.min, temp_atm(1));
-      press_atm(0) =
-          eos_3p->press_from_rho_temp_ye(rho_atm(0), temp_atm(0), Ye_atmo);
-      press_atm(1) =
-          eos_3p->press_from_rho_temp_ye(rho_atm(1), temp_atm(1), Ye_atmo);
-      eps_atm(0) =
-          eos_3p->eps_from_rho_temp_ye(rho_atm(0), temp_atm(0), Ye_atmo);
-      eps_atm(1) =
-          eos_3p->eps_from_rho_temp_ye(rho_atm(1), temp_atm(1), Ye_atmo);
-    }
+    // Build the atmosphere independently at the left and right cell-center
+    // positions. This preserves the face-specific radial grading.
+    const atmosphere atmo_rc[2] = {
+        make_atmosphere(eos_1p, eos_3p, r_atm(0), rho_abs_min, p_atmo,
+                        t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+                        n_temp_atmo, atmo_tol, thermal_eos_atmo,
+                        use_press_atmo),
+        make_atmosphere(eos_1p, eos_3p, r_atm(1), rho_abs_min, p_atmo,
+                        t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+                        n_temp_atmo, atmo_tol, thermal_eos_atmo,
+                        use_press_atmo)};
+    const vec<CCTK_REAL, 2> rho_atm{atmo_rc[0].rho_atmo,
+                                    atmo_rc[1].rho_atmo};
+    // Keep the established reconstruction threshold semantics. A separate
+    // startup diagnostic reports this face cutoff and the cell cutoff.
+    const vec<CCTK_REAL, 2> rho_cut{rho_atm(0) * recon_thresh,
+                                    rho_atm(1) * recon_thresh};
     // End atmosphere
 
     // Check shock detection flag
@@ -305,45 +264,25 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       // Reconstruct temperature
       temp_rc = reconstruct_pt(temperature, p, false, false);
 
-      // Use lower-order if reconstructed rho, entropy, Ye or T is <= 0
-      if ((rho_rc(0) <= rho_cut(0)) || (entropy_rc(0) <= 0.0) ||
-          (Ye_rc(0) <= 0.0) || (temp_rc(0) <= 0.0) ||
-          (rho_rc(1) <= rho_cut(1)) || (entropy_rc(1) <= 0.0) ||
-          (Ye_rc(1) <= 0.0) || (temp_rc(1) <= 0.0) || useLO) {
+      const auto invalid_face = [&](const int f) {
+        return !isfinite(rho_rc(f)) || !isfinite(Ye_rc(f)) ||
+               !isfinite(temp_rc(f)) || rho_rc(f) <= rho_cut(f) ||
+               rho_rc(f) < eos_3p->rgrho.min ||
+               rho_rc(f) > eos_3p->rgrho.max ||
+               Ye_rc(f) < eos_3p->rgye.min || Ye_rc(f) > eos_3p->rgye.max ||
+               temp_rc(f) < eos_3p->rgtemp.min ||
+               temp_rc(f) > eos_3p->rgtemp.max;
+      };
+
+      // Retry with the configured lower-order method when a reconstructed
+      // primary variable lies outside the EOS domain.
+      if (invalid_face(0) || invalid_face(1) || useLO) {
 
         useLO = true;
 
         rho_rc = reconstruct_loworder(rho, p, true, true);
-        entropy_rc = reconstruct_loworder(entropy, p, false, false);
         Ye_rc = reconstruct_loworder(Ye, p, false, false);
         temp_rc = reconstruct_loworder(temperature, p, false, false);
-      }
-
-      // If reconstructed rho is still <= atmo, flag for reset
-      if (rho_rc(0) <= rho_cut(0)) {
-        resetL = true;
-        rho_rc(0) = rho_atm(0);
-        entropy_rc(0) =
-            eos_3p->kappa_from_rho_eps_ye(rho_atm(0), eps_atm(0), Ye_atmo);
-        temp_rc(0) = temp_atm(0);
-        Ye_rc(0) = Ye_atmo;
-      }
-      if (rho_rc(1) <= rho_cut(1)) {
-        resetR = true;
-        rho_rc(1) = rho_atm(1);
-        entropy_rc(1) =
-            eos_3p->kappa_from_rho_eps_ye(rho_atm(1), eps_atm(1), Ye_atmo);
-        temp_rc(1) = temp_atm(1);
-        Ye_rc(1) = Ye_atmo;
-      }
-      // End lower-order
-
-      // Compute eps_rc and press_rc using lambdas
-      for (int f = 0; f < 2; ++f) {
-        eps_rc(f) =
-            eos_3p->eps_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
-        press_rc(f) =
-            eos_3p->press_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
       }
 
     } else {
@@ -351,45 +290,70 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       // Reconstruct pressure
       press_rc = reconstruct_pt(press, p, false, true);
 
-      // Use lower-order if reconstructed rho, entropy, Ye or press is <= 0
-      if ((rho_rc(0) <= rho_cut(0)) || (entropy_rc(0) <= 0.0) ||
-          (Ye_rc(0) <= 0.0) || (press_rc(0) <= 0.0) ||
-          (rho_rc(1) <= rho_cut(1)) || (entropy_rc(1) <= 0.0) ||
-          (Ye_rc(1) <= 0.0) || (press_rc(1) <= 0.0) || useLO) {
+      const auto invalid_face = [&](const int f) {
+        if (!isfinite(rho_rc(f)) || !isfinite(Ye_rc(f)) ||
+            !isfinite(press_rc(f)) || rho_rc(f) <= rho_cut(f) ||
+            rho_rc(f) < eos_3p->rgrho.min ||
+            rho_rc(f) > eos_3p->rgrho.max ||
+            Ye_rc(f) < eos_3p->rgye.min || Ye_rc(f) > eos_3p->rgye.max)
+          return true;
+        const CCTK_REAL eps_from_press = eos_3p->eps_from_rho_press_ye(
+            rho_rc(f), press_rc(f), Ye_rc(f));
+        const auto eps_range =
+            eos_3p->range_eps_from_rho_ye(rho_rc(f), Ye_rc(f));
+        return !isfinite(eps_from_press) || eps_from_press < eps_range.min ||
+               eps_from_press > eps_range.max;
+      };
+
+      // Pressure-primary reconstruction is supported for EOSs with a unique
+      // pressure inversion. Startup validation rejects unsupported choices.
+      if (invalid_face(0) || invalid_face(1) || useLO) {
 
         useLO = true;
 
         rho_rc = reconstruct_loworder(rho, p, true, true);
-        entropy_rc = reconstruct_loworder(entropy, p, false, false);
         Ye_rc = reconstruct_loworder(Ye, p, false, false);
         press_rc = reconstruct_loworder(press, p, false, true);
       }
+    }
 
-      // If reconstructed rho is still <= atmo, flag for reset
-      if (rho_rc(0) <= rho_cut(0)) {
-        resetL = true;
-        rho_rc(0) = rho_atm(0);
-        entropy_rc(0) =
-            eos_3p->kappa_from_rho_eps_ye(rho_atm(0), eps_atm(0), Ye_atmo);
-        press_rc(0) = press_atm(0);
-        Ye_rc(0) = Ye_atmo;
-      }
-      if (rho_rc(1) <= rho_cut(1)) {
-        resetR = true;
-        rho_rc(1) = rho_atm(1);
-        entropy_rc(1) =
-            eos_3p->kappa_from_rho_eps_ye(rho_atm(1), eps_atm(1), Ye_atmo);
-        press_rc(1) = press_atm(1);
-        Ye_rc(1) = Ye_atmo;
-      }
-      // End lower-order
-
-      // Compute eps_rc and temp_rc using lambdas
-      for (int f = 0; f < 2; ++f) {
-        eps_rc(f) =
-            eos_3p->eps_from_rho_press_ye(rho_rc(f), press_rc(f), Ye_rc(f));
-        temp_rc(f) =
-            eos_3p->temp_from_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
+    // Close every face from one authoritative thermodynamic tuple. If the
+    // lower-order state is still below the face cutoff or the EOS density
+    // range, reset the complete face state to the local graded atmosphere.
+    for (int f = 0; f < 2; ++f) {
+      const bool reset_face = !isfinite(rho_rc(f)) ||
+                              !isfinite(Ye_rc(f)) ||
+                              !isfinite(reconstruct_with_temperature
+                                            ? temp_rc(f) : press_rc(f)) ||
+                              rho_rc(f) <= rho_cut(f) ||
+                              rho_rc(f) < eos_3p->rgrho.min;
+      if (reset_face) {
+        rho_rc(f) = atmo_rc[f].rho_atmo;
+        eps_rc(f) = atmo_rc[f].eps_atmo;
+        Ye_rc(f) = atmo_rc[f].ye_atmo;
+        press_rc(f) = atmo_rc[f].press_atmo;
+        temp_rc(f) = atmo_rc[f].temp_atmo;
+        entropy_rc(f) = atmo_rc[f].entropy_atmo;
+        const CCTK_REAL csound = eos_3p->csnd_from_rho_eps_ye(
+            rho_rc(f), eps_rc(f), Ye_rc(f));
+        cs2_rc(f) = csound * csound;
+        if (f == 0)
+          resetL = true;
+        else
+          resetR = true;
+      } else {
+        const auto state = reconstruct_with_temperature
+                               ? EOSX::state_from_rho_temp_ye(
+                                     eos_3p, rho_rc(f), temp_rc(f), Ye_rc(f))
+                               : EOSX::state_from_rho_press_ye(
+                                     eos_3p, rho_rc(f), press_rc(f), Ye_rc(f));
+        rho_rc(f) = state.rho;
+        eps_rc(f) = state.eps;
+        Ye_rc(f) = state.Ye;
+        press_rc(f) = state.press;
+        temp_rc(f) = state.temperature;
+        entropy_rc(f) = state.kappa;
+        cs2_rc(f) = state.cs2;
       }
     }
 
@@ -593,15 +557,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
     const vec<CCTK_REAL, 2> vel_rc{vels_rc(dir_i)};
     const vec<CCTK_REAL, 2> B_rc{Bs_rc(dir_i)};
     const vec<CCTK_REAL, 2> vtilde_rc{vtildes_rc(dir_i)};
-
-    // TODO: Compute pressure based on user-specified EOS.
-    // Currently, computing press for classical ideal gas from reconstructed
-    // vars
-
-    const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-      return eos_3p->csnd_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f)) *
-             eos_3p->csnd_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
-    });
 
     const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
       return 1 + eps_rc(f) + press_rc(f) / rho_rc(f);
@@ -1244,15 +1199,28 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
 
   switch (eos_3p_type) {
   case eos_3param::IdealGas: {
-    // Get local eos object
+    // Get local EOS objects
     auto eos_3p_ig = global_eos_3p_ig;
 
-    CalcFlux<0>(cctkGH, eos_3p_ig, rec_var, reconstruction, reconstruction_LO,
-                reconstruct_params, fluxtype);
-    CalcFlux<1>(cctkGH, eos_3p_ig, rec_var, reconstruction, reconstruction_LO,
-                reconstruct_params, fluxtype);
-    CalcFlux<2>(cctkGH, eos_3p_ig, rec_var, reconstruction, reconstruction_LO,
-                reconstruct_params, fluxtype);
+    if (global_eos_1p_pwpoly) {
+      auto eos_cold = global_eos_1p_pwpoly;
+      CalcFlux<0>(cctkGH, eos_cold, eos_3p_ig, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<1>(cctkGH, eos_cold, eos_3p_ig, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<2>(cctkGH, eos_cold, eos_3p_ig, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+    } else if (global_eos_1p_poly) {
+      auto eos_cold = global_eos_1p_poly;
+      CalcFlux<0>(cctkGH, eos_cold, eos_3p_ig, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<1>(cctkGH, eos_cold, eos_3p_ig, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<2>(cctkGH, eos_cold, eos_3p_ig, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+    } else {
+      CCTK_ERROR("Ideal-gas EOS selected but no cold EOS was initialized");
+    }
     break;
   }
   case eos_3param::Hybrid: {
@@ -1261,22 +1229,28 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
     if (global_eos_3p_hyb_pwpoly) {
       auto eos_3p_hyb = global_eos_3p_hyb_pwpoly;
 
-      CalcFlux<0>(cctkGH, eos_3p_hyb, rec_var, reconstruction,
-                  reconstruction_LO, reconstruct_params, fluxtype);
-      CalcFlux<1>(cctkGH, eos_3p_hyb, rec_var, reconstruction,
-                  reconstruction_LO, reconstruct_params, fluxtype);
-      CalcFlux<2>(cctkGH, eos_3p_hyb, rec_var, reconstruction,
-                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<0>(cctkGH, global_eos_1p_pwpoly, eos_3p_hyb, rec_var,
+                  reconstruction, reconstruction_LO, reconstruct_params,
+                  fluxtype);
+      CalcFlux<1>(cctkGH, global_eos_1p_pwpoly, eos_3p_hyb, rec_var,
+                  reconstruction, reconstruction_LO, reconstruct_params,
+                  fluxtype);
+      CalcFlux<2>(cctkGH, global_eos_1p_pwpoly, eos_3p_hyb, rec_var,
+                  reconstruction, reconstruction_LO, reconstruct_params,
+                  fluxtype);
 
     } else if (global_eos_3p_hyb_poly) {
       auto eos_3p_hyb = global_eos_3p_hyb_poly;
 
-      CalcFlux<0>(cctkGH, eos_3p_hyb, rec_var, reconstruction,
-                  reconstruction_LO, reconstruct_params, fluxtype);
-      CalcFlux<1>(cctkGH, eos_3p_hyb, rec_var, reconstruction,
-                  reconstruction_LO, reconstruct_params, fluxtype);
-      CalcFlux<2>(cctkGH, eos_3p_hyb, rec_var, reconstruction,
-                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<0>(cctkGH, global_eos_1p_poly, eos_3p_hyb, rec_var,
+                  reconstruction, reconstruction_LO, reconstruct_params,
+                  fluxtype);
+      CalcFlux<1>(cctkGH, global_eos_1p_poly, eos_3p_hyb, rec_var,
+                  reconstruction, reconstruction_LO, reconstruct_params,
+                  fluxtype);
+      CalcFlux<2>(cctkGH, global_eos_1p_poly, eos_3p_hyb, rec_var,
+                  reconstruction, reconstruction_LO, reconstruct_params,
+                  fluxtype);
 
     } else {
       CCTK_ERROR(
@@ -1286,15 +1260,28 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
     break;
   }
   case eos_3param::Tabulated: {
-    // Get local eos object
+    // Get local EOS objects
     auto eos_3p_tab3d = global_eos_3p_tab3d;
 
-    CalcFlux<0>(cctkGH, eos_3p_tab3d, rec_var, reconstruction,
-                reconstruction_LO, reconstruct_params, fluxtype);
-    CalcFlux<1>(cctkGH, eos_3p_tab3d, rec_var, reconstruction,
-                reconstruction_LO, reconstruct_params, fluxtype);
-    CalcFlux<2>(cctkGH, eos_3p_tab3d, rec_var, reconstruction,
-                reconstruction_LO, reconstruct_params, fluxtype);
+    if (global_eos_1p_pwpoly) {
+      auto eos_cold = global_eos_1p_pwpoly;
+      CalcFlux<0>(cctkGH, eos_cold, eos_3p_tab3d, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<1>(cctkGH, eos_cold, eos_3p_tab3d, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<2>(cctkGH, eos_cold, eos_3p_tab3d, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+    } else if (global_eos_1p_poly) {
+      auto eos_cold = global_eos_1p_poly;
+      CalcFlux<0>(cctkGH, eos_cold, eos_3p_tab3d, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<1>(cctkGH, eos_cold, eos_3p_tab3d, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+      CalcFlux<2>(cctkGH, eos_cold, eos_3p_tab3d, rec_var, reconstruction,
+                  reconstruction_LO, reconstruct_params, fluxtype);
+    } else {
+      CCTK_ERROR("Tabulated EOS selected but no cold EOS was initialized");
+    }
     break;
   }
   default:
