@@ -8,12 +8,14 @@
 #include <loop_device.hxx>
 
 #include "ID_TabEOS_HydroQuantities.hxx"
+#include "atmo.hxx"
 
 #define SQ(X) ((X) * (X))
 
 namespace ID_TabEOS_HydroQuantities {
 
 using namespace amrex;
+using namespace Con2PrimFactory;
 using namespace EOSX;
 using namespace Loop;
 
@@ -25,6 +27,7 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_Y_e(CCTK_ARGUMENTS) {
 
   CCTK_VInfo(CCTK_THORNSTRING, "Y_e initialization is ENABLED!");
 
+  auto eos_1p_poly = global_eos_1p_poly;
   auto eos_3p_tab3d = global_eos_3p_tab3d;
 
   // Open the Y_e file, which should countain Y_e(rho) for the EOS table slice
@@ -52,23 +55,22 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_Y_e(CCTK_ARGUMENTS) {
     grid.loop_all_device<1, 1, 1>(
         grid.nghostzones,
         [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-          CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-          CCTK_REAL rho_atm =
-              (radial_distance > r_atmo)
-                  ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
-                  : rho_abs_min;
-          rho_atm = std::max(eos_3p_tab3d->rgrho.min, rho_atm);
+          const CCTK_REAL radial_distance =
+              sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+          const auto atmo = make_atmosphere(
+              eos_1p_poly, eos_3p_tab3d, radial_distance, rho_abs_min,
+              p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+              n_temp_atmo, atmo_tol, true, false);
 
-          if (rho(p.I) > rho_atm * (1 + atmo_tol)) {
+          if (rho(p.I) > atmo.rho_cut) {
             // Interpolate Y_e(rho_i) at gridpoint i
             const CCTK_REAL Y_eL =
                 id_ye_reader.interpolate_1d_quantity_as_function_of_rho(
                     interp_stencil_size, nrho, rho(p.I));
             // Finally, set the Y_e gridfunction
-            Ye(p.I) = MIN(MAX(Y_eL, eos_3p_tab3d->interptable->xmin<2>()),
-                          eos_3p_tab3d->interptable->xmax<2>());
+            Ye(p.I) = limit_to_range(Y_eL, eos_3p_tab3d->rgye);
           } else {
-            Ye(p.I) = Ye_atmo;
+            Ye(p.I) = atmo.ye_atmo;
           }
         });
 
@@ -79,7 +81,7 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_Y_e(CCTK_ARGUMENTS) {
   }
 }
 
-// Set initial temperature to be constant everywhere (TODO: add other options)
+// Set the initial temperature or entropy profile.
 extern "C" void ID_TabEOS_HydroQuantities_initial_temp_ent(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_ID_TabEOS_HydroQuantities_initial_temp_ent;
   DECLARE_CCTK_PARAMETERS;
@@ -87,6 +89,7 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_temp_ent(CCTK_ARGUMENTS) {
   CCTK_VInfo(CCTK_THORNSTRING,
              "Temperature and entropy initialization is ENABLED!");
 
+  auto eos_1p_poly = global_eos_1p_poly;
   auto eos_3p_tab3d = global_eos_3p_tab3d;
 
   TS_ID_t ts_ID;
@@ -103,44 +106,36 @@ extern "C" void ID_TabEOS_HydroQuantities_initial_temp_ent(CCTK_ARGUMENTS) {
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        CCTK_REAL radial_distance =
+        const CCTK_REAL radial_distance =
             std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-        CCTK_REAL temp_atm =
-            (radial_distance > r_atmo)
-                ? (t_atmo * std::pow(r_atmo / radial_distance, n_temp_atmo))
-                : t_atmo;
-        temp_atm = std::max(eos_3p_tab3d->rgtemp.min, temp_atm);
-        CCTK_REAL rho_atm =
-            (radial_distance > r_atmo)
-                ? (rho_abs_min *
-                   std::pow((r_atmo / radial_distance), n_rho_atmo))
-                : rho_abs_min;
-        rho_atm = std::max(eos_3p_tab3d->rgrho.min, rho_atm);
+        const auto atmo = make_atmosphere(
+            eos_1p_poly, eos_3p_tab3d, radial_distance, rho_abs_min,
+            p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+            n_temp_atmo, atmo_tol, true, false);
 
         CCTK_REAL rhoL = rho(p.I);
         CCTK_REAL yeL = Ye(p.I);
 
         switch (ts_ID) {
         case TS_ID_t::Temperature: {
-          temperature(p.I) = temp_atm;
-          CCTK_REAL ent_val =
-              eos_3p_tab3d->entropy_from_rho_temp_ye(rhoL, temp_atm, yeL);
-          entropy(p.I) = ent_val;
+          const auto state = state_from_rho_temp_ye(
+              eos_3p_tab3d, rhoL, atmo.temp_atmo, yeL);
+          temperature(p.I) = state.temperature;
+          entropy(p.I) = state.kappa;
           break;
         }
         case TS_ID_t::Entropy: {
-          const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
-          if (rhoL > rho_atmo_cut) {
+          if (rhoL > atmo.rho_cut) {
             CCTK_REAL ent_val = id_entropy;
             CCTK_REAL temp_val = eos_3p_tab3d->temp_from_rho_entropy_ye(
                 rhoL, ent_val, yeL);
-            entropy(p.I) = ent_val;
-            temperature(p.I) = temp_val;
+            const auto state =
+                state_from_rho_temp_ye(eos_3p_tab3d, rhoL, temp_val, yeL);
+            entropy(p.I) = state.kappa;
+            temperature(p.I) = state.temperature;
           } else {
-            temperature(p.I) = temp_atm;
-            CCTK_REAL ent_val = eos_3p_tab3d->entropy_from_rho_temp_ye(
-                rhoL, temp_atm, yeL);
-            entropy(p.I) = ent_val;
+            temperature(p.I) = atmo.temp_atmo;
+            entropy(p.I) = atmo.entropy_atmo;
           }
           break;
         }
@@ -164,82 +159,37 @@ ID_TabEOS_HydroQuantities_recompute_HydroBase_variables(CCTK_ARGUMENTS) {
 
   CCTK_VInfo(CCTK_THORNSTRING, "Recomputing all HydroBase quantities ...");
 
+  auto eos_1p_poly = global_eos_1p_poly;
   auto eos_3p_tab3d = global_eos_3p_tab3d;
-
-  // table minimum values
-  const CCTK_REAL Tmin = eos_3p_tab3d->rgtemp.min;
-  const CCTK_REAL rho_min = eos_3p_tab3d->rgrho.min;
-  const CCTK_REAL Ye_min = eos_3p_tab3d->rgye.min;
-  const CCTK_REAL Ye_max = eos_3p_tab3d->rgye.max;
-  const CCTK_REAL eps_min = eos_3p_tab3d->rgeps.min;
-
-  // compute P_min from table at (rho_min, Tmin, Ye_min)
-  const CCTK_REAL P_min =
-      eos_3p_tab3d->press_from_rho_temp_ye(rho_min, Tmin, Ye_min);
 
   // Loop over the grid, recomputing the HydroBase quantities
   grid.loop_all_device<1, 1, 1>(
       grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) CCTK_ATTRIBUTE_ALWAYS_INLINE {
-        // Find Atmospheric Density
-        CCTK_REAL rhoL = rho(p.I);
-        CCTK_REAL tempL = temperature(p.I);
-        if (!std::isfinite(tempL) || tempL < Tmin) {
-          tempL = Tmin;
-          temperature(p.I) = tempL;
-        }
-
-        CCTK_REAL radial_distance =
+        const CCTK_REAL radial_distance =
             std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-        CCTK_REAL rho_atm =
-            (radial_distance > r_atmo)
-                ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
-                : rho_abs_min;
-        rho_atm = std::max(rho_atm, rho_min);
-        const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
+        const auto atmo = make_atmosphere(
+            eos_1p_poly, eos_3p_tab3d, radial_distance, rho_abs_min,
+            p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+            n_temp_atmo, atmo_tol, true, false);
 
-        if (rhoL > rho_atmo_cut) {
-          CCTK_REAL yeL = Ye(p.I);
-          yeL = std::clamp(yeL, Ye_min, Ye_max);
-          Ye(p.I) = yeL;
+        const bool reset_to_atmosphere = rho(p.I) <= atmo.rho_cut;
+        const auto state =
+            reset_to_atmosphere
+                ? state_from_rho_temp_ye(eos_3p_tab3d, atmo.rho_atmo,
+                                         atmo.temp_atmo, atmo.ye_atmo)
+                : state_from_rho_temp_ye(eos_3p_tab3d, rho(p.I),
+                                         temperature(p.I), Ye(p.I));
 
-          CCTK_REAL Pval =
-              eos_3p_tab3d->press_from_rho_temp_ye(rhoL, tempL, yeL);
+        rho(p.I) = state.rho;
+        eps(p.I) = state.eps;
+        Ye(p.I) = state.Ye;
+        press(p.I) = state.press;
+        temperature(p.I) = state.temperature;
+        entropy(p.I) = state.kappa;
 
-          if (!std::isfinite(Pval) || Pval < P_min) {
-            Pval = P_min;
-          }
-          press(p.I) = Pval;
-
-          CCTK_REAL eps_val =
-              eos_3p_tab3d->eps_from_rho_temp_ye(rhoL, tempL, yeL);
-          if (!std::isfinite(eps_val) || eps_val < eps_min) {
-            eps_val = eps_min;
-          }
-          eps(p.I) = eps_val;
-
-        } else {
-          // Reset to atmosphere
-          CCTK_REAL temp_atmL = tempL;
-          rho(p.I) = rho_atm;
-          Ye(p.I) = Ye_atmo;
-
-          CCTK_REAL Pval_atm = eos_3p_tab3d->press_from_rho_temp_ye(
-              rho_atm, temp_atmL, Ye_atmo);
-
-          if (!std::isfinite(Pval_atm) || Pval_atm < P_min) {
-            Pval_atm = P_min;
-          }
-          press(p.I) = Pval_atm;
-
-          CCTK_REAL eps_val_atm = eos_3p_tab3d->eps_from_rho_temp_ye(
-              rho_atm, temp_atmL, Ye_atmo);
-
-          if (!std::isfinite(eps_val_atm) || eps_val_atm < eps_min) {
-            eps_val_atm = eps_min;
-          }
-          eps(p.I) = eps_val_atm;
-
+        if (reset_to_atmosphere) {
+          // Initial-data atmosphere is static by construction.
           velx(p.I) = 0.0;
           vely(p.I) = 0.0;
           velz(p.I) = 0.0;
