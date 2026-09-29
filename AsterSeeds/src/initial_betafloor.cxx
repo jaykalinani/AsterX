@@ -9,6 +9,7 @@
 #include "util_Table.h"
 #include "seeds_utils.hxx"
 #include "setup_eos.hxx"
+#include "thermo_state.hxx"
 
 namespace AsterSeeds {
 using namespace std;
@@ -128,14 +129,21 @@ extern "C" void AsterSeeds_SetInitialBetaFloor(CCTK_ARGUMENTS) {
           rho(p.I) = rhoL;
           eps(p.I) = epsL;
           entropy(p.I) = entL;
+          temperature(p.I) = tempL;
+          Ye(p.I) = YeL;
         } else {
           // Recalculate primitives
-          press(p.I) = press_lim;
-          rho(p.I) =
+          const CCTK_REAL rho_new =
               eos_3p_tab3d->rho_from_press_temp_ye(press_lim, tempL, YeL);
-          eps(p.I) = eos_3p_tab3d->eps_from_rho_temp_ye(rho(p.I), tempL, YeL);
-          entropy(p.I) =
-              eos_3p_tab3d->entropy_from_rho_temp_ye(rho(p.I), tempL, YeL);
+          const auto state =
+              state_from_rho_temp_ye(eos_3p_tab3d, rho_new, tempL, YeL);
+          rho(p.I) = state.rho;
+          eps(p.I) = state.eps;
+          press(p.I) = state.press;
+          temperature(p.I) = state.temperature;
+          Ye(p.I) = state.Ye;
+          // HydroBaseX::entropy stores the EOS-defined evolved kappa.
+          entropy(p.I) = state.kappa;
         }
 
         // TODO: The coorbiting velocity feature is not well tested. Use with

@@ -164,6 +164,8 @@ if (CCTK_Equals(test_type, "3DTest")) {
         SCHEDULE AsterSeeds_SetInitialBetaFloor IN Seeding_Tasks AFTER AsterX_Con2PrimGroup 
         {
           LANG: C
+          READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::entropy(everywhere)
+          WRITES: HydroBaseX::temperature(everywhere) HydroBaseX::Ye(everywhere)
           READS: HydroBaseX::vel(everywhere) HydroBaseX::Bvec(everywhere) HydroBaseX::press(everywhere) HydroBaseX::temperature(everywhere) HydroBaseX::Ye(everywhere)
           READS: ADMBaseX::metric(everywhere)
           READS: vel_NS1(everywhere) vel_NS2(everywhere) CoM_NS1(everywhere) CoM_NS2(everywhere)
@@ -217,6 +219,8 @@ if (CCTK_Equals(test_type, "3DTest")) {
         SCHEDULE AsterSeeds_SetInitialBetaFloor AT initial IN AsterX_InitialGroup AFTER AsterX_ComputeBFromdB BEFORE AsterX_CheckPrims 
         {
           LANG: C
+          READS: HydroBaseX::rho(everywhere) HydroBaseX::eps(everywhere) HydroBaseX::entropy(everywhere)
+          WRITES: HydroBaseX::temperature(everywhere) HydroBaseX::Ye(everywhere)
           READS: HydroBaseX::vel(everywhere) HydroBaseX::Bvec(everywhere) HydroBaseX::press(everywhere) HydroBaseX::temperature(everywhere) HydroBaseX::Ye(everywhere)
           READS: ADMBaseX::metric(everywhere)
           READS: vel_NS1(everywhere) vel_NS2(everywhere) CoM_NS1(everywhere) CoM_NS2(everywhere)
