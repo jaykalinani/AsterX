@@ -268,8 +268,6 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       set_thermo_state(pv, state);
     }
 
-    mag_ceiling = false;
-
     // Drift floors from https://arxiv.org/pdf/1611.09365
     // to correct parallel velocity, adapted from SphericalNR
     // by Vassilios Mewes

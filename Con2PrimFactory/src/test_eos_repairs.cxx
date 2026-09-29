@@ -16,7 +16,7 @@ namespace {
 void check_close(const char *quantity, const CCTK_REAL actual,
                   const CCTK_REAL expected, const CCTK_REAL rtol = 1.0e-7,
                   const CCTK_REAL atol = 1.0e-13) {
-  if (!std::isfinite(actual) ||
+  if (!std::isfinite(actual) || !std::isfinite(expected) ||
       fabs(actual - expected) > atol + rtol * fabs(expected))
     CCTK_VERROR("EOS repair test: %s: actual=%.16e expected=%.16e",
                 quantity, actual, expected);
@@ -195,7 +195,9 @@ void test_ideal_gas() {
       1.0e-4, 0.5, 1.0, 6.0, 12.0, 6.0, 1.0e-3, false, false);
   check_close("cold density grading", outer.rho_atmo, inner.rho_atmo / 64.0);
   check_close("cold energy grading", outer.eps_atmo, inner.eps_atmo / 64.0);
-  check_close("cold pressure grading", outer.press_atmo, inner.press_atmo / 4096.0);
+  // The outer pressure is below the default absolute tolerance.
+  check_close("cold pressure grading", outer.press_atmo,
+              inner.press_atmo / 4096.0, 1.0e-12, 0.0);
   check_close("cold temperature grading", outer.temp_atmo, inner.temp_atmo / 64.0);
   const auto state = state_from_rho_temp_ye(&eos, 1.0e-3, 0.02, 0.5);
   const auto pressure_state = state_from_rho_press_ye(&eos, state.rho,
