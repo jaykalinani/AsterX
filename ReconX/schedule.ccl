@@ -1,2 +1,8 @@
 #Schedule definitions for thorn ReconX
-
+if (unit_test) {
+  SCHEDULE ReconX_Test AT CCTK_WRAGH
+  {
+    LANG: C
+    OPTIONS: META
+  } "Test reconstruction invariants"
+}

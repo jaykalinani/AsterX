@@ -2,6 +2,10 @@
 
 restricted:
 
+BOOLEAN unit_test "Run reconstruction unit tests"
+{
+} no
+
 KEYWORD reconstruction_method "Reconstruction method" STEERABLE=ALWAYS
 {
   "Godunov" :: ""
@@ -26,12 +30,12 @@ CCTK_BOOLEAN reconstruct_with_temperature "Whether to reconstruct temperature an
 {
 } no
 
-CCTK_REAL recon_thresh "Face reset density factor multiplying the local graded atmosphere density; ignored when use_atmo_tol_for_recon_thresh=yes" STEERABLE=always
+CCTK_REAL recon_thresh "Face reset density factor multiplying the local graded atmosphere density; ignored when recon_use_atmo_tol=yes" STEERABLE=always
 {
   0:* :: "Larger than zero"
 } 0.0
 
-BOOLEAN use_atmo_tol_for_recon_thresh "Use 1 + Con2PrimFactory::atmo_tol as the face reset density factor" STEERABLE=always
+BOOLEAN recon_use_atmo_tol "Use 1 + Con2PrimFactory::atmo_tol as the face reset density factor" STEERABLE=always
 {
 } no
 
