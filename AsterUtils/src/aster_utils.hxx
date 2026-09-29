@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <type_traits>
 
 #include "aster_fd.hxx"
 #include "aster_interp.hxx"
@@ -147,8 +148,10 @@ pow2(vec<T, F> x) {
   return ([&](int f) { return x(f) * x(f); });
 }
 
+// Copy neighbour values without propagating the grid function's const qualifier.
 template <typename T>
-CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline vec<T, 6>
+CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline
+vec<std::remove_const_t<T>, 6>
 get_neighbors(const GF3D2<T> &gf, const PointDesc &p) {
   return {gf(p.I - p.DI[0]), gf(p.I + p.DI[0]), gf(p.I - p.DI[1]),
           gf(p.I + p.DI[1]), gf(p.I - p.DI[2]), gf(p.I + p.DI[2])};
