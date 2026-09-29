@@ -21,17 +21,16 @@ struct atmosphere {
   CCTK_REAL press_atmo;
   CCTK_REAL temp_atmo;
   CCTK_REAL entropy_atmo;
-  CCTK_REAL rho_cell_reset_cut;
+  CCTK_REAL rho_cut;
 
   CCTK_DEVICE
   CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere() = default;
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere(
       CCTK_REAL rho_, CCTK_REAL eps_, CCTK_REAL Ye_, CCTK_REAL press_,
-      CCTK_REAL temp_, CCTK_REAL entropy_, CCTK_REAL rho_cell_reset_cut_)
+      CCTK_REAL temp_, CCTK_REAL entropy_, CCTK_REAL rho_cut_)
       : rho_atmo(rho_), eps_atmo(eps_), ye_atmo(Ye_), press_atmo(press_),
-        temp_atmo(temp_), entropy_atmo(entropy_),
-        rho_cell_reset_cut(rho_cell_reset_cut_) {}
+        temp_atmo(temp_), entropy_atmo(entropy_), rho_cut(rho_cut_) {}
 
   CCTK_DEVICE CCTK_HOST CCTK_ATTRIBUTE_ALWAYS_INLINE inline atmosphere &
   operator=(const atmosphere &other) {
@@ -44,7 +43,7 @@ struct atmosphere {
     press_atmo = other.press_atmo;
     temp_atmo = other.temp_atmo;
     entropy_atmo = other.entropy_atmo;
-    rho_cell_reset_cut = other.rho_cell_reset_cut;
+    rho_cut = other.rho_cut;
     return *this;
   }
 
@@ -136,9 +135,9 @@ make_atmosphere(const EOSIDType *eos_1p, const EOSType *eos_3p,
                                          Ye_atm);
   }
 
-  const CCTK_REAL rho_cell_reset_cut = state.rho * (1.0 + atmo_tol);
+  const CCTK_REAL rho_cut = state.rho * (1.0 + atmo_tol);
   return atmosphere(state.rho, state.eps, state.Ye, state.press,
-                    state.temperature, state.kappa, rho_cell_reset_cut);
+                    state.temperature, state.kappa, rho_cut);
 }
 
 } // namespace Con2PrimFactory

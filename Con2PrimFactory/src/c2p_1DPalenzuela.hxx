@@ -364,7 +364,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   cv.DYe /= sqrt_detg;
   cv.DEnt /= sqrt_detg;
 
-  // if (cv.dens <= atmo.rho_cell_reset_cut) {
+  // if (cv.dens <= atmo.rho_cut) {
   //  rep.set_atmo_set();
   //  pv.Bvec = cv.dBvec;
   //  atmo.set(pv, cv, glo);
@@ -546,7 +546,7 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   }
 
   // set to atmo if computed rho is below floor density
-  if (pv.rho < atmo.rho_cell_reset_cut) {
+  if (pv.rho < atmo.rho_cut) {
     rep.set_atmo_set();
     atmo.set(pv, cv, glo);
     return;

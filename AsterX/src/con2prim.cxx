@@ -191,8 +191,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // limits (RPA only). Magnetization limits are currently only applied for RPA C2P, 
     // while they are not obeyed in the other cases in the atmopshere -> TODO
     const CCTK_REAL b2_atm = calc_norm(Bup, glo);
-    const bool set_atmo =
-        (cv.dens <= sqrt_detg * atmo.rho_cell_reset_cut) &&
+    const bool set_atmo = (cv.dens <= sqrt_detg * atmo.rho_cut) &&
                           (c2p_off_floor_strict ||
                            ((b2_atm / atmo.rho_atmo <= sigma_max) &&
                             (b2_atm / (2 * atmo.press_atmo) <= inv_beta_max)));

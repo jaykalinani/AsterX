@@ -100,7 +100,7 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
           entropyL = eos_3p->kappa_from_rho_eps_ye(rhoL, epsL, YeL);
         }
 
-        if (rhoL < atmo.rho_cell_reset_cut) {
+        if (rhoL < atmo.rho_cut) {
           // Reset the complete primitive state instead of retaining thermal
           // quantities from a cell that has been classified as atmosphere.
           rhoL = atmo.rho_atmo;
