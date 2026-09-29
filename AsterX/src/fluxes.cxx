@@ -1124,6 +1124,12 @@ extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
 
+  // Reconstruction and atmosphere choices may be steered after startup.
+  if (CCTK_EQUALS(evolution_eos, "Tabulated3d") &&
+      (!reconstruct_with_temperature || use_press_atmo))
+    CCTK_ERROR("Tabulated3d requires temperature reconstruction and "
+               "use_press_atmo=no");
+
   eos_3param eos_3p_type;
 
   if (CCTK_EQUALS(evolution_eos, "IdealGas")) {

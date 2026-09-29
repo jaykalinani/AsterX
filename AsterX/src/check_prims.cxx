@@ -11,6 +11,7 @@ namespace AsterX {
 using namespace AsterUtils;
 using namespace Loop;
 using namespace EOSX;
+using namespace Con2PrimFactory;
 using namespace std;
 
 enum class eos_3param { IdealGas, Hybrid, Tabulated };
@@ -61,7 +62,12 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
           v_up *= v_lim / sol_v;
         }
 
-        if (rhoL < atmo.rho_cut) {
+        const bool finite = std::isfinite(rhoL) && std::isfinite(YeL) &&
+            std::isfinite(use_temperature ? tempL :
+                          (use_press_atmo ? pressL : epsL)) &&
+            std::isfinite(v_up(0)) && std::isfinite(v_up(1)) &&
+            std::isfinite(v_up(2));
+        if (!finite || rhoL <= atmo.rho_cut) {
           // Reset the complete primitive state instead of retaining thermal
           // quantities from a cell that has been classified as atmosphere.
           rhoL = atmo.rho_atmo;
@@ -83,6 +89,9 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
             state = EOSX::state_from_rho_press_ye(eos_3p, rhoL, pressL, YeL);
           } else {
             state = EOSX::state_from_rho_eps_ye(eos_3p, rhoL, epsL, YeL);
+            if (state.temperature < atmo.temp_atmo)
+              state = EOSX::state_from_rho_temp_ye(
+                  eos_3p, state.rho, atmo.temp_atmo, state.Ye);
           }
 
           rhoL = state.rho;
