@@ -180,7 +180,7 @@ extern "C" void AsterX_SourceTerms(CCTK_ARGUMENTS) {
     SourceTerms<4>(cctkGH);
     break;
   default:
-    CCTK_VERROR("local_spatial_order must be set to 2 or 4.");
+    assert(0);
   }
 }
 

@@ -2,6 +2,7 @@
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 
+#include <algorithm>
 #include <cmath>
 
 #include "atmo.hxx"
@@ -33,13 +34,19 @@ void ReportAtmosphere(const EOSIDType *eos_1p, const EOSType *eos_3p) {
                      Ye_atmo, thermal_eos_atmo, use_press_atmo);
 }
 
-extern "C" void AsterX_ValidateEOS(CCTK_ARGUMENTS) {
+extern "C" void AsterX_ParamCheck(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_ARGUMENTS_AsterX_ParamCheck;
   DECLARE_CCTK_PARAMETERS;
+
+  // CarpetX runs PARAMCHECK after EOS setup and before initial data,
+  // including on restart. Check parameter combinations only here.
   cached_atmo.valid = false;
   if (CCTK_EQUALS(evolution_eos, "Tabulated3d")) {
-    if (!use_temperature || !reconstruct_with_temperature || use_press_atmo)
+    if (!use_temperature || !reconstruct_with_temperature ||
+        !thermal_eos_atmo || use_press_atmo)
       CCTK_ERROR("Tabulated3d requires use_temperature=yes, "
-                 "reconstruct_with_temperature=yes and use_press_atmo=no");
+                 "reconstruct_with_temperature=yes, thermal_eos_atmo=yes "
+                 "and use_press_atmo=no");
     if (use_entropy_fix || CCTK_EQUALS(c2p_prime, "Entropy") ||
         CCTK_EQUALS(c2p_second, "Entropy"))
       CCTK_ERROR("Tabulated3d does not implement the inversions needed by "
@@ -49,6 +56,30 @@ extern "C" void AsterX_ValidateEOS(CCTK_ARGUMENTS) {
     CCTK_ERROR("Hybrid EOS requires thermal_eos_atmo=no");
   if (!(sigma_max > 0.0) || !(inv_beta_max > 0.0) || !(c2p_tol > 0.0))
     CCTK_ERROR("sigma_max, inv_beta_max and c2p_tol must be positive");
+
+  if (local_spatial_order != 2 && local_spatial_order != 4)
+    CCTK_ERROR("local_spatial_order must be set to 2 or 4");
+  if (tmunu_interp_order != 2 && tmunu_interp_order != 4)
+    CCTK_ERROR("tmunu_interp_order must be set to 2 or 4");
+
+  if (!freeze_evolution) {
+    const auto nghost = [](const char *method) {
+      if (CCTK_EQUALS(method, "Godunov"))
+        return 1;
+      if (CCTK_EQUALS(method, "minmod") ||
+          CCTK_EQUALS(method, "monocentral"))
+        return 2;
+      return 3;
+    };
+    int need = std::max(nghost(reconstruction_method), nghost(loworder_method));
+    if (add_dissipation)
+      need = std::max(need, 3);
+    for (int d = 0; d < 3; ++d)
+      if (cctk_nghostzones[d] < need)
+        CCTK_VERROR("Reconstruction and dissipation require >=%d ghost zones; "
+                   "have (%d,%d,%d).", need, cctk_nghostzones[0],
+                   cctk_nghostzones[1], cctk_nghostzones[2]);
+  }
 
   if (!thermal_eos_atmo) {
     CCTK_INFO("Atmosphere mode: cold initial-data EOS energy, closed with "

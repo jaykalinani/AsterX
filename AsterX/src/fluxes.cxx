@@ -58,33 +58,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
       n_press_atmo, n_temp_atmo, atmo_tol, thermal_eos_atmo,
       use_press_atmo, atmo_const);
 
-  switch (reconstruction) {
-  case reconstruction_t::Godunov:
-    assert(cctk_nghostzones[dir_i] >= 1);
-    break;
-  case reconstruction_t::minmod:
-    assert(cctk_nghostzones[dir_i] >= 2);
-    break;
-  case reconstruction_t::monocentral:
-    assert(cctk_nghostzones[dir_i] >= 2);
-    break;
-  case reconstruction_t::ppm:
-    assert(cctk_nghostzones[dir_i] >= 3);
-    break;
-  case reconstruction_t::eppm:
-    assert(cctk_nghostzones[dir_i] >= 3);
-    break;
-  case reconstruction_t::wenoz:
-    assert(cctk_nghostzones[dir_i] >= 3);
-    break;
-  case reconstruction_t::wenozp:
-    assert(cctk_nghostzones[dir_i] >= 3);
-    break;
-  case reconstruction_t::mp5:
-    assert(cctk_nghostzones[dir_i] >= 3);
-    break;
-  }
-
   /* grid functions for fluxes */
   const vec<GF3D2<CCTK_REAL>, dim> fluxdenss{fxdens, fydens, fzdens};
   const vec<GF3D2<CCTK_REAL>, dim> fluxDEnts{fxDEnt, fyDEnt, fzDEnt};
@@ -1134,12 +1107,6 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
 extern "C" void AsterX_Fluxes(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AsterX_Fluxes;
   DECLARE_CCTK_PARAMETERS;
-
-  // Reconstruction and atmosphere choices may be steered after startup.
-  if (CCTK_EQUALS(evolution_eos, "Tabulated3d") &&
-      (!reconstruct_with_temperature || use_press_atmo))
-    CCTK_ERROR("Tabulated3d requires temperature reconstruction and "
-               "use_press_atmo=no");
 
   eos_3param eos_3p_type;
 

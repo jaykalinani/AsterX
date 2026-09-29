@@ -171,7 +171,7 @@ extern "C" void AsterX_Tmunu(CCTK_ARGUMENTS) {
     Tmunu<4>(cctkGH);
     break;
   default:
-    CCTK_VERROR("intep_tmunu_order must be set to 2 or 4.");
+    assert(0);
   }
 }
 

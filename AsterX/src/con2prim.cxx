@@ -189,9 +189,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     CCTK_INT c2p_flag_code = C2P_INIT;
     bool call_c2p = true;
 
-    // Check if point is below atmosphere, and if atmosphere obeys magnetization
-    // limits (RPA only). Magnetization limits are currently only applied for RPA C2P, 
-    // while they are not obeyed in the other cases in the atmopshere -> TODO
+    // Reset low-density cells only when the atmosphere obeys the magnetic
+    // limits, unless c2p_off_floor_strict explicitly requests a reset.
     const CCTK_REAL b2_atm = calc_norm(Bup, glo);
     const bool set_atmo = (cv.dens <= sqrt_detg * atmo.rho_cut) &&
                           (c2p_off_floor_strict ||
@@ -512,24 +511,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
-
-  if (CCTK_EQUALS(evolution_eos, "Hybrid") && thermal_eos_atmo) {
-    CCTK_ERROR("Hybrid EOS does not implement *_from_rho_temp_ye; set "
-               "Con2PrimFactory::thermal_eos_atmo = no.");
-  }
-  if (CCTK_EQUALS(evolution_eos, "Tabulated3d") && !use_temperature) {
-    CCTK_ERROR("Tabulated3d requires Con2PrimFactory::use_temperature = yes.");
-  }
-  if (CCTK_EQUALS(evolution_eos, "Tabulated3d") && use_press_atmo) {
-    CCTK_ERROR("Tabulated3d does not support eps_from_rho_press_ye; set "
-               "Con2PrimFactory::use_press_atmo = no.");
-  }
-  // These parameters are steerable, so retain the check after startup too.
-  if (CCTK_EQUALS(evolution_eos, "Tabulated3d") &&
-      (use_entropy_fix || CCTK_EQUALS(c2p_prime, "Entropy") ||
-       CCTK_EQUALS(c2p_second, "Entropy"))) {
-    CCTK_ERROR("Tabulated3d does not implement entropy C2P inversions.");
-  }
 
   // defining EOS objects
   eos_3param eos_3p_type;

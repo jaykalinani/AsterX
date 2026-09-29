@@ -1,10 +1,10 @@
 # Schedule definitions for thorn AsterX
 
-SCHEDULE AsterX_ValidateEOS AT CCTK_WRAGH AFTER EOSX_Setup_EOS
+SCHEDULE AsterX_ParamCheck AT CCTK_PARAMCHECK
 {
   LANG: C
   OPTIONS: GLOBAL
-} "Validate EOS modes and report effective atmosphere settings"
+} "Check parameters and report effective atmosphere settings"
 
 STORAGE: cons_vector[timelevels]
 STORAGE: Avec_x[timelevels]
