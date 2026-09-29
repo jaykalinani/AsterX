@@ -5,12 +5,13 @@ The local `dev` and existing `origin/dev` references both remain at
 `d91110629c68ee2942ca916a12e131438b70c0b6`. No remote reference was fetched or
 updated for this review. These source patches do not edit production parfiles.
 
-Status update: the original repairs were subsequently rebuilt through
-`0d0f0b26`. The performance follow-up below is committed but **has not been
-compiled, rebuilt, or run**. The user will rebuild it. Earlier validation
-notes in this report describe the original source-review handoff, not the
-later production run. Static review does not establish GPU correctness or
-performance.
+Status update: the user rebuilt the performance follow-up below. The short
+DD2 benchmark used build `2026.09.29-20.34.25-28117`; its archived source was
+checked against the optimized sources. The review cleanup described below
+is newer than that executable and **has not been compiled or run**. No
+rebuild or submission was performed during this cleanup. Execution of the
+new C++ unit-test suites has not been confirmed; a production benchmark with
+unit tests disabled is not a substitute for those tests.
 
 ## Performance follow-up (2026-09-29)
 
@@ -19,7 +20,7 @@ EOS consistency checks or changing atmosphere grading. No new parameters,
 solver tolerances, reconstruction choices, table bounds, or floor policies
 are introduced by these optimizations.
 
-The existing RNS timing files show, through iteration 512:
+The earlier RNS timing files show, through iteration 512, before optimization:
 
 | Evolution time | OLD reference | Before optimization | Increase |
 |---|---:|---:|---:|
@@ -31,6 +32,27 @@ Both runs used 8 nodes, 64 MPI ranks, identical saved build options, and
 7.8676e10 recorded cell updates. These are aggregate timings from their
 `output-0000/<simulation>/performance.yaml` files, not per-kernel profiles.
 They do not establish how much time each EOS call accounts for.
+
+The later short optimized run completed 191 iterations before its ten-minute
+walltime expired. At the same completed iteration and simulation time 5.73:
+
+| Timing through iteration 191 | OLD reference | Before optimization (SLOW) | Optimized |
+|---|---:|---:|---:|
+| Evolution compute | 281.517 s | 355.783 s | 269.416 s |
+| Output | 16.1408 s | 17.2397 s | 17.4052 s |
+| Total | 297.658 s | 373.022 s | 286.821 s |
+| Simulation time / compute second | 0.0203540 | 0.0161053 | 0.0212682 |
+
+All three records have 2.93498e10 cell updates, with the same 8-node,
+64-rank layout. Optimized compute time is 4.30% below OLD and 24.28% below
+SLOW over this short interval. This supports near-reference performance for
+this run, not a universal speedup or attribution to an individual kernel.
+The simulations are under
+`/lustre/orion/ast232/scratch/jkalinan/simulations/`, using the base name
+`AsterX_RNS_CF_DD2_Cocal_sol25_7lvl_dx01_sc` and suffixes `_OLD` and `_SLOW`.
+The earlier failed job's launcher was killed following a reported DVS server
+failure; that failure is not evidence of an atmosphere-cache segmentation
+fault. The subsequent benchmark ended on its walltime limit.
 
 | Commit | Change |
 |---|---|
@@ -86,20 +108,119 @@ Added to the existing thorn-local suites:
   mode/input changes, and changed EOS pointers. Existing left/right graded
   atmosphere and characteristic-speed checks remain.
 
-Reviewed every changed line, including all primitive-seed consumers and
-RePrimAnd returns before/after finalization. `git diff --check` passes.
-**The added C++ tests have not been executed; no compilation or job submission
-was performed for this follow-up.**
+The source review covered the changed optimization lines, including all
+primitive-seed consumers and RePrimAnd returns before/after finalization.
+`git diff --check` passes. The optimized executable ran the short benchmark
+above, but **execution of the added C++ tests has not been confirmed**.
 
 After rebuilding, run the existing startup suite and active-DD2 tests before
 benchmarking. For speed, leave `EOSX::eos_call_diagnostics_every=0` and
 `AsterX::repair_every=0`; use a separate diagnostic run for call counts.
-Compare equal iteration intervals (e.g. 256--512), MPI/GPU layout, AMR work,
+For further benchmarks, compare equal iteration intervals (e.g. 256--512),
+MPI/GPU layout, AMR work,
 output cadence, compiler settings, and valid atmosphere inputs. Use the
 delta of evolution-compute-seconds, excluding startup and output. Repeat
-if node variability is significant. Near-dev performance is the target,
-**not yet a measured result**; a remaining gap needs kernel profiling rather
-than removal of physical checks or further speculative restructuring.
+if node variability is significant. The short benchmark meets the speed
+target; a reproducible remaining gap on longer runs would need kernel
+profiling rather than removal of physical checks or speculative restructuring.
+
+## Review cleanup and remaining findings (2026-09-29)
+
+Reviewed the repair changes against `origin/dev`, with particular attention
+to the three later performance commits listed above. This is a source review,
+not a proof of numerical correctness or a completed GPU regression campaign.
+
+### Applied cleanup
+
+- Enforce the requested tabulated atmosphere policy: `thermal_eos_atmo=yes`
+  and `use_press_atmo=no`. The tabulated-ID thorn's temperature-primary
+  builder calls now agree with the permitted evolution mode. Ideal-gas
+  choices and all radial grading formulas remain unchanged. No parameters
+  are silently overridden. The original `thermal_eos_atmo` parameter
+  definition, default, and steerability are retained exactly.
+- Consolidate compatibility checks in `AsterX/src/param_check.cxx`, replacing
+  `validate_eos.cxx`. `AsterX_ParamCheck` runs once at `CCTK_PARAMCHECK`:
+  CarpetX traverses this after `CCTK_WRAGH` (EOS setup), before grid initial
+  data, on both fresh starts and restarts. Atmosphere reporting and cache
+  initialization remain in this single startup pass. Remove repeated EOS
+  mode checks from evolution routines and move reconstruction/KO ghost-zone
+  checks here, including the fallback reconstruction's stencil requirement.
+  Numerical-state checks and defensive dispatch/object guards remain.
+  As requested, combinations are no longer revalidated after parameter
+  steering; any later changes must preserve the startup requirements.
+- Correct the outdated comment that described the shared pre-C2P atmosphere
+  decision as RePrimAnd-only; remove an unused `mag_ceiling` reassignment.
+  Existing variable names and numerical formulas are retained.
+- Reject non-finite reference values in EOSX, Con2PrimFactory and ReconX
+  comparison helpers, and non-finite inverse temperatures/kappa in the
+  AsterSeeds closure test. NaN differences must not pass via a false
+  floating-point comparison.
+- Tighten only the cold-pressure grading assertion in Con2PrimFactory.
+  Its expected outer pressure is 2.44140625e-14, below the old absolute
+  tolerance 1e-13: zero pressure incorrectly passed. The assertion now uses
+  relative tolerance 1e-12 and zero absolute tolerance. Other tolerances are
+  unchanged. An arithmetic check confirmed this distinction; it did not
+  execute the C++ atmosphere builder.
+- Update this report to distinguish the user-built performance benchmark
+  from the newer, unbuilt cleanup and unconfirmed unit-test execution.
+
+| Commit | Cleanup |
+|---|---|
+| `f85cd7d4` | AsterX: centralize startup parameter checks |
+| `a9273a7a` | Con2PrimFactory: harden atmosphere checks in unit tests |
+| `2f37641f` | EOSX: reject non-finite unit-test references |
+| `4336dd4e` | ReconX: reject non-finite unit-test references |
+| `00532726` | AsterSeeds: reject non-finite closure test results |
+
+Static registration/reference checks and `git diff --check` passed.
+Arithmetic checks covered all 16 tabulated thermal-mode combinations and
+64 primary/fallback-reconstruction/KO combinations, plus the pressure
+tolerance and magnetic-saturation examples. These checks model the formulas;
+they do not compile or execute the C++ routines or Cactus schedule.
+
+### Open numerical issue: magnetic floors can be lost at EOS bounds
+
+In `Con2PrimFactory/src/c2p.hxx`, `prims_floors_and_ceilings` raises rho and P
+to satisfy the magnetic limits, then closes the thermodynamic state. Closure
+can clamp rho or eps to an EOS maximum. The temperature-primary path checks
+its pressure target but not the requested density; the pressure-primary path
+does not verify either target after closure. A finite, EOS-valid state can
+therefore still violate the requested magnetic limit without reporting
+failure. This affects both EOS types through density saturation, and the
+ideal-gas pressure-primary path through energy saturation.
+
+Simple static examples at zero velocity illustrate the issue. With B^2=4,
+rho_max=1 and sigma_max=1, the requested rho=4 is bounded to 1, leaving
+sigma=4. For ideal gas with Gamma=2, rho=0.5, eps_max=2 and inv_beta_max=1,
+the requested P=2 is bounded to 1, leaving inverse beta=2. These examples
+check the algebra of the current branches, not a reproduced stellar failure.
+The unmagnetized RNS run does not exercise them.
+
+This was not silently changed during cleanup. A separate numerical patch
+should check both requested targets after closure, allow roundoff in the
+comparison, and use the existing failure policy when they are unattainable.
+Tests must cover both thermal authorities and both EOS types, including the
+effect of the subsequent drift-velocity adjustment on the final magnetic
+ratios. A full limiter-policy redesign is not a cosmetic cleanup.
+
+### Coverage gaps and optimization checks
+
+The new solver recovery tests run on the host; the active-table tests do not
+constitute a real-DD2 C2P sweep. Cache/builder comparisons currently exercise
+ideal gas on the host, not a tabulated atmosphere captured by a GPU kernel.
+Add targeted tests for tabulated GPU cache hits and graded misses, conditional
+Noble/backup/masked seed construction, RePrimAnd failure and limited-state
+returns, and EOS-bound magnetic floors before treating these paths as fully
+validated. The standalone ideal-gas test parfile does not activate the
+real-table GPU tests just because it also builds a synthetic host table.
+
+Static tracing found no uninitialized seed consumer in the optimized wrapper:
+Noble and masked/excised paths retain complete seeds. Successful RePrimAnd
+paths supply T/kappa through common closure or a full atmosphere reset.
+The atmosphere cache is a host-side value cache passed into kernels; active
+grading bypasses it, and a changed input selects the original builder.
+No cache removal, new caching layer, or further EOS-call optimization was
+introduced by this cleanup.
 
 ## Scope and numbering
 
@@ -196,6 +317,9 @@ field. The pressure derivative and inversion capabilities come from the EOS.
 | `tauFluid_atmo` | Numerical conservative-repair margin | Only after the global tau admissibility test fails | Undensitized energy density, not specific energy or atmosphere thermodynamics |
 
 Implementation: [Con2PrimFactory/src/atmo.hxx](Con2PrimFactory/src/atmo.hxx).
+Tabulated evolution requires a temperature-primary thermal atmosphere;
+cold matching and pressure-primary atmosphere choices below apply to ideal
+gas within this repair series. The shared builder itself remains generic.
 For each requested spatial radius, density remains
 
 ```
@@ -334,7 +458,8 @@ pressure maximum exists.
 Limited/excised states now reclose thermodynamics and refresh the electric
 field after velocity changes. The existing black-hole and magnetic limiter
 policies were not redesigned. In extreme states EOS-domain saturation and
-magnetization policy can still compete; those cases need dedicated tests.
+magnetization policy can still compete; the unchecked target cases are
+described explicitly in the review findings above and remain open.
 
 The entropy C2P class no longer reads Gamma either, but an EOS must implement
 its kappa inversion APIs to support that solver. **Tabulated entropy recovery
@@ -466,7 +591,8 @@ This synthetic EOS is a mathematical regression fixture, not a nuclear EOS.
 The standalone startup input is
 [AsterX/test/eos_repairs.par](AsterX/test/eos_repairs.par). It stops at iteration
 zero, activates all five suites, and needs no external table for the synthetic
-tests. It has not been run and has no generated reference-output directory.
+tests. Execution of this input has not been confirmed in this review, and no
+reference-output directory was generated for it during this work.
 
 For actual DD2 coverage, add these switches to a **copy** of an otherwise valid
 tabulated run input after rebuilding:
@@ -484,12 +610,14 @@ test input's EOS name alone: its Balsara initial-data routine is ideal-gas-only.
 The real table needs its normal table filename/format, initial data, and mode
 settings. Tests abort on failure rather than merely printing discrepancies.
 
-Not yet covered by executed tests: everything above. Additional integration
+The short DD2 production run exercised the evolution path, but does not
+confirm execution of the startup suites above. Additional integration
 coverage still required includes real DD2 C2P parameter sweeps; both HDF5
 reader formats; table-axis and monotonicity assumptions; low-T inversion
 conditioning; extreme magnetization/velocity; entropy fallback for ideal gas;
 full ePPM/Godunov grid-function paths; scheduled seeding; forced failed-C2P
-neighbours; MPI/AMR/subcycling; checkpoint/restart; and stellar evolution.
+neighbours; controlled MPI/AMR/subcycling comparisons; checkpoint/restart;
+and longer stellar evolution comparisons.
 The production table class still uses the existing uniform-axis interpolator;
 testing the generic nonuniform interpolator does not change that assumption.
 
@@ -499,13 +627,16 @@ Reviewed changed source/schedule paths, energy conventions, local/global
 limits, dispatch, declarations, and new test registrations. Follow-up commits
 record review findings rather than hiding them in a squashed patch: frozen
 neighbours, missing namespace import, cold-EOS dispatch, invalidated seed
-temperature, stale electric field after limiting, parameter steering guards,
-and counter interpretation.
+temperature, stale electric field after limiting, and counter interpretation.
+The earlier repeated parameter-steering guards have now been replaced by
+the user's requested startup-only checks in `param_check.cxx`.
 
 `git diff --check origin/dev` passes. Source search finds no
 `GammaIdealFluid`, direct `eos_3p->gamma`, or `eos_3p->gm1` dependency in the
-C2P files, and no shortened `eos_call_every` parameter. No compiler, linker,
-Cactus schedule-generation, or runtime validation has been performed.
+C2P files, and no shortened `eos_call_every` parameter. The earlier optimized
+sources were user-built and ran the short benchmark documented above. This
+review cleanup has had no compiler, linker, Cactus schedule-generation, or
+C++ runtime validation. Static and arithmetic checks are not substitutes.
 
 Suggested validation order after user review/rebuild:
 
