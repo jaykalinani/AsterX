@@ -39,6 +39,7 @@ public:
       CCTK_REAL &eps,      ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::pressure);
     return gm1 * rho * eps;
   }
 
@@ -48,6 +49,7 @@ public:
       const CCTK_REAL press, ///< Pressure \f$ P \f$
       const CCTK_REAL ye     ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::energy);
     return press / (rho * gm1);
   }
 
@@ -57,12 +59,14 @@ public:
       CCTK_REAL &eps,      ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::sound_speed);
     return sqrt(gm1 * eps / (eps + inv_gamma));
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   csnd_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                               const CCTK_REAL ye) const {
+    record_call(eos_call::sound_speed);
     CCTK_REAL eps = eps_from_rho_temp_ye(rho, temp, ye);
     return csnd_from_rho_eps_ye(rho, eps, ye);
   }
@@ -73,6 +77,7 @@ public:
       CCTK_REAL &eps,      ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::temperature);
     return temp_over_eps * eps;
   }
 
@@ -82,6 +87,7 @@ public:
       CCTK_REAL &press,    ///< Pressure \f$ P \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::temperature);
     CCTK_REAL eps = eps_from_rho_press_ye(rho, press, ye);
     return temp_over_eps * eps;
   }
@@ -106,6 +112,7 @@ public:
       const CCTK_REAL eps, ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::derivatives);
     press = gm1 * rho * eps;
     dpdrho = gm1 * eps;
     dpdeps = gm1 * rho;
@@ -117,6 +124,7 @@ public:
       const CCTK_REAL temp, ///< Temperature \f$ T \f$
       const CCTK_REAL ye    ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::entropy);
     return log(temp * pow(rho, -gm1) / temp_over_eps);
   }
 
@@ -126,6 +134,7 @@ public:
       const CCTK_REAL eps, ///< Specific internal energy \f$ \epsilon \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::entropy);
     return log(eps * pow(rho, -gm1));
   }
 
@@ -135,6 +144,7 @@ public:
       const CCTK_REAL temp, ///< Temperature \f$ T \f$ in MeV
       const CCTK_REAL ye    ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::energy);
     return temp / temp_over_eps;
   }
 
@@ -144,6 +154,7 @@ public:
       const CCTK_REAL temp, ///< Temperature \f$ T \f$ in MeV
       const CCTK_REAL ye    ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::pressure);
     CCTK_REAL eps = eps_from_rho_temp_ye(rho, temp, ye);
     return press_from_rho_eps_ye(rho, eps, ye);
   }
@@ -152,6 +163,7 @@ public:
   press_from_rho_kappa_ye(const CCTK_REAL rho,
                                 const CCTK_REAL kappa, // p/rho^gamma
                                 const CCTK_REAL ye) const {
+    record_call(eos_call::pressure);
     return kappa * pow(rho, gamma);
   }
 
@@ -159,6 +171,7 @@ public:
   eps_from_rho_kappa_ye(const CCTK_REAL rho,
                               const CCTK_REAL kappa, // p/rho^gamma
                               const CCTK_REAL ye) const {
+    record_call(eos_call::energy);
     return kappa * pow(rho, gamma - 1.0) / (gamma - 1.0);
   };
 
@@ -172,6 +185,7 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   kappa_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                               const CCTK_REAL ye) const {
+    record_call(eos_call::kappa);
     return (gamma - 1.0) * eps * pow(rho, 1.0 - gamma);
   };
 
@@ -180,6 +194,7 @@ public:
       const CCTK_REAL rho, ///< Rest mass density  \f$ \rho \f$
       const CCTK_REAL ye   ///< Electron fraction \f$ Y_e \f$
   ) const {
+    record_call(eos_call::local_range);
     return rgeps;
   }
 

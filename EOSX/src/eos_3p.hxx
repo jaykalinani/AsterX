@@ -14,8 +14,19 @@ and electron fraction.
 #include <cctk_Parameters.h>
 #include "utils/eos_utils.hxx"
 #include "utils/eos_constants.hxx"
+#include <AMReX_GpuAtomic.H>
 
 namespace EOSX {
+
+enum class eos_call {
+  pressure, energy, temperature, entropy, kappa, sound_speed, derivatives,
+  local_range, table_inverse, root_evaluation, enthalpy, enthalpy_iteration,
+  count
+};
+
+struct eos_call_counts {
+  unsigned long long value[static_cast<int>(eos_call::count)]{};
+};
 
 /// Abstract class eos_3p
 
@@ -27,6 +38,15 @@ public:
   range rgrho;  ///< Valid range for density \f$ \rho \f$
   range rgye;   ///< Valid range for electron fraction \f$ Y_e \f$
   range rgtemp; ///< Valid range for temperature \f$ T \f$
+
+  // Optional cumulative API-entry counters. Nested calls are included;
+  // storage is allocated at EOS setup only when diagnostics are enabled.
+  eos_call_counts *call_counts = nullptr;
+  CCTK_HOST CCTK_DEVICE inline void record_call(const eos_call call) const {
+    if (call_counts)
+      amrex::HostDevice::Atomic::Add(
+          &call_counts->value[static_cast<int>(call)], 1ULL);
+  }
 
 protected:
   /// Set the density range. Has to be called in the constructor of any

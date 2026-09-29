@@ -226,6 +226,37 @@ extern "C" void EOSX_Setup_EOS(CCTK_ARGUMENTS) {
   default:
     assert(0);
   }
+  if (eos_call_diagnostics_every > 0) {
+    eos_3p *eos = global_eos_3p_ig ? static_cast<eos_3p *>(global_eos_3p_ig)
+                                 : static_cast<eos_3p *>(global_eos_3p_tab3d);
+    if (eos) {
+      eos->call_counts = static_cast<eos_call_counts *>(
+          The_Managed_Arena()->alloc(sizeof(eos_call_counts)));
+      new (eos->call_counts) eos_call_counts{};
+      CCTK_INFO("EOS call counters enabled: cumulative per-rank API entries "
+                "include nested calls; root evaluations are counted separately");
+    }
+  }
+}
+
+extern "C" void EOSX_ReportCalls(CCTK_ARGUMENTS) {
+  DECLARE_CCTK_PARAMETERS;
+  if (eos_call_diagnostics_every <= 0 ||
+      cctkGH->cctk_iteration % eos_call_diagnostics_every != 0)
+    return;
+  const eos_3p *eos = global_eos_3p_ig
+      ? static_cast<const eos_3p *>(global_eos_3p_ig)
+      : static_cast<const eos_3p *>(global_eos_3p_tab3d);
+  if (!eos || !eos->call_counts)
+    return;
+  Gpu::synchronize();
+  const auto &n = eos->call_counts->value;
+  CCTK_VINFO("EOS calls: rank=%d iteration=%d P=%llu eps=%llu T=%llu "
+             "entropy=%llu kappa=%llu cs=%llu derivatives=%llu ranges=%llu "
+             "table_inverse=%llu root_eval=%llu enthalpy=%llu h_iter=%llu",
+             CCTK_MyProc(cctkGH), int(cctkGH->cctk_iteration),
+             n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], n[8],
+             n[9], n[10], n[11]);
 }
 
 } // namespace EOSX

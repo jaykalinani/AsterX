@@ -171,6 +171,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   logtemp_from_rho_var_ye(const CCTK_REAL rho, CCTK_REAL &invar,
                           const CCTK_REAL ye) const {
+    record_call(eos_call::table_inverse);
     // bound inputs
     CCTK_REAL r = std::fmin(std::fmax(rho, rgrho.min), rgrho.max);
     CCTK_REAL lrho = std::log(r);
@@ -191,6 +192,7 @@ public:
 
     // root-find for logtemp
     auto func = [&](CCTK_REAL &lt) {
+      record_call(eos_call::root_evaluation);
       CCTK_REAL val = interptable->interpolate<var>(lrho, lt, ye)[0];
       return invar - val;
     };
@@ -202,6 +204,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   logrho_from_var_temp_ye(CCTK_REAL &invar, const CCTK_REAL temp, 
                                 const CCTK_REAL ye) const {
+    record_call(eos_call::table_inverse);
     // bound inputs
     CCTK_REAL t = std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max);
     CCTK_REAL lt = std::log(t);
@@ -222,6 +225,7 @@ public:
 
     // root‐find for logrho
     auto func = [&](CCTK_REAL &lrho) {
+      record_call(eos_call::root_evaluation);
       CCTK_REAL val = interptable->interpolate<var>(lrho, lt, ye)[0];
       return invar - val;
     };
@@ -247,6 +251,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   temp_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                        const CCTK_REAL ye) const {
+    record_call(eos_call::temperature);
     CCTK_REAL lt = logtemp_from_rho_eps_ye(rho, eps, ye);
     return exp(lt);
   }
@@ -254,6 +259,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   temp_from_rho_entropy_ye(const CCTK_REAL rho, CCTK_REAL &ent,
                            const CCTK_REAL ye) const {
+    record_call(eos_call::temperature);
     CCTK_REAL lt = logtemp_from_rho_var_ye<EV::S>(rho, ent, ye);
     return exp(lt);
   }
@@ -261,6 +267,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   temp_from_rho_press_ye(const CCTK_REAL rho, CCTK_REAL &press,
                                 const CCTK_REAL ye) const {
+    record_call(eos_call::temperature);
     CCTK_REAL lP = log(press);
     CCTK_REAL lt = logtemp_from_rho_var_ye<EV::PRESS>(rho, lP, ye);
     press = exp(lP);
@@ -279,6 +286,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   press_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                          const CCTK_REAL ye) const {
+    record_call(eos_call::pressure);
     // bound
     CCTK_REAL r = std::fmin(std::fmax(rho, rgrho.min), rgrho.max);
     CCTK_REAL t = std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max);
@@ -290,6 +298,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   press_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                         const CCTK_REAL ye) const {
+    record_call(eos_call::pressure);
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
     CCTK_REAL lt = logtemp_from_rho_eps_ye(rho, eps, ye);
     CCTK_REAL v = interptable->interpolate<EV::PRESS>(lr, lt, ye)[0];
@@ -299,6 +308,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   eps_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                        const CCTK_REAL ye) const {
+    record_call(eos_call::energy);
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
     CCTK_REAL lt = std::log(std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max));
     CCTK_REAL v = interptable->interpolate<EV::EPS>(lr, lt, ye)[0];
@@ -308,6 +318,7 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   eps_from_rho_press_ye(const CCTK_REAL rho, const CCTK_REAL press,
                         const CCTK_REAL ye) const {
+    record_call(eos_call::energy);
 
     printf(
         "This routine should not be used. There is no monotonicity condition "
@@ -320,6 +331,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   csnd_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                         const CCTK_REAL ye) const {
+    record_call(eos_call::sound_speed);
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
     CCTK_REAL lt = std::log(std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max));
     CCTK_REAL v = interptable->interpolate<EV::CS2>(lr, lt, ye)[0];
@@ -334,6 +346,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   csnd_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                        const CCTK_REAL ye) const {
+    record_call(eos_call::sound_speed);
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
     CCTK_REAL lt = logtemp_from_rho_eps_ye(rho, eps, ye);
     CCTK_REAL v = interptable->interpolate<EV::CS2>(lr, lt, ye)[0];
@@ -349,6 +362,7 @@ public:
   press_derivs_from_rho_eps_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
                                CCTK_REAL &dpdeps, const CCTK_REAL rho,
                                const CCTK_REAL eps, const CCTK_REAL ye) const {
+    record_call(eos_call::derivatives);
     const CCTK_REAL r = std::fmin(std::fmax(rho, rgrho.min), rgrho.max);
     const CCTK_REAL y = std::fmin(std::fmax(ye, rgye.min), rgye.max);
     const CCTK_REAL lr = std::log(r);
@@ -371,6 +385,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   entropy_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                            const CCTK_REAL ye) const {
+    record_call(eos_call::entropy);
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
     CCTK_REAL lt = std::log(std::fmin(std::fmax(temp, rgtemp.min), rgtemp.max));
     return interptable->interpolate<EV::S>(lr, lt, ye)[0];
@@ -399,6 +414,7 @@ public:
   press_from_rho_kappa_ye(const CCTK_REAL rho,
                           const CCTK_REAL kappa, // kappa=entropy
                           const CCTK_REAL ye) const {
+    record_call(eos_call::pressure);
     printf("press_from_rho_kappa_ye is not supported for tabulated EOS! \n");
     assert(false);
     return 0.0;
@@ -408,6 +424,7 @@ public:
   eps_from_rho_kappa_ye(const CCTK_REAL rho,
                         const CCTK_REAL kappa, // kappa=entropy
                         const CCTK_REAL ye) const {
+    record_call(eos_call::energy);
     printf("eps_from_rho_kappa_ye is not supported for tabulated EOS! \n");
     assert(false);
     return 0.0;
@@ -416,12 +433,14 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   kappa_from_rho_eps_ye(const CCTK_REAL rho, CCTK_REAL &eps,
                         const CCTK_REAL ye) const {
+    record_call(eos_call::kappa);
     return entropy_from_rho_temp_ye(rho, temp_from_rho_eps_ye(rho, eps, ye),
                                     ye);
   }
 
   CCTK_HOST CCTK_DEVICE inline range
   range_eps_from_rho_ye(const CCTK_REAL rho, const CCTK_REAL ye) const {
+    record_call(eos_call::local_range);
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));
     CCTK_REAL vmin =
         interptable->interpolate<EV::EPS>(lr, interptable->xmin<1>(), ye)[0];

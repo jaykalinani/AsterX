@@ -119,6 +119,7 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline thermo_state_derivs
 state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
                            const CCTK_REAL enthalpy, const CCTK_REAL Ye) {
+  eos->record_call(eos_call::enthalpy);
   const CCTK_REAL rho_limited = limit_to_range(rho, eos->rgrho);
   const CCTK_REAL Ye_limited = limit_to_range(Ye, eos->rgye);
   const auto eps_range =
@@ -152,6 +153,7 @@ state_from_rho_enthalpy_ye(const EOSType *eos, const CCTK_REAL rho,
         32.0 * std::numeric_limits<CCTK_REAL>::epsilon() *
         fmax(1.0, fabs(enthalpy));
     for (CCTK_INT n = 0; n < 80; ++n) {
+      eos->record_call(eos_call::enthalpy_iteration);
       CCTK_REAL press;
       CCTK_REAL dpdrho;
       CCTK_REAL dpdeps;

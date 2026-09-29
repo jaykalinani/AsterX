@@ -2,6 +2,15 @@
 
 restricted:
 
+CCTK_INT eos_call_diagnostics_every "Report cumulative per-rank EOS API-entry and inversion counters every N iterations; 0 disables counting" STEERABLE=never
+{
+  0:* :: "Nonnegative sampling interval"
+} 0
+
+BOOLEAN unit_test "Run EOS interpolation and thermodynamic closure unit tests"
+{
+} no
+
 KEYWORD initial_data_eos "Name of active EOS for initial data"
 {
   "Polytropic" :: ""
