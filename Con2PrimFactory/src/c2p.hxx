@@ -321,8 +321,15 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     }
   }
 
-  if (!std::isfinite(pv.press) || !std::isfinite(pv.temperature) ||
-      !std::isfinite(pv.entropy) || !std::isfinite(pv.w_lor))
+  // Velocity limiting changes the electric field as well. Keep all returned
+  // primitives consistent before the caller rebuilds conservatives.
+  pv.E = calc_contraction(calc_inv(glo, calc_det(glo)),
+                          calc_cross_product(pv.Bvec, pv.vel));
+  if (!std::isfinite(pv.rho) || !std::isfinite(pv.eps) ||
+      !std::isfinite(pv.press) || !std::isfinite(pv.temperature) ||
+      !std::isfinite(pv.entropy) || !std::isfinite(pv.w_lor) ||
+      !std::isfinite(pv.vel(0)) || !std::isfinite(pv.vel(1)) ||
+      !std::isfinite(pv.vel(2)))
     rep.set_range_eps(pv.eps);
 }
 
@@ -364,9 +371,10 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
     if (recomp_flag) {
 
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      set_thermo_state(pv, EOSX::state_from_rho_eps_ye(
+                               eos_3p, pv.rho, pv.eps, pv.Ye));
+      pv.E = calc_contraction(calc_inv(glo, calc_det(glo)),
+                              calc_cross_product(pv.Bvec, pv.vel));
 
       cv.from_prim(pv, glo);
     };
@@ -378,9 +386,8 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     pv.eps = eps_BH;
     pv.Ye = atmo.ye_atmo;
 
-    pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    set_thermo_state(pv, EOSX::state_from_rho_eps_ye(
+                             eos_3p, pv.rho, pv.eps, pv.Ye));
 
     // Set velocity such that new conserved momentum has same
     // direction as before
@@ -431,6 +438,7 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     pv.vel(Z) += BiEsi * S_new * pv.Bvec(Z) / (Z_loc * (Z_loc + Bsq));
 
     pv.w_lor = wlim_BH;
+    pv.E = calc_contraction(gup, calc_cross_product(pv.Bvec, pv.vel));
 
     cv.from_prim(pv, glo);
   };
