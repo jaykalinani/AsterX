@@ -23,17 +23,17 @@ KEYWORD c2p_second "Name of the backup con2prim scheme" STEERABLE=ALWAYS {
 }
 "Palenzuela"
 
-CCTK_REAL rho_abs_min "atmosphere density" STEERABLE=never
+CCTK_REAL rho_abs_min "Requested atmosphere density inside r_atmo; radially graded and bounded by the evolution EOS" STEERABLE=never
 {
   0:* :: "Larger than zero"
 } 1e-13
 
-CCTK_REAL atmo_tol "atmosphere density tolerance factor" STEERABLE=ALWAYS
+CCTK_REAL atmo_tol "Cell reset cutoff is local graded atmosphere density times (1 + atmo_tol)" STEERABLE=ALWAYS
 {
   0:* :: "Larger than zero"
 } 1e-3
 
-CCTK_REAL eps_atmo "Specific energy density of the atmosphere" STEERABLE = recover {
+CCTK_REAL eps_atmo "Legacy atmosphere input; the shared atmosphere builder derives eps from the selected thermal or cold EOS state" STEERABLE = recover {
   0 : *::"Larger than zero"
 } 1e-10
 
@@ -87,7 +87,7 @@ STEERABLE=ALWAYS
   1.0:* :: "Must be >= 1"
 } 1.0
 
-CCTK_REAL tauFluid_atmo "Minimum conserved internal energy of fluid" STEERABLE=ALWAYS
+CCTK_REAL tauFluid_atmo "Undensitized energy-density margin added only after the conservative energy admissibility test fails; not the atmosphere energy" STEERABLE=ALWAYS
 {
   [0.0:* :: "Larger than zero"
 } 1e-15

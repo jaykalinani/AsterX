@@ -251,8 +251,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p,
                                     atmo_rc[1].rho_atmo};
     // Keep the established reconstruction threshold semantics. A separate
     // startup diagnostic reports this face cutoff and the cell cutoff.
-    const vec<CCTK_REAL, 2> rho_cut{rho_atm(0) * recon_thresh,
-                                    rho_atm(1) * recon_thresh};
+    const CCTK_REAL face_atmo_factor =
+        use_atmo_tol_for_recon_thresh ? 1.0 + atmo_tol : recon_thresh;
+    const vec<CCTK_REAL, 2> rho_cut{rho_atm(0) * face_atmo_factor,
+                                    rho_atm(1) * face_atmo_factor};
     // End atmosphere
 
     // Check shock detection flag
