@@ -107,11 +107,20 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
                                const smat<CCTK_REAL, 3> &glo,
                                c2p_report &rep) const {
 
+  if (!std::isfinite(pv.rho) || !std::isfinite(pv.eps) ||
+      !std::isfinite(pv.Ye) || !std::isfinite(pv.w_lor) ||
+      !std::isfinite(pv.vel(0)) || !std::isfinite(pv.vel(1)) ||
+      !std::isfinite(pv.vel(2))) {
+    rep.set_range_eps(pv.eps);
+    return;
+  }
+
   // Use rho, eps and Ye returned by C2P as the initial authority. All
   // dependent thermodynamic quantities must come from the same state.
   EOSX::thermo_state state =
       EOSX::state_from_rho_eps_ye(eos_3p, pv.rho, pv.eps, pv.Ye);
-  if (state.rho != pv.rho || state.eps != pv.eps || state.Ye != pv.Ye) {
+  if (state.rho != pv.rho || state.eps != pv.eps || state.Ye != pv.Ye ||
+      state.press != pv.press) {
     rep.adjust_cons = true;
   }
   set_thermo_state(pv, state);
@@ -229,11 +238,14 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     rep.adjust_cons = true;
 
     if (use_temp) {
-      // Recompute T from adjusted rho, P
-      CCTK_REAL pressL = pv.press;
-      const CCTK_REAL tempL =
-          eos_3p->temp_from_rho_press_ye(pv.rho, pressL, pv.Ye);
-      state = EOSX::state_from_rho_temp_ye(eos_3p, pv.rho, tempL, pv.Ye);
+      // Increase T within the EOS domain to meet the pressure floor.
+      // A unique pressure inversion is not required for a tabulated EOS.
+      state = EOSX::state_with_temp_press_floor(
+          eos_3p, pv.rho, pv.temperature, pv.Ye, pv.press);
+      if (!std::isfinite(state.press) || state.press < pv.press) {
+        rep.set_range_eps(state.eps);
+        return;
+      }
     } else {
       state =
           EOSX::state_from_rho_press_ye(eos_3p, pv.rho, pv.press, pv.Ye);
@@ -304,6 +316,10 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       pv.w_lor = 1. / sqrt(1. - vsq_Sol);
     }
   }
+
+  if (!std::isfinite(pv.press) || !std::isfinite(pv.temperature) ||
+      !std::isfinite(pv.entropy) || !std::isfinite(pv.w_lor))
+    rep.set_range_eps(pv.eps);
 }
 
 template <typename EOSType, bool limiting>

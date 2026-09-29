@@ -433,6 +433,10 @@ c2p_1DEntropy::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   }
 
   c2p::prims_floors_and_ceilings(eos_3p, pv, cv, alp, beta, glo, rep);
+  if (rep.failed()) {
+    cv = cv_const;
+    return;
+  }
 
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {

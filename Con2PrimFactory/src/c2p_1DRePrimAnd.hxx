@@ -302,6 +302,10 @@ public:
     }
 
     c2p::prims_floors_and_ceilings(eos_3p, pv, cv, alp, beta, glo, rep);
+    if (rep.failed()) {
+      cv = cv_const;
+      return;
+    }
 
     if (rep.adjust_cons) {
       cv.from_prim(pv, glo);
