@@ -49,7 +49,7 @@ public:
   get_Z_Seed(CCTK_REAL rho, CCTK_REAL eps, CCTK_REAL press,
              CCTK_REAL w_lor) const;
   template <typename EOSType>
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
   get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
                      CCTK_REAL &dPdVsq, CCTK_REAL Z, CCTK_REAL Vsq,
                      const EOSType *eos_3p, const cons_vars &cv) const;
@@ -176,7 +176,7 @@ c2p_2DNoble::get_Z_Seed(CCTK_REAL rho, CCTK_REAL eps, CCTK_REAL press,
 }
 
 template <typename EOSType>
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
 c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
                                 CCTK_REAL &dPdVsq, CCTK_REAL Z,
                                 CCTK_REAL Vsq, const EOSType *eos_3p,
@@ -185,14 +185,25 @@ c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
   const CCTK_REAL w_lor = 1.0 / sqrt(one_minus_vsq);
   const CCTK_REAL rhoL = cv.dens / w_lor;
   const CCTK_REAL YeL = cv.DYe / cv.dens;
+  if (!std::isfinite(Z) || !(Z > 0.0) || !std::isfinite(Vsq) ||
+      Vsq < 0.0 || Vsq >= 1.0 || rhoL < eos_3p->rgrho.min ||
+      rhoL > eos_3p->rgrho.max)
+    return false;
   const CCTK_REAL hL = Z * one_minus_vsq / rhoL;
   const auto thermo =
       EOSX::state_from_rho_enthalpy_ye(eos_3p, rhoL, hL, YeL);
+  const CCTK_REAL h_eos = 1.0 + thermo.state.eps + thermo.state.press / rhoL;
+  if (!thermo.enthalpy_converged ||
+      fabs(h_eos - hL) > 128.0 * std::numeric_limits<CCTK_REAL>::epsilon() *
+                            fmax(1.0, fabs(hL)))
+    return false;
 
   // General-EOS Jacobian used by the Noble implementation in grmhd_con2prim.
   press = thermo.state.press;
   const CCTK_REAL dpdeps_o_rho = thermo.dpdeps / thermo.state.rho;
   const CCTK_REAL denom = 1.0 + dpdeps_o_rho;
+  if (!(denom > 0.0))
+    return false;
   dPdZ = dpdeps_o_rho * one_minus_vsq / denom;
 
   const CCTK_REAL dPdVsq_rho =
@@ -201,6 +212,7 @@ c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
       -0.5 * (Z + press * w_lor * w_lor) / thermo.state.rho;
   dPdVsq =
       (dPdVsq_rho + thermo.dpdeps * dPdVsq_eps) / denom;
+  return std::isfinite(press) && std::isfinite(dPdZ) && std::isfinite(dPdVsq);
 }
 
 template <typename EOSType>
@@ -478,7 +490,11 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     CCTK_REAL p_tmp;
     CCTK_REAL dPdZ;
     CCTK_REAL dPdvsq;
-    get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, Z, Vsq, eos_3p, cv);
+    if (!get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, Z, Vsq, eos_3p, cv)) {
+      rep.set_root_conv();
+      cv = cv_const;
+      return;
+    }
 
     fjac[0][0] = -2 * (Vsq + BiSi * BiSi * invZ * invZ * invZ) * (Bsq + Z);
     fjac[0][1] = -(Bsq + Z) * (Bsq + Z);
@@ -495,6 +511,11 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
         (fjac[1][0] * (Bsq + Z) +
          (Bsq - 2.0 * dPdvsq) * (BiSi * BiSi * invZ * invZ + Vsq * Z) * invZ);
     const CCTK_REAL detjac_inv = 1.0 / detjac;
+    if (!std::isfinite(detjac_inv)) {
+      rep.set_root_conv();
+      cv = cv_const;
+      return;
+    }
 
     dx[0] = -(fjac[1][1] * resid[0] - fjac[0][1] * resid[1]) * detjac_inv;
     dx[1] = -(-fjac[1][0] * resid[0] + fjac[0][0] * resid[1]) * detjac_inv;
@@ -507,9 +528,24 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     x_old[0] = x[0];
     x_old[1] = x[1];
 
-    // make the newton step
-    x[0] += dx[0];
-    x[1] += dx[1];
+    // Keep trial states inside the EOS domain. A shorter Newton step is
+    // preferable to differentiating a thermodynamic state at a clipped h.
+    CCTK_REAL step = 1.0;
+    bool valid_step = false;
+    for (CCTK_INT trial = 0; trial < 24; ++trial) {
+      x[0] = x_old[0] + step * dx[0];
+      x[1] = fmax(0.0, x_old[1] + step * dx[1]);
+      if (get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, x[0], x[1], eos_3p, cv)) {
+        valid_step = true;
+        break;
+      }
+      step *= 0.5;
+    }
+    if (!valid_step) {
+      rep.set_root_conv();
+      cv = cv_const;
+      return;
+    }
 
     /* make sure that the new x[] is physical */
     if (x[1] < 0.0) {
@@ -531,7 +567,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     }
 
     // calculate the convergence criterion
-    errx = (x[0] == 0.) ? fabs(dx[0]) : fabs(dx[0] / x[0]);
+    errx = (x[0] == 0.) ? fabs(step * dx[0]) : fabs(step * dx[0] / x[0]);
 
     if (fabs(errx) <= tolerance) {
       break;
@@ -577,6 +613,33 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL Z_Sol = x[0];
   CCTK_REAL vsq_Sol = x[1];
 
+  // A small (possibly shortened) Newton step is not sufficient: check both
+  // equations at the final state against their own physical scales.
+  CCTK_REAL press_final, dPdZ_final, dPdVsq_final;
+  if (!get_Press_funcZVsq(press_final, dPdZ_final, dPdVsq_final,
+                           Z_Sol, vsq_Sol, eos_3p, cv)) {
+    rep.set_root_conv();
+    cv = cv_const;
+    return;
+  }
+  const CCTK_REAL BiSi_over_Z2 = BiSi * BiSi / (Z_Sol * Z_Sol);
+  const CCTK_REAL mom_resid = Ssq - vsq_Sol * (Bsq + Z_Sol) * (Bsq + Z_Sol) +
+                              BiSi_over_Z2 * (Bsq + 2.0 * Z_Sol);
+  const CCTK_REAL energy_resid = cv.tau + cv.dens -
+      0.5 * Bsq * (1.0 + vsq_Sol) + 0.5 * BiSi_over_Z2 - Z_Sol + press_final;
+  const CCTK_REAL residual_tol = fmax(
+      tolerance * (soft_root_convergence ? soft_root_width_factor : 1.0),
+      128.0 * std::numeric_limits<CCTK_REAL>::epsilon());
+  if (!std::isfinite(mom_resid) || !std::isfinite(energy_resid) ||
+      fabs(mom_resid) > residual_tol *
+          fmax(Ssq, (Bsq + Z_Sol) * (Bsq + Z_Sol)) ||
+      fabs(energy_resid) > residual_tol *
+          (fabs(cv.tau) + cv.dens + Bsq + Z_Sol + fabs(press_final))) {
+    rep.set_root_conv();
+    cv = cv_const;
+    return;
+  }
+
   /* Write prims if C2P succeeded */
   CCTK_REAL eps_raw;
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, eps_raw, cv, gup, glo);
@@ -612,6 +675,10 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   }
 
   c2p::prims_floors_and_ceilings(eos_3p, pv, cv, alp, beta, glo, rep);
+  if (rep.failed()) {
+    cv = cv_const;
+    return;
+  }
 
   // Recompute cons if prims have been adjusted
   if (rep.adjust_cons) {
