@@ -446,16 +446,28 @@ c2p::cons_floors_and_ceilings(const EOSType *eos_3p, cons_vars &cv,
   // Lower limit on tau/conserved internal energy
   // Based on Appendix A of https://arxiv.org/pdf/1112.0568
 
-  // Compute Bsq
-  vec<CCTK_REAL, 3> B_low = calc_contraction(glo, cv.dBvec);
-  const CCTK_REAL BsqL = calc_contraction(B_low, cv.dBvec);
-  //const CCTK_REAL tauF_atmo =
-  //    std::max(cv.dens * atmo.eps_atmo, sqrt_detg * tauFluid_atmo);
-  const CCTK_REAL tau_lim = 0.5 * BsqL / sqrt_detg;
+  // Estimate rho and Ye before C2P and obtain the local physical eps range.
+  // This permits tabulated EOSs whose physical eps minimum is negative.
+  const CCTK_REAL rhoL =
+      cv.dens > 0.0
+          ? fmin(fmax(cv.dens / (sqrt_detg * w_lim), eos_3p->rgrho.min),
+                 eos_3p->rgrho.max)
+          : eos_3p->rgrho.min;
+  const CCTK_REAL YeL =
+      cv.dens > 0.0
+          ? fmin(fmax(cv.DYe / cv.dens, eos_3p->rgye.min), eos_3p->rgye.max)
+          : atmo.ye_atmo;
+  const auto rgeps = eos_3p->range_eps_from_rho_ye(rhoL, YeL);
 
-  if (cv.tau <= tau_lim) {
-    //cv.tau = tau_lim + tauF_atmo;
-    cv.tau = tau_lim + sqrt_detg * tauFluid_atmo;
+  // Compute Bsq
+  const vec<CCTK_REAL, 3> B_low = calc_contraction(glo, cv.dBvec);
+  const CCTK_REAL BsqL = calc_contraction(B_low, cv.dBvec);
+  const CCTK_REAL tau_lim =
+      0.5 * BsqL / sqrt_detg + cv.dens * rgeps.min +
+      sqrt_detg * tauFluid_atmo;
+
+  if (cv.tau < tau_lim) {
+    cv.tau = tau_lim;
   }
 
   // Dominant energy condition
