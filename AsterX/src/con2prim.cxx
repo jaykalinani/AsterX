@@ -30,7 +30,7 @@ enum C2PFlag : CCTK_INT {
   C2P_PRIME = 1,   // first solver succeeded
   C2P_SECOND = 2,  // second solver succeeded
   C2P_ENTROPY = 3, // 1‑D Entropy (kappa) solver succeeded
-  C2P_ATMO = 4,    // when (cv.dens <= sqrt_detg * rho_atmo_cut) is true
+  C2P_ATMO = 4,    // conservative density lies below the atmosphere cutoff
   C2P_AVG = 5,     // primitives obtained by neighbour‑averaging
   C2P_FAIL = 6     // when C2P fails
 };
@@ -82,63 +82,12 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // explicit dependence on conservatives from
     // AsterX -> dependents tag
 
-    // Setting up atmosphere
-    CCTK_REAL rho_atm = 0.0;   // dummy initialization
-    CCTK_REAL press_atm = 0.0; // dummy initialization
-    CCTK_REAL eps_atm = 0.0;   // dummy initialization
-    CCTK_REAL temp_atm = 0.0;  // dummy initialization
-
-    CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-
-    // Grading rho
-    rho_atm = (radial_distance > r_atmo)
-                  ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
-                  : rho_abs_min;
-    rho_atm = std::max(eos_3p->rgrho.min, rho_atm);
-
-    // Grading temperature or pressure based on either cold or thermal EOS
-    if (thermal_eos_atmo) {
-      // rho_atm = max(rho_atm, eos_3p->interptable->xmin<0>());
-
-      if (use_press_atmo) {
-        press_atm = (radial_distance > r_atmo)
-                        ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
-                        : p_atmo;
-        press_atm = std::max(eos_3p->press_from_rho_temp_ye(
-                                 rho_atm, eos_3p->rgtemp.min, Ye_atmo),
-                             press_atm);
-        eps_atm = eos_3p->eps_from_rho_press_ye(rho_atm, press_atm, Ye_atmo);
-        temp_atm = eos_3p->temp_from_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
-      } else {
-        temp_atm = (radial_distance > r_atmo)
-                       ? (t_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
-                       : t_atmo;
-        temp_atm = std::max(eos_3p->rgtemp.min, temp_atm);
-        // temp_atm = max(temp_atm, eos_3p->interptable->xmin<1>());
-        press_atm = eos_3p->press_from_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
-        eps_atm = eos_3p->eps_from_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
-        // eps_atm should be kept consistent with temp_atm, so we do not use
-        // the setting below
-        // eps_atm =
-        //    std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
-      }
-
-    } else {
-      const CCTK_REAL gm1 = eos_1p->gm1_from_rho(rho_atm);
-      temp_atm = eos_1p->temp_from_gm1(gm1);
-      temp_atm = std::max(eos_3p->rgtemp.min, temp_atm);
-      eps_atm = eos_3p->eps_from_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
-      // eps_atm should be kept consistent with temp_atm, so we do not use
-      // the setting below
-      // eps_atm =
-      //    std::min(std::max(eos_3p->rgeps.min, eps_atm), eos_3p->rgeps.max);
-      press_atm = eos_3p->press_from_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
-    }
-    CCTK_REAL entropy_atm =
-        eos_3p->kappa_from_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
-    const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
-    atmosphere atmo(rho_atm, eps_atm, Ye_atmo, press_atm, temp_atm, entropy_atm,
-                    rho_atmo_cut);
+    const CCTK_REAL radial_distance =
+        sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    const auto atmo = make_atmosphere(
+        eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
+        Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo, atmo_tol,
+        thermal_eos_atmo, use_press_atmo);
 
     // ----- Construct C2P objects -----
 
@@ -242,10 +191,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     // limits (RPA only). Magnetization limits are currently only applied for RPA C2P, 
     // while they are not obeyed in the other cases in the atmopshere -> TODO
     const CCTK_REAL b2_atm = calc_norm(Bup, glo);
-    const bool set_atmo = (cv.dens <= sqrt_detg * rho_atmo_cut) &&
+    const bool set_atmo = (cv.dens <= sqrt_detg * atmo.rho_cut) &&
                           (c2p_off_floor_strict ||
-                           ((b2_atm / rho_atm <= sigma_max) &&
-                            (b2_atm / (2 * press_atm) <= inv_beta_max)));
+                           ((b2_atm / atmo.rho_atmo <= sigma_max) &&
+                            (b2_atm / (2 * atmo.press_atmo) <= inv_beta_max)));
     if (set_atmo) {
       pv.Bvec = Bup;
       atmo.set(pv, cv, glo);
