@@ -174,18 +174,15 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
                                 cv.dBvec(1) / sqrt_detg,
                                 cv.dBvec(2) / sqrt_detg};
 
+    // HydroBaseX primitives are invalidated before recovery. Construct the
+    // complete seed from saved independent variables, including temperature.
+    const auto seed = state_from_rho_eps_ye(
+        eos_3p, saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I));
     prim_vars pv;
-    prim_vars pv_seeds{saved_rho(p.I),
-                       saved_eps(p.I),
-                       saved_Ye(p.I),
-                       eos_3p->press_from_rho_eps_ye(
-                           saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I)),
-                       temperature(p.I),
-                       eos_3p->kappa_from_rho_eps_ye(
-                           saved_rho(p.I), saved_eps(p.I), saved_Ye(p.I)),
-                       v_up,
-                       wlor,
-                       Bup};
+    prim_vars pv_seeds{seed.rho, seed.eps, seed.Ye, seed.press,
+                       seed.temperature, seed.kappa, v_up, wlor, Bup};
+    pv_seeds.E = calc_contraction(calc_inv(glo, spatial_detg),
+                                  calc_cross_product(Bup, v_up));
 
     /* set flag to success */
     bool c2p_flag_local = true;
@@ -431,8 +428,10 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     count_repair(counts, backup_failure,
         rep_second.status != c2p_report::ERR_CODE_NOT_SET && rep_second.failed());
     count_repair(counts, conservative_recompute,
-        rep_first.adjust_cons || rep_second.adjust_cons || rep_ent.adjust_cons ||
-        set_atmo || !c2p_flag_local);
+        (!rep_first.failed() && rep_first.adjust_cons) ||
+        (!rep_second.failed() && rep_second.adjust_cons) ||
+        (!rep_ent.failed() && rep_ent.adjust_cons) ||
+        set_atmo || !c2p_flag_local || (excise && mask_local != 1.0));
     count_repair(counts, rho_clamp, rep_first.rho_clamped +
         rep_second.rho_clamped + rep_ent.rho_clamped);
     count_repair(counts, eps_clamp, rep_first.eps_clamped +
