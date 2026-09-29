@@ -10,7 +10,8 @@ namespace EOSX {
 namespace {
 void check(const char *name, const CCTK_REAL a, const CCTK_REAL b,
            const CCTK_REAL tol = 1.0e-10) {
-  if (!std::isfinite(a) || fabs(a-b) > tol * fmax(1.0, fabs(b)))
+  if (!std::isfinite(a) || !std::isfinite(b) ||
+      fabs(a-b) > tol * fmax(1.0, fabs(b)))
     CCTK_VERROR("EOSX test %s failed: %.16e != %.16e", name, a, b);
 }
 
