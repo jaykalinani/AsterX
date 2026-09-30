@@ -164,11 +164,6 @@ CCTK_REAL Ez TYPE=gf CENTERING={vvc} TAGS='checkpoint="no"' "z-component of E"
 
 CCTK_REAL con2prim_flag TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"' "Flag indicating failure of con2prim"
 
-CCTK_REAL c2p_saved TYPE=gf CENTERING={ccc} TAGS='parities={+1 +1 +1 +1 +1 +1 +1 +1 +1 -1 +1 +1 +1 -1 +1 +1 +1 -1 +1 +1 +1} checkpoint="no"'
-{
-  rho_c2p eps_c2p ye_c2p vx_c2p vy_c2p vz_c2p flag_c2p
-} "Frozen neighbour inputs for optional failed-C2P repair"
-
 # TODO: move volform to ADMBaseX
 CCTK_REAL diagnostics TYPE=gf CENTERING={ccc} TAGS='checkpoint="no"'
 {

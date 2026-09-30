@@ -580,20 +580,6 @@ extern "C" void AsterX_Con2Prim(CCTK_ARGUMENTS) {
   }
 }
 
-extern "C" void AsterX_SaveC2P(CCTK_ARGUMENTS) {
-  DECLARE_CCTK_ARGUMENTSX_AsterX_SaveC2P;
-  grid.loop_all_device<1, 1, 1>(grid.nghostzones,
-      [=] CCTK_DEVICE(const PointDesc &p) {
-        rho_c2p(p.I) = rho(p.I);
-        eps_c2p(p.I) = eps(p.I);
-        ye_c2p(p.I) = Ye(p.I);
-        vx_c2p(p.I) = velx(p.I);
-        vy_c2p(p.I) = vely(p.I);
-        vz_c2p(p.I) = velz(p.I);
-        flag_c2p(p.I) = con2prim_flag(p.I);
-      });
-}
-
 template <typename EOSIDType, typename EOSType>
 void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
                        const EOSType *eos_3p) {
@@ -602,16 +588,16 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
   grid.loop_int_device<1, 1, 1>(grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) {
-        if (flag_c2p(p.I) != C2P_FAIL)
+        if (con2prim_flag(p.I) != C2P_FAIL)
           return;
-        // All neighbours come from the frozen snapshot, including flags.
-        const auto flag_nbs = get_neighbors(flag_c2p, p);
-        const auto rho_nbs = get_neighbors(rho_c2p, p);
-        const auto eps_nbs = get_neighbors(eps_c2p, p);
-        const auto Ye_nbs = get_neighbors(ye_c2p, p);
-        const auto velx_nbs = get_neighbors(vx_c2p, p);
-        const auto vely_nbs = get_neighbors(vy_c2p, p);
-        const auto velz_nbs = get_neighbors(vz_c2p, p);
+        // As in dev, this in-place repair can race between failed neighbours.
+        const auto flag_nbs = get_neighbors(con2prim_flag, p);
+        const auto rho_nbs = get_neighbors(rho, p);
+        const auto eps_nbs = get_neighbors(eps, p);
+        const auto Ye_nbs = get_neighbors(Ye, p);
+        const auto velx_nbs = get_neighbors(velx, p);
+        const auto vely_nbs = get_neighbors(vely, p);
+        const auto velz_nbs = get_neighbors(velz, p);
         const auto good_nb = [&](int i) {
           return flag_nbs(i) != C2P_FAIL && flag_nbs(i) != C2P_INIT &&
                  std::isfinite(rho_nbs(i)) && std::isfinite(eps_nbs(i)) &&
