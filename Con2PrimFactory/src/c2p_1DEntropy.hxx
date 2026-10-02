@@ -385,7 +385,12 @@ c2p_1DEntropy::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
   auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
 
-  CCTK_REAL xEntropy_Sol = 0.5 * (result.first + result.second);
+  // Brent returns the bracket in density order, not residual order. Keep
+  // its more accurate endpoint: the midpoint can lose an already converged
+  // root and contaminate tau when thermal energy is small. The bracket
+  // convergence check below is unchanged.
+  CCTK_REAL xEntropy_Sol = abs(fn(result.first)) < abs(fn(result.second))
+                             ? result.first : result.second;
 
   xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
 
