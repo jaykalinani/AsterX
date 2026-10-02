@@ -41,7 +41,8 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq, CCTK_REAL Bsq,
                     CCTK_REAL BiSi, const EOSType *eos_3p, prim_vars &pv,
-                    const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
+                    CCTK_REAL &eps_raw, const cons_vars &cv,
+                    const smat<CCTK_REAL, 3> &gup,
                     const smat<CCTK_REAL, 3> &glo) const;
 
   template <typename EOSType>
@@ -54,7 +55,8 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
         const CCTK_REAL alp, const vec<CCTK_REAL, 3> &beta,
-        const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const;
+        const smat<CCTK_REAL, 3> &glo, c2p_report &rep,
+        bool reject_nonpositive_eps = false) const;
 
   /* Destructor */
   CCTK_HOST CCTK_DEVICE ~c2p_1DPalenzuela();
@@ -151,7 +153,7 @@ CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
                                     CCTK_REAL Bsq, CCTK_REAL BiSi,
                                     const EOSType *eos_3p, prim_vars &pv,
-                                    const cons_vars &cv,
+                                    CCTK_REAL &eps_raw, const cons_vars &cv,
                                     const smat<CCTK_REAL, 3> &gup,
                                     const smat<CCTK_REAL, 3> &glo) const {
   const CCTK_REAL qPalenzuela = cv.tau / cv.dens;
@@ -173,11 +175,13 @@ c2p_1DPalenzuela::xPalenzuelaToPrim(CCTK_REAL xPalenzuela_Sol, CCTK_REAL Ssq,
   pv.rho = cv.dens / W_sol;
 
   // (iii)
-  pv.eps = W_sol - 1.0 + (1.0 - W_sol * W_sol) * xPalenzuela_Sol / W_sol +
-           W_sol * (qPalenzuela - sPalenzuela +
-                    tPalenzuela * tPalenzuela /
-                        (2 * xPalenzuela_Sol * xPalenzuela_Sol) +
-                    sPalenzuela / (2.0 * W_sol * W_sol));
+  eps_raw = W_sol - 1.0 +
+            (1.0 - W_sol * W_sol) * xPalenzuela_Sol / W_sol +
+            W_sol * (qPalenzuela - sPalenzuela +
+                     tPalenzuela * tPalenzuela /
+                         (2 * xPalenzuela_Sol * xPalenzuela_Sol) +
+                     sPalenzuela / (2.0 * W_sol * W_sol));
+  pv.eps = eps_raw;
 
   // TODO: Using this check here can lead to corrections of negative eps
   //       which could be accepted in certain cases. Thus, these cases will
@@ -313,7 +317,8 @@ template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
                         const CCTK_REAL alp, const vec<CCTK_REAL, 3> &beta,
-                        const smat<CCTK_REAL, 3> &glo, c2p_report &rep) const {
+                        const smat<CCTK_REAL, 3> &glo, c2p_report &rep,
+                        bool reject_nonpositive_eps) const {
 
   ROOTSTAT status = ROOTSTAT::SUCCESS;
   rep.iters = 0;
@@ -395,19 +400,12 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   // const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
   // const CCTK_INT maxiters = maxIterations;
 
-  // Important!
-  // Algo::brent terminates if the following accuracy is achieved
-  // abs(x - y) <= eps * min(abs(x), abs(y)),
-  // where x and y are the values of the bracket and
-  // eps = std::ldexp(1, -minbits) = 1 * 2^{-minbits}
-  // This should probably be changed in Algo::brent
-
-  // We want to set the tolerance to its correct parameter
+  // Algo::brent terminates once the bracket satisfies
+  //   abs(x - y) <= eps * min(abs(x), abs(y)),   eps = 2^{1-minbits}
+  // so express the requested tolerance in bits. The +1 accounts for the
+  // exponent offset, and reproduces the eps this code used to compute by hand.
   const CCTK_REAL log2 = std::log(2.0);
-  const CCTK_INT minbits = int(abs(std::log(tolerance)) / log2);
-  const CCTK_REAL tolerance_0 = std::ldexp(double(1.0), -minbits);
-  // Old code:
-  // const CCTK_INT minbits = std::numeric_limits<CCTK_REAL>::digits - 4;
+  const CCTK_INT minbits = int(abs(std::log(tolerance)) / log2) + 1;
   const CCTK_INT maxiters = maxIterations;
 
   CCTK_REAL qPalenzuela = cv.tau / cv.dens;
@@ -434,11 +432,27 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
   const CCTK_REAL f_a0 = fn(a);
   const CCTK_REAL f_b0 = fn(b);
-  if ((!isfinite(f_a0)) || (!isfinite(f_b0)) || (f_a0 * f_b0 > 0.0)) {
+  // Sign test rather than f_a0*f_b0 > 0: the product can underflow to +0 for
+  // two tiny same-sign endpoints, which would slip past the guard and let
+  // brent run on an unbracketed interval. An exact zero endpoint is a root
+  // and stays accepted.
+  const bool not_bracketed = (!isfinite(f_a0)) || (!isfinite(f_b0)) ||
+                             ((f_a0 > 0.0) && (f_b0 > 0.0)) ||
+                             ((f_a0 < 0.0) && (f_b0 < 0.0));
+  if (not_bracketed) {
+    // The root is not bracketed on [a, b]. Algo::brent asserts fa*fb <= 0,
+    // and on GPU that assert is a device-side abort which terminates the
+    // whole job, so it must not be entered. Report the bracketing failure
+    // and let the caller fall back, as c2p_1DRePrimAnd_rootfinder does.
     status = ROOTSTAT::NOT_BRACKETED;
+    rep.set_root_bracket();
+    cv = cv_const;
+    return;
   }
 
-  auto result = Algo::brent(fn, a, b, minbits, maxiters, rep.iters);
+  bool root_failed;
+  auto result =
+      Algo::brent(fn, a, b, minbits, maxiters, rep.iters, root_failed);
 
   // Legacy endpoint-preference selector kept for reference; below we use the
   // midpoint rule for xPalenzuela_Sol.
@@ -457,7 +471,9 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
   CCTK_REAL xPalenzuela_Sol = CCTK_REAL(0.5) * (result.first + result.second);
 
-  xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
+  CCTK_REAL eps_raw;
+  xPalenzuelaToPrim(xPalenzuela_Sol, Ssq, Bsq, BiSi, eos_3p, pv, eps_raw, cv,
+                    gup, glo);
 
   // Error out if rho is negative or zero
   if (pv.rho <= 0.0) {
@@ -467,10 +483,10 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     return;
   }
 
-  // Error out if eps is negative or zero
-  if (pv.eps <= 0.0) {
-    // set status to eps is out of range
-    rep.set_range_eps(pv.eps);
+  // Let the usual temperature floor repair non-positive eps unless the caller
+  // has an entropy-based fallback available.
+  if (reject_nonpositive_eps && eps_raw <= 0.0) {
+    rep.set_range_eps(eps_raw);
     cv = cv_const;
     return;
   }
@@ -479,26 +495,14 @@ c2p_1DPalenzuela::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     rep.adjust_cons = true;
   }
 
-  // General comment:
-  // One could think of expressing the following condition
-  // in a way that is "safe" against NaNs and infs. First, this only makes
-  // sense if we want these values to be considered as failures which should
-  // be treated as "not converged".
-  //
-  // inf: Since inf behaves like a large valid number nothing special needs
-  // to be done except of rewriting the argument of the if condition such that
-  // possible infs are present only on one side of the comparison, eg
-  // abs(difference)/abs(normalization) > tolerance_0
-  //
-  // NaN: If the argument of if (...) is NaN, it usually evaluates to false.
-  // Here, we would need to rewrite the logic a little bit.
-
-  // TODO: have an explicit check on max_iters, e.g.:
-  // if (rep.iters >= maxiters || abs(fn(xPalenzuela_Sol)) > tolerance) {
+  // `root_failed` covers both a bracket that never converged and one that ran
+  // out of iterations, so the max_iters check that used to be wanted here is
+  // no longer needed. It also avoids re-deriving brent's convergence test from
+  // its bracket, which was both a duplicate of the tolerance in Algo and
+  // awkward to make safe against NaN and inf operands. The soft-convergence
+  // fallback below is unchanged.
   const CCTK_REAL root_width = abs(result.first - result.second);
-  const CCTK_REAL strict_width_tol =
-      tolerance_0 * min(abs(result.first), abs(result.second));
-  if (root_width > strict_width_tol) {
+  if (root_failed) {
     bool accept_soft = false;
     if (soft_root_convergence) {
       const CCTK_REAL scale =
