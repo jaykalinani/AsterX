@@ -290,6 +290,98 @@ void test_rpa(const EOSType &eos, bool use_temp) {
   }
 }
 
+template <typename EOSType>
+void test_cons(const EOSType &eos) {
+  // This limiter uses no solver or atmosphere state.
+  c2p c2p_test{};
+  const smat<CCTK_REAL, 3> g{1.2, 0.0, 0.0, 1.1, 0.0, 0.9};
+  const CCTK_REAL sqrt_detg = sqrt(calc_det(g));
+  const CCTK_REAL tauFluid_atmo = 1.0e-15;
+
+  // Physical states, including negative table eps, must remain unchanged.
+  for (CCTK_REAL rho : {3.0e-4, 3.0e-3})
+    for (CCTK_REAL Ye : {0.15, 0.45})
+      for (CCTK_REAL temp : {0.0011, 0.02, 0.07})
+        for (CCTK_REAL v : {0.0, 0.2, 0.75})
+          for (CCTK_REAL B : {0.0, 0.001}) {
+            CCTK_REAL eps = eos.eps_from_rho_temp_ye(rho, temp, Ye);
+            const CCTK_REAL press = eos.press_from_rho_temp_ye(rho, temp, Ye);
+            const CCTK_REAL entropy = eos.kappa_from_rho_eps_ye(rho, eps, Ye);
+            const vec<CCTK_REAL, 3> vel{v, 0.0, 0.0};
+            const CCTK_REAL wlor = calc_wlorentz(vel, calc_contraction(g, vel));
+            const prim_vars pv{rho, eps, Ye, press, temp, entropy,
+                               vel, wlor, {B, 0.2 * B, 0.0}};
+            cons_vars cv_in;
+            cv_in.from_prim(pv, g);
+            cons_vars cv = cv_in;
+            c2p_test.cons_floors_and_ceilings(&eos, cv, g, tauFluid_atmo);
+            if (cv.tau != cv_in.tau)
+              CCTK_ERROR("Conservative test: valid energy was modified");
+            check_cons(cv, cv_in);
+          }
+
+  // Exercise the trigger and repair separately, including density/Ye bounds.
+  // Equality is not repaired; no margin is added to an already valid bound.
+  for (CCTK_REAL rho : {0.5 * eos.rgrho.min, 3.0e-4, 2.0 * eos.rgrho.max})
+    for (CCTK_REAL Ye : {0.0, 0.3, 1.0})
+      for (CCTK_REAL B : {0.0, 0.001}) {
+        const CCTK_REAL dens = sqrt_detg * rho;
+        const vec<CCTK_REAL, 3> dBvec =
+            sqrt_detg * vec<CCTK_REAL, 3>{B, 0.2 * B, 0.0};
+        const CCTK_REAL tau_mag =
+            0.5 * calc_contraction(calc_contraction(g, dBvec), dBvec) /
+            sqrt_detg;
+        const CCTK_REAL tau_lim =
+            tau_mag + dens * fmin(0.0, eos.rgeps.min);
+        const CCTK_REAL rhoL = fmin(fmax(rho, eos.rgrho.min), eos.rgrho.max);
+        const CCTK_REAL YeL = fmin(fmax(Ye, eos.rgye.min), eos.rgye.max);
+        const auto rgeps = eos.range_eps_from_rho_ye(rhoL, YeL);
+        for (CCTK_REAL offset : {-1.0e-4, 0.0, 1.0e-4}) {
+          const cons_vars cv_in{dens, {0.0, 0.0, 0.0},
+                                tau_lim + dens * offset, dens * Ye, 0.0,
+                                dBvec};
+          cons_vars cv = cv_in, expected = cv_in;
+          if (offset < 0.0)
+            expected.tau =
+                tau_mag + dens * rgeps.min + sqrt_detg * tauFluid_atmo;
+          c2p_test.cons_floors_and_ceilings(&eos, cv, g, tauFluid_atmo);
+          if (offset >= 0.0 && cv.tau != cv_in.tau)
+            CCTK_ERROR("Conservative test: energy at or above bound changed");
+          check_cons(cv, expected);
+        }
+      }
+
+  // Invalid density must not be used in DYe / D or an EOS query.
+  for (CCTK_REAL dens : {0.0, -1.0}) {
+    const cons_vars cv_in{dens, {0.0, 0.0, 0.0}, -1.0, 0.0, 0.0,
+                          {0.0, 0.0, 0.0}};
+    cons_vars cv = cv_in;
+    c2p_test.cons_floors_and_ceilings(&eos, cv, g, tauFluid_atmo);
+    check_cons(cv, cv_in);
+  }
+
+  // Do not turn a non-finite energy into an apparently valid state.
+  for (CCTK_REAL tau : {std::numeric_limits<CCTK_REAL>::quiet_NaN(),
+                        std::numeric_limits<CCTK_REAL>::infinity(),
+                        -std::numeric_limits<CCTK_REAL>::infinity()}) {
+    cons_vars cv{1.0, {0.0, 0.0, 0.0}, tau, 0.3, 0.0, {0.0, 0.0, 0.0}};
+    c2p_test.cons_floors_and_ceilings(&eos, cv, g, tauFluid_atmo);
+    if (!(std::isnan(tau) ? std::isnan(cv.tau) : cv.tau == tau))
+      CCTK_ERROR("Conservative test: non-finite energy was overwritten");
+    cv.tau = 0.0;
+    const cons_vars expected{1.0, {0.0, 0.0, 0.0}, 0.0, 0.3, 0.0,
+                             {0.0, 0.0, 0.0}};
+    check_cons(cv, expected);
+  }
+
+  // The existing momentum cap must still enforce |S| <= D + tau.
+  cons_vars cv{1.0, {10.0, 0.0, 0.0}, 1.0, 0.3, 0.0, {0.0, 0.0, 0.0}};
+  c2p_test.cons_floors_and_ceilings(&eos, cv, g, tauFluid_atmo);
+  const cons_vars expected{1.0, {2.0 * sqrt(g(0, 0)), 0.0, 0.0}, 1.0,
+                           0.3, 0.0, {0.0, 0.0, 0.0}};
+  check_cons(cv, expected);
+}
+
 void test_pal_energy() {
   // Host-local synthetic table: exercise the actual table inverse without
   // loading a production EOS. No host pointers are captured in GPU kernels.
@@ -318,6 +410,7 @@ void test_pal_energy() {
     eos.rgtemp = {exp(lt.front()), exp(lt.back())};
     eos.rgye = {ye.front(), ye.back()};
     eos.rgeps = eos.compute_eps_range_full_table();
+    test_cons(eos);
     test_pal(eos, true);
     test_rpa(eos, true);
   }
@@ -325,6 +418,7 @@ void test_pal_energy() {
     eos_3p_idealgas eos;
     eos_3p::range er{0.0, 1.0}, rr{1.0e-6, 1.0e-2}, yr{0.1, 0.5};
     eos.init(gamma, 1.0, er, rr, yr);
+    test_cons(eos);
     test_pal(eos, false);
     test_pal(eos, true);
     test_rpa(eos, false);
@@ -333,10 +427,11 @@ void test_pal_energy() {
     // A positive ideal-gas eps_min must not become a new rejection policy.
     er.min = 0.001;
     eos.init(gamma, 1.0, er, rr, yr);
+    test_cons(eos);
     test_rpa(eos, false);
     test_rpa(eos, true);
   }
-  CCTK_INFO("Palenzuela and RePrimAnd energy-bound tests passed");
+  CCTK_INFO("Conservative and C2P energy-bound tests passed");
 }
 
 } // namespace
