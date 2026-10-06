@@ -13,17 +13,183 @@
 
 #include "setup_eos.hxx"
 
+#include <array>
+
 namespace Con2PrimFactory {
 
 using namespace Arith;
 using namespace EOSX;
 using namespace AsterUtils;
 
+namespace {
+
+void check_pal(const char *name, CCTK_REAL actual, CCTK_REAL expected) {
+  if (!std::isfinite(actual) || !std::isfinite(expected) ||
+      fabs(actual - expected) > 1.0e-8 * fmax(fabs(expected), 1.0e-6))
+    CCTK_VERROR("Palenzuela test %s: actual=%.16e expected=%.16e",
+               name, actual, expected);
+}
+
+void check_cons(const cons_vars &cv, const cons_vars &expected) {
+  check_pal("dens", cv.dens, expected.dens);
+  check_pal("tau", cv.tau, expected.tau);
+  check_pal("DYe", cv.DYe, expected.DYe);
+  check_pal("DEnt", cv.DEnt, expected.DEnt);
+  for (int d = 0; d < 3; ++d) {
+    check_pal("mom", cv.mom(d), expected.mom(d));
+    check_pal("dBvec", cv.dBvec(d), expected.dBvec(d));
+  }
+}
+
+template <typename EOSType>
+void test_pal(const EOSType &eos, bool use_temp) {
+  const CCTK_REAL rho_atmo = eos.rgrho.min;
+  const CCTK_REAL Ye_atmo = eos.rgye.max;
+  const CCTK_REAL temp_atmo = eos.rgtemp.min;
+  CCTK_REAL eps_atmo =
+      eos.eps_from_rho_temp_ye(rho_atmo, temp_atmo, Ye_atmo);
+  const CCTK_REAL press_atmo =
+      eos.press_from_rho_temp_ye(rho_atmo, temp_atmo, Ye_atmo);
+  const CCTK_REAL entropy_atmo =
+      eos.kappa_from_rho_eps_ye(rho_atmo, eps_atmo, Ye_atmo);
+  atmosphere atmo(rho_atmo, eps_atmo, Ye_atmo, press_atmo, temp_atmo,
+                  entropy_atmo, rho_atmo * 1.001);
+  c2p_1DPalenzuela c2p_Pal(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                           1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
+                           true, false, use_temp, false, false, 1.0);
+  // Non-unit determinant also checks the densitized conservative update.
+  const smat<CCTK_REAL, 3> g{1.2, 0.0, 0.0, 1.1, 0.0, 0.9};
+  const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
+
+  for (CCTK_REAL rho : {3.0e-4, 3.0e-3})
+    for (CCTK_REAL Ye : {0.15, 0.45})
+      for (CCTK_REAL temp : {0.0011, 0.02, 0.07})
+        for (CCTK_REAL v : {0.0, 0.2})
+          for (CCTK_REAL B : {0.0, 0.001}) {
+            CCTK_REAL eps = eos.eps_from_rho_temp_ye(rho, temp, Ye);
+            const CCTK_REAL press = eos.press_from_rho_temp_ye(rho, temp, Ye);
+            const CCTK_REAL entropy = eos.kappa_from_rho_eps_ye(rho, eps, Ye);
+            const vec<CCTK_REAL, 3> vel{v, 0.0, 0.0};
+            const CCTK_REAL wlor = calc_wlorentz(calc_contraction(g, vel), vel);
+            const prim_vars pv_in{rho, eps, Ye, press, temp, entropy,
+                                  vel, wlor, {B, 0.2 * B, 0.0}};
+            cons_vars cv_in;
+            cv_in.from_prim(pv_in, g);
+            for (bool reject : {false, true}) {
+              prim_vars pv;
+              cons_vars cv = cv_in;
+              c2p_report rep;
+              c2p_Pal.solve(&eos, pv, cv, 1.0, beta, g, rep, reject);
+              if (rep.failed() || rep.set_atmo || rep.adjust_cons)
+                CCTK_ERROR("Palenzuela test: valid interior state was rejected "
+                           "or adjusted");
+              check_pal("rho", pv.rho, rho);
+              check_pal("eps", pv.eps, eps);
+              check_pal("Ye", pv.Ye, Ye);
+              check_pal("temperature", pv.temperature, temp);
+              check_pal("press", pv.press, press);
+              check_pal("entropy", pv.entropy, entropy);
+              check_pal("wlor", pv.w_lor, wlor);
+              for (int d = 0; d < 3; ++d) {
+                check_pal("vel", pv.vel(d), vel(d));
+                check_pal("Bvec", pv.Bvec(d), pv_in.Bvec(d));
+              }
+              check_cons(cv, cv_in);
+            }
+          }
+
+  if (!use_temp)
+    return;
+
+  // Stationary, unmagnetized input gives eps_raw = tau / D exactly.
+  // Test both bounds and the old ideal-gas zero-energy fallback policy.
+  const CCTK_REAL rho = 3.0e-4, Ye = 0.3;
+  const auto rgeps = eos.range_eps_from_rho_ye(rho, Ye);
+  const CCTK_REAL dens = sqrt(calc_det(g)) * rho;
+  for (CCTK_REAL eps_raw : {rgeps.min - 1.0e-4, 0.0, rgeps.max + 1.0e-4})
+    for (bool reject : {false, true}) {
+      const cons_vars cv_in{dens, {0.0, 0.0, 0.0}, dens * eps_raw,
+                            dens * Ye, 0.0, {0.0, 0.0, 0.0}};
+      cons_vars cv = cv_in;
+      prim_vars pv;
+      c2p_report rep;
+      c2p_Pal.solve(&eos, pv, cv, 1.0, beta, g, rep, reject);
+      const bool expect_fail =
+          reject && (rgeps.min < 0.0 ? eps_raw < rgeps.min : eps_raw <= 0.0);
+      if (expect_fail) {
+        if (rep.status != c2p_report::RANGE_EPS)
+          CCTK_ERROR("Palenzuela test: raw energy did not trigger fallback");
+        check_cons(cv, cv_in);
+        continue;
+      }
+      const bool clipped = eps_raw < rgeps.min || eps_raw > rgeps.max;
+      if (rep.failed() || rep.set_atmo || rep.adjust_cons != clipped)
+        CCTK_ERROR("Palenzuela test: incorrect energy-clipping report");
+      CCTK_REAL eps = std::min(std::max(eps_raw, rgeps.min), rgeps.max);
+      check_pal("bounded eps", pv.eps, eps);
+      check_pal("bounded temperature", pv.temperature,
+                eos.temp_from_rho_eps_ye(rho, eps, Ye));
+      check_pal("bounded pressure", pv.press,
+                eos.press_from_rho_eps_ye(rho, eps, Ye));
+      check_pal("bounded entropy", pv.entropy,
+                eos.kappa_from_rho_eps_ye(rho, eps, Ye));
+      cons_vars expected;
+      expected.from_prim(pv, g);
+      check_cons(cv, expected);
+    }
+}
+
+void test_pal_energy() {
+  // Host-local synthetic table: exercise the actual table inverse without
+  // loading a production EOS. No host pointers are captured in GPU kernels.
+  std::array<CCTK_REAL, 3> lr{log(1.0e-6), log(1.0e-4), log(1.0e-2)};
+  std::array<CCTK_REAL, 3> lt{log(1.0e-3), log(1.0e-2), log(1.0e-1)};
+  std::array<CCTK_REAL, 2> ye{0.1, 0.5};
+  std::array<CCTK_REAL, 18 * NTABLES> data{};
+  for (int k = 0; k < 2; ++k)
+    for (int j = 0; j < 3; ++j)
+      for (int i = 0; i < 3; ++i) {
+        const int offset = NTABLES * (i + 3 * (j + 3 * k));
+        data[offset + eos_3p_tabulated3d::PRESS] = lr[i] + lt[j];
+        // Cold dense states can have eps below eps_atmo at the same T.
+        data[offset + eos_3p_tabulated3d::EPS] =
+            lt[j] - 0.1 * lr[i] + 0.2 * ye[k];
+        data[offset + eos_3p_tabulated3d::S] = lt[j] - 0.1 * lr[i] + ye[k];
+      }
+  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interp(
+      data.data(), {3, 3, 2}, lr.data(), lt.data(), ye.data());
+  for (CCTK_REAL shift : {0.0, 0.05}) {
+    eos_3p_tabulated3d eos;
+    eos.gamma = 1.4; // Unused by Palenzuela's root equation.
+    eos.interptable = &interp;
+    eos.energy_shift = &shift;
+    eos.rgrho = {exp(lr.front()), exp(lr.back())};
+    eos.rgtemp = {exp(lt.front()), exp(lt.back())};
+    eos.rgye = {ye.front(), ye.back()};
+    eos.rgeps = eos.compute_eps_range_full_table();
+    test_pal(eos, true);
+  }
+  for (CCTK_REAL gamma : {1.4, 2.0}) {
+    eos_3p_idealgas eos;
+    eos_3p::range er{0.0, 1.0}, rr{1.0e-6, 1.0e-2}, yr{0.1, 0.5};
+    eos.init(gamma, 1.0, er, rr, yr);
+    test_pal(eos, false);
+    test_pal(eos, true);
+  }
+  CCTK_INFO("Palenzuela local-energy tests passed");
+}
+
+} // namespace
+
 extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTS;
 
-  // Get local eos object
+  test_pal_energy();
+
+  // The existing multi-solver example below requires an active ideal-gas EOS.
   auto eos_3p_ig = global_eos_3p_ig;
+  if (!eos_3p_ig)
+    return;
 
   // Set atmo values
   const CCTK_REAL rho_atmo = 1e-10;
