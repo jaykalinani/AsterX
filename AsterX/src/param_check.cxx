@@ -22,9 +22,11 @@ void CheckAtmoParams() {
       (!thermal_eos_atmo || use_press_atmo))
     CCTK_ERROR("Tabulated3d atmosphere requires thermal_eos_atmo=yes "
                "and use_press_atmo=no");
+  if (Ye_atmo_beq && !CCTK_EQUALS(evolution_eos, "Tabulated3d"))
+    CCTK_ERROR("Ye_atmo_beq is supported only for Tabulated3d");
 
   if (!std::isfinite(rho_abs_min) || rho_abs_min < 0.0 ||
-      !std::isfinite(Ye_atmo) ||
+      (!Ye_atmo_beq && !std::isfinite(Ye_atmo)) ||
       !std::isfinite(atmo_tol) || atmo_tol < 0.0 ||
       !std::isfinite(r_atmo) || r_atmo <= 0.0 ||
       !std::isfinite(n_rho_atmo) || n_rho_atmo < 0.0)
@@ -65,7 +67,7 @@ void SetupAtmo(const EOSIDType *eos_1p, const EOSType *eos_3p) {
   const auto atmo = make_atmo(
       eos_1p, eos_3p, 0.0, rho_abs_min, p_atmo, t_atmo, Ye_atmo, r_atmo,
       n_rho_atmo, n_press_atmo, n_temp_atmo, atmo_tol, thermal_eos_atmo,
-      use_press_atmo);
+      use_press_atmo, Ye_atmo_beq);
   if (!std::isfinite(atmo.rho_atmo) || atmo.rho_atmo <= 0.0 ||
       !std::isfinite(atmo.eps_atmo) ||
       !std::isfinite(atmo.press_atmo) || atmo.press_atmo < 0.0 ||
@@ -75,7 +77,7 @@ void SetupAtmo(const EOSIDType *eos_1p, const EOSType *eos_3p) {
     CCTK_ERROR("Atmosphere construction did not produce a finite EOS state");
 
   global_atmo.store(eos_1p, eos_3p, atmo, rho_abs_min, p_atmo, t_atmo, Ye_atmo,
-                     thermal_eos_atmo, use_press_atmo);
+                     thermal_eos_atmo, use_press_atmo, Ye_atmo_beq);
   CCTK_VINFO("Prepared inner atmosphere: rho=%.16e eps=%.16e P=%.16e "
              "T=%.16e Ye=%.16e kappa=%.16e",
              atmo.rho_atmo, atmo.eps_atmo, atmo.press_atmo,
@@ -89,8 +91,11 @@ extern "C" void AsterX_ParamCheck(CCTK_ARGUMENTS) {
 
   // CarpetX runs PARAMCHECK after EOS setup on fresh starts and recovery.
   global_atmo.valid = false;
-  if (CCTK_EQUALS(evolution_eos, "Hybrid"))
+  if (CCTK_EQUALS(evolution_eos, "Hybrid")) {
+    if (Ye_atmo_beq)
+      CCTK_ERROR("Ye_atmo_beq is supported only for Tabulated3d");
     return; // Hybrid keeps its existing atmosphere path.
+  }
 
   CheckAtmoParams();
   const auto setup = [](const auto *eos_3p) {
@@ -120,7 +125,7 @@ bool get_global_atmo(const void *eos_1p, const void *eos_3p,
 
   if (global_atmo.load(eos_1p, eos_3p, rho_abs_min, p_atmo, t_atmo, Ye_atmo,
                         n_rho_atmo, n_press_atmo, n_temp_atmo, atmo_tol,
-                        thermal_eos_atmo, use_press_atmo, atmo))
+                        thermal_eos_atmo, use_press_atmo, Ye_atmo_beq, atmo))
     return true;
 
   // Recheck changed/graded settings before the caller uses the device builder.

@@ -16,13 +16,15 @@ struct atmo_global {
   CCTK_REAL Ye = 0.0;
   bool thermal = false;
   bool use_press = false;
+  bool Ye_beq = false;
   bool valid = false;
 
   void store(const void *eos_1p, const void *eos_3p,
              const Con2PrimFactory::atmosphere &state,
              CCTK_REAL rho_abs_min, CCTK_REAL p_atmo,
              CCTK_REAL t_atmo, CCTK_REAL Ye_atmo,
-             bool thermal_eos_atmo, bool use_press_atmo) {
+             bool thermal_eos_atmo, bool use_press_atmo,
+             bool Ye_atmo_beq) {
     atmo = state;
     cold = eos_1p;
     eos = eos_3p;
@@ -32,6 +34,7 @@ struct atmo_global {
     Ye = Ye_atmo;
     thermal = thermal_eos_atmo;
     use_press = use_press_atmo;
+    Ye_beq = Ye_atmo_beq;
     valid = true;
   }
 
@@ -40,9 +43,10 @@ struct atmo_global {
             CCTK_REAL t_atmo, CCTK_REAL Ye_atmo,
             CCTK_REAL n_rho_atmo, CCTK_REAL n_press_atmo,
             CCTK_REAL n_temp_atmo, CCTK_REAL atmo_tol,
-            bool thermal_eos_atmo, bool use_press_atmo,
+            bool thermal_eos_atmo, bool use_press_atmo, bool Ye_atmo_beq,
             Con2PrimFactory::atmosphere &state) const {
-    if (!valid || eos != eos_3p || rho != rho_abs_min || Ye != Ye_atmo ||
+    if (!valid || eos != eos_3p || rho != rho_abs_min ||
+        Ye_beq != Ye_atmo_beq || (!Ye_beq && Ye != Ye_atmo) ||
         thermal != thermal_eos_atmo || n_rho_atmo != 0.0)
       return false;
 

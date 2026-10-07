@@ -270,12 +270,14 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
           atmo = make_atmo(
               eos_1p_pwpoly, eos_3p, r_atm(f), rho_abs_min, p_atmo,
               t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-              n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo);
+              n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
+              Ye_atmo_beq);
         } else {
           atmo = make_atmo(
               eos_1p_poly, eos_3p, r_atm(f), rho_abs_min, p_atmo,
               t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-              n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo);
+              n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
+              Ye_atmo_beq);
         }
         rho_atm(f) = atmo.rho_atmo;
         rho_cut(f) = rho_atm(f) * recon_thresh;

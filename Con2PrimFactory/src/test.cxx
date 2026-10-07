@@ -474,7 +474,7 @@ void test_atmo(const EOSType &eos) {
           for (CCTK_REAL np : {0.0, 12.0}) {
             const auto atmo = make_atmo(
                 eos_1p, &eos, r, rho_abs_min, p_atmo, t_atmo, Ye_atmo,
-                r_atmo, nr, np, nt, atmo_tol, true, false);
+                r_atmo, nr, np, nt, atmo_tol, true, false, false);
             check_atmo(atmo, eos, rho, temp, Ye_atmo, atmo_tol);
           }
       }
@@ -484,13 +484,36 @@ void test_atmo(const EOSType &eos) {
     for (CCTK_REAL temp : {0.5 * eos.rgtemp.min, 2.0 * eos.rgtemp.max})
       for (CCTK_REAL Ye : {eos.rgye.min - 0.1, eos.rgye.max + 0.1})
         for (CCTK_REAL tol : {0.0, 0.001, 0.1}) {
-          const auto atmo = make_atmo(eos_1p, &eos, 0.0, rho, 0.0, temp, Ye,
-                                      r_atmo, 6.0, 12.0, 2.0, tol, true, false);
+          const auto atmo =
+              make_atmo(eos_1p, &eos, 0.0, rho, 0.0, temp, Ye, r_atmo, 6.0,
+                        12.0, 2.0, tol, true, false, false);
           check_atmo(atmo, eos,
                       std::clamp(rho, eos.rgrho.min, eos.rgrho.max),
                       std::clamp(temp, eos.rgtemp.min, eos.rgtemp.max),
                       std::clamp(Ye, eos.rgye.min, eos.rgye.max), tol);
         }
+}
+
+void test_atmo_beq(const eos_3p_tabulated3d &eos) {
+  const eos_1p_polytropic *eos_1p = nullptr;
+  const CCTK_REAL r_atmo = 10.0, rho_abs_min = 1.0e-3;
+  const CCTK_REAL t_atmo = 0.02, atmo_tol = 0.001;
+
+  // The synthetic chemical potentials set a rho- and T-dependent root.
+  for (CCTK_REAL r : {0.0, 10.0, 20.0, 100.0}) {
+    const CCTK_REAL f = r > r_atmo ? r_atmo / r : 1.0;
+    const CCTK_REAL rho =
+        std::clamp(rho_abs_min * pow(f, 6.0), eos.rgrho.min, eos.rgrho.max);
+    const CCTK_REAL temp =
+        std::clamp(t_atmo * pow(f, 2.0), eos.rgtemp.min, eos.rgtemp.max);
+    const CCTK_REAL Ye =
+        0.3 + 0.01 * (log(rho) - log(1.0e-4)) +
+        0.02 * (log(temp) - log(1.0e-2));
+    const auto atmo =
+        make_atmo(eos_1p, &eos, r, rho_abs_min, 0.0, t_atmo, 0.49,
+                  r_atmo, 6.0, 0.0, 2.0, atmo_tol, true, false, true);
+    check_atmo(atmo, eos, rho, temp, Ye, atmo_tol);
+  }
 }
 
 void test_atmo_ideal(const eos_3p_idealgas &eos_in) {
@@ -527,7 +550,7 @@ void test_atmo_ideal(const eos_3p_idealgas &eos_in) {
               const auto atmo = make_atmo(
                   &eos_1p, &eos, r, rho_abs_min, p_atmo,
                   2.0 * eos.rgtemp.max, Ye_atmo, r_atmo, 6.0, np, 7.0,
-                  atmo_tol, thermal, use_press);
+                  atmo_tol, thermal, use_press, false);
               check_atmo(atmo, eos, rho, temp, Ye_atmo, atmo_tol);
             }
   }
@@ -549,6 +572,11 @@ void test_pal_energy() {
         data[offset + eos_3p_tabulated3d::EPS] =
             lt[j] - 0.1 * lr[i] + 0.2 * ye[k];
         data[offset + eos_3p_tabulated3d::S] = lt[j] - 0.1 * lr[i] + ye[k];
+        const CCTK_REAL Ye_beq =
+            0.3 + 0.01 * (lr[i] - lr[1]) + 0.02 * (lt[j] - lt[1]);
+        data[offset + eos_3p_tabulated3d::MU_E] = ye[k] - Ye_beq;
+        data[offset + eos_3p_tabulated3d::MU_P] = 0.0;
+        data[offset + eos_3p_tabulated3d::MU_N] = 0.0;
       }
   linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interp(
       data.data(), {3, 3, 2}, lr.data(), lt.data(), ye.data());
@@ -562,6 +590,7 @@ void test_pal_energy() {
     eos.rgye = {ye.front(), ye.back()};
     eos.rgeps = eos.compute_eps_range_full_table();
     test_atmo(eos);
+    test_atmo_beq(eos);
     test_cons(eos);
     test_pal(eos, true);
     test_rpa(eos, true);

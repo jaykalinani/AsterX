@@ -11,7 +11,13 @@
 #include "aster_utils.hxx"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <type_traits>
+
+namespace EOSX {
+class eos_3p_tabulated3d;
+}
 
 namespace Con2PrimFactory {
 
@@ -93,7 +99,8 @@ make_atmo(const EOSIDType *eos_1p, const EOSType *eos_3p,
           const CCTK_REAL Ye_atmo, const CCTK_REAL r_atmo,
           const CCTK_REAL n_rho_atmo, const CCTK_REAL n_press_atmo,
           const CCTK_REAL n_temp_atmo, const CCTK_REAL atmo_tol,
-          const bool thermal_eos_atmo, const bool use_press_atmo) {
+          const bool thermal_eos_atmo, const bool use_press_atmo,
+          const bool Ye_atmo_beq) {
   // Parameters and EOS modes must be validated before calling this helper.
   // Tabulated EOS uses thermal, temperature-primary atmosphere only.
   CCTK_REAL rho_atm =
@@ -101,7 +108,7 @@ make_atmo(const EOSIDType *eos_1p, const EOSType *eos_3p,
           ? rho_abs_min * pow(r_atmo / radial_distance, n_rho_atmo)
           : rho_abs_min;
   rho_atm = std::clamp(rho_atm, eos_3p->rgrho.min, eos_3p->rgrho.max);
-  const CCTK_REAL Ye_atm =
+  CCTK_REAL Ye_atm =
       std::clamp(Ye_atmo, eos_3p->rgye.min, eos_3p->rgye.max);
   CCTK_REAL eps_atm;
   CCTK_REAL temp_atm;
@@ -112,9 +119,16 @@ make_atmo(const EOSIDType *eos_1p, const EOSType *eos_3p,
                    : t_atmo;
     temp_atm =
         std::clamp(temp_atm, eos_3p->rgtemp.min, eos_3p->rgtemp.max);
+    if (Ye_atmo_beq) {
+      if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>)
+        Ye_atm = eos_3p->ye_beq_from_rho_temp(rho_atm, temp_atm);
+      else
+        assert(false); // Parameter validation restricts this to tabulated EOS.
+    }
     // Temperature is authoritative; do not independently floor eps.
     eps_atm = eos_3p->eps_from_rho_temp_ye(rho_atm, temp_atm, Ye_atm);
   } else {
+    assert(!Ye_atmo_beq);
     if (thermal_eos_atmo) {
       // Pressure-primary atmosphere requires a supported EOS inversion.
       const CCTK_REAL press_atm =

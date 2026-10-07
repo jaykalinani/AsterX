@@ -38,7 +38,7 @@ void TestAtmoGlobal() {
   auto other_eos = eos;
 
   for (int mode = 0; mode < 3; ++mode) {
-    bool thermal = mode != 0, use_press = mode == 2;
+    bool thermal = mode != 0, use_press = mode == 2, Ye_beq = false;
     CCTK_REAL rho = 1.0e-6, press = 1.0e-10, temp = 0.02, Ye = 0.3;
     CCTK_REAL nr = 0.0, np = 0.0, nt = 0.0, tol = 0.001;
     const void *cold_ptr = &cold, *eos_ptr = &eos;
@@ -46,14 +46,16 @@ void TestAtmoGlobal() {
     atmosphere state{};
     const auto load = [&]() {
       return saved.load(cold_ptr, eos_ptr, rho, press, temp, Ye,
-                        nr, np, nt, tol, thermal, use_press, state);
+                        nr, np, nt, tol, thermal, use_press, Ye_beq, state);
     };
     if (load())
       CCTK_ERROR("Uninitialized global atmosphere was used");
 
-    const auto direct = make_atmo(&cold, &eos, 0.0, rho, press, temp, Ye,
-                                   10.0, nr, np, nt, tol, thermal, use_press);
-    saved.store(&cold, &eos, direct, rho, press, temp, Ye, thermal, use_press);
+    const auto direct =
+        make_atmo(&cold, &eos, 0.0, rho, press, temp, Ye, 10.0,
+                  nr, np, nt, tol, thermal, use_press, Ye_beq);
+    saved.store(&cold, &eos, direct, rho, press, temp, Ye, thermal, use_press,
+                Ye_beq);
     if (!load())
       CCTK_ERROR("Matching uniform atmosphere was not reused");
     CheckAtmoCopy(state, direct);
@@ -105,6 +107,10 @@ void TestAtmoGlobal() {
     if (load() != !thermal)
       CCTK_ERROR("Incorrect pressure-mode reuse decision");
     use_press = !use_press;
+    Ye_beq = true;
+    if (load())
+      CCTK_ERROR("Global atmosphere accepted a changed Ye mode");
+    Ye_beq = false;
 
     eos_ptr = &other_eos;
     if (load())
@@ -117,9 +123,11 @@ void TestAtmoGlobal() {
 
     // Reinitialization must replace both the state and its input snapshot.
     rho *= 2;
-    const auto updated = make_atmo(&cold, &eos, 0.0, rho, press, temp, Ye,
-                                    10.0, nr, np, nt, tol, thermal, use_press);
-    saved.store(&cold, &eos, updated, rho, press, temp, Ye, thermal, use_press);
+    const auto updated =
+        make_atmo(&cold, &eos, 0.0, rho, press, temp, Ye, 10.0,
+                  nr, np, nt, tol, thermal, use_press, Ye_beq);
+    saved.store(&cold, &eos, updated, rho, press, temp, Ye, thermal, use_press,
+                Ye_beq);
     if (!load())
       CCTK_ERROR("Global atmosphere reinitialization failed");
     CheckAtmoCopy(state, updated);
@@ -150,7 +158,7 @@ void TestAtmoDevice(const EOSIDType *eos_1p, const EOSType *eos_3p) {
     atmo_ref[i] = make_atmo(
         eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
         Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
-        atmo_tol, thermal_eos_atmo, use_press_atmo);
+        atmo_tol, thermal_eos_atmo, use_press_atmo, Ye_atmo_beq);
   }
   // Neighboring centers straddle r_atmo for a face with spacing r_atmo/2.
   amrex::GpuArray<atmosphere, 2> face_ref{};
@@ -159,7 +167,7 @@ void TestAtmoDevice(const EOSIDType *eos_1p, const EOSType *eos_3p) {
         eos_1p, eos_3p, (0.75 + 0.5 * f) * r_atmo,
         rho_abs_min, p_atmo, t_atmo, Ye_atmo, r_atmo,
         n_rho_atmo, n_press_atmo, n_temp_atmo, atmo_tol,
-        thermal_eos_atmo, use_press_atmo);
+        thermal_eos_atmo, use_press_atmo, Ye_atmo_beq);
   }
   amrex::Gpu::DeviceScalar<unsigned int> failures(0);
   auto *failed = failures.dataPtr();
@@ -168,14 +176,15 @@ void TestAtmoDevice(const EOSIDType *eos_1p, const EOSType *eos_3p) {
     if (i < 8) {
       actual = make_atmo(
           eos_1p, eos_3p, CCTK_REAL(i), rho_abs_min, p_atmo, t_atmo, Ye_atmo,
-          r_atmo, 0.0, 0.0, 0.0, atmo_tol, thermal_eos_atmo, use_press_atmo);
+          r_atmo, 0.0, 0.0, 0.0, atmo_tol, thermal_eos_atmo,
+          use_press_atmo, Ye_atmo_beq);
       reference = expected;
     } else if (i < 16) {
       const CCTK_REAL radial_distance = 0.5 * CCTK_REAL(i - 8) * r_atmo;
       actual = use_global ? state : make_atmo(
           eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
           Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
-          atmo_tol, thermal_eos_atmo, use_press_atmo);
+          atmo_tol, thermal_eos_atmo, use_press_atmo, Ye_atmo_beq);
       reference = atmo_ref[i - 8];
     } else {
       // Check both neighboring positions for x-, y- and z-directed faces.
@@ -190,7 +199,7 @@ void TestAtmoDevice(const EOSIDType *eos_1p, const EOSType *eos_3p) {
       actual = use_global ? state : make_atmo(
           eos_1p, eos_3p, sqrt(r2_atm), rho_abs_min, p_atmo, t_atmo,
           Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
-          atmo_tol, thermal_eos_atmo, use_press_atmo);
+          atmo_tol, thermal_eos_atmo, use_press_atmo, Ye_atmo_beq);
       reference = face_ref[f];
     }
     const CCTK_REAL a[] = {actual.rho_atmo, actual.eps_atmo, actual.ye_atmo,

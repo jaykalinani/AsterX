@@ -68,12 +68,14 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
               atmo = make_atmo(
                   eos_1p_pwpoly, eos_3p, radial_distance, rho_abs_min, p_atmo,
                   t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-                  n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo);
+                  n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
+                  Ye_atmo_beq);
             } else {
               atmo = make_atmo(
                   eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo,
                   t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-                  n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo);
+                  n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
+                  Ye_atmo_beq);
             }
           }
           rho_atm = atmo.rho_atmo;

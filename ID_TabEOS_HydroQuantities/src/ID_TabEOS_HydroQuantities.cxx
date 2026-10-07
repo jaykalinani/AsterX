@@ -198,7 +198,7 @@ ID_TabEOS_HydroQuantities_recompute_HydroBase_variables(CCTK_ARGUMENTS) {
         const auto atmo = make_atmo(
             eos_1p_poly, eos_3p_tab3d, radial_distance, rho_abs_min,
             p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-            n_temp_atmo, atmo_tol, true, false);
+            n_temp_atmo, atmo_tol, true, false, Ye_atmo_beq);
 
         CCTK_REAL Pval;
         CCTK_REAL eps_val;
