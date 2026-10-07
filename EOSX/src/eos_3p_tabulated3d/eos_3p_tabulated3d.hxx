@@ -404,6 +404,13 @@ public:
                                     ye);
   }
 
+  CCTK_HOST CCTK_DEVICE inline CCTK_REAL
+  kappa_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                        const CCTK_REAL ye) const {
+    // Table entropy is evolved kappa. Reuse the known temperature.
+    return entropy_from_rho_temp_ye(rho, temp, ye);
+  }
+
   CCTK_HOST CCTK_DEVICE inline range
   range_eps_from_rho_ye(const CCTK_REAL rho, const CCTK_REAL ye) const {
     CCTK_REAL lr = std::log(std::fmin(std::fmax(rho, rgrho.min), rgrho.max));

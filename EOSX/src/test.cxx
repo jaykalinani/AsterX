@@ -37,6 +37,8 @@ void test_table() {
         data[offset + eos_3p_tabulated3d::PRESS] = lr[i] + lt[j];
         data[offset + eos_3p_tabulated3d::EPS] =
             lt[j] + 0.1 * lr[i] + 0.2 * ye[k];
+        data[offset + eos_3p_tabulated3d::S] =
+            lt[j] - 0.1 * lr[i] + 0.2 * ye[k];
       }
   linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interp(
       data.data(), {3, 3, 2}, lr.data(), lt.data(), ye.data());
@@ -72,6 +74,11 @@ void test_table() {
           check("inverse physical eps", eps, energy(rho, temp, Ye));
           check("inverse pressure", eos.press_from_rho_eps_ye(rho, eps, Ye),
                 rho * temp);
+          const CCTK_REAL kappa = log(temp) - 0.1 * log(rho) + 0.2 * Ye;
+          check("table kappa from T",
+                eos.kappa_from_rho_temp_ye(rho, temp, Ye), kappa);
+          check("table kappa from eps",
+                eos.kappa_from_rho_eps_ye(rho, eps, Ye), kappa);
         }
         for (const CCTK_REAL input : {eos.rgeps.min - 1.0, er.min,
                                       er.max, eos.rgeps.max + 1.0}) {
@@ -100,6 +107,12 @@ void test_ideal() {
         check("ideal energy", eos.eps_from_rho_temp_ye(rho, temp, 0.5), eps);
         check("ideal pressure", eos.press_from_rho_eps_ye(rho, eps, 0.5),
               (gamma - 1.0) * rho * eps);
+        const CCTK_REAL kappa =
+            (gamma - 1.0) * eps * pow(rho, 1.0 - gamma);
+        check("ideal kappa from T",
+              eos.kappa_from_rho_temp_ye(rho, temp, 0.5), kappa);
+        check("ideal kappa from eps",
+              eos.kappa_from_rho_eps_ye(rho, eps, 0.5), kappa);
       }
   }
 }
@@ -121,12 +134,16 @@ template <typename EOSType> void test_device(const EOSType *eos) {
     const CCTK_REAL temp_back = eos->temp_from_rho_eps_ye(rho, eps_back, Ye);
     const CCTK_REAL press = eos->press_from_rho_temp_ye(rho, temp, Ye);
     const CCTK_REAL press_back = eos->press_from_rho_eps_ye(rho, eps_back, Ye);
+    const CCTK_REAL kappa = eos->kappa_from_rho_temp_ye(rho, temp, Ye);
+    const CCTK_REAL kappa_back = eos->kappa_from_rho_eps_ye(rho, eps_back, Ye);
     if (!std::isfinite(eps) || !std::isfinite(eps_back) ||
         !std::isfinite(temp_back) || !std::isfinite(press) ||
-        !std::isfinite(press_back) ||
+        !std::isfinite(press_back) || !std::isfinite(kappa) ||
+        !std::isfinite(kappa_back) ||
         fabs(temp_back - temp) > 1.0e-7 * fmax(temp, 1.0e-12) ||
         fabs(eps_back - eps) > 1.0e-7 * fmax(fabs(eps), 1.0e-12) ||
-        fabs(press_back - press) > 1.0e-7 * fmax(fabs(press), 1.0e-20))
+        fabs(press_back - press) > 1.0e-7 * fmax(fabs(press), 1.0e-20) ||
+        fabs(kappa_back - kappa) > 1.0e-7 * fmax(fabs(kappa), 1.0))
       amrex::HostDevice::Atomic::Add(failed, 1U);
   });
   amrex::Gpu::streamSynchronize();
