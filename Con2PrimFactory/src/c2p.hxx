@@ -459,7 +459,7 @@ c2p::cons_floors_and_ceilings(const EOSType *eos_3p, cons_vars &cv,
       0.5 * BsqL / sqrt_detg + cv.dens * fmin(0.0, eos_3p->rgeps.min);
 
   if (cv.tau < tau_lim) {
-    // Following FIL, trigger on the global physical energy bound. A local
+    // Trigger on the global physical energy bound. A local
     // minimum at D / sqrt(g) is not a bound at every possible recovered rho.
     // Query the local range only when a conservative repair is needed.
     const CCTK_REAL rhoL =

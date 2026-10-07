@@ -89,7 +89,7 @@ STEERABLE=ALWAYS
 
 CCTK_REAL tauFluid_atmo "Nonnegative undensitized energy-density margin added only when repairing tau below its EOS-aware bound" STEERABLE=ALWAYS
 {
-  [0.0:* :: "Nonnegative"
+  [0.0:* :: "Larger than zero"
 } 1e-15
 
 BOOLEAN use_press_atmo "Use pressure in atmosphere definition and limiting. Important for graded atmosphere." STEERABLE=ALWAYS
