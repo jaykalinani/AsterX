@@ -382,6 +382,102 @@ void test_cons(const EOSType &eos) {
   check_cons(cv, expected);
 }
 
+template <typename EOSType>
+void check_atmo(const atmosphere &atmo, const EOSType &eos,
+                CCTK_REAL rho, CCTK_REAL temp, CCTK_REAL Ye,
+                CCTK_REAL atmo_tol) {
+  check_pal("atmo rho", atmo.rho_atmo, rho);
+  check_pal("atmo temperature", atmo.temp_atmo, temp);
+  check_pal("atmo Ye", atmo.ye_atmo, Ye);
+  check_pal("atmo eps", atmo.eps_atmo,
+            eos.eps_from_rho_temp_ye(rho, temp, Ye));
+  check_pal("atmo pressure", atmo.press_atmo,
+            eos.press_from_rho_temp_ye(rho, temp, Ye));
+  check_pal("atmo kappa", atmo.entropy_atmo,
+            eos.kappa_from_rho_temp_ye(rho, temp, Ye));
+  check_pal("atmo cutoff", atmo.rho_cut, rho * (1 + atmo_tol));
+}
+
+template <typename EOSType>
+void test_atmo(const EOSType &eos) {
+  // Thermal atmosphere must not access the cold EOS.
+  const eos_1p_polytropic *eos_1p = nullptr;
+  const CCTK_REAL r_atmo = 10.0, atmo_tol = 0.001;
+  const CCTK_REAL rho_abs_min = 1.0e-3, t_atmo = 0.02, Ye_atmo = 0.3;
+
+  // Constant, graded, inner/boundary/outer states, and distinct neighbors.
+  for (CCTK_REAL r : {0.0, 5.0, 10.0, 15.0, 40.0, 100.0})
+    for (CCTK_REAL nr : {0.0, 6.0})
+      for (CCTK_REAL nt : {0.0, 2.0}) {
+        const CCTK_REAL f = r > r_atmo ? r_atmo / r : 1.0;
+        const CCTK_REAL rho =
+            std::clamp(rho_abs_min * pow(f, nr), eos.rgrho.min, eos.rgrho.max);
+        const CCTK_REAL temp =
+            std::clamp(t_atmo * pow(f, nt), eos.rgtemp.min, eos.rgtemp.max);
+        // Pressure and its exponent are inactive in temperature-primary mode.
+        for (CCTK_REAL p_atmo : {0.0, 1.0})
+          for (CCTK_REAL np : {0.0, 12.0}) {
+            const auto atmo = make_atmo(
+                eos_1p, &eos, r, rho_abs_min, p_atmo, t_atmo, Ye_atmo,
+                r_atmo, nr, np, nt, atmo_tol, true, false);
+            check_atmo(atmo, eos, rho, temp, Ye_atmo, atmo_tol);
+          }
+      }
+
+  // Inputs at/beyond the EOS bounds must produce a complete bounded state.
+  for (CCTK_REAL rho : {0.0, 0.5 * eos.rgrho.min, 2.0 * eos.rgrho.max})
+    for (CCTK_REAL temp : {0.5 * eos.rgtemp.min, 2.0 * eos.rgtemp.max})
+      for (CCTK_REAL Ye : {eos.rgye.min - 0.1, eos.rgye.max + 0.1})
+        for (CCTK_REAL tol : {0.0, 0.001, 0.1}) {
+          const auto atmo = make_atmo(eos_1p, &eos, 0.0, rho, 0.0, temp, Ye,
+                                      r_atmo, 6.0, 12.0, 2.0, tol, true, false);
+          check_atmo(atmo, eos,
+                      std::clamp(rho, eos.rgrho.min, eos.rgrho.max),
+                      std::clamp(temp, eos.rgtemp.min, eos.rgtemp.max),
+                      std::clamp(Ye, eos.rgye.min, eos.rgye.max), tol);
+        }
+}
+
+void test_atmo_ideal(const eos_3p_idealgas &eos_in) {
+  // P_cold = 100 rho^2, eps_cold = 100 rho.
+  eos_1p_polytropic eos_1p;
+  eos_1p.init(2.0, 100.0, eos_in.rgrho.max);
+  const CCTK_REAL r_atmo = 10.0, atmo_tol = 0.001;
+  const CCTK_REAL rho_abs_min = 1.0e-3, Ye_atmo = 0.3;
+
+  // Check particle-mass conversion, also when cold/evolution gamma differ.
+  for (CCTK_REAL umass : {1.0, 2.0}) {
+    eos_3p_idealgas eos;
+    auto rgeps = eos_in.rgeps;
+    eos.init(eos_in.gamma, umass, rgeps, eos_in.rgrho, eos_in.rgye);
+    for (CCTK_REAL r : {0.0, 10.0, 20.0, 40.0, 100.0})
+      for (CCTK_REAL p_atmo : {0.0, 1.0e-6, 1.0})
+        for (CCTK_REAL np : {0.0, 12.0})
+          for (bool thermal : {false, true})
+            for (bool use_press : {false, true}) {
+              if (thermal && !use_press)
+                continue; // Temperature-primary mode is tested above.
+              const CCTK_REAL f = r > r_atmo ? r_atmo / r : 1.0;
+              const CCTK_REAL rho =
+                  std::clamp(rho_abs_min * pow(f, 6.0),
+                             eos.rgrho.min, eos.rgrho.max);
+              CCTK_REAL eps = thermal
+                  ? p_atmo * pow(f, np) / ((eos.gamma - 1.0) * rho)
+                  : 100.0 * rho;
+              eps = std::clamp(eps, eos.rgeps.min, eos.rgeps.max);
+              const CCTK_REAL temp = (eos.gamma - 1.0) * umass * eps;
+
+              // Temperature and its exponent are inactive in these modes.
+              // Cold matching also ignores p_atmo, np and use_press.
+              const auto atmo = make_atmo(
+                  &eos_1p, &eos, r, rho_abs_min, p_atmo,
+                  2.0 * eos.rgtemp.max, Ye_atmo, r_atmo, 6.0, np, 7.0,
+                  atmo_tol, thermal, use_press);
+              check_atmo(atmo, eos, rho, temp, Ye_atmo, atmo_tol);
+            }
+  }
+}
+
 void test_pal_energy() {
   // Host-local synthetic table: exercise the actual table inverse without
   // loading a production EOS. No host pointers are captured in GPU kernels.
@@ -410,6 +506,7 @@ void test_pal_energy() {
     eos.rgtemp = {exp(lt.front()), exp(lt.back())};
     eos.rgye = {ye.front(), ye.back()};
     eos.rgeps = eos.compute_eps_range_full_table();
+    test_atmo(eos);
     test_cons(eos);
     test_pal(eos, true);
     test_rpa(eos, true);
@@ -418,6 +515,8 @@ void test_pal_energy() {
     eos_3p_idealgas eos;
     eos_3p::range er{0.0, 1.0}, rr{1.0e-6, 1.0e-2}, yr{0.1, 0.5};
     eos.init(gamma, 1.0, er, rr, yr);
+    test_atmo(eos);
+    test_atmo_ideal(eos);
     test_cons(eos);
     test_pal(eos, false);
     test_pal(eos, true);
@@ -427,11 +526,13 @@ void test_pal_energy() {
     // A positive ideal-gas eps_min must not become a new rejection policy.
     er.min = 0.001;
     eos.init(gamma, 1.0, er, rr, yr);
+    test_atmo(eos);
+    test_atmo_ideal(eos);
     test_cons(eos);
     test_rpa(eos, false);
     test_rpa(eos, true);
   }
-  CCTK_INFO("Conservative and C2P energy-bound tests passed");
+  CCTK_INFO("Atmosphere, conservative and C2P energy-bound tests passed");
 }
 
 } // namespace
