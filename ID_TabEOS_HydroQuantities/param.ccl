@@ -56,6 +56,6 @@ USES CCTK_REAL n_temp_atmo
 
 private:
 
-BOOLEAN unit_test "Check thermodynamic consistency after initial-data conversion"
+BOOLEAN unit_test "Check initial Ye, thermal profiles and converted state"
 {
 } "no"
