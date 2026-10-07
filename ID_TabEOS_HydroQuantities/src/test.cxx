@@ -1,5 +1,6 @@
 #include <cctk.h>
 #include <cctk_Arguments.h>
+#include <cctk_Parameters.h>
 
 #include <AMReX.H>
 #include <AMReX_GpuAtomic.H>
@@ -9,13 +10,16 @@
 #include <cmath>
 
 #include "setup_eos.hxx"
+#include "atmo.hxx"
 
 namespace ID_TabEOS_HydroQuantities {
 using namespace Loop;
 
 extern "C" void ID_TabEOS_HydroQuantities_Test(CCTK_ARGUMENTS) {
   DECLARE_CCTK_ARGUMENTSX_ID_TabEOS_HydroQuantities_Test;
+  DECLARE_CCTK_PARAMETERS;
 
+  const auto eos_1p_poly = EOSX::global_eos_1p_poly;
   const auto eos_3p_tab3d = EOSX::global_eos_3p_tab3d;
   amrex::Gpu::DeviceScalar<unsigned int> failures(0);
   auto *failed = failures.dataPtr();
@@ -36,6 +40,24 @@ extern "C" void ID_TabEOS_HydroQuantities_Test(CCTK_ARGUMENTS) {
             tempL > eos_3p_tab3d->rgtemp.max ||
             yeL < eos_3p_tab3d->rgye.min ||
             yeL > eos_3p_tab3d->rgye.max) {
+          amrex::HostDevice::Atomic::Add(failed, 1U);
+          return;
+        }
+
+        const CCTK_REAL radial_distance =
+            std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+        const auto atmo = Con2PrimFactory::make_atmo(
+            eos_1p_poly, eos_3p_tab3d, radial_distance, rho_abs_min,
+            p_atmo, t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+            n_temp_atmo, atmo_tol, true, false);
+
+        // Below rho_max, an output inside the cutoff must be a reset.
+        // At rho_max, a ceiling clamp can also enter the cutoff; check only
+        // EOS consistency there because the original density is not stored.
+        if (rhoL < eos_3p_tab3d->rgrho.max && rhoL <= atmo.rho_cut &&
+            (rhoL != atmo.rho_atmo || tempL != atmo.temp_atmo ||
+             yeL != atmo.ye_atmo || velx(p.I) != 0.0 ||
+             vely(p.I) != 0.0 || velz(p.I) != 0.0)) {
           amrex::HostDevice::Atomic::Add(failed, 1U);
           return;
         }

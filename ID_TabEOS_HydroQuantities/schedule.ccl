@@ -51,5 +51,6 @@ if (unit_test) {
     READS: HydroBaseX::press(Everywhere)
     READS: HydroBaseX::eps(Everywhere)
     READS: HydroBaseX::entropy(Everywhere)
+    READS: HydroBaseX::vel(Everywhere)
   } "Check the recomputed initial thermodynamic state"
 }
