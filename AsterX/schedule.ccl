@@ -6,7 +6,7 @@ STORAGE: Avec_y[timelevels]
 STORAGE: Avec_z[timelevels]
 STORAGE: Psi[timelevels]
 
-STORAGE: rhs_vector Avec_x_rhs Avec_y_rhs Avec_z_rhs Psi_rhs
+STORAGE: rhs_vector[1] Avec_x_rhs[1] Avec_y_rhs[1] Avec_z_rhs[1] Psi_rhs[1]
 STORAGE: flux_x flux_y flux_z
 
 # Nodal gauge register. Storage is unconditional: ODESolvers dereferences
