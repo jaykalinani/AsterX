@@ -1,6 +1,7 @@
 #include <cctk.h>
 #include <cctk_Arguments.h>
 
+#include <AMReX.H>
 #include <AMReX_GpuAtomic.H>
 #include <AMReX_GpuLaunch.H>
 #include <AMReX_GpuMemory.H>
