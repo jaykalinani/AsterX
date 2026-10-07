@@ -3,6 +3,7 @@
 #include <cctk_Parameters.h>
 
 #include <AMReX.H>
+#include <AMReX_Array.H>
 #include <AMReX_GpuAtomic.H>
 #include <AMReX_GpuLaunch.H>
 #include <AMReX_GpuMemory.H>
@@ -142,18 +143,38 @@ void TestAtmoDevice(const EOSIDType *eos_1p, const EOSType *eos_3p) {
   // Compare the startup state with device construction using the active EOS.
   // Zero exponents make the inner state valid at every supplied radius.
   const atmosphere expected = global_atmo.atmo;
+  // Also exercise the C2P selection with active grading, across r_atmo.
+  amrex::GpuArray<atmosphere, 8> atmo_ref{};
+  for (int i = 0; i < 8; ++i) {
+    const CCTK_REAL radial_distance = 0.5 * CCTK_REAL(i) * r_atmo;
+    atmo_ref[i] = make_atmo(
+        eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
+        Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
+        atmo_tol, thermal_eos_atmo, use_press_atmo);
+  }
   amrex::Gpu::DeviceScalar<unsigned int> failures(0);
   auto *failed = failures.dataPtr();
-  amrex::ParallelFor(8, [=] AMREX_GPU_DEVICE(int i) {
-    const auto actual = make_atmo(
-        eos_1p, eos_3p, CCTK_REAL(i), rho_abs_min, p_atmo, t_atmo, Ye_atmo,
-        r_atmo, 0.0, 0.0, 0.0, atmo_tol, thermal_eos_atmo, use_press_atmo);
+  amrex::ParallelFor(16, [=] AMREX_GPU_DEVICE(int i) {
+    atmosphere actual{}, reference{};
+    if (i < 8) {
+      actual = make_atmo(
+          eos_1p, eos_3p, CCTK_REAL(i), rho_abs_min, p_atmo, t_atmo, Ye_atmo,
+          r_atmo, 0.0, 0.0, 0.0, atmo_tol, thermal_eos_atmo, use_press_atmo);
+      reference = expected;
+    } else {
+      const CCTK_REAL radial_distance = 0.5 * CCTK_REAL(i - 8) * r_atmo;
+      actual = use_global ? state : make_atmo(
+          eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
+          Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
+          atmo_tol, thermal_eos_atmo, use_press_atmo);
+      reference = atmo_ref[i - 8];
+    }
     const CCTK_REAL a[] = {actual.rho_atmo, actual.eps_atmo, actual.ye_atmo,
                           actual.press_atmo, actual.temp_atmo,
                           actual.entropy_atmo, actual.rho_cut};
-    const CCTK_REAL b[] = {expected.rho_atmo, expected.eps_atmo, expected.ye_atmo,
-                          expected.press_atmo, expected.temp_atmo,
-                          expected.entropy_atmo, expected.rho_cut};
+    const CCTK_REAL b[] = {reference.rho_atmo, reference.eps_atmo, reference.ye_atmo,
+                          reference.press_atmo, reference.temp_atmo,
+                          reference.entropy_atmo, reference.rho_cut};
     for (int n = 0; n < 7; ++n) {
       const CCTK_REAL scale = fmax(fabs(b[n]), n == 5 ? 1.0 : 1.0e-12);
       if (!std::isfinite(a[n]) || !std::isfinite(b[n]) ||
