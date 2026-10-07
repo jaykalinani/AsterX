@@ -382,6 +382,60 @@ void test_cons(const EOSType &eos) {
   check_cons(cv, expected);
 }
 
+void test_atmo_reset(const atmosphere &atmo) {
+  // A non-diagonal metric also checks the magnetic energy and densitization.
+  const smat<CCTK_REAL, 3> g{1.2, 0.1, 0.0, 1.1, 0.05, 0.9};
+  const CCTK_REAL sqrt_detg = sqrt(calc_det(g));
+
+  for (CCTK_REAL B : {0.0, 0.001}) {
+    const vec<CCTK_REAL, 3> Bup{B, 0.2 * B, -0.1 * B};
+    prim_vars pv;
+    pv.set_to_nan();
+    pv.Bvec = Bup;
+
+    // The reset must overwrite every fluid field, and be idempotent.
+    for (int repeat = 0; repeat < 2; ++repeat) {
+      atmo.set(pv);
+      if (pv.rho != atmo.rho_atmo || pv.eps != atmo.eps_atmo ||
+          pv.Ye != atmo.ye_atmo || pv.press != atmo.press_atmo ||
+          pv.temperature != atmo.temp_atmo ||
+          pv.entropy != atmo.entropy_atmo || pv.w_lor != 1.0)
+        CCTK_ERROR("Atmosphere reset did not copy the complete thermal state");
+      for (int d = 0; d < 3; ++d)
+        if (pv.vel(d) != 0.0 || pv.E(d) != 0.0 || pv.Bvec(d) != Bup(d))
+          CCTK_ERROR("Atmosphere reset changed B or retained velocity/E");
+    }
+
+    const CCTK_REAL dens = sqrt_detg * atmo.rho_atmo;
+    const CCTK_REAL Bsq = calc_contraction(Bup, calc_contraction(g, Bup));
+    const cons_vars expected{
+        dens, {0.0, 0.0, 0.0},
+        dens * atmo.eps_atmo + 0.5 * sqrt_detg * Bsq,
+        dens * atmo.ye_atmo, dens * atmo.entropy_atmo, sqrt_detg * Bup};
+
+    // Rebuilding conservatives must agree with the stationary atmosphere.
+    cons_vars cv;
+    cv.from_prim(pv, g);
+    check_cons(cv, expected);
+
+    // The joint reset must replace dirty conservatives and preserve dB.
+    pv.set_to_nan();
+    pv.Bvec = Bup;
+    cv.set_to_nan();
+    cv.dBvec = sqrt_detg * Bup;
+    atmo.set(pv, cv, g);
+    check_cons(cv, expected);
+    if (pv.rho != atmo.rho_atmo || pv.eps != atmo.eps_atmo ||
+        pv.Ye != atmo.ye_atmo || pv.press != atmo.press_atmo ||
+        pv.temperature != atmo.temp_atmo ||
+        pv.entropy != atmo.entropy_atmo || pv.w_lor != 1.0)
+      CCTK_ERROR("Joint atmosphere reset left an inconsistent primitive state");
+    for (int d = 0; d < 3; ++d)
+      if (pv.vel(d) != 0.0 || pv.E(d) != 0.0 || pv.Bvec(d) != Bup(d))
+        CCTK_ERROR("Joint atmosphere reset changed B or retained velocity/E");
+  }
+}
+
 template <typename EOSType>
 void check_atmo(const atmosphere &atmo, const EOSType &eos,
                 CCTK_REAL rho, CCTK_REAL temp, CCTK_REAL Ye,
@@ -396,6 +450,7 @@ void check_atmo(const atmosphere &atmo, const EOSType &eos,
   check_pal("atmo kappa", atmo.entropy_atmo,
             eos.kappa_from_rho_temp_ye(rho, temp, Ye));
   check_pal("atmo cutoff", atmo.rho_cut, rho * (1 + atmo_tol));
+  test_atmo_reset(atmo);
 }
 
 template <typename EOSType>
