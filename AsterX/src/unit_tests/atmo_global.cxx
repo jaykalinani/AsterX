@@ -152,22 +152,46 @@ void TestAtmoDevice(const EOSIDType *eos_1p, const EOSType *eos_3p) {
         Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
         atmo_tol, thermal_eos_atmo, use_press_atmo);
   }
+  // Neighboring centers straddle r_atmo for a face with spacing r_atmo/2.
+  amrex::GpuArray<atmosphere, 2> face_ref{};
+  for (int f = 0; f < 2; ++f) {
+    face_ref[f] = make_atmo(
+        eos_1p, eos_3p, (0.75 + 0.5 * f) * r_atmo,
+        rho_abs_min, p_atmo, t_atmo, Ye_atmo, r_atmo,
+        n_rho_atmo, n_press_atmo, n_temp_atmo, atmo_tol,
+        thermal_eos_atmo, use_press_atmo);
+  }
   amrex::Gpu::DeviceScalar<unsigned int> failures(0);
   auto *failed = failures.dataPtr();
-  amrex::ParallelFor(16, [=] AMREX_GPU_DEVICE(int i) {
+  amrex::ParallelFor(22, [=] AMREX_GPU_DEVICE(int i) {
     atmosphere actual{}, reference{};
     if (i < 8) {
       actual = make_atmo(
           eos_1p, eos_3p, CCTK_REAL(i), rho_abs_min, p_atmo, t_atmo, Ye_atmo,
           r_atmo, 0.0, 0.0, 0.0, atmo_tol, thermal_eos_atmo, use_press_atmo);
       reference = expected;
-    } else {
+    } else if (i < 16) {
       const CCTK_REAL radial_distance = 0.5 * CCTK_REAL(i - 8) * r_atmo;
       actual = use_global ? state : make_atmo(
           eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo, t_atmo,
           Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
           atmo_tol, thermal_eos_atmo, use_press_atmo);
       reference = atmo_ref[i - 8];
+    } else {
+      // Check both neighboring positions for x-, y- and z-directed faces.
+      const int dir_i = (i - 16) / 2;
+      const int f = (i - 16) % 2;
+      CCTK_REAL r2_atm = 0.0;
+      for (int ii = 0; ii < 3; ++ii) {
+        const CCTK_REAL x = ii == dir_i ? r_atmo : 0.0;
+        const CCTK_REAL dx = (ii == dir_i) * 0.5 * (0.5 * r_atmo);
+        r2_atm += (x + (2 * f - 1) * dx) * (x + (2 * f - 1) * dx);
+      }
+      actual = use_global ? state : make_atmo(
+          eos_1p, eos_3p, sqrt(r2_atm), rho_abs_min, p_atmo, t_atmo,
+          Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo, n_temp_atmo,
+          atmo_tol, thermal_eos_atmo, use_press_atmo);
+      reference = face_ref[f];
     }
     const CCTK_REAL a[] = {actual.rho_atmo, actual.eps_atmo, actual.ye_atmo,
                           actual.press_atmo, actual.temp_atmo,
