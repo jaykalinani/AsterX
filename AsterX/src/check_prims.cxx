@@ -3,8 +3,6 @@
 #include <cctk_Parameters.h>
 #include <loop_device.hxx>
 
-#include <type_traits>
-
 #include "aster_utils.hxx"
 #include "atmo_global.hxx"
 #include "setup_eos.hxx"
@@ -51,105 +49,36 @@ void CheckPrims(CCTK_ARGUMENTS, EOSIDType *eos_1p, EOSType *eos_3p) {
         CCTK_REAL entropyL;
 
         // Setting up atmosphere
-        CCTK_REAL rho_atm = 0.0;   // dummy initialization
-        CCTK_REAL press_atm = 0.0; // dummy initialization
-        CCTK_REAL eps_atm = 0.0;   // dummy initialization
-        CCTK_REAL temp_atm = 0.0;  // dummy initialization
-
         atmosphere atmo{};
-        if constexpr (std::is_same_v<EOSType, eos_3p_idealgas> ||
-                      std::is_same_v<EOSType, eos_3p_tabulated3d>) {
-          if (use_atmo_const) {
-            atmo = atmo_const;
-          } else {
-            const CCTK_REAL radial_distance =
-                sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-            if (eos_1p_pwpoly) {
-              atmo = make_atmo(
-                  eos_1p_pwpoly, eos_3p, radial_distance, rho_abs_min, p_atmo,
-                  t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-                  n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
-                  Ye_atmo_beq);
-            } else {
-              atmo = make_atmo(
-                  eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo,
-                  t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
-                  n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
-                  Ye_atmo_beq);
-            }
-          }
-          rho_atm = atmo.rho_atmo;
-          press_atm = atmo.press_atmo;
-          eps_atm = atmo.eps_atmo;
-          temp_atm = atmo.temp_atmo;
+        if (use_atmo_const) {
+          atmo = atmo_const;
         } else {
-          // Hybrid keeps its existing atmosphere construction.
-          CCTK_REAL radial_distance = sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-
-          // Grading rho
-          rho_atm =
-              (radial_distance > r_atmo)
-                  ? (rho_abs_min * pow((r_atmo / radial_distance), n_rho_atmo))
-                  : rho_abs_min;
-          rho_atm = std::max(eos_3p->rgrho.min, rho_atm);
-
-          // Grading temperature or pressure based on either cold or thermal EOS
-          if (thermal_eos_atmo) {
-            // rho_atm = max(rho_atm, eos_3p->interptable->xmin<0>());
-
-            if (use_press_atmo) {
-              press_atm =
-                  (radial_distance > r_atmo)
-                      ? (p_atmo * pow(r_atmo / radial_distance, n_press_atmo))
-                      : p_atmo;
-              press_atm = std::max(eos_3p->press_from_rho_temp_ye(
-                                       rho_atm, eos_3p->rgtemp.min, Ye_atmo),
-                                   press_atm);
-              eps_atm =
-                  eos_3p->eps_from_rho_press_ye(rho_atm, press_atm, Ye_atmo);
-              temp_atm = eos_3p->temp_from_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
-            } else {
-              temp_atm =
-                  (radial_distance > r_atmo)
-                      ? (t_atmo * pow(r_atmo / radial_distance, n_temp_atmo))
-                      : t_atmo;
-              temp_atm = std::max(eos_3p->rgtemp.min, temp_atm);
-              // temp_atm = max(temp_atm, eos_3p->interptable->xmin<1>());
-              press_atm =
-                  eos_3p->press_from_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
-              eps_atm = eos_3p->eps_from_rho_temp_ye(rho_atm, temp_atm, Ye_atmo);
-              // eps_atm should be kept consistent with temp_atm, so we do not use
-              // the setting below
-              // eps_atm =
-              //    std::min(std::max(eos_3p->rgeps.min, eps_atm),
-              //    eos_3p->rgeps.max);
-            }
-
+          const CCTK_REAL radial_distance =
+              sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+          if (eos_1p_pwpoly) {
+            atmo = make_atmo(
+                eos_1p_pwpoly, eos_3p, radial_distance, rho_abs_min, p_atmo,
+                t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+                n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
+                Ye_atmo_beq);
           } else {
-            const CCTK_REAL gm1 = eos_1p->gm1_from_rho(rho_atm);
-            eps_atm = eos_1p->sed_from_gm1(gm1);
-            eps_atm = std::max(eos_3p->eps_from_rho_temp_ye(
-                                   rho_atm, eos_3p->rgtemp.min, Ye_atmo),
-                               eps_atm);
-            temp_atm = eos_3p->temp_from_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
-            // eps_atm should be kept consistent with temp_atm, so we do not use
-            // the setting below
-            // eps_atm =
-            //    std::min(std::max(eos_3p->rgeps.min, eps_atm),
-            //    eos_3p->rgeps.max);
-            press_atm = eos_3p->press_from_rho_eps_ye(rho_atm, eps_atm, Ye_atmo);
+            atmo = make_atmo(
+                eos_1p, eos_3p, radial_distance, rho_abs_min, p_atmo,
+                t_atmo, Ye_atmo, r_atmo, n_rho_atmo, n_press_atmo,
+                n_temp_atmo, atmo_tol, thermal_eos_atmo, use_press_atmo,
+                Ye_atmo_beq);
           }
         }
+        const CCTK_REAL rho_atm = atmo.rho_atmo;
+        const CCTK_REAL press_atm = atmo.press_atmo;
+        const CCTK_REAL eps_atm = atmo.eps_atmo;
+        const CCTK_REAL temp_atm = atmo.temp_atmo;
 
         const CCTK_REAL rho_atmo_cut = rho_atm * (1 + atmo_tol);
 
         CCTK_REAL rhomax = eos_3p->rgrho.max;
-        bool set_atmo = false;
-        if constexpr (std::is_same_v<EOSType, eos_3p_idealgas> ||
-                      std::is_same_v<EOSType, eos_3p_tabulated3d>) {
-          // Preserve the density ceiling before the strict atmosphere test.
-          set_atmo = std::min(rhoL, rhomax) < rho_atmo_cut;
-        }
+        // Preserve the density ceiling before the strict atmosphere test.
+        const bool set_atmo = std::min(rhoL, rhomax) < rho_atmo_cut;
 
         vec<CCTK_REAL, 3> v_low{0.0, 0.0, 0.0};
         if (set_atmo) {
