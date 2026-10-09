@@ -79,6 +79,48 @@ void test_pal(const EOSType &eos, bool use_temp) {
               prim_vars pv;
               cons_vars cv = cv_in;
               c2p_report rep;
+              // Exercise Noble on the same conservative input, independently
+              // of Palenzuela and with a perturbed primitive seed.
+              c2p_2DNoble noble(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                                1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
+                                true, false, use_temp, false, false, 1.0);
+              prim_vars seed = pv_in;
+              seed.E = {0.0, 0.0, 0.0};
+              seed.eps *= 1.01;
+              noble.solve(&eos, pv, seed, cv, 1.0, beta, g, rep, reject);
+              if (rep.failed() || rep.set_atmo || rep.adjust_cons)
+                CCTK_ERROR("Noble test: valid state rejected or adjusted");
+              check_pal("Noble rho", pv.rho, rho);
+              check_pal("Noble eps", pv.eps, eps);
+              check_pal("Noble press", pv.press, press);
+              check_pal("Noble temperature", pv.temperature, temp);
+              check_cons(cv, cv_in);
+              // Check the EOS-independent pressure/Jacobian directly.
+              const CCTK_REAL Z = rho * (1.0 + eps + press / rho) * wlor * wlor;
+              const CCTK_REAL vsq = 1.0 - 1.0 / (wlor * wlor);
+              const CCTK_REAL sd = sqrt(calc_det(g));
+              cons_vars undens = cv_in;
+              undens.dens /= sd;
+              undens.DYe /= sd;
+              CCTK_REAL p, dz, dv, pp, pm, dummy1, dummy2;
+              const CCTK_REAL dz_step = 1.0e-5 * Z, dv_step = 1.0e-6;
+              if (!noble.get_Press_funcZVsq(p, dz, dv, Z, vsq, &eos, undens) ||
+                  !noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z + dz_step,
+                                           vsq, &eos, undens) ||
+                  !noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z - dz_step,
+                                           vsq, &eos, undens))
+                CCTK_ERROR("Noble test: Jacobian trial failed");
+              if (fabs((pp - pm) / (2.0 * dz_step) - dz) > 1.0e-6 * fabs(dz))
+                CCTK_ERROR("Noble test: dP/dZ mismatch");
+              if (vsq > dv_step) {
+                noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z,
+                                         vsq + dv_step, &eos, undens);
+                noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z,
+                                         vsq - dv_step, &eos, undens);
+                if (fabs((pp - pm) / (2.0 * dv_step) - dv) > 1.0e-6 * fabs(dv))
+                  CCTK_ERROR("Noble test: dP/dvsq mismatch");
+              }
+              cv = cv_in;
               c2p_Pal.solve(&eos, pv, cv, 1.0, beta, g, rep, reject);
               if (rep.failed() || rep.set_atmo || rep.adjust_cons)
                 CCTK_ERROR("Palenzuela test: valid interior state was rejected "

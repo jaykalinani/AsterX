@@ -394,16 +394,31 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     return;
   }
 
+  if (!std::isfinite(cv.tau) || cv.dens <= 0.0) {
+    rep.set_range_rho(cv.dens, 0.0);
+    cv = cv_const;
+    return;
+  }
+  const CCTK_REAL Ye_raw = cv.DYe / cv.dens;
+  const CCTK_REAL Ye = std::clamp(Ye_raw, eos_3p->rgye.min, eos_3p->rgye.max);
+  if (Ye != Ye_raw)
+    rep.adjust_cons = true;
+  cv.DYe = cv.dens * Ye;
+  pv_seeds.Ye = Ye;
+
   /* update rho seed from cv and wlor */
   // rho consistent with cv.rho should be better guess than rho from last
   // timestep
   pv_seeds.rho = cv.dens / pv_seeds.w_lor;
 
-  CCTK_REAL eps_last = max({pv_seeds.eps, atmo.eps_atmo});
+  const CCTK_REAL rho_seed =
+      std::clamp(pv_seeds.rho, eos_3p->rgrho.min, eos_3p->rgrho.max);
+  const auto rgeps_seed = eos_3p->range_eps_from_rho_ye(rho_seed, Ye);
+  CCTK_REAL eps_last = std::clamp(pv_seeds.eps, rgeps_seed.min, rgeps_seed.max);
 
   /* get pressure seed from updated pv_seeds.rho */
   pv_seeds.press =
-      eos_3p->press_from_rho_eps_ye(pv_seeds.rho, eps_last, pv_seeds.Ye);
+      eos_3p->press_from_rho_eps_ye(rho_seed, eps_last, pv_seeds.Ye);
 
   /* get Z seed */
   CCTK_REAL Z_Seed =
@@ -485,6 +500,11 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
         (fjac[1][0] * (Bsq + Z) +
          (Bsq - 2.0 * dPdvsq) * (BiSi * BiSi * invZ * invZ + Vsq * Z) * invZ);
     const CCTK_REAL detjac_inv = 1.0 / detjac;
+    if (!std::isfinite(detjac_inv)) {
+      rep.set_root_conv();
+      cv = cv_const;
+      return;
+    }
 
     dx[0] = -(fjac[1][1] * resid[0] - fjac[0][1] * resid[1]) * detjac_inv;
     dx[1] = -(-fjac[1][0] * resid[0] + fjac[0][0] * resid[1]) * detjac_inv;
@@ -500,6 +520,28 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     // make the newton step
     x[0] += dx[0];
     x[1] += dx[1];
+    CCTK_REAL step = 1.0;
+    if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>) {
+      // Table trials must stay in the EOS domain. Analytic EOSs retain the
+      // original Newton step, including their below-floor trial extension.
+      bool valid = false;
+      for (CCTK_INT trial = 0; trial < maxIterations; ++trial) {
+        x[0] = x_old[0] + step * dx[0];
+        x[1] = fmax(0.0, x_old[1] + step * dx[1]);
+        if (get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, x[0], x[1], eos_3p, cv)) {
+          valid = true;
+          break;
+        }
+        step *= 0.5;
+        if (step <= std::numeric_limits<CCTK_REAL>::epsilon())
+          break;
+      }
+      if (!valid) {
+        rep.set_root_conv();
+        cv = cv_const;
+        return;
+      }
+    }
 
     /* make sure that the new x[] is physical */
     if (x[1] < 0.0) {
@@ -521,7 +563,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     }
 
     // calculate the convergence criterion
-    errx = (x[0] == 0.) ? fabs(dx[0]) : fabs(dx[0] / x[0]);
+    errx = (x[0] == 0.) ? fabs(step * dx[0]) : fabs(step * dx[0] / x[0]);
 
     if (fabs(errx) <= tolerance) {
       break;
@@ -567,12 +609,38 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL Z_Sol = x[0];
   CCTK_REAL vsq_Sol = x[1];
 
+  // A shortened step is not proof of convergence. Check both equations
+  // with the configured root tolerance and a roundoff-sized lower bound.
+  CCTK_REAL press_final, dPdZ_final, dPdVsq_final;
+  if (!get_Press_funcZVsq(press_final, dPdZ_final, dPdVsq_final,
+                         Z_Sol, vsq_Sol, eos_3p, cv)) {
+    rep.set_root_conv();
+    cv = cv_const;
+    return;
+  }
+  const CCTK_REAL bz2 = BiSi * BiSi / (Z_Sol * Z_Sol);
+  const CCTK_REAL mom_resid = Ssq - vsq_Sol * pow(Bsq + Z_Sol, 2) +
+                              bz2 * (Bsq + 2.0 * Z_Sol);
+  const CCTK_REAL energy_resid = cv.tau + cv.dens -
+      0.5 * Bsq * (1.0 + vsq_Sol) + 0.5 * bz2 - Z_Sol + press_final;
+  const CCTK_REAL residual_tol = fmax(
+      tolerance * (soft_root_convergence ? soft_root_width_factor : 1.0),
+      32.0 * std::numeric_limits<CCTK_REAL>::epsilon());
+  if (!std::isfinite(mom_resid) || !std::isfinite(energy_resid) ||
+      fabs(mom_resid) > residual_tol * fmax(Ssq, pow(Bsq + Z_Sol, 2)) ||
+      fabs(energy_resid) > residual_tol *
+          (fabs(cv.tau) + cv.dens + Bsq + Z_Sol + fabs(press_final))) {
+    rep.set_root_conv();
+    cv = cv_const;
+    return;
+  }
+
   /* Write prims if C2P succeeded */
   CCTK_REAL eps_raw;
   WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, eps_raw, cv, gup, glo);
 
   // Error out if rho is negative or zero
-  if (pv.rho <= 0.0) {
+  if (!std::isfinite(pv.rho) || pv.rho <= 0.0) {
     // set status to rho is out of range
     rep.set_range_rho(cv.dens, pv.rho);
     cv = cv_const;
