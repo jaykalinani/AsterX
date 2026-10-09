@@ -49,14 +49,8 @@ complete_prims(const EOSType *eos_3p, prim_vars &pv, const bool use_temp) {
     pv.eps = std::clamp(pv.eps, rgeps.min, rgeps.max);
     pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
   }
-  if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_idealgas> ||
-                std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>) {
-    pv.press = eos_3p->press_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-  } else {
-    pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-  }
+  pv.press = eos_3p->press_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+  pv.entropy = eos_3p->kappa_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
   return pv.rho > 0.0 && std::isfinite(pv.eps) &&
          std::isfinite(pv.press) && pv.press >= 0.0 &&
          std::isfinite(pv.temperature) && std::isfinite(pv.entropy) &&

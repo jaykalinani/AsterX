@@ -521,8 +521,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     x[1] += dx[1];
     CCTK_REAL step = 1.0;
     if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>) {
-      // Table trials must stay in the EOS domain. Analytic EOSs retain the
-      // original Newton step, including their below-floor trial extension.
+      // Keep table trials inside the EOS domain.
       bool valid = false;
       for (CCTK_INT trial = 0; trial < maxIterations; ++trial) {
         x[0] = x_old[0] + step * dx[0];

@@ -81,8 +81,7 @@ void test_pal(const EOSType &eos, bool use_temp) {
               prim_vars pv;
               cons_vars cv = cv_in;
               c2p_report rep;
-              // Exercise Noble on the same conservative input, independently
-              // of Palenzuela and with a perturbed primitive seed.
+              // Recover independently with a perturbed primitive seed.
               c2p_2DNoble noble(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
                                 1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
                                 true, false, use_temp, false, false, 1.0);
@@ -97,43 +96,50 @@ void test_pal(const EOSType &eos, bool use_temp) {
               check_pal("Noble press", pv.press, press);
               check_pal("Noble temperature", pv.temperature, temp);
               check_cons(cv, cv_in);
-              // Check the EOS-independent pressure/Jacobian directly.
-              const CCTK_REAL Z = rho * (1.0 + eps + press / rho) * wlor * wlor;
-              const CCTK_REAL vsq = 1.0 - 1.0 / (wlor * wlor);
-              const CCTK_REAL sd = sqrt(calc_det(g));
-              cons_vars undens = cv_in;
-              undens.dens /= sd;
-              undens.DYe /= sd;
-              CCTK_REAL p, dz, dv, pp, pm, dummy1, dummy2;
-              const CCTK_REAL dz_step = 1.0e-5 * Z, dv_step = 1.0e-6;
-              if (!noble.get_Press_funcZVsq(p, dz, dv, Z, vsq, &eos, undens) ||
-                  !noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z + dz_step,
-                                           vsq, &eos, undens) ||
-                  !noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z - dz_step,
-                                           vsq, &eos, undens))
-                CCTK_ERROR("Noble test: Jacobian trial failed");
-              if (fabs((pp - pm) / (2.0 * dz_step) - dz) > 1.0e-6 * fabs(dz))
-                CCTK_ERROR("Noble test: dP/dZ mismatch");
-              if (vsq > dv_step) {
-                if (!noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z,
-                                             vsq + dv_step, &eos, undens) ||
-                    !noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z,
-                                             vsq - dv_step, &eos, undens))
-                  CCTK_ERROR("Noble test: velocity Jacobian trial failed");
-                if (fabs((pp - pm) / (2.0 * dv_step) - dv) > 1.0e-6 * fabs(dv))
-                  CCTK_ERROR("Noble test: dP/dvsq mismatch");
+              cons_vars cv_out;
+              cv_out.from_prim(pv, g);
+              check_cons(cv_out, cv_in);
+              // These derivatives do not depend on B or the rejection policy.
+              if (!reject && B == 0.0) {
+                const CCTK_REAL Z = rho * (1.0 + eps + press / rho) * wlor * wlor;
+                const CCTK_REAL vsq = 1.0 - 1.0 / (wlor * wlor);
+                const CCTK_REAL sd = sqrt(calc_det(g));
+                cons_vars undens = cv_in;
+                undens.dens /= sd;
+                undens.DYe /= sd;
+                CCTK_REAL p, dz, dv, pp, pm, dummy1, dummy2;
+                const CCTK_REAL dz_step = 1.0e-5 * Z, dv_step = 1.0e-6;
+                if (!noble.get_Press_funcZVsq(p, dz, dv, Z, vsq, &eos, undens) ||
+                    !noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z + dz_step,
+                                             vsq, &eos, undens) ||
+                    !noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z - dz_step,
+                                             vsq, &eos, undens))
+                  CCTK_ERROR("Noble test: Jacobian trial failed");
+                if (fabs((pp - pm) / (2.0 * dz_step) - dz) > 1.0e-6 * fabs(dz))
+                  CCTK_ERROR("Noble test: dP/dZ mismatch");
+                if (vsq > dv_step) {
+                  if (!noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z,
+                                               vsq + dv_step, &eos, undens) ||
+                      !noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z,
+                                               vsq - dv_step, &eos, undens))
+                    CCTK_ERROR("Noble test: velocity Jacobian trial failed");
+                  if (fabs((pp - pm) / (2.0 * dv_step) - dv) > 1.0e-6 * fabs(dv))
+                    CCTK_ERROR("Noble test: dP/dvsq mismatch");
+                }
               }
               if constexpr (std::is_same_v<EOSType, eos_3p_idealgas>) {
-                c2p_1DEntropy ent(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
-                                  1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
-                                  true, false, use_temp, false, false, 1.0);
-                cv = cv_in;
-                ent.solve(&eos, pv, cv, 1.0, beta, g, rep);
-                if (rep.failed() || rep.set_atmo)
-                  CCTK_ERROR("Entropy test: valid state rejected");
-                check_pal("entropy recovery rho", pv.rho, rho);
-                check_pal("entropy recovery eps", pv.eps, eps);
-                check_cons(cv, cv_in);
+                if (!reject) {
+                  c2p_1DEntropy ent(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                                    1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
+                                    true, false, use_temp, false, false, 1.0);
+                  cv = cv_in;
+                  ent.solve(&eos, pv, cv, 1.0, beta, g, rep);
+                  if (rep.failed() || rep.set_atmo)
+                    CCTK_ERROR("Entropy test: valid state rejected");
+                  check_pal("entropy recovery rho", pv.rho, rho);
+                  check_pal("entropy recovery eps", pv.eps, eps);
+                  check_cons(cv, cv_in);
+                }
               }
               cv = cv_in;
               c2p_Pal.solve(&eos, pv, cv, 1.0, beta, g, rep, reject);
@@ -159,7 +165,7 @@ void test_pal(const EOSType &eos, bool use_temp) {
     return;
 
   // Stationary, unmagnetized input gives eps_raw = tau / D exactly.
-  // Test both bounds and the old ideal-gas zero-energy fallback policy.
+  // Test energy bounds and zero-energy rejection.
   const CCTK_REAL rho = 3.0e-4, Ye = 0.3;
   const auto rgeps = eos.range_eps_from_rho_ye(rho, Ye);
   const CCTK_REAL dens = sqrt(calc_det(g)) * rho;
@@ -217,7 +223,6 @@ void test_rpa(const EOSType &eos, bool use_temp) {
   const CCTK_REAL sqrt_detg = sqrt(calc_det(g));
   const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
 
-  // Reuse the scalar/conservative checks from the Palenzuela tests.
   // The cold shifted-table states include h < 1 and therefore mu > 1 at rest.
   for (CCTK_REAL rho : {3.0e-4, 3.0e-3})
     for (CCTK_REAL Ye : {0.15, 0.45})
@@ -282,7 +287,7 @@ void test_rpa(const EOSType &eos, bool use_temp) {
   const CCTK_REAL rho = 3.0e-4, Ye = 0.3;
   const auto rgeps = eos.range_eps_from_rho_ye(rho, Ye);
   const CCTK_REAL dens = sqrt_detg * rho;
-  // RePrimAnd already clips local energy for both choices of use_temp.
+  // Energy bounds apply to both choices of use_temp.
   for (CCTK_REAL eps_raw : {rgeps.min - 1.0e-4, 0.0, rgeps.max + 1.0e-4})
     for (bool reject : {false, true}) {
       const cons_vars cv_in{dens, {0.0, 0.0, 0.0}, dens * eps_raw,
@@ -433,7 +438,7 @@ void test_cons(const EOSType &eos) {
     check_cons(cv, expected);
   }
 
-  // The existing momentum cap must still enforce |S| <= D + tau.
+  // The momentum cap enforces |S| <= D + tau.
   cons_vars cv{1.0, {10.0, 0.0, 0.0}, 1.0, 0.3, 0.0, {0.0, 0.0, 0.0}};
   c2p_test.cons_floors_and_ceilings(&eos, cv, g, tauFluid_atmo);
   const cons_vars expected{1.0, {2.0 * sqrt(g(0, 0)), 0.0, 0.0}, 1.0,
@@ -822,7 +827,7 @@ void test_pal_energy() {
     test_rpa(eos, false);
     test_rpa(eos, true);
 
-    // A positive ideal-gas eps_min must not become a new rejection policy.
+    // A positive eps below eps_min is clipped, not rejected.
     er.min = 0.001;
     eos.init(gamma, 1.0, er, rr, yr);
     test_atmo(eos);
@@ -844,7 +849,7 @@ extern "C" void Con2PrimFactory_Test(CCTK_ARGUMENTS) {
 
   test_pal_energy();
 
-  // The existing multi-solver example below requires an active ideal-gas EOS.
+  // This example requires an active ideal-gas EOS.
   auto eos_3p_ig = global_eos_3p_ig;
   if (!eos_3p_ig)
     return;

@@ -71,7 +71,6 @@ public:
     NUM_VARS
   };
 
-  CCTK_REAL gamma; // table Γ
   CCTK_REAL *energy_shift;
   range rgeps;
   linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> *interptable;
@@ -386,7 +385,7 @@ public:
     press_derivs_from_rho_temp_ye(press, dpdrho, dpdeps, rho, temp, ye);
   }
 
-  // Derivatives of the actual interpolants, not optional reader columns.
+  // Derivatives of the pressure and energy interpolants.
   // dpdrho holds eps fixed, and dpdeps holds rho fixed.
   CCTK_HOST CCTK_DEVICE inline void
   press_derivs_from_rho_temp_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
@@ -467,7 +466,6 @@ public:
     CCTK_REAL eps, temp;
     if (!eps_from_rho_h_ye(rho, h, ye, eps, &temp))
       return false;
-    // Reuse the inverse's temperature instead of inverting eps again.
     press_derivs_from_rho_temp_ye(press, dpdrho, dpdeps, rho, temp, ye);
     return true;
   }
@@ -575,7 +573,7 @@ public:
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   kappa_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
                         const CCTK_REAL ye) const {
-    // Table entropy is evolved kappa. Reuse the known temperature.
+    // Table entropy is evolved kappa.
     return entropy_from_rho_temp_ye(rho, temp, ye);
   }
 

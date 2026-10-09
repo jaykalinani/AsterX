@@ -15,7 +15,6 @@ namespace EOSX {
 
 template <class ColdEOS> class eos_3p_hybrid : public eos_3p {
 public:
-  CCTK_REAL gamma;            // dummy
   CCTK_REAL gamma_th, gm1_th; // thermal gamma and gamma-1
   range rgeps;                // eps range parameters (allows eps_min sentinel)
   ColdEOS *eos_c;             // cold EOS (polytrope or piecewise-polytrope)
@@ -106,7 +105,6 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
   eps_from_rho_h_ye(const CCTK_REAL rho, const CCTK_REAL h,
                      const CCTK_REAL ye, CCTK_REAL &eps) const {
-    // Algebraic interface only; this does not add Hybrid temperature support.
     if (!std::isfinite(rho) || rho <= 0.0)
       return false;
     eps = eps_cold(rho) + (h - 1.0 - hm1_cold(rho)) / gamma_th;
@@ -230,6 +228,13 @@ public:
                         const CCTK_REAL ye) const {
     const CCTK_REAL eps_th = eps - eps_cold(rho);
     return gm1_th * eps_th * pow(rho, CCTK_REAL(1.0) - gamma_th);
+  }
+
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
+  kappa_from_rho_temp_ye(const CCTK_REAL rho, const CCTK_REAL temp,
+                         const CCTK_REAL ye) const {
+    printf("EOS: kappa from temperature not implemented for eos_3p_hybrid.\n");
+    return CCTK_REAL(0.0);
   }
 
   //   eps_min >= 0  -> constant eps_min

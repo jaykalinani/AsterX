@@ -42,7 +42,6 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
   DECLARE_CCTK_ARGUMENTSX_AsterX_Con2Prim;
   DECLARE_CCTK_PARAMETERS;
 
-  // Select the cold EOS for atmosphere construction without duplicating C2P.
   const auto eos_1p_pwpoly = global_eos_1p_pwpoly;
   const void *eos_cold = eos_1p_pwpoly
                             ? static_cast<const void *>(eos_1p_pwpoly)
@@ -586,7 +585,7 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
       [=] CCTK_DEVICE(const PointDesc &p) {
         if (con2prim_flag(p.I) != CCTK_REAL(C2P_FAIL))
           return;
-        // As in dev, this in-place repair can race between failed neighbours.
+        // In-place updates can race between failed neighbours.
         const auto flag_nbs = get_neighbors(con2prim_flag, p);
         const auto rho_nbs = get_neighbors(rho, p);
         const auto eps_nbs = get_neighbors(eps, p);
@@ -653,7 +652,7 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
           if (vsq > vlim * vlim)
             pv.vel *= vlim / sqrt(vsq);
           pv.w_lor = calc_wlorentz(calc_contraction(g, pv.vel), pv.vel);
-          pv.E = calc_contraction(calc_inv(g, calc_det(g)),
+          pv.E = calc_contraction(calc_inv(g, detg),
                                    calc_cross_product(pv.Bvec, pv.vel));
         }
         cons_vars cv;
@@ -687,7 +686,7 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
         const CCTK_REAL Bv = calc_contraction(pv.Bvec, calc_contraction(g, pv.vel));
         B_norm(p.I) = sqrt(B2);
         b2small(p.I) = B2 / (pv.w_lor * pv.w_lor) + Bv * Bv;
-        volform(p.I) = sqrt(calc_det(g));
+        volform(p.I) = sqrt(detg);
         con2prim_flag(p.I) = C2P_AVG;
       });
 }
