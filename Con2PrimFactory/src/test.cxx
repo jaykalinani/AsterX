@@ -792,7 +792,6 @@ void test_pal_energy() {
       data.data(), {3, 3, 2}, lr.data(), lt.data(), ye.data());
   for (CCTK_REAL shift : {0.0, 0.05}) {
     eos_3p_tabulated3d eos;
-    eos.gamma = 1.4; // Unused by Palenzuela's root equation.
     eos.interptable = &interp;
     eos.energy_shift = &shift;
     eos.rgrho = {exp(lr.front()), exp(lr.back())};

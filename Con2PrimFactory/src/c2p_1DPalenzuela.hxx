@@ -9,7 +9,6 @@ namespace Con2PrimFactory {
 class c2p_1DPalenzuela : public c2p {
 public:
   /* Some attributes */
-  CCTK_REAL GammaIdealFluid;
 
   /* Constructor */
   template <typename EOSType>
@@ -96,7 +95,6 @@ CCTK_HOST CCTK_DEVICE
   soft_root_width_factor = fmax(CCTK_REAL(1.0), soft_root_width_factor_in);
 
   // Derived
-  GammaIdealFluid = eos_3p->gamma;
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL

@@ -18,7 +18,6 @@ namespace Con2PrimFactory {
 
 class c2p_1DRePrimAnd : public c2p {
 public:
-  CCTK_REAL GammaIdealFluid;
 
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DRePrimAnd(
@@ -50,7 +49,6 @@ public:
     sigma_max = sigma_max_in;
     inv_beta_max = inv_beta_max_in;
 
-    GammaIdealFluid = eos_3p->gamma;
   }
 
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
