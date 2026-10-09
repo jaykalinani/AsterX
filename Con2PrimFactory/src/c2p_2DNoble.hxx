@@ -10,7 +10,6 @@ using namespace std;
 class c2p_2DNoble : public c2p {
 public:
   /* Some attributes */
-  CCTK_REAL GammaIdealFluid;
   CCTK_REAL Zmin;
 
   /* Constructor */
@@ -49,16 +48,16 @@ public:
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   get_Z_Seed(CCTK_REAL rho, CCTK_REAL eps, CCTK_REAL press,
              CCTK_REAL w_lor) const;
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq, const cons_vars &cv) const;
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq) const;
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-  get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq, const cons_vars &cv) const;
+  template <typename EOSType>
+  CCTK_HOST CCTK_DEVICE inline bool
+  get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
+                     CCTK_REAL &dPdVsq, CCTK_REAL Z, CCTK_REAL Vsq,
+                     const EOSType *eos_3p, const cons_vars &cv) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
-          const EOSType *eos_3p, prim_vars &pv, const cons_vars &cv,
+          const EOSType *eos_3p, prim_vars &pv, CCTK_REAL &eps_raw,
+          const cons_vars &cv,
           const smat<CCTK_REAL, 3> &gup, const smat<CCTK_REAL, 3> &glo) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
@@ -105,7 +104,6 @@ CCTK_HOST
   soft_root_width_factor = fmax(CCTK_REAL(1.0), soft_root_width_factor_in);
 
   // Derived
-  GammaIdealFluid = eos_3p->gamma;
   Zmin = eos_3p->rgrho.min;
 }
 
@@ -178,30 +176,39 @@ c2p_2DNoble::get_Z_Seed(CCTK_REAL rho, CCTK_REAL eps, CCTK_REAL press,
   return (rho + eps * rho + press) * w_lor * w_lor;
 }
 
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq,
+template <typename EOSType>
+CCTK_HOST CCTK_DEVICE inline bool
+c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
+                                CCTK_REAL &dPdVsq, CCTK_REAL Z,
+                                CCTK_REAL Vsq, const EOSType *eos_3p,
                                 const cons_vars &cv) const {
-  return ((Z * (1.0 - Vsq) - cv.dens * sqrt(1.0 - Vsq)) *
-          (GammaIdealFluid - 1.0) / (GammaIdealFluid));
-}
-
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_2DNoble::get_dPdZ_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq) const {
-  return ((1.0 - Vsq) * (GammaIdealFluid - 1.0) / GammaIdealFluid);
-}
-
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
-c2p_2DNoble::get_dPdVsq_funcZVsq(CCTK_REAL Z, CCTK_REAL Vsq,
-                                 const cons_vars &cv) const {
-  return ((-Z + cv.dens / (2.0 * sqrt(1.0 - Vsq))) * (GammaIdealFluid - 1.0) /
-          GammaIdealFluid);
+  if (!std::isfinite(Z) || Z <= 0.0 || !std::isfinite(Vsq) ||
+      Vsq < 0.0 || Vsq >= 1.0 || !(cv.dens > 0.0))
+    return false;
+  const CCTK_REAL w_lor = 1.0 / sqrt(1.0 - Vsq);
+  const CCTK_REAL rho = cv.dens / w_lor;
+  const CCTK_REAL Ye = cv.DYe / cv.dens;
+  const CCTK_REAL h = Z * (1.0 - Vsq) / rho;
+  CCTK_REAL eps, dpdrho, dpdeps;
+  if (!eos_3p->eps_from_rho_h_ye(rho, h, Ye, eps))
+    return false;
+  eos_3p->press_derivs_from_rho_eps_ye(press, dpdrho, dpdeps, rho, eps, Ye);
+  // Chain rule for Z = rho*h*W^2 and rho = D/W.
+  const CCTK_REAL denom = 1.0 + dpdeps / rho;
+  if (!std::isfinite(denom) || denom <= 0.0)
+    return false;
+  dPdZ = (dpdeps / rho) * (1.0 - Vsq) / denom;
+  dPdVsq = (-0.5 * cv.dens * w_lor * dpdrho -
+            0.5 * dpdeps * (Z + press * w_lor * w_lor) / rho) / denom;
+  return std::isfinite(press) && std::isfinite(dPdZ) && std::isfinite(dPdVsq);
 }
 
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
 c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
                      CCTK_REAL BiSi, const EOSType *eos_3p, prim_vars &pv,
-                     const cons_vars &cv, const smat<CCTK_REAL, 3> &gup,
+                     CCTK_REAL &eps_raw, const cons_vars &cv,
+                     const smat<CCTK_REAL, 3> &gup,
                      const smat<CCTK_REAL, 3> &glo) const {
   CCTK_REAL W_Sol = 1.0 / sqrt(1.0 - vsq_Sol);
 
@@ -263,10 +270,13 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
     pv.w_lor = W_Sol;
   }
 
-  // pv.eps = (Z_Sol * (1. - vsq_Sol) / pv.rho - 1.0) / GammaIdealFluid;
-  pv.eps = (Z_Sol / pv.w_lor / pv.w_lor / pv.rho - 1.0) / GammaIdealFluid;
-
+  const CCTK_REAL press_raw = Z_Sol + Bsq - cv.tau - cv.dens -
+      0.5 * Bsq / (pv.w_lor * pv.w_lor) -
+      0.5 * BiSi * BiSi / (Z_Sol * Z_Sol);
+  eps_raw = (Z_Sol / (pv.w_lor * pv.w_lor) - press_raw) / pv.rho - 1.0;
   pv.Ye = cv.DYe / cv.dens;
+  const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
+  pv.eps = std::clamp(eps_raw, rgeps.min, rgeps.max);
 
   pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
 
@@ -453,9 +463,12 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     const CCTK_REAL Vsq = x[1];
 
     const CCTK_REAL Sdotn = -(cv.tau + cv.dens);
-    const CCTK_REAL p_tmp = get_Press_funcZVsq(Z, Vsq, cv);
-    const CCTK_REAL dPdvsq = get_dPdVsq_funcZVsq(Z, Vsq, cv);
-    const CCTK_REAL dPdZ = get_dPdZ_funcZVsq(Z, Vsq);
+    CCTK_REAL p_tmp, dPdZ, dPdvsq;
+    if (!get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, Z, Vsq, eos_3p, cv)) {
+      rep.set_root_conv();
+      cv = cv_const;
+      return;
+    }
 
     fjac[0][0] = -2 * (Vsq + BiSi * BiSi * invZ * invZ * invZ) * (Bsq + Z);
     fjac[0][1] = -(Bsq + Z) * (Bsq + Z);
@@ -555,7 +568,8 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   CCTK_REAL vsq_Sol = x[1];
 
   /* Write prims if C2P succeeded */
-  WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
+  CCTK_REAL eps_raw;
+  WZ2Prim(Z_Sol, vsq_Sol, Bsq, BiSi, eos_3p, pv, eps_raw, cv, gup, glo);
 
   // Error out if rho is negative or zero
   if (pv.rho <= 0.0) {
@@ -567,11 +581,17 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
 
   // Let the usual temperature floor repair non-positive eps unless the caller
   // has an entropy-based fallback available.
-  if (reject_nonpositive_eps && pv.eps <= 0.0) {
-    rep.set_range_eps(pv.eps);
+  const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
+  const bool eps_invalid = rgeps.min < 0.0
+                               ? eps_raw < rgeps.min : eps_raw <= 0.0;
+  if (!std::isfinite(eps_raw) || (reject_nonpositive_eps && eps_invalid)) {
+    rep.set_range_eps(eps_raw);
     cv = cv_const;
     return;
   }
+
+  if (eps_raw < rgeps.min || eps_raw > rgeps.max)
+    rep.adjust_cons = true;
 
   // set to atmo if computed rho is below floor density
   if (pv.rho < atmo.rho_cut) {
