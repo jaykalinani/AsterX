@@ -111,6 +111,15 @@ public:
     dpdeps = gm1 * rho;
   }
 
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
+  eps_from_rho_h_ye(const CCTK_REAL rho, const CCTK_REAL h,
+                     const CCTK_REAL ye, CCTK_REAL &eps) const {
+    // Retain the analytic trial extension; the recovered state is bounded
+    // by C2P. In particular a trial is not rejected just for eps < eps_min.
+    eps = (h - 1.0) / gamma;
+    return std::isfinite(rho) && rho > 0.0 && std::isfinite(eps);
+  }
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   entropy_from_rho_temp_ye(
       const CCTK_REAL rho,  ///< Rest mass density  \f$ \rho \f$
