@@ -115,10 +115,11 @@ void test_pal(const EOSType &eos, bool use_temp) {
               if (fabs((pp - pm) / (2.0 * dz_step) - dz) > 1.0e-6 * fabs(dz))
                 CCTK_ERROR("Noble test: dP/dZ mismatch");
               if (vsq > dv_step) {
-                noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z,
-                                         vsq + dv_step, &eos, undens);
-                noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z,
-                                         vsq - dv_step, &eos, undens);
+                if (!noble.get_Press_funcZVsq(pp, dummy1, dummy2, Z,
+                                             vsq + dv_step, &eos, undens) ||
+                    !noble.get_Press_funcZVsq(pm, dummy1, dummy2, Z,
+                                             vsq - dv_step, &eos, undens))
+                  CCTK_ERROR("Noble test: velocity Jacobian trial failed");
                 if (fabs((pp - pm) / (2.0 * dv_step) - dv) > 1.0e-6 * fabs(dv))
                   CCTK_ERROR("Noble test: dP/dvsq mismatch");
               }

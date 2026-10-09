@@ -31,7 +31,7 @@ constexpr CCTK_INT X = 0;
 constexpr CCTK_INT Y = 1;
 constexpr CCTK_INT Z = 2;
 
-// Close an existing primitive tuple; no separate thermodynamic state object.
+// Close the thermal primitives after applying the EOS bounds.
 template <typename EOSType>
 CCTK_HOST CCTK_DEVICE inline bool
 complete_prims(const EOSType *eos_3p, prim_vars &pv, const bool use_temp) {
@@ -60,6 +60,7 @@ complete_prims(const EOSType *eos_3p, prim_vars &pv, const bool use_temp) {
   return pv.rho > 0.0 && std::isfinite(pv.eps) &&
          std::isfinite(pv.press) && pv.press >= 0.0 &&
          std::isfinite(pv.temperature) && std::isfinite(pv.entropy) &&
+         std::isfinite(1.0 + pv.eps + pv.press / pv.rho) &&
          1.0 + pv.eps + pv.press / pv.rho > 0.0;
 }
 
