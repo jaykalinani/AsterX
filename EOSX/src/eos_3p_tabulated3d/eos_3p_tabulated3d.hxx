@@ -410,7 +410,8 @@ public:
   // Return false rather than silently accepting a clipped enthalpy.
   CCTK_HOST CCTK_DEVICE inline bool
   eps_from_rho_h_ye(const CCTK_REAL rho, const CCTK_REAL h,
-                     const CCTK_REAL ye, CCTK_REAL &eps) const {
+                     const CCTK_REAL ye, CCTK_REAL &eps,
+                     CCTK_REAL *temp = nullptr) const {
     if (!std::isfinite(rho) || rho < rgrho.min || rho > rgrho.max ||
         !std::isfinite(h) || h <= 0.0 || !std::isfinite(ye) ||
         ye < rgye.min || ye > rgye.max)
@@ -430,8 +431,12 @@ public:
     if (!std::isfinite(hlo) || !std::isfinite(hhi) || hhi < hlo ||
         h < hlo - tol || h > hhi + tol)
       return false;
-    if (h <= hlo) { eps = elo; return true; }
-    if (h >= hhi) { eps = ehi; return true; }
+    if (h <= hlo || h >= hhi) {
+      eps = h <= hlo ? elo : ehi;
+      if (temp)
+        *temp = h <= hlo ? rgtemp.min : rgtemp.max;
+      return true;
+    }
     CCTK_REAL lt = lo + (hi - lo) * (h - hlo) / (hhi - hlo);
     for (int n = 0; n < 80; ++n) {
       const auto p = interptable->interpolate_with_derivs<EV::PRESS>(lr, lt, ye);
@@ -439,8 +444,11 @@ public:
       eps = exp(e[0]) - *energy_shift;
       const CCTK_REAL press = exp(p[0]);
       const CCTK_REAL f = 1.0 + eps + press / rho - h;
-      if (std::isfinite(f) && fabs(f) <= tol)
+      if (std::isfinite(f) && fabs(f) <= tol) {
+        if (temp)
+          *temp = exp(lt);
         return true;
+      }
       if (!std::isfinite(f))
         return false;
       if (f < 0.0) lo = lt; else hi = lt;
@@ -450,6 +458,18 @@ public:
                ? next : lo + 0.5 * (hi - lo);
     }
     return false;
+  }
+
+  CCTK_HOST CCTK_DEVICE inline bool
+  press_derivs_from_rho_h_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
+                             CCTK_REAL &dpdeps, const CCTK_REAL rho,
+                             const CCTK_REAL h, const CCTK_REAL ye) const {
+    CCTK_REAL eps, temp;
+    if (!eps_from_rho_h_ye(rho, h, ye, eps, &temp))
+      return false;
+    // Reuse the inverse's temperature instead of inverting eps again.
+    press_derivs_from_rho_temp_ye(press, dpdrho, dpdeps, rho, temp, ye);
+    return true;
   }
 
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL

@@ -8,8 +8,6 @@ namespace Con2PrimFactory {
 
 class c2p_1DPalenzuela : public c2p {
 public:
-  /* Some attributes */
-
   /* Constructor */
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline c2p_1DPalenzuela(
@@ -93,8 +91,6 @@ CCTK_HOST CCTK_DEVICE
   use_press_atmo = use_pressure_atmo;
   soft_root_convergence = soft_root_conv;
   soft_root_width_factor = fmax(CCTK_REAL(1.0), soft_root_width_factor_in);
-
-  // Derived
 }
 
 CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL

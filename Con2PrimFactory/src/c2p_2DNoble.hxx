@@ -189,10 +189,9 @@ c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
   const CCTK_REAL rho = cv.dens / w_lor;
   const CCTK_REAL Ye = cv.DYe / cv.dens;
   const CCTK_REAL h = Z * (1.0 - Vsq) / rho;
-  CCTK_REAL eps, dpdrho, dpdeps;
-  if (!eos_3p->eps_from_rho_h_ye(rho, h, Ye, eps))
+  CCTK_REAL dpdrho, dpdeps;
+  if (!eos_3p->press_derivs_from_rho_h_ye(press, dpdrho, dpdeps, rho, h, Ye))
     return false;
-  eos_3p->press_derivs_from_rho_eps_ye(press, dpdrho, dpdeps, rho, eps, Ye);
   // Chain rule for Z = rho*h*W^2 and rho = D/W.
   const CCTK_REAL denom = 1.0 + dpdeps / rho;
   if (!std::isfinite(denom) || denom <= 0.0)

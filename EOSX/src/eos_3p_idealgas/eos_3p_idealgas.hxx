@@ -120,6 +120,17 @@ public:
     return std::isfinite(rho) && rho > 0.0 && std::isfinite(eps);
   }
 
+  CCTK_HOST CCTK_DEVICE inline bool
+  press_derivs_from_rho_h_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
+                             CCTK_REAL &dpdeps, const CCTK_REAL rho,
+                             const CCTK_REAL h, const CCTK_REAL ye) const {
+    CCTK_REAL eps;
+    if (!eps_from_rho_h_ye(rho, h, ye, eps))
+      return false;
+    press_derivs_from_rho_eps_ye(press, dpdrho, dpdeps, rho, eps, ye);
+    return true;
+  }
+
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline CCTK_REAL
   entropy_from_rho_temp_ye(
       const CCTK_REAL rho,  ///< Rest mass density  \f$ \rho \f$
