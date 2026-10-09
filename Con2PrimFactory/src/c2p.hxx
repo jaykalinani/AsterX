@@ -14,6 +14,7 @@ c2p is effectively an interface to be used by different c2p implementations.
 #include <cctk_Parameters.h>
 #include <math.h>
 #include <type_traits>
+#include <limits>
 
 #include "atmo.hxx"
 #include "c2p_report.hxx"
@@ -29,6 +30,38 @@ using namespace AsterUtils;
 constexpr CCTK_INT X = 0;
 constexpr CCTK_INT Y = 1;
 constexpr CCTK_INT Z = 2;
+
+// Close an existing primitive tuple; no separate thermodynamic state object.
+template <typename EOSType>
+CCTK_HOST CCTK_DEVICE inline bool
+complete_prims(const EOSType *eos_3p, prim_vars &pv, const bool use_temp) {
+  if (!std::isfinite(pv.rho) || !std::isfinite(pv.Ye) ||
+      !std::isfinite(use_temp ? pv.temperature : pv.eps))
+    return false;
+  pv.rho = std::clamp(pv.rho, eos_3p->rgrho.min, eos_3p->rgrho.max);
+  pv.Ye = std::clamp(pv.Ye, eos_3p->rgye.min, eos_3p->rgye.max);
+  if (use_temp) {
+    pv.temperature =
+        std::clamp(pv.temperature, eos_3p->rgtemp.min, eos_3p->rgtemp.max);
+    pv.eps = eos_3p->eps_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+  } else {
+    const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
+    pv.eps = std::clamp(pv.eps, rgeps.min, rgeps.max);
+    pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  }
+  if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_idealgas> ||
+                std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>) {
+    pv.press = eos_3p->press_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+    pv.entropy = eos_3p->kappa_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+  } else {
+    pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+  }
+  return pv.rho > 0.0 && std::isfinite(pv.eps) &&
+         std::isfinite(pv.press) && pv.press >= 0.0 &&
+         std::isfinite(pv.temperature) && std::isfinite(pv.entropy) &&
+         1.0 + pv.eps + pv.press / pv.rho > 0.0;
+}
 
 /* Abstract class c2p */
 class c2p {
@@ -98,7 +131,16 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
                                const smat<CCTK_REAL, 3> &glo,
                                c2p_report &rep) const {
 
+  if (!std::isfinite(pv.rho) || !std::isfinite(pv.eps) ||
+      !std::isfinite(pv.Ye) || !std::isfinite(pv.press) ||
+      !std::isfinite(pv.temperature) || !std::isfinite(pv.w_lor) ||
+      !std::isfinite(pv.vel(0)) || !std::isfinite(pv.vel(1)) ||
+      !std::isfinite(pv.vel(2))) {
+    rep.set_range_eps(pv.eps);
+    return;
+  }
   bool recomp_eps_press_entropy = false;
+  bool from_temp = use_temp;
 
   // Need to store this here for later use
   const CCTK_REAL rho_h_fluid_old = pv.rho + pv.rho * pv.eps + pv.press;
@@ -125,6 +167,12 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
   // Floor and ceiling for rho and velocity
   // ----------
 
+  if (pv.rho < eos_3p->rgrho.min) {
+    pv.rho = eos_3p->rgrho.min;
+    rep.adjust_cons = true;
+    recomp_eps_press_entropy = true;
+  }
+
   // check if computed velocities are within the specified limit
   vec<CCTK_REAL, 3> v_low = calc_contraction(glo, pv.vel);
   CCTK_REAL vsq_Sol = calc_contraction(v_low, pv.vel);
@@ -144,8 +192,10 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       // keeps pressure, changes eps
       recomp_eps_press_entropy = false;
       pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      if (!complete_prims(eos_3p, pv, false)) {
+        rep.set_range_eps(pv.eps);
+        return;
+      }
     }
   }
 
@@ -161,8 +211,10 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       // keeps pressure, changes eps
       recomp_eps_press_entropy = false;
       pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      if (!complete_prims(eos_3p, pv, false)) {
+        rep.set_range_eps(pv.eps);
+        return;
+      }
     }
   }
 
@@ -174,6 +226,7 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
   if (pv.temperature > eos_3p->rgtemp.max) {
 
     pv.temperature = eos_3p->rgtemp.max;
+    from_temp = true;
     recomp_eps_press_entropy = true;
     rep.adjust_cons = true;
   }
@@ -193,8 +246,10 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 
       pv.press = atmo.press_atmo;
       pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      if (!complete_prims(eos_3p, pv, false)) {
+        rep.set_range_eps(pv.eps);
+        return;
+      }
       recomp_eps_press_entropy = false;
       rep.adjust_cons = true;
     }
@@ -209,16 +264,20 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     if (pv.temperature < atmo.temp_atmo) {
 
       pv.temperature = atmo.temp_atmo;
+      from_temp = true;
       recomp_eps_press_entropy = true;
       rep.adjust_cons = true;
     }
   }
 
-  if (recomp_eps_press_entropy) {
-    pv.eps = eos_3p->eps_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-    pv.press = eos_3p->press_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    recomp_eps_press_entropy = false;
+  const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
+  if (pv.eps < rgeps.min || pv.eps > rgeps.max) {
+    rep.adjust_cons = true;
+    recomp_eps_press_entropy = true;
+  }
+  if (recomp_eps_press_entropy && !complete_prims(eos_3p, pv, from_temp)) {
+    rep.set_range_eps(pv.eps);
+    return;
   }
 
   // ----------
@@ -254,25 +313,50 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 
     rep.adjust_cons = true;
 
+    const CCTK_REAL rho_min = pv.rho, press_min = pv.press;
+    const CCTK_REAL tol =
+        64.0 * std::numeric_limits<CCTK_REAL>::epsilon();
+    if (pv.rho > eos_3p->rgrho.max * (1.0 + tol)) {
+      rep.set_B_limit(B2);
+      return;
+    }
+    pv.rho = fmin(pv.rho, eos_3p->rgrho.max);
     if (use_temp) {
-      // Recompute T from adjusted rho, P
-      pv.temperature = eos_3p->temp_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.eps = eos_3p->eps_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-      // Store evolved kappa, not physical entropy; reuse the known T.
-      if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_idealgas> ||
-                    std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>)
-        pv.entropy =
-            eos_3p->kappa_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-      else
-        pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+      if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>) {
+        if (!eos_3p->temp_from_rho_press_floor(
+                pv.rho, press_min, pv.Ye, pv.temperature)) {
+          rep.set_B_limit(B2);
+          return;
+        }
+      } else {
+        CCTK_REAL pressL = press_min;
+        pv.temperature = fmax(pv.temperature,
+            eos_3p->temp_from_rho_press_ye(pv.rho, pressL, pv.Ye));
+      }
+      if (!complete_prims(eos_3p, pv, true)) {
+        rep.set_range_eps(pv.eps);
+        return;
+      }
+    } else {
+      pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, press_min, pv.Ye);
+      if (!complete_prims(eos_3p, pv, false)) {
+        rep.set_range_eps(pv.eps);
+        return;
+      }
     }
-    else {
-      pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    // Keep the selected atmosphere floor after the density change.
+    if (!use_press_atmo && pv.temperature < atmo.temp_atmo) {
+      pv.temperature = atmo.temp_atmo;
+      if (!complete_prims(eos_3p, pv, true)) {
+        rep.set_range_eps(pv.eps);
+        return;
+      }
     }
-
-    mag_ceiling = false;
+    if (pv.rho < (1.0 - tol) * rho_min ||
+        pv.press < (1.0 - tol) * press_min) {
+      rep.set_B_limit(B2);
+      return;
+    }
 
     // Drift floors from https://arxiv.org/pdf/1611.09365
     // to correct parallel velocity, adapted from SphericalNR
@@ -323,7 +407,20 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
     } else {
       pv.w_lor = 1. / sqrt(1. - vsq_Sol);
     }
+    const CCTK_REAL Bdotv_new =
+        calc_contraction(pv.Bvec, calc_contraction(glo, pv.vel));
+    const CCTK_REAL bsq_new =
+        B2 / (pv.w_lor * pv.w_lor) + Bdotv_new * Bdotv_new;
+    if (!std::isfinite(bsq_new) ||
+        bsq_new > (1.0 + tol) * sigma_max * pv.rho ||
+        bsq_new > (1.0 + tol) * 2.0 * inv_beta_max * pv.press) {
+      rep.set_B_limit(B2);
+      return;
+    }
   }
+  if (rep.adjust_cons)
+    pv.E = calc_contraction(calc_inv(glo, calc_det(glo)),
+                            calc_cross_product(pv.Bvec, pv.vel));
 }
 
 template <typename EOSType, bool limiting>
@@ -364,10 +461,13 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
     if (recomp_flag) {
 
-      pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-      pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-
+      if (!complete_prims(eos_3p, pv, false)) {
+        pv.set_to_nan();
+        cv.set_to_nan();
+        return;
+      }
+      pv.E = calc_contraction(calc_inv(glo, calc_det(glo)),
+                              calc_cross_product(pv.Bvec, pv.vel));
       cv.from_prim(pv, glo);
     };
 
@@ -378,9 +478,11 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     pv.eps = eps_BH;
     pv.Ye = atmo.ye_atmo;
 
-    pv.temperature = eos_3p->temp_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.press = eos_3p->press_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
-    pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
+    if (!complete_prims(eos_3p, pv, false)) {
+      pv.set_to_nan();
+      cv.set_to_nan();
+      return;
+    }
 
     // Set velocity such that new conserved momentum has same
     // direction as before
@@ -431,6 +533,7 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     pv.vel(Z) += BiEsi * S_new * pv.Bvec(Z) / (Z_loc * (Z_loc + Bsq));
 
     pv.w_lor = wlim_BH;
+    pv.E = calc_contraction(gup, calc_cross_product(pv.Bvec, pv.vel));
 
     cv.from_prim(pv, glo);
   };

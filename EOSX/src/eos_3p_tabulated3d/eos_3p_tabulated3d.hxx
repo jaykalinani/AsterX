@@ -266,6 +266,39 @@ public:
     return exp(lt);
   }
 
+  // Find the first pressure-floor crossing at or above the current T.
+  // Each temperature cell is linear in log(P); global monotonicity is not
+  // needed. Failure means the requested floor cannot be met in the table.
+  CCTK_HOST CCTK_DEVICE inline bool
+  temp_from_rho_press_floor(const CCTK_REAL rho, const CCTK_REAL press,
+                             const CCTK_REAL ye, CCTK_REAL &temp) const {
+    if (!std::isfinite(rho) || rho < rgrho.min || rho > rgrho.max ||
+        !std::isfinite(press) || press < 0.0 || !std::isfinite(ye) ||
+        ye < rgye.min || ye > rgye.max || !std::isfinite(temp))
+      return false;
+    temp = std::clamp(temp, rgtemp.min, rgtemp.max);
+    const CCTK_REAL lr = log(rho);
+    CCTK_REAL lo = log(temp);
+    CCTK_REAL plo = interptable->interpolate<EV::PRESS>(lr, lo, ye)[0];
+    if (exp(plo) >= press)
+      return true;
+    const CCTK_REAL target = log(press);
+    for (size_t j = 0; j < interptable->num_points[1]; ++j) {
+      const CCTK_REAL hi = interptable->x[1][j];
+      if (hi <= lo)
+        continue;
+      const CCTK_REAL phi = interptable->interpolate<EV::PRESS>(lr, hi, ye)[0];
+      if (phi >= target && phi > plo) {
+        temp = std::clamp(exp(lo + (hi - lo) * (target - plo) / (phi - plo)),
+                          rgtemp.min, rgtemp.max);
+        return true;
+      }
+      lo = hi;
+      plo = phi;
+    }
+    return false;
+  }
+
   CCTK_HOST CCTK_DEVICE inline CCTK_REAL
   rho_from_press_temp_ye(CCTK_REAL &press, const CCTK_REAL temp,
                                 const CCTK_REAL ye) const {

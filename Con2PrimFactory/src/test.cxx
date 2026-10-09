@@ -605,13 +605,16 @@ void test_mag_entropy(const EOSType &eos, bool use_temp) {
 
         // Both test EOSs have P proportional to rho*T at fixed composition.
         const CCTK_REAL rho_expected = rho_fac * rho;
-        const CCTK_REAL temp_expected = temp * press_fac / rho_fac;
+        const CCTK_REAL temp_expected =
+            use_temp ? fmax(temp, temp * press_fac / rho_fac)
+                     : temp * press_fac / rho_fac;
         const CCTK_REAL eps_expected =
             eos.eps_from_rho_temp_ye(rho_expected, temp_expected, Ye);
         const CCTK_REAL entropy_expected =
             eos.kappa_from_rho_temp_ye(rho_expected, temp_expected, Ye);
         check_pal("magnetic rho", pv.rho, rho_expected);
-        check_pal("magnetic pressure", pv.press, press_fac * press);
+        check_pal("magnetic pressure", pv.press,
+                  eos.press_from_rho_temp_ye(rho_expected, temp_expected, Ye));
         check_pal("magnetic temperature", pv.temperature, temp_expected);
         check_pal("magnetic eps", pv.eps, eps_expected);
         check_pal("magnetic Ye", pv.Ye, Ye);
@@ -639,6 +642,70 @@ void test_mag_entropy(const EOSType &eos, bool use_temp) {
         if (!adjusted)
           check_cons(cv, cv_in);
       }
+}
+
+template <typename EOSType>
+void test_prims(const EOSType &eos) {
+  const smat<CCTK_REAL, 3> g{1.0, 0.0, 0.0, 1.0, 0.0, 1.0};
+  const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
+  const eos_1p_polytropic *cold = nullptr;
+  const auto atmo = make_atmo(cold, &eos, 0.0, eos.rgrho.min, 0.0,
+                              eos.rgtemp.min, 0.3, 1.0, 0.0, 0.0, 0.0,
+                              0.001, true, false, false);
+  for (bool use_temp : {false, true})
+    for (CCTK_REAL rho : {0.5 * eos.rgrho.min, 3.0e-4, 2.0 * eos.rgrho.max})
+      for (CCTK_REAL Ye : {0.0, 0.3, 1.0}) {
+        const CCTK_REAL rhoL = std::clamp(rho, eos.rgrho.min, eos.rgrho.max);
+        const CCTK_REAL YeL = std::clamp(Ye, eos.rgye.min, eos.rgye.max);
+        const auto er = eos.range_eps_from_rho_ye(rhoL, YeL);
+        for (bool upper : {false, true}) {
+          prim_vars pv{rho, upper ? er.max + 1.0 : er.min - 1.0, Ye,
+                        0.0, upper ? 2.0 * eos.rgtemp.max : -1.0, 0.0,
+                        {0.0, 0.0, 0.0}, 1.0, {0.0, 0.0, 0.0}};
+          if (!complete_prims(&eos, pv, use_temp))
+            CCTK_ERROR("Primitive test: bounded closure failed");
+          const CCTK_REAL temp = upper ? eos.rgtemp.max : eos.rgtemp.min;
+          check_pal("closed rho", pv.rho, rhoL);
+          check_pal("closed Ye", pv.Ye, YeL);
+          check_pal("closed temperature", pv.temperature, temp);
+          check_pal("closed eps", pv.eps,
+                    eos.eps_from_rho_temp_ye(rhoL, temp, YeL));
+          check_pal("closed pressure", pv.press,
+                    eos.press_from_rho_temp_ye(rhoL, temp, YeL));
+          check_pal("closed kappa", pv.entropy,
+                    eos.kappa_from_rho_temp_ye(rhoL, temp, YeL));
+        }
+      }
+
+  prim_vars pv{3.0e-4, 0.0, 0.3, 0.0, 0.02, 0.0,
+                {0.2, 0.0, 0.0}, 1.0 / sqrt(0.96), {0.0, 0.001, 0.0}};
+  if (!complete_prims(&eos, pv, true))
+    CCTK_ERROR("Primitive test: initial closure failed");
+  pv.E = calc_cross_product(pv.Bvec, pv.vel);
+  cons_vars cv;
+  cv.from_prim(pv, g);
+  floor_test limiter(&eos, atmo, 200, 1.0e-12, -1.0, 0.1, 100.0,
+                     1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
+                     true, false, true, false, false, 1.0);
+  c2p_report rep;
+  rep.status = c2p_report::SUCCESS;
+  limiter.prims_floors_and_ceilings(&eos, pv, cv, 1.0, beta, g, rep);
+  if (rep.failed() || !rep.adjust_cons)
+    CCTK_ERROR("Primitive test: speed limiting failed");
+  const auto E = calc_cross_product(pv.Bvec, pv.vel);
+  for (int d = 0; d < 3; ++d)
+    check_pal("limited electric field", pv.E(d), E(d));
+  check_pal("limited Lorentz factor", pv.w_lor, sqrt(1.01));
+
+  // A requested magnetic density floor beyond the table/configured domain
+  // must report failure, not return a silently clipped success.
+  floor_test impossible(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                        1.0e20, 1.0e20, 1.0e20, 1.0e-10, 1.0e20,
+                        true, false, true, false, false, 1.0);
+  rep.status = c2p_report::SUCCESS;
+  impossible.prims_floors_and_ceilings(&eos, pv, cv, 1.0, beta, g, rep);
+  if (rep.status != c2p_report::B_LIMIT)
+    CCTK_ERROR("Primitive test: impossible magnetic floor accepted");
 }
 
 void test_pal_energy() {
@@ -677,6 +744,7 @@ void test_pal_energy() {
     test_atmo(eos);
     test_atmo_beq(eos);
     test_cons(eos);
+    test_prims(eos);
     test_mag_entropy(eos, true);
     test_pal(eos, true);
     test_rpa(eos, true);
@@ -688,6 +756,7 @@ void test_pal_energy() {
     test_atmo(eos);
     test_atmo_ideal(eos);
     test_cons(eos);
+    test_prims(eos);
     test_mag_entropy(eos, false);
     test_mag_entropy(eos, true);
     test_pal(eos, false);
@@ -701,6 +770,7 @@ void test_pal_energy() {
     test_atmo(eos);
     test_atmo_ideal(eos);
     test_cons(eos);
+    test_prims(eos);
     test_mag_entropy(eos, false);
     test_mag_entropy(eos, true);
     test_rpa(eos, false);

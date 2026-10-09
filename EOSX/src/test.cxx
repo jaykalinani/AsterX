@@ -107,6 +107,12 @@ void test_table() {
           check("table kappa from eps",
                 eos.kappa_from_rho_eps_ye(rho, eps, Ye), kappa);
         }
+        CCTK_REAL t_floor = 0.01;
+        if (!eos.temp_from_rho_press_floor(rho, rho * 0.02, Ye, t_floor))
+          CCTK_ERROR("EOSX test: attainable pressure floor rejected");
+        check("pressure-floor temperature", t_floor, 0.02);
+        if (eos.temp_from_rho_press_floor(rho, rho * 1.0, Ye, t_floor))
+          CCTK_ERROR("EOSX test: unattainable pressure floor accepted");
         CCTK_REAL eps_h;
         const CCTK_REAL hlo = 1.0 + er.min +
             eos.press_from_rho_temp_ye(rho, eos.rgtemp.min, Ye) / rho;
