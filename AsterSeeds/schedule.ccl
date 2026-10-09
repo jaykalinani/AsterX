@@ -1,5 +1,12 @@
 #Schedule definitions for thorn AsterSeeds
 
+if (unit_test) {
+  SCHEDULE AsterSeeds_TestBetaFloor AT CCTK_WRAGH AFTER EOSX_Setup_EOS {
+    LANG: C
+    OPTIONS: GLOBAL
+  } "Test EOS-consistent beta floors"
+}
+
 STORAGE: Avec_cent
 
 STORAGE: CoM_NS1

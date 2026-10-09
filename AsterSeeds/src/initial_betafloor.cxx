@@ -1,3 +1,6 @@
+#include <AMReX.H>
+#include <AMReX_GpuAtomic.H>
+#include <AMReX_GpuMemory.H>
 #include <loop_device.hxx>
 
 #include <cctk.h>
@@ -90,6 +93,8 @@ extern "C" void AsterSeeds_SetInitialBetaFloor(CCTK_ARGUMENTS) {
                 evolution_eos);
   }
 
+  amrex::Gpu::DeviceScalar<unsigned int> failures(0);
+  auto *failed = failures.dataPtr();
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
 
   grid.loop_all_device<1, 1, 1>(
@@ -129,13 +134,11 @@ extern "C" void AsterSeeds_SetInitialBetaFloor(CCTK_ARGUMENTS) {
           eps(p.I) = epsL;
           entropy(p.I) = entL;
         } else {
-          // Recalculate primitives
-          press(p.I) = press_lim;
-          rho(p.I) =
-              eos_3p_tab3d->rho_from_press_temp_ye(press_lim, tempL, YeL);
-          eps(p.I) = eos_3p_tab3d->eps_from_rho_temp_ye(rho(p.I), tempL, YeL);
-          entropy(p.I) =
-              eos_3p_tab3d->entropy_from_rho_temp_ye(rho(p.I), tempL, YeL);
+          if (!set_beta_floor(eos_3p_tab3d, press_lim, tempL, YeL,
+                              rho(p.I), eps(p.I), press(p.I), entropy(p.I))) {
+            amrex::HostDevice::Atomic::Add(failed, 1U);
+            return;
+          }
         }
 
         // TODO: The coorbiting velocity feature is not well tested. Use with
@@ -188,6 +191,45 @@ extern "C" void AsterSeeds_SetInitialBetaFloor(CCTK_ARGUMENTS) {
           }
         } // if set coorbiting velocity
       });
+  amrex::Gpu::streamSynchronize();
+  if (failures.dataValue())
+    CCTK_ERROR("Initial beta floor cannot be satisfied within the EOS domain");
+}
+
+extern "C" void AsterSeeds_TestBetaFloor(CCTK_ARGUMENTS) {
+  std::array<CCTK_REAL, 2> lr{log(1.0e-6), log(1.0e-2)};
+  std::array<CCTK_REAL, 2> lt{log(1.0e-3), log(1.0e-1)};
+  std::array<CCTK_REAL, 2> ye{0.1, 0.5};
+  std::array<CCTK_REAL, 8 * NTABLES> data{};
+  for (int k = 0; k < 2; ++k)
+    for (int j = 0; j < 2; ++j)
+      for (int i = 0; i < 2; ++i) {
+        const int n = NTABLES * (i + 2 * (j + 2 * k));
+        data[n + eos_3p_tabulated3d::PRESS] = lr[i] + lt[j];
+        data[n + eos_3p_tabulated3d::EPS] = lt[j];
+        data[n + eos_3p_tabulated3d::S] = lt[j] - lr[i];
+      }
+  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interp(
+      data.data(), {2, 2, 2}, lr.data(), lt.data(), ye.data());
+  CCTK_REAL shift = 0.05;
+  eos_3p_tabulated3d eos;
+  eos.interptable = &interp;
+  eos.energy_shift = &shift;
+  eos.rgrho = {exp(lr[0]), exp(lr[1])};
+  eos.rgtemp = {exp(lt[0]), exp(lt[1])};
+  eos.rgye = {ye[0], ye[1]};
+  eos.rgeps = eos.compute_eps_range_full_table();
+  CCTK_REAL rho = 0.0, eps = 0.0, press = 0.0, entropy = 0.0;
+  if (!set_beta_floor(&eos, 6.0e-6, 0.02, 0.3, rho, eps, press, entropy) ||
+      fabs(rho - 3.0e-4) > 1.0e-14 || fabs(eps + 0.03) > 1.0e-12 ||
+      fabs(press - 6.0e-6) > 1.0e-15 ||
+      fabs(entropy - log(0.02 / 3.0e-4)) > 1.0e-10)
+    CCTK_ERROR("AsterSeeds test: inconsistent beta-floor state");
+  const CCTK_REAL rho0 = rho, eps0 = eps, press0 = press, entropy0 = entropy;
+  if (set_beta_floor(&eos, 1.0, 0.02, 0.3, rho, eps, press, entropy) ||
+      rho != rho0 || eps != eps0 || press != press0 || entropy != entropy0)
+    CCTK_ERROR("AsterSeeds test: unattainable beta floor changed the state");
+  CCTK_INFO("AsterSeeds beta-floor tests passed");
 }
 
 } // namespace AsterSeeds
