@@ -383,7 +383,15 @@ c2p_1DEntropy::solve(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
   auto result =
       Algo::brent(fn, a, b, minbits, maxiters, rep.iters, root_failed);
 
-  CCTK_REAL xEntropy_Sol = 0.5 * (result.first + result.second);
+  // Brent can return an exact root at one endpoint; do not move away from it.
+  const CCTK_REAL fa = fn(result.first), fb = fn(result.second);
+  if (!std::isfinite(fa) || !std::isfinite(fb)) {
+    rep.set_root_conv();
+    cv = cv_const;
+    return;
+  }
+  const CCTK_REAL xEntropy_Sol =
+      fabs(fa) <= fabs(fb) ? result.first : result.second;
 
   xEntropyToPrim(xEntropy_Sol, Ssq, Bsq, BiSi, eos_3p, pv, cv, gup, glo);
 

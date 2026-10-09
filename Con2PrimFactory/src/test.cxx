@@ -71,8 +71,10 @@ void test_pal(const EOSType &eos, bool use_temp) {
             const CCTK_REAL entropy = eos.kappa_from_rho_eps_ye(rho, eps, Ye);
             const vec<CCTK_REAL, 3> vel{v, 0.0, 0.0};
             const CCTK_REAL wlor = calc_wlorentz(calc_contraction(g, vel), vel);
-            const prim_vars pv_in{rho, eps, Ye, press, temp, entropy,
-                                  vel, wlor, {B, 0.2 * B, 0.0}};
+            prim_vars pv_in{rho, eps, Ye, press, temp, entropy,
+                             vel, wlor, {B, 0.2 * B, 0.0}};
+            pv_in.E = calc_contraction(calc_inv(g, calc_det(g)),
+                                      calc_cross_product(pv_in.Bvec, vel));
             cons_vars cv_in;
             cv_in.from_prim(pv_in, g);
             for (bool reject : {false, true}) {
@@ -119,6 +121,18 @@ void test_pal(const EOSType &eos, bool use_temp) {
                                          vsq - dv_step, &eos, undens);
                 if (fabs((pp - pm) / (2.0 * dv_step) - dv) > 1.0e-6 * fabs(dv))
                   CCTK_ERROR("Noble test: dP/dvsq mismatch");
+              }
+              if constexpr (std::is_same_v<EOSType, eos_3p_idealgas>) {
+                c2p_1DEntropy ent(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                                  1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
+                                  true, false, use_temp, false, false, 1.0);
+                cv = cv_in;
+                ent.solve(&eos, pv, cv, 1.0, beta, g, rep);
+                if (rep.failed() || rep.set_atmo)
+                  CCTK_ERROR("Entropy test: valid state rejected");
+                check_pal("entropy recovery rho", pv.rho, rho);
+                check_pal("entropy recovery eps", pv.eps, eps);
+                check_cons(cv, cv_in);
               }
               cv = cv_in;
               c2p_Pal.solve(&eos, pv, cv, 1.0, beta, g, rep, reject);
@@ -214,8 +228,10 @@ void test_rpa(const EOSType &eos, bool use_temp) {
             const CCTK_REAL entropy = eos.kappa_from_rho_eps_ye(rho, eps, Ye);
             const vec<CCTK_REAL, 3> vel{v, 0.0, 0.0};
             const CCTK_REAL wlor = calc_wlorentz(vel, calc_contraction(g, vel));
-            const prim_vars pv_in{rho, eps, Ye, press, temp, entropy,
-                                  vel, wlor, {B, 0.2 * B, 0.0}};
+            prim_vars pv_in{rho, eps, Ye, press, temp, entropy,
+                             vel, wlor, {B, 0.2 * B, 0.0}};
+            pv_in.E = calc_contraction(calc_inv(g, calc_det(g)),
+                                      calc_cross_product(pv_in.Bvec, vel));
             cons_vars cv_in;
             cv_in.from_prim(pv_in, g);
 
