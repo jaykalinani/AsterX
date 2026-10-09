@@ -556,6 +556,91 @@ void test_atmo_ideal(const eos_3p_idealgas &eos_in) {
   }
 }
 
+// Exercise the shared limiter without depending on root-solver convergence.
+struct floor_test : c2p_1DPalenzuela {
+  using c2p_1DPalenzuela::c2p_1DPalenzuela;
+  using c2p::prims_floors_and_ceilings;
+};
+
+template <typename EOSType>
+void test_mag_entropy(const EOSType &eos, bool use_temp) {
+  const eos_1p_polytropic *eos_1p = nullptr;
+  const CCTK_REAL Ye = 0.3, temp = 0.02;
+  const auto atmo = make_atmo(
+      eos_1p, &eos, 0.0, eos.rgrho.min, 0.0, eos.rgtemp.min, Ye, 1.0,
+      0.0, 0.0, 0.0, 0.001, true, false, false);
+  const smat<CCTK_REAL, 3> g{1.2, 0.1, 0.0, 1.1, 0.05, 0.9};
+  const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
+  const vec<CCTK_REAL, 3> Bvec{0.01, 0.002, 0.0};
+  const CCTK_REAL Bsq = calc_contraction(Bvec, calc_contraction(g, Bvec));
+  const CCTK_REAL sqrt_detg = sqrt(calc_det(g));
+
+  // Test no floor, each magnetic floor, and both together at rest.
+  for (CCTK_REAL rho : {3.0e-4, 3.0e-3})
+    for (CCTK_REAL rho_fac : {1.0, 2.0})
+      for (CCTK_REAL press_fac : {1.0, 2.0}) {
+        const CCTK_REAL eps = eos.eps_from_rho_temp_ye(rho, temp, Ye);
+        const CCTK_REAL press = eos.press_from_rho_temp_ye(rho, temp, Ye);
+        const CCTK_REAL entropy = eos.kappa_from_rho_temp_ye(rho, temp, Ye);
+        prim_vars pv{rho, eps, Ye, press, temp, entropy,
+                      {0.0, 0.0, 0.0}, 1.0, Bvec};
+        pv.E = {0.0, 0.0, 0.0};
+        cons_vars cv;
+        cv.from_prim(pv, g);
+        const cons_vars cv_in = cv;
+
+        const CCTK_REAL sigma_max =
+            rho_fac > 1.0 ? Bsq / (rho_fac * rho) : 1.0e20;
+        const CCTK_REAL inv_beta_max =
+            press_fac > 1.0 ? Bsq / (2.0 * press_fac * press) : 1.0e20;
+        floor_test c2p_test(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                            1.0e20, 1.0e20, 1.0e20, sigma_max, inv_beta_max,
+                            true, false, use_temp, false, false, 1.0);
+        c2p_report rep;
+        rep.status = c2p_report::SUCCESS;
+        c2p_test.prims_floors_and_ceilings(&eos, pv, cv, 1.0, beta, g, rep);
+        const bool adjusted = rho_fac > 1.0 || press_fac > 1.0;
+        if (rep.failed() || rep.set_atmo || rep.adjust_cons != adjusted)
+          CCTK_ERROR("Magnetic entropy test: unexpected limiter result");
+
+        // Both test EOSs have P proportional to rho*T at fixed composition.
+        const CCTK_REAL rho_expected = rho_fac * rho;
+        const CCTK_REAL temp_expected = temp * press_fac / rho_fac;
+        const CCTK_REAL eps_expected =
+            eos.eps_from_rho_temp_ye(rho_expected, temp_expected, Ye);
+        const CCTK_REAL entropy_expected =
+            eos.kappa_from_rho_temp_ye(rho_expected, temp_expected, Ye);
+        check_pal("magnetic rho", pv.rho, rho_expected);
+        check_pal("magnetic pressure", pv.press, press_fac * press);
+        check_pal("magnetic temperature", pv.temperature, temp_expected);
+        check_pal("magnetic eps", pv.eps, eps_expected);
+        check_pal("magnetic Ye", pv.Ye, Ye);
+        check_pal("magnetic kappa", pv.entropy, entropy_expected);
+        check_pal("magnetic wlor", pv.w_lor, 1.0);
+        for (int d = 0; d < 3; ++d) {
+          check_pal("magnetic velocity", pv.vel(d), 0.0);
+          check_pal("magnetic Bvec", pv.Bvec(d), Bvec(d));
+          check_pal("magnetic E", pv.E(d), 0.0);
+        }
+
+        // Match the caller's conservative rebuild after a primitive repair.
+        if (rep.adjust_cons)
+          cv.from_prim(pv, g);
+        check_pal("magnetic DEnt", cv.DEnt,
+                  sqrt_detg * rho_expected * entropy_expected);
+        check_pal("magnetic dens", cv.dens, sqrt_detg * rho_expected);
+        check_pal("magnetic DYe", cv.DYe, sqrt_detg * rho_expected * Ye);
+        for (int d = 0; d < 3; ++d) {
+          check_pal("magnetic momentum", cv.mom(d), 0.0);
+          check_pal("magnetic dBvec", cv.dBvec(d), cv_in.dBvec(d));
+        }
+        check_pal("magnetic tau", cv.tau,
+                  sqrt_detg * (rho_expected * eps_expected + 0.5 * Bsq));
+        if (!adjusted)
+          check_cons(cv, cv_in);
+      }
+}
+
 void test_pal_energy() {
   // Host-local synthetic table: exercise the actual table inverse without
   // loading a production EOS. No host pointers are captured in GPU kernels.
@@ -592,6 +677,7 @@ void test_pal_energy() {
     test_atmo(eos);
     test_atmo_beq(eos);
     test_cons(eos);
+    test_mag_entropy(eos, true);
     test_pal(eos, true);
     test_rpa(eos, true);
   }
@@ -602,6 +688,8 @@ void test_pal_energy() {
     test_atmo(eos);
     test_atmo_ideal(eos);
     test_cons(eos);
+    test_mag_entropy(eos, false);
+    test_mag_entropy(eos, true);
     test_pal(eos, false);
     test_pal(eos, true);
     test_rpa(eos, false);
@@ -613,6 +701,8 @@ void test_pal_energy() {
     test_atmo(eos);
     test_atmo_ideal(eos);
     test_cons(eos);
+    test_mag_entropy(eos, false);
+    test_mag_entropy(eos, true);
     test_rpa(eos, false);
     test_rpa(eos, true);
   }

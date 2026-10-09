@@ -13,6 +13,7 @@ c2p is effectively an interface to be used by different c2p implementations.
 #include <cctk_Arguments.h>
 #include <cctk_Parameters.h>
 #include <math.h>
+#include <type_traits>
 
 #include "atmo.hxx"
 #include "c2p_report.hxx"
@@ -257,7 +258,13 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
       // Recompute T from adjusted rho, P
       pv.temperature = eos_3p->temp_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
       pv.eps = eos_3p->eps_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
-      pv.entropy = eos_3p->entropy_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+      // Store evolved kappa, not physical entropy; reuse the known T.
+      if constexpr (std::is_same_v<EOSType, EOSX::eos_3p_idealgas> ||
+                    std::is_same_v<EOSType, EOSX::eos_3p_tabulated3d>)
+        pv.entropy =
+            eos_3p->kappa_from_rho_temp_ye(pv.rho, pv.temperature, pv.Ye);
+      else
+        pv.entropy = eos_3p->kappa_from_rho_eps_ye(pv.rho, pv.eps, pv.Ye);
     }
     else {
       pv.eps = eos_3p->eps_from_rho_press_ye(pv.rho, pv.press, pv.Ye);
