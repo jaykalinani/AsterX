@@ -584,7 +584,7 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
   const smat<GF3D2<const CCTK_REAL>, 3> gf_g{gxx, gxy, gxz, gyy, gyz, gzz};
   grid.loop_int_device<1, 1, 1>(grid.nghostzones,
       [=] CCTK_DEVICE(const PointDesc &p) {
-        if (con2prim_flag(p.I) != C2P_FAIL)
+        if (con2prim_flag(p.I) != CCTK_REAL(C2P_FAIL))
           return;
         // As in dev, this in-place repair can race between failed neighbours.
         const auto flag_nbs = get_neighbors(con2prim_flag, p);
@@ -595,7 +595,8 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
         const auto vely_nbs = get_neighbors(vely, p);
         const auto velz_nbs = get_neighbors(velz, p);
         const auto good_nb = [&](int i) {
-          return flag_nbs(i) != C2P_FAIL && flag_nbs(i) != C2P_INIT &&
+          return flag_nbs(i) != CCTK_REAL(C2P_FAIL) &&
+                 flag_nbs(i) != CCTK_REAL(C2P_INIT) &&
                  std::isfinite(rho_nbs(i)) && std::isfinite(eps_nbs(i)) &&
                  std::isfinite(Ye_nbs(i)) && std::isfinite(velx_nbs(i)) &&
                  std::isfinite(vely_nbs(i)) && std::isfinite(velz_nbs(i));
