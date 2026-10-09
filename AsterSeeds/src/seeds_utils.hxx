@@ -27,13 +27,19 @@ set_beta_floor(const EOSType *eos, const CCTK_REAL press_min,
       !std::isfinite(Ye) || Ye < eos->rgye.min || Ye > eos->rgye.max)
     return false;
   CCTK_REAL pressL = press_min;
-  const CCTK_REAL rhoL = eos->rho_from_press_temp_ye(pressL, temp, Ye);
+  CCTK_REAL rhoL = eos->rho_from_press_temp_ye(pressL, temp, Ye);
+  // The inverse updates pressL when the target is outside the EOS domain.
+  const CCTK_REAL tol = 64.0 * std::numeric_limits<CCTK_REAL>::epsilon();
+  if (!std::isfinite(rhoL) || rhoL < (1.0 - tol) * eos->rgrho.min ||
+      rhoL > (1.0 + tol) * eos->rgrho.max ||
+      !std::isfinite(pressL) || pressL < (1.0 - tol) * press_min)
+    return false;
+  rhoL = std::clamp(rhoL, eos->rgrho.min, eos->rgrho.max);
   const CCTK_REAL epsL = eos->eps_from_rho_temp_ye(rhoL, temp, Ye);
   const CCTK_REAL entL = eos->kappa_from_rho_temp_ye(rhoL, temp, Ye);
   pressL = eos->press_from_rho_temp_ye(rhoL, temp, Ye);
-  const CCTK_REAL tol = 64.0 * std::numeric_limits<CCTK_REAL>::epsilon();
-  if (!std::isfinite(rhoL) || !std::isfinite(epsL) || !std::isfinite(entL) ||
-      !std::isfinite(pressL) || pressL < (1.0 - tol) * press_min)
+  if (!std::isfinite(epsL) || !std::isfinite(entL) ||
+      !std::isfinite(pressL) || pressL < 0.0)
     return false;
   rho = rhoL;
   eps = epsL;

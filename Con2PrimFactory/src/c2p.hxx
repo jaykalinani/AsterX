@@ -107,7 +107,7 @@ protected:
 
 public:
   template <typename EOSType, bool limiting>
-  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+  CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
   bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
               const smat<CCTK_REAL, 3> &glo) const;
 
@@ -419,7 +419,7 @@ c2p::prims_floors_and_ceilings(const EOSType *eos_3p, prim_vars &pv,
 }
 
 template <typename EOSType, bool limiting>
-CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
+CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline bool
 c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
                  const smat<CCTK_REAL, 3> &glo) const {
 
@@ -457,9 +457,7 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     if (recomp_flag) {
 
       if (!complete_prims(eos_3p, pv, false)) {
-        pv.set_to_nan();
-        cv.set_to_nan();
-        return;
+        return false;
       }
       pv.E = calc_contraction(calc_inv(glo, calc_det(glo)),
                               calc_cross_product(pv.Bvec, pv.vel));
@@ -474,9 +472,7 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
     pv.Ye = atmo.ye_atmo;
 
     if (!complete_prims(eos_3p, pv, false)) {
-      pv.set_to_nan();
-      cv.set_to_nan();
-      return;
+      return false;
     }
 
     // Set velocity such that new conserved momentum has same
@@ -532,6 +528,7 @@ c2p::bh_interior(const EOSType *eos_3p, prim_vars &pv, cons_vars &cv,
 
     cv.from_prim(pv, glo);
   };
+  return true;
 };
 
 template <typename EOSType>

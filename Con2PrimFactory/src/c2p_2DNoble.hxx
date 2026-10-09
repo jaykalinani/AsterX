@@ -52,7 +52,8 @@ public:
   CCTK_HOST CCTK_DEVICE inline bool
   get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
                      CCTK_REAL &dPdVsq, CCTK_REAL Z, CCTK_REAL Vsq,
-                     const EOSType *eos_3p, const cons_vars &cv) const;
+                     const EOSType *eos_3p, const cons_vars &cv,
+                     CCTK_REAL *temp = nullptr) const;
   template <typename EOSType>
   CCTK_HOST CCTK_DEVICE CCTK_ATTRIBUTE_ALWAYS_INLINE inline void
   WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq, CCTK_REAL BiSi,
@@ -181,20 +182,21 @@ CCTK_HOST CCTK_DEVICE inline bool
 c2p_2DNoble::get_Press_funcZVsq(CCTK_REAL &press, CCTK_REAL &dPdZ,
                                 CCTK_REAL &dPdVsq, CCTK_REAL Z,
                                 CCTK_REAL Vsq, const EOSType *eos_3p,
-                                const cons_vars &cv) const {
+                                const cons_vars &cv, CCTK_REAL *temp) const {
   if (!std::isfinite(Z) || Z <= 0.0 || !std::isfinite(Vsq) ||
       Vsq < 0.0 || Vsq >= 1.0 || !(cv.dens > 0.0))
     return false;
   const CCTK_REAL w_lor = 1.0 / sqrt(1.0 - Vsq);
   const CCTK_REAL rho = cv.dens / w_lor;
-  const CCTK_REAL Ye = cv.DYe / cv.dens;
+  const CCTK_REAL Ye =
+      std::clamp(cv.DYe / cv.dens, eos_3p->rgye.min, eos_3p->rgye.max);
   const CCTK_REAL h = Z * (1.0 - Vsq) / rho;
   CCTK_REAL dpdrho, dpdeps;
-  if (!eos_3p->press_derivs_from_rho_h_ye(press, dpdrho, dpdeps, rho, h, Ye))
+  if (!eos_3p->press_derivs_from_rho_h_ye(press, dpdrho, dpdeps, rho, h, Ye, temp))
     return false;
   // Chain rule for Z = rho*h*W^2 and rho = D/W.
   const CCTK_REAL denom = 1.0 + dpdeps / rho;
-  if (!std::isfinite(denom) || denom <= 0.0)
+  if (!std::isfinite(denom) || denom == 0.0)
     return false;
   dPdZ = (dpdeps / rho) * (1.0 - Vsq) / denom;
   dPdVsq = (-0.5 * cv.dens * w_lor * dpdrho -
@@ -273,7 +275,7 @@ c2p_2DNoble::WZ2Prim(CCTK_REAL Z_Sol, CCTK_REAL vsq_Sol, CCTK_REAL Bsq,
       0.5 * Bsq / (pv.w_lor * pv.w_lor) -
       0.5 * BiSi * BiSi / (Z_Sol * Z_Sol);
   eps_raw = (Z_Sol / (pv.w_lor * pv.w_lor) - press_raw) / pv.rho - 1.0;
-  pv.Ye = cv.DYe / cv.dens;
+  pv.Ye = std::clamp(cv.DYe / cv.dens, eos_3p->rgye.min, eos_3p->rgye.max);
   const auto rgeps = eos_3p->range_eps_from_rho_ye(pv.rho, pv.Ye);
   pv.eps = std::clamp(eps_raw, rgeps.min, rgeps.max);
 
@@ -465,6 +467,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
     }
   }
 
+  CCTK_REAL temp = pv_seeds.temperature;
   CCTK_INT k;
   for (k = 1; k <= maxIterations; k++) {
 
@@ -478,7 +481,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
 
     const CCTK_REAL Sdotn = -(cv.tau + cv.dens);
     CCTK_REAL p_tmp, dPdZ, dPdvsq;
-    if (!get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, Z, Vsq, eos_3p, cv)) {
+    if (!get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, Z, Vsq, eos_3p, cv, &temp)) {
       rep.set_root_conv();
       cv = cv_const;
       return;
@@ -526,7 +529,10 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
       for (CCTK_INT trial = 0; trial < maxIterations; ++trial) {
         x[0] = x_old[0] + step * dx[0];
         x[1] = fmax(0.0, x_old[1] + step * dx[1]);
-        if (get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, x[0], x[1], eos_3p, cv)) {
+        CCTK_REAL temp_trial = temp;
+        if (get_Press_funcZVsq(p_tmp, dPdZ, dPdvsq, x[0], x[1],
+                               eos_3p, cv, &temp_trial)) {
+          temp = temp_trial;
           valid = true;
           break;
         }
@@ -611,7 +617,7 @@ c2p_2DNoble::solve(const EOSType *eos_3p, prim_vars &pv, prim_vars &pv_seeds,
   // with the configured root tolerance and a roundoff-sized lower bound.
   CCTK_REAL press_final, dPdZ_final, dPdVsq_final;
   if (!get_Press_funcZVsq(press_final, dPdZ_final, dPdVsq_final,
-                         Z_Sol, vsq_Sol, eos_3p, cv)) {
+                         Z_Sol, vsq_Sol, eos_3p, cv, &temp)) {
     rep.set_root_conv();
     cv = cv_const;
     return;

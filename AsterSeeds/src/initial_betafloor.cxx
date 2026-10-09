@@ -229,6 +229,26 @@ extern "C" void AsterSeeds_TestBetaFloor(CCTK_ARGUMENTS) {
   if (set_beta_floor(&eos, 1.0, 0.02, 0.3, rho, eps, press, entropy) ||
       rho != rho0 || eps != eps0 || press != press0 || entropy != entropy0)
     CCTK_ERROR("AsterSeeds test: unattainable beta floor changed the state");
+  // A steep pressure interpolant amplifies the density-inversion roundoff.
+  std::array<CCTK_REAL, 3> lr_small{log(1.0e-20), log(1.0e-12), log(1.0e-4)};
+  std::array<CCTK_REAL, 12 * NTABLES> small_data{};
+  for (int k = 0; k < 2; ++k)
+    for (int j = 0; j < 2; ++j)
+      for (int i = 0; i < 3; ++i) {
+        const int n = NTABLES * (i + 3 * (j + 2 * k));
+        small_data[n + eos_3p_tabulated3d::PRESS] = 3.0 * lr_small[i] + lt[j];
+        small_data[n + eos_3p_tabulated3d::EPS] = lt[j];
+      }
+  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> small(
+      small_data.data(), {3, 2, 2}, lr_small.data(), lt.data(), ye.data());
+  eos.interptable = &small;
+  eos.rgrho = {exp(lr_small[0]), exp(lr_small[2])};
+  const CCTK_REAL rhoL = 1.624501063509632e-14;
+  const CCTK_REAL target = eos.press_from_rho_temp_ye(rhoL, 0.02, 0.3);
+  if (!set_beta_floor(&eos, target, 0.02, 0.3, rho, eps, press, entropy) ||
+      fabs(rho / rhoL - 1.0) > 1.0e-12 ||
+      fabs(press / target - 1.0) > 1.0e-12)
+    CCTK_ERROR("AsterSeeds test: attainable beta floor rejected");
   CCTK_INFO("AsterSeeds beta-floor tests passed");
 }
 

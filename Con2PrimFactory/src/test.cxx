@@ -770,9 +770,80 @@ void test_prims(const EOSType &eos) {
   impossible.prims_floors_and_ceilings(&eos, pv, cv, 1.0, beta, g, rep);
   if (rep.status != c2p_report::B_LIMIT)
     CCTK_ERROR("Primitive test: impossible magnetic floor accepted");
+
+  const CCTK_REAL nan = std::numeric_limits<CCTK_REAL>::quiet_NaN();
+  floor_test bad_bh(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                     3.0e-4, nan, 1.0, 1.0e20, 1.0e20,
+                     true, false, true, false, false, 1.0);
+  const cons_vars cv_in = cv;
+  if (bad_bh.template bh_interior<EOSType, false>(&eos, pv, cv, g))
+    CCTK_ERROR("Primitive test: failed BH reset reported success");
+  check_cons(cv, cv_in);
+  pv.rho = 6.0e-4;
+  pv.eps = nan;
+  if (bad_bh.template bh_interior<EOSType, true>(&eos, pv, cv, g))
+    CCTK_ERROR("Primitive test: failed BH limit reported success");
+  check_cons(cv, cv_in);
+}
+
+void test_noble_table() {
+  std::array<CCTK_REAL, 2> lr{log(1.0e-6), log(1.0e-2)};
+  std::array<CCTK_REAL, 2> lt{log(0.005), log(0.08)};
+  std::array<CCTK_REAL, 2> ye{0.1, 0.5};
+  std::array<CCTK_REAL, 8 * NTABLES> data{};
+  for (int k = 0; k < 2; ++k)
+    for (int j = 0; j < 2; ++j)
+      for (int i = 0; i < 2; ++i) {
+        const int n = NTABLES * (i + 2 * (j + 2 * k));
+        // h = 1 + T + 0.0004/T has two temperature branches.
+        data[n + eos_3p_tabulated3d::PRESS] = lr[i] + log(0.0004) - lt[j];
+        data[n + eos_3p_tabulated3d::EPS] = lt[j];
+      }
+  linear_interp_uniform_ND_t<CCTK_REAL, 3, NTABLES> interp(
+      data.data(), {2, 2, 2}, lr.data(), lt.data(), ye.data());
+  CCTK_REAL shift = 0.0;
+  eos_3p_tabulated3d eos;
+  eos.interptable = &interp;
+  eos.energy_shift = &shift;
+  eos.rgrho = {exp(lr[0]), exp(lr[1])};
+  eos.rgtemp = {exp(lt[0]), exp(lt[1])};
+  eos.rgye = {ye[0], ye[1]};
+  eos.rgeps = eos.compute_eps_range_full_table();
+  const auto atmo = make_atmo(static_cast<const eos_1p_polytropic *>(nullptr),
+      &eos, 0.0, eos.rgrho.min, 0.0, eos.rgtemp.min, ye[0], 1.0,
+      0.0, 0.0, 0.0, 0.001, true, false, false);
+  c2p_2DNoble noble(&eos, atmo, 200, 1.0e-12, -1.0, 10.0, 100.0,
+                    1.0e20, 1.0e20, 1.0e20, 1.0e20, 1.0e20,
+                    true, false, true, false, false, 1.0);
+  const smat<CCTK_REAL, 3> g{1.0, 0.0, 0.0, 1.0, 0.0, 1.0};
+  const vec<CCTK_REAL, 3> beta{0.0, 0.0, 0.0};
+  const CCTK_REAL rho = 0.0027435103892115287; // DYe/D rounds below Ye_min.
+  for (CCTK_REAL temp : {0.01, 0.04})
+    for (CCTK_REAL factor : {0.99, 1.0, 1.01}) {
+      prim_vars pv{rho, temp, ye[0], 0.0004 * rho / temp, temp, 0.0,
+                    {0.0, 0.0, 0.0}, 1.0, {0.0, 0.0, 0.0}};
+      cons_vars cv;
+      cv.from_prim(pv, g);
+      const cons_vars cv_in = cv;
+      prim_vars seed = pv;
+      seed.temperature *= factor;
+      seed.eps = seed.temperature;
+      c2p_report rep;
+      noble.solve(&eos, pv, seed, cv, 1.0, beta, g, rep);
+      if (rep.failed() || rep.set_atmo)
+        CCTK_ERROR("Noble test: valid table branch rejected");
+      check_pal("Noble branch temperature", pv.temperature, temp);
+      cv.from_prim(pv, g);
+      check_cons(cv, cv_in);
+    }
+  CCTK_REAL eps = 0.01, temp = 0.01;
+  if (eos.eps_from_rho_h_ye(rho, 1.03, ye[0], eps, &temp, temp) ||
+      eps != 0.01 || temp != 0.01)
+    CCTK_ERROR("Noble test: unattainable enthalpy changed the state");
 }
 
 void test_pal_energy() {
+  test_noble_table();
   // Host-local synthetic table: exercise the actual table inverse without
   // loading a production EOS. No host pointers are captured in GPU kernels.
   std::array<CCTK_REAL, 3> lr{log(1.0e-6), log(1.0e-4), log(1.0e-2)};

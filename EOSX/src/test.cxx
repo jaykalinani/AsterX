@@ -84,6 +84,14 @@ void test_table() {
           if (!eos.eps_from_rho_h_ye(rho, h, Ye, eps_h))
             CCTK_ERROR("EOSX test: table enthalpy inverse failed");
           check("table enthalpy energy", eps_h, eps);
+          if (rho == 3.0e-4 && temp == 0.007 && Ye == eos.rgye.min) {
+            eos.press_derivs_from_rho_eps_ye(
+                press, dpdrho, dpdeps, rho, eps, Ye - 0.1);
+            check("bounded derivative pressure", press, rho * temp);
+            check("bounded dP/drho", dpdrho, 0.9 * temp);
+            check("bounded dP/deps", dpdeps,
+                  rho / (pow(rho, 0.1) * exp(0.2 * Ye)));
+          }
           // Compare to finite differences away from clipping boundaries.
           if (rho == 3.0e-4 && temp == 0.007) {
             const CCTK_REAL dr = 1.0e-5 * rho;

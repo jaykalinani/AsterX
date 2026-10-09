@@ -212,6 +212,7 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     bool c2p_flag_local = true;
     CCTK_INT c2p_flag_code = C2P_INIT;
     bool call_c2p = true;
+    bool bh_failed = false;
 
     // Check if point is below atmosphere, and if atmosphere obeys magnetization
     // limits (RPA only). Magnetization limits are currently only applied for RPA C2P, 
@@ -242,7 +243,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
     if (excise) {
 
       if (mask_local != 1.0) {
-        c2p_Noble.bh_interior<EOSType, false>(eos_3p, pv_seeds, cv, glo);
+        bh_failed =
+            !c2p_Noble.bh_interior<EOSType, false>(eos_3p, pv_seeds, cv, glo);
         pv = pv_seeds;
         call_c2p = false;
       }
@@ -373,7 +375,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
             if (mask_local != 1.0) {
               // Failure inside mask
-              c2p_Noble.bh_interior<EOSType, false>(eos_3p, pv_seeds, cv, glo);
+              bh_failed =
+                  !c2p_Noble.bh_interior<EOSType, false>(eos_3p, pv_seeds, cv, glo);
               pv = pv_seeds;
             } else {
               // Failure outside, set to atmo
@@ -420,7 +423,8 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
           if (mask_local != 1.0) {
             // Failure inside mask
-            c2p_Noble.bh_interior<EOSType, false>(eos_3p, pv_seeds, cv, glo);
+            bh_failed =
+                !c2p_Noble.bh_interior<EOSType, false>(eos_3p, pv_seeds, cv, glo);
             pv = pv_seeds;
           } else {
             // Failure outside, set to atmo
@@ -435,8 +439,15 @@ void AsterX_Con2Prim_typeEoS(CCTK_ARGUMENTS, EOSIDType *eos_1p,
 
       // Inside mask, C2P success
       if ((mask_local != 1.0) && c2p_flag_local) {
-        c2p_Noble.bh_interior<EOSType, true>(eos_3p, pv, cv, glo);
+        bh_failed = !c2p_Noble.bh_interior<EOSType, true>(eos_3p, pv, cv, glo);
       }
+    }
+
+    if (bh_failed) {
+      pv.Bvec = Bup;
+      cv.dBvec = sqrt_detg * Bup;
+      atmo.set(pv, cv, glo);
+      c2p_flag_code = C2P_FAIL;
     }
 
     con2prim_flag(p.I) = c2p_flag_code;
@@ -625,6 +636,9 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
           return;
         prim_vars pv;
         pv.Bvec = {Bvecx(p.I), Bvecy(p.I), Bvecz(p.I)};
+        if (!std::isfinite(pv.Bvec(0)) || !std::isfinite(pv.Bvec(1)) ||
+            !std::isfinite(pv.Bvec(2)))
+          return;
         const CCTK_REAL rhoL = average(rho_nbs);
         if (rhoL <= atmo.rho_cut) {
           atmo.set(pv);
@@ -657,6 +671,13 @@ void InterpolateFailed(CCTK_ARGUMENTS, const EOSIDType *eos_1p,
         }
         cons_vars cv;
         cv.from_prim(pv, g);
+        if (!std::isfinite(cv.dens) || cv.dens <= 0.0 ||
+            !std::isfinite(cv.tau) || !std::isfinite(cv.DYe) ||
+            !std::isfinite(cv.DEnt))
+          return;
+        for (int d = 0; d < 3; ++d)
+          if (!std::isfinite(cv.mom(d)) || !std::isfinite(cv.dBvec(d)))
+            return;
         CCTK_REAL Ex, Ey, Ez, Bx, By, Bz;
         pv.scatter(rho(p.I), eps(p.I), Ye(p.I), press(p.I), temperature(p.I),
             entropy(p.I), velx(p.I), vely(p.I), velz(p.I), w_lorentz(p.I),

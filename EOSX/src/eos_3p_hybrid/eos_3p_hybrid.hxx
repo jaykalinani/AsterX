@@ -162,7 +162,8 @@ public:
   CCTK_HOST CCTK_DEVICE inline bool
   press_derivs_from_rho_h_ye(CCTK_REAL &press, CCTK_REAL &dpdrho,
                              CCTK_REAL &dpdeps, const CCTK_REAL rho,
-                             const CCTK_REAL h, const CCTK_REAL ye) const {
+                             const CCTK_REAL h, const CCTK_REAL ye,
+                             CCTK_REAL *temp = nullptr) const {
     CCTK_REAL eps;
     if (!eps_from_rho_h_ye(rho, h, ye, eps))
       return false;
