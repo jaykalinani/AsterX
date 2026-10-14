@@ -292,11 +292,15 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       // Reconstruct temperature
       temp_rc = reconstruct_pt(temperature, p, false, false);
 
-      // Use lower-order if reconstructed rho, entropy, Ye or T is <= 0
-      if ((rho_rc(0) <= rho_cut(0)) || (entropy_rc(0) <= 0.0) ||
-          (Ye_rc(0) <= 0.0) || (temp_rc(0) <= 0.0) ||
-          (rho_rc(1) <= rho_cut(1)) || (entropy_rc(1) <= 0.0) ||
-          (Ye_rc(1) <= 0.0) || (temp_rc(1) <= 0.0) || useLO) {
+      const auto invalid_face = [&](const int f) {
+        return rho_rc(f) <= rho_cut(f) ||
+               !eos_3p->rgrho.contains(rho_rc(f)) ||
+               !isfinite(entropy_rc(f)) ||
+               !eos_3p->rgye.contains(Ye_rc(f)) ||
+               !eos_3p->rgtemp.contains(temp_rc(f));
+      };
+
+      if (invalid_face(0) || invalid_face(1) || useLO) {
 
         useLO = true;
 
@@ -336,11 +340,22 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       // Reconstruct pressure
       press_rc = reconstruct_pt(press, p, false, true);
 
-      // Use lower-order if reconstructed rho, entropy, Ye or press is <= 0
-      if ((rho_rc(0) <= rho_cut(0)) || (entropy_rc(0) <= 0.0) ||
-          (Ye_rc(0) <= 0.0) || (press_rc(0) <= 0.0) ||
-          (rho_rc(1) <= rho_cut(1)) || (entropy_rc(1) <= 0.0) ||
-          (Ye_rc(1) <= 0.0) || (press_rc(1) <= 0.0) || useLO) {
+      const auto invalid_face = [&](const int f) {
+        if (rho_rc(f) <= rho_cut(f) ||
+            !eos_3p->rgrho.contains(rho_rc(f)) ||
+            !isfinite(entropy_rc(f)) ||
+            !eos_3p->rgye.contains(Ye_rc(f)) ||
+            !isfinite(press_rc(f)))
+          return true;
+
+        const CCTK_REAL eps_face = eos_3p->eps_from_rho_press_ye(
+            rho_rc(f), press_rc(f), Ye_rc(f));
+        const auto eps_range =
+            eos_3p->range_eps_from_rho_ye(rho_rc(f), Ye_rc(f));
+        return !eps_range.contains(eps_face);
+      };
+
+      if (invalid_face(0) || invalid_face(1) || useLO) {
 
         useLO = true;
 
