@@ -382,12 +382,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       }
       // End lower-order
 
-      // Compute eps_rc and temp_rc using lambdas
+      // Compute eps_rc
       for (int f = 0; f < 2; ++f) {
         eps_rc(f) =
             eos_3p->eps_from_rho_press_ye(rho_rc(f), press_rc(f), Ye_rc(f));
-        temp_rc(f) =
-            eos_3p->temp_from_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
       }
     }
 
@@ -592,13 +590,12 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
     const vec<CCTK_REAL, 2> B_rc{Bs_rc(dir_i)};
     const vec<CCTK_REAL, 2> vtilde_rc{vtildes_rc(dir_i)};
 
-    // TODO: Compute pressure based on user-specified EOS.
-    // Currently, computing press for classical ideal gas from reconstructed
-    // vars
-
     const vec<CCTK_REAL, 2> cs2_rc([&](int f) ARITH_INLINE {
-      return eos_3p->csnd_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f)) *
-             eos_3p->csnd_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f));
+      const CCTK_REAL csound =
+          reconstruct_with_temperature
+              ? eos_3p->csnd_from_rho_temp_ye(rho_rc(f), temp_rc(f), Ye_rc(f))
+              : eos_3p->csnd_from_rho_eps_ye(rho_rc(f), eps_rc(f), Ye_rc(f));
+      return csound * csound;
     });
 
     const vec<CCTK_REAL, 2> h_rc([&](int f) ARITH_INLINE {
