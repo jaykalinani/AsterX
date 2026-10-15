@@ -293,6 +293,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       temp_rc = reconstruct_pt(temperature, p, false, false);
 
       const auto invalid_face = [&](const int f) {
+        if (!istab)
+          return rho_rc(f) <= rho_cut(f) || entropy_rc(f) <= 0.0 ||
+                 Ye_rc(f) <= 0.0 || temp_rc(f) <= 0.0;
+
         return rho_rc(f) <= rho_cut(f) ||
                !eos_3p->rgrho.contains(rho_rc(f)) ||
                !isfinite(entropy_rc(f)) ||
@@ -341,6 +345,10 @@ void CalcFlux(CCTK_ARGUMENTS, EOSType *eos_3p, const rec_var_t rec_var,
       press_rc = reconstruct_pt(press, p, false, true);
 
       const auto invalid_face = [&](const int f) {
+        if (!istab)
+          return rho_rc(f) <= rho_cut(f) || entropy_rc(f) <= 0.0 ||
+                 Ye_rc(f) <= 0.0 || press_rc(f) <= 0.0;
+
         if (rho_rc(f) <= rho_cut(f) ||
             !eos_3p->rgrho.contains(rho_rc(f)) ||
             !isfinite(entropy_rc(f)) ||
